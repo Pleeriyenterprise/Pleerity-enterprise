@@ -1,0 +1,12 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation_code": "epc",
+  "slug": "6fd5ac4c_d35a58ae_epc",
+  "classifications": [
+    {
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [],
+      "reasons": []
+    }
+  ]
+}

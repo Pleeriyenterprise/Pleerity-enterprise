@@ -1,0 +1,213 @@
+{
+  "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_type": "legionella",
+  "description": "Legionella risk assessment",
+  "frequency_days": 730,
+  "due_date": "2026-06-02T12:46:40.887335+00:00",
+  "status": "PENDING",
+  "applicability": "UNKNOWN",
+  "confirmed_expiry_date": null,
+  "extracted_expiry_date": null,
+  "expiry_source": "NONE",
+  "extraction_confidence": null,
+  "not_required_reason": null,
+  "issue_date": null,
+  "certificate_number": null,
+  "date_source": "SYSTEM_ESTIMATED",
+  "evidence_state": "MISSING",
+  "confidence_state": "ESTIMATED",
+  "created_at": "2026-04-03T12:46:40.887399+00:00",
+  "updated_at": "2026-05-17T13:52:43.278554+00:00",
+  "jurisdiction": "Wales",
+  "evidence_authority": {
+    "version": 1,
+    "state": "NOT_REQUIRED",
+    "state_reason": "applicability_not_required",
+    "effective_expiry_date": null,
+    "effective_expiry_is_null": true,
+    "effective_issue_date": null,
+    "effective_verified_document_id": null,
+    "expiry_source": "NONE",
+    "evidence_last_verified_at": null,
+    "evidence_last_updated_at": "2026-04-24T13:23:35.002544+00:00",
+    "mismatch_flag": false,
+    "mismatch_reason": null,
+    "evidence_confidence": null,
+    "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "evidence_scope_type": "PROPERTY",
+    "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+  },
+  "evidence_authority_synced_at": "2026-04-24T13:23:35.002544+00:00",
+  "client_surface_source_classification": "published",
+  "legacy_canonical_requirement_code": "legionella",
+  "legacy_linkage_summary": {
+    "documents": 0,
+    "work_orders": 0,
+    "reminders": 1,
+    "invoices": 0
+  },
+  "legacy_mapped_published_requirement_code": "legionella",
+  "legacy_readonly_visible": false,
+  "legacy_requirement_state": "active",
+  "legacy_review_required": false,
+  "legacy_state_updated_at": "2026-04-26T17:03:55.125855+00:00",
+  "applicability_state": "NOT_REQUIRED",
+  "evidence_state_normalized": "NOT_REQUIRED",
+  "is_mandatory": false,
+  "policy_classification_version": "v1",
+  "policy_criticality": "MEDIUM",
+  "policy_last_resolved_at": "2026-04-30T14:36:45.042622+00:00",
+  "requirement_code_normalized": "legionella",
+  "applicability_provenance": {
+    "pipeline_applicability_state": "NOT_REQUIRED",
+    "pipeline_updated_at": "2026-05-17T13:52:43.849000",
+    "effective_applicability_state": "NOT_REQUIRED",
+    "effective_updated_at": "2026-05-17T13:52:43.849000",
+    "applicability_resolution_source": "PIPELINE",
+    "operator_override": {
+      "active": false,
+      "applicability_state": null
+    }
+  },
+  "applicability_resolution_source": "PIPELINE",
+  "effective_applicability_state": "NOT_REQUIRED",
+  "operator_override_active": false,
+  "pipeline_applicability_state": "NOT_REQUIRED",
+  "action_type": "JOB",
+  "client_surface_visible": true,
+  "compliance_requirement_class": "JOB",
+  "is_tracked": true,
+  "registry_metadata": {
+    "catalog_keys": [],
+    "action_links_published": [
+      {
+        "key": "hse_legionella_guidance",
+        "label": "HSE guidance on Legionella responsibilities for landlords",
+        "kind": "official",
+        "url": "https://www.hse.gov.uk/legionnaires/legionella-landlords-responsibilities.htm",
+        "external": true
+      },
+      {
+        "key": "nhs_legionnaires_disease",
+        "label": "NHS information on Legionnaires' disease",
+        "kind": "official",
+        "url": "https://www.nhs.uk/conditions/legionnaires-disease/",
+        "external": true
+      }
+    ],
+    "why_it_matters_short_published": "Legionella risk assessments help support safe water system management in Welsh rental properties.",
+    "why_it_matters_long_published": "Landlords in Wales may need to assess water system risks and implement reasonable control measures to reduce potential Legionella exposure.",
+    "why_it_matters_by_jurisdiction_published": {
+      "ENGLAND": {
+        "short": "Landlords in England may need to assess and manage Legionella risks in property water systems.",
+        "long": "Health and safety responsibilities in England may require landlords to assess potential Legionella risks associated with water systems in rental properties."
+      },
+      "SCOTLAND": {
+        "short": "Scottish landlords should consider Legionella risks linked to water systems.",
+        "long": "Water system management and risk assessment practices may help Scottish landlords reduce potential Legionella exposure risks in residential properties."
+      },
+      "WALES": {
+        "short": "Legionella risk assessments help support safe water system management in Welsh rental properties.",
+        "long": "Landlords in Wales may need to assess water system risks and implement reasonable control measures to reduce potential Legionella exposure."
+      },
+      "NORTHERN_IRELAND": {
+        "short": "Water system risk management can help reduce Legionella exposure risks in Northern Ireland properties.",
+        "long": "Risk assessments and appropriate water system management practices may help reduce Legionella-related health risks in rental properties in Northern Ireland."
+      }
+    },
+    "primary_action_mode": "arrange_job",
+    "cta_label_override": "Upload Legionella risk assessment report"
+  },
+  "requirement_code": "legionella",
+  "requirement_generation_source": "catalog_registry",
+  "requires_document": false,
+  "requires_job": true,
+  "property_jurisdiction": "Wales",
+  "jurisdiction_source": "property_explicit",
+  "jurisdiction_basis": "property_jurisdiction",
+  "canonical_code": "legionella",
+  "display_name": "Legionella risk assessment",
+  "category": null,
+  "risk": null,
+  "cta_action_mode": null,
+  "cta_label": null,
+  "cta_url": null,
+  "source": "both",
+  "trigger_explanation": {
+    "jurisdiction_basis": "property_jurisdiction",
+    "property_jurisdiction": "Wales",
+    "requirement_type": "legionella"
+  },
+  "canonical_requirement_code": "legionella",
+  "display_label": "Legionella risk assessment",
+  "status_label": "Assessment recorded \u2014 follow-up required",
+  "date_label": "Estimated renewal date: 2 Jun 2026",
+  "date_explanation_helper": "Estimated from standard compliance cycles and your property setup. Upload your certificate to confirm this date.",
+  "evidence_badge_label": "Remediation or follow-up may remain open",
+  "why_it_matters_short": "Legionella risk assessments help support safe water system management in Welsh rental properties.",
+  "why_it_matters_long": "Landlords in Wales may need to assess water system risks and implement reasonable control measures to reduce potential Legionella exposure.",
+  "show_estimated_date_copy": true,
+  "requirement_category": "safety",
+  "engine_requirement_category": "safety",
+  "client_visibility": "actionable",
+  "engine_client_visibility": "actionable",
+  "requirement_class": "JOB",
+  "fulfillment_mode": "document",
+  "engine_fulfillment_mode": "document",
+  "creates_compliance_job": true,
+  "engine_creates_compliance_job": true,
+  "requires_document_evidence": true,
+  "engine_requires_document_evidence": true,
+  "include_in_priority_stream": true,
+  "engine_include_in_priority_stream": true,
+  "calendar_overdue_in_inbox": true,
+  "engine_calendar_overdue_in_inbox": true,
+  "engine_informational": false,
+  "take_action": {
+    "primary": {
+      "label": "Record Legionella risk assessment",
+      "route": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad#req=legionella",
+      "kind": "navigate",
+      "handler": "navigate",
+      "intent": "coordinate_inspection_evidence"
+    },
+    "secondary": {
+      "label": "Upload document",
+      "route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "kind": "navigate",
+      "handler": "navigate",
+      "external": false,
+      "intent": "upload_evidence"
+    },
+    "supporting_external_links": [],
+    "contract": "requirement_take_action_v1",
+    "provenance": {
+      "primary_label": "published_registry",
+      "supporting_links": "published_registry",
+      "source_type": "requirement"
+    }
+  },
+  "action_links": [],
+  "workflow_class": "REMEDIATION_JOB",
+  "allowed_evidence_modes": [
+    "STRUCTURED_DECLARATION",
+    "DOCUMENT_UPLOAD"
+  ],
+  "client_evidence_disclosure": "This records your Legionella risk assessment for compliance tracking. It does not replace professional or legal verification.",
+  "evidence_completeness": null,
+  "requirement_display": {
+    "canonical_name": "Legionella Risk Assessment",
+    "short_name": "Legionella",
+    "description": "",
+    "category_label": "Health",
+    "primary_cta_label": "Record Legionella risk assessment",
+    "secondary_cta_label": "Upload document"
+  },
+  "client_lifecycle_state": "NOT_APPLICABLE",
+  "client_lifecycle_label": "Not applicable",
+  "client_lifecycle_reason_codes": [
+    "EA_NOT_REQUIRED"
+  ]
+}

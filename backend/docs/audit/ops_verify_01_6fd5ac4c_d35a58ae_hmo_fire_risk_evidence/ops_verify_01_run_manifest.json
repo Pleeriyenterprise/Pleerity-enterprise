@@ -1,0 +1,64 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6fd5ac4c_d35a58ae_hmo_fire_risk_evidence_20260521T124032Z",
+  "slug": "6fd5ac4c_d35a58ae_hmo_fire_risk_evidence",
+  "captured_at_utc": "2026-05-21T12:40:32.492006+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_ids": [
+    "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6"
+  ],
+  "journeys_executed": [
+    "A_guided_contractor_confirmation_submit"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-01",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "B_primary_document_upload": {
+      "document_visible": true,
+      "refresh_persisted": true,
+      "upload_api_ack": true,
+      "user_visible_gap": false
+    }
+  },
+  "checkpoint_results": {
+    "B_primary_document_upload": {
+      "B-1": true,
+      "B-2": true,
+      "B-3": true,
+      "B-4": true,
+      "B-5": true,
+      "B-6": true,
+      "B-7": true,
+      "B-8": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation_code": "hmo_fire_risk_evidence",
+  "materialised_sibling_requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+  "preflight": {
+    "baseline_profile": "greenfield",
+    "policy_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+    "surfaced_requirement_type": "hmo_fire_risk",
+    "selection_note": "hmo_fire_risk_evidence obligation; client runtime surfaces hmo_fire_risk alias row; guided CONTRACTOR_CONFIRMATION (DOCUMENT_UPLOAD excluded from guided modal)"
+  },
+  "submit_correlation_id": "DOC_UPLOADED:65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+  "document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+  "guided_probe": {
+    "guided_btn_count": 1,
+    "guided_modes_visible": {
+      "CONTRACTOR_CONFIRMATION": false,
+      "INSPECTION_CHECKLIST": false,
+      "DOCUMENT_UPLOAD_in_modal": false
+    }
+  },
+  "obligation_classification": "VERIFIED_OPERATIONALLY"
+}

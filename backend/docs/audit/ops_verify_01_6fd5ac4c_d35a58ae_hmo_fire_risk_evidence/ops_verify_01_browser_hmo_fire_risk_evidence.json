@@ -1,0 +1,111 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation": "hmo_fire_risk_evidence",
+  "surfaced_requirement_type": "hmo_fire_risk",
+  "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+  "started_at_utc": "2026-05-21T12:54:50.302654+00:00",
+  "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6&requirement_code=hmo_fire_risk_evidence&focus=upload",
+  "workflow_note": "GUIDED_EVIDENCE_RESOLUTION: modal attested; primary document via Documents (DOCUMENT_UPLOAD not in guided modal)",
+  "steps": [
+    {
+      "step": "requirement_visible",
+      "ok": true,
+      "detail": "HMO Fire Safety\nAction required\nDocument: Not uploaded\n\nRequired evidence incomplete\n\nLandlords or r",
+      "at": "2026-05-21T12:55:24.613082+00:00"
+    },
+    {
+      "step": "guided_modal_attested",
+      "ok": true,
+      "detail": "{\"guided_btn_count\": 1, \"guided_modes_visible\": {\"CONTRACTOR_CONFIRMATION\": false, \"INSPECTION_CHECKLIST\": false, \"DOCUMENT_UPLOAD_in_modal\": false}}",
+      "at": "2026-05-21T12:55:25.775126+00:00"
+    },
+    {
+      "step": "document_upload_ack",
+      "ok": true,
+      "detail": "200",
+      "at": "2026-05-21T12:55:41.216875+00:00"
+    },
+    {
+      "step": "vault_row",
+      "ok": true,
+      "detail": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+      "at": "2026-05-21T12:55:42.852208+00:00"
+    },
+    {
+      "step": "refresh_persist",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-21T12:55:48.984294+00:00"
+    },
+    {
+      "step": "post_submit_view_or_guided",
+      "ok": false,
+      "detail": "view=0 guided=0",
+      "at": "2026-05-21T12:55:54.120592+00:00"
+    }
+  ],
+  "checkpoints": {
+    "B-1": true,
+    "B-5": true,
+    "B-5_refresh": true
+  },
+  "upload_response": {
+    "http_status": 200,
+    "body": {
+      "message": "Document uploaded successfully",
+      "document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+      "outcome": {
+        "score_change": -1,
+        "new_score": 56,
+        "risk_change": "unchanged",
+        "status_change": "unchanged",
+        "message": "hmo_fire_risk evidence uploaded \u2014 file saved. Confirm extracted dates in Documents before this fully satisfies the requirement. (Compliance score -1; risk unchanged)",
+        "idempotent": false
+      },
+      "requirement_workflow_pending": false,
+      "evidence_match": {
+        "match_outcome": "NEEDS_ADMIN_REVIEW",
+        "match_confidence": 0.0,
+        "predicted_document_type": "UNKNOWN",
+        "mismatch_reason_code": "EXTRACTION_AMBIGUOUS",
+        "mismatch_reason_text": "Ambiguous classification signals.",
+        "user_messages": [
+          "We could not confidently match this file to the selected obligation from its contents. An administrator may need to review it."
+        ],
+        "evidence_satisfies_requirement": false
+      },
+      "document_validation": {
+        "valid": true,
+        "reason": null,
+        "jurisdiction": "Wales",
+        "scoring_jurisdiction": "ENGLAND_WALES",
+        "portfolio_jurisdiction": "Wales",
+        "missing_metadata_fields": []
+      },
+      "document_metadata": null,
+      "validation_result": {
+        "valid": true,
+        "jurisdiction": "Wales",
+        "validated_at": "2026-05-21T12:55:32.090010+00:00",
+        "missing_metadata_fields": [],
+        "reason": null,
+        "scoring_jurisdiction": "ENGLAND_WALES",
+        "portfolio_jurisdiction": "Wales",
+        "document_type_input": null
+      }
+    },
+    "document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896"
+  },
+  "guided_probe": {
+    "guided_btn_count": 1,
+    "guided_modes_visible": {
+      "CONTRACTOR_CONFIRMATION": false,
+      "INSPECTION_CHECKLIST": false,
+      "DOCUMENT_UPLOAD_in_modal": false
+    }
+  },
+  "requirement_row_excerpt": "HMO Fire Safety\nAction required\nDocument: Not uploaded\n\nRequired evidence incomplete\n\nLandlords or responsible persons in Wales may need to assess fire risks and maintain appropriate fire safety precautions for certain property types.\n\nKensington Garden Flat\nWales\nEstimated renewal date: 24 Jun 2026\nPUBLISHED + CORE RULES\n\nEstimated from standard c",
+  "document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae_hmo_fire_risk_evidence\\screenshots\\hmo_fire_risk_evidence_post_submit.png",
+  "finished_at_utc": "2026-05-21T12:55:54.211046+00:00"
+}

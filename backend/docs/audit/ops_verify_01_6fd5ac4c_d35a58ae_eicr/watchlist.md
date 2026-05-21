@@ -1,0 +1,3 @@
+- Greenfield baseline: authority MISSING, 0 docs/CERs.
+- Score: 47 → 53.
+- Admin verify not run unless CER remains PENDING_REVIEW.

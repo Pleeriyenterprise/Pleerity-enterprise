@@ -1,0 +1,108 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation": "hmo_license",
+  "started_at_utc": "2026-05-21T12:20:45.376174+00:00",
+  "requirement_id": "71e89158-5de0-422a-970c-5a2163fcc823",
+  "requirement_type": "hmo_license",
+  "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=71e89158-5de0-422a-970c-5a2163fcc823&requirement_code=hmo_license&focus=upload",
+  "steps": [
+    {
+      "step": "requirement_visible",
+      "ok": true,
+      "detail": "HMO Licensing\nAction required\nDocument: Not uploaded\n\nCertificate or evidence do",
+      "at": "2026-05-21T12:21:18.025910+00:00"
+    },
+    {
+      "step": "resolve_cta_present",
+      "ok": false,
+      "detail": "count=0",
+      "at": "2026-05-21T12:21:18.030907+00:00"
+    },
+    {
+      "step": "deeplink_prefill",
+      "ok": true,
+      "detail": "requirement=71e89158-5de0-422a-970c-5a2163fcc823",
+      "at": "2026-05-21T12:21:24.629595+00:00"
+    },
+    {
+      "step": "upload_api_ack",
+      "ok": true,
+      "detail": "200",
+      "at": "2026-05-21T12:21:37.010921+00:00"
+    },
+    {
+      "step": "vault_row",
+      "ok": true,
+      "detail": "56026075-06cb-4877-b1a3-dafd9cfc41f4",
+      "at": "2026-05-21T12:21:38.642323+00:00"
+    },
+    {
+      "step": "refresh_persist",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-21T12:21:47.204994+00:00"
+    },
+    {
+      "step": "requirement_modal_or_cta",
+      "ok": false,
+      "detail": "none",
+      "at": "2026-05-21T12:21:52.333805+00:00"
+    }
+  ],
+  "checkpoints": {
+    "B-1": true,
+    "B-5": true,
+    "B-5_refresh": true
+  },
+  "upload_response": {
+    "http_status": 200,
+    "body": {
+      "message": "Document uploaded successfully",
+      "document_id": "56026075-06cb-4877-b1a3-dafd9cfc41f4",
+      "outcome": {
+        "score_change": 0,
+        "new_score": 57,
+        "risk_change": "unchanged",
+        "status_change": "unchanged",
+        "message": "hmo_license evidence uploaded \u2014 file saved. Confirm extracted dates in Documents before this fully satisfies the requirement. (Compliance score +0; risk unchanged)",
+        "idempotent": false
+      },
+      "requirement_workflow_pending": false,
+      "evidence_match": {
+        "match_outcome": "UNKNOWN_TYPE",
+        "match_confidence": 0.45,
+        "predicted_document_type": "EPC",
+        "mismatch_reason_code": "LOW_SIGNAL",
+        "mismatch_reason_text": "Insufficient confident classification for this requirement.",
+        "user_messages": [
+          "We could not confidently classify this file against the selected obligation from available signals. Wait for extraction or ask an administrator to review."
+        ],
+        "evidence_satisfies_requirement": false
+      },
+      "document_validation": {
+        "valid": true,
+        "reason": null,
+        "jurisdiction": "Wales",
+        "scoring_jurisdiction": "ENGLAND_WALES",
+        "portfolio_jurisdiction": "Wales",
+        "missing_metadata_fields": []
+      },
+      "document_metadata": null,
+      "validation_result": {
+        "valid": true,
+        "jurisdiction": "Wales",
+        "validated_at": "2026-05-21T12:21:26.700845+00:00",
+        "missing_metadata_fields": [],
+        "reason": null,
+        "scoring_jurisdiction": "ENGLAND_WALES",
+        "portfolio_jurisdiction": "Wales",
+        "document_type_input": null
+      }
+    },
+    "document_id": "56026075-06cb-4877-b1a3-dafd9cfc41f4"
+  },
+  "requirement_row_excerpt": "HMO Licensing\nAction required\nDocument: Not uploaded\n\nCertificate or evidence document missing \u2014 action required\n\nLandlords in Wales may need licensing approval for qualifying Houses in Multiple Occupation depending on local authority rules and occupancy arrangements.\n\nKensington Garden Flat\nWales\nE",
+  "document_id": "56026075-06cb-4877-b1a3-dafd9cfc41f4",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae_hmo_license\\screenshots\\hmo_license_post_upload.png",
+  "finished_at_utc": "2026-05-21T12:21:52.424608+00:00"
+}

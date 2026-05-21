@@ -1,0 +1,56 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6fd5ac4c_d35a58ae_gas_safety_20260521T112123Z",
+  "slug": "6fd5ac4c_d35a58ae_gas_safety",
+  "captured_at_utc": "2026-05-21T11:21:23.819566+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_ids": [
+    "c5abaeba-348f-4843-b734-1644bdfb791f"
+  ],
+  "journeys_executed": [
+    "B_primary_document_upload"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-01",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "http://127.0.0.1:3000",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "B_primary_document_upload": {
+      "document_visible": true,
+      "refresh_persisted": true,
+      "upload_api_ack": true,
+      "user_visible_gap": false
+    }
+  },
+  "checkpoint_results": {
+    "B_primary_document_upload": {
+      "B-1": true,
+      "B-2": true,
+      "B-3": true,
+      "B-4": false,
+      "B-5": true,
+      "B-6": true,
+      "B-7": true,
+      "B-8": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation_code": "gas_safety",
+  "preflight": {
+    "baseline_profile": "pre_existing_evidence",
+    "policy_workflow": "LEGACY_DOCUMENT_UPLOAD",
+    "selection_note": "gas_safety surfaced; 1 existing doc; upload second CP12 for operational path proof"
+  },
+  "submit_correlation_id": "DOC_UPLOADED:400f1090-1476-4ea9-bc15-494b5617005e",
+  "api_url": "http://127.0.0.1:8000",
+  "document_id": "400f1090-1476-4ea9-bc15-494b5617005e",
+  "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=c5abaeba-348f-4843-b734-1644bdfb791f&requirement_code=gas_safety&focus=upload",
+  "obligation_classification": "VERIFIED_OPERATIONALLY"
+}

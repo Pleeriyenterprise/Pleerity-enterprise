@@ -1,0 +1,4 @@
+- Greenfield baseline: authority MISSING, 0 docs/CERs.
+- Score: 53 → 57.
+- Expiry at baseline: null; check post-upload authority effective_expiry_date.
+- Admin verify not run unless CER remains PENDING_REVIEW.

@@ -1,0 +1,5 @@
+- Target obligation: hmo_fire_risk_evidence; surfaced as `hmo_fire_risk` row `d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6`.
+- Sibling materialised row `8c4d9635-bce5-4a06-b3ac-eccd59ed9a23` deduped from client surface.
+- Guided CONTRACTOR_CONFIRMATION (not document-only upload).
+- Post authority: MISMATCH_FLAGGED / COMPLETENESS_PENDING.
+- Score: 57 → 56.

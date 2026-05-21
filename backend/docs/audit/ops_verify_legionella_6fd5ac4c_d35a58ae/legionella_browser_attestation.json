@@ -1,0 +1,14 @@
+{
+  "captured_at_utc": "2026-05-21T10:14:43.354193+00:00",
+  "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+  "row": {
+    "text": "Legionella\nAwaiting review\nAwaiting review\nDocument: Remediation or follow-up may remain open\n\nAuthoritative submission on file \u2014 awaiting review. Supporting uploads alone do not complete this obligation.\n\nLandlords in Wales may need to assess water system risks and implement reasonable control measures to reduce potential Legionella exposure.\n\nKensington Garden Flat\nWales\nEstimated renewal date: 2 Jun 2026\nPUBLISHED + CORE RULES\n\nEstimated from standard compliance cycles and your property setup. Upload your certificate to confirm this date.\n\nLegionella risk assessments help support safe water system management in Welsh rental properties.\n\n13\n\ndays left\n\nReview submission\nUpload additional evidence\n\nEXTERNAL RESOURCES\n\nHSE guidance on Legionella responsibilities for landlords\nNHS information on Legionnaires' disease\nRequirement details\nEdit dates and applicability\nRecord as not applicable",
+    "lifecycle_tier": "Awaiting review",
+    "evidence_badge": "Document: Remediation or follow-up may remain open",
+    "primary_cta": "Review submission",
+    "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_legionella_6fd5ac4c_d35a58ae\\legionella_client_row_post_submit.png"
+  },
+  "modal_opened": false,
+  "stale_not_applicable_copy": true,
+  "shows_action_or_review": true
+}

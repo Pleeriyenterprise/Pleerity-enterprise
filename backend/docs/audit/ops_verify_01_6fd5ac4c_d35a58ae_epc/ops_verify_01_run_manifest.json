@@ -1,0 +1,57 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6fd5ac4c_d35a58ae_epc_20260521T120345Z",
+  "slug": "6fd5ac4c_d35a58ae_epc",
+  "captured_at_utc": "2026-05-21T12:03:45.122568+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_ids": [
+    "62589167-4e34-4aef-ad75-4967383e71bc"
+  ],
+  "journeys_executed": [
+    "B_primary_document_upload"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-01",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "http://127.0.0.1:3000",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "B_primary_document_upload": {
+      "document_visible": true,
+      "refresh_persisted": true,
+      "upload_api_ack": true,
+      "user_visible_gap": false
+    }
+  },
+  "checkpoint_results": {
+    "B_primary_document_upload": {
+      "B-1": true,
+      "B-2": true,
+      "B-3": true,
+      "B-4": true,
+      "B-5": true,
+      "B-6": true,
+      "B-7": true,
+      "B-8": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation_code": "epc",
+  "preflight": {
+    "baseline_profile": "greenfield",
+    "policy_workflow": "LEGACY_DOCUMENT_UPLOAD",
+    "authority_at_baseline": "MISSING",
+    "selection_note": "epc surfaced; 0 docs/0 CERs; greenfield primary document upload; expiry null at baseline"
+  },
+  "submit_correlation_id": "DOC_UPLOADED:63c7d2f9-d259-4810-9016-966f9e08c930",
+  "api_url": "http://127.0.0.1:8000",
+  "document_id": "63c7d2f9-d259-4810-9016-966f9e08c930",
+  "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=62589167-4e34-4aef-ad75-4967383e71bc&requirement_code=epc&focus=upload",
+  "obligation_classification": "VERIFIED_OPERATIONALLY"
+}

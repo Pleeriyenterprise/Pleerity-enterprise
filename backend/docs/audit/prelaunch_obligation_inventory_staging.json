@@ -1,0 +1,818 @@
+{
+  "catalog_count": 15,
+  "policy_explicit_count": 15,
+  "inventory_count": 30,
+  "pilot": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+  },
+  "inventory": [
+    {
+      "requirement_code": "co_alarms",
+      "catalog_title": "CO Alarms",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 4,
+      "distinct_clients": 3,
+      "distinct_properties": 4,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "communal_cleaning",
+      "catalog_title": null,
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 8,
+      "distinct_clients": 5,
+      "distinct_properties": 8,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "communal_fire_doors",
+      "catalog_title": null,
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 8,
+      "distinct_clients": 5,
+      "distinct_properties": 8,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "deposit_pi",
+      "catalog_title": "Deposit Protection",
+      "policy_workflow": "GUIDED_DECLARATION",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 13,
+      "distinct_clients": 9,
+      "distinct_properties": 13,
+      "surfaced_examples": [
+        {
+          "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+          "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+          "requirement_id": "b8449909-9747-43ee-b014-5eb9b4a38816",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+          "property_id": "e95c5b5a-d901-4cbf-9f3e-ac0ed8c9433a",
+          "requirement_id": "315ecc4a-2289-4df4-8e4a-6b0695c69d2a",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "2eff2091-9f60-48d5-aa0e-b931a39e367a",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "eicr",
+      "catalog_title": "EICR",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 49,
+      "distinct_clients": 30,
+      "distinct_properties": 49,
+      "surfaced_examples": [
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+          "requirement_id": "c293defd-06a2-4734-9ae3-33ece5e7d022",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+          "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+          "requirement_id": "ecb0e258-660c-432c-b720-6fe5f38a28a0",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+          "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+          "requirement_id": "81ee378a-5431-4023-ac25-e77f0e215bec",
+          "jurisdiction": "England",
+          "applicability": null,
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "emergency_lighting",
+      "catalog_title": null,
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 22,
+      "distinct_clients": 17,
+      "distinct_properties": 22,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "epc",
+      "catalog_title": "EPC",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 49,
+      "distinct_clients": 30,
+      "distinct_properties": 49,
+      "surfaced_examples": [
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+          "requirement_id": "321b085c-0821-4962-b572-39a4a1a3dcec",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+          "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+          "requirement_id": "948ac41f-21a3-4536-928f-11cd9b20b49d",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+          "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+          "requirement_id": "38456b2f-5e06-476e-86b0-7be1491b03c0",
+          "jurisdiction": "England",
+          "applicability": null,
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "fire_alarm",
+      "catalog_title": "Fire Alarm Inspection",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 49,
+      "distinct_clients": 30,
+      "distinct_properties": 49,
+      "surfaced_examples": [
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+          "requirement_id": "7d88bcbc-e6de-4a1e-b35a-9921670e82c1",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+          "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+          "requirement_id": "9e6af7ca-4b85-4167-8ac4-c948b4198994",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+          "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+          "requirement_id": "7fc2c32e-8f8d-49e4-be34-ce766588c211",
+          "jurisdiction": "England",
+          "applicability": null,
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "fire_detection",
+      "catalog_title": "Fire Detection Systems",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 1,
+      "distinct_clients": 1,
+      "distinct_properties": 1,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "fire_extinguisher",
+      "catalog_title": null,
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 22,
+      "distinct_clients": 17,
+      "distinct_properties": 22,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "fire_risk_assessment",
+      "catalog_title": "Fire Risk Assessment",
+      "policy_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+      "policy_modes": [
+        "DOCUMENT_UPLOAD",
+        "CONTRACTOR_CONFIRMATION",
+        "INSPECTION_CHECKLIST"
+      ],
+      "materialized_rows_staging": 3,
+      "distinct_clients": 3,
+      "distinct_properties": 3,
+      "surfaced_examples": [
+        {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+          "requirement_id": "fcaca995-4cfa-4afd-aaf9-736efe771898",
+          "jurisdiction": "Wales",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "gas_safety",
+      "catalog_title": "Gas Safety (CP12)",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 49,
+      "distinct_clients": 30,
+      "distinct_properties": 49,
+      "surfaced_examples": [
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+          "requirement_id": "4d802998-ba39-4644-a341-71b97e2751c9",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+          "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+          "requirement_id": "722ac57e-c28a-4f1b-a24f-c8d91e70c2ab",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+          "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+          "requirement_id": "6b51ae95-db22-41ef-840d-4de93ff3847a",
+          "jurisdiction": "England",
+          "applicability": null,
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "hmo_fire_risk",
+      "catalog_title": null,
+      "policy_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+      "policy_modes": [
+        "DOCUMENT_UPLOAD",
+        "CONTRACTOR_CONFIRMATION",
+        "INSPECTION_CHECKLIST"
+      ],
+      "materialized_rows_staging": 49,
+      "distinct_clients": 30,
+      "distinct_properties": 49,
+      "surfaced_examples": [
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+          "requirement_id": "b1bec8aa-e86b-400b-980d-a6b0ac247d88",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+          "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+          "requirement_id": "c5a69d20-9cbf-4470-a100-586dcdd5b6c5",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+          "property_id": "9ea56cb2-8fa6-4309-86db-361696aab6b8",
+          "requirement_id": "a6f48229-6ed9-4ee4-9cb8-f882888272f6",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "hmo_fire_risk_evidence",
+      "catalog_title": null,
+      "policy_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+      "policy_modes": [
+        "DOCUMENT_UPLOAD",
+        "CONTRACTOR_CONFIRMATION",
+        "INSPECTION_CHECKLIST"
+      ],
+      "materialized_rows_staging": 21,
+      "distinct_clients": 17,
+      "distinct_properties": 21,
+      "surfaced_examples": [
+        {
+          "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+          "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+          "requirement_id": "18bec910-58ea-4e8f-923f-95ba9e2aaf9a",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+          "property_id": "b3b74120-b343-4ca3-b6e8-0f3626af747c",
+          "requirement_id": "6ebabc5f-7e5a-4059-b6ab-c003d6bd4310",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+          "property_id": "bed64161-a263-4cea-86ec-a630a8645c6a",
+          "requirement_id": "d09d300f-d9d1-40bf-9927-852beec0b649",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "hmo_license",
+      "catalog_title": "HMO Licence",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 22,
+      "distinct_clients": 17,
+      "distinct_properties": 22,
+      "surfaced_examples": [
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+          "requirement_id": "294059b4-0874-4134-aace-6ba1cfb2569c",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+          "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+          "requirement_id": "a7a9601c-feb0-48f8-b9e4-976df9011f10",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+          "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+          "requirement_id": "0dc77a05-9a9a-4929-b267-8e7d87b9de06",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "how_to_rent",
+      "catalog_title": "How to Rent",
+      "policy_workflow": "TENANT_DELIVERY",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 13,
+      "distinct_clients": 9,
+      "distinct_properties": 13,
+      "surfaced_examples": [
+        {
+          "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+          "property_id": "e95c5b5a-d901-4cbf-9f3e-ac0ed8c9433a",
+          "requirement_id": "c7e8c666-5aca-4bab-9cc7-fa211375b5bd",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "cfb04b08-4265-4893-89e2-70369db7e5e3",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+          "property_id": "7b76f35d-39f5-45b6-8f36-07628e67bc91",
+          "requirement_id": "f6d7ea4d-c88e-4f0d-b4ec-45f4f68080b9",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "landlord_registration",
+      "catalog_title": null,
+      "policy_workflow": "REGISTRATION_TRACKING",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 4,
+      "distinct_clients": 3,
+      "distinct_properties": 4,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "landlord_registration_ni",
+      "catalog_title": null,
+      "policy_workflow": "REGISTRATION_TRACKING",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 8,
+      "distinct_clients": 5,
+      "distinct_properties": 8,
+      "surfaced_examples": [
+        {
+          "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+          "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+          "requirement_id": "dc55970a-bba7-4711-b1a0-8a1b760b9126",
+          "jurisdiction": "Northern Ireland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
+          "jurisdiction": "Northern Ireland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "40ddb2cc-4c36-474f-981d-296e0248ab31",
+          "jurisdiction": "Northern Ireland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "lead_testing",
+      "catalog_title": null,
+      "policy_workflow": "EXTERNAL_ASSESSMENT_EVIDENCE",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 0,
+      "distinct_clients": 0,
+      "distinct_properties": 0,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "legionella",
+      "catalog_title": "Legionella Risk Assessment",
+      "policy_workflow": "EXTERNAL_ASSESSMENT_EVIDENCE",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 49,
+      "distinct_clients": 30,
+      "distinct_properties": 49,
+      "surfaced_examples": [
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+          "requirement_id": "44de8e1b-0218-44e8-91f9-e6d0f57034d0",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+          "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+          "requirement_id": "efa630da-26e8-407e-ae2e-82ebe473ed60",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+          "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+          "requirement_id": "d27156b0-65cd-47b7-ac44-9a2480f5f77e",
+          "jurisdiction": "England",
+          "applicability": null,
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "occupation_contract",
+      "catalog_title": null,
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 10,
+      "distinct_clients": 8,
+      "distinct_properties": 10,
+      "surfaced_examples": [
+        {
+          "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+          "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+          "requirement_id": "1686a8a0-9698-4119-9960-61cfd496a20a",
+          "jurisdiction": "Wales",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+          "property_id": "b8016cb8-5a4c-4416-9e9c-7a49d0f727e7",
+          "requirement_id": "c85e1756-738f-4db4-a57e-ca0a9e17208a",
+          "jurisdiction": "Wales",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+          "jurisdiction": "Wales",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "portable_appliance_test",
+      "catalog_title": "Portable Appliance Testing (PAT)",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 49,
+      "distinct_clients": 30,
+      "distinct_properties": 49,
+      "surfaced_examples": [
+        {
+          "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+          "property_id": "989adf3c-44c3-4ada-bdbc-af5eb060a560",
+          "requirement_id": "e446b30f-c10d-4d27-bae0-37ae8734ccd7",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+          "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+          "requirement_id": "5784513a-48c9-41f0-8414-7c92dfc54065",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+          "property_id": "e95c5b5a-d901-4cbf-9f3e-ac0ed8c9433a",
+          "requirement_id": "48443b21-be2e-4aea-a318-c8936df183ce",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "property_licence",
+      "catalog_title": null,
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 2,
+      "distinct_clients": 2,
+      "distinct_properties": 2,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "rent_smart_wales",
+      "catalog_title": null,
+      "policy_workflow": "REGISTRATION_TRACKING",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 2,
+      "distinct_clients": 2,
+      "distinct_properties": 2,
+      "surfaced_examples": [
+        {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "7cc14ad8-034e-4062-8d28-0acb48e603c9",
+          "jurisdiction": "Wales",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "right_to_rent",
+      "catalog_title": "Right to Rent",
+      "policy_workflow": "GUIDED_DECLARATION",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 8,
+      "distinct_clients": 7,
+      "distinct_properties": 8,
+      "surfaced_examples": [
+        {
+          "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+          "property_id": "e95c5b5a-d901-4cbf-9f3e-ac0ed8c9433a",
+          "requirement_id": "e626e08f-f21e-4fc6-8730-bb97b8b64b07",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "d72d87b0-3c65-461e-a35f-5bffed972e13",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+          "property_id": "7b76f35d-39f5-45b6-8f36-07628e67bc91",
+          "requirement_id": "c66b7779-2740-4e88-b71f-2d18cf021293",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "scotland_landlord_registration",
+      "catalog_title": null,
+      "policy_workflow": "REGISTRATION_TRACKING",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 7,
+      "distinct_clients": 7,
+      "distinct_properties": 7,
+      "surfaced_examples": [
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+          "requirement_id": "3708620b-82fb-4d90-9f17-5b800777e554",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+          "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+          "requirement_id": "811f7af1-ecc1-4bdb-bbe8-9f6e014737b2",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+          "property_id": "9ea56cb2-8fa6-4309-86db-361696aab6b8",
+          "requirement_id": "1460bdb8-bc36-4443-b30f-efe4d042b8b7",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "smoke_alarms",
+      "catalog_title": "Smoke Alarms",
+      "policy_workflow": null,
+      "policy_modes": null,
+      "materialized_rows_staging": 4,
+      "distinct_clients": 3,
+      "distinct_properties": 4,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "smoke_heat_alarms",
+      "catalog_title": null,
+      "policy_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+      "policy_modes": [
+        "DOCUMENT_UPLOAD",
+        "STRUCTURED_DECLARATION",
+        "CONTRACTOR_CONFIRMATION",
+        "INSPECTION_CHECKLIST"
+      ],
+      "materialized_rows_staging": 0,
+      "distinct_clients": 0,
+      "distinct_properties": 0,
+      "surfaced_examples": [],
+      "has_surfaced_example": false
+    },
+    {
+      "requirement_code": "tenancy_agreement",
+      "catalog_title": "Tenancy Agreement",
+      "policy_workflow": "GUIDED_DECLARATION",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 14,
+      "distinct_clients": 10,
+      "distinct_properties": 14,
+      "surfaced_examples": [
+        {
+          "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+          "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+          "requirement_id": "94f8a721-9735-49e8-a57f-c779380b1937",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+          "property_id": "e95c5b5a-d901-4cbf-9f3e-ac0ed8c9433a",
+          "requirement_id": "51ab8a64-00e2-463b-b5aa-d082b0ec894a",
+          "jurisdiction": "England",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        },
+        {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "fe07d2c6-ffd2-4e35-b550-98d6d952ff7b",
+          "jurisdiction": "Scotland",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    },
+    {
+      "requirement_code": "wales_occupation_contract",
+      "catalog_title": null,
+      "policy_workflow": "GUIDED_DECLARATION",
+      "policy_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "materialized_rows_staging": 2,
+      "distinct_clients": 2,
+      "distinct_properties": 2,
+      "surfaced_examples": [
+        {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "8ed5c789-2035-4366-a07a-244e52b644de",
+          "jurisdiction": "Wales",
+          "applicability": "UNKNOWN",
+          "status": "PENDING"
+        }
+      ],
+      "has_surfaced_example": true
+    }
+  ]
+}
