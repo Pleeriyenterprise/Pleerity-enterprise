@@ -775,7 +775,13 @@ async def enrich_requirements_for_client(
     client_id: str,
     requirements: List[Dict[str, Any]],
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    from services.client_applicability_coherence import (
+        apply_client_applicability_presentation_overlay,
+        refresh_stale_authority_for_client_requirements,
+    )
     from services.compliance_rules_registry import portfolio_jurisdiction_label
+
+    requirements = await refresh_stale_authority_for_client_requirements(db, requirements)
 
     ids = [r["requirement_id"] for r in requirements if r.get("requirement_id")]
     evidence_map = await load_evidence_state_by_requirement_id(db, client_id, ids)
@@ -852,14 +858,16 @@ async def enrich_requirements_for_client(
                 {"state": ACTIVE_STANDARD_STATE_UNKNOWN, "signal_counts": {}, "read_only": True},
             )
         enriched.append(
-            enrich_requirement_dict(
-                rc,
-                ev,
-                audience="client",
-                published_registry_entries=published_entries,
-                property_doc=props_full.get(str(rc.get("property_id") or "")),
-                compliance_evidence_records=_cer,
-                linked_primary_document=linked_by_rid.get(str(rid)) if rid else None,
+            apply_client_applicability_presentation_overlay(
+                enrich_requirement_dict(
+                    rc,
+                    ev,
+                    audience="client",
+                    published_registry_entries=published_entries,
+                    property_doc=props_full.get(str(rc.get("property_id") or "")),
+                    compliance_evidence_records=_cer,
+                    linked_primary_document=linked_by_rid.get(str(rid)) if rid else None,
+                )
             )
         )
     return enriched, build_presentation_meta(enriched)

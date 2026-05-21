@@ -103,7 +103,9 @@ def derive_client_lifecycle_fields(
     Returns keys: client_lifecycle_state, client_lifecycle_label, client_lifecycle_reason_codes
     """
     reasons: List[str] = []
-    app = _status_upper(row.get("applicability"))
+    from services.client_applicability_coherence import row_applicability_for_client_coherence
+
+    app = _status_upper(row_applicability_for_client_coherence(row))
     status = _status_upper(row.get("status"))
     compliance_state = _status_upper(row.get("compliance_state"))
     evidence_state = _status_upper(row.get("evidence_state"))
@@ -120,7 +122,17 @@ def derive_client_lifecycle_fields(
         }
 
     # --- NOT_APPLICABLE ---
-    if app == "NOT_REQUIRED" or status in ("NOT_REQUIRED", "NOT_APPLICABLE", "WAIVED") or ea == EA_NOT_REQUIRED:
+    from services.client_applicability_coherence import is_stale_not_required_lifecycle_override
+
+    stale_na_authority = ea == EA_NOT_REQUIRED and is_stale_not_required_lifecycle_override(row)
+    if (
+        not stale_na_authority
+        and (
+            app == "NOT_REQUIRED"
+            or status in ("NOT_REQUIRED", "NOT_APPLICABLE", "WAIVED")
+            or ea == EA_NOT_REQUIRED
+        )
+    ):
         if ea == EA_NOT_REQUIRED:
             reasons.append("EA_NOT_REQUIRED")
         elif app == "NOT_REQUIRED":
