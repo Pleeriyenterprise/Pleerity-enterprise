@@ -30,14 +30,12 @@
 - **Truthful copy (Y/N):** Y — “Supporting added”, “Submission on file”, static supporting banner, attribution subline
 - **Classification:** **VERIFIED_OPERATIONALLY** (post frontend remediation)
 - **Screenshot:** `ops_verify_01_journey_c_ui.png`
+## Journey D — Verification / review (2026-05-21)
 
-## Journey D — Verify/review (optional)
-- **Status:** **NOT_STARTED** — waived for A/B/C operational closure
-
-## Roll-up classifications
-| Journey | Classification |
-|---------|----------------|
-| A | VERIFIED_OPERATIONALLY |
-| B | VERIFIED_OPERATIONALLY |
-| C | VERIFIED_OPERATIONALLY |
-| D | NOT_STARTED (optional) |
+- **Evidence path:** document-primary (Journey B) `a9fd10d8-9ac5-4998-8676-bfe03134a14b` on `69fc66fe-e196-44d4-a20e-3fe68d316f7f` (fire_alarm)
+- **Reviewer surface:** `/admin/dashboard` pending verification + `POST /api/documents/verify/{id}`
+- **Review action:** verify_with_override (prior run); CER alignment repair + browser attestation 2026-05-21
+- **Browser attestation (Y/N):** Y — row `Verified` / `Document: Verified`; detail workflow `Verified`; no stale awaiting/pending review copy; hard refresh persisted
+- **Admin pending row for verified doc (Y/N):** N (expected post-verify)
+- **Classification:** VERIFIED_OPERATIONALLY (`cer_verification_terminal`)
+- **Screenshots:** `ops_verify_01_journey_d_client_row_initial.png`, `ops_verify_01_journey_d_client_row_refresh.png`, `ops_verify_01_journey_d_client_detail.png`, `ops_verify_01_journey_d_client_documents.png`, `ops_verify_01_journey_d_admin_post_verify.png`

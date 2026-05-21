@@ -209,6 +209,26 @@ async def execute_verify_document_v2(
         metadata=verify_audit_meta or None,
     )
 
+    if rid and str(document_after.get("status") or "").upper() == DocumentStatus.VERIFIED.value.upper():
+        try:
+            from services.compliance_evidence_record_service import (
+                align_linked_document_upload_cer_on_document_verified,
+            )
+
+            await align_linked_document_upload_cer_on_document_verified(
+                db,
+                client_id=str(document.get("client_id") or ""),
+                requirement_id=rid,
+                document_id=document_id,
+                actor_user_id=str(user.get("portal_user_id") or ""),
+            )
+        except Exception as cer_align_err:
+            logger.warning(
+                "Linked DOCUMENT_UPLOAD CER alignment on verify v2 skipped document_id=%s: %s",
+                document_id,
+                cer_align_err,
+            )
+
     try:
         from services.enablement_service import emit_enablement_event
         from models.enablement import EnablementEventType

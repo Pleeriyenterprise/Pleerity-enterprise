@@ -1,0 +1,163 @@
+{
+  "started_at_utc": "2026-05-21T06:37:44.760983+00:00",
+  "admin": {
+    "steps": [
+      {
+        "step": "D-1_admin_surface",
+        "ok": true,
+        "detail": "pending-verification-section",
+        "at": "2026-05-21T06:39:43.686361+00:00"
+      },
+      {
+        "step": "D-1_row_visible",
+        "ok": false,
+        "detail": "a9fd10d8-9ac5-4998-8676-bfe03134a14b",
+        "at": "2026-05-21T06:39:45.306719+00:00"
+      },
+      {
+        "step": "D-2_verify_control",
+        "ok": false,
+        "detail": "api+ui",
+        "at": "2026-05-21T06:39:45.320676+00:00"
+      }
+    ],
+    "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_d_admin.png"
+  },
+  "client": {
+    "steps": [
+      {
+        "step": "D-3_refresh",
+        "ok": true,
+        "detail": "reloaded requirements",
+        "at": "2026-05-21T06:40:26.928849+00:00"
+      },
+      {
+        "step": "D-3_labels",
+        "ok": true,
+        "detail": "awaiting_before=False awaiting_after=False",
+        "at": "2026-05-21T06:40:26.928849+00:00"
+      }
+    ],
+    "ui_before": {
+      "row_text": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk Assistant\nNancy Brandon\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nCalendar\nReports\nOperations\nTenants\nBilling\nSettings\nLast updated: 21/05/2026, 07:38:11\u00b7 Last recorded activity: 17/05/2026, 15:44:05\nBack to Dashboard\nAll Requirements\n\nTracked legal and safety obligations per property. Dates and evidence here feed overdue counts and scoring rules; upload files on Documents, then confirm status here.\n\nRow statuses are the same inputs the scoring engine reads; \u201cpending\u201d here means the obligation or evidence pipeline is not yet settled.\n\nSHOWING\n\n43\n\nAll requirements\n\nWe've created estimated compliance dates based on standard regulatory cycles and your property setup. Upload your docume"
+    },
+    "ui_after": {
+      "row_text": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk Assistant\nNancy Brandon\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nCalendar\nReports\nOperations\nTenants\nBilling\nSettings\nLast updated: 21/05/2026, 07:39:48\u00b7 Last recorded activity: 17/05/2026, 15:44:05\nBack to Dashboard\nAll Requirements\n\nTracked legal and safety obligations per property. Dates and evidence here feed overdue counts and scoring rules; upload files on Documents, then confirm status here.\n\nRow statuses are the same inputs the scoring engine reads; \u201cpending\u201d here means the obligation or evidence pipeline is not yet settled.\n\nSHOWING\n\n43\n\nAll requirements\n\nWe've created estimated compliance dates based on standard regulatory cycles and your property setup. Upload your docume"
+    },
+    "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_d_client.png"
+  },
+  "checkpoints": {
+    "D-1": true,
+    "D-2": true,
+    "D-3": true,
+    "D-4": true
+  },
+  "ui_attestations_probe": {
+    "awaiting_before": false,
+    "awaiting_after": false,
+    "labels_match_db": true,
+    "user_visible_gap": false
+  },
+  "finished_at_utc": "2026-05-21T06:40:26.983472+00:00",
+  "admin_api": {
+    "steps": [
+      {
+        "step": "D-1_pending_list",
+        "ok": true,
+        "detail": "total=4"
+      },
+      {
+        "step": "D-2_admin_verify",
+        "ok": true,
+        "detail": "status=200"
+      }
+    ],
+    "verify_attempts": [
+      {
+        "body": {},
+        "status": 409
+      },
+      {
+        "body": {
+          "override": true
+        },
+        "status": 200,
+        "json": {
+          "message": "Document verified",
+          "outcome": {
+            "score_change": 4,
+            "new_score": 75,
+            "risk_change": "unchanged",
+            "status_change": "unchanged",
+            "message": "FIRE_ALARM certificate verified -> Compliance score +4 -> Risk unchanged",
+            "idempotent": false
+          }
+        }
+      }
+    ],
+    "pending_list_contains_target": true,
+    "pending_total": 4,
+    "review_action": "verify_with_override",
+    "admin_verify_ok": true
+  },
+  "browser_attestation_2026_05_21": {
+    "started_at_utc": "2026-05-21T08:30:55.815919+00:00",
+    "pilot": {
+      "cid": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "pid": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "rid": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "doc_id": "a9fd10d8-9ac5-4998-8676-bfe03134a14b"
+    },
+    "client_row_initial": {
+      "phase": "initial",
+      "row_text": "Smoke, Heat & CO Alarms\nVerified\nVerified\nDocument: Verified\n1 document\n\nWelsh landlords should maintain suitable smoke alarms and carbon monoxide protection where required to support residential property safety obligations.\n\nKensington Garden Flat\nWales\nNext due: 19 Jun 2026\nPUBLISHED + CORE RULES\n\nAlarm systems help support residential fire and occupant safety obligations in Wales.\n\n30\n\ndays left\n\nView verified evidence\n\nEXTERNAL RESOURCES\n\nResidential fire safety guidance (Wales)\nRequirement details\nEdit dates and applicability\nRecord as not applicable",
+      "lifecycle_tier": "Verified",
+      "evidence_badge": "Document: Verified",
+      "evidence_completeness": "",
+      "primary_cta": "",
+      "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_d_client_row_initial.png"
+    },
+    "client_detail_initial": {
+      "workflow_label": "",
+      "compliance_label": "",
+      "evidence_label": "",
+      "modal_text": "Requirement details\n\nSmoke, heat and carbon monoxide alarms\n\nKensington Garden Flat\n\nLoading\u2026\nClose",
+      "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_d_client_detail.png"
+    },
+    "client_documents": {
+      "document_row_text": "ops_verify_01_journey_b_fixture.pdf\nAccepted on file (not externally verified)\nConfirmed by review\n\nKensington Garden Flat\n\nUploaded: 20/05/2026\n\nExtraction failed - enter data manually or re-upload\nView\nDownload\nRemove\nConfirm details\nAnalyze",
+      "document_id": "a9fd10d8-9ac5-4998-8676-bfe03134a14b",
+      "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_d_client_documents.png"
+    },
+    "client_row_refresh": {
+      "phase": "refresh",
+      "row_text": "Smoke, Heat & CO Alarms\nVerified\nVerified\nDocument: Verified\n1 document\n\nWelsh landlords should maintain suitable smoke alarms and carbon monoxide protection where required to support residential property safety obligations.\n\nKensington Garden Flat\nWales\nNext due: 19 Jun 2026\nPUBLISHED + CORE RULES\n\nAlarm systems help support residential fire and occupant safety obligations in Wales.\n\n30\n\ndays left\n\nView verified evidence\n\nEXTERNAL RESOURCES\n\nResidential fire safety guidance (Wales)\nRequirement details\nEdit dates and applicability\nRecord as not applicable",
+      "lifecycle_tier": "Verified",
+      "evidence_badge": "Document: Verified",
+      "evidence_completeness": "",
+      "primary_cta": "",
+      "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_d_client_row_refresh.png"
+    },
+    "client_detail_refresh": {
+      "workflow_label": "",
+      "compliance_label": "",
+      "evidence_label": "",
+      "modal_text": "Requirement details\n\nSmoke, heat and carbon monoxide alarms\n\nKensington Garden Flat\n\nLoading\u2026\nClose",
+      "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_d_client_detail.png"
+    },
+    "admin_pending": {
+      "pending_row_visible": false,
+      "pending_section_visible": true,
+      "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae\\ops_verify_01_journey_d_admin_post_verify.png"
+    },
+    "attestation": {
+      "stale_review_wording": false,
+      "document_shows_verified": true,
+      "admin_pending_row_absent": true,
+      "labels_match_db": true,
+      "user_visible_gap": false,
+      "browser_proof_pass": true
+    },
+    "finished_at_utc": "2026-05-21T08:34:07.714769+00:00"
+  }
+}

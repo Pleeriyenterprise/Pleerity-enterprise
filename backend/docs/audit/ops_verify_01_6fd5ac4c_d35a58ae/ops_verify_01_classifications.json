@@ -36,6 +36,14 @@
       "classification": "VERIFIED_OPERATIONALLY",
       "failed_checkpoints": [],
       "reasons": []
+    },
+    {
+      "journey": "D_verification_review_optional",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [],
+      "reasons": [
+        "cer_verification_terminal"
+      ]
     }
   ],
   "rules": {

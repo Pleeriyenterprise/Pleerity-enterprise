@@ -208,6 +208,59 @@ def _classify_journey_c(
     return _result(JOURNEY_C, "IMPLEMENTED_NOT_VERIFIED", failed, ["ui_attestations_incomplete"])
 
 
+def _journey_d_document_anchor(manifest: Dict[str, Any]) -> str:
+    ui = _ui_attestation(manifest, JOURNEY_D)
+    return str(ui.get("document_id") or manifest.get("journey_d_document_id") or manifest.get("document_id") or "").strip()
+
+
+def _journey_d_review_state_observed(
+    post: Optional[Dict[str, Any]],
+    manifest: Dict[str, Any],
+) -> tuple[bool, List[str]]:
+    """
+    CER-centric: any terminal verification on requirement.
+    Document-primary: linked DOCUMENT_UPLOAD CER VERIFIED + requirement COMPLIANT + authority VERIFIED_CURRENT.
+    """
+    post = post or {}
+    reasons: List[str] = []
+    cer_rows = post.get("cer_rows") or []
+    terminal_cer = any(
+        str(r.get("verification_status") or "").upper() in ("VERIFIED", "REJECTED") for r in cer_rows
+    )
+    if terminal_cer:
+        return True, ["cer_verification_terminal"]
+
+    doc_id = _journey_d_document_anchor(manifest)
+    req = post.get("requirement") or {}
+    auth = (req.get("authority") or {}).get("evidence_authority") or {}
+    req_status = str(req.get("status") or "").upper()
+    auth_state = str(auth.get("state") or "").upper()
+
+    linked = [
+        r
+        for r in cer_rows
+        if doc_id and doc_id in [str(x) for x in (r.get("linked_document_ids") or []) if x]
+    ]
+    linked_verified = linked and all(
+        str(r.get("verification_status") or "").upper() == "VERIFIED" for r in linked
+    )
+    docs = post.get("documents") or []
+    doc_row = next((d for d in docs if str(d.get("document_id") or "") == doc_id), None) if doc_id else None
+    doc_verified = str((doc_row or {}).get("status") or "").upper() == "VERIFIED"
+
+    authority_ok = auth_state in ("VERIFIED_CURRENT", "VERIFIED") or req_status == "COMPLIANT"
+    if doc_id and linked_verified and authority_ok and (doc_verified or req_status == "COMPLIANT"):
+        return True, ["document_primary_review_coherent"]
+
+    if doc_id and doc_verified and authority_ok and not linked:
+        reasons.append("linked_cer_missing_for_document_primary")
+    elif doc_id and authority_ok and not linked_verified:
+        reasons.append("linked_cer_not_verified")
+    else:
+        reasons.append("verification_state_not_observed")
+    return False, reasons
+
+
 def _classify_journey_d(
     *,
     completeness: Dict[str, Any],
@@ -228,18 +281,22 @@ def _classify_journey_d(
     if not completeness.get("operational_evidence_ready"):
         return _result(JOURNEY_D, "IMPLEMENTED_NOT_VERIFIED", failed, ["bundle_incomplete"])
 
-    cer_rows = (post or {}).get("cer_rows") or []
-    verified = any(str(r.get("verification_status") or "").upper() in ("VERIFIED", "REJECTED") for r in cer_rows)
-    if not verified:
-        return _result(JOURNEY_D, "SYSTEM_OUTCOME_UNPROVEN", failed, ["verification_state_not_observed"])
+    review_ok, review_reasons = _journey_d_review_state_observed(post, manifest)
+    if not review_ok:
+        if any("linked_cer_not_verified" in r or "verification_state_not_observed" in r for r in review_reasons):
+            return _result(JOURNEY_D, "SYSTEM_OUTCOME_UNPROVEN", failed, review_reasons)
+        return _result(JOURNEY_D, "TRUST_RISK_PRESENT", failed, review_reasons)
 
     if ui.get("user_visible_gap"):
-        return _result(JOURNEY_D, "USER_VISIBLE_GAP", failed, [])
+        return _result(JOURNEY_D, "USER_VISIBLE_GAP", failed, review_reasons)
+
+    if failed:
+        return _result(JOURNEY_D, "IMPLEMENTED_NOT_VERIFIED", failed, review_reasons + ["checkpoints_incomplete"])
 
     if all(cps.values()) and ui.get("labels_match_db"):
-        return _result(JOURNEY_D, "VERIFIED_OPERATIONALLY", failed, [])
+        return _result(JOURNEY_D, "VERIFIED_OPERATIONALLY", failed, review_reasons)
 
-    return _result(JOURNEY_D, "IMPLEMENTED_NOT_VERIFIED", failed, ["checkpoints_or_ui_incomplete"])
+    return _result(JOURNEY_D, "IMPLEMENTED_NOT_VERIFIED", failed, review_reasons + ["checkpoints_or_ui_incomplete"])
 
 
 def _result(journey: str, classification: str, failed: List[str], reasons: List[str]) -> Dict[str, Any]:

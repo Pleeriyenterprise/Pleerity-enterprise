@@ -2432,6 +2432,26 @@ async def verify_document(
         except Exception as enable_err:
             logger.warning(f"Failed to emit enablement event: {enable_err}")
 
+        if document.get("requirement_id"):
+            try:
+                from services.compliance_evidence_record_service import (
+                    align_linked_document_upload_cer_on_document_verified,
+                )
+
+                await align_linked_document_upload_cer_on_document_verified(
+                    db,
+                    client_id=str(document.get("client_id") or ""),
+                    requirement_id=str(document["requirement_id"]),
+                    document_id=document_id,
+                    actor_user_id=str(user.get("portal_user_id") or ""),
+                )
+            except Exception as cer_align_err:
+                logger.warning(
+                    "Linked DOCUMENT_UPLOAD CER alignment on verify skipped document_id=%s: %s",
+                    document_id,
+                    cer_align_err,
+                )
+
         req_type_for_outcome = None
         if document.get("requirement_id"):
             rrow = await db.requirements.find_one(

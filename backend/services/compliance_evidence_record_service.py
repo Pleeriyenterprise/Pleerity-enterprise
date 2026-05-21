@@ -1511,6 +1511,56 @@ async def apply_verification_decision(
     return out
 
 
+async def align_linked_document_upload_cer_on_document_verified(
+    db,
+    *,
+    client_id: str,
+    requirement_id: str,
+    document_id: str,
+    actor_user_id: str,
+) -> List[Dict[str, Any]]:
+    """
+    Bounded review-state alignment: when a linked document is admin-verified, any
+    DOCUMENT_UPLOAD CER referencing that document transitions from PENDING_REVIEW to VERIFIED.
+    """
+    cid = str(client_id or "").strip()
+    rid = str(requirement_id or "").strip()
+    doc_id = str(document_id or "").strip()
+    actor = str(actor_user_id or "").strip()
+    if not cid or not rid or not doc_id or not actor:
+        return []
+
+    coll = _evidence_coll(db)
+    cursor = coll.find(
+        {
+            "client_id": cid,
+            "requirement_id": rid,
+            "evidence_mode": EVIDENCE_MODE_DOCUMENT_UPLOAD,
+            "linked_document_ids": doc_id,
+            "archived": {"$ne": True},
+        },
+        {"_id": 0},
+    )
+    updated: List[Dict[str, Any]] = []
+    async for existing in cursor:
+        vs = str(existing.get("verification_status") or "").strip().upper()
+        if vs != VERIFICATION_PENDING:
+            continue
+        eid = str(existing.get("evidence_record_id") or "").strip()
+        if not eid:
+            continue
+        rec = await apply_verification_decision(
+            db,
+            evidence_record_id=eid,
+            client_id=cid,
+            decision="VERIFY",
+            actor_user_id=actor,
+        )
+        if rec:
+            updated.append(rec)
+    return updated
+
+
 async def load_records_for_requirement_sync(db, requirement_id: str, client_id: str) -> List[Dict[str, Any]]:
     return await _evidence_coll(db).find(
         {"requirement_id": requirement_id, "client_id": client_id},

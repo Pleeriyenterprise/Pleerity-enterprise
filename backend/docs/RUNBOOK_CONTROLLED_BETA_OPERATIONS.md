@@ -153,7 +153,7 @@ During beta, operators use **Admin → Automation** together with **Control Cent
 
 ### 4.9 Client evidence journeys — operational verification (OPS-VERIFY-01)
 
-**Unit status:** **COMPLETE (A/B/C)** — Journey D optional, not executed. Pilot bundle `docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/`.
+**Unit status:** **COMPLETE (A/B/C/D)** — pilot bundle `docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/`.
 
 When users report “submitted but nothing shows” or “upload didn’t count”:
 
@@ -161,7 +161,7 @@ When users report “submitted but nothing shows” or “upload didn’t count�
 2. Run OPS-VERIFY-01 checklist: CER exists → authority blob → queue DONE → UI inspect (Requirement details → Your submission).
 3. Capture read-only bundles via `python -m scripts.ops_verify_01_capture` (baseline → post-submit → convergence) and classify via `python -m scripts.ops_verify_01_classify`.
 4. Do not treat D1/C2 pass as proof the client journey worked — check OPS-VERIFY-01 artefacts.
-5. **Pilot closure (2026-05-20):** A = existing-CER re-submit (`?open=resolve`); clean first-submit remains **watchlist**. B = **fire_alarm** primary upload. C = supporting-only with truthful copy after TRUST remediation. D = not run.
+5. **Pilot closure (2026-05-21):** A = existing-CER re-submit (`?open=resolve`); clean first-submit **watchlist**. B = **fire_alarm** primary upload. C = supporting-only with truthful copy after TRUST remediation. D = document-primary admin verify/override + linked CER review alignment + browser attestation. Reject/resubmit and structured CER review path **watchlist**. Local dev: set `REACT_APP_BACKEND_URL` when UI is on `127.0.0.1:3000`.
 
 ---
 

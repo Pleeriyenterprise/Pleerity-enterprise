@@ -4703,13 +4703,13 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ---
 
-### OPS-VERIFY-01 — client evidence journey operational closure (COMPLETE — A/B/C)
+### OPS-VERIFY-01 — client evidence journey operational closure (COMPLETE — A/B/C/D)
 
-**Scope:** Staging walkthrough + DB + async convergence for real client journeys (guided submit, primary upload, supporting-only). **Not** D1/E1/C1/C2/F1 replacement.
+**Scope:** Staging walkthrough + DB + async convergence for real client journeys (guided submit, primary upload, supporting-only, document-primary verify/review). **Not** D1/E1/C1/C2/F1 replacement.
 
 **Rule:** Infrastructure replay proof ≠ operational closure proof.
 
-**Unit status:** **COMPLETE** for required journeys A–C. Journey **D** is optional and **waived** (not executed); OPS-VERIFY-01 is **not** PARTIAL solely because D was skipped.
+**Unit status:** **COMPLETE** for pilot evidence journeys **A/B/C/D** on `6fd5ac4c` / `d35a58ae`. Reject/resubmit and structured CER review path remain **watchlist**, not blockers.
 
 | Journey | Status |
 |---------|--------|
@@ -4717,11 +4717,13 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 | **A** clean first-submit | **Watchlist** — no greenfield guided requirement on pilot property; first-time modal submit not attested. |
 | **B** primary document upload | **VERIFIED_OPERATIONALLY** — **fire_alarm** `69fc66fe-…` primary document upload via `/documents` deeplink. |
 | **C** supporting-upload-only | **VERIFIED_OPERATIONALLY** — supporting upload only; `cer_delta=0`; truthful UI after TRUST remediation (2026-05-20). |
-| **D** verify/review (optional) | **NOT_STARTED** — optional; not required for unit closure. |
+| **D** verify/review | **VERIFIED_OPERATIONALLY** — document-primary admin verify/override on Journey B `fire_alarm` doc `a9fd10d8-…`; linked DOCUMENT_UPLOAD CER review-state alignment; browser attestation (2026-05-21). |
+| **D** reject/resubmit | **Watchlist** — not exercised on pilot. |
+| **D** structured CER review path | **Watchlist** — occupation_contract CER `cer_979c…` structured review path not attested. |
 
-**Harness:** Read-only capture/classify scripts `backend/scripts/ops_verify_01_{capture,manifest,classify,snapshot}.py`; evidence bundles under `docs/audit/ops_verify_01_{slug}/`. Classifier run per journey against journey-appropriate capture snapshots; roll-up `ops_verify_01_classifications.json` lists A–C `VERIFIED_OPERATIONALLY`.
+**Harness:** Read-only capture/classify scripts `backend/scripts/ops_verify_01_{capture,manifest,classify,snapshot}.py`; evidence bundles under `docs/audit/ops_verify_01_{slug}/`. Classifier run per journey against journey-appropriate capture snapshots; roll-up `ops_verify_01_classifications.json` lists A–D `VERIFIED_OPERATIONALLY`.
 
-**Done when:** Evidence bundles under `audit/ops_verify_01_*` and classifications A–C `VERIFIED_OPERATIONALLY` (or signed waiver) — **met** (2026-05-20).
+**Done when:** Evidence bundles under `audit/ops_verify_01_*` and classifications A–D `VERIFIED_OPERATIONALLY` (or signed waiver) — **met** (2026-05-21).
 
 **Out of scope:** Governance expansion, architecture redesign, new RC systems.
 

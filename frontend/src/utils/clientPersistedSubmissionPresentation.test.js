@@ -54,4 +54,16 @@ describe('clientPersistedSubmissionPresentation', () => {
     const row = { client_lifecycle_state: 'ACTION_REQUIRED', evidence_badge_label: 'Not uploaded' };
     expect(resolveSubmissionAwareEvidenceBadgeLabel('Not uploaded', row)).toBe('Not uploaded');
   });
+
+  it('does not treat COMPLIANT / VERIFIED_CURRENT as awaiting review', () => {
+    const row = {
+      status: 'COMPLIANT',
+      client_lifecycle_state: 'ACTION_REQUIRED',
+      evidence_authority: { state: 'VERIFIED_CURRENT', primary_evidence_record_id: 'cer_x' },
+      evidence_badge_label: 'Verified',
+    };
+    expect(isSubmissionAwaitingReview(row)).toBe(false);
+    const lc = resolveClientRequirementLifecycleForPresentation(row);
+    expect(lc.state).not.toBe('PENDING_REVIEW');
+  });
 });

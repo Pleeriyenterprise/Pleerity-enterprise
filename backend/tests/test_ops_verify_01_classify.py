@@ -11,6 +11,7 @@ from scripts.ops_verify_01_manifest import (
     JOURNEY_A,
     JOURNEY_B,
     JOURNEY_C,
+    JOURNEY_D,
     assess_bundle_completeness,
     build_run_manifest_skeleton,
     init_bundle,
@@ -119,3 +120,75 @@ def test_journey_c_trust_risk_when_cer_created(bundle_dir: Path) -> None:
 
     payload = classify_bundle(bundle_dir, slug, journeys=[JOURNEY_C])
     assert payload["classifications"][0]["classification"] == "TRUST_RISK_PRESENT"
+
+
+def test_journey_d_document_primary_verified_operationally(bundle_dir: Path) -> None:
+    slug = "test_slug"
+    doc_id = "doc-d-1"
+    manifest = build_run_manifest_skeleton(slug=slug, client_id="c", property_id="p")
+    manifest["journeys_executed"] = [JOURNEY_D]
+    manifest["proof_mode"] = "operational_browser"
+    manifest["browser_walkthrough_completed"] = True
+    manifest["checkpoint_results"] = {JOURNEY_D: {cp: True for cp in ("D-1", "D-2", "D-3", "D-4")}}
+    manifest["ui_attestations"] = {
+        JOURNEY_D: {"labels_match_db": True, "user_visible_gap": False, "document_id": doc_id},
+    }
+    write_json(bundle_dir / "ops_verify_01_run_manifest.json", manifest)
+
+    post = {
+        "requirement": {
+            "status": "COMPLIANT",
+            "authority": {
+                "evidence_authority": {"state": "VERIFIED_CURRENT"},
+            },
+        },
+        "cer_rows": [
+            {
+                "verification_status": "VERIFIED",
+                "linked_document_ids": [doc_id],
+                "evidence_mode": "DOCUMENT_UPLOAD",
+            }
+        ],
+        "documents": [{"document_id": doc_id, "status": "VERIFIED"}],
+    }
+    write_json(bundle_dir / f"ops_verify_01_baseline_{slug}.json", {"cer_rows": []})
+    write_json(bundle_dir / f"ops_verify_01_post_submit_{slug}.json", post)
+    write_json(bundle_dir / f"ops_verify_01_convergence_{slug}.json", {"async_convergence_partial_signals": {}})
+    ui = bundle_dir / "ops_verify_01_ui_notes.md"
+    ui.write_text(ui.read_text(encoding="utf-8") + "\n" + ("verified " * 40), encoding="utf-8")
+
+    payload = classify_bundle(bundle_dir, slug, journeys=[JOURNEY_D])
+    assert payload["classifications"][0]["classification"] == "VERIFIED_OPERATIONALLY"
+
+
+def test_journey_d_trust_risk_when_cer_stale_pending(bundle_dir: Path) -> None:
+    slug = "test_slug"
+    doc_id = "doc-d-2"
+    manifest = build_run_manifest_skeleton(slug=slug, client_id="c", property_id="p")
+    manifest["journeys_executed"] = [JOURNEY_D]
+    manifest["proof_mode"] = "operational_browser"
+    manifest["browser_walkthrough_completed"] = True
+    manifest["ui_attestations"] = {JOURNEY_D: {"document_id": doc_id}}
+    write_json(bundle_dir / "ops_verify_01_run_manifest.json", manifest)
+
+    post = {
+        "requirement": {
+            "status": "COMPLIANT",
+            "authority": {"evidence_authority": {"state": "VERIFIED_CURRENT"}},
+        },
+        "cer_rows": [
+            {
+                "verification_status": "PENDING_REVIEW",
+                "linked_document_ids": [doc_id],
+            }
+        ],
+        "documents": [{"document_id": doc_id, "status": "VERIFIED"}],
+    }
+    write_json(bundle_dir / f"ops_verify_01_baseline_{slug}.json", {"cer_rows": []})
+    write_json(bundle_dir / f"ops_verify_01_post_submit_{slug}.json", post)
+    write_json(bundle_dir / f"ops_verify_01_convergence_{slug}.json", {"async_convergence_partial_signals": {}})
+    ui = bundle_dir / "ops_verify_01_ui_notes.md"
+    ui.write_text(ui.read_text(encoding="utf-8") + "\n" + ("x" * 250), encoding="utf-8")
+
+    payload = classify_bundle(bundle_dir, slug, journeys=[JOURNEY_D])
+    assert payload["classifications"][0]["classification"] == "SYSTEM_OUTCOME_UNPROVEN"

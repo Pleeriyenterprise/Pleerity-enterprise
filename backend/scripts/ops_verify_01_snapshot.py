@@ -140,6 +140,7 @@ async def documents_for_requirement(
             "document_id": 1,
             "filename": 1,
             "source": 1,
+            "status": 1,
             "uploaded_at": 1,
             "evidence_review_state": 1,
             "extraction_status": 1,

@@ -26,10 +26,13 @@ export function requirementHasPersistedClientSubmission(row) {
  */
 export function isSubmissionAwaitingReview(row) {
   if (!requirementHasPersistedClientSubmission(row)) return false;
+  const reqStatus = String(row.status || '').trim().toUpperCase();
+  if (reqStatus === 'COMPLIANT') return false;
   const lc = String(row.client_lifecycle_state || '').trim().toUpperCase();
-  if (lc === 'PENDING_REVIEW') return true;
   const ea = row.evidence_authority && typeof row.evidence_authority === 'object' ? row.evidence_authority : null;
   const eaState = String(ea?.state || '').toUpperCase();
+  if (eaState === 'VERIFIED_CURRENT' || eaState === 'VERIFIED') return false;
+  if (lc === 'PENDING_REVIEW') return true;
   if (eaState === 'PENDING_ADMIN_REVIEW') return true;
   const vs = String(row.verification_status || row.client_evidence_verification_status || '').toUpperCase();
   if (vs === 'PENDING_REVIEW') return true;
