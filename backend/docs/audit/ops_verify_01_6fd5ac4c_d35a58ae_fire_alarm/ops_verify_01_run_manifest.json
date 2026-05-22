@@ -1,0 +1,87 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6fd5ac4c_d35a58ae_fire_alarm_20260522T102247Z",
+  "slug": "6fd5ac4c_d35a58ae_fire_alarm",
+  "captured_at_utc": "2026-05-22T10:22:47.921356+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_ids": [
+    "69fc66fe-e196-44d4-a20e-3fe68d316f7f"
+  ],
+  "journeys_executed": [
+    "B_primary_document_upload"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-01",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "B_primary_document_upload": {
+      "document_visible": true,
+      "refresh_persisted": true,
+      "upload_api_ack": true,
+      "user_visible_gap": false,
+      "trust_risk": false
+    }
+  },
+  "checkpoint_results": {
+    "B_primary_document_upload": {
+      "B-1": true,
+      "B-2": true,
+      "B-3": true,
+      "B-4": true,
+      "B-5": true,
+      "B-6": true,
+      "B-7": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "submit_correlation_id": "DOC_UPLOADED:6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "phase": "Wales_HMO",
+  "obligation_code": "fire_alarm",
+  "preflight": {
+    "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+    "surfaced": true,
+    "status": "COMPLIANT",
+    "workflow": "GUIDED_EVIDENCE_RESOLUTION",
+    "modes": [
+      "DOCUMENT_UPLOAD",
+      "STRUCTURED_DECLARATION",
+      "CONTRACTOR_CONFIRMATION",
+      "INSPECTION_CHECKLIST"
+    ],
+    "applicability": "UNKNOWN",
+    "applicability_state": "UNKNOWN",
+    "lifecycle_derived": {
+      "client_lifecycle_state": "VERIFIED",
+      "client_lifecycle_label": "Verified",
+      "client_lifecycle_reason_codes": [
+        "EA_VERIFIED_CURRENT"
+      ]
+    },
+    "authority": "VERIFIED_CURRENT",
+    "authority_state_reason": "verified_no_expiry_on_file",
+    "effective_expiry_date": null,
+    "effective_expiry_is_null": true,
+    "effective_verified_document_id": "a9fd10d8-9ac5-4998-8676-bfe03134a14b",
+    "already_verified_current": true,
+    "non_document_verification_status": null,
+    "cer_count": 2,
+    "document_count": 1,
+    "baseline_profile": "pre_existing_evidence",
+    "primary_cta": "Add compliance evidence",
+    "compliance_score": null,
+    "coexistence_risk_profile": "verified_current_with_new_upload_allowed",
+    "applicability_lifecycle_split": false,
+    "client_surface_visible": true
+  },
+  "document_id": "6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+  "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=69fc66fe-e196-44d4-a20e-3fe68d316f7f&requirement_code=fire_alarm&focus=upload",
+  "obligation_classification": null
+}

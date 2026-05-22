@@ -6,7 +6,11 @@ from services.client_applicability_coherence import (
     apply_client_applicability_presentation_overlay,
     authority_applicability_not_required_disagrees_with_row,
     has_stale_not_required_authority_blob,
+    legionella_operational_applicability_reconciliation_eligible,
     pipeline_not_required_disagrees_with_surfaced_row,
+    reconcile_legionella_operational_applicability,
+    reconcile_wales_occupation_operational_applicability,
+    wales_occupation_operational_applicability_reconciliation_eligible,
     refresh_stale_authority_for_client_requirements,
 )
 from services.client_requirement_lifecycle import (
@@ -56,11 +60,59 @@ def test_lifecycle_not_not_applicable_when_authority_stale():
     assert out["client_lifecycle_state"] != NOT_APPLICABLE
 
 
-def test_presentation_overlay_aligns_effective_applicability():
+def test_presentation_overlay_reconciles_legionella_to_required():
     row = _legionella_like_row()
     out = apply_client_applicability_presentation_overlay(row)
-    assert out["effective_applicability_state"] == "UNKNOWN"
-    assert out["applicability_state"] == "UNKNOWN"
+    assert out["effective_applicability_state"] == "REQUIRED"
+    assert out["applicability_state"] == "REQUIRED"
+    assert out["applicability"] == "REQUIRED"
+    rec = (out.get("applicability_provenance") or {}).get("operational_applicability_reconciliation") or {}
+    assert rec.get("source") == "legionella_operational_surfaced_actionable_v1"
+
+
+def test_legionella_reconciliation_eligible_for_pilot_pattern():
+    row = _legionella_like_row(applicability_state="NOT_REQUIRED", applicability="UNKNOWN")
+    assert legionella_operational_applicability_reconciliation_eligible(row)
+
+
+def test_legionella_reconciliation_not_applied_when_hidden():
+    row = _legionella_like_row(client_surface_visible=False)
+    assert not legionella_operational_applicability_reconciliation_eligible(row)
+    assert reconcile_legionella_operational_applicability(row) == row
+
+
+def test_lead_testing_not_reconciled():
+    row = _legionella_like_row(requirement_type="lead_testing", requirement_code="lead_testing")
+    assert not legionella_operational_applicability_reconciliation_eligible(row)
+
+
+def _wales_occupation_like_row(**kwargs):
+    base = {
+        "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+        "requirement_type": "occupation_contract",
+        "requirement_code": "occupation_contract",
+        "jurisdiction": "Wales",
+        "applicability": "UNKNOWN",
+        "applicability_state": "UNKNOWN",
+        "status": "PENDING",
+        "client_surface_visible": True,
+        "evidence_authority": {"state": EA_MISSING, "state_reason": "no_evidence_document"},
+    }
+    base.update(kwargs)
+    return base
+
+
+def test_wales_occupation_unknown_actionable_reconciles_to_required():
+    row = _wales_occupation_like_row()
+    assert wales_occupation_operational_applicability_reconciliation_eligible(row)
+    out = reconcile_wales_occupation_operational_applicability(row)
+    assert out["applicability_state"] == "REQUIRED"
+    assert out["effective_applicability_state"] == "REQUIRED"
+
+
+def test_occupation_contract_non_wales_not_reconciled():
+    row = _wales_occupation_like_row(jurisdiction="England")
+    assert not wales_occupation_operational_applicability_reconciliation_eligible(row)
 
 
 def test_true_not_required_stays_not_applicable():

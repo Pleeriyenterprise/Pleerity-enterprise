@@ -266,6 +266,51 @@ def test_legionella_external_assessment_guided_ctas():
     assert rich.get("workflow_class") == "EXTERNAL_ASSESSMENT_EVIDENCE"
 
 
+def test_legionella_job_class_guided_structured_access():
+    """Wales HMO pilot: JOB-class legionella must open guided structured declaration (OPS-VERIFY)."""
+    requirement = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "requirement_type": "legionella",
+        "requirement_code": "legionella",
+        "compliance_requirement_class": "JOB",
+        "registry_metadata": {
+            "evidence_resolution": {
+                "primary_resolution_workflow": "EXTERNAL_ASSESSMENT_EVIDENCE",
+                "allowed_evidence_modes": ["STRUCTURED_DECLARATION", "DOCUMENT_UPLOAD"],
+                "guided_secondary_upload_label": "Upload assessment report",
+            }
+        },
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="Wales")
+    assert out["action_type"] == "JOB"
+    pri = out["take_action"]["primary"]
+    assert pri.get("kind") == "guided_evidence_resolution"
+    assert pri.get("handler") == "guided_evidence"
+    assert pri.get("label") == "Record Legionella risk assessment"
+    assert pri.get("property_id") == "p1"
+    assert pri.get("requirement_id") == "r1"
+    sec = (out["take_action"] or {}).get("secondary") or {}
+    assert sec.get("label") == "Upload assessment report"
+    rich = enrich_take_action_envelope_for_client(out, requirement)
+    assert rich.get("workflow_class") == "EXTERNAL_ASSESSMENT_EVIDENCE"
+
+
+def test_gas_safety_job_class_still_navigates():
+    requirement = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "requirement_type": "gas_safety",
+        "requirement_code": "gas_safety",
+        "compliance_requirement_class": "JOB",
+    }
+    out = resolve_take_action_envelope(requirement, property_id="p1", property_jurisdiction="England")
+    assert out["action_type"] == "JOB"
+    pri = out["take_action"]["primary"]
+    assert pri.get("kind") == "navigate"
+    assert pri.get("intent") == "coordinate_inspection_evidence"
+
+
 def test_lead_testing_external_assessment_guided_ctas():
     requirement = {
         "requirement_id": "r-lead-1",

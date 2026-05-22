@@ -1,0 +1,40 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "slug": "6fd5ac4c_d35a58ae_fire_alarm",
+  "bundle_completeness": {
+    "bundle_dir": "docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae_fire_alarm",
+    "files_present": {
+      "manifest": true,
+      "baseline": true,
+      "post_submit": true,
+      "convergence": true,
+      "classifications": true,
+      "ui_notes": true
+    },
+    "missing_for_operational": [],
+    "browser_walkthrough_completed": true,
+    "replay_or_fixture_driver": false,
+    "proof_mode": "operational_browser",
+    "ui_notes_substantive": true,
+    "operational_evidence_ready": true
+  },
+  "classifications": [
+    {
+      "journey": "B_primary_document_upload",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [],
+      "reasons": []
+    }
+  ],
+  "rules": {
+    "never_infer_from_replay": true,
+    "never_infer_from_route_existence": true,
+    "never_infer_from_enqueue_alone": true,
+    "never_infer_from_optimistic_ui": true,
+    "verified_operationally_requires": [
+      "operational_evidence_ready",
+      "all_mandatory_checkpoints_pass",
+      "journey_specific_ui_attestations"
+    ]
+  }
+}

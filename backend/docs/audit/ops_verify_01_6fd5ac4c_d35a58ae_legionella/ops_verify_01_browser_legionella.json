@@ -1,0 +1,376 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation": "legionella",
+  "started_at_utc": "2026-05-22T08:57:20.070135+00:00",
+  "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+  "requirement_type": "legionella",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "steps": [
+    {
+      "step": "api_login",
+      "ok": true,
+      "detail": "role=ROLE_CLIENT_ADMIN",
+      "at": "2026-05-22T08:57:21.809736+00:00"
+    },
+    {
+      "step": "open_guided_modal",
+      "ok": true,
+      "detail": "http://127.0.0.1:3000/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?open=resolve&requirement_id=537da91b-d80c-49b2-bc92-f32514b00a2a&evidence_mode=STRUCTURED_DECLARATION",
+      "at": "2026-05-22T08:57:45.413787+00:00"
+    },
+    {
+      "step": "requirement_visible",
+      "ok": true,
+      "detail": "Legionella Risk Assessment\tHealth\t\nEvidence missing \u2014 action required\n\nEvidence missing \u2014 action req",
+      "at": "2026-05-22T08:57:45.423792+00:00"
+    },
+    {
+      "step": "structured_fields_filled",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T08:57:46.439521+00:00"
+    },
+    {
+      "step": "submit_summary",
+      "ok": true,
+      "detail": "Submission recorded\n\nThis is what we saved. Your requirement status will update after review where applicable.\n\nEvidence method: STRUCTURED DECLARATION\nVerification: PENDING REVIEW\nSubmitted at: 2026-05-22T08:57:47.30817",
+      "at": "2026-05-22T08:57:48.880975+00:00"
+    },
+    {
+      "step": "submission_inspect",
+      "ok": true,
+      "detail": "YOUR SUBMISSION\nLoading submission\u2026",
+      "at": "2026-05-22T08:58:51.620871+00:00"
+    },
+    {
+      "step": "refresh_persisted",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T08:58:57.551687+00:00"
+    }
+  ],
+  "checkpoints": {
+    "A-1": true,
+    "A-5": true,
+    "A-9": true
+  },
+  "submit_response": {
+    "http_status": 200,
+    "body": {
+      "ok": true,
+      "workflow_complete": true,
+      "authority_synced": true,
+      "recalc_enqueued": true,
+      "message": "Requirement recorded and compliance status is updating.",
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement": {
+        "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_type": "legionella",
+        "description": "Legionella risk assessment",
+        "frequency_days": 730,
+        "due_date": "2026-06-02T12:46:40.887335+00:00",
+        "status": "PENDING",
+        "applicability": "REQUIRED",
+        "confirmed_expiry_date": null,
+        "extracted_expiry_date": null,
+        "expiry_source": "NONE",
+        "extraction_confidence": null,
+        "not_required_reason": null,
+        "issue_date": null,
+        "certificate_number": null,
+        "date_source": "SYSTEM_ESTIMATED",
+        "evidence_state": "MISSING",
+        "confidence_state": "ESTIMATED",
+        "created_at": "2026-04-03T12:46:40.887399+00:00",
+        "updated_at": "2026-05-17T13:52:43.278554+00:00",
+        "jurisdiction": "Wales",
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-22T08:57:47.624522+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "predicted_document_type": null,
+          "match_outcome": null,
+          "match_confidence": null,
+          "mismatch_reason_code": null,
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "STRUCTURED_DECLARATION",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": "PENDING_REVIEW",
+          "primary_evidence_record_id": "cer_9e9595af4fda4e31a502357122e3ae15",
+          "pending_non_document_evidence_count": 4,
+          "semantic_state": "MISSING"
+        },
+        "evidence_authority_synced_at": "2026-05-22T08:57:47.624522+00:00",
+        "client_surface_source_classification": "published",
+        "legacy_canonical_requirement_code": "legionella",
+        "legacy_linkage_summary": {
+          "documents": 0,
+          "work_orders": 0,
+          "reminders": 1,
+          "invoices": 0
+        },
+        "legacy_mapped_published_requirement_code": "legionella",
+        "legacy_readonly_visible": false,
+        "legacy_requirement_state": "active",
+        "legacy_review_required": false,
+        "legacy_state_updated_at": "2026-04-26T17:03:55.125855+00:00",
+        "applicability_state": "REQUIRED",
+        "evidence_state_normalized": "NOT_REQUIRED",
+        "is_mandatory": false,
+        "policy_classification_version": "v1",
+        "policy_criticality": "MEDIUM",
+        "policy_last_resolved_at": "2026-04-30T14:36:45.042622+00:00",
+        "requirement_code_normalized": "legionella",
+        "applicability_provenance": {
+          "pipeline_applicability_state": "NOT_REQUIRED",
+          "pipeline_updated_at": "2026-05-17T13:52:43.849000",
+          "effective_applicability_state": "REQUIRED",
+          "effective_updated_at": "2026-05-17T13:52:43.849000",
+          "applicability_resolution_source": "PIPELINE",
+          "operator_override": {
+            "active": false,
+            "applicability_state": null
+          },
+          "operational_applicability_reconciliation": {
+            "source": "legionella_operational_surfaced_actionable_v1",
+            "prior": {
+              "applicability": "UNKNOWN",
+              "applicability_state": "NOT_REQUIRED",
+              "effective_applicability_state": "NOT_REQUIRED",
+              "pipeline_applicability_state": "NOT_REQUIRED",
+              "applicability_resolution_source": "PIPELINE"
+            }
+          }
+        },
+        "applicability_resolution_source": "PIPELINE",
+        "effective_applicability_state": "REQUIRED",
+        "operator_override_active": false,
+        "pipeline_applicability_state": "NOT_REQUIRED",
+        "action_type": "JOB",
+        "client_surface_visible": true,
+        "compliance_requirement_class": "JOB",
+        "is_tracked": true,
+        "registry_metadata": {
+          "catalog_keys": [],
+          "action_links_published": [
+            {
+              "key": "hse_legionella_guidance",
+              "label": "HSE guidance on Legionella responsibilities for landlords",
+              "kind": "official",
+              "url": "https://www.hse.gov.uk/legionnaires/legionella-landlords-responsibilities.htm",
+              "external": true
+            },
+            {
+              "key": "nhs_legionnaires_disease",
+              "label": "NHS information on Legionnaires' disease",
+              "kind": "official",
+              "url": "https://www.nhs.uk/conditions/legionnaires-disease/",
+              "external": true
+            }
+          ],
+          "why_it_matters_short_published": "Legionella risk assessments help support safe water system management in Welsh rental properties.",
+          "why_it_matters_long_published": "Landlords in Wales may need to assess water system risks and implement reasonable control measures to reduce potential Legionella exposure.",
+          "why_it_matters_by_jurisdiction_published": {
+            "ENGLAND": {
+              "short": "Landlords in England may need to assess and manage Legionella risks in property water systems.",
+              "long": "Health and safety responsibilities in England may require landlords to assess potential Legionella risks associated with water systems in rental properties."
+            },
+            "SCOTLAND": {
+              "short": "Scottish landlords should consider Legionella risks linked to water systems.",
+              "long": "Water system management and risk assessment practices may help Scottish landlords reduce potential Legionella exposure risks in residential properties."
+            },
+            "WALES": {
+              "short": "Legionella risk assessments help support safe water system management in Welsh rental properties.",
+              "long": "Landlords in Wales may need to assess water system risks and implement reasonable control measures to reduce potential Legionella exposure."
+            },
+            "NORTHERN_IRELAND": {
+              "short": "Water system risk management can help reduce Legionella exposure risks in Northern Ireland properties.",
+              "long": "Risk assessments and appropriate water system management practices may help reduce Legionella-related health risks in rental properties in Northern Ireland."
+            }
+          },
+          "primary_action_mode": "arrange_job",
+          "cta_label_override": "Upload Legionella risk assessment report"
+        },
+        "requirement_code": "legionella",
+        "requirement_generation_source": "catalog_registry",
+        "requires_document": false,
+        "requires_job": true,
+        "semantic_state": "MISSING",
+        "canonical_requirement_code": "legionella",
+        "display_label": "Legionella risk assessment",
+        "status_label": "Assessment recorded \u2014 follow-up required",
+        "date_label": "Estimated renewal date: 2 Jun 2026",
+        "date_explanation_helper": "Estimated from standard compliance cycles and your property setup. Upload your certificate to confirm this date.",
+        "evidence_badge_label": "Remediation or follow-up may remain open",
+        "why_it_matters_short": "Legionella risk assessments help support safe water system management in Welsh rental properties.",
+        "why_it_matters_long": "Landlords in Wales may need to assess water system risks and implement reasonable control measures to reduce potential Legionella exposure.",
+        "show_estimated_date_copy": true,
+        "requirement_category": "safety",
+        "engine_requirement_category": "safety",
+        "client_visibility": "actionable",
+        "engine_client_visibility": "actionable",
+        "requirement_class": "JOB",
+        "fulfillment_mode": "document",
+        "engine_fulfillment_mode": "document",
+        "creates_compliance_job": true,
+        "engine_creates_compliance_job": true,
+        "requires_document_evidence": true,
+        "engine_requires_document_evidence": true,
+        "include_in_priority_stream": true,
+        "engine_include_in_priority_stream": true,
+        "calendar_overdue_in_inbox": true,
+        "engine_calendar_overdue_in_inbox": true,
+        "engine_informational": false,
+        "take_action": {
+          "primary": {
+            "label": "Record Legionella risk assessment",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a"
+          },
+          "secondary": {
+            "label": "Upload assessment report",
+            "route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=537da91b-d80c-49b2-bc92-f32514b00a2a",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "action_links": [],
+        "workflow_class": "EXTERNAL_ASSESSMENT_EVIDENCE",
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ],
+        "client_evidence_disclosure": "This records your Legionella risk assessment for compliance tracking. It does not replace professional or legal verification.",
+        "evidence_completeness": null,
+        "requirement_display": {
+          "canonical_name": "Legionella Risk Assessment",
+          "short_name": "Legionella",
+          "description": "",
+          "category_label": "Health",
+          "primary_cta_label": "Record Legionella risk assessment",
+          "secondary_cta_label": "Upload assessment report"
+        },
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "client_lifecycle_label": "Action required",
+        "client_lifecycle_reason_codes": [
+          "EA:MISSING"
+        ]
+      },
+      "evidence_record": {
+        "evidence_record_id": "cer_9e9595af4fda4e31a502357122e3ae15",
+        "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "created_at": "2026-05-22T08:57:47.308173+00:00",
+        "created_by_user_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+        "verification_status": "PENDING_REVIEW",
+        "verified_by_user_id": null,
+        "verified_at": null,
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+          "declaration_statement": "PRELAUNCH-OPS-VERIFY-01 Wales HMO legionella structured assessment operational verification 2026-05-22T08:57:46.296292+00:00.",
+          "structured_fields": {
+            "assessment_completed": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            },
+            "assessment_date": {
+              "answer": "2026-03-15",
+              "notes": null,
+              "observation": null
+            },
+            "assessor_type": {
+              "answer": "self",
+              "notes": null,
+              "observation": null
+            },
+            "assessor_name": {
+              "answer": "OPS-VERIFY Wales HMO",
+              "notes": null,
+              "observation": null
+            },
+            "risk_level": {
+              "answer": "low",
+              "notes": null,
+              "observation": null
+            },
+            "control_measures_in_place": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            },
+            "actions_required": {
+              "answer": false,
+              "notes": null,
+              "observation": null
+            },
+            "next_review_date": {
+              "answer": null,
+              "notes": null,
+              "observation": null
+            },
+            "declaration_confirmed": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            }
+          }
+        },
+        "linked_document_ids": [],
+        "audit_metadata": {
+          "created_via": "client_compliance_evidence_api"
+        },
+        "included_in_active_compliance": true,
+        "archived": false,
+        "archived_reason": null
+      }
+    },
+    "evidence_record_id": "cer_9e9595af4fda4e31a502357122e3ae15",
+    "correlation_id": null
+  },
+  "wording_checks": {
+    "matrix_not_applicable_while_actionable": true,
+    "matrix_false_compliant": false,
+    "summary_misleading": false,
+    "post_matrix_not_applicable": false
+  },
+  "resolve_deeplink": "http://127.0.0.1:3000/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?open=resolve&requirement_id=537da91b-d80c-49b2-bc92-f32514b00a2a&evidence_mode=STRUCTURED_DECLARATION",
+  "guided_modal_opened": true,
+  "guided_modal_blocker": null,
+  "requirement_row_excerpt": "Legionella Risk Assessment\tHealth\t\nEvidence missing \u2014 action required\n\nEvidence missing \u2014 action required\n\n\t\u2014\t\u2014\tLow\t\nRecord Legionella risk assessment\nNot applicable\nRequirement details",
+  "inspect_excerpt": "YOUR SUBMISSION\nLoading submission\u2026",
+  "requirement_row_excerpt_post": "Legionella Risk Assessment\tHealth\t\nEvidence missing \u2014 action required\n\nEvidence missing \u2014 action required\n\n\t\u2014\t\u2014\tLow\t\nRecord Legionella risk assessment\nNot applicable\nRequirement details",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae_legionella\\screenshots\\legionella_post_submit.png",
+  "finished_at_utc": "2026-05-22T08:58:57.830969+00:00"
+}

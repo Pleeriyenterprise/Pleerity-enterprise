@@ -1,0 +1,12 @@
+{
+  "pilot_client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "pilot_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "obligations_verified_operationally": [
+    "legionella",
+    "occupation_contract",
+    "fire_alarm"
+  ],
+  "total_verified": 3,
+  "wales_hmo_operationally_closed": true,
+  "registration_stack_expansion_justified": true
+}

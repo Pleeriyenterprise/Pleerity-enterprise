@@ -1,0 +1,354 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "phase": "convergence",
+  "captured_at_utc": "2026-05-22T10:03:12.014596+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+  "correlation_id": null,
+  "property_score": {
+    "compliance_score": 56,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-22T09:59:24.451456+00:00",
+    "risk_level": "Elevated risk",
+    "fingerprint": "584da1cfc138f124"
+  },
+  "queue": {
+    "counts_by_status": {
+      "DONE": 152,
+      "TOTAL": 152
+    },
+    "pending_or_running": 0,
+    "recent_rows": [
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_18e18faabbe44737b8fc20ee716f96a4",
+        "status": "DONE",
+        "created_at": "2026-05-22T09:59:09.584907+00:00",
+        "updated_at": "2026-05-22T09:59:44.639092+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_7366a05e342d43019cd06824c0a6da27",
+        "status": "DONE",
+        "created_at": "2026-05-22T09:46:30.938298+00:00",
+        "updated_at": "2026-05-22T09:46:57.987077+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:537da91b-d80c-49b2-bc92-f32514b00a2a:cer_9e9595af4fda4e31a502357122e3ae15",
+        "status": "DONE",
+        "created_at": "2026-05-22T08:57:48.082328+00:00",
+        "updated_at": "2026-05-22T08:58:04.252783+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:537da91b-d80c-49b2-bc92-f32514b00a2a:cer_701ed7d3ee674fd09bc1ede7a2e480ff",
+        "status": "DONE",
+        "created_at": "2026-05-22T08:42:02.996938+00:00",
+        "updated_at": "2026-05-22T08:42:19.351512+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:537da91b-d80c-49b2-bc92-f32514b00a2a:cer_5c003eeeacb94162890304ada203045d",
+        "status": "DONE",
+        "created_at": "2026-05-22T07:44:39.140232+00:00",
+        "updated_at": "2026-05-22T07:45:07.202700+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-22",
+        "status": "DONE",
+        "created_at": "2026-05-22T03:20:25.567956+00:00",
+        "updated_at": "2026-05-22T03:31:02.663065+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-22",
+        "status": "DONE",
+        "created_at": "2026-05-22T00:10:01.825289+00:00",
+        "updated_at": "2026-05-22T00:10:34.202723+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+        "status": "DONE",
+        "created_at": "2026-05-21T12:55:33.396305+00:00",
+        "updated_at": "2026-05-21T12:55:56.599609+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:56026075-06cb-4877-b1a3-dafd9cfc41f4",
+        "status": "DONE",
+        "created_at": "2026-05-21T12:21:28.363035+00:00",
+        "updated_at": "2026-05-21T12:21:50.785890+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:63c7d2f9-d259-4810-9016-966f9e08c930",
+        "status": "DONE",
+        "created_at": "2026-05-21T12:05:59.747738+00:00",
+        "updated_at": "2026-05-21T12:06:17.677538+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:381443ee-f30b-4bfa-aac8-e64bce92e726",
+        "status": "DONE",
+        "created_at": "2026-05-21T11:43:17.173570+00:00",
+        "updated_at": "2026-05-21T11:43:33.005740+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:400f1090-1476-4ea9-bc15-494b5617005e",
+        "status": "DONE",
+        "created_at": "2026-05-21T11:23:56.047059+00:00",
+        "updated_at": "2026-05-21T11:24:26.730345+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:537da91b-d80c-49b2-bc92-f32514b00a2a:cer_c6239030b9894ffb93a435527275554d",
+        "status": "DONE",
+        "created_at": "2026-05-21T09:28:26.245224+00:00",
+        "updated_at": "2026-05-21T09:28:56.016550+00:00"
+      },
+      {
+        "correlation_id": "DOC_STATUS_CHANGED:a9fd10d8-9ac5-4998-8676-bfe03134a14b:VERIFIED",
+        "status": "DONE",
+        "created_at": "2026-05-21T06:37:34.992290+00:00",
+        "updated_at": "2026-05-21T06:37:58.383599+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-21",
+        "status": "DONE",
+        "created_at": "2026-05-21T03:20:12.441141+00:00",
+        "updated_at": "2026-05-21T03:24:05.495643+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-21",
+        "status": "DONE",
+        "created_at": "2026-05-21T00:10:05.944575+00:00",
+        "updated_at": "2026-05-21T00:12:32.216542+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:a9fd10d8-9ac5-4998-8676-bfe03134a14b",
+        "status": "DONE",
+        "created_at": "2026-05-20T19:10:40.186522+00:00",
+        "updated_at": "2026-05-20T19:10:54.250905+00:00"
+      },
+      {
+        "correlation_id": "DOC_DELETED:a94968d0-d844-4b79-b870-bb2f50f4591f",
+        "status": "DONE",
+        "created_at": "2026-05-20T19:08:08.363666+00:00",
+        "updated_at": "2026-05-20T19:08:24.324196+00:00"
+      },
+      {
+        "correlation_id": "DOC_UPLOADED:a94968d0-d844-4b79-b870-bb2f50f4591f",
+        "status": "DONE",
+        "created_at": "2026-05-20T19:07:15.251438+00:00",
+        "updated_at": "2026-05-20T19:07:39.648647+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-20",
+        "status": "DONE",
+        "created_at": "2026-05-20T03:20:12.167642+00:00",
+        "updated_at": "2026-05-20T03:25:07.215569+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-20",
+        "status": "DONE",
+        "created_at": "2026-05-20T00:10:05.873545+00:00",
+        "updated_at": "2026-05-20T00:12:42.128953+00:00"
+      },
+      {
+        "correlation_id": "SCHEDULED_PROPERTY_BATCH:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-19",
+        "status": "DONE",
+        "created_at": "2026-05-19T03:20:13.268508+00:00",
+        "updated_at": "2026-05-19T03:24:36.027752+00:00"
+      },
+      {
+        "correlation_id": "EXPIRY_JOB:d35a58ae-3c81-491c-9694-1d021dd3b8ad:2026-05-19",
+        "status": "DONE",
+        "created_at": "2026-05-19T00:10:02.434553+00:00",
+        "updated_at": "2026-05-19T00:10:58.760404+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_979c123533804653a9e20b2f6008b7f6",
+        "status": "DONE",
+        "created_at": "2026-05-18T15:45:09.386332+00:00",
+        "updated_at": "2026-05-18T15:45:25.055586+00:00"
+      },
+      {
+        "correlation_id": "GUIDED_EVIDENCE_AUTHORITY:d35a58ae-3c81-491c-9694-1d021dd3b8ad:488269bb-1be7-47e7-a030-98accf6dffc4:cer_09d5547516ba422f95b497737e3746f5",
+        "status": "DONE",
+        "created_at": "2026-05-18T15:43:07.135981+00:00",
+        "updated_at": "2026-05-18T15:43:24.602014+00:00"
+      }
+    ],
+    "fingerprint": "304ee079edf56e03"
+  },
+  "queue_row_for_correlation": null,
+  "dashboard_tasks": {
+    "compliance_score": 56,
+    "compliance_score_pending": false,
+    "compliance_last_calculated_at": "2026-05-22T09:59:24.451456+00:00",
+    "risk_level": "Elevated risk",
+    "top_deficits": [
+      {
+        "requirement_code": "LEGIONELLA",
+        "status": "MISSING",
+        "missing_points": 10.0,
+        "risk_level_if_failed": "MEDIUM"
+      },
+      {
+        "requirement_code": "EICR",
+        "status": "NEEDS_REVIEW",
+        "missing_points": 8.02,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EPC",
+        "status": "NEEDS_REVIEW",
+        "missing_points": 5.35,
+        "risk_level_if_failed": "MEDIUM"
+      },
+      {
+        "requirement_code": "HMO_FIRE_RISK",
+        "status": "NEEDS_REVIEW",
+        "missing_points": 4.28,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "FIRE_DETECTION",
+        "status": "VALID",
+        "missing_points": 0.7,
+        "risk_level_if_failed": "HIGH"
+      }
+    ],
+    "digest_summary": {
+      "urgent_count": 1,
+      "upcoming_count": 6,
+      "in_progress_count": 2,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 1,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "task_count": 9,
+    "task_sections_summary": {
+      "urgent_count": 1,
+      "upcoming_count": 6,
+      "in_progress_count": 2,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 1,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "task_ids_sample": [
+      "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+      "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+      "requirement:216ed196-883b-42a2-9011-39918534d32d",
+      "requirement:537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "requirement:62589167-4e34-4aef-ad75-4967383e71bc",
+      "requirement:71e89158-5de0-422a-970c-5a2163fcc823",
+      "requirement:d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+      "risk_signal:rs_4e228977c3c7",
+      "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee"
+    ],
+    "stable_task_business_keys_sample": [
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|216ed196-883b-42a2-9011-39918534d32d|Evidence awaiting confirmation: EICR",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|537da91b-d80c-49b2-bc92-f32514b00a2a|Evidence missing: Legionella",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|62589167-4e34-4aef-ad75-4967383e71bc|Evidence awaiting confirmation: EPC",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|71e89158-5de0-422a-970c-5a2163fcc823|Evidence review required: HMO Licensing",
+      "missing_document|d35a58ae-3c81-491c-9694-1d021dd3b8ad|d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6|Evidence review required: HMO Fire Safety",
+      "open_operational_issue|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Open operational issue",
+      "pending_invoice_approval|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Pending invoice approval",
+      "risk_signal|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Electrical safety concern",
+      "work_order_sla_breached|d35a58ae-3c81-491c-9694-1d021dd3b8ad|None|Work order \u2014 SLA deadline missed"
+    ],
+    "fingerprint_mode": "normalized_stable_business_keys_c2a",
+    "fingerprint": "1ad3840adf6cefdfba564bd6746662d2",
+    "fingerprint_legacy_volatile_ids": "622a2115cb61165c2545e0f9b680ce82"
+  },
+  "requirement": {
+    "found": true,
+    "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+    "requirement_type": "occupation_contract",
+    "status": "PENDING",
+    "lifecycle_state": null,
+    "evidence_status": null,
+    "client_surface_visible": true,
+    "updated_at": "2026-05-17T13:52:43.278554+00:00",
+    "authority": {
+      "evidence_authority": {
+        "version": 1,
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "effective_expiry_date": null,
+        "effective_expiry_is_null": true,
+        "effective_issue_date": null,
+        "effective_verified_document_id": null,
+        "expiry_source": "NONE",
+        "mismatch_flag": false,
+        "mismatch_reason": null,
+        "evidence_confidence": null,
+        "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "evidence_scope_type": "PROPERTY",
+        "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "predicted_document_type": null,
+        "match_outcome": null,
+        "match_confidence": null,
+        "mismatch_reason_code": null,
+        "evidence_match_blocks_satisfaction": false,
+        "primary_evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_confidence_level": "MEDIUM",
+        "non_document_verification_status": "PENDING_REVIEW",
+        "primary_evidence_record_id": "cer_18e18faabbe44737b8fc20ee716f96a4",
+        "pending_non_document_evidence_count": 5,
+        "semantic_state": "MISSING"
+      },
+      "fingerprint": "75f17f39a3a1e6332c90a2c3c68c29d0"
+    },
+    "row_fingerprint": "c7048bbdc040817c24046a020ab134f6"
+  },
+  "cer_rows": [
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-22T09:59:08.413037+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-22T09:46:29.395449+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T15:45:08.523686+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T15:43:06.318572+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    },
+    {
+      "evidence_mode": "STRUCTURED_DECLARATION",
+      "created_at": "2026-05-18T14:22:59.976582+00:00",
+      "verification_status": "PENDING_REVIEW",
+      "linked_document_ids": []
+    }
+  ],
+  "stale_state_window": {
+    "score_pending_stuck": false,
+    "score_timestamp_advanced": true,
+    "queue_terminal_for_correlation": false
+  },
+  "score_converged_observable": true,
+  "async_convergence_partial_signals": {
+    "pending_flag": false,
+    "queue_pending_or_running": false,
+    "no_terminal_queue_row": null
+  },
+  "baseline_score_fingerprint": "530c551bddfb36a8",
+  "post_submit_score_fingerprint": "584da1cfc138f124",
+  "convergence_score_fingerprint": "584da1cfc138f124"
+}

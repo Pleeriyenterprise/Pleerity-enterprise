@@ -1,0 +1,82 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6fd5ac4c_d35a58ae_occupation_contract_20260522T095631Z",
+  "slug": "6fd5ac4c_d35a58ae_occupation_contract",
+  "captured_at_utc": "2026-05-22T09:56:31.431765+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "requirement_ids": [
+    "488269bb-1be7-47e7-a030-98accf6dffc4"
+  ],
+  "journeys_executed": [
+    "A_guided_structured_evidence_submit"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-01",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "http://127.0.0.1:3000",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "A_guided_structured_evidence_submit": {
+      "submission_visible": true,
+      "refresh_persisted": true,
+      "user_visible_gap": false,
+      "trust_risk": false
+    }
+  },
+  "checkpoint_results": {
+    "A_guided_structured_evidence_submit": {
+      "A-1": true,
+      "A-2": true,
+      "A-3": true,
+      "A-4": true,
+      "A-5": true,
+      "A-6": true,
+      "A-7": true,
+      "A-8": true,
+      "A-9": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "phase": "Wales_HMO",
+  "obligation_code": "occupation_contract",
+  "preflight": {
+    "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+    "surfaced": true,
+    "status": "PENDING",
+    "lifecycle": null,
+    "applicability": "REQUIRED",
+    "applicability_state": "REQUIRED",
+    "effective_applicability_state": "",
+    "lifecycle_derived": {
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "client_lifecycle_label": "Action required",
+      "client_lifecycle_reason_codes": [
+        "EA:MISSING"
+      ]
+    },
+    "authority": "MISSING",
+    "non_document_verification_status": "PENDING_REVIEW",
+    "workflow": "GUIDED_DECLARATION",
+    "modes": [
+      "STRUCTURED_DECLARATION",
+      "DOCUMENT_UPLOAD"
+    ],
+    "cer_count": 4,
+    "document_count": 0,
+    "baseline_profile": "pre_existing_evidence",
+    "modal_title": "Record Wales occupation contract",
+    "primary_cta": "Record Wales occupation contract",
+    "compliance_score": null,
+    "stale_applicability_contradiction": false,
+    "applicability_lifecycle_split": false,
+    "client_surface_visible": true
+  },
+  "api_url": "http://127.0.0.1:8000",
+  "obligation_classification": "VERIFIED_OPERATIONALLY"
+}

@@ -1,0 +1,5 @@
+- Preflight profile: pre_existing_evidence.
+- Applicability: REQUIRED / state=REQUIRED effective=.
+- Authority: MISSING (post: MISSING).
+- CER delta: 1.
+- Score: 56 → 56.

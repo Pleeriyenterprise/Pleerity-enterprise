@@ -1,0 +1,98 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation": "fire_alarm",
+  "started_at_utc": "2026-05-22T10:22:48.001090+00:00",
+  "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+  "requirement_type": "fire_alarm",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=69fc66fe-e196-44d4-a20e-3fe68d316f7f&requirement_code=fire_alarm&focus=upload",
+  "steps": [
+    {
+      "step": "requirement_visible",
+      "ok": true,
+      "detail": "count=1",
+      "at": "2026-05-22T10:23:38.624032+00:00"
+    },
+    {
+      "step": "upload_api",
+      "ok": true,
+      "detail": "status=200 doc=6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+      "at": "2026-05-22T10:23:56.904528+00:00"
+    },
+    {
+      "step": "vault_visible",
+      "ok": false,
+      "detail": "6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+      "at": "2026-05-22T10:23:56.928737+00:00"
+    },
+    {
+      "step": "refresh_persisted",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T10:24:04.703336+00:00"
+    },
+    {
+      "step": "inspect_modal",
+      "ok": false,
+      "detail": "no view CTA",
+      "at": "2026-05-22T10:24:04.703336+00:00"
+    }
+  ],
+  "checkpoints": {
+    "B-1": true,
+    "B-5": false,
+    "B-5_refresh": true,
+    "A-5": false
+  },
+  "upload_response": {
+    "http_status": 200,
+    "body": {
+      "message": "Document uploaded successfully",
+      "document_id": "6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+      "outcome": {
+        "score_change": 0,
+        "new_score": 56,
+        "risk_change": "unchanged",
+        "status_change": "unchanged",
+        "message": "fire_alarm evidence uploaded \u2014 file saved. Confirm extracted dates in Documents before this fully satisfies the requirement. (Compliance score +0; risk unchanged)",
+        "idempotent": false
+      },
+      "requirement_workflow_pending": false,
+      "evidence_match": {
+        "match_outcome": "NEEDS_ADMIN_REVIEW",
+        "match_confidence": 0.0,
+        "predicted_document_type": "UNKNOWN",
+        "mismatch_reason_code": "EXTRACTION_AMBIGUOUS",
+        "mismatch_reason_text": "Ambiguous classification signals.",
+        "user_messages": [
+          "We could not confidently match this file to the selected obligation from its contents. An administrator may need to review it."
+        ],
+        "evidence_satisfies_requirement": false
+      },
+      "document_validation": {
+        "valid": true,
+        "reason": null,
+        "jurisdiction": "Wales",
+        "scoring_jurisdiction": "ENGLAND_WALES",
+        "portfolio_jurisdiction": "Wales",
+        "missing_metadata_fields": []
+      },
+      "document_metadata": null,
+      "validation_result": {
+        "valid": true,
+        "jurisdiction": "Wales",
+        "validated_at": "2026-05-22T10:23:46.090899+00:00",
+        "missing_metadata_fields": [],
+        "reason": null,
+        "scoring_jurisdiction": "ENGLAND_WALES",
+        "portfolio_jurisdiction": "Wales",
+        "document_type_input": null
+      }
+    },
+    "document_id": "6bcba949-dd04-40bd-b724-cf4c9d91be8f"
+  },
+  "wording_checks": {},
+  "document_id": "6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6fd5ac4c_d35a58ae_fire_alarm\\screenshots\\fire_alarm_post_upload.png",
+  "finished_at_utc": "2026-05-22T10:24:05.017427+00:00"
+}

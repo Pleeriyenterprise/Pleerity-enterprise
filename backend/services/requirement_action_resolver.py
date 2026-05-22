@@ -257,6 +257,71 @@ def _is_external_assessment_evidence_workflow_policy(policy: Dict[str, Any]) -> 
     )
 
 
+def _legionella_job_guided_structured_access(
+    requirement: Dict[str, Any],
+    *,
+    is_job: bool,
+    pid: Optional[str],
+    rid: Optional[str],
+) -> bool:
+    """Bounded OPS-VERIFY: JOB-class legionella with external assessment + structured declaration."""
+    if not is_job or not pid or not rid:
+        return False
+    canon = normalize_requirement_code(_norm_code(requirement)) or _norm_code(requirement)
+    if canon != "legionella":
+        return False
+    policy = effective_evidence_resolution(requirement)
+    if not _is_external_assessment_evidence_workflow_policy(policy):
+        return False
+    modes = {str(m or "").strip().upper() for m in (policy.get("allowed_evidence_modes") or []) if m}
+    return EVIDENCE_MODE_STRUCTURED_DECLARATION in modes
+
+
+def _legionella_job_guided_take_action(
+    requirement: Dict[str, Any],
+    *,
+    pid: str,
+    rid: str,
+    needs_doc: bool,
+    property_jurisdiction: Optional[str],
+) -> Dict[str, Any]:
+    """JOB semantics preserved; primary opens guided structured declaration (legionella pilot only)."""
+    policy = effective_evidence_resolution(requirement)
+    doc_route = f"/documents?property_id={pid}&requirement_id={rid}"
+    supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
+    why_fields = _registry_why_it_matters(requirement)
+    sec_upload = None
+    if needs_doc:
+        sec_lbl = str(policy.get("guided_secondary_upload_label") or "").strip() or "Upload assessment report"
+        sec_upload = {
+            "label": sec_lbl,
+            "route": doc_route,
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": False,
+            "intent": INTENT_UPLOAD_EVIDENCE,
+        }
+    ta_job_guided: Dict[str, Any] = {
+        "primary": {
+            "label": job_primary_label(requirement),
+            "route": None,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": INTENT_GUIDED_EVIDENCE,
+            "property_id": str(pid),
+            "requirement_id": str(rid),
+        },
+        "secondary": sec_upload,
+        "supporting_external_links": supporting,
+    }
+    _attach_take_action_contract_metadata(ta_job_guided, requirement)
+    return {
+        "action_type": ACTION_JOB,
+        **why_fields,
+        "take_action": ta_job_guided,
+    }
+
+
 def job_primary_label(requirement: Dict[str, Any]) -> str:
     """
     JOB-class primary CTA: evidence-first copy for off-platform professional work; platform does not
@@ -423,12 +488,18 @@ def resolve_take_action_envelope(
             "take_action": ta_maint,
         }
 
-    # TODO (product): JOB + multi-evidence — keep existing job envelope; do not force guided modal
-    # until policy requires it. See module docstring.
     is_job = cls == "JOB" or ff == "job"
     needs_doc = eng.get("requires_document_evidence", True) is not False
 
     if is_job:
+        if _legionella_job_guided_structured_access(requirement, is_job=True, pid=pid, rid=rid):
+            return _legionella_job_guided_take_action(
+                requirement,
+                pid=str(pid),
+                rid=str(rid),
+                needs_doc=needs_doc,
+                property_jurisdiction=property_jurisdiction,
+            )
         hash_frag = f"#req={code}" if code else ""
         primary_route = f"/properties/{pid}{hash_frag}" if pid else "/requirements"
         sec_upload = None

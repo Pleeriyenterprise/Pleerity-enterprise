@@ -74,6 +74,7 @@ import {
   sortRequirementsCriticalityThenTitle,
   sortRequirementsAttentionOrder,
 } from '../utils/propertyDocumentsMatrix';
+import { suppressMarkNotApplicableCta } from '../utils/clientApplicabilityPresentation';
 import {
   filterInboxTasksForTrackedRequirements,
   getTrackedRequirementsForProperty,
@@ -2258,7 +2259,9 @@ export default function PropertyDetailPage() {
                                     ) : null}
                                   </div>
                                   <div className="flex flex-wrap gap-x-2 gap-y-0.5 items-center">
-                                    {isMissing && (r.requirement_code || r.requirement_type) && (
+                                    {isMissing &&
+                                      !suppressMarkNotApplicableCta(r) &&
+                                      (r.requirement_code || r.requirement_type) && (
                                       <Button
                                         size="sm"
                                         variant="ghost"
@@ -2449,7 +2452,9 @@ export default function PropertyDetailPage() {
                               Requirement details
                             </Button>
                           ) : null}
-                          {isMissing && (r.requirement_code || r.requirement_type) ? (
+                          {isMissing &&
+                          !suppressMarkNotApplicableCta(r) &&
+                          (r.requirement_code || r.requirement_type) ? (
                             <Button
                               size="sm"
                               variant="ghost"
