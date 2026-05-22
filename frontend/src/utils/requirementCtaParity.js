@@ -15,6 +15,17 @@ export const GUIDED_CTA_UNAVAILABLE_TITLE =
   'This obligation is configured for guided resolution but required property or requirement context is missing. Use supporting links or contact support if this persists.';
 
 /**
+ * Resolve deeplink with explicit evidence_mode should open guided capture, not intel-only view.
+ * @param {Record<string, unknown>|null|undefined} requirement
+ * @param {string|null|undefined} guidedInitialOverride
+ */
+export function registrationResolvePrefersGuided(requirement, guidedInitialOverride) {
+  if (!guidedInitialOverride) return false;
+  const wf = String(requirement?.workflow_class || '').trim().toUpperCase();
+  return wf === 'REGISTRATION_TRACKING' || wf === 'GUIDED_DECLARATION';
+}
+
+/**
  * Deep-link into property workspace with compliance tab + guided resolve intent (query consumed by PropertyDetailPage).
  * @param {string} propertyId
  * @param {string} requirementId
@@ -77,7 +88,13 @@ export function executeRequirementPrimaryCta(ctx) {
   }
   if (ta.primary_action_handler === 'guided_evidence') {
     if (isViewExistingSubmissionCta(ta) && openRequirementIntel && requirement) {
-      if (shouldPreferGuidedEvidenceOverIntelView(requirement, ta) && openGuidedEvidence && effectivePid && rid) {
+      if (
+        (shouldPreferGuidedEvidenceOverIntelView(requirement, ta) ||
+          registrationResolvePrefersGuided(requirement, guidedInitialOverride)) &&
+        openGuidedEvidence &&
+        effectivePid &&
+        rid
+      ) {
         const mode =
           guidedInitialOverride || ta.guided_initial_evidence_mode || guidedMixedEvidenceInitialMode() || undefined;
         openGuidedEvidence({

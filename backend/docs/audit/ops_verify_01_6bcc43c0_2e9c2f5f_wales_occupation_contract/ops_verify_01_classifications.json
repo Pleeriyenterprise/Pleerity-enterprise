@@ -1,0 +1,12 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation_code": "wales_occupation_contract",
+  "slug": "6bcc43c0_2e9c2f5f_wales_occupation_contract",
+  "classifications": [
+    {
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [],
+      "reasons": []
+    }
+  ]
+}

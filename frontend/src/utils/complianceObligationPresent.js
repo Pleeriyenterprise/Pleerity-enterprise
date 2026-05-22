@@ -5,6 +5,7 @@ import { resolveRequirementAction } from './requirementTakeActionResolver';
 import { isRequirementMissingDocument } from './propertyDocumentsMatrix';
 import { pickCanonicalWhyItMattersShort } from './requirementCanonicalNarrative';
 import { workflowAwareMissingEvidenceLabel } from './evidenceStatus';
+import { isSubmissionAwaitingReview, resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
 import { projectResolvedRequirementSemantics } from './resolvedRequirementViewModel';
 
 function resolvedProjectionForRequirementRow(r) {
@@ -82,6 +83,9 @@ export function complianceObligationStatusLabel(r) {
   if (['NOT_APPLICABLE', 'NOT_REQUIRED', 'WAIVED'].includes(s)) return 'Not applicable';
   if (['OVERDUE', 'EXPIRED'].includes(s)) return 'Overdue';
   if (s === 'EXPIRING_SOON') return 'Expiring';
+  if (isSubmissionAwaitingReview(r)) {
+    return resolveClientRequirementLifecycleForPresentation(r).label || 'Awaiting review';
+  }
   if (isRequirementMissingDocument(r)) return sem?.missing_evidence_label || workflowAwareMissingEvidenceLabel(r);
   return 'Valid';
 }

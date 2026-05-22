@@ -55,6 +55,38 @@ describe('executeRequirementPrimaryCta', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('opens guided modal for registration resolve deeplink when primary is View submission', () => {
+    const openGuidedEvidence = jest.fn();
+    const openRequirementIntel = jest.fn();
+    const requirement = {
+      property_id: 'p1',
+      requirement_id: 'r1',
+      workflow_class: 'REGISTRATION_TRACKING',
+      client_lifecycle_state: 'PENDING_REVIEW',
+      evidence_authority: { primary_evidence_record_id: 'cer-1' },
+      take_action: {
+        primary: {
+          label: 'Record registration details',
+          kind: 'guided_evidence_resolution',
+          handler: 'guided_evidence',
+          route: '',
+        },
+      },
+    };
+    const { handled, ta } = executeRequirementPrimaryCta({
+      requirement,
+      pagePropertyId: 'p1',
+      navigate: jest.fn(),
+      openGuidedEvidence,
+      openRequirementIntel,
+      guidedInitialOverride: 'STRUCTURED_DECLARATION',
+    });
+    expect(handled).toBe(true);
+    expect(ta.primary_action_label).toBe('View submission');
+    expect(openGuidedEvidence).toHaveBeenCalled();
+    expect(openRequirementIntel).not.toHaveBeenCalled();
+  });
+
   it('opens requirement intel when primary is View submission', () => {
     const openRequirementIntel = jest.fn();
     const requirement = {

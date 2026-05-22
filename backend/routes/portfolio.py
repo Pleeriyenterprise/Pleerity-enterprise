@@ -454,6 +454,8 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             cs = (r.get("status") or "PENDING")
             rd = r_raw.get("requirement_display") if isinstance(r_raw.get("requirement_display"), dict) else {}
             legacy_title = r.get("description") or r.get("requirement_type")
+            from services.catalog_compliance import _client_matrix_presentation_fields
+
             matrix.append({
                 "requirement_code": r.get("requirement_type"),
                 "title": (rd.get("canonical_name") or "").strip() or legacy_title,
@@ -468,6 +470,8 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
                 "evidence_doc_id": None,
                 "requirement_id": r.get("requirement_id"),
                 "property_id": property_id,
+                "take_action": r_raw.get("take_action"),
+                **_client_matrix_presentation_fields(r_raw),
             })
         if not matrix:
             property_score = None

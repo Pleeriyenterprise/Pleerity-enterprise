@@ -1,0 +1,340 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation": "rent_smart_wales",
+  "started_at_utc": "2026-05-22T14:12:56.179150+00:00",
+  "requirement_id": "7cc14ad8-034e-4062-8d28-0acb48e603c9",
+  "requirement_type": "rent_smart_wales",
+  "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+  "steps": [
+    {
+      "step": "api_login",
+      "ok": true,
+      "detail": "role=ROLE_CLIENT_ADMIN",
+      "at": "2026-05-22T14:12:58.805428+00:00"
+    },
+    {
+      "step": "open_guided_modal",
+      "ok": true,
+      "detail": "http://127.0.0.1:3000/properties/2e9c2f5f-d746-4199-b361-0f383ca2e478?open=resolve&requirement_id=7cc14ad8-034e-4062-8d28-0acb48e603c9&evidence_mode=STRUCTURED_DECLARATION",
+      "at": "2026-05-22T14:13:32.338305+00:00"
+    },
+    {
+      "step": "requirement_visible",
+      "ok": true,
+      "detail": "Rent Smart Wales\t\u2014\t\nAwaiting reviewAwaiting review\n\t\u2014\t\u2014\tMedium\t\nView submission\nNot applicable\nRequi",
+      "at": "2026-05-22T14:13:32.865548+00:00"
+    },
+    {
+      "step": "structured_fields_filled",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T14:13:33.537822+00:00"
+    },
+    {
+      "step": "submit_summary",
+      "ok": true,
+      "detail": "Submission recorded\n\nThis is what we saved. Your requirement status will update after review where applicable.\n\nEvidence method: STRUCTURED DECLARATION\nVerification: PENDING REVIEW\nSubmitted at: 2026-05-22T14:13:34.91007",
+      "at": "2026-05-22T14:13:37.701192+00:00"
+    },
+    {
+      "step": "submission_inspect",
+      "ok": true,
+      "detail": "YOUR SUBMISSION\nLoading submission\u2026",
+      "at": "2026-05-22T14:14:03.657438+00:00"
+    },
+    {
+      "step": "refresh_persisted",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T14:14:15.623782+00:00"
+    }
+  ],
+  "checkpoints": {
+    "A-1": true,
+    "A-5": true,
+    "A-9": true
+  },
+  "submit_response": {
+    "http_status": 200,
+    "body": {
+      "ok": true,
+      "workflow_complete": true,
+      "authority_synced": true,
+      "recalc_enqueued": true,
+      "message": "Requirement recorded and compliance status is updating.",
+      "requirement_id": "7cc14ad8-034e-4062-8d28-0acb48e603c9",
+      "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+      "requirement": {
+        "requirement_id": "7cc14ad8-034e-4062-8d28-0acb48e603c9",
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+        "requirement_type": "rent_smart_wales",
+        "requirement_code": "rent_smart_wales",
+        "jurisdiction": "Wales",
+        "description": "Rent Smart Wales Registration",
+        "frequency_days": 1825,
+        "due_date": "2026-09-12T20:43:03.918861+00:00",
+        "status": "PENDING",
+        "applicability": "REQUIRED",
+        "confirmed_expiry_date": null,
+        "extracted_expiry_date": null,
+        "expiry_source": "NONE",
+        "extraction_confidence": null,
+        "not_required_reason": null,
+        "issue_date": null,
+        "certificate_number": null,
+        "date_source": "SYSTEM_ESTIMATED",
+        "evidence_state": "MISSING",
+        "confidence_state": "ESTIMATED",
+        "compliance_requirement_class": "DOCUMENT",
+        "action_type": "DOCUMENT",
+        "is_tracked": true,
+        "client_surface_visible": true,
+        "requirement_generation_source": "catalog_registry",
+        "requires_document": true,
+        "requires_job": false,
+        "registry_metadata": {
+          "catalog_keys": [
+            "RENT_SMART_WALES"
+          ],
+          "action_links_published": [
+            {
+              "key": "rent_smart_wales_registration",
+              "label": "Rent Smart Wales registration guidance",
+              "kind": "official",
+              "url": "https://rentsmart.gov.wales/en/landlord/",
+              "external": true
+            },
+            {
+              "key": "rent_smart_wales_licensing",
+              "label": "Rent Smart Wales licensing information",
+              "kind": "official",
+              "url": "https://rentsmart.gov.wales/en/agent-and-landlord/",
+              "external": true
+            }
+          ],
+          "why_it_matters_short_published": "Welsh landlords may need to register with Rent Smart Wales.",
+          "why_it_matters_long_published": "Rent Smart Wales registration and licensing schemes help regulate landlord and property management activity within the Welsh private rented sector.",
+          "why_it_matters_by_jurisdiction_published": {
+            "WALES": {
+              "short": "Welsh landlords may need to register with Rent Smart Wales.",
+              "long": "Rent Smart Wales registration and licensing schemes help regulate landlord and property management activity within the Welsh private rented sector."
+            }
+          },
+          "primary_action_mode": "upload_document",
+          "cta_label_override": "Upload Rent Smart Wales registration evidence"
+        },
+        "created_at": "2026-05-15T20:43:07.186563+00:00",
+        "updated_at": "2026-05-15T20:43:07.186567+00:00",
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-22T14:13:35.434374+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "predicted_document_type": null,
+          "match_outcome": null,
+          "match_confidence": null,
+          "mismatch_reason_code": null,
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "STRUCTURED_DECLARATION",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": "PENDING_REVIEW",
+          "primary_evidence_record_id": "cer_b3359c0bf81c4a0487a40265b030490a",
+          "pending_non_document_evidence_count": 4,
+          "semantic_state": "MISSING"
+        },
+        "evidence_authority_synced_at": "2026-05-22T14:13:35.434374+00:00",
+        "requirement_code_normalized": "rent_smart_wales",
+        "is_mandatory": true,
+        "policy_criticality": "MEDIUM",
+        "evidence_state_normalized": "MISSING",
+        "policy_classification_version": "v1",
+        "applicability_provenance": {
+          "pipeline_applicability_state": "UNKNOWN",
+          "pipeline_updated_at": "2026-05-15T20:43:07.186000",
+          "effective_applicability_state": "REQUIRED",
+          "effective_updated_at": "2026-05-15T20:43:07.186000",
+          "applicability_resolution_source": "PIPELINE",
+          "operator_override": {
+            "active": false,
+            "applicability_state": null
+          },
+          "operational_applicability_reconciliation": {
+            "source": "rent_smart_wales_operational_surfaced_actionable_v1",
+            "prior": {
+              "applicability": "UNKNOWN",
+              "applicability_state": "UNKNOWN",
+              "effective_applicability_state": "UNKNOWN",
+              "pipeline_applicability_state": "UNKNOWN",
+              "applicability_resolution_source": "PIPELINE"
+            }
+          }
+        },
+        "pipeline_applicability_state": "UNKNOWN",
+        "effective_applicability_state": "REQUIRED",
+        "applicability_resolution_source": "PIPELINE",
+        "operator_override_active": false,
+        "applicability_state": "REQUIRED",
+        "semantic_state": "MISSING",
+        "canonical_requirement_code": "rent_smart_wales",
+        "display_label": "Rent Smart Wales",
+        "status_label": "Awaiting verification",
+        "date_label": "Estimated renewal date: 12 Sep 2026",
+        "date_explanation_helper": "Estimated from standard compliance cycles and your property setup. Upload your certificate to confirm this date.",
+        "evidence_badge_label": "Not uploaded",
+        "why_it_matters_short": "Welsh landlords may need to register with Rent Smart Wales.",
+        "why_it_matters_long": "Rent Smart Wales registration and licensing schemes help regulate landlord and property management activity within the Welsh private rented sector.",
+        "show_estimated_date_copy": true,
+        "requirement_category": "licensing",
+        "engine_requirement_category": "licensing",
+        "client_visibility": "actionable",
+        "engine_client_visibility": "actionable",
+        "requirement_class": "DOCUMENT",
+        "fulfillment_mode": "document",
+        "engine_fulfillment_mode": "document",
+        "creates_compliance_job": false,
+        "engine_creates_compliance_job": false,
+        "requires_document_evidence": true,
+        "engine_requires_document_evidence": true,
+        "include_in_priority_stream": true,
+        "engine_include_in_priority_stream": true,
+        "calendar_overdue_in_inbox": true,
+        "engine_calendar_overdue_in_inbox": true,
+        "engine_informational": false,
+        "take_action": {
+          "primary": {
+            "label": "Record registration details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+            "requirement_id": "7cc14ad8-034e-4062-8d28-0acb48e603c9"
+          },
+          "secondary": {
+            "label": "Upload registration evidence",
+            "route": "/documents?property_id=2e9c2f5f-d746-4199-b361-0f383ca2e478&requirement_id=7cc14ad8-034e-4062-8d28-0acb48e603c9",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "action_links": [],
+        "workflow_class": "REGISTRATION_TRACKING",
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ],
+        "evidence_completeness": null,
+        "requirement_display": {
+          "canonical_name": "Rent Smart Wales",
+          "short_name": "Rent Smart Wales",
+          "description": "",
+          "category_label": "",
+          "primary_cta_label": "Record registration details",
+          "secondary_cta_label": "Upload registration evidence"
+        },
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "client_lifecycle_label": "Action required",
+        "client_lifecycle_reason_codes": [
+          "EA:MISSING"
+        ]
+      },
+      "evidence_record": {
+        "evidence_record_id": "cer_b3359c0bf81c4a0487a40265b030490a",
+        "requirement_id": "7cc14ad8-034e-4062-8d28-0acb48e603c9",
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "created_at": "2026-05-22T14:13:34.910077+00:00",
+        "created_by_user_id": "aa8b9918-719a-48e6-9a77-b0aec5b1c121",
+        "verification_status": "PENDING_REVIEW",
+        "verified_by_user_id": null,
+        "verified_at": null,
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+          "declaration_statement": "PRELAUNCH-OPS-VERIFY-01 Scotland landlord registration structured declaration ops verify 2026-05-22T14:13:33.469164+00:00.",
+          "structured_fields": {
+            "registration_number": {
+              "answer": "RSW-OPS-VERIFY-01-2026",
+              "notes": null,
+              "observation": null
+            },
+            "issuing_authority": {
+              "answer": "Rent Smart Wales (OPS test)",
+              "notes": null,
+              "observation": null
+            },
+            "issue_date": {
+              "answer": null,
+              "notes": null,
+              "observation": null
+            },
+            "expiry_date": {
+              "answer": null,
+              "notes": null,
+              "observation": null
+            },
+            "registration_status": {
+              "answer": "pending",
+              "notes": null,
+              "observation": null
+            },
+            "declaration_confirmed": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            }
+          }
+        },
+        "linked_document_ids": [],
+        "audit_metadata": {
+          "created_via": "client_compliance_evidence_api"
+        },
+        "included_in_active_compliance": true,
+        "archived": false,
+        "archived_reason": null
+      }
+    },
+    "evidence_record_id": "cer_b3359c0bf81c4a0487a40265b030490a",
+    "correlation_id": null
+  },
+  "wording_checks": {
+    "matrix_not_applicable_while_actionable": true,
+    "matrix_false_compliant": false,
+    "modal_false_government_approval": false,
+    "summary_misleading": false,
+    "post_matrix_not_applicable": false,
+    "post_missing_evidence_while_submission_visible": false,
+    "post_verified_current_false_promotion": false
+  },
+  "resolve_deeplink": "http://127.0.0.1:3000/properties/2e9c2f5f-d746-4199-b361-0f383ca2e478?open=resolve&requirement_id=7cc14ad8-034e-4062-8d28-0acb48e603c9&evidence_mode=STRUCTURED_DECLARATION",
+  "guided_modal_opened": true,
+  "guided_modal_blocker": null,
+  "requirement_row_excerpt": "Rent Smart Wales\t\u2014\t\nAwaiting reviewAwaiting review\n\t\u2014\t\u2014\tMedium\t\nView submission\nNot applicable\nRequirement details",
+  "registration_modal_excerpt": "Record registration details\n\nChoose how you want to evidence this obligation. Uploading a certificate stays on the Documents page (or use \u201cUpload document\u201d on the requirement when offered). Other methods create a compliance evidence record for review.\n\nSupporting files vs authoritative submission\n\nUploading supporting files here saves them to your vault only.\n\nIt does not submit or update your formal requirement record until you complete the structured form and press Submit evidence.\n\nYour authoritative submission is already on file. New supporting files supplement that record \u2014 they do not create a new submission.\n\nSubmission already on file \u2014 awaiting review. Uploading supporting files here supplements that record only.\n\nSubmit compliance declaration\n\nUse when compliance is confirmed by a structured signed declaration.\n\nTypical confidence: Medium or low depending on supporting detail.\n\nDeclarations are reviewed before they can satisfy compliance.\n\nDeclaration statement\nRegistration number\nIssuing authority\nIssue date\nExpiry date (if applicable)\nRegistration status (active / pending / expired / unknown)\nI confirm these registration details are accurate\nSelect\nYes\nNo\n\nSupporting ev",
+  "inspect_excerpt": "YOUR SUBMISSION\nLoading submission\u2026",
+  "requirement_row_excerpt_post": "Rent Smart Wales\t\u2014\t\nAwaiting reviewAwaiting review\n\t\u2014\t\u2014\tMedium\t\nView submission\nNot applicable\nRequirement details",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6bcc43c0_2e9c2f5f_rent_smart_wales\\screenshots\\rent_smart_wales_post_submit.png",
+  "finished_at_utc": "2026-05-22T14:14:15.901489+00:00"
+}

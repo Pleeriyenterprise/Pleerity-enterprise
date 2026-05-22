@@ -139,6 +139,7 @@ export function workflowAwareMissingEvidenceLabel(row) {
       return 'Authoritative declaration on file — awaiting review';
     }
     if (wf === 'TENANT_DELIVERY') return 'Delivery record on file — awaiting review';
+    if (wf === 'REGISTRATION_TRACKING') return 'Registration details recorded — awaiting review';
   }
   if (_isActiveStandardRow(row)) return 'Condition status needs review';
   if (wf === 'DOCUMENT_UPLOAD' || wf === 'LEGACY_DOCUMENT_UPLOAD') {

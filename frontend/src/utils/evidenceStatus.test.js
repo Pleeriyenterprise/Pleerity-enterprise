@@ -51,6 +51,22 @@ describe('workflowAwareMissingEvidenceLabel', () => {
       'Authoritative declaration on file — awaiting review',
     );
   });
+
+  it('uses awaiting-review copy for REGISTRATION_TRACKING when submission is on file', () => {
+    const row = {
+      workflow_class: 'REGISTRATION_TRACKING',
+      requirement_code: 'rent_smart_wales',
+      client_lifecycle_state: 'ACTION_REQUIRED',
+      evidence_authority: {
+        primary_evidence_record_id: 'cer_rsw',
+        state: 'MISSING',
+        non_document_verification_status: 'PENDING_REVIEW',
+      },
+    };
+    expect(workflowAwareMissingEvidenceLabel(row)).toBe(
+      'Registration details recorded — awaiting review',
+    );
+  });
 });
 
 describe('getEvidenceStatus', () => {

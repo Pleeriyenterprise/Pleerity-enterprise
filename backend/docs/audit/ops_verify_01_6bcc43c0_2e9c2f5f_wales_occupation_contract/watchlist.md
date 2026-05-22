@@ -1,0 +1,5 @@
+- Preflight profile: greenfield.
+- Applicability: REQUIRED / state=REQUIRED effective=.
+- Authority:  (post: MISSING).
+- CER delta: 1.
+- Score: 64 → 63.

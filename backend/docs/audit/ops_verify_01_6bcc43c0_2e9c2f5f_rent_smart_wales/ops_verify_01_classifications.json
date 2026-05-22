@@ -1,0 +1,12 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation_code": "rent_smart_wales",
+  "slug": "6bcc43c0_2e9c2f5f_rent_smart_wales",
+  "classifications": [
+    {
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [],
+      "reasons": []
+    }
+  ]
+}

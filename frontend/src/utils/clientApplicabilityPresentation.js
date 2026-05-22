@@ -27,10 +27,36 @@ export function walesOccupationOperationalApplicabilityReconciled(requirement) {
   );
 }
 
+/** @param {Record<string, unknown>|undefined} requirement */
+export function scotlandLandlordRegistrationOperationalApplicabilityReconciled(requirement) {
+  const prov = requirement?.applicability_provenance;
+  if (!prov || typeof prov !== 'object') return false;
+  const rec = prov.operational_applicability_reconciliation;
+  return (
+    rec &&
+    typeof rec === 'object' &&
+    rec.source === 'scotland_landlord_registration_operational_surfaced_actionable_v1'
+  );
+}
+
+/** @param {Record<string, unknown>|undefined} requirement */
+export function rentSmartWalesOperationalApplicabilityReconciled(requirement) {
+  const prov = requirement?.applicability_provenance;
+  if (!prov || typeof prov !== 'object') return false;
+  const rec = prov.operational_applicability_reconciliation;
+  return (
+    rec &&
+    typeof rec === 'object' &&
+    rec.source === 'rent_smart_wales_operational_surfaced_actionable_v1'
+  );
+}
+
 /** Hide matrix "Mark not applicable" when operational reconciliation is active. */
 export function suppressMarkNotApplicableCta(requirement) {
   return (
     legionellaOperationalApplicabilityReconciled(requirement) ||
-    walesOccupationOperationalApplicabilityReconciled(requirement)
+    walesOccupationOperationalApplicabilityReconciled(requirement) ||
+    scotlandLandlordRegistrationOperationalApplicabilityReconciled(requirement) ||
+    rentSmartWalesOperationalApplicabilityReconciled(requirement)
   );
 }

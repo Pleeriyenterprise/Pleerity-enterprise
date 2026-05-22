@@ -9,7 +9,11 @@ from services.client_applicability_coherence import (
     legionella_operational_applicability_reconciliation_eligible,
     pipeline_not_required_disagrees_with_surfaced_row,
     reconcile_legionella_operational_applicability,
+    reconcile_rent_smart_wales_operational_applicability,
+    reconcile_scotland_landlord_registration_operational_applicability,
+    rent_smart_wales_operational_applicability_reconciliation_eligible,
     reconcile_wales_occupation_operational_applicability,
+    scotland_landlord_registration_operational_applicability_reconciliation_eligible,
     wales_occupation_operational_applicability_reconciliation_eligible,
     refresh_stale_authority_for_client_requirements,
 )
@@ -113,6 +117,62 @@ def test_wales_occupation_unknown_actionable_reconciles_to_required():
 def test_occupation_contract_non_wales_not_reconciled():
     row = _wales_occupation_like_row(jurisdiction="England")
     assert not wales_occupation_operational_applicability_reconciliation_eligible(row)
+
+
+def _scotland_landlord_reg_like_row(**kwargs):
+    base = {
+        "requirement_id": "3708620b-82fb-4d90-9f17-5b800777e554",
+        "requirement_type": "scotland_landlord_registration",
+        "requirement_code": "scotland_landlord_registration",
+        "jurisdiction": "Scotland",
+        "applicability": "UNKNOWN",
+        "applicability_state": "UNKNOWN",
+        "status": "PENDING",
+        "client_surface_visible": True,
+        "evidence_authority": {"state": EA_MISSING, "state_reason": "no_evidence_document"},
+    }
+    base.update(kwargs)
+    return base
+
+
+def test_scotland_landlord_registration_unknown_actionable_reconciles_to_required():
+    row = _scotland_landlord_reg_like_row()
+    assert scotland_landlord_registration_operational_applicability_reconciliation_eligible(row)
+    out = reconcile_scotland_landlord_registration_operational_applicability(row)
+    assert out["applicability_state"] == "REQUIRED"
+    assert out["effective_applicability_state"] == "REQUIRED"
+    rec = (out.get("applicability_provenance") or {}).get("operational_applicability_reconciliation") or {}
+    assert rec.get("source") == "scotland_landlord_registration_operational_surfaced_actionable_v1"
+
+
+def _rent_smart_wales_like_row(**kwargs):
+    base = {
+        "requirement_id": "7cc14ad8-034e-4062-8d28-0acb48e603c9",
+        "requirement_type": "rent_smart_wales",
+        "requirement_code": "rent_smart_wales",
+        "jurisdiction": "Wales",
+        "applicability": "UNKNOWN",
+        "applicability_state": "UNKNOWN",
+        "status": "PENDING",
+        "client_surface_visible": True,
+        "evidence_authority": {"state": EA_MISSING, "state_reason": "no_evidence_document"},
+    }
+    base.update(kwargs)
+    return base
+
+
+def test_rent_smart_wales_unknown_actionable_reconciles_to_required():
+    row = _rent_smart_wales_like_row()
+    assert rent_smart_wales_operational_applicability_reconciliation_eligible(row)
+    out = reconcile_rent_smart_wales_operational_applicability(row)
+    assert out["applicability_state"] == "REQUIRED"
+    rec = (out.get("applicability_provenance") or {}).get("operational_applicability_reconciliation") or {}
+    assert rec.get("source") == "rent_smart_wales_operational_surfaced_actionable_v1"
+
+
+def test_scotland_landlord_registration_other_slug_not_reconciled():
+    row = _scotland_landlord_reg_like_row(requirement_type="rent_smart_wales", requirement_code="rent_smart_wales")
+    assert not scotland_landlord_registration_operational_applicability_reconciliation_eligible(row)
 
 
 def test_true_not_required_stays_not_applicable():

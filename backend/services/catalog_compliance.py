@@ -20,6 +20,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _client_matrix_presentation_fields(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Pass-through fields required for matrix/urgent truthful submission + lifecycle copy."""
+    ea = row.get("evidence_authority") if isinstance(row.get("evidence_authority"), dict) else {}
+    return {
+        "evidence_authority": ea or None,
+        "workflow_class": row.get("workflow_class"),
+        "client_lifecycle_state": row.get("client_lifecycle_state"),
+        "client_lifecycle_label": row.get("client_lifecycle_label"),
+        "applicability": row.get("applicability") or row.get("applicability_state"),
+        "applicability_state": row.get("applicability_state"),
+        "requirement_type": row.get("requirement_type") or row.get("canonical_code"),
+        "evidence_badge_label": row.get("evidence_badge_label"),
+        "status_label": row.get("status_label"),
+    }
+
+
 _HIGH_CRITICALITY_CODES = {
     "gas_safety",
     "eicr",
@@ -286,6 +303,7 @@ async def get_property_compliance_detail(
                 if isinstance(row.get("registry_metadata"), dict)
                 else None
             ),
+            **_client_matrix_presentation_fields(row),
         })
 
     if weight_sum <= 0:

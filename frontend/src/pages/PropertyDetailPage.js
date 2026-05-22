@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import apiClient, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -400,6 +400,8 @@ export default function PropertyDetailPage() {
   const [urgentExplainOpenId, setUrgentExplainOpenId] = useState(null);
   /** Deep-link: `/properties/:id?open=resolve&requirement_id=…` opens compliance tab + guided flow when data is ready. */
   const [pendingComplianceResolve, setPendingComplianceResolve] = useState(null);
+  /** Prevents double-opening guided modal when resolve query + requirements hydration replay. */
+  const complianceResolveConsumedRef = useRef(null);
   /** Deeplink `?open=intel&requirement_id=&focus=submission` for post-submit inspect (GF-CLOSURE-01). */
   const [pendingIntelOpen, setPendingIntelOpen] = useState(null);
   const [operatingFeedItems, setOperatingFeedItems] = useState([]);
@@ -512,36 +514,72 @@ export default function PropertyDetailPage() {
   }, [pendingIntelOpen, requirements, propertyId, navigate, location.hash]);
 
   useEffect(() => {
-    if (!pendingComplianceResolve || !propertyId) return;
+    complianceResolveConsumedRef.current = null;
+  }, [propertyId]);
+
+  useEffect(() => {
+    if (!pendingComplianceResolve || !propertyId || loading) return;
     const { requirementId, initialEvidenceMode } = pendingComplianceResolve;
-    if (!requirements.length) return;
-    const row = requirements.find((r) => String(r.requirement_id || r.id || '') === String(requirementId));
-    setPendingComplianceResolve(null);
-    navigate({ pathname: `/properties/${propertyId}`, search: '', hash: location.hash || '' }, { replace: true });
-    if (!row) return;
+    const rid = String(requirementId || '').trim();
+    if (!rid) return;
+    if (complianceResolveConsumedRef.current === rid) return;
+
+    const row = requirements.find((r) => String(r.requirement_id || r.id || '') === rid);
+    if (!row && requirements.length === 0) return;
+
     const guidedMode = initialEvidenceMode || guidedMixedEvidenceInitialMode() || null;
-    if (isRightToRentMixedEvidencePendingReview(row) && openGuidedEvidence) {
+    const reqForModal =
+      row && typeof row === 'object'
+        ? row
+        : { requirement_id: rid, property_id: propertyId };
+
+    complianceResolveConsumedRef.current = rid;
+    setPendingComplianceResolve(null);
+
+    if (row && isRightToRentMixedEvidencePendingReview(row) && openGuidedEvidence) {
       openGuidedEvidence({
         propertyId,
         requirement: row,
         onSubmitted: fetchData,
         initialEvidenceMode: guidedMode || undefined,
       });
-      return;
+    } else if (row) {
+      executeRequirementPrimaryCta({
+        requirement: row,
+        pagePropertyId: propertyId,
+        navigate,
+        openGuidedEvidence,
+        openRequirementIntel: (r) => {
+          setRequirementIntelRow(r);
+          setRequirementIntelFocusSubmission(true);
+        },
+        onSubmitted: fetchData,
+        guidedInitialOverride: guidedMode,
+      });
+    } else if (openGuidedEvidence) {
+      openGuidedEvidence({
+        propertyId,
+        requirement: reqForModal,
+        onSubmitted: fetchData,
+        initialEvidenceMode: guidedMode || undefined,
+      });
     }
-    executeRequirementPrimaryCta({
-      requirement: row,
-      pagePropertyId: propertyId,
-      navigate,
-      openGuidedEvidence,
-      openRequirementIntel: (r) => {
-        setRequirementIntelRow(r);
-        setRequirementIntelFocusSubmission(true);
-      },
-      onSubmitted: fetchData,
-      guidedInitialOverride: guidedMode,
-    });
-  }, [pendingComplianceResolve, requirements, propertyId, navigate, location.hash, openGuidedEvidence, fetchData]);
+
+    const q = new URLSearchParams(location.search || '');
+    if (q.get('open') === 'resolve') {
+      navigate({ pathname: `/properties/${propertyId}`, search: '', hash: location.hash || '' }, { replace: true });
+    }
+  }, [
+    pendingComplianceResolve,
+    requirements,
+    propertyId,
+    loading,
+    navigate,
+    location.hash,
+    location.search,
+    openGuidedEvidence,
+    fetchData,
+  ]);
 
   useEffect(() => {
     if (property?.property_id !== propertyId) return;

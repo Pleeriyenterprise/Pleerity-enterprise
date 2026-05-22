@@ -23,6 +23,12 @@ _LEGIONELLA_OPERATIONAL_APPLICABILITY = "REQUIRED"
 _LEGIONELLA_RECONCILIATION_SOURCE = "legionella_operational_surfaced_actionable_v1"
 _WALES_OCCUPATION_OPERATIONAL_APPLICABILITY = "REQUIRED"
 _WALES_OCCUPATION_RECONCILIATION_SOURCE = "wales_occupation_contract_operational_surfaced_actionable_v1"
+_SCOTLAND_LANDLORD_REG_OPERATIONAL_APPLICABILITY = "REQUIRED"
+_SCOTLAND_LANDLORD_REG_RECONCILIATION_SOURCE = (
+    "scotland_landlord_registration_operational_surfaced_actionable_v1"
+)
+_RENT_SMART_WALES_OPERATIONAL_APPLICABILITY = "REQUIRED"
+_RENT_SMART_WALES_RECONCILIATION_SOURCE = "rent_smart_wales_operational_surfaced_actionable_v1"
 
 
 def row_applicability_for_client_coherence(row: Dict[str, Any]) -> str:
@@ -161,6 +167,148 @@ def wales_occupation_operational_applicability_reconciliation_eligible(row: Dict
     return False
 
 
+def _scotland_landlord_registration_canon(row: Dict[str, Any]) -> str:
+    raw = str(row.get("requirement_code") or row.get("requirement_type") or "").strip()
+    return normalize_requirement_code(raw) or raw.lower().replace(" ", "_")
+
+
+def scotland_landlord_registration_operational_applicability_reconciliation_eligible(
+    row: Dict[str, Any],
+) -> bool:
+    """Surfaced actionable Scotland landlord registration on client/runtime path."""
+    if not isinstance(row, dict) or _scotland_landlord_registration_canon(row) != "scotland_landlord_registration":
+        return False
+    if row.get("client_surface_visible") is False:
+        return False
+    from services.client_requirement_lifecycle import (
+        ACTION_REQUIRED,
+        NOT_APPLICABLE,
+        PENDING_REVIEW,
+        SATISFIED_UNVERIFIED,
+        derive_client_lifecycle_fields,
+    )
+
+    lifecycle = derive_client_lifecycle_fields(row)
+    life = str(lifecycle.get("client_lifecycle_state") or "").strip().upper()
+    if life == NOT_APPLICABLE:
+        return False
+    if life not in (ACTION_REQUIRED, PENDING_REVIEW, SATISFIED_UNVERIFIED):
+        return False
+    read = resolve_applicability_read_model(row)
+    pipeline = str(read.get("pipeline_applicability_state") or "").strip().upper()
+    eff = str(read.get("effective_applicability_state") or "").strip().upper()
+    row_app = row_applicability_for_client_coherence(row)
+    app_state = str(row.get("applicability_state") or row_app or "").strip().upper()
+    if pipeline == "NOT_REQUIRED" or eff == "NOT_REQUIRED" or app_state == "NOT_REQUIRED":
+        return True
+    if row_app == "UNKNOWN" or app_state == "UNKNOWN":
+        return True
+    if pipeline_not_required_disagrees_with_surfaced_row(row):
+        return True
+    return False
+
+
+def reconcile_scotland_landlord_registration_operational_applicability(
+    row: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Client/runtime projection for Scotland landlord registration operational truth."""
+    if not scotland_landlord_registration_operational_applicability_reconciliation_eligible(row):
+        return row
+    out = dict(row)
+    read = resolve_applicability_read_model(out)
+    prior = {
+        "applicability": out.get("applicability"),
+        "applicability_state": out.get("applicability_state"),
+        "effective_applicability_state": read.get("effective_applicability_state"),
+        "pipeline_applicability_state": read.get("pipeline_applicability_state"),
+        "applicability_resolution_source": read.get("applicability_resolution_source"),
+    }
+    out["applicability"] = _SCOTLAND_LANDLORD_REG_OPERATIONAL_APPLICABILITY
+    out["applicability_state"] = _SCOTLAND_LANDLORD_REG_OPERATIONAL_APPLICABILITY
+    out["effective_applicability_state"] = _SCOTLAND_LANDLORD_REG_OPERATIONAL_APPLICABILITY
+    prov = out.get("applicability_provenance")
+    if isinstance(prov, dict):
+        prov = dict(prov)
+    else:
+        prov = {}
+    prov["effective_applicability_state"] = _SCOTLAND_LANDLORD_REG_OPERATIONAL_APPLICABILITY
+    prov["operational_applicability_reconciliation"] = {
+        "source": _SCOTLAND_LANDLORD_REG_RECONCILIATION_SOURCE,
+        "prior": prior,
+    }
+    out["applicability_provenance"] = prov
+    return out
+
+
+def _rent_smart_wales_canon(row: Dict[str, Any]) -> str:
+    raw = str(row.get("requirement_code") or row.get("requirement_type") or "").strip()
+    return normalize_requirement_code(raw) or raw.lower().replace(" ", "_")
+
+
+def rent_smart_wales_operational_applicability_reconciliation_eligible(row: Dict[str, Any]) -> bool:
+    """Surfaced actionable Rent Smart Wales registration on client/runtime path."""
+    if not isinstance(row, dict) or _rent_smart_wales_canon(row) != "rent_smart_wales":
+        return False
+    if row.get("client_surface_visible") is False:
+        return False
+    from services.client_requirement_lifecycle import (
+        ACTION_REQUIRED,
+        NOT_APPLICABLE,
+        PENDING_REVIEW,
+        SATISFIED_UNVERIFIED,
+        derive_client_lifecycle_fields,
+    )
+
+    lifecycle = derive_client_lifecycle_fields(row)
+    life = str(lifecycle.get("client_lifecycle_state") or "").strip().upper()
+    if life == NOT_APPLICABLE:
+        return False
+    if life not in (ACTION_REQUIRED, PENDING_REVIEW, SATISFIED_UNVERIFIED):
+        return False
+    read = resolve_applicability_read_model(row)
+    pipeline = str(read.get("pipeline_applicability_state") or "").strip().upper()
+    eff = str(read.get("effective_applicability_state") or "").strip().upper()
+    row_app = row_applicability_for_client_coherence(row)
+    app_state = str(row.get("applicability_state") or row_app or "").strip().upper()
+    if pipeline == "NOT_REQUIRED" or eff == "NOT_REQUIRED" or app_state == "NOT_REQUIRED":
+        return True
+    if row_app == "UNKNOWN" or app_state == "UNKNOWN":
+        return True
+    if pipeline_not_required_disagrees_with_surfaced_row(row):
+        return True
+    return False
+
+
+def reconcile_rent_smart_wales_operational_applicability(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Client/runtime projection for Rent Smart Wales registration operational truth."""
+    if not rent_smart_wales_operational_applicability_reconciliation_eligible(row):
+        return row
+    out = dict(row)
+    read = resolve_applicability_read_model(out)
+    prior = {
+        "applicability": out.get("applicability"),
+        "applicability_state": out.get("applicability_state"),
+        "effective_applicability_state": read.get("effective_applicability_state"),
+        "pipeline_applicability_state": read.get("pipeline_applicability_state"),
+        "applicability_resolution_source": read.get("applicability_resolution_source"),
+    }
+    out["applicability"] = _RENT_SMART_WALES_OPERATIONAL_APPLICABILITY
+    out["applicability_state"] = _RENT_SMART_WALES_OPERATIONAL_APPLICABILITY
+    out["effective_applicability_state"] = _RENT_SMART_WALES_OPERATIONAL_APPLICABILITY
+    prov = out.get("applicability_provenance")
+    if isinstance(prov, dict):
+        prov = dict(prov)
+    else:
+        prov = {}
+    prov["effective_applicability_state"] = _RENT_SMART_WALES_OPERATIONAL_APPLICABILITY
+    prov["operational_applicability_reconciliation"] = {
+        "source": _RENT_SMART_WALES_RECONCILIATION_SOURCE,
+        "prior": prior,
+    }
+    out["applicability_provenance"] = prov
+    return out
+
+
 def reconcile_wales_occupation_operational_applicability(row: Dict[str, Any]) -> Dict[str, Any]:
     """Client/runtime projection for Wales occupation contract operational truth."""
     if not wales_occupation_operational_applicability_reconciliation_eligible(row):
@@ -231,6 +379,8 @@ def apply_client_applicability_presentation_overlay(row: Dict[str, Any]) -> Dict
     """
     out = reconcile_legionella_operational_applicability(dict(row))
     out = reconcile_wales_occupation_operational_applicability(out)
+    out = reconcile_scotland_landlord_registration_operational_applicability(out)
+    out = reconcile_rent_smart_wales_operational_applicability(out)
     if (out.get("applicability_provenance") or {}).get("operational_applicability_reconciliation"):
         return out
     if pipeline_not_required_disagrees_with_surfaced_row(out):

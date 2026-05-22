@@ -65,6 +65,26 @@ describe('canonicalComplianceInlineNarrative', () => {
     expect(canonicalComplianceInlineNarrative(row).recommended_action_text).toContain('Upload assessment');
   });
 
+  it('shows awaiting review for registration tracking with persisted submission', () => {
+    const row = {
+      requirement_id: 'r-rsw',
+      property_id: 'p1',
+      requirement_code: 'rent_smart_wales',
+      workflow_class: 'REGISTRATION_TRACKING',
+      status: 'MISSING',
+      evidence_authority: { state: 'MISSING', primary_evidence_record_id: 'cer-1' },
+      client_lifecycle_state: 'ACTION_REQUIRED',
+      take_action: {
+        primary: {
+          label: 'Record registration details',
+          route: '/properties/p1?open=resolve&requirement_id=r-rsw',
+          handler: 'guided_evidence',
+        },
+      },
+    };
+    expect(complianceObligationStatusLabel(row)).toBe('Awaiting review');
+  });
+
   it('keeps condition-standard rows operational-safe', () => {
     const row = {
       requirement_id: 'r-cond',

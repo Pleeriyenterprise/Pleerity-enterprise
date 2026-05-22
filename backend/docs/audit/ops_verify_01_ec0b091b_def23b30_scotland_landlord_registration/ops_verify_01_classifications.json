@@ -1,0 +1,12 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation_code": "scotland_landlord_registration",
+  "slug": "ec0b091b_def23b30_scotland_landlord_registration",
+  "classifications": [
+    {
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [],
+      "reasons": []
+    }
+  ]
+}
