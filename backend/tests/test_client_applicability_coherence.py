@@ -9,8 +9,10 @@ from services.client_applicability_coherence import (
     legionella_operational_applicability_reconciliation_eligible,
     pipeline_not_required_disagrees_with_surfaced_row,
     reconcile_legionella_operational_applicability,
+    reconcile_landlord_registration_ni_operational_applicability,
     reconcile_rent_smart_wales_operational_applicability,
     reconcile_scotland_landlord_registration_operational_applicability,
+    landlord_registration_ni_operational_applicability_reconciliation_eligible,
     rent_smart_wales_operational_applicability_reconciliation_eligible,
     reconcile_wales_occupation_operational_applicability,
     scotland_landlord_registration_operational_applicability_reconciliation_eligible,
@@ -173,6 +175,31 @@ def test_rent_smart_wales_unknown_actionable_reconciles_to_required():
 def test_scotland_landlord_registration_other_slug_not_reconciled():
     row = _scotland_landlord_reg_like_row(requirement_type="rent_smart_wales", requirement_code="rent_smart_wales")
     assert not scotland_landlord_registration_operational_applicability_reconciliation_eligible(row)
+
+
+def _landlord_registration_ni_like_row(**kwargs):
+    base = {
+        "requirement_id": "dc55970a-bba7-4711-b1a0-8a1b760b9126",
+        "requirement_type": "landlord_registration_ni",
+        "requirement_code": "landlord_registration_ni",
+        "jurisdiction": "Northern Ireland",
+        "applicability": "UNKNOWN",
+        "applicability_state": "UNKNOWN",
+        "status": "PENDING",
+        "client_surface_visible": True,
+        "evidence_authority": {"state": EA_MISSING, "state_reason": "no_evidence_document"},
+    }
+    base.update(kwargs)
+    return base
+
+
+def test_landlord_registration_ni_unknown_actionable_reconciles_to_required():
+    row = _landlord_registration_ni_like_row()
+    assert landlord_registration_ni_operational_applicability_reconciliation_eligible(row)
+    out = reconcile_landlord_registration_ni_operational_applicability(row)
+    assert out["applicability_state"] == "REQUIRED"
+    rec = (out.get("applicability_provenance") or {}).get("operational_applicability_reconciliation") or {}
+    assert rec.get("source") == "landlord_registration_ni_operational_surfaced_actionable_v1"
 
 
 def test_true_not_required_stays_not_applicable():

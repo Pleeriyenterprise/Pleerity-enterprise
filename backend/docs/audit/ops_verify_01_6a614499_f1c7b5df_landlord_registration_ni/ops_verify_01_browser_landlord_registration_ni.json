@@ -1,0 +1,330 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation": "landlord_registration_ni",
+  "started_at_utc": "2026-05-22T17:33:45.452177+00:00",
+  "requirement_id": "dc55970a-bba7-4711-b1a0-8a1b760b9126",
+  "requirement_type": "landlord_registration_ni",
+  "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+  "steps": [
+    {
+      "step": "api_login",
+      "ok": true,
+      "detail": "role=ROLE_CLIENT_ADMIN",
+      "at": "2026-05-22T17:33:46.678973+00:00"
+    },
+    {
+      "step": "open_guided_modal",
+      "ok": true,
+      "detail": "http://127.0.0.1:3000/properties/f1c7b5df-0757-4a6f-8096-ae04235d1294?open=resolve&requirement_id=dc55970a-bba7-4711-b1a0-8a1b760b9126&evidence_mode=STRUCTURED_DECLARATION",
+      "at": "2026-05-22T17:34:07.425269+00:00"
+    },
+    {
+      "step": "requirement_visible",
+      "ok": true,
+      "detail": "Landlord Registration Ni\t\u2014\t\nRegistration details not recorded \u2014 action required\n\nRegistration detail",
+      "at": "2026-05-22T17:34:07.454685+00:00"
+    },
+    {
+      "step": "structured_fields_filled",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T17:34:07.822017+00:00"
+    },
+    {
+      "step": "submit_summary",
+      "ok": true,
+      "detail": "Submission recorded\n\nThis is what we saved. Your requirement status will update after review where applicable.\n\nEvidence method: STRUCTURED DECLARATION\nVerification: PENDING REVIEW\nSubmitted at: 2026-05-22T17:34:08.97269",
+      "at": "2026-05-22T17:34:10.489991+00:00"
+    },
+    {
+      "step": "submission_inspect",
+      "ok": true,
+      "detail": "YOUR SUBMISSION\nEvidence method\nSTRUCTURED DECLARATION\nVerification\nPENDING REVI",
+      "at": "2026-05-22T17:34:29.724746+00:00"
+    },
+    {
+      "step": "refresh_persisted",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T17:34:38.999446+00:00"
+    }
+  ],
+  "checkpoints": {
+    "A-1": true,
+    "A-5": true,
+    "A-9": true
+  },
+  "submit_response": {
+    "http_status": 200,
+    "body": {
+      "ok": true,
+      "workflow_complete": true,
+      "authority_synced": true,
+      "recalc_enqueued": true,
+      "message": "Requirement recorded and compliance status is updating.",
+      "requirement_id": "dc55970a-bba7-4711-b1a0-8a1b760b9126",
+      "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+      "requirement": {
+        "requirement_id": "dc55970a-bba7-4711-b1a0-8a1b760b9126",
+        "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+        "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+        "requirement_type": "landlord_registration_ni",
+        "requirement_code": "landlord_registration_ni",
+        "jurisdiction": "Northern Ireland",
+        "description": "Northern Ireland landlord registration",
+        "frequency_days": 365,
+        "due_date": "2026-06-09T12:55:58.677916+00:00",
+        "status": "PENDING",
+        "applicability": "UNKNOWN",
+        "confirmed_expiry_date": null,
+        "extracted_expiry_date": null,
+        "expiry_source": "NONE",
+        "extraction_confidence": null,
+        "not_required_reason": null,
+        "issue_date": null,
+        "certificate_number": null,
+        "date_source": "SYSTEM_ESTIMATED",
+        "evidence_state": "MISSING",
+        "confidence_state": "ESTIMATED",
+        "compliance_requirement_class": "DOCUMENT",
+        "action_type": "DOCUMENT",
+        "is_tracked": true,
+        "client_surface_visible": true,
+        "requirement_generation_source": "catalog_registry",
+        "requires_document": true,
+        "requires_job": false,
+        "registry_metadata": {
+          "catalog_keys": [
+            "LANDLORD_REGISTRATION_NI"
+          ],
+          "action_links_published": [
+            {
+              "key": "ni_landlord_registration",
+              "label": "Register as landlord (Northern Ireland)",
+              "kind": "official",
+              "url": "https://www.nidirect.gov.uk/articles/landlord-registration-scheme",
+              "external": true
+            }
+          ],
+          "why_it_matters_short_published": "NI landlords must register with the Department for Communities where the scheme applies to the let.",
+          "primary_action_mode": "upload_document",
+          "why_it_matters_by_jurisdiction_published": {}
+        },
+        "created_at": "2026-04-25T13:55:59.371688+01:00",
+        "updated_at": "2026-05-05T18:36:58.717884+00:00",
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-22T17:34:09.255576+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+          "predicted_document_type": null,
+          "match_outcome": null,
+          "match_confidence": null,
+          "mismatch_reason_code": null,
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "STRUCTURED_DECLARATION",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": "PENDING_REVIEW",
+          "primary_evidence_record_id": "cer_c5812efeddc2465ab4f671b63d1bac6a",
+          "pending_non_document_evidence_count": 1,
+          "semantic_state": "MISSING"
+        },
+        "evidence_authority_synced_at": "2026-05-22T17:34:09.255576+00:00",
+        "client_surface_source_classification": "published",
+        "legacy_canonical_requirement_code": "landlord_registration_ni",
+        "legacy_linkage_summary": {
+          "documents": 0,
+          "work_orders": 0,
+          "reminders": 1,
+          "invoices": 0
+        },
+        "legacy_mapped_published_requirement_code": "landlord_registration_ni",
+        "legacy_readonly_visible": false,
+        "legacy_requirement_state": "active",
+        "legacy_review_required": false,
+        "legacy_state_updated_at": "2026-04-26T17:04:43.843505+00:00",
+        "applicability_state": "UNKNOWN",
+        "evidence_state_normalized": "MISSING",
+        "is_mandatory": true,
+        "policy_classification_version": "v1",
+        "policy_criticality": "MEDIUM",
+        "policy_last_resolved_at": "2026-04-30T14:36:36.258014+00:00",
+        "requirement_code_normalized": "landlord_registration_ni",
+        "applicability_provenance": {
+          "pipeline_applicability_state": "UNKNOWN",
+          "pipeline_updated_at": "2026-05-05T18:37:00.479000",
+          "effective_applicability_state": "UNKNOWN",
+          "effective_updated_at": "2026-05-05T18:37:00.479000",
+          "applicability_resolution_source": "PIPELINE",
+          "operator_override": {
+            "active": false,
+            "applicability_state": null
+          }
+        },
+        "applicability_resolution_source": "PIPELINE",
+        "effective_applicability_state": "UNKNOWN",
+        "operator_override_active": false,
+        "pipeline_applicability_state": "UNKNOWN",
+        "semantic_state": "MISSING",
+        "canonical_requirement_code": "landlord_registration_ni",
+        "display_label": "Landlord Registration Ni",
+        "status_label": "Awaiting verification",
+        "date_label": "Estimated renewal date: 9 Jun 2026",
+        "date_explanation_helper": "Estimated from standard compliance cycles and your property setup. Upload your certificate to confirm this date.",
+        "evidence_badge_label": "Not uploaded",
+        "why_it_matters_short": "NI landlords must register with the Department for Communities where the scheme applies to the let.",
+        "why_it_matters_long": null,
+        "show_estimated_date_copy": true,
+        "requirement_category": "licensing",
+        "engine_requirement_category": "licensing",
+        "client_visibility": "actionable",
+        "engine_client_visibility": "actionable",
+        "requirement_class": "DOCUMENT",
+        "fulfillment_mode": "document",
+        "engine_fulfillment_mode": "document",
+        "creates_compliance_job": false,
+        "engine_creates_compliance_job": false,
+        "requires_document_evidence": true,
+        "engine_requires_document_evidence": true,
+        "include_in_priority_stream": true,
+        "engine_include_in_priority_stream": true,
+        "calendar_overdue_in_inbox": true,
+        "engine_calendar_overdue_in_inbox": true,
+        "engine_informational": false,
+        "take_action": {
+          "primary": {
+            "label": "Record registration details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+            "requirement_id": "dc55970a-bba7-4711-b1a0-8a1b760b9126"
+          },
+          "secondary": {
+            "label": "Upload registration evidence",
+            "route": "/documents?property_id=f1c7b5df-0757-4a6f-8096-ae04235d1294&requirement_id=dc55970a-bba7-4711-b1a0-8a1b760b9126",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "action_links": [],
+        "workflow_class": "REGISTRATION_TRACKING",
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ],
+        "evidence_completeness": null,
+        "requirement_display": {
+          "canonical_name": "Landlord Registration Ni",
+          "short_name": "Landlord Registration Ni",
+          "description": "",
+          "category_label": "",
+          "primary_cta_label": "Record registration details",
+          "secondary_cta_label": "Upload registration evidence"
+        },
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "client_lifecycle_label": "Action required",
+        "client_lifecycle_reason_codes": [
+          "EA:MISSING"
+        ]
+      },
+      "evidence_record": {
+        "evidence_record_id": "cer_c5812efeddc2465ab4f671b63d1bac6a",
+        "requirement_id": "dc55970a-bba7-4711-b1a0-8a1b760b9126",
+        "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+        "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "created_at": "2026-05-22T17:34:08.972690+00:00",
+        "created_by_user_id": "74aaf69c-c9e3-4e36-bfa3-01b4ea4c06d5",
+        "verification_status": "PENDING_REVIEW",
+        "verified_by_user_id": null,
+        "verified_at": null,
+        "evidence_confidence_level": "MEDIUM",
+        "evidence_payload": {
+          "declaration_statement": "PRELAUNCH-OPS-VERIFY-01 NI landlord registration structured declaration ops verify 2026-05-22T17:34:07.783474+00:00.",
+          "structured_fields": {
+            "registration_number": {
+              "answer": "RSW-OPS-VERIFY-01-2026",
+              "notes": null,
+              "observation": null
+            },
+            "issuing_authority": {
+              "answer": "Landlord Registration NI (OPS test)",
+              "notes": null,
+              "observation": null
+            },
+            "issue_date": {
+              "answer": null,
+              "notes": null,
+              "observation": null
+            },
+            "expiry_date": {
+              "answer": null,
+              "notes": null,
+              "observation": null
+            },
+            "registration_status": {
+              "answer": "pending",
+              "notes": null,
+              "observation": null
+            },
+            "declaration_confirmed": {
+              "answer": true,
+              "notes": null,
+              "observation": null
+            }
+          }
+        },
+        "linked_document_ids": [],
+        "audit_metadata": {
+          "created_via": "client_compliance_evidence_api"
+        },
+        "included_in_active_compliance": true,
+        "archived": false,
+        "archived_reason": null
+      }
+    },
+    "evidence_record_id": "cer_c5812efeddc2465ab4f671b63d1bac6a",
+    "correlation_id": null
+  },
+  "wording_checks": {
+    "matrix_not_applicable_while_actionable": true,
+    "matrix_false_compliant": false,
+    "modal_false_government_approval": false,
+    "summary_misleading": false,
+    "post_matrix_not_applicable": false,
+    "post_missing_evidence_while_submission_visible": false,
+    "post_verified_current_false_promotion": false
+  },
+  "resolve_deeplink": "http://127.0.0.1:3000/properties/f1c7b5df-0757-4a6f-8096-ae04235d1294?open=resolve&requirement_id=dc55970a-bba7-4711-b1a0-8a1b760b9126&evidence_mode=STRUCTURED_DECLARATION",
+  "guided_modal_opened": true,
+  "guided_modal_blocker": null,
+  "requirement_row_excerpt": "Landlord Registration Ni\t\u2014\t\nRegistration details not recorded \u2014 action required\n\nRegistration details not recorded \u2014 action required\n\n\t9 Jun 2026\t\u2014\tHigh\t\nRecord registration details\nNot applicable\nRequirement details",
+  "registration_modal_excerpt": "Record registration details\n\nChoose how you want to evidence this obligation. Uploading a certificate stays on the Documents page (or use \u201cUpload document\u201d on the requirement when offered). Other methods create a compliance evidence record for review.\n\nSupporting files vs authoritative submission\n\nUploading supporting files here saves them to your vault only.\n\nIt does not submit or update your formal requirement record until you complete the structured form and press Submit evidence.\n\nSubmit compliance declaration\n\nUse when compliance is confirmed by a structured signed declaration.\n\nTypical confidence: Medium or low depending on supporting detail.\n\nDeclarations are reviewed before they can satisfy compliance.\n\nDeclaration statement\nRegistration number\nIssuing authority\nIssue date\nExpiry date (if applicable)\nRegistration status (active / pending / expired / unknown)\nI confirm these registration details are accurate\nSelect\nYes\nNo\n\nSupporting evidence uploads\n\nSupporting files improve verification confidence. They are not linked to a formal submission until you complete and submit the form below.\n\nUpload supporting files\nCancel\nSubmit evidence\nClose",
+  "inspect_excerpt": "YOUR SUBMISSION\nEvidence method\nSTRUCTURED DECLARATION\nVerification\nPENDING REVIEW\nSubmitted at\n2026-05-22T17:34:08.972690+00:00\nConfidence\nMEDIUM\n\nStructured declaration\n\nDeclaration\nPRELAUNCH-OPS-VERIFY-01 NI landlord registration structured declaration ops verify 2026-05-22T17:34:07.783474+00:00.",
+  "requirement_row_excerpt_post": "Landlord Registration Ni\t\u2014\t\nAwaiting reviewAwaiting review\n\t\u2014\t\u2014\tHigh\t\nView submission\nNot applicable\nRequirement details",
+  "screenshot": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6a614499_f1c7b5df_landlord_registration_ni\\screenshots\\rent_smart_wales_post_submit.png",
+  "finished_at_utc": "2026-05-22T17:34:39.297884+00:00"
+}

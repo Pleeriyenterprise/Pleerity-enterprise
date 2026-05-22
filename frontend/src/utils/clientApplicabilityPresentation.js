@@ -51,12 +51,25 @@ export function rentSmartWalesOperationalApplicabilityReconciled(requirement) {
   );
 }
 
+/** @param {Record<string, unknown>|undefined} requirement */
+export function landlordRegistrationNiOperationalApplicabilityReconciled(requirement) {
+  const prov = requirement?.applicability_provenance;
+  if (!prov || typeof prov !== 'object') return false;
+  const rec = prov.operational_applicability_reconciliation;
+  return (
+    rec &&
+    typeof rec === 'object' &&
+    rec.source === 'landlord_registration_ni_operational_surfaced_actionable_v1'
+  );
+}
+
 /** Hide matrix "Mark not applicable" when operational reconciliation is active. */
 export function suppressMarkNotApplicableCta(requirement) {
   return (
     legionellaOperationalApplicabilityReconciled(requirement) ||
     walesOccupationOperationalApplicabilityReconciled(requirement) ||
     scotlandLandlordRegistrationOperationalApplicabilityReconciled(requirement) ||
-    rentSmartWalesOperationalApplicabilityReconciled(requirement)
+    rentSmartWalesOperationalApplicabilityReconciled(requirement) ||
+    landlordRegistrationNiOperationalApplicabilityReconciled(requirement)
   );
 }

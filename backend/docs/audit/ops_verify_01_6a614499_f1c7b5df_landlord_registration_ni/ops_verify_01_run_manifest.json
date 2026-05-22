@@ -1,0 +1,89 @@
+{
+  "unit_id": "OPS-VERIFY-01",
+  "unit_name": "Client Evidence Journey Operational Closure Verification",
+  "run_id": "ops_verify_01_6a614499_f1c7b5df_landlord_registration_ni_20260522T173249Z",
+  "slug": "6a614499_f1c7b5df_landlord_registration_ni",
+  "captured_at_utc": "2026-05-22T17:32:49.030901+00:00",
+  "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+  "property_id": "f1c7b5df-0757-4a6f-8096-ae04235d1294",
+  "requirement_ids": [
+    "dc55970a-bba7-4711-b1a0-8a1b760b9126"
+  ],
+  "journeys_executed": [
+    "A_guided_structured_evidence_submit"
+  ],
+  "verifier": "cursor-prelaunch-ops-verify-01",
+  "proof_mode": "operational_browser",
+  "replay_or_fixture_driver": false,
+  "browser_walkthrough_completed": true,
+  "staging_url": "http://127.0.0.1:3000",
+  "async_sla_minutes": 15,
+  "ui_attestations": {
+    "A_guided_structured_evidence_submit": {
+      "submission_visible": true,
+      "refresh_persisted": true,
+      "user_visible_gap": false,
+      "trust_risk": false
+    }
+  },
+  "checkpoint_results": {
+    "A_guided_structured_evidence_submit": {
+      "A-1": true,
+      "A-2": true,
+      "A-3": true,
+      "A-4": true,
+      "A-5": true,
+      "A-6": true,
+      "A-7": true,
+      "A-8": true,
+      "A-9": true
+    }
+  },
+  "notes": "Infrastructure replay proof \u2260 operational closure proof.",
+  "implementation_scope": "operational_verification_capture_and_classify_only",
+  "read_only": true,
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "phase": "REGISTRATION_STACK_NI",
+  "jurisdiction": "Northern Ireland",
+  "workflow_family": "REGISTRATION_TRACKING",
+  "obligation_code": "landlord_registration_ni",
+  "preflight": {
+    "requirement_id": "dc55970a-bba7-4711-b1a0-8a1b760b9126",
+    "property_jurisdiction": "Northern Ireland",
+    "effective_jurisdiction": "Northern Ireland",
+    "ni_jurisdiction_ok": true,
+    "surfaced": true,
+    "status": "PENDING",
+    "lifecycle": null,
+    "applicability": "REQUIRED",
+    "applicability_state": "REQUIRED",
+    "effective_applicability_state": "",
+    "lifecycle_derived": {
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "client_lifecycle_label": "Action required",
+      "client_lifecycle_reason_codes": [
+        "EVIDENCE_STATE:MISSING"
+      ]
+    },
+    "authority": "",
+    "non_document_verification_status": null,
+    "workflow": "REGISTRATION_TRACKING",
+    "modes": [
+      "STRUCTURED_DECLARATION",
+      "DOCUMENT_UPLOAD"
+    ],
+    "cer_count": 0,
+    "document_count": 0,
+    "baseline_profile": "greenfield",
+    "modal_title": "Record registration details",
+    "primary_cta": "Record registration details",
+    "compliance_score": null,
+    "stale_applicability_contradiction": false,
+    "applicability_lifecycle_split": false,
+    "client_surface_visible": true,
+    "registration_workflow_family": "REGISTRATION_TRACKING",
+    "registration_specific_lifecycle": true
+  },
+  "api_url": "http://127.0.0.1:8000",
+  "obligation_classification": "VERIFIED_OPERATIONALLY"
+}

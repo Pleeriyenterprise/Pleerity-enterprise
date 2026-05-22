@@ -1,0 +1,12 @@
+{
+  "programme_id": "PRELAUNCH-OPS-VERIFY-01",
+  "obligation_code": "landlord_registration_ni",
+  "slug": "6a614499_f1c7b5df_landlord_registration_ni",
+  "classifications": [
+    {
+      "classification": "VERIFIED_OPERATIONALLY",
+      "failed_checkpoints": [],
+      "reasons": []
+    }
+  ]
+}
