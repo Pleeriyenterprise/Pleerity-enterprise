@@ -1,4 +1,4 @@
-import { isConditionStandardWorkflowHint, isMultiEvidenceStyleWorkflow, normalizeWorkflowClass } from './workflowSemantics';
+import { isConditionStandardWorkflowHint, isMultiEvidenceStyleWorkflow, isConditionStandardActiveStandardRow, normalizeWorkflowClass } from './workflowSemantics';
 
 describe('workflowSemantics', () => {
   it('normalizes workflow class', () => {
@@ -16,5 +16,16 @@ describe('workflowSemantics', () => {
     expect(isConditionStandardWorkflowHint('GUIDANCE_ONLY', { requirement_code: 'repairing_standard' })).toBe(true);
     expect(isConditionStandardWorkflowHint('ACTIVE_STANDARD', {})).toBe(true);
     expect(isConditionStandardWorkflowHint('DOCUMENT_UPLOAD', { requirement_code: 'gas_safety' })).toBe(false);
+  });
+
+  it('detects CONDITION_STANDARD_ACTIVE_STANDARD enriched rows', () => {
+    expect(
+      isConditionStandardActiveStandardRow({
+        workflow_family: 'CONDITION_STANDARD_ACTIVE_STANDARD',
+        ops_verification_family: 'CONDITION_STANDARD_ACTIVE_STANDARD',
+        requirement_code: 'repairing_standard',
+      }),
+    ).toBe(true);
+    expect(isConditionStandardActiveStandardRow({ requirement_code: 'gas_safety' })).toBe(false);
   });
 });

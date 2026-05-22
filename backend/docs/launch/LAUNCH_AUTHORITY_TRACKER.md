@@ -4729,4 +4729,22 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ---
 
+### CONDITION_STANDARD_ACTIVE_STANDARD — Phase 1 foundation (2026-05-20)
+
+**Status:** **IMPLEMENTED** (runtime foundation + bounded runtime-legitimacy + resolve deeplink fix 2026-05-22). **`repairing_standard`:** **`VERIFIED_OPERATIONALLY`** (Scotland pilot OPS closure). **FFHH:** not verified. **NOT** launch-ready.
+
+**Scope:** Bounded pilot materialisation for `fitness_for_human_habitation` / `repairing_standard`; operational convergence read-model (`active_standard_status_summary`); authority/lifecycle hardening; truthful UX + inspect panel; OPS readiness helpers. **No** upload-primary closure; **no** global planner materialisation; **no** asset-authoritative synthesis.
+
+**Surfaces:** `services/condition_standard_pilot_materialisation.py` (`evaluate_condition_standard_pilot_runtime_legitimacy`); `services/requirement_client_runtime_surface.py` (bounded pilot pass); `services/ops_condition_standard_readiness.py`; admin `POST …/condition-standard-pilot-materialise`; `ConditionStandardOperationalInspectPanel`; `docs/audit/CONDITION_STANDARD_ACTIVE_STANDARD_OPS.md`.
+
+**Pilot allowlist:** England FFHH `6bcc43c0…` / `3a69dcbd…`; Scotland RS `ec0b091b…` / `def23b30…` — rows exist only after explicit admin materialise invoke.
+
+**OPS programme:** `PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01` — `repairing_standard` browser attestation 2026-05-22: matrix/inspect/CTA/disclosure/refresh/**`?open=resolve`** **verified** (bundle `docs/audit/ops_verify_01_ec0b091b_def23b30_repairing_standard/`). Classification **`VERIFIED_OPERATIONALLY`** for RS only. FFHH **not run**.
+
+**Watchlist:** FFHH OPS not started; do not widen pilot allowlist; no fleet rollout.
+
+**Done when:** OPS bundles per obligation classify `VERIFIED_OPERATIONALLY` in same run — **met for `repairing_standard`**; **not met for FFHH**.
+
+---
+
 *Maintainers: **L-00x** rows use **§ Finishable unit contract**; **A1–G2** rows use **§ Recovery unit implementation contract** (end-to-end, status lifecycle, ten DONE gates). After each pass: update statuses (never skip `IMPLEMENTED_PENDING_VERIFICATION` → `VERIFIED` → `DONE`), paste closure evidence, unlock next unit. Do not declare wider launch without updating this file and the ten-gate table.*

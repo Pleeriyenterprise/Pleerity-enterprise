@@ -1,0 +1,28 @@
+{
+  "at": "2026-05-22T19:36:40.875268+00:00",
+  "programme": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01",
+  "property_preflight": {
+    "jurisdiction": "Scotland",
+    "tenancy_active_before": true,
+    "occupancy": "student"
+  },
+  "materialisation": {
+    "ok": true,
+    "action": "already_materialised",
+    "requirement_id": "2956d7c7-f282-424d-9cd4-97d0ac71559e",
+    "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+    "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+    "requirement_type": "repairing_standard"
+  },
+  "materialisation_checks": {
+    "requirement_id": "2956d7c7-f282-424d-9cd4-97d0ac71559e",
+    "client_surface_visible": true,
+    "workflow_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+    "ops_verification_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+    "applicability": "REQUIRED",
+    "primary_cta_label": null,
+    "primary_cta_route": null,
+    "upload_primary": false
+  },
+  "open_issues_before": 4
+}

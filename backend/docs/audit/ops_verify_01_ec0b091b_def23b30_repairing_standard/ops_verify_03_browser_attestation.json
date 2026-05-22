@@ -1,0 +1,35 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01",
+  "obligation": "repairing_standard",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "requirement_id": "2956d7c7-f282-424d-9cd4-97d0ac71559e",
+  "checkpoints": {
+    "CS-PRE": true,
+    "CS-B0": true,
+    "CS-O1": true,
+    "CS-O2": true,
+    "CS-O6": true,
+    "CS-O5": true,
+    "CS-O10": true,
+    "CS-O11": true,
+    "CS-O14": true
+  },
+  "browser_proof": {
+    "matrix_row_visible": true,
+    "intel_modal_open": true,
+    "inspect_panel": true,
+    "primary_cta": true,
+    "resolve_deeplink": true,
+    "refresh_persistence": true,
+    "disclosure_present": true,
+    "cta_not_upload_primary": true,
+    "forbidden_certificate_wording": false,
+    "post_issue_matrix": false
+  },
+  "client_api_visible": true,
+  "api_url": "http://127.0.0.1:8002",
+  "frontend_url": "http://127.0.0.1:3000",
+  "bundle": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_ec0b091b_def23b30_repairing_standard",
+  "at": "2026-05-22T22:52:40.732441+00:00",
+  "note": "browser-only re-attestation after runtime environment clean-up"
+}

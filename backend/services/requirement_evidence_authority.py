@@ -556,11 +556,14 @@ def _apply_evidence_governance_extensions(
             b["non_document_verification_status"] = str(top.get("verification_status"))
             b["primary_evidence_record_id"] = top.get("evidence_record_id")
     # Document-only / deferred policy satisfaction: structured assessment signals must still block false completion.
+    _enforce_operational_followup_guard()
     _enforce_external_assessment_followup_guard()
     _enforce_guided_declaration_confidence_guard()
     _enforce_registration_tracking_record_guard()
     _enforce_tenant_delivery_record_guard()
     _enforce_document_upload_certificate_validity_guard()
+    if str(m.get("status") or "").strip().upper() in ("COMPLIANT", "VALID") and unresolved_operational_state:
+        m["status"] = RequirementStatus.PENDING.value
     b["semantic_state"] = derive_semantic_state(
         authority_state=b.get("state"),
         state_reason=b.get("state_reason"),

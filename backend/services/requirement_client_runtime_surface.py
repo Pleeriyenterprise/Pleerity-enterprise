@@ -5,7 +5,12 @@ exports, dashboards, notifications, calendar, unified tasks, etc.).
 INVARIANT — all client-facing requirement output must pass through published runtime
 eligibility + jurisdiction + condition filtering aligned with ``build_requirement_plan_for_property``
 (planner truth for catalog-backed rows), plus row-level NOT_REQUIRED / visibility / hidden-action /
-archived-metadata gates. Prefer ``filter_requirement_rows_for_client_runtime_surfaces`` (async, DB-aware)
+archived-metadata gates.
+
+Bounded exception: allowlisted ``condition_standard_pilot_ops`` rows for
+``CONDITION_STANDARD_ACTIVE_STANDARD`` may pass without catalog planner membership when
+``evaluate_condition_standard_pilot_runtime_legitimacy`` returns true (see
+``services.condition_standard_pilot_materialisation``). Prefer ``filter_requirement_rows_for_client_runtime_surfaces`` (async, DB-aware)
 or call ``requirement_row_passes_client_runtime_surface_gates`` after you have loaded published entries
 and per-property plan type sets.
 """
@@ -25,6 +30,10 @@ from services.compliance_registry_conditions import property_matches_registry_co
 from services.compliance_rules_registry import (
     canonicalize_uk_portfolio_label,
     portfolio_jurisdiction_label,
+)
+from services.condition_standard_pilot_materialisation import (
+    evaluate_condition_standard_pilot_runtime_legitimacy,
+    is_condition_standard_pilot_runtime_legitimate,
 )
 from services.provisioning import REQUIREMENT_GENERATION_SOURCE_DB_RULE
 from services.requirement_code_registry import normalize_requirement_code
@@ -420,6 +429,14 @@ def requirement_row_passes_client_runtime_surface_gates(
     if not rtype:
         return False
 
+    if is_condition_standard_pilot_runtime_legitimate(
+        row,
+        property_doc=property_doc,
+        client_doc=client_doc,
+        published_registry_entries=published_registry_entries,
+    ):
+        return True
+
     if _needs_catalog_planner_membership(row):
         if rtype not in plan_types_lower:
             return False
@@ -442,6 +459,7 @@ def _first_exclusion_reason(
     property_doc: Dict[str, Any],
     client_doc: Optional[Dict[str, Any]],
     plan_types_lower: Set[str],
+    published_registry_entries: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
     if _status_upper(row.get("applicability")) == "NOT_REQUIRED" or _status_upper(row.get("status")) == "NOT_REQUIRED":
         return "not_required_row"
@@ -458,6 +476,16 @@ def _first_exclusion_reason(
     rtype = _norm_requirement_type(row)
     if not rtype:
         return "missing_requirement_type"
+    _ok_pilot, pilot_reason = evaluate_condition_standard_pilot_runtime_legitimacy(
+        row,
+        property_doc=property_doc,
+        client_doc=client_doc,
+        published_registry_entries=published_registry_entries,
+    )
+    if str(row.get("requirement_generation_source") or "").strip() == "condition_standard_pilot_ops":
+        if not _ok_pilot:
+            return f"condition_standard_pilot_not_legitimate:{pilot_reason}"
+        return None
     if _needs_catalog_planner_membership(row) and rtype not in plan_types_lower:
         return "not_in_planner_membership"
     return None
@@ -574,12 +602,25 @@ async def filter_requirement_rows_for_client_runtime_surfaces(
                 source=source,
             )
             if include_trace:
-                canon_row["_runtime_trace"] = {
+                _pilot_ok, _pilot_reason = evaluate_condition_standard_pilot_runtime_legitimacy(
+                    row,
+                    property_doc=prop,
+                    client_doc=client_doc,
+                    published_registry_entries=published_registry_entries,
+                )
+                trace: Dict[str, Any] = {
                     "included": True,
-                    "inclusion_reason": "passes_runtime_surface_gates",
+                    "inclusion_reason": (
+                        "condition_standard_pilot_runtime_legitimate"
+                        if _pilot_ok
+                        else "passes_runtime_surface_gates"
+                    ),
                     "matched_published_overlay": source in ("published", "both"),
                     "source": source,
                 }
+                if str(row.get("requirement_generation_source") or "").strip() == "condition_standard_pilot_ops":
+                    trace["condition_standard_pilot_runtime_legitimacy"] = _pilot_reason
+                canon_row["_runtime_trace"] = trace
             out.append(canon_row)
             out_by_property.setdefault(str(pid), []).append(canon_row)
 
@@ -702,6 +743,7 @@ async def explain_runtime_requirement_rows_for_property(
             property_doc=prop,
             client_doc=client_doc,
             plan_types_lower=plan_types,
+            published_registry_entries=published,
         )
         source = _runtime_source_for_row(
             row,

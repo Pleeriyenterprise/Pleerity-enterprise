@@ -135,3 +135,15 @@ export function executeRequirementPrimaryCta(ctx) {
   }
   return { handled: false, ta };
 }
+
+/**
+ * True when primary CTA execution navigated to an in-app route (resolve deeplink must not strip query over this).
+ * @param {{ handled?: boolean, blocked?: boolean, ta?: Record<string, unknown> }|null|undefined} result
+ */
+export function resolvePrimaryCtaNavigatedAway(result) {
+  if (!result?.handled || result.blocked) return false;
+  const ta = result.ta || {};
+  const handler = String(ta.primary_action_handler || '').trim().toLowerCase();
+  const route = String(ta.primary_route || '').trim();
+  return handler === 'navigate' && route.length > 0;
+}

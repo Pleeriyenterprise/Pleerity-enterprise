@@ -1,0 +1,63 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01",
+  "at": "2026-05-22T22:51:10.967402+00:00",
+  "steps": [
+    {
+      "step": "matrix_row_visible",
+      "ok": true,
+      "detail": "Repairing Standard\t\u2014\t\nCondition status needs review\n\nCondition status needs revi",
+      "at": "2026-05-22T22:51:20.032405+00:00"
+    },
+    {
+      "step": "intel_link_present",
+      "ok": true,
+      "detail": "count=1",
+      "at": "2026-05-22T22:51:20.035763+00:00"
+    },
+    {
+      "step": "intel_modal_open",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T22:51:23.251730+00:00"
+    },
+    {
+      "step": "inspect_panel",
+      "ok": true,
+      "detail": "OPERATIONAL CONDITION SUMMARY\n\nOpen remediation affecting property standard\n\nOpe",
+      "at": "2026-05-22T22:51:23.262237+00:00"
+    },
+    {
+      "step": "primary_cta",
+      "ok": true,
+      "detail": "Manage related issues",
+      "at": "2026-05-22T22:51:23.269235+00:00"
+    },
+    {
+      "step": "resolve_deeplink",
+      "ok": true,
+      "detail": "http://127.0.0.1:3000/operations/issues?property_id=def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "at": "2026-05-22T22:51:35.501558+00:00"
+    },
+    {
+      "step": "refresh_persistence",
+      "ok": true,
+      "detail": "Repairing Standard\t\u2014\t\nCondition status needs review\n\nCondition status needs revi",
+      "at": "2026-05-22T22:51:52.026119+00:00"
+    }
+  ],
+  "wording_checks": {
+    "forbidden_certificate_wording": false,
+    "operational_wording_present": true,
+    "disclosure_present": true,
+    "cta_not_upload_primary": true,
+    "refresh_persistence": true
+  },
+  "inspect_excerpt": "OPERATIONAL CONDITION SUMMARY\n\nOpen remediation affecting property standard\n\nOpen maintenance issues\n4\nOpen work orders\n7\nOpen risk signals\n7\nOpen compliance gaps\n10\n\nThis standard is monitored through property condition, open issues, remediation work, and audit history. A single uploaded document does not prove this standard is met.\n\nSupporting evidence may assist review but does not independently close this property standard.",
+  "requirement_row_excerpt": "Repairing Standard\t\u2014\t\nCondition status needs review\n\nCondition status needs review\n\n\t\u2014\t\u2014\tMedium\t\nManage related issues\nReview remediation progress\nNot applicable\nRequirement details",
+  "requirement_row_excerpt_post": "",
+  "screenshots": {
+    "matrix": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_ec0b091b_def23b30_repairing_standard\\screenshots\\repairing_standard_matrix.png",
+    "inspect": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_ec0b091b_def23b30_repairing_standard\\screenshots\\repairing_standard_inspect.png"
+  },
+  "primary_cta_label": "Manage related issues"
+}

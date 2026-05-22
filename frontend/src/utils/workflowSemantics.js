@@ -35,3 +35,22 @@ export function isConditionStandardWorkflowHint(wf, row) {
     .toLowerCase();
   return code === 'fitness_for_human_habitation' || code === 'repairing_standard';
 }
+
+const CONDITION_STANDARD_ACTIVE_STANDARD_FAMILY = 'CONDITION_STANDARD_ACTIVE_STANDARD';
+
+/**
+ * Backend-enriched condition-standard pilot rows (Phase 1).
+ * @param {Record<string, unknown>|null|undefined} row
+ */
+export function isConditionStandardActiveStandardRow(row) {
+  if (!row || typeof row !== 'object') return false;
+  const wf = String(row.workflow_family || '').trim();
+  const ops = String(row.ops_verification_family || '').trim();
+  if (wf === CONDITION_STANDARD_ACTIVE_STANDARD_FAMILY && ops === CONDITION_STANDARD_ACTIVE_STANDARD_FAMILY) {
+    return true;
+  }
+  if (wf === CONDITION_STANDARD_ACTIVE_STANDARD_FAMILY || ops === CONDITION_STANDARD_ACTIVE_STANDARD_FAMILY) {
+    return isConditionStandardWorkflowHint(row.workflow_class, row);
+  }
+  return false;
+}

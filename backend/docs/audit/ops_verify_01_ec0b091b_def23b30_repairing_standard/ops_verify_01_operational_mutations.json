@@ -1,0 +1,58 @@
+{
+  "at": "2026-05-22T21:41:12.600101+00:00",
+  "create_issue": {
+    "status": 200,
+    "body": {
+      "issue_id": "2231b2a1-c60f-46b3-bd1a-381354867167",
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "asset_id": "45819acb-9db7-47d9-b64d-aa5f3d269ae7",
+      "source": "client",
+      "category": "damp_mould",
+      "description": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01 damp condition ops verify 2026-05-22T21:41:12.931629+00:00",
+      "photos": [],
+      "reporter_name": null,
+      "reporter_contact": null,
+      "reported_urgency": "medium",
+      "severity": "medium",
+      "priority_score": 70,
+      "status": "triaged",
+      "recurrence_flag": true,
+      "risk_signal_id": null,
+      "created_from": "manual",
+      "source_requirement_code": null,
+      "operational_root_key": null,
+      "triggering_rule": null,
+      "created_at": "2026-05-22T21:41:13.700973+00:00",
+      "updated_at": "2026-05-22T21:41:13.700973+00:00",
+      "resolved_at": null,
+      "closed_at": null,
+      "triage": {
+        "severity": "medium",
+        "priority_score": 70,
+        "sla_hours": 72,
+        "recommended_contractor_type": "damp_inspection",
+        "reasoning": [
+          "Damp/mould mentioned; consider damp survey or inspection before repair.",
+          "Recurrence: 1 related work order(s) in last 90 days; priority boosted."
+        ]
+      },
+      "outcome": {
+        "score_change": -2,
+        "new_score": 12,
+        "risk_change": "unchanged",
+        "status_change": "unchanged",
+        "message": "Issue created -> Compliance score -2 -> Risk unchanged",
+        "idempotent": false
+      }
+    }
+  },
+  "issue_id": "2231b2a1-c60f-46b3-bd1a-381354867167",
+  "create_work_order": {
+    "status": 200
+  },
+  "resolve_issue": {
+    "status": 200
+  },
+  "issue_mutation_ok": true
+}

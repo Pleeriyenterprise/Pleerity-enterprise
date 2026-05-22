@@ -112,7 +112,10 @@ def derive_client_lifecycle_fields(
     ea = _ea_state(row)
     semantic = _semantic_upper(row)
     raw_code = str(row.get("requirement_code") or row.get("requirement_type") or "").strip()
-    canon = normalize_requirement_code(raw_code) or ""
+    canon = normalize_requirement_code(raw_code) or raw_code.lower().replace(" ", "_")
+    from services.requirement_truth import ACTIVE_STANDARD_CODES
+
+    is_condition_standard = canon in ACTIVE_STANDARD_CODES
 
     def pack(state: str, label: str, rsn: List[str]) -> Dict[str, Any]:
         return {
@@ -142,6 +145,33 @@ def derive_client_lifecycle_fields(
         return pack(NOT_APPLICABLE, "Not applicable", reasons)
 
     ta_text = str(row.get("tenancy_agreement_status_text") or "").strip()
+
+    if is_condition_standard:
+
+        def _condition_standard_operational_pack() -> Optional[Dict[str, Any]]:
+            summary = (
+                row.get("active_standard_status_summary")
+                if isinstance(row.get("active_standard_status_summary"), dict)
+                else {}
+            )
+            signals = summary.get("signal_counts") if isinstance(summary.get("signal_counts"), dict) else {}
+            if any(
+                int(signals.get(k) or 0) > 0
+                for k in ("open_issues", "open_work_orders", "open_risk_signals", "open_compliance_gaps")
+            ):
+                reasons.append("CONDITION_STANDARD_OPERATIONAL_SIGNALS_OPEN")
+                state = str(summary.get("state") or "").strip().lower()
+                if state == "remediation_in_progress":
+                    return pack(ACTION_REQUIRED, "Remediation in progress", reasons)
+                return pack(ACTION_REQUIRED, "Condition status needs review", reasons)
+            if str(summary.get("state") or "").strip().lower() in ("", "unknown"):
+                reasons.append("CONDITION_STANDARD_OPERATIONAL_SUMMARY_UNKNOWN")
+                return pack(ACTION_REQUIRED, "Awaiting operational review", reasons)
+            return None
+
+        cs_pack = _condition_standard_operational_pack()
+        if cs_pack is not None:
+            return cs_pack
 
     # --- PENDING_REVIEW (admin / V2 queue) ---
     if ea == EA_PENDING_ADMIN_REVIEW:
@@ -185,13 +215,13 @@ def derive_client_lifecycle_fields(
         return pack(ACTION_REQUIRED, "Action required", reasons)
 
     # --- VERIFIED (authority-backed current) ---
-    if ea == EA_VERIFIED_CURRENT:
+    if ea == EA_VERIFIED_CURRENT and not is_condition_standard:
         reasons.append("EA_VERIFIED_CURRENT")
         return pack(VERIFIED, "Verified", reasons)
-    if compliance_state == "VALID" and evidence_state == "VERIFIED":
+    if not is_condition_standard and compliance_state == "VALID" and evidence_state == "VERIFIED":
         reasons.append("COMPLIANCE_VALID_VERIFIED")
         return pack(VERIFIED, "Verified", reasons)
-    if status in ("COMPLIANT", "VALID") and evidence_state == "VERIFIED":
+    if not is_condition_standard and status in ("COMPLIANT", "VALID") and evidence_state == "VERIFIED":
         reasons.append("STATUS_SATISFIED_VERIFIED")
         return pack(VERIFIED, "Verified", reasons)
 

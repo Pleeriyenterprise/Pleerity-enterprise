@@ -1,0 +1,111 @@
+{
+  "enriched": {
+    "found": true,
+    "requirement_id": "2956d7c7-f282-424d-9cd4-97d0ac71559e",
+    "raw": {
+      "workflow_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "ops_verification_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "requirement_generation_source": "condition_standard_pilot_ops",
+      "client_surface_visible": true,
+      "applicability": "REQUIRED",
+      "applicability_state": "REQUIRED"
+    },
+    "enriched": {
+      "status": "PENDING",
+      "status_label": "Open remediation affecting property standard",
+      "evidence_badge_label": "Operational follow-up required",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "client_lifecycle_label": "Condition status needs review",
+      "needs_attention": null,
+      "take_action_primary": {
+        "label": "Manage related issues",
+        "route": "/operations/issues?property_id=def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+        "kind": "navigate",
+        "handler": "navigate",
+        "intent": "view_guidance"
+      },
+      "take_action_secondary": {
+        "label": "Review remediation progress",
+        "route": "/operations/work-orders?property_id=def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+        "kind": "navigate",
+        "handler": "navigate",
+        "external": false,
+        "intent": "maintenance"
+      },
+      "client_evidence_disclosure": "This standard is monitored through property condition, open issues, remediation work, and audit history. A single uploaded document does not prove this standard is met.",
+      "active_standard_status_summary": {
+        "state": "active_issues_present",
+        "signal_counts": {
+          "open_issues": 4,
+          "open_work_orders": 5,
+          "open_risk_signals": 5,
+          "open_compliance_gaps": 9
+        },
+        "read_only": true
+      },
+      "evidence_authority": {
+        "version": 1,
+        "state": "UPLOADED_UNCONFIRMED",
+        "state_reason": "operational_followup_required_condition_standard",
+        "effective_expiry_date": null,
+        "effective_expiry_is_null": true,
+        "effective_issue_date": null,
+        "effective_verified_document_id": null,
+        "expiry_source": "NONE",
+        "evidence_last_verified_at": null,
+        "evidence_last_updated_at": "2026-05-22T19:58:24.401567+00:00",
+        "mismatch_flag": false,
+        "mismatch_reason": null,
+        "evidence_confidence": null,
+        "authoritative_property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+        "evidence_scope_type": "PROPERTY",
+        "evidence_scope_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+        "predicted_document_type": null,
+        "match_outcome": null,
+        "match_confidence": null,
+        "mismatch_reason_code": null,
+        "evidence_match_blocks_satisfaction": false,
+        "primary_evidence_mode": null,
+        "evidence_confidence_level": null,
+        "non_document_verification_status": null,
+        "primary_evidence_record_id": null,
+        "semantic_state": "OPERATIONALLY_OPEN"
+      }
+    },
+    "ops_observability": {
+      "ops_verification_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "workflow_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "requirement_id": "2956d7c7-f282-424d-9cd4-97d0ac71559e",
+      "requirement_type": "repairing_standard",
+      "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "status": "PENDING",
+      "status_label": "Open remediation affecting property standard",
+      "evidence_badge_label": "Operational follow-up required",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "evidence_authority_state": "UPLOADED_UNCONFIRMED",
+      "evidence_authority_state_reason": "operational_followup_required_condition_standard",
+      "needs_attention": null,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "active_standard_status_summary": {
+        "state": "active_issues_present",
+        "signal_counts": {
+          "open_issues": 4,
+          "open_work_orders": 5,
+          "open_risk_signals": 5,
+          "open_compliance_gaps": 9
+        },
+        "read_only": true
+      },
+      "primary_cta_label": "Manage related issues",
+      "primary_cta_route": "/operations/issues?property_id=def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "client_evidence_disclosure": "This standard is monitored through property condition, open issues, remediation work, and audit history. A single uploaded document does not prove this standard is met."
+    },
+    "signal_counts_db": {
+      "open_issues": 4,
+      "open_work_orders": 5,
+      "open_risk_signals": 5,
+      "open_compliance_gaps": 9
+    }
+  }
+}

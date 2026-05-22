@@ -1,6 +1,7 @@
 import {
   buildPropertyComplianceResolveQueryLink,
   executeRequirementPrimaryCta,
+  resolvePrimaryCtaNavigatedAway,
   resolveRequirementActionWithRowContext,
 } from './requirementCtaParity';
 import { resolveRequirementAction } from './requirementTakeActionResolver';
@@ -137,6 +138,56 @@ describe('executeRequirementPrimaryCta', () => {
     expect(navigate).toHaveBeenCalledWith(
       buildPropertyComplianceResolveQueryLink('p1', 'r1', {}),
     );
+  });
+});
+
+describe('resolvePrimaryCtaNavigatedAway', () => {
+  it('returns true for handled navigate primary routes', () => {
+    expect(
+      resolvePrimaryCtaNavigatedAway({
+        handled: true,
+        ta: { primary_action_handler: 'navigate', primary_route: '/operations/issues?property_id=p1' },
+      }),
+    ).toBe(true);
+  });
+
+  it('returns false for guided modal flows', () => {
+    expect(
+      resolvePrimaryCtaNavigatedAway({
+        handled: true,
+        ta: { primary_action_handler: 'guided_evidence', primary_route: '' },
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('executeRequirementPrimaryCta condition-standard', () => {
+  it('navigates to issues route for operational primary CTA', () => {
+    const navigate = jest.fn();
+    const requirement = {
+      property_id: 'prop-1',
+      requirement_id: 'req-rs',
+      requirement_code: 'repairing_standard',
+      workflow_family: 'CONDITION_STANDARD_ACTIVE_STANDARD',
+      ops_verification_family: 'CONDITION_STANDARD_ACTIVE_STANDARD',
+      take_action: {
+        primary: {
+          label: 'Manage related issues',
+          route: '/operations/issues?property_id=prop-1',
+          kind: 'navigate',
+          handler: 'navigate',
+          intent: 'view_guidance',
+        },
+      },
+    };
+    const result = executeRequirementPrimaryCta({
+      requirement,
+      pagePropertyId: 'prop-1',
+      navigate,
+    });
+    expect(result.handled).toBe(true);
+    expect(navigate).toHaveBeenCalledWith('/operations/issues?property_id=prop-1');
+    expect(resolvePrimaryCtaNavigatedAway(result)).toBe(true);
   });
 });
 

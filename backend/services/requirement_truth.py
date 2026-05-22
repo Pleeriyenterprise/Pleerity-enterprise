@@ -66,8 +66,31 @@ ACTIVE_STANDARD_DISCLOSURE = (
 )
 ACTIVE_STANDARD_STATE_ACTIVE_ISSUES_PRESENT = "active_issues_present"
 ACTIVE_STANDARD_STATE_REMEDIATION_IN_PROGRESS = "remediation_in_progress"
+ACTIVE_STANDARD_STATE_OPEN_RISK_SIGNALS_PRESENT = "open_risk_signals_present"
+ACTIVE_STANDARD_STATE_OPEN_COMPLIANCE_GAPS_PRESENT = "open_compliance_gaps_present"
 ACTIVE_STANDARD_STATE_NO_OPEN_CONDITION_SIGNALS = "no_open_condition_signals"
 ACTIVE_STANDARD_STATE_UNKNOWN = "unknown"
+
+OPS_VERIFICATION_FAMILY_CONDITION_STANDARD = "CONDITION_STANDARD_ACTIVE_STANDARD"
+
+_ACTIVE_STANDARD_STATE_LABELS: Dict[str, str] = {
+    ACTIVE_STANDARD_STATE_ACTIVE_ISSUES_PRESENT: "Open remediation affecting property standard",
+    ACTIVE_STANDARD_STATE_REMEDIATION_IN_PROGRESS: "Remediation in progress",
+    ACTIVE_STANDARD_STATE_OPEN_RISK_SIGNALS_PRESENT: "Condition signals require review",
+    ACTIVE_STANDARD_STATE_OPEN_COMPLIANCE_GAPS_PRESENT: "Condition status needs review",
+    ACTIVE_STANDARD_STATE_NO_OPEN_CONDITION_SIGNALS: "Operational review in progress",
+    ACTIVE_STANDARD_STATE_UNKNOWN: "Awaiting operational review",
+}
+
+_ACTIVE_STANDARD_FORBIDDEN_CLIENT_TERMS = frozenset(
+    {
+        "property standard verified",
+        "fully compliant",
+        "requirement satisfied",
+        "standard confirmed",
+        "verified and current",
+    }
+)
 
 
 def _is_active_standard_code(raw_code: str) -> bool:
@@ -82,13 +105,35 @@ def _derive_active_standard_state(signal_counts: Dict[str, int]) -> str:
     gap_count = int(signal_counts.get("open_compliance_gaps", 0) or 0)
     wo_count = int(signal_counts.get("open_work_orders", 0) or 0)
     risk_count = int(signal_counts.get("open_risk_signals", 0) or 0)
-    if issue_count > 0 or gap_count > 0 or risk_count > 0:
+    if issue_count > 0:
         return ACTIVE_STANDARD_STATE_ACTIVE_ISSUES_PRESENT
+    if gap_count > 0:
+        return ACTIVE_STANDARD_STATE_OPEN_COMPLIANCE_GAPS_PRESENT
+    if risk_count > 0:
+        return ACTIVE_STANDARD_STATE_OPEN_RISK_SIGNALS_PRESENT
     if wo_count > 0:
         return ACTIVE_STANDARD_STATE_REMEDIATION_IN_PROGRESS
     if issue_count == 0 and gap_count == 0 and wo_count == 0 and risk_count == 0:
         return ACTIVE_STANDARD_STATE_NO_OPEN_CONDITION_SIGNALS
     return ACTIVE_STANDARD_STATE_UNKNOWN
+
+
+def build_active_standard_status_summary(signal_counts: Dict[str, int]) -> Dict[str, Any]:
+    """Read-model synthesis for condition-standard rows (property-scoped counts)."""
+    counts = {
+        "open_issues": int((signal_counts or {}).get("open_issues", 0) or 0),
+        "open_work_orders": int((signal_counts or {}).get("open_work_orders", 0) or 0),
+        "open_risk_signals": int((signal_counts or {}).get("open_risk_signals", 0) or 0),
+        "open_compliance_gaps": int((signal_counts or {}).get("open_compliance_gaps", 0) or 0),
+    }
+    state = _derive_active_standard_state(counts)
+    return {
+        "state": state,
+        "state_label": _ACTIVE_STANDARD_STATE_LABELS.get(state, "Awaiting operational review"),
+        "signal_counts": counts,
+        "ops_verification_family": OPS_VERIFICATION_FAMILY_CONDITION_STANDARD,
+        "read_only": True,
+    }
 
 
 def _active_standard_has_unresolved_operational_state(summary: Dict[str, Any]) -> bool:
@@ -104,11 +149,26 @@ def _active_standard_has_unresolved_operational_state(summary: Dict[str, Any]) -
 
 
 def _active_standard_runtime_copy(summary: Dict[str, Any], has_supporting_evidence: bool) -> Tuple[str, str]:
+    state = str(summary.get("state") or "").strip().lower()
+    state_label = str(summary.get("state_label") or "").strip()
+    if state_label and state_label.lower() not in _ACTIVE_STANDARD_FORBIDDEN_CLIENT_TERMS:
+        status_label = state_label
+    elif _active_standard_has_unresolved_operational_state(summary):
+        if state == ACTIVE_STANDARD_STATE_REMEDIATION_IN_PROGRESS:
+            status_label = "Remediation in progress"
+        elif state == ACTIVE_STANDARD_STATE_OPEN_RISK_SIGNALS_PRESENT:
+            status_label = "Condition signals require review"
+        elif state == ACTIVE_STANDARD_STATE_OPEN_COMPLIANCE_GAPS_PRESENT:
+            status_label = "Condition status needs review"
+        else:
+            status_label = "Open remediation affecting property standard"
+    else:
+        status_label = "Operational review in progress"
+    if has_supporting_evidence:
+        return (status_label, "Supporting evidence on file")
     if _active_standard_has_unresolved_operational_state(summary):
-        if has_supporting_evidence:
-            return ("Condition status needs review", "Supporting evidence recorded")
-        return ("Operational follow-up required", "Operational follow-up required")
-    return ("Condition status under operational review", "Supporting evidence recorded")
+        return (status_label, "Operational follow-up required")
+    return (status_label, "Awaiting operational review")
 
 
 def _multi_evidence_runtime_copy(is_complete: bool, has_uploaded_component: bool) -> Tuple[str, str]:
@@ -714,10 +774,16 @@ def enrich_requirement_dict(
         out["status_label"] = "Certificate on file — expiry review required"
         out["evidence_badge_label"] = "Current validity not confirmed"
 
-    if _is_active_standard and isinstance(out.get("active_standard_status_summary"), dict):
-        out["active_standard_status_summary"]["read_only"] = True
+    if _is_active_standard:
+        out["workflow_family"] = OPS_VERIFICATION_FAMILY_CONDITION_STANDARD
+        out["ops_verification_family"] = OPS_VERIFICATION_FAMILY_CONDITION_STANDARD
+        summary = out.get("active_standard_status_summary")
+        if not isinstance(summary, dict):
+            summary = build_active_standard_status_summary({})
+            out["active_standard_status_summary"] = summary
+        summary["read_only"] = True
         runtime_status_label, runtime_evidence_badge = _active_standard_runtime_copy(
-            out["active_standard_status_summary"],
+            summary,
             has_supporting_evidence=evidence_state in (
                 EVIDENCE_VERIFIED,
                 EVIDENCE_UPLOADED_UNVERIFIED,
@@ -727,6 +793,11 @@ def enrich_requirement_dict(
         # Condition standards are operational-convergence workflows: uploads are supporting, not closure semantics.
         out["status_label"] = runtime_status_label
         out["evidence_badge_label"] = runtime_evidence_badge
+        if _status_upper(out.get("status")) in ("COMPLIANT", "VALID") and _active_standard_has_unresolved_operational_state(
+            summary
+        ):
+            out["status"] = "PENDING"
+            out["status_label"] = runtime_status_label
 
     aud = (audience or "client").strip().lower()
     if aud == "admin":

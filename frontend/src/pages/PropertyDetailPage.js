@@ -97,6 +97,7 @@ import {
 import {
   executeRequirementPrimaryCta,
   GUIDED_CTA_UNAVAILABLE_TITLE,
+  resolvePrimaryCtaNavigatedAway,
 } from '../utils/requirementCtaParity';
 import {
   clientFacingVerificationLabel,
@@ -111,6 +112,7 @@ import {
   guidedMixedEvidenceInitialMode,
   isRightToRentMixedEvidencePendingReview,
 } from '../utils/rightToRentTrustPresentation';
+import { isConditionStandardActiveStandardRow } from '../utils/workflowSemantics';
 import { requirementHasPersistedClientSubmission } from '../utils/clientPersistedSubmissionPresentation';
 import ClientDocumentPreviewModal from '../components/client/ClientDocumentPreviewModal';
 import { downloadClientDocumentFile } from '../utils/clientDocumentPreview';
@@ -536,6 +538,8 @@ export default function PropertyDetailPage() {
     complianceResolveConsumedRef.current = rid;
     setPendingComplianceResolve(null);
 
+    let primaryResult = null;
+
     if (row && isRightToRentMixedEvidencePendingReview(row) && openGuidedEvidence) {
       openGuidedEvidence({
         propertyId,
@@ -544,7 +548,7 @@ export default function PropertyDetailPage() {
         initialEvidenceMode: guidedMode || undefined,
       });
     } else if (row) {
-      executeRequirementPrimaryCta({
+      primaryResult = executeRequirementPrimaryCta({
         requirement: row,
         pagePropertyId: propertyId,
         navigate,
@@ -556,6 +560,23 @@ export default function PropertyDetailPage() {
         onSubmitted: fetchData,
         guidedInitialOverride: guidedMode,
       });
+      if (
+        isConditionStandardActiveStandardRow(row) &&
+        !resolvePrimaryCtaNavigatedAway(primaryResult)
+      ) {
+        const fallbackRoute =
+          primaryResult?.ta?.primary_route ||
+          `/operations/issues?property_id=${encodeURIComponent(String(propertyId))}`;
+        navigate(fallbackRoute);
+        primaryResult = {
+          handled: true,
+          ta: {
+            ...(primaryResult?.ta || {}),
+            primary_route: fallbackRoute,
+            primary_action_handler: 'navigate',
+          },
+        };
+      }
     } else if (openGuidedEvidence) {
       openGuidedEvidence({
         propertyId,
@@ -566,7 +587,7 @@ export default function PropertyDetailPage() {
     }
 
     const q = new URLSearchParams(location.search || '');
-    if (q.get('open') === 'resolve') {
+    if (q.get('open') === 'resolve' && !resolvePrimaryCtaNavigatedAway(primaryResult)) {
       navigate({ pathname: `/properties/${propertyId}`, search: '', hash: location.hash || '' }, { replace: true });
     }
   }, [
