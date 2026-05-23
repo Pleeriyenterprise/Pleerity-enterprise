@@ -1,0 +1,33 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_04_risk_signals",
+  "authoritative_verification_owner": "ops_runtime_04_risk_signals",
+  "proof_mode": "operational_browser",
+  "classification": "FAIL_OPERATIONAL",
+  "secondary_flags": [
+    "propagation_lifecycle_incomplete",
+    "g9_fail",
+    "g10_fail",
+    "signal_remediation_coherence_fail",
+    "async_convergence_partial"
+  ],
+  "trust_risks": [],
+  "classified_at_utc": "2026-05-23T17:10:33.114244+00:00",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "checkpoints": {
+    "G0_preflight": true,
+    "G1_browser_client": true,
+    "G1_browser_contractor": true,
+    "G2_user_outcome": true,
+    "G3_system_outcome": false,
+    "G4_async_convergence": false,
+    "G5_refresh": true,
+    "G9_idempotency": false,
+    "G10_authority": false,
+    "signal_remediation_coherence": false
+  }
+}

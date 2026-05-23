@@ -1,0 +1,23 @@
+{
+  "probe": "tmp_f4_regen_integration_probe.py",
+  "executed_at_utc": "2026-05-23T16:57:00Z",
+  "environment": "local_service_code + staging_mongo",
+  "signal_id": "rs_2006b6155ccf",
+  "issue_id": "72a04b1f-e327-4004-b689-5e9e34c1d0e9",
+  "status_after_propagation": "acknowledged",
+  "regen_summary": {
+    "merged_in_place": 6,
+    "previous_active_removed": 0,
+    "operational_debt_signal_count": 5
+  },
+  "status_after_regen": {
+    "signal_id": "rs_2006b6155ccf",
+    "status": "acknowledged"
+  },
+  "pass": true,
+  "proves": [
+    "propagation transitions signal to acknowledged",
+    "heuristic regen merges in place without hard-deleting operational debt signal",
+    "stable signal_id preserved across regen cycle"
+  ]
+}

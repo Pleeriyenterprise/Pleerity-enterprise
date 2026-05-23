@@ -1,0 +1,19 @@
+{
+  "started_at_utc": "2026-05-23T17:09:06.564353+00:00",
+  "role": "contractor",
+  "steps": [
+    {
+      "step": "contractor_dashboard",
+      "ok": true,
+      "detail": "Contractor Portal\nF2 Ops Verify Heating\n(f2-ops-heating-wales@yopmail.com)\nSign ",
+      "at_utc": "2026-05-23T17:09:14.631328+00:00"
+    },
+    {
+      "step": "contractor_wo_detail",
+      "ok": false,
+      "detail": "Platforms\nServices\nPricing\nInsights\nAbout\nCheck Your Compliance Risk\nPortal logi",
+      "at_utc": "2026-05-23T17:09:17.831174+00:00"
+    }
+  ],
+  "finished_at_utc": "2026-05-23T17:09:18.039495+00:00"
+}

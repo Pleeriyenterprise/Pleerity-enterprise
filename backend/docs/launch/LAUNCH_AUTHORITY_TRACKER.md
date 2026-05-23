@@ -4749,7 +4749,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-01 — operational domain runtime closure (DEFINED — hardened charter)
 
-**Status:** **IN_PROGRESS** — F1 + F2 `VERIFIED_OPERATIONALLY`. F3 may proceed.
+**Status:** **IN_PROGRESS** — F1–F3 `VERIFIED_OPERATIONALLY`. F4 `FAIL_OPERATIONAL` (`20260523T162258Z`). F5 blocked.
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md)
 
@@ -4785,8 +4785,8 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 |--------|------|--------|----------------|
 | Issues | `ops_runtime_01_issues` | VERIFIED_OPERATIONALLY | Post-G9 remediation rerun `20260523T113129Z`; bundle `ops_runtime_01_issues_6fd5ac4c_d35a58ae` |
 | Work orders | `ops_runtime_02_work_orders` | VERIFIED_OPERATIONALLY | Post-deploy run `20260523T152330Z` commit `b921cbe7`; bundle `ops_runtime_02_work_orders_6fd5ac4c_d35a58ae` |
-| Contractor | `ops_runtime_03_contractor` | NOT_STARTED | — |
-| Risk signals | `ops_runtime_04_risk_signals` | NOT_STARTED | — |
+| Contractor | `ops_runtime_03_contractor` | VERIFIED_OPERATIONALLY | Run `20260523T154730Z`; bundle `ops_runtime_03_contractor_6fd5ac4c_d35a58ae` |
+| Risk signals | `ops_runtime_04_risk_signals` | FAIL_OPERATIONAL (remediation code ready) | Run `20260523T170410Z`; governance fix implemented locally; deploy + rerun required; bundle `ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae` |
 | Client sync | `ops_runtime_05_client_sync` | NOT_STARTED | — |
 | Rent ops | `ops_runtime_06_rent_ops` | NOT_STARTED | RENT-OPS baseline system integrity only; browser pending |
 | Tenant portal | `ops_runtime_07_tenant_portal` | NOT_STARTED | — |

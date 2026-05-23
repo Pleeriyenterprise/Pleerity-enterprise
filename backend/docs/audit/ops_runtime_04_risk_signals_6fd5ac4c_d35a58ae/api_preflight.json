@@ -1,0 +1,66 @@
+{
+  "at_utc": "2026-05-23T17:03:07.091668+00:00",
+  "authoritative_verification_owner": "ops_runtime_04_risk_signals",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "g9_probes_planned": [
+    "duplicate_create_issue_from_signal",
+    "duplicate_create_wo_from_issue",
+    "refresh_during_propagation",
+    "repeated_signal_status_read"
+  ],
+  "g10_probes_planned": [
+    "contractor_cannot_patch_signal",
+    "resolve_without_closure_forbidden",
+    "wo_completion_does_not_auto_clear_signal",
+    "issue_close_enables_execution_closure",
+    "unauthenticated_signal_forbidden"
+  ],
+  "propagation_lineage_expectations": {
+    "signal_to_issue": "issue.risk_signal_id == signal_id",
+    "issue_to_wo": "wo linked via issue create-work-order",
+    "signal_resolve_after_wo": "PATCH resolved succeeds after WO COMPLETED"
+  },
+  "checks": [
+    {
+      "name": "portfolio_risk_signals",
+      "ok": true,
+      "detail": "count=27"
+    },
+    {
+      "name": "signal_detail",
+      "ok": true,
+      "detail": "status=200 type=Electrical Risk"
+    },
+    {
+      "name": "suggested_actions",
+      "ok": true,
+      "detail": "actions=None"
+    },
+    {
+      "name": "property_risk_signals",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "unauthenticated_forbidden",
+      "ok": true,
+      "detail": "status=401"
+    },
+    {
+      "name": "queue_backlog",
+      "ok": true,
+      "detail": "pending=0"
+    }
+  ],
+  "queue_health": {
+    "checked": true,
+    "pending_or_processing": 0,
+    "healthy": true
+  },
+  "preflight_pass": true
+}

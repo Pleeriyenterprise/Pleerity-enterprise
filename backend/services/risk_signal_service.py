@@ -41,8 +41,17 @@ TREND_RISING = "rising"
 TREND_IMPROVING = "improving"
 STATUS_ACTIVE = "active"
 STATUS_ACKNOWLEDGED = "acknowledged"
+STATUS_REMEDIATION_IN_PROGRESS = "remediation_in_progress"
 STATUS_RESOLVED = "resolved"
 SOURCE_HEURISTIC = "heuristic"
+
+# Monotonic lifecycle ordering for propagation transitions (bounded F4 governance).
+_STATUS_LIFECYCLE_ORDER = {
+    STATUS_ACTIVE: 0,
+    STATUS_ACKNOWLEDGED: 1,
+    STATUS_REMEDIATION_IN_PROGRESS: 2,
+    STATUS_RESOLVED: 3,
+}
 
 # Client dismiss without execution closure (informational risk layer only)
 RISK_DISMISS_REASONS = frozenset({"no_action_required", "handled_externally", "duplicate"})
@@ -667,44 +676,84 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
         seen.add(key)
         unique_signals.append(s)
 
-    # Replace active heuristic signals for this property
-    deleted = await db.risk_signals.delete_many({
-        "client_id": client_id,
-        "property_id": property_id,
-        "status": STATUS_ACTIVE,
-        "source": SOURCE_HEURISTIC,
-    })
-    previous_active_removed = int(deleted.deleted_count)
+    # Lineage-preserving regen: merge heuristic refresh in place; never hard-delete operational debt.
+    from services.risk_signal_regen_governance import (
+        collect_operational_debt_signal_ids,
+        should_retain_signal_on_regen,
+        stable_signal_key,
+    )
 
-    inserted = []
+    existing_cursor = db.risk_signals.find(
+        {
+            "client_id": client_id,
+            "property_id": property_id,
+            "source": SOURCE_HEURISTIC,
+            "status": {"$ne": STATUS_RESOLVED},
+        },
+        {"_id": 0},
+    )
+    existing_signals = await existing_cursor.to_list(500)
+    existing_by_key: Dict[tuple, Dict[str, Any]] = {}
+    for doc in existing_signals:
+        key = stable_signal_key(doc.get("risk_type") or "", doc.get("asset_id"))
+        if key not in existing_by_key:
+            existing_by_key[key] = doc
+
+    operational_debt_ids = await collect_operational_debt_signal_ids(db, client_id, property_id)
+    merged_retained_ids: set = set()
+    inserted: List[Dict[str, Any]] = []
+    merged_count = 0
+
     for s in unique_signals:
-        signal_id = f"rs_{uuid.uuid4().hex[:12]}"
+        key = stable_signal_key(s["risk_type"], s.get("asset_id"))
         first_reason = (s["reasons"][0] if s.get("reasons") else "").strip()
         description = f"{s['risk_type']}: {first_reason}" if first_reason else s.get("recommended_action") or s["risk_type"]
         suggested_actions = _suggested_actions_for_signal(s["signal_category"], s["risk_type"])
-        doc = {
-            "signal_id": signal_id,
-            "client_id": client_id,
-            "property_id": property_id,
-            "asset_id": s.get("asset_id"),
+        refresh_fields: Dict[str, Any] = {
             "signal_category": s["signal_category"],
             "risk_type": s["risk_type"],
             "risk_level": s["risk_level"],
             "description": description,
             "suggested_actions": suggested_actions,
-            "trend": TREND_STABLE,
-            "score": None,
             "reasons": s["reasons"],
             "recommended_action": s["recommended_action"],
+            "updated_at": now_iso,
+            "metadata": s.get("metadata") or {},
+        }
+
+        existing_doc = existing_by_key.get(key)
+        if existing_doc and existing_doc.get("signal_id"):
+            signal_id = existing_doc["signal_id"]
+            merged_retained_ids.add(signal_id)
+            current_status = (existing_doc.get("status") or STATUS_ACTIVE).lower()
+            if current_status not in (STATUS_ACKNOWLEDGED, STATUS_REMEDIATION_IN_PROGRESS):
+                refresh_fields["status"] = STATUS_ACTIVE
+            await db.risk_signals.update_one(
+                {"signal_id": signal_id, "client_id": client_id},
+                {"$set": refresh_fields},
+            )
+            updated = {**existing_doc, **refresh_fields, "signal_id": signal_id}
+            inserted.append(updated)
+            merged_count += 1
+            continue
+
+        signal_id = f"rs_{uuid.uuid4().hex[:12]}"
+        doc = {
+            "signal_id": signal_id,
+            "client_id": client_id,
+            "property_id": property_id,
+            "asset_id": s.get("asset_id"),
+            "trend": TREND_STABLE,
+            "score": None,
             "status": STATUS_ACTIVE,
             "source": SOURCE_HEURISTIC,
             "generated_at": now_iso,
-            "updated_at": now_iso,
-            "metadata": s.get("metadata") or {},
+            **refresh_fields,
         }
         await db.risk_signals.insert_one(doc)
         doc.pop("_id", None)
         inserted.append(doc)
+        merged_retained_ids.add(signal_id)
         try:
             await create_audit_log(
                 action=AuditAction.RISK_SIGNAL_CREATED,
@@ -715,6 +764,33 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
             )
         except Exception as e:
             logger.warning("Audit log for risk signal create failed: %s", e)
+
+    delete_ids: List[str] = []
+    for doc in existing_signals:
+        sid = doc.get("signal_id")
+        if not sid or sid in merged_retained_ids:
+            continue
+        if should_retain_signal_on_regen(
+            doc,
+            operational_debt_ids=operational_debt_ids,
+            merged_retained_ids=merged_retained_ids,
+        ):
+            continue
+        if (doc.get("status") or "").lower() == STATUS_ACTIVE:
+            delete_ids.append(sid)
+
+    previous_active_removed = 0
+    if delete_ids:
+        deleted = await db.risk_signals.delete_many(
+            {
+                "client_id": client_id,
+                "property_id": property_id,
+                "signal_id": {"$in": delete_ids},
+                "status": STATUS_ACTIVE,
+                "source": SOURCE_HEURISTIC,
+            }
+        )
+        previous_active_removed = int(deleted.deleted_count)
 
     try:
         from services.automation_status_service import record_risk_refresh
@@ -727,6 +803,8 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
         "generated": len(inserted),
         "signals": inserted,
         "previous_active_removed": previous_active_removed,
+        "merged_in_place": merged_count,
+        "operational_debt_signal_count": len(operational_debt_ids),
     }
 
 
@@ -1155,6 +1233,54 @@ async def get_risk_signal_suggested_actions_view(
     }
 
 
+async def _advance_signal_lifecycle(
+    signal_id: str,
+    client_id: str,
+    target_status: str,
+    *,
+    propagation_meta: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Monotonic lifecycle transition for operational propagation (F4 governance)."""
+    if target_status not in _STATUS_LIFECYCLE_ORDER:
+        return
+    db = database.get_db()
+    doc = await db.risk_signals.find_one({"signal_id": signal_id, "client_id": client_id}, {"_id": 0, "status": 1})
+    if not doc:
+        return
+    current = (doc.get("status") or STATUS_ACTIVE).lower()
+    if current == STATUS_RESOLVED:
+        return
+    if _STATUS_LIFECYCLE_ORDER.get(current, 0) >= _STATUS_LIFECYCLE_ORDER[target_status]:
+        if not propagation_meta:
+            return
+    now_iso = _iso(_now())
+    set_doc: Dict[str, Any] = {"updated_at": now_iso}
+    if _STATUS_LIFECYCLE_ORDER.get(current, 0) < _STATUS_LIFECYCLE_ORDER[target_status]:
+        set_doc["status"] = target_status
+    if propagation_meta:
+        set_doc["propagation"] = propagation_meta
+    await db.risk_signals.update_one(
+        {"signal_id": signal_id, "client_id": client_id, "status": {"$ne": STATUS_RESOLVED}},
+        {"$set": set_doc},
+    )
+
+
+async def mark_signal_remediation_in_progress(
+    signal_id: str,
+    client_id: str,
+    *,
+    work_order_id: Optional[str] = None,
+    issue_id: Optional[str] = None,
+) -> None:
+    meta: Dict[str, Any] = {"work_order_id": work_order_id, "issue_id": issue_id}
+    await _advance_signal_lifecycle(
+        signal_id,
+        client_id,
+        STATUS_REMEDIATION_IN_PROGRESS,
+        propagation_meta={k: v for k, v in meta.items() if v},
+    )
+
+
 async def create_issue_from_risk_signal(
     signal_id: str,
     client_id: str,
@@ -1168,6 +1294,11 @@ async def create_issue_from_risk_signal(
     doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
     if not doc:
         raise ValueError("Risk signal not found or does not belong to this client")
+    from services.risk_signal_issue_idempotency import replay_open_issue_for_signal
+
+    replay = await replay_open_issue_for_signal(signal_id, client_id)
+    if replay:
+        return replay
     property_id = doc.get("property_id")
     if not property_id:
         raise ValueError("Risk signal has no property_id")
@@ -1183,6 +1314,13 @@ async def create_issue_from_risk_signal(
         category=None,
         asset_id=doc.get("asset_id"),
         risk_signal_id=signal_id,
+    )
+    issue_id = issue.get("issue_id")
+    await _advance_signal_lifecycle(
+        signal_id,
+        client_id,
+        STATUS_ACKNOWLEDGED,
+        propagation_meta={"issue_id": issue_id, "propagated_at": _iso(_now())},
     )
     await create_audit_log(
         action=AuditAction.ISSUE_CREATED_FROM_RISK_SIGNAL,
@@ -1225,8 +1363,13 @@ async def create_inspection_issue_from_risk_signal(
         asset_id=doc.get("asset_id"),
         risk_signal_id=signal_id,
     )
+    await _advance_signal_lifecycle(
+        signal_id,
+        client_id,
+        STATUS_ACKNOWLEDGED,
+        propagation_meta={"issue_id": issue.get("issue_id"), "propagated_at": _iso(_now()), "kind": "inspection_issue"},
+    )
     await create_audit_log(
-        action=AuditAction.INSPECTION_CREATED_FROM_RISK_SIGNAL,
         client_id=client_id,
         actor_id=reporter_id or "system",
         resource_type="maintenance_issue",
@@ -1270,6 +1413,11 @@ async def create_work_order_from_risk_signal(
         created_from="risk_signal",
         triggering_rule="user_confirmed_risk_signal_work_order",
         operational_root_key=root,
+    )
+    await mark_signal_remediation_in_progress(
+        signal_id,
+        client_id,
+        work_order_id=wo.get("work_order_id"),
     )
     await create_audit_log(
         action=AuditAction.WORK_ORDER_CREATED_FROM_RISK_SIGNAL,

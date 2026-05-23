@@ -1,0 +1,15 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_04_risk_signals",
+  "run_tag": "20260523T170248Z",
+  "authoritative_verification_owner": "ops_runtime_04_risk_signals",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "classification": "FAIL_OPERATIONAL",
+  "started_at_utc": "20260523T170248Z",
+  "finished_at_utc": "2026-05-23T17:10:33.116267+00:00"
+}

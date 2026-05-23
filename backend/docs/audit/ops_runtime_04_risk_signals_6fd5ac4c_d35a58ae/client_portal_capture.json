@@ -1,0 +1,37 @@
+{
+  "started_at_utc": "2026-05-23T17:06:19.225169+00:00",
+  "role": "client",
+  "steps": [
+    {
+      "step": "client_risk_signals_list",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T17:06:49.438794+00:00"
+    },
+    {
+      "step": "property_risk_signals_tab",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T17:07:55.304493+00:00"
+    },
+    {
+      "step": "client_issue_detail",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T17:08:19.789975+00:00"
+    },
+    {
+      "step": "client_job_detail",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T17:08:43.820970+00:00"
+    },
+    {
+      "step": "client_refresh_persistence",
+      "ok": true,
+      "detail": "reload",
+      "at_utc": "2026-05-23T17:09:06.432291+00:00"
+    }
+  ],
+  "finished_at_utc": "2026-05-23T17:09:06.564353+00:00"
+}

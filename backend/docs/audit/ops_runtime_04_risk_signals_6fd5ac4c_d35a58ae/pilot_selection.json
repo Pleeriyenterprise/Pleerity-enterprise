@@ -1,0 +1,202 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_04_risk_signals",
+  "authoritative_verification_owner": "ops_runtime_04_risk_signals",
+  "proof_mode": "operational_browser",
+  "selected_at_utc": "2026-05-23T17:02:53.284340+00:00",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "f1_dependency": {
+    "found": true,
+    "path": "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_01_issues",
+      "authoritative_verification_owner": "ops_runtime_01_issues",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T11:36:29.508914+00:00",
+      "mutations_verified_in_this_bundle": [
+        "issue_create",
+        "issue_view",
+        "issue_update",
+        "issue_status_transition",
+        "issue_close",
+        "issue_reopen_attempt",
+        "issue_refresh_persistence",
+        "issue_cross_surface_sync"
+      ],
+      "shared_dependency_bundle_ids": [],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true
+      }
+    }
+  },
+  "f2_dependency": {
+    "found": true,
+    "path": "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_02_work_orders",
+      "authoritative_verification_owner": "ops_runtime_02_work_orders",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T15:31:05.467793+00:00",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "mutations_verified_in_this_bundle": [
+        "issue_create_for_wo_source",
+        "work_order_create_from_issue",
+        "work_order_view",
+        "work_order_status_transition",
+        "work_order_complete",
+        "work_order_refresh_persistence",
+        "issue_wo_cross_surface_sync"
+      ],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true
+      }
+    }
+  },
+  "f3_dependency": {
+    "found": true,
+    "path": "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_03_contractor",
+      "authoritative_verification_owner": "ops_runtime_03_contractor",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T15:53:48.679592+00:00",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser_client": true,
+        "G1_browser_contractor": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true,
+        "visibility_trust": true
+      }
+    }
+  },
+  "session": {
+    "client_email": "nancy@yopmail.com",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "contractor_email": "f2-ops-heating-wales@yopmail.com",
+    "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde"
+  },
+  "pilot": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "jurisdiction": "Wales",
+    "predictive_maintenance": true,
+    "maintenance_workflows": true,
+    "recalculate_status": 200,
+    "active_signal_count": 16,
+    "primary_signal": {
+      "signal_id": "rs_a541ddb9b176",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "asset_id": null,
+      "signal_category": "asset",
+      "risk_type": "Electrical Risk",
+      "risk_level": "medium",
+      "description": "Electrical Risk: EICR overdue or missing",
+      "suggested_actions": [
+        "create_work_order",
+        "create_issue",
+        "schedule_inspection"
+      ],
+      "trend": "stable",
+      "score": null,
+      "reasons": [
+        "EICR overdue or missing"
+      ],
+      "recommended_action": "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
+      "status": "active",
+      "source": "heuristic",
+      "generated_at": "2026-05-23T17:02:59.904248+00:00",
+      "updated_at": "2026-05-23T17:02:59.904248+00:00",
+      "metadata": {},
+      "risk_type_label_client": "Electrical safety concern",
+      "risk_type_label_admin": "Electrical risk",
+      "recommended_action_client": "Review your electrical certificate and arrange an inspection if it is due or out of date."
+    },
+    "g9_probe_signal": {
+      "signal_id": "rs_fe1770ce46cf",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "asset_id": null,
+      "signal_category": "asset",
+      "risk_type": "Recurring Repairs Risk",
+      "risk_level": "high",
+      "description": "Recurring Repairs Risk: Same asset/category has 31 issues or work orders in the last 12 months",
+      "suggested_actions": [
+        "create_work_order",
+        "create_issue",
+        "schedule_inspection"
+      ],
+      "trend": "stable",
+      "score": null,
+      "reasons": [
+        "Same asset/category has 31 issues or work orders in the last 12 months"
+      ],
+      "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+      "status": "active",
+      "source": "heuristic",
+      "generated_at": "2026-05-23T17:02:59.904248+00:00",
+      "updated_at": "2026-05-23T17:02:59.904248+00:00",
+      "metadata": {},
+      "risk_type_label_client": "Repeated repairs detected",
+      "risk_type_label_admin": "Recurring repairs risk",
+      "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+    },
+    "linked_operational_surfaces": [
+      "/operations/risk-signals",
+      "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad (Risk signals tab)",
+      "/operations/issues/:issueId",
+      "/operations/jobs/:jobId",
+      "/contractor"
+    ],
+    "propagation_paths": [
+      "POST /client/maintenance/risk-signals/{id}/create-issue",
+      "POST /client/maintenance/issues/{id}/create-work-order",
+      "PATCH /client/maintenance/risk-signals/{id} (acknowledged|resolved)"
+    ]
+  },
+  "ready": true
+}

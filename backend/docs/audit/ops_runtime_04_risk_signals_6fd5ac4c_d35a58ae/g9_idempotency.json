@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-05-23T17:05:16.705704+00:00",
+  "probes": [
+    {
+      "name": "duplicate_create_issue_from_signal",
+      "signal_id": "rs_90b74155807b",
+      "first_status": 200,
+      "second_status": 400,
+      "first_issue_id": "61bb4a91-dce5-4185-904b-0e613a07bbbb",
+      "second_issue_id": null,
+      "linked_marker_issues": 1,
+      "pass": false
+    },
+    {
+      "name": "duplicate_create_wo_from_issue",
+      "first_status": 200,
+      "second_status": 200,
+      "first_wo": "cdc1f384-50c5-4921-9cb8-8507d7cb8182",
+      "second_wo": "cdc1f384-50c5-4921-9cb8-8507d7cb8182",
+      "same_or_replay": true,
+      "pass": true
+    },
+    {
+      "name": "repeated_signal_evaluation_read",
+      "pass": false,
+      "status_a": null,
+      "status_b": null
+    }
+  ],
+  "pass": false
+}

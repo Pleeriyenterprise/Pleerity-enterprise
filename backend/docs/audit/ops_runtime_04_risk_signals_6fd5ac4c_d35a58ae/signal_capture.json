@@ -1,0 +1,509 @@
+{
+  "at_utc": "2026-05-23T17:04:05.953676+00:00",
+  "signal_id": "rs_a541ddb9b176",
+  "signal": {
+    "signal_id": "rs_a541ddb9b176",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "asset_id": null,
+    "signal_category": "asset",
+    "risk_type": "Electrical Risk",
+    "risk_level": "medium",
+    "description": "Electrical Risk: EICR overdue or missing",
+    "suggested_actions": [
+      "create_work_order",
+      "create_issue",
+      "schedule_inspection"
+    ],
+    "trend": "stable",
+    "score": null,
+    "reasons": [
+      "EICR overdue or missing"
+    ],
+    "recommended_action": "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
+    "status": "active",
+    "source": "heuristic",
+    "generated_at": "2026-05-23T17:02:59.904248+00:00",
+    "updated_at": "2026-05-23T17:02:59.904248+00:00",
+    "metadata": {}
+  },
+  "property_signals": {
+    "summary": {
+      "total": 16,
+      "high": 11,
+      "medium": 5,
+      "low": 0,
+      "lastRecalculatedAt": "2026-05-23T17:02:59.904248+00:00"
+    },
+    "signals": [
+      {
+        "signal_id": "rs_a541ddb9b176",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": null,
+        "signal_category": "asset",
+        "risk_type": "Electrical Risk",
+        "risk_level": "medium",
+        "description": "Electrical Risk: EICR overdue or missing",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "EICR overdue or missing"
+        ],
+        "recommended_action": "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
+        "status": "active",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T17:02:59.904248+00:00",
+        "updated_at": "2026-05-23T17:02:59.904248+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Electrical safety concern",
+        "risk_type_label_admin": "Electrical risk",
+        "recommended_action_client": "Review your electrical certificate and arrange an inspection if it is due or out of date."
+      },
+      {
+        "signal_id": "rs_fe1770ce46cf",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": null,
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 31 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 31 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "active",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T17:02:59.904248+00:00",
+        "updated_at": "2026-05-23T17:02:59.904248+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_d90e4d39d635",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "2f6f7113-0808-408f-ab25-74f09c4d33e0",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 14 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 14 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "active",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T17:02:59.904248+00:00",
+        "updated_at": "2026-05-23T17:02:59.904248+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_e50e384d4d67",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "796b8ab7-ba9a-40ea-b845-6a52b953f6ac",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "medium",
+        "description": "Recurring Repairs Risk: Same asset/category has 3 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 3 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "active",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T17:02:59.904248+00:00",
+        "updated_at": "2026-05-23T17:02:59.904248+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_a9c4c3a19fc9",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "4494113d-75a3-46cf-bfca-6bba0c165f31",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 5 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 5 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "active",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T17:02:59.904248+00:00",
+        "updated_at": "2026-05-23T17:02:59.904248+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_1ec098f4f411",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": null,
+        "signal_category": "asset",
+        "risk_type": "Maintenance Frequency Risk",
+        "risk_level": "high",
+        "description": "Maintenance Frequency Risk: 54 maintenance issues or work orders in the last 6 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "54 maintenance issues or work orders in the last 6 months"
+        ],
+        "recommended_action": "Review property condition and inspect assets that are generating repeat reports.",
+        "status": "active",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T17:02:59.904248+00:00",
+        "updated_at": "2026-05-23T17:02:59.904248+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Frequent maintenance issues detected",
+        "risk_type_label_admin": "High maintenance frequency",
+        "recommended_action_client": "Review property condition and inspect assets that are generating repeat reports."
+      },
+      {
+        "signal_id": "rs_2006b6155ccf",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": null,
+        "signal_category": "asset",
+        "risk_type": "Electrical Risk",
+        "risk_level": "medium",
+        "description": "Electrical Risk: EICR overdue or missing",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "EICR overdue or missing"
+        ],
+        "recommended_action": "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T16:26:07.527755+00:00",
+        "updated_at": "2026-05-23T16:55:38.384932+00:00",
+        "metadata": {},
+        "propagation": {
+          "issue_id": "72a04b1f-e327-4004-b689-5e9e34c1d0e9",
+          "propagated_at": "2026-05-23T16:55:38.332444+00:00"
+        },
+        "risk_type_label_client": "Electrical safety concern",
+        "risk_type_label_admin": "Electrical risk",
+        "recommended_action_client": "Review your electrical certificate and arrange an inspection if it is due or out of date."
+      },
+      {
+        "signal_id": "rs_e53eeb345af8",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": null,
+        "signal_category": "asset",
+        "risk_type": "Electrical Risk",
+        "risk_level": "medium",
+        "description": "Electrical Risk: EICR overdue or missing",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "EICR overdue or missing"
+        ],
+        "recommended_action": "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T16:25:54.011840+00:00",
+        "updated_at": "2026-05-23T16:55:38.567262+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Electrical safety concern",
+        "risk_type_label_admin": "Electrical risk",
+        "recommended_action_client": "Review your electrical certificate and arrange an inspection if it is due or out of date."
+      },
+      {
+        "signal_id": "rs_c931ea93ee6d",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": null,
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 31 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 31 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T16:25:54.011840+00:00",
+        "updated_at": "2026-05-23T16:55:38.567262+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_7b1499200de0",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "2f6f7113-0808-408f-ab25-74f09c4d33e0",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 14 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 14 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T16:25:54.011840+00:00",
+        "updated_at": "2026-05-23T16:55:38.567262+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_8f6bd26e1eda",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "796b8ab7-ba9a-40ea-b845-6a52b953f6ac",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "medium",
+        "description": "Recurring Repairs Risk: Same asset/category has 3 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 3 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T16:25:54.011840+00:00",
+        "updated_at": "2026-05-23T16:55:38.567262+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_9dd5fde77967",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "4494113d-75a3-46cf-bfca-6bba0c165f31",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 5 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 5 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T16:25:54.011840+00:00",
+        "updated_at": "2026-05-23T16:26:05.078124+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_109b00822458",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": null,
+        "signal_category": "asset",
+        "risk_type": "Maintenance Frequency Risk",
+        "risk_level": "high",
+        "description": "Maintenance Frequency Risk: 54 maintenance issues or work orders in the last 6 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "54 maintenance issues or work orders in the last 6 months"
+        ],
+        "recommended_action": "Review property condition and inspect assets that are generating repeat reports.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T16:25:54.011840+00:00",
+        "updated_at": "2026-05-23T16:55:38.567262+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Frequent maintenance issues detected",
+        "risk_type_label_admin": "High maintenance frequency",
+        "recommended_action_client": "Review property condition and inspect assets that are generating repeat reports."
+      },
+      {
+        "signal_id": "rs_70e1b1bba044",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "4494113d-75a3-46cf-bfca-6bba0c165f31",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 5 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 5 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T11:31:55.521458+00:00",
+        "updated_at": "2026-05-23T11:32:11.857298+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_a908d3d1e6fa",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "4494113d-75a3-46cf-bfca-6bba0c165f31",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 4 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 4 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T11:29:40.596018+00:00",
+        "updated_at": "2026-05-23T11:29:57.207353+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      },
+      {
+        "signal_id": "rs_4a3f2c236e57",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "asset_id": "4494113d-75a3-46cf-bfca-6bba0c165f31",
+        "signal_category": "asset",
+        "risk_type": "Recurring Repairs Risk",
+        "risk_level": "high",
+        "description": "Recurring Repairs Risk: Same asset/category has 5 issues or work orders in the last 12 months",
+        "suggested_actions": [
+          "create_work_order",
+          "create_issue",
+          "schedule_inspection"
+        ],
+        "trend": "stable",
+        "score": null,
+        "reasons": [
+          "Same asset/category has 5 issues or work orders in the last 12 months"
+        ],
+        "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+        "status": "acknowledged",
+        "source": "heuristic",
+        "generated_at": "2026-05-23T10:45:05.232566+00:00",
+        "updated_at": "2026-05-23T16:55:38.567262+00:00",
+        "metadata": {},
+        "risk_type_label_client": "Repeated repairs detected",
+        "risk_type_label_admin": "Recurring repairs risk",
+        "recommended_action_client": "Investigate the root cause instead of repeat patch repairs."
+      }
+    ]
+  }
+}

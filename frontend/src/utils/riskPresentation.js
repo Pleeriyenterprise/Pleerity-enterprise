@@ -43,6 +43,7 @@ export function humanStatus(status) {
   const value = String(status || '').toLowerCase();
   if (value === 'active') return 'Open';
   if (value === 'acknowledged') return 'In progress';
+  if (value === 'remediation_in_progress') return 'Remediation in progress';
   if (value === 'resolved') return 'Resolved';
   if (!status) return 'Open';
   return operationalLabelForToken(status, { emptyLabel: 'Open' });

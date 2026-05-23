@@ -391,4 +391,17 @@ async def create_work_order_from_issue(
         {"issue_id": issue_id, "client_id": client_id},
         {"$set": {"status": STATUS_READY_FOR_WORK_ORDER, "updated_at": datetime.now(timezone.utc).isoformat()}},
     )
+    risk_signal_id = issue.get("risk_signal_id")
+    if risk_signal_id:
+        try:
+            from services.risk_signal_service import mark_signal_remediation_in_progress
+
+            await mark_signal_remediation_in_progress(
+                str(risk_signal_id).strip(),
+                client_id,
+                work_order_id=doc.get("work_order_id"),
+                issue_id=issue_id,
+            )
+        except Exception as exc:
+            logger.debug("risk signal remediation_in_progress skip: %s", exc)
     return doc

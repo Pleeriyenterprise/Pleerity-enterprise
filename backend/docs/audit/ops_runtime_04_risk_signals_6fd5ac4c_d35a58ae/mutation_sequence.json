@@ -1,0 +1,87 @@
+{
+  "started_at_utc": "2026-05-23T17:04:10.864894+00:00",
+  "signal_id": "rs_a541ddb9b176",
+  "steps": [
+    {
+      "step": "signal_visible",
+      "ok": true,
+      "detail": "status=active",
+      "at_utc": "2026-05-23T17:04:12.824958+00:00"
+    },
+    {
+      "step": "signal_create_issue",
+      "ok": true,
+      "detail": "issue=9adc5d71-5088-4433-957b-0ade3dacc3fb link=rs_a541ddb9b176",
+      "at_utc": "2026-05-23T17:04:24.484673+00:00"
+    },
+    {
+      "step": "signal_acknowledged_on_propagation",
+      "ok": false,
+      "detail": "status=None",
+      "at_utc": "2026-05-23T17:04:27.273911+00:00"
+    },
+    {
+      "step": "issue_visible",
+      "ok": true,
+      "detail": "status=triaged",
+      "at_utc": "2026-05-23T17:04:29.247117+00:00"
+    },
+    {
+      "step": "issue_create_wo",
+      "ok": true,
+      "detail": "wo=cd8811e0-2b71-4b4a-9dbe-a7c175b1be01",
+      "at_utc": "2026-05-23T17:04:32.740971+00:00"
+    },
+    {
+      "step": "assign_contractor",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T17:04:37.573559+00:00"
+    },
+    {
+      "step": "approve_quote",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T17:04:45.672451+00:00"
+    },
+    {
+      "step": "contractor_accept",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T17:04:48.120014+00:00"
+    },
+    {
+      "step": "contractor_in_progress",
+      "ok": true,
+      "detail": "st=IN_PROGRESS",
+      "at_utc": "2026-05-23T17:04:50.207463+00:00"
+    },
+    {
+      "step": "contractor_complete",
+      "ok": true,
+      "detail": "status=COMPLETED",
+      "at_utc": "2026-05-23T17:05:05.061487+00:00"
+    },
+    {
+      "step": "signal_persisted_after_wo",
+      "ok": false,
+      "detail": "signal_status=None http=404",
+      "at_utc": "2026-05-23T17:05:08.022402+00:00"
+    },
+    {
+      "step": "wo_completion_does_not_auto_clear_signal",
+      "ok": false,
+      "detail": "signal_status=None",
+      "at_utc": "2026-05-23T17:05:08.022402+00:00"
+    },
+    {
+      "step": "signal_resolve_after_execution",
+      "ok": false,
+      "detail": "status=None detail={\"detail\":\"Risk signal not found or invalid status\"}",
+      "at_utc": "2026-05-23T17:05:10.807804+00:00"
+    }
+  ],
+  "issue_id": "9adc5d71-5088-4433-957b-0ade3dacc3fb",
+  "work_order_id": "cd8811e0-2b71-4b4a-9dbe-a7c175b1be01",
+  "finished_at_utc": "2026-05-23T17:05:10.807804+00:00"
+}
