@@ -374,6 +374,7 @@ export default function PropertyDetailPage() {
   const [createIssueOpen, setCreateIssueOpen] = useState(false);
   const [createIssueForm, setCreateIssueForm] = useState({ description: '', category: 'general' });
   const [createIssueSaving, setCreateIssueSaving] = useState(false);
+  const createIssueInFlightRef = useRef(false);
   const [assets, setAssets] = useState([]);
   const [assetsSummary, setAssetsSummary] = useState(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -1065,10 +1066,14 @@ export default function PropertyDetailPage() {
 
   const handleCreateIssue = (e) => {
     e.preventDefault();
+    if (createIssueInFlightRef.current || createIssueSaving) {
+      return;
+    }
     if (!createIssueForm.description?.trim()) {
       toast.error('Enter a description');
       return;
     }
+    createIssueInFlightRef.current = true;
     setCreateIssueSaving(true);
     clientAPI.createMaintenanceIssue({
       property_id: propertyId,
@@ -1076,7 +1081,8 @@ export default function PropertyDetailPage() {
       category: createIssueForm.category || undefined,
     })
       .then((res) => {
-        toast.success('Issue created and triaged');
+        const idempotentReplay = Boolean(res.data?.idempotent_replay);
+        toast.success(idempotentReplay ? 'This issue was already recorded.' : 'Issue created and triaged');
         setCreateIssueOpen(false);
         setCreateIssueForm({ description: '', category: 'general' });
         loadMaintenanceIssues();
@@ -1084,7 +1090,10 @@ export default function PropertyDetailPage() {
         if (issueId) setIssueDetailDrawer(issueId);
       })
       .catch((err) => toast.error(err?.response?.data?.detail || 'Create failed'))
-      .finally(() => setCreateIssueSaving(false));
+      .finally(() => {
+        createIssueInFlightRef.current = false;
+        setCreateIssueSaving(false);
+      });
   };
 
   const handleCreateWoFromIssue = (issueId) => {

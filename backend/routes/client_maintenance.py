@@ -13,6 +13,12 @@ from database import database
 from middleware import client_route_guard
 from services import maintenance_service
 from services import maintenance_issues_service
+from services.maintenance_issue_create_idempotency import (
+    build_issue_create_fingerprint,
+    issue_create_abort,
+    issue_create_begin,
+    issue_create_complete,
+)
 from services import contractor_service
 from services import work_order_contractor_routing_service as wo_contractor_routing
 from services.ops_compliance_feature_flags import (
@@ -292,6 +298,28 @@ async def create_issue(request: Request, body: CreateIssueBody):
     user = await _require_maintenance_enabled(request)
     client_id = user["client_id"]
     await _enforce_maintenance_issue_create_rate_limit(client_id)
+    db = database.get_db()
+    actor_id = user.get("portal_user_id")
+    fingerprint = build_issue_create_fingerprint(
+        client_id=client_id,
+        property_id=body.property_id,
+        actor_id=actor_id,
+        description=body.description,
+        category=body.category,
+    )
+    mode, replay_doc = await issue_create_begin(
+        db,
+        fingerprint=fingerprint,
+        client_id=client_id,
+        property_id=body.property_id,
+    )
+    if mode == "replay" and replay_doc:
+        return replay_doc
+    if mode == "in_progress":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An identical issue is already being created. Please wait a moment and refresh.",
+        )
     try:
         doc = await maintenance_issues_service.create_issue(
             client_id=client_id,
@@ -305,6 +333,7 @@ async def create_issue(request: Request, body: CreateIssueBody):
             reported_urgency=body.reported_urgency,
             photos=body.photos,
         )
+        await issue_create_complete(db, fingerprint=fingerprint, issue_id=doc.get("issue_id"))
         try:
             actor_role = UserRole(user["role"]) if user.get("role") else None
         except Exception:
@@ -312,16 +341,24 @@ async def create_issue(request: Request, body: CreateIssueBody):
         await create_audit_log(
             action=AuditAction.MAINTENANCE_ISSUE_CREATED,
             actor_role=actor_role,
-            actor_id=user.get("portal_user_id"),
+            actor_id=actor_id,
             client_id=client_id,
             resource_type="maintenance_issue",
             resource_id=doc.get("issue_id"),
-            metadata={"property_id": body.property_id, "source": maintenance_issues_service.SOURCE_CLIENT},
+            metadata={
+                "property_id": body.property_id,
+                "source": maintenance_issues_service.SOURCE_CLIENT,
+                "idempotency_fingerprint": fingerprint,
+            },
             ip_address=request.client.host if request.client else None,
         )
         return doc
     except ValueError as e:
+        await issue_create_abort(db, fingerprint=fingerprint)
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception:
+        await issue_create_abort(db, fingerprint=fingerprint)
+        raise
 
 
 @router.get("/maintenance/issues")

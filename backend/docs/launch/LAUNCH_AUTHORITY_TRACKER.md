@@ -4747,4 +4747,61 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ---
 
+### PRELAUNCH-OPS-RUNTIME-VERIFY-01 — operational domain runtime closure (DEFINED — hardened charter)
+
+**Status:** **IN_PROGRESS** — F1 (issues) executed 2026-05-23: `FAIL_SYSTEM` + `TRUST_RISK_PRESENT` (G9 duplicate create). **Not** launch authorization; **not** compliance evidence replacement (`OPS-VERIFY-01`).
+
+**Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md)
+
+**Scope:** Real browser + async + DB verification for **operations runtime domains** only: issues, work orders, contractor portal, risk signals, client sync, rent ops (browser runtime), tenant portal visibility, cross-domain integration chain.
+
+**Core governance additions (rev 2):**
+
+| Mechanism | Purpose |
+|-----------|---------|
+| **Operational ownership model** | One authoritative family per mutation origin; no duplicate lifecycle verification |
+| **G9 Idempotency** | Repeat click / refresh / retry / async fanout duplicate protection |
+| **G10 Authority integrity** | Role-based mutation legitimacy; monotonic lifecycle; forbidden transitions |
+| **Family 8 anti-duplication** | Integration-only; references owner `07_classification.json` bundles |
+| **TRUST_RISK_PRESENT** | Blocks silent upgrade; tenant misinformation + false completion semantics |
+| **Rent Family 6 rule** | Prior `RENT-OPS-OPERATIONAL-VERIFY-01` = baseline system integrity only; browser rerun required for `VERIFIED_OPERATIONALLY` |
+
+**Operational ownership map:**
+
+| Mutation origin | Authoritative family | Slug |
+|-----------------|----------------------|------|
+| Issue lifecycle | 1 | `ops_runtime_01_issues` |
+| WO / job lifecycle | 2 | `ops_runtime_02_work_orders` |
+| Contractor sync | 3 | `ops_runtime_03_contractor` |
+| Risk propagation | 4 | `ops_runtime_04_risk_signals` |
+| Cross-surface convergence | 5 | `ops_runtime_05_client_sync` |
+| Rent lifecycle | 6 | `ops_runtime_06_rent_ops` |
+| Tenant-originated maintenance | 7 | `ops_runtime_07_tenant_portal` |
+| Full-chain integrity (integration only) | 8 | `ops_runtime_08_cross_domain` |
+
+**Family status:**
+
+| Family | Slug | Status | Classification |
+|--------|------|--------|----------------|
+| Issues | `ops_runtime_01_issues` | EXECUTED | `FAIL_SYSTEM` + `TRUST_RISK_PRESENT` (G9 duplicate create); bundle `ops_runtime_01_issues_6fd5ac4c_d35a58ae` |
+| Work orders | `ops_runtime_02_work_orders` | NOT_STARTED | — |
+| Contractor | `ops_runtime_03_contractor` | NOT_STARTED | — |
+| Risk signals | `ops_runtime_04_risk_signals` | NOT_STARTED | — |
+| Client sync | `ops_runtime_05_client_sync` | NOT_STARTED | — |
+| Rent ops | `ops_runtime_06_rent_ops` | NOT_STARTED | RENT-OPS baseline system integrity only; browser pending |
+| Tenant portal | `ops_runtime_07_tenant_portal` | NOT_STARTED | — |
+| Cross-domain | `ops_runtime_08_cross_domain` | NOT_STARTED | BLOCKED until upstream owner bundles exist |
+
+**Related baseline (does not confer runtime VERIFIED_OPERATIONALLY):**
+
+| Programme | Status |
+|-----------|--------|
+| `RENT-OPS-OPERATIONAL-VERIFY-01` | Baseline system integrity — `backend/docs/audit/rent_ops_verify_01/REPORT.md` |
+
+**Done when:** Each in-scope family `VERIFIED_OPERATIONALLY` or signed `WATCHLIST` with owner; no open `TRUST_RISK_PRESENT` without remediation plan; Family 8 references upstream owner bundles (no duplicate lifecycle proof).
+
+**Out of scope:** Launch authorization · UK rollout · asset-native synthesis · accounting certification · compliance authority redesign · planner redesign · AI ops orchestration · merging with OPS-VERIFY-01.
+
+---
+
 *Maintainers: **L-00x** rows use **§ Finishable unit contract**; **A1–G2** rows use **§ Recovery unit implementation contract** (end-to-end, status lifecycle, ten DONE gates). After each pass: update statuses (never skip `IMPLEMENTED_PENDING_VERIFICATION` → `VERIFIED` → `DONE`), paste closure evidence, unlock next unit. Do not declare wider launch without updating this file and the ten-gate table.*

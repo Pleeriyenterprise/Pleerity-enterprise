@@ -2,7 +2,7 @@
  * Operations → Issues: portfolio-wide issue intake and triage workspace.
  * Primary content: Issues queue. Work orders accessible via link. Gated by maintenance_workflows.
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
@@ -44,6 +44,7 @@ function ClientIssuesPageInner() {
   const [issueDetailLoading, setIssueDetailLoading] = useState(false);
   const [creatingWoFromIssue, setCreatingWoFromIssue] = useState(null);
   const [planJobGate, setPlanJobGate] = useState(null);
+  const createIssueInFlightRef = useRef(false);
 
   const loadIssues = useCallback(() => {
     setIssuesLoading(true);
@@ -181,10 +182,14 @@ function ClientIssuesPageInner() {
 
   const handleCreateIssueSubmit = (e) => {
     e.preventDefault();
+    if (createIssueInFlightRef.current || createIssueSaving) {
+      return;
+    }
     if (!createForm.property_id || !createForm.description?.trim()) {
       toast.error('Select a property and enter a description');
       return;
     }
+    createIssueInFlightRef.current = true;
     setCreateIssueSaving(true);
     clientAPI
       .createMaintenanceIssue({
@@ -194,7 +199,10 @@ function ClientIssuesPageInner() {
       })
       .then((res) => {
         const outcomeMsg = res.data?.outcome?.message;
-        const base = outcomeMsg || 'Issue created and triaged.';
+        const idempotentReplay = Boolean(res.data?.idempotent_replay);
+        const base = idempotentReplay
+          ? 'This issue was already recorded.'
+          : (outcomeMsg || 'Issue created and triaged.');
         toast.success(base, reinforcementToastOptions(res.data?.outcome));
         if (res.data?.outcome && typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('compliance-outcome', { detail: res.data.outcome }));
@@ -206,7 +214,10 @@ function ClientIssuesPageInner() {
         if (issueId) setIssueDetailDrawer(issueId);
       })
       .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to create issue'))
-      .finally(() => setCreateIssueSaving(false));
+      .finally(() => {
+        createIssueInFlightRef.current = false;
+        setCreateIssueSaving(false);
+      });
   };
 
   const handleCreateWoFromIssue = (issueId) => {

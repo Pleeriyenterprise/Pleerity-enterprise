@@ -1,0 +1,23 @@
+{
+  "at_utc": "2026-05-23T10:45:31.294179+00:00",
+  "probes": [
+    {
+      "name": "duplicate_create_post",
+      "first_status": 200,
+      "second_status": 200,
+      "distinct_issue_ids": true,
+      "visible_rows_with_same_description": 2,
+      "pass": false,
+      "classification_if_fail": "FAIL_SYSTEM"
+    },
+    {
+      "name": "refresh_during_mutation",
+      "patch_status": 200,
+      "consistent_reads": true,
+      "pass": true
+    }
+  ],
+  "pass": false,
+  "trust_risk": true,
+  "fail_system": true
+}
