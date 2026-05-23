@@ -1,0 +1,37 @@
+{
+  "wait_seconds": 60,
+  "finished_at_utc": "2026-05-23T20:55:18.246121+00:00",
+  "final_snapshot": {
+    "at_utc": "2026-05-23T20:54:55.929693+00:00",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "light": false,
+    "summary_status": 200,
+    "summary": {
+      "rent_collected_this_month_minor": 171000,
+      "currency": "GBP",
+      "upcoming_due_count": 6,
+      "overdue_count": 2,
+      "severely_overdue_count": 0,
+      "partially_paid_count": 2,
+      "partial_overdue_count": 2,
+      "due_today_count": 0,
+      "tenancies_with_arrears_count": 1,
+      "average_payment_delay_days": 0.0,
+      "total_outstanding_minor": 674000
+    },
+    "total_outstanding_minor": 674000,
+    "overdue_count": 2,
+    "severely_overdue_count": 0,
+    "ledgers_status": 200,
+    "ledger_count": 10,
+    "payable_ledgers": 8
+  },
+  "final_ledger": {
+    "ledger_id": "rlp_e5d1e9522820",
+    "status": "PAID",
+    "outstanding": 0
+  },
+  "baseline_outstanding": 765000,
+  "final_outstanding": 674000,
+  "pass": true
+}

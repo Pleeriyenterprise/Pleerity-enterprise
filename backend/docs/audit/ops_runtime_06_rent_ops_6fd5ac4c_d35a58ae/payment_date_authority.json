@@ -1,0 +1,39 @@
+{
+  "at_utc": "2026-05-23T20:43:23.733963+00:00",
+  "probes": [
+    {
+      "name": "cross_month_payment_excluded_from_may_collected",
+      "pass": true,
+      "april_status": 200,
+      "before": 85000,
+      "after_april": 85000
+    },
+    {
+      "name": "partial_payment_increments_may_collected",
+      "pass": true,
+      "may_delta": 42500,
+      "expected_delta": 42500,
+      "status": 200
+    },
+    {
+      "name": "summary_snapshot_db_payment_date_coherence",
+      "pass": true,
+      "summary": 127500,
+      "snapshot": 127500,
+      "db_service": null,
+      "db_aggregate": null
+    }
+  ],
+  "pass": true,
+  "baseline": {
+    "summary_collected": 85000,
+    "snapshot_collected": 85000,
+    "summary_status": 200,
+    "snapshot_status": 200,
+    "summary_snapshot_match": true,
+    "db_collected": null
+  },
+  "lifecycle_partial_recorded": true,
+  "partial_amt": 42500,
+  "remainder_amt": 42500
+}

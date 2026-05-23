@@ -1,0 +1,17 @@
+{
+  "at_utc": "2026-05-23T15:51:03.081065+00:00",
+  "checks": [
+    {
+      "name": "no_cross_client_wo_leak",
+      "pass": true,
+      "foreign_count": 0
+    },
+    {
+      "name": "client_contractor_status_agreement",
+      "pass": true,
+      "client_status": "COMPLETED",
+      "contractor_status": "COMPLETED"
+    }
+  ],
+  "pass": true
+}

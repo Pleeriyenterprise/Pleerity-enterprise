@@ -1,0 +1,47 @@
+{
+  "started_at_utc": "2026-05-23T20:51:42.628160+00:00",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "captures": [
+    {
+      "name": "attention_mobile",
+      "has_attention_list": true,
+      "has_overdue_kpi": true,
+      "no_horizontal_chaos": true,
+      "body_preview": "Compliance Vault Pro\nPLE-CVP-2026-000028\nNancy Brandon\nLast updated: 23/05/2026, 21:51:51\n\u00b7 Last recorded activity: 17/0"
+    },
+    {
+      "name": "overdue_mobile",
+      "has_attention_list": false,
+      "has_overdue_kpi": true,
+      "no_horizontal_chaos": true,
+      "body_preview": "Compliance Vault Pro\nPLE-CVP-2026-000028\nNancy Brandon\nLast updated: 23/05/2026, 21:51:51\n\u00b7 Last recorded activity: 17/0"
+    },
+    {
+      "name": "partial_overdue_mobile",
+      "has_attention_list": false,
+      "has_overdue_kpi": true,
+      "no_horizontal_chaos": true,
+      "body_preview": "Compliance Vault Pro\nPLE-CVP-2026-000028\nNancy Brandon\nLast updated: 23/05/2026, 21:51:51\n\u00b7 Last recorded activity: 17/0"
+    },
+    {
+      "name": "ledger_mobile",
+      "has_attention_list": false,
+      "has_overdue_kpi": true,
+      "no_horizontal_chaos": true,
+      "body_preview": "Compliance Vault Pro\nPLE-CVP-2026-000028\nNancy Brandon\nLast updated: 23/05/2026, 21:52:19\n\u00b7 Last recorded activity: 17/0"
+    },
+    {
+      "name": "property_snapshot_mobile",
+      "has_attention_list": false,
+      "has_overdue_kpi": false,
+      "no_horizontal_chaos": true,
+      "body_preview": "Compliance Vault Pro\nPLE-CVP-2026-000028\nNancy Brandon\nLast updated: 23/05/2026, 21:52:44\n\u00b7 Last recorded activity: 17/0"
+    }
+  ],
+  "ux_assessment": "operational_control_centre",
+  "pass": true,
+  "finished_at_utc": "2026-05-23T20:53:48.137625+00:00"
+}

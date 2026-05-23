@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-05-23T19:08:22.906726+00:00",
+  "probes": [
+    {
+      "name": "completed_wo_not_shown_as_open_in_api",
+      "pass": true,
+      "status": "COMPLETED"
+    },
+    {
+      "name": "no_duplicate_wo_rows_for_same_id",
+      "pass": true,
+      "visible_rows": 1
+    },
+    {
+      "name": "issue_not_false_closed_while_wo_complete",
+      "pass": true,
+      "issue_status": "ready_for_work_order",
+      "open_count": 41
+    },
+    {
+      "name": "open_count_not_false_zero_with_marker_open",
+      "pass": true,
+      "marker_open": 1,
+      "open_count": 41
+    }
+  ],
+  "pass": true
+}

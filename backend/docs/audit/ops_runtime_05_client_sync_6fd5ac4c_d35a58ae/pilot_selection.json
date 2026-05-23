@@ -1,0 +1,187 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_05_client_sync",
+  "authoritative_verification_owner": "ops_runtime_05_client_sync",
+  "proof_mode": "operational_browser",
+  "selected_at_utc": "2026-05-23T18:49:12.965358+00:00",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "f1_dependency": {
+    "found": true,
+    "path": "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_01_issues",
+      "authoritative_verification_owner": "ops_runtime_01_issues",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T11:36:29.508914+00:00",
+      "mutations_verified_in_this_bundle": [
+        "issue_create",
+        "issue_view",
+        "issue_update",
+        "issue_status_transition",
+        "issue_close",
+        "issue_reopen_attempt",
+        "issue_refresh_persistence",
+        "issue_cross_surface_sync"
+      ],
+      "shared_dependency_bundle_ids": [],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true
+      }
+    }
+  },
+  "f2_dependency": {
+    "found": true,
+    "path": "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_02_work_orders",
+      "authoritative_verification_owner": "ops_runtime_02_work_orders",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T15:31:05.467793+00:00",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "mutations_verified_in_this_bundle": [
+        "issue_create_for_wo_source",
+        "work_order_create_from_issue",
+        "work_order_view",
+        "work_order_status_transition",
+        "work_order_complete",
+        "work_order_refresh_persistence",
+        "issue_wo_cross_surface_sync"
+      ],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true
+      }
+    }
+  },
+  "f3_dependency": {
+    "found": true,
+    "path": "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_03_contractor",
+      "authoritative_verification_owner": "ops_runtime_03_contractor",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T15:53:48.679592+00:00",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser_client": true,
+        "G1_browser_contractor": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true,
+        "visibility_trust": true
+      }
+    }
+  },
+  "f4_dependency": {
+    "found": true,
+    "path": "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_04_risk_signals",
+      "authoritative_verification_owner": "ops_runtime_04_risk_signals",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T17:56:35.010012+00:00",
+      "deploy_commit": "a4b23caa",
+      "post_deploy_run_tag": "20260523T174844Z",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "mutations_verified_in_this_bundle": [
+        "risk_signal_visible",
+        "signal_stable_through_regen",
+        "signal_create_issue",
+        "issue_create_work_order",
+        "contractor_remediation_complete",
+        "signal_remediation_in_progress",
+        "signal_resolve_after_execution",
+        "g9_duplicate_create_issue_replay",
+        "g10_authority_integrity"
+      ],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser_client": true,
+        "G1_browser_contractor": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true,
+        "signal_remediation_coherence": true
+      }
+    }
+  },
+  "session": {
+    "client_email": "nancy@yopmail.com",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
+  },
+  "pilot": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "jurisdiction": "Wales",
+    "operational_surfaces": [
+      "/dashboard",
+      "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "/operations/issues",
+      "/operations/work-orders",
+      "/operations/risk-signals",
+      "/operations/command-center"
+    ],
+    "projection_apis": [
+      "GET /client/dashboard",
+      "GET /client/protection-snapshot",
+      "GET /client/command-center",
+      "GET /client/tasks/digest",
+      "GET /client/maintenance/issues/open-count"
+    ]
+  },
+  "ready": true
+}

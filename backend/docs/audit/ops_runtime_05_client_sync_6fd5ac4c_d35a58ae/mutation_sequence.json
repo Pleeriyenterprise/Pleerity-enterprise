@@ -1,0 +1,44 @@
+{
+  "started_at_utc": "2026-05-23T18:56:13.284000+00:00",
+  "steps": [
+    {
+      "step": "projection_open_issues_increments",
+      "ok": true,
+      "detail": "base=40 after=41 marker_open=1",
+      "at_utc": "2026-05-23T18:59:09.575318+00:00"
+    },
+    {
+      "step": "issue_create",
+      "ok": true,
+      "detail": "issue=225fd14f-eaab-4daa-bc6e-2507c5b1e4dd status=200 body={\"issue_id\":\"225fd14f-eaab-4daa-bc6e-2507c5b1e4dd\",\"client_id\":\"6fd5ac4c-3fd4-4112-ade7-156977deb49f\",\"property_id\":\"d35",
+      "at_utc": "2026-05-23T18:59:09.575318+00:00"
+    },
+    {
+      "step": "g9_stable_mid_mutation_reads",
+      "ok": true,
+      "detail": "a=41 b=41",
+      "at_utc": "2026-05-23T18:59:21.129106+00:00"
+    },
+    {
+      "step": "wo_create",
+      "ok": true,
+      "detail": "wo=45068cd8-52c3-47c3-85fb-731fbe5dd941",
+      "at_utc": "2026-05-23T19:02:13.352276+00:00"
+    },
+    {
+      "step": "projection_after_wo_complete",
+      "ok": true,
+      "detail": "completed_marker=1",
+      "at_utc": "2026-05-23T19:05:50.708209+00:00"
+    },
+    {
+      "step": "wo_completed_in_client_api",
+      "ok": true,
+      "detail": "status=COMPLETED",
+      "at_utc": "2026-05-23T19:05:56.407063+00:00"
+    }
+  ],
+  "issue_id": "225fd14f-eaab-4daa-bc6e-2507c5b1e4dd",
+  "work_order_id": "45068cd8-52c3-47c3-85fb-731fbe5dd941",
+  "finished_at_utc": "2026-05-23T19:05:56.407063+00:00"
+}

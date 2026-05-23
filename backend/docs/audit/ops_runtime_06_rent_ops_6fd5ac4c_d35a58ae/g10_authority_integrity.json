@@ -1,0 +1,30 @@
+{
+  "at_utc": "2026-05-23T20:50:01.798684+00:00",
+  "probes": [
+    {
+      "name": "paid_ledger_authority",
+      "pass": true,
+      "status": "PAID",
+      "outstanding": 0
+    },
+    {
+      "name": "marker_payments_present",
+      "pass": true,
+      "refs": [
+        "OPS-RUNTIME-F6-20260523T204027Z-partial",
+        "OPS-RUNTIME-F6-20260523T204027Z-remainder"
+      ]
+    },
+    {
+      "name": "no_duplicate_marker_partial_rows",
+      "pass": true,
+      "partial_ref_count": 1
+    },
+    {
+      "name": "arrears_not_false_cleared_while_other_debt",
+      "pass": true,
+      "payable_ledgers": 8
+    }
+  ],
+  "pass": true
+}

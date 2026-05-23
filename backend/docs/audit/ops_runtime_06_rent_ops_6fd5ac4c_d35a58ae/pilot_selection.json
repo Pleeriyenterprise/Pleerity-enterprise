@@ -1,0 +1,59 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_06_rent_ops",
+  "authoritative_verification_owner": "ops_runtime_06_rent_ops",
+  "proof_mode": "operational_browser",
+  "selected_at_utc": "2026-05-23T20:42:18.429604+00:00",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "f1_dependency": {
+    "path": "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY"
+  },
+  "f2_dependency": {
+    "path": "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY"
+  },
+  "f3_dependency": {
+    "path": "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY"
+  },
+  "f4_dependency": {
+    "path": "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY"
+  },
+  "f5_dependency": {
+    "path": "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY"
+  },
+  "pilot": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "tenancy_id": null,
+    "tenant_linkage": {
+      "tenant_name": "F6-probe-tenant",
+      "schedule_count": 1,
+      "tenant_portal_rent_ui": false,
+      "note": "Landlord rent ops verified; tenant portal has no rent ledger surface in this build"
+    },
+    "rent_operational_surfaces": [
+      "/operations/rent",
+      "GET /client/operations/rent/summary",
+      "GET /client/operations/rent/ledgers",
+      "POST /client/operations/rent/ledgers/{id}/payments"
+    ],
+    "ledger_baseline": {
+      "target_ledger_id": "rlp_2c5fcc856a17",
+      "target_status": "SEVERELY_OVERDUE",
+      "target_outstanding_minor": 85000,
+      "target_period_key": "2026-03",
+      "payable_ledger_count": 9
+    }
+  },
+  "ready": true
+}

@@ -1,0 +1,25 @@
+{
+  "started_at_utc": "2026-05-23T20:48:01.159015+00:00",
+  "ledger_id": "rlp_e5d1e9522820",
+  "partial_overdue_ledger_id": "rlp_2c5fcc856a17",
+  "cross_month_ledger_id": "rlp_7ec06eba8a20",
+  "steps": [
+    {
+      "step": "payment_date_authority",
+      "ok": true
+    },
+    {
+      "step": "partial_overdue_truth",
+      "ok": true
+    },
+    {
+      "step": "monotonic_financial_truth",
+      "ok": true
+    },
+    {
+      "step": "reminder_reliability",
+      "ok": true
+    }
+  ],
+  "finished_at_utc": "2026-05-23T20:48:01.159015+00:00"
+}

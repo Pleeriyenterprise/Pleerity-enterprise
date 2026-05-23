@@ -1,0 +1,68 @@
+{
+  "started_at_utc": "2026-05-23T15:49:20.867793+00:00",
+  "steps": [
+    {
+      "step": "create_issue",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T15:49:32.464221+00:00"
+    },
+    {
+      "step": "create_wo",
+      "ok": true,
+      "detail": "wo=c0bb390b-bcbe-4bed-b7c5-beed2802858b",
+      "at_utc": "2026-05-23T15:49:36.116804+00:00"
+    },
+    {
+      "step": "client_assign_contractor",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T15:49:41.496176+00:00"
+    },
+    {
+      "step": "contractor_submit_quote",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T15:49:45.396214+00:00"
+    },
+    {
+      "step": "client_approve_quote",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T15:49:49.617191+00:00"
+    },
+    {
+      "step": "contractor_sees_assigned_wo",
+      "ok": true,
+      "detail": "list_count=5",
+      "at_utc": "2026-05-23T15:49:52.185517+00:00"
+    },
+    {
+      "step": "contractor_accept",
+      "ok": true,
+      "detail": "status=200 st=SCHEDULED",
+      "at_utc": "2026-05-23T15:49:54.067752+00:00"
+    },
+    {
+      "step": "contractor_in_progress",
+      "ok": true,
+      "detail": "status=IN_PROGRESS",
+      "at_utc": "2026-05-23T15:49:56.367643+00:00"
+    },
+    {
+      "step": "contractor_complete",
+      "ok": true,
+      "detail": "status=COMPLETED",
+      "at_utc": "2026-05-23T15:50:13.095016+00:00"
+    },
+    {
+      "step": "client_sees_contractor_completion",
+      "ok": true,
+      "detail": "wo=COMPLETED issue=ready_for_work_order",
+      "at_utc": "2026-05-23T15:50:17.963390+00:00"
+    }
+  ],
+  "issue_id": "e22a120d-33bd-4e5c-acbe-60fdd044c4b2",
+  "work_order_id": "c0bb390b-bcbe-4bed-b7c5-beed2802858b",
+  "finished_at_utc": "2026-05-23T15:50:17.963390+00:00"
+}

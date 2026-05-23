@@ -1,0 +1,42 @@
+{
+  "at_utc": "2026-05-23T15:49:13.211746+00:00",
+  "authoritative_verification_owner": "ops_runtime_03_contractor",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "g9_probes_planned": [
+    "duplicate_assign",
+    "duplicate_accept",
+    "refresh_during_mutation"
+  ],
+  "g10_probes_planned": [
+    "cross_contractor_wo_forbidden",
+    "unauthenticated_contractor_forbidden",
+    "forbidden_status_patch"
+  ],
+  "checks": [
+    {
+      "name": "contractor_wo_list",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "contractor_profile",
+      "ok": true,
+      "detail": "contractor_id=a1f2e3b4-c5d6-4789-a012-3456789abcde"
+    },
+    {
+      "name": "unauthenticated_contractor_forbidden",
+      "ok": true,
+      "detail": "status=401"
+    },
+    {
+      "name": "client_assignable_path",
+      "ok": true,
+      "detail": "status=200"
+    }
+  ],
+  "preflight_pass": true
+}

@@ -1,0 +1,24 @@
+{
+  "at_utc": "2026-05-23T20:44:29.433987+00:00",
+  "probes": [
+    {
+      "name": "tiny_partial_keeps_overdue_status",
+      "pass": true,
+      "status": "PARTIALLY_PAID",
+      "is_overdue": true,
+      "outstanding": 84000
+    },
+    {
+      "name": "partial_overdue_in_attention_queue",
+      "pass": true,
+      "attention_count": 3
+    },
+    {
+      "name": "partial_overdue_count_visible",
+      "pass": true,
+      "partial_overdue_count": 3
+    }
+  ],
+  "pass": true,
+  "ledger_id": "rlp_2c5fcc856a17"
+}

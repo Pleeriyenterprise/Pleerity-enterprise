@@ -1,0 +1,50 @@
+{
+  "at_utc": "2026-05-23T18:49:38.911724+00:00",
+  "authoritative_verification_owner": "ops_runtime_05_client_sync",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "g9_probes_planned": [
+    "repeated_protection_snapshot_read",
+    "refresh_during_issue_create",
+    "duplicate_open_count_read"
+  ],
+  "g10_probes_planned": [
+    "completed_wo_not_hidden_in_lists",
+    "open_count_coherent_after_completion",
+    "no_false_zero_open_issues"
+  ],
+  "projection_freshness_expectations": {
+    "open_issues_increments_on_create": true,
+    "marker_visible_in_issue_list": true,
+    "post_convergence_stable": true
+  },
+  "checks": [
+    {
+      "name": "dashboard_load",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "protection_snapshot",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "open_issues_count_api",
+      "ok": true,
+      "detail": "count=40"
+    },
+    {
+      "name": "command_center",
+      "ok": true,
+      "detail": "status=200"
+    }
+  ],
+  "preflight_pass": true,
+  "rate_limit_blocked": false
+}

@@ -1,0 +1,17 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_06_rent_ops",
+  "run_tag": "20260523T204027Z",
+  "authoritative_verification_owner": "ops_runtime_06_rent_ops",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "classification": "VERIFIED_OPERATIONALLY",
+  "ledger_id": "rlp_e5d1e9522820",
+  "finished_at_utc": "2026-05-23T20:55:18.268553+00:00"
+}

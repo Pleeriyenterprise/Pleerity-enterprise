@@ -1,0 +1,27 @@
+{
+  "at_utc": "2026-05-23T15:50:17.966508+00:00",
+  "probes": [
+    {
+      "name": "duplicate_assign_contractor",
+      "first_status": 200,
+      "second_status": 200,
+      "same_contractor": true,
+      "pass": true
+    },
+    {
+      "name": "duplicate_contractor_accept",
+      "first_status": 200,
+      "second_status": 400,
+      "pass": true,
+      "stable_status": true
+    },
+    {
+      "name": "refresh_during_mutation",
+      "patch_status": 200,
+      "consistent_reads": true,
+      "pass": true
+    }
+  ],
+  "visible_marker_wos": 2,
+  "pass": true
+}

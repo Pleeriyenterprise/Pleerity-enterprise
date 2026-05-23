@@ -1,0 +1,39 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_06_rent_ops",
+  "authoritative_verification_owner": "ops_runtime_06_rent_ops",
+  "proof_mode": "operational_browser",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "trust_risks": [],
+  "classified_at_utc": "2026-05-23T20:55:18.246121+00:00",
+  "run_tag": "20260523T204027Z",
+  "refinement_run": true,
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "payment_date_authority_result": "PASS",
+  "partial_overdue_truth_result": "PASS",
+  "mobile_operational_clarity_result": "PASS",
+  "monotonic_financial_truth_result": "PASS",
+  "reminder_reliability_result": "PASS",
+  "checkpoints": {
+    "G0_preflight": true,
+    "G1_browser_landlord": true,
+    "G2_user_outcome": true,
+    "G3_system_outcome": true,
+    "G4_async_convergence": true,
+    "G5_refresh": true,
+    "G9_idempotency": true,
+    "G10_authority": true,
+    "R1_payment_date_authority": true,
+    "R2_partial_overdue_truth": true,
+    "R3_mobile_clarity": true,
+    "R4_monotonic_truth": true,
+    "R5_reminder_reliability": true
+  }
+}

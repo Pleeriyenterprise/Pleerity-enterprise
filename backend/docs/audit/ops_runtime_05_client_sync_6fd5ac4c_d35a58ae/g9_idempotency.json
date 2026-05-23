@@ -1,0 +1,32 @@
+{
+  "at_utc": "2026-05-23T19:06:22.331274+00:00",
+  "probes": [
+    {
+      "name": "repeated_open_count_reads",
+      "reads": [
+        41,
+        41,
+        41
+      ],
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "pass": true
+    },
+    {
+      "name": "duplicate_protection_snapshot",
+      "first": 35,
+      "second": 35,
+      "pass": true
+    },
+    {
+      "name": "duplicate_tasks_digest",
+      "pass": true,
+      "status_a": 200,
+      "status_b": 200
+    }
+  ],
+  "pass": true
+}

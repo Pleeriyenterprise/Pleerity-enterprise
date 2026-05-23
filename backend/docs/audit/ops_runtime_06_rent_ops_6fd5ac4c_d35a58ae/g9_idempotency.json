@@ -1,0 +1,26 @@
+{
+  "at_utc": "2026-05-23T20:48:16.674621+00:00",
+  "probes": [
+    {
+      "name": "repeated_summary_reads",
+      "reads": [
+        674000,
+        674000,
+        674000
+      ],
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "pass": true
+    },
+    {
+      "name": "duplicate_payment_no_extra_debt",
+      "pass": true,
+      "dup_status": 400,
+      "payment_count": null
+    }
+  ],
+  "pass": true
+}

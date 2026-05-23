@@ -1,0 +1,64 @@
+{
+  "baseline": {
+    "at_utc": "2026-05-23T18:52:09.682124+00:00",
+    "light": false,
+    "dashboard_status": 200,
+    "dashboard": {
+      "properties_count": 6
+    },
+    "protection_snapshot_status": 200,
+    "protection_snapshot": {
+      "property_id_filter": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "account": {
+        "last_login_at": "2026-05-23T18:49:06.318004+00:00",
+        "failed_login_attempts": 0,
+        "account_locked": false,
+        "lock_reason": null
+      },
+      "compliance": {
+        "score": 26,
+        "grade": "F",
+        "requirements_overdue": 0,
+        "requirements_expiring_soon": 0,
+        "requirements_pending": 36
+      },
+      "operations": {
+        "open_maintenance_issues": 34,
+        "maintenance_workflows_enabled": true
+      },
+      "risk": {
+        "predictive_enabled": true,
+        "active_risk_signals_count": 6,
+        "high_or_critical_active_count": 5
+      }
+    },
+    "open_issues": 34,
+    "active_risk_signals": 6,
+    "open_count_status": 200,
+    "open_issues_count": 40,
+    "command_center_status": 200,
+    "command_center": {
+      "urgent_actions": 12,
+      "risk_preview": 0
+    },
+    "tasks_digest_status": 200,
+    "tasks_digest": {
+      "urgent_count": 6,
+      "upcoming_count": 12,
+      "in_progress_count": 46,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 6,
+        "items_due_or_expiring_in_7_days": 11,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    },
+    "issues_marker_total": 0,
+    "issues_marker_open": 0,
+    "wo_marker_total": 0,
+    "wo_marker_completed": 0
+  },
+  "at_utc": "2026-05-23T18:56:13.281979+00:00"
+}

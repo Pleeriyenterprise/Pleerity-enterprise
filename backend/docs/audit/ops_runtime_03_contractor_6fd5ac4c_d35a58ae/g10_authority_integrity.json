@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-05-23T15:50:51.604700+00:00",
+  "probes": [
+    {
+      "name": "unauthenticated_contractor_forbidden",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "contractor_forbidden_reopen_terminal",
+      "patch_status": 400,
+      "after": "COMPLETED",
+      "pass": true
+    },
+    {
+      "name": "unrelated_wo_hidden",
+      "status": 404,
+      "pass": true
+    },
+    {
+      "name": "contractor_complete_issue_not_false_closed",
+      "pass": true,
+      "issue_status": "ready_for_work_order",
+      "wo_status": "COMPLETED"
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,25 @@
+{
+  "started_at_utc": "2026-05-23T15:51:09.433142+00:00",
+  "role": "client",
+  "steps": [
+    {
+      "step": "client_job_detail",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T15:51:40.014808+00:00"
+    },
+    {
+      "step": "client_refresh_persistence",
+      "ok": true,
+      "detail": "reload",
+      "at_utc": "2026-05-23T15:52:03.516277+00:00"
+    },
+    {
+      "step": "client_work_orders_list",
+      "ok": true,
+      "detail": "list",
+      "at_utc": "2026-05-23T15:52:26.298130+00:00"
+    }
+  ],
+  "finished_at_utc": "2026-05-23T15:52:26.491807+00:00"
+}

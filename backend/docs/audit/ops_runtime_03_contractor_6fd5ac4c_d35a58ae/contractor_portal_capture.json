@@ -1,0 +1,25 @@
+{
+  "started_at_utc": "2026-05-23T15:52:26.491807+00:00",
+  "role": "contractor",
+  "steps": [
+    {
+      "step": "contractor_dashboard_assigned_wo",
+      "ok": true,
+      "detail": "Contractor Portal\nF2 Ops Verify Heating\n(f2-ops-heating-wales@yopmail.com)\nSign out\nUrgent actions\n\n",
+      "at_utc": "2026-05-23T15:52:34.087393+00:00"
+    },
+    {
+      "step": "contractor_job_detail",
+      "ok": true,
+      "detail": "Contractor Portal\nF2 Ops Verify Heating\n(f2-ops-heating-wales@yopmail.com)\nSign out\nUrgent actions\n\n",
+      "at_utc": "2026-05-23T15:52:36.218321+00:00"
+    },
+    {
+      "step": "contractor_refresh_persistence",
+      "ok": true,
+      "detail": "reload",
+      "at_utc": "2026-05-23T15:52:38.992581+00:00"
+    }
+  ],
+  "finished_at_utc": "2026-05-23T15:52:39.165258+00:00"
+}

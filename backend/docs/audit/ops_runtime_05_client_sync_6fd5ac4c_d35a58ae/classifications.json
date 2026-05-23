@@ -1,0 +1,37 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_05_client_sync",
+  "authoritative_verification_owner": "ops_runtime_05_client_sync",
+  "proof_mode": "operational_browser",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "trust_risks": [],
+  "classified_at_utc": "2026-05-23T19:18:10.004495+00:00",
+  "run_tag": "20260523T184731Z",
+  "mutations_verified_in_this_bundle": [
+    "baseline_projections",
+    "issue_create_open_count_increment",
+    "wo_create_and_contractor_complete",
+    "projection_after_wo_complete",
+    "g9_idempotency",
+    "g10_authority_integrity",
+    "browser_cross_surface",
+    "async_convergence"
+  ],
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "checkpoints": {
+    "G0_preflight": true,
+    "G1_browser_client": true,
+    "G2_user_outcome": true,
+    "G3_system_outcome": true,
+    "G4_async_convergence": true,
+    "G5_refresh": true,
+    "G9_idempotency": true,
+    "G10_authority": true
+  }
+}

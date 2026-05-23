@@ -1,0 +1,51 @@
+{
+  "at_utc": "2026-05-23T20:42:31.761787+00:00",
+  "authoritative_verification_owner": "ops_runtime_06_rent_ops",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "g9_probes_planned": [
+    "repeated_summary_reads",
+    "duplicate_payment_post_on_paid_ledger",
+    "refresh_during_payment"
+  ],
+  "g10_probes_planned": [
+    "paid_ledger_not_unpaid_after_convergence",
+    "arrears_not_false_cleared",
+    "allocation_integrity"
+  ],
+  "financial_authority_expectations": {
+    "partial_then_full_payment": true,
+    "summary_tracks_outstanding": true,
+    "no_duplicate_payment_debt": true
+  },
+  "checks": [
+    {
+      "name": "rent_operations_entitled",
+      "ok": true,
+      "detail": "status=200 rent=True"
+    },
+    {
+      "name": "rent_summary",
+      "ok": true,
+      "detail": "status=200 outstanding=765000"
+    },
+    {
+      "name": "rent_ledgers",
+      "ok": true,
+      "detail": "count=10"
+    },
+    {
+      "name": "payable_ledger_exists",
+      "ok": true,
+      "detail": "target selectable"
+    }
+  ],
+  "preflight_pass": true,
+  "rate_limit_blocked": false
+}

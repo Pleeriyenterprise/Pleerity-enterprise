@@ -1,0 +1,9 @@
+{
+  "at_utc": "2026-05-23T15:53:48.663617+00:00",
+  "wait_seconds": 60,
+  "work_order_status": "COMPLETED",
+  "contractor_status": "COMPLETED",
+  "issue_status": "ready_for_work_order",
+  "marker_wo_rows": 2,
+  "pass": true
+}

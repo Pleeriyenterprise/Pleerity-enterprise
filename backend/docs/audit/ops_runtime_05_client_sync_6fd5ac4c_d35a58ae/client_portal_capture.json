@@ -1,0 +1,56 @@
+{
+  "started_at_utc": "2026-05-23T19:09:07.077980+00:00",
+  "role": "client",
+  "steps": [
+    {
+      "step": "dashboard_load",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T19:10:32.502439+00:00"
+    },
+    {
+      "step": "issues_list",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T19:10:57.189400+00:00"
+    },
+    {
+      "step": "work_orders_list",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T19:11:22.236329+00:00"
+    },
+    {
+      "step": "risk_signals_list",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T19:11:45.955197+00:00"
+    },
+    {
+      "step": "issue_detail",
+      "ok": true,
+      "detail": "detail",
+      "at_utc": "2026-05-23T19:12:10.937081+00:00"
+    },
+    {
+      "step": "job_detail",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T19:12:34.977252+00:00"
+    },
+    {
+      "step": "job_detail_refresh_persistence",
+      "ok": true,
+      "detail": "reload",
+      "at_utc": "2026-05-23T19:12:57.087840+00:00"
+    },
+    {
+      "step": "property_page",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk As",
+      "at_utc": "2026-05-23T19:14:02.461640+00:00"
+    }
+  ],
+  "auth_mode": "form_login",
+  "finished_at_utc": "2026-05-23T19:14:02.675954+00:00"
+}

@@ -1,0 +1,32 @@
+{
+  "baseline_ledger": {
+    "ledger_id": "rlp_e5d1e9522820",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "schedule_id": "rs_30cde44a54b4",
+    "tenancy_id": null,
+    "tenant_name": "F6-probe-tenant",
+    "period_key": "2026-04",
+    "expected_amount_minor": 85000,
+    "currency": "GBP",
+    "rent_frequency": "monthly",
+    "due_date": "2026-04-05",
+    "received_amount_minor": 0,
+    "outstanding_balance_minor": 85000,
+    "status": "SEVERELY_OVERDUE",
+    "days_overdue": 48,
+    "is_overdue": true,
+    "waived_at": null,
+    "disputed_at": null,
+    "dispute_note": null,
+    "notes": null,
+    "created_at": "2026-05-23T19:39:30.016381+00:00",
+    "updated_at": "2026-05-23T19:39:30.016381+00:00",
+    "created_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+    "updated_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+    "is_deleted": false,
+    "payments": [],
+    "reminders": []
+  },
+  "at_utc": "2026-05-23T20:43:23.732625+00:00"
+}

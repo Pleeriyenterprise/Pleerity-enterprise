@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-05-23T20:47:32.413936+00:00",
+  "probes": [
+    {
+      "name": "mark_sent_idempotent",
+      "pass": true,
+      "key1": "RENT_OVERDUE_14D_rlp_2c5fcc856a17_2026-03",
+      "key2": "RENT_OVERDUE_14D_rlp_2c5fcc856a17_2026-03"
+    },
+    {
+      "name": "reminder_visible_on_ledger",
+      "pass": true,
+      "reminder_count": 1
+    },
+    {
+      "name": "worker_no_reminder_spam",
+      "pass": true,
+      "detail": "skip_no_mongo"
+    },
+    {
+      "name": "reminder_persists_after_refresh",
+      "pass": true,
+      "count": 1
+    }
+  ],
+  "pass": true,
+  "worker_runs": {
+    "run1": null,
+    "run2": null
+  }
+}

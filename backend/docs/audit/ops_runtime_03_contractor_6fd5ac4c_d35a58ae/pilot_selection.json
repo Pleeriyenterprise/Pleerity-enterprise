@@ -1,0 +1,113 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_03_contractor",
+  "authoritative_verification_owner": "ops_runtime_03_contractor",
+  "selected_at_utc": "2026-05-23T15:49:13.183278+00:00",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "f1_dependency": {
+    "found": true,
+    "path": "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_01_issues",
+      "authoritative_verification_owner": "ops_runtime_01_issues",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T11:36:29.508914+00:00",
+      "mutations_verified_in_this_bundle": [
+        "issue_create",
+        "issue_view",
+        "issue_update",
+        "issue_status_transition",
+        "issue_close",
+        "issue_reopen_attempt",
+        "issue_refresh_persistence",
+        "issue_cross_surface_sync"
+      ],
+      "shared_dependency_bundle_ids": [],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true
+      }
+    }
+  },
+  "f2_dependency": {
+    "found": true,
+    "path": "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_02_work_orders",
+      "authoritative_verification_owner": "ops_runtime_02_work_orders",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T15:31:05.467793+00:00",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "mutations_verified_in_this_bundle": [
+        "issue_create_for_wo_source",
+        "work_order_create_from_issue",
+        "work_order_view",
+        "work_order_status_transition",
+        "work_order_complete",
+        "work_order_refresh_persistence",
+        "issue_wo_cross_surface_sync"
+      ],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true
+      }
+    }
+  },
+  "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+  "contractor_email": "f2-ops-heating-wales@yopmail.com",
+  "contractor_portal_fixture": {
+    "at_utc": "2026-05-23T15:46:53.496523+00:00",
+    "ok": true,
+    "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+    "email": "f2-ops-heating-wales@yopmail.com",
+    "password_file": "REDACTED_LOCAL_ONLY",
+    "marker": "F3_ops_runtime_contractor_portal_v1",
+    "portal_login_ok": true
+  },
+  "session": {
+    "client_email": "nancy@yopmail.com",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "contractor_email": "f2-ops-heating-wales@yopmail.com",
+    "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde"
+  },
+  "pilot": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "jurisdiction": "Wales",
+    "contractor_portal_enabled": true,
+    "linked_operational_surfaces": [
+      "/operations/jobs/:id",
+      "/operations/work-orders",
+      "/contractor",
+      "/contractor/login"
+    ]
+  },
+  "ready": true
+}

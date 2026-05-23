@@ -1,0 +1,98 @@
+{
+  "at_utc": "2026-05-23T20:44:59.534136+00:00",
+  "probes": [
+    {
+      "name": "remainder_payment_settles_ledger",
+      "pass": true,
+      "status": "PAID"
+    },
+    {
+      "name": "paid_status_stable_after_recalc_and_refresh",
+      "pass": true,
+      "status_reads": [
+        "PAID",
+        "PAID",
+        "PAID",
+        "PAID"
+      ]
+    },
+    {
+      "name": "collected_summary_stable_after_refresh",
+      "pass": true,
+      "reads": [
+        171000,
+        171000,
+        171000,
+        171000
+      ]
+    },
+    {
+      "name": "duplicate_payment_does_not_reopen_paid",
+      "pass": true,
+      "dup_status": 400
+    }
+  ],
+  "pass": true,
+  "after_full": {
+    "ledger_id": "rlp_e5d1e9522820",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "schedule_id": "rs_30cde44a54b4",
+    "tenancy_id": null,
+    "tenant_name": "F6-probe-tenant",
+    "period_key": "2026-04",
+    "expected_amount_minor": 85000,
+    "currency": "GBP",
+    "rent_frequency": "monthly",
+    "due_date": "2026-04-05",
+    "received_amount_minor": 85000,
+    "outstanding_balance_minor": 0,
+    "status": "PAID",
+    "days_overdue": 0,
+    "is_overdue": false,
+    "waived_at": null,
+    "disputed_at": null,
+    "dispute_note": null,
+    "notes": null,
+    "created_at": "2026-05-23T19:39:30.016381+00:00",
+    "updated_at": "2026-05-23T20:45:07.441438+00:00",
+    "created_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+    "updated_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+    "is_deleted": false,
+    "payments": [
+      {
+        "payment_id": "rp_fe02717f8d70",
+        "ledger_id": "rlp_e5d1e9522820",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "amount_minor": 42500,
+        "currency": "GBP",
+        "payment_date": "2026-05-23",
+        "payment_method": null,
+        "reference": "OPS-RUNTIME-F6-20260523T204027Z-partial",
+        "note": "OPS-RUNTIME-F6-20260523T204027Z partial may-authority",
+        "document_id": null,
+        "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+        "created_at": "2026-05-23T20:44:11.489161+00:00",
+        "updated_at": "2026-05-23T20:44:11.489161+00:00"
+      },
+      {
+        "payment_id": "rp_1d27ff5aea03",
+        "ledger_id": "rlp_e5d1e9522820",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "amount_minor": 42500,
+        "currency": "GBP",
+        "payment_date": "2026-05-23",
+        "payment_method": null,
+        "reference": "OPS-RUNTIME-F6-20260523T204027Z-remainder",
+        "note": "OPS-RUNTIME-F6-20260523T204027Z remainder monotonic",
+        "document_id": null,
+        "recorded_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+        "created_at": "2026-05-23T20:45:06.353444+00:00",
+        "updated_at": "2026-05-23T20:45:06.353444+00:00"
+      }
+    ],
+    "reminders": []
+  }
+}
