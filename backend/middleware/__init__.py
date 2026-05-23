@@ -221,6 +221,22 @@ async def client_route_guard(request: Request) -> dict:
             detail="Password not set",
             headers={"X-Redirect": "/set-password"}
         )
+
+    # Landlord/client operational APIs (/api/client/*) must not be reachable by tenant JWTs.
+    role = (portal_user.get("role") or user.get("role") or "").strip()
+    if role == UserRole.ROLE_TENANT.value:
+        await log_route_guard_redirect(
+            user["portal_user_id"],
+            str(request.url.path),
+            "TENANT_LANDLORD_API_FORBIDDEN",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error_code": "TENANT_LANDLORD_API_FORBIDDEN",
+                "message": "Tenant accounts may not access landlord operational APIs. Use tenant portal routes.",
+            },
+        )
     
     # Get client
     client = await db.clients.find_one(

@@ -1,7 +1,7 @@
 # PRELAUNCH-OPS-RUNTIME-VERIFY-01 — Operational Domain Runtime Verification Charter
 
 **Programme ID:** `PRELAUNCH-OPS-RUNTIME-VERIFY-01`  
-**Status:** **IN_PROGRESS** (F1–F3 `VERIFIED_OPERATIONALLY`; F4 remediation code complete — staging deploy + same-run rerun pending; classification remains `FAIL_OPERATIONAL`)  
+**Status:** **IN_PROGRESS** (F1–F6 `VERIFIED_OPERATIONALLY`; F7 **`FAIL_SYSTEM`** — remediation **local-only**, not on origin/main; staging precheck fail; post-deploy OPS rerun **blocked**; F8 blocked)  
 **Authority:** Governed operational verification only — **not** launch authorization, UK rollout approval, compliance authority redesign, planner redesign, accounting certification, asset-native synthesis rollout, or AI operational orchestration.
 
 ---

@@ -1,0 +1,14 @@
+{
+  "status": "remediation_code_complete_pending_staging_deploy",
+  "expected_post_deploy": [
+    {"route": "/api/client/maintenance/issues/{id}", "method": "PATCH", "tenant_expected": 403},
+    {"route": "/api/client/maintenance/issues", "method": "POST", "tenant_expected": 403},
+    {"route": "/api/client/operations/rent/summary", "method": "GET", "tenant_expected": 403},
+    {"route": "/api/client/maintenance/issues/open-count", "method": "GET", "tenant_expected": 403},
+    {"route": "/api/client/command-center", "method": "GET", "tenant_expected": 403}
+  ],
+  "pre_deploy_staging_observed": {
+    "tenant_rent_summary": 200,
+    "classification": "unsafe_exposure"
+  }
+}

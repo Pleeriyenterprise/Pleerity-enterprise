@@ -1,0 +1,24 @@
+{
+  "verified_at_utc": "2026-05-23T23:05:00+00:00",
+  "result": "BLOCKED_NOT_DEPLOYED",
+  "local_head": "a4b23caae3de2c313b75c1d89e2c3ec7b712c817",
+  "local_head_message": "fix(ops): F4 risk signal regen governance and propagation lifecycle",
+  "origin_main_head": "a4b23caae3de2c313b75c1d89e2c3ec7b712c817",
+  "f7_remediation_on_origin_main": false,
+  "f7_remediation_location": "local_uncommitted",
+  "uncommitted_f7_files": [
+    "backend/middleware/__init__.py",
+    "backend/routes/tenant.py",
+    "backend/tests/test_tenant_client_route_authority.py"
+  ],
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "deployed_backend_proof": {
+    "method": "behavioural_smoke",
+    "tenant_get_rent_summary": 200,
+    "tenant_post_maintenance_issue": 200,
+    "tenant_get_reported_issues": 404,
+    "conclusion": "Staging serves pre-F7-remediation build; client_route_guard does not reject ROLE_TENANT"
+  },
+  "render_deploy_confirmed": false,
+  "full_ops_rerun_eligible": false
+}

@@ -4749,7 +4749,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-01 — operational domain runtime closure (DEFINED — hardened charter)
 
-**Status:** **IN_PROGRESS** — F1–F3 `VERIFIED_OPERATIONALLY`. F4 `FAIL_OPERATIONAL` (`20260523T162258Z`). F5 blocked.
+**Status:** **IN_PROGRESS** — F1–F4 `VERIFIED_OPERATIONALLY`. F5 may proceed.
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md)
 
@@ -4786,10 +4786,10 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 | Issues | `ops_runtime_01_issues` | VERIFIED_OPERATIONALLY | Post-G9 remediation rerun `20260523T113129Z`; bundle `ops_runtime_01_issues_6fd5ac4c_d35a58ae` |
 | Work orders | `ops_runtime_02_work_orders` | VERIFIED_OPERATIONALLY | Post-deploy run `20260523T152330Z` commit `b921cbe7`; bundle `ops_runtime_02_work_orders_6fd5ac4c_d35a58ae` |
 | Contractor | `ops_runtime_03_contractor` | VERIFIED_OPERATIONALLY | Run `20260523T154730Z`; bundle `ops_runtime_03_contractor_6fd5ac4c_d35a58ae` |
-| Risk signals | `ops_runtime_04_risk_signals` | FAIL_OPERATIONAL (remediation code ready) | Run `20260523T170410Z`; governance fix implemented locally; deploy + rerun required; bundle `ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae` |
-| Client sync | `ops_runtime_05_client_sync` | NOT_STARTED | — |
-| Rent ops | `ops_runtime_06_rent_ops` | NOT_STARTED | RENT-OPS baseline system integrity only; browser pending |
-| Tenant portal | `ops_runtime_07_tenant_portal` | NOT_STARTED | — |
+| Risk signals | `ops_runtime_04_risk_signals` | VERIFIED_OPERATIONALLY | Post-deploy run `20260523T174844Z` commit `a4b23caa`; bundle `ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae` |
+| Client sync | `ops_runtime_05_client_sync` | VERIFIED_OPERATIONALLY | Run `20260523T184731Z`; bundle `ops_runtime_05_client_sync_6fd5ac4c_d35a58ae` |
+| Rent ops | `ops_runtime_06_rent_ops` | VERIFIED_OPERATIONALLY | Refinement run `20260523T204027Z`; bundle `ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae` |
+| Tenant portal | `ops_runtime_07_tenant_portal` | **FAIL_SYSTEM** | Run `20260523T211806Z`; deploy verify `2026-05-23` — F7 fix **not on origin/main**, staging still leaks; OPS rerun blocked |
 | Cross-domain | `ops_runtime_08_cross_domain` | NOT_STARTED | BLOCKED until upstream owner bundles exist |
 
 **Related baseline (does not confer runtime VERIFIED_OPERATIONALLY):**

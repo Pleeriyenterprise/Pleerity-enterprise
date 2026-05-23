@@ -602,7 +602,7 @@ async def report_issue(request: Request):
         category=data.category,
         asset_id=None,
         reporter_name=tenant_name,
-        reporter_contact=user.get("email"),
+        reporter_contact=(user.get("email") or "").strip().lower() or None,
         reported_urgency=None,
         photos=data.photos or [],
     )
@@ -643,6 +643,98 @@ async def get_tenant_requests(request: Request):
         if r.get("created_at"):
             r["created_at"] = r["created_at"].isoformat()
     return {"requests": requests}
+
+
+def _tenant_issue_lifecycle_phase(issue_status: str, wo_status: Optional[str] = None) -> str:
+    """Map landlord issue/WO state to tenant-safe lifecycle labels."""
+    status = (issue_status or "").lower()
+    wo = (wo_status or "").upper()
+    if status in ("closed", "cancelled", "resolved"):
+        return "completed"
+    if status in ("in_progress", "investigating", "ready_for_work_order"):
+        return "in_progress"
+    if wo in ("IN_PROGRESS", "ACCEPTED", "ASSIGNED", "COMPLETED"):
+        return "completed" if wo == "COMPLETED" else "in_progress"
+    if status in ("monitoring",):
+        return "acknowledged"
+    return "reported"
+
+
+@router.get("/reported-issues")
+async def get_tenant_reported_issues(request: Request):
+    """Bounded tenant-safe projection of maintenance issues this tenant reported."""
+    user = await tenant_route_guard(request)
+    if user.get("role") != "ROLE_TENANT":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenant access required",
+        )
+    db = database.get_db()
+    client_id = user.get("client_id")
+    tenant_id = user.get("portal_user_id")
+    tenant_email = (user.get("email") or "").strip().lower()
+    if not tenant_email:
+        pu = await db.portal_users.find_one(
+            {"portal_user_id": tenant_id},
+            {"_id": 0, "auth_email": 1, "email": 1},
+        )
+        tenant_email = ((pu or {}).get("auth_email") or (pu or {}).get("email") or "").strip().lower()
+    if not tenant_email:
+        return {"issues": []}
+
+    tenant_properties = await db.tenant_assignments.find(
+        {"tenant_id": tenant_id},
+        {"_id": 0, "property_id": 1},
+    ).to_list(100)
+    q: dict = {
+        "client_id": client_id,
+        "source": {"$in": ["tenant_request", "tenant"]},
+        "reporter_contact": tenant_email,
+    }
+    if tenant_properties:
+        q["property_id"] = {"$in": [tp["property_id"] for tp in tenant_properties]}
+
+    rows = await db.maintenance_issues.find(
+        q,
+        {
+            "_id": 0,
+            "issue_id": 1,
+            "property_id": 1,
+            "description": 1,
+            "status": 1,
+            "category": 1,
+            "created_at": 1,
+            "updated_at": 1,
+            "closed_at": 1,
+        },
+    ).sort("created_at", -1).to_list(50)
+
+    out = []
+    for row in rows:
+        wo = await db.work_orders.find_one(
+            {"issue_id": row.get("issue_id"), "client_id": client_id},
+            {"_id": 0, "status": 1},
+        )
+        wo_status = (wo or {}).get("status")
+        phase = _tenant_issue_lifecycle_phase(row.get("status"), wo_status)
+        desc = (row.get("description") or "").strip()
+        if len(desc) > 200:
+            desc = desc[:197] + "..."
+        created = row.get("created_at")
+        updated = row.get("updated_at")
+        out.append(
+            {
+                "issue_id": row.get("issue_id"),
+                "property_id": row.get("property_id"),
+                "summary": desc,
+                "category": row.get("category"),
+                "lifecycle_phase": phase,
+                "landlord_status": row.get("status"),
+                "created_at": created.isoformat() if hasattr(created, "isoformat") else created,
+                "updated_at": updated.isoformat() if hasattr(updated, "isoformat") else updated,
+            }
+        )
+    return {"issues": out}
 
 
 @router.post("/contact-landlord")
