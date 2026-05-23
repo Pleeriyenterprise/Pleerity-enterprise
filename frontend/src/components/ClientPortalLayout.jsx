@@ -37,6 +37,7 @@ import {
   ListTodo,
   Inbox,
   Gauge,
+  PoundSterling,
 } from 'lucide-react';
 import { resolveNotificationTarget } from '../utils/notificationDeepLink';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
@@ -52,6 +53,7 @@ const OPERATIONS_CHILDREN = [
   { path: '/operations/work-orders', label: PORTAL_COPY.jobs, icon: Wrench, feature: 'maintenance_workflows' },
   { path: '/operations/contractors', label: 'Contractors', icon: Briefcase, feature: 'contractor_network' },
   { path: '/operations/risk-signals', label: 'Risk signals', icon: TrendingUp, feature: 'predictive_maintenance' },
+  { path: '/operations/rent', label: 'Rent Operations', icon: PoundSterling, feature: 'rent_operations' },
   { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },
 ];
 

@@ -322,6 +322,7 @@ const FEATURE_MIN_PLAN = {
   contractor_network: 'PLAN_2_PORTFOLIO',
   predictive_maintenance: 'PLAN_2_PORTFOLIO',
   invoicing: 'PLAN_3_PRO',
+  rent_operations: 'PLAN_2_PORTFOLIO',
 };
 
 const FEATURE_DISPLAY = {
@@ -354,6 +355,11 @@ const FEATURE_DISPLAY = {
     name: 'Invoice & job approvals',
     description:
       'Review and approve invoices and cost submissions linked to jobs. Compare amounts to benchmarks and maintain an audit trail.',
+  },
+  rent_operations: {
+    name: 'Rent Operations',
+    description:
+      'Track expected rent, record payments, monitor arrears, and log property expenses. Operational visibility only — not accounting software.',
   },
 };
 

@@ -133,6 +133,7 @@ import ClientContractorsPage from './pages/ClientContractorsPage';
 import ClientIssuesPage from './pages/ClientIssuesPage';
 import ClientIssueDetailPage from './pages/ClientIssueDetailPage';
 import ClientRiskSignalsPage from './pages/ClientRiskSignalsPage';
+import ClientRentOperationsPage from './pages/ClientRentOperationsPage';
 import ClientApprovalsPage from './pages/ClientApprovalsPage';
 import ViewOrderPage from './pages/ViewOrderPage';
 import UnifiedIntakeWizard from './pages/UnifiedIntakeWizard';
@@ -438,6 +439,8 @@ function App() {
             <Route path="/operations/jobs/:jobId" element={<ClientPortal><ClientJobDetailPage /></ClientPortal>} />
             <Route path="/operations/contractors" element={<ClientPortal><ClientContractorsPage /></ClientPortal>} />
             <Route path="/operations/risk-signals" element={<ClientPortal><ClientRiskSignalsPage /></ClientPortal>} />
+            <Route path="/operations/rent" element={<ClientPortal><ClientRentOperationsPage /></ClientPortal>} />
+            <Route path="/operations/expenses" element={<Navigate to="/operations/rent?tab=expenses" replace />} />
             <Route path="/operations/approvals" element={<ClientPortal><ClientApprovalsPage /></ClientPortal>} />
             {/* Legacy maintenance/contractors → redirect to operations */}
             <Route path="/maintenance" element={<Navigate to="/operations/work-orders" replace />} />

@@ -598,6 +598,28 @@ class Database:
             await self.db.risk_signals.create_index([("client_id", 1), ("generated_at", -1)])
             await self.db.risk_signals.create_index([("property_id", 1), ("status", 1)])
             await self.db.risk_signals.create_index([("property_id", 1), ("signal_category", 1)])
+            # Rent Operations (operational rent tracking — not accounting)
+            await self.db.rent_ledger_periods.create_index("ledger_id", unique=True)
+            await self.db.rent_ledger_periods.create_index([("client_id", 1), ("property_id", 1), ("due_date", -1)])
+            await self.db.rent_ledger_periods.create_index([("client_id", 1), ("status", 1), ("due_date", 1)])
+            await self.db.rent_ledger_periods.create_index(
+                [("client_id", 1), ("property_id", 1), ("period_key", 1)], unique=True
+            )
+            await self.db.rent_payments.create_index("payment_id", unique=True)
+            await self.db.rent_payments.create_index([("ledger_id", 1), ("payment_date", -1)])
+            await self.db.rent_payments.create_index([("client_id", 1), ("payment_date", -1)])
+            await self.db.rent_payments.create_index([("client_id", 1), ("property_id", 1), ("payment_date", -1)])
+            await self.db.rent_ledger_periods.create_index([("client_id", 1), ("is_overdue", 1), ("due_date", -1)], sparse=True)
+            await self.db.rent_reminder_events.create_index("reminder_key", unique=True)
+            await self.db.rent_reminder_events.create_index([("client_id", 1), ("ledger_id", 1)])
+            await self.db.rent_schedules.create_index("schedule_id", unique=True)
+            await self.db.rent_schedules.create_index([("client_id", 1), ("property_id", 1), ("is_active", 1)])
+            await self.db.property_expenses.create_index("expense_id", unique=True)
+            await self.db.property_expenses.create_index([("client_id", 1), ("property_id", 1), ("expense_date", -1)])
+            await self.db.property_expenses.create_index([("client_id", 1), ("category", 1), ("expense_date", -1)])
+            await self.db.property_expenses.create_index(
+                [("client_id", 1), ("compliance_related", 1), ("expense_date", -1)], sparse=True
+            )
             # Invoices & invoice approvals (Operations → Approvals; gated by INVOICING)
             await self.db.invoices.create_index("invoice_id", unique=True)
             await self.db.invoices.create_index([("client_id", 1), ("status", 1)])

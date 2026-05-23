@@ -7,7 +7,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, admin_client_lifecycle, admin_identity_lifecycle, documents, evidence_review, assistant, profile, properties, rules, compliance_governed_rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, admin_pilot_invites, admin_pilot_lifecycle, admin_compliance_registry, admin_compliance_truth, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads, agreements_public, admin_client_agreements
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications, requirement_workflow_audit_admin
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, client_rent_operations, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications, requirement_workflow_audit_admin
 from utils.request_ip import get_client_ip as _client_ip
 
 # ClearForm - Separate Product Routes
@@ -1023,6 +1023,15 @@ async def lifespan(app: FastAPI):
             args=["risk_signals_job"],
             kwargs={"run_type": "schedule"},
         )
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=4, minute=45, timezone=SCHEDULER_TIMEZONE),
+            id="rent_operations_daily_job",
+            name="Rent Operations (recalc, periods, reminders)",
+            replace_existing=True,
+            args=["rent_operations_daily_job"],
+            kwargs={"run_type": "schedule"},
+        )
         # Work order SLA breach / at-risk - every hour
         scheduler.add_job(
             "job_runner:run_scheduled_job",
@@ -1372,6 +1381,7 @@ app.include_router(ops_compliance.router)  # Admin: Operations & Compliance (fea
 app.include_router(contractors.router)  # Admin: Contractors (Ops Contractor Network)
 app.include_router(maintenance.router)  # Admin: Work orders (Ops Maintenance)
 app.include_router(client_maintenance.router)  # Client: Maintenance work orders (gated by MAINTENANCE_WORKFLOWS)
+app.include_router(client_rent_operations.router)  # Client: Rent Operations (gated by RENT_OPERATIONS)
 app.include_router(client_compliance_execution.router)  # Client: Compliance execution booking (COMPLIANCE_ENGINE + MAINTENANCE_WORKFLOWS)
 app.include_router(compliance_delivery_audit.client_router)  # Client: tenant delivery proof + governed audit pack
 app.include_router(compliance_delivery_audit.admin_router)  # Admin: delivery proof + audit pack visibility

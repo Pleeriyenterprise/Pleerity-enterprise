@@ -1975,6 +1975,7 @@ async def get_client_entitlements(request: Request):
             CONTRACTOR_NETWORK,
             INVOICING,
             COMPLIANCE_ENGINE,
+            RENT_OPERATIONS,
         )
 
         entitlements = await plan_registry.get_client_entitlements(user["client_id"])
@@ -2019,6 +2020,16 @@ async def get_client_entitlements(request: Request):
                 "scheduling service."
             ),
             "category": "compliance",
+            "minimum_plan": None,
+        }
+        features["rent_operations"] = {
+            "enabled": bool(flags.get(RENT_OPERATIONS)),
+            "name": "Rent Operations",
+            "description": (
+                "Track expected rent, record payments, monitor arrears, and log property expenses. "
+                "Operational visibility only — not accounting, tax, or bookkeeping software."
+            ),
+            "category": "ops",
             "minimum_plan": None,
         }
         entitlements["features"] = features

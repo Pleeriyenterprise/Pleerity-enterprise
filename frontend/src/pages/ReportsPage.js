@@ -48,6 +48,7 @@ import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentPortalAnalyticsEvent } from '../utils/timelinePresent';
 import { cn } from '../lib/utils';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
+import { formatMinorUnits } from '../utils/rentMoney';
 
 function reportPropertyOptionLabel(p) {
   const base = getPropertyDisplayName(p) || p.property_id;
@@ -85,8 +86,11 @@ const ReportsPage = () => {
   const [digests, setDigests] = useState([]);
   const [digestView, setDigestView] = useState(null);
   const [downloadingDigestId, setDownloadingDigestId] = useState(null);
+  const [rentOpsSummary, setRentOpsSummary] = useState(null);
+  const [rentOpsExpenseSummary, setRentOpsExpenseSummary] = useState(null);
 
   const hasReportsAccess = hasFeature('reports_pdf') || hasFeature('reports_csv');
+  const hasRentOperations = hasFeature('rent_operations');
   const hasReportsPdf = hasFeature('reports_pdf');
   const hasScheduledReportsAccess = hasFeature('scheduled_reports');
   const hasAuditLogExport = hasFeature('audit_log_export');
@@ -163,6 +167,30 @@ const ReportsPage = () => {
       cancelled = true;
     };
   }, [analyticsDays]);
+
+  useEffect(() => {
+    if (!hasRentOperations) return;
+    let cancelled = false;
+    Promise.all([
+      clientAPI.getRentSummary(),
+      clientAPI.getRentExpensesSummary(),
+    ])
+      .then(([rent, exp]) => {
+        if (!cancelled) {
+          setRentOpsSummary(rent.data);
+          setRentOpsExpenseSummary(exp.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRentOpsSummary(null);
+          setRentOpsExpenseSummary(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasRentOperations]);
 
   const requestNewEvidencePack = async () => {
     const ps = (evidencePeriodStart || '').trim();
@@ -681,6 +709,57 @@ const ReportsPage = () => {
               variant="card"
             />
           </div>
+        )}
+        {hasRentOperations && rentOpsSummary && (
+          <>
+            <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-operational-rent">
+              Operational rent & expenses
+            </h2>
+            <Card className="mb-6 border border-gray-200" data-testid="reports-operational-rent-card">
+              <CardHeader>
+                <CardTitle className="text-base">Portfolio operational summary</CardTitle>
+                <p className="text-xs text-gray-500 mt-1">
+                  Operational estimates only — not accounting, tax, or bookkeeping reports.{' '}
+                  <Link to="/operations/rent" className="text-electric-teal underline">Open Rent Operations</Link>
+                </p>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-500">Rent collected (month)</p>
+                  <p className="font-semibold">{formatMinorUnits(rentOpsSummary.rent_collected_this_month_minor)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Overdue periods</p>
+                  <p className="font-semibold text-orange-600">{rentOpsSummary.overdue_count ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Outstanding balance</p>
+                  <p className="font-semibold">{formatMinorUnits(rentOpsSummary.total_outstanding_minor)}</p>
+                </div>
+                {rentOpsExpenseSummary && (
+                  <>
+                    <div>
+                      <p className="text-gray-500">Expenses (period)</p>
+                      <p className="font-semibold">{formatMinorUnits(rentOpsExpenseSummary.total_expenses_minor)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Compliance-related expenses</p>
+                      <p className="font-semibold">{formatMinorUnits(rentOpsExpenseSummary.compliance_related_total_minor)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Net operational estimate</p>
+                      <p className="font-semibold">
+                        {formatMinorUnits(
+                          (rentOpsSummary.rent_collected_this_month_minor || 0) -
+                            (rentOpsExpenseSummary.total_expenses_minor || 0),
+                        )}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
         <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-compliance-reports">
           Compliance Reports

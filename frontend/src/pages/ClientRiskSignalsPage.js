@@ -71,6 +71,13 @@ import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components
 import { resolveRiskSignalPrimaryKey } from '../utils/primaryActionResolver';
 import { getTrackedRequirementsForProperty } from '../utils/portalRequirementAttention';
 
+/** Rent Operations / financial_operational signals do not affect compliance score. */
+function isOperationalAdvisorySignal(signal) {
+  return (
+    signal?.source === 'rent_operations' || signal?.signal_category === 'financial_operational'
+  );
+}
+
 const RISK_LEVELS = [
   { value: '', label: 'All levels' },
   { value: 'critical', label: 'Critical' },
@@ -723,6 +730,11 @@ function ClientRiskSignalsPageInner() {
                       <Badge variant="secondary" className="text-xs font-normal">
                         {humanStatus(s.status)}
                       </Badge>
+                      {isOperationalAdvisorySignal(s) && (
+                        <Badge variant="outline" className="text-xs border-amber-200 bg-amber-50 text-amber-900">
+                          Operational advisory only
+                        </Badge>
+                      )}
                       <span className="text-xs text-muted-foreground ml-auto">{humanTrend(s.trend)}</span>
                     </div>
                     <div>
@@ -812,7 +824,16 @@ function ClientRiskSignalsPageInner() {
                       const rowAsset = s.asset_id ? assetIdParts(s.asset_id) : null;
                       return (
                       <TableRow key={s.signal_id}>
-                        <TableCell className="font-medium max-w-[14rem] break-words">{humanRiskType(s)}</TableCell>
+                        <TableCell className="font-medium max-w-[14rem] break-words">
+                          <div className="space-y-1">
+                            <span>{humanRiskType(s)}</span>
+                            {isOperationalAdvisorySignal(s) && (
+                              <Badge variant="outline" className="text-xs border-amber-200 bg-amber-50 text-amber-900 block w-fit">
+                                Operational advisory only
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="max-w-[10rem] break-words">{propertyLabel(s.property_id)}</TableCell>
                         <TableCell className="text-muted-foreground max-w-[6rem]">
                           {rowAsset ? (

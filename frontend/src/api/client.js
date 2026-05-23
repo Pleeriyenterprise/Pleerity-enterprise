@@ -759,6 +759,26 @@ export const clientAPI = {
     apiClient.patch(`/client/approvals/${encodeURIComponent(invoiceId)}`, body, config),
   createInvoice: (body) => apiClient.post('/client/invoices', body),
   exportApprovals: (params = {}) => apiClient.get('/client/approvals/export', { params, responseType: 'blob' }),
+  /** Rent Operations (operational rent tracking — not accounting). Requires rent_operations. */
+  getRentSummary: (params = {}) => apiClient.get('/client/operations/rent/summary', { params }),
+  getRentSchedules: (params = {}) => apiClient.get('/client/operations/rent/schedules', { params }),
+  createRentSchedule: (body) => apiClient.post('/client/operations/rent/schedules', body),
+  getRentLedgers: (params = {}) => apiClient.get('/client/operations/rent/ledgers', { params }),
+  getRentLedger: (ledgerId) => apiClient.get(`/client/operations/rent/ledgers/${encodeURIComponent(ledgerId)}`),
+  updateRentLedger: (ledgerId, body) => apiClient.patch(`/client/operations/rent/ledgers/${encodeURIComponent(ledgerId)}`, body),
+  recordRentPayment: (body) => apiClient.post('/client/operations/rent/payments', body),
+  recordRentLedgerPayment: (ledgerId, body) =>
+    apiClient.post(`/client/operations/rent/ledgers/${encodeURIComponent(ledgerId)}/payments`, body),
+  markRentReminderSent: (ledgerId, body) =>
+    apiClient.post(`/client/operations/rent/ledgers/${encodeURIComponent(ledgerId)}/reminders/mark-sent`, body),
+  getRentExpensesSummary: (params = {}) => apiClient.get('/client/operations/expenses/summary', { params }),
+  getRentExpenses: (params = {}) => apiClient.get('/client/operations/expenses', { params }),
+  createRentExpense: (body) => apiClient.post('/client/operations/expenses', body),
+  updateRentExpense: (expenseId, body) =>
+    apiClient.patch(`/client/operations/expenses/${encodeURIComponent(expenseId)}`, body),
+  deleteRentExpense: (expenseId) => apiClient.delete(`/client/operations/expenses/${encodeURIComponent(expenseId)}`),
+  getPropertyFinancialSnapshot: (propertyId) =>
+    apiClient.get(`/client/properties/${encodeURIComponent(propertyId)}/financial-snapshot`),
   /** In-app notifications (portal user). */
   getInAppNotifications: (params = {}) => apiClient.get('/profile/in-app-notifications', { params }),
   getInAppNotificationsUnreadCount: () => apiClient.get('/profile/in-app-notifications/unread-count'),

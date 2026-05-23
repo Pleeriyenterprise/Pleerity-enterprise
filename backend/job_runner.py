@@ -1193,6 +1193,12 @@ async def run_risk_signals_job(client_id: Optional[str] = None):
     }
 
 
+async def run_rent_operations_daily_job(client_id: Optional[str] = None):
+    """Rent Operations daily: recalc statuses, ensure future periods, reminders, advisory risk signals."""
+    from services import rent_operations_daily_job as rodj_module
+    return await rodj_module.run_rent_operations_daily_job(client_id=client_id)
+
+
 async def run_work_order_sla_breach_job():
     """
     Work order SLA: set sla_breach_risk_at when approaching respond/complete deadline,
@@ -1602,6 +1608,7 @@ JOB_RUNNERS = {
     "client_test_like_flag_job": run_client_test_like_flag_job,
     "predictive_insights_job": run_predictive_insights_job,
     "risk_signals_job": run_risk_signals_job,
+    "rent_operations_daily_job": run_rent_operations_daily_job,
     "risk_signal_regen_worker": run_risk_signal_regen_worker,
     "risk_signal_regen_alert_monitor": run_risk_signal_regen_alert_monitor,
     "work_order_sla_breach_job": run_work_order_sla_breach_job,

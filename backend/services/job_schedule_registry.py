@@ -91,6 +91,7 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("predictive_insights_job", False, 26 * 60, "Daily", True),
     # Risk signals batch job (non-critical; zero signals after scanning data is valid)
     JobScheduleEntry("risk_signals_job", False, 26 * 60, "Daily", True),
+    JobScheduleEntry("rent_operations_daily_job", False, 26 * 60, "Daily", True),
     JobScheduleEntry("work_order_sla_breach_job", False, 90, "Hourly", True),
     JobScheduleEntry("work_order_contractor_confirmation_timeout_job", False, 90, "Hourly", True),
 ]

@@ -141,6 +141,7 @@ import {
 } from '../utils/jurisdictionComplianceCopy';
 import { propertyPageJurisdictionBanners } from '../utils/jurisdictionUiPolicy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
+import { PropertyFinancialSnapshotCard } from '../components/rent/PropertyFinancialSnapshotCard';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import {
   headlineScoreDisplayForDashboard,
@@ -1753,6 +1754,7 @@ export default function PropertyDetailPage() {
           onRefreshAfterEvidence={fetchData}
           priorityTaskRequirementsById={operatingHubPriorityRequirementsById}
         />
+        <PropertyFinancialSnapshotCard propertyId={propertyId} />
       )}
 
       {/* Tab: Compliance */}
