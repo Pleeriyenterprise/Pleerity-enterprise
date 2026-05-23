@@ -1,0 +1,50 @@
+{
+  "started_at_utc": "2026-05-23T14:49:14.991242+00:00",
+  "proof_mode": "operational_browser",
+  "steps": [
+    {
+      "step": "G1_issues_surface",
+      "ok": true,
+      "detail": "issues list",
+      "at_utc": "2026-05-23T14:49:43.072923+00:00"
+    },
+    {
+      "step": "G2_issue_detail",
+      "ok": true,
+      "detail": "has_marker=True",
+      "at_utc": "2026-05-23T14:50:09.036918+00:00"
+    },
+    {
+      "step": "G2_job_detail",
+      "ok": true,
+      "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\nAsk Assistant\nNancy Brandon\nLogout\nToday\nComma",
+      "at_utc": "2026-05-23T14:50:33.347188+00:00"
+    },
+    {
+      "step": "G7_no_contradictory_status",
+      "ok": true,
+      "detail": "job detail",
+      "at_utc": "2026-05-23T14:50:33.347188+00:00"
+    },
+    {
+      "step": "G5_refresh_persistence",
+      "ok": true,
+      "detail": "job detail reload",
+      "at_utc": "2026-05-23T14:50:56.911391+00:00"
+    },
+    {
+      "step": "G6_work_orders_list",
+      "ok": true,
+      "detail": "jobs list",
+      "at_utc": "2026-05-23T14:51:21.893143+00:00"
+    },
+    {
+      "step": "G6_property_jobs_tab",
+      "ok": true,
+      "detail": "property tab",
+      "at_utc": "2026-05-23T14:52:27.166359+00:00"
+    }
+  ],
+  "screenshots": [],
+  "finished_at_utc": "2026-05-23T14:52:27.315268+00:00"
+}

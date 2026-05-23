@@ -1,0 +1,41 @@
+{
+  "at_utc": "2026-05-23T14:47:46.357428+00:00",
+  "authoritative_verification_owner": "ops_runtime_02_work_orders",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "mutations_verified_in_this_bundle": [
+    "issue_create_for_wo_source",
+    "work_order_create_from_issue",
+    "work_order_view",
+    "work_order_status_transition",
+    "work_order_complete",
+    "work_order_refresh_persistence",
+    "issue_wo_cross_surface_sync"
+  ],
+  "g9_probes_planned": [
+    "duplicate_create_wo_from_issue",
+    "repeat_status_patch",
+    "refresh_during_mutation"
+  ],
+  "g10_probes_planned": [
+    "unauthenticated_wo_patch_forbidden",
+    "invalid_token_forbidden",
+    "completed_wo_reopen_blocked",
+    "wo_complete_does_not_false_close_issue"
+  ],
+  "checks": [
+    {
+      "name": "wo_list",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "unauthenticated_wo_create_forbidden",
+      "ok": true,
+      "detail": "status=401"
+    }
+  ],
+  "preflight_pass": true
+}

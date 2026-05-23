@@ -375,6 +375,7 @@ export default function PropertyDetailPage() {
   const [createIssueForm, setCreateIssueForm] = useState({ description: '', category: 'general' });
   const [createIssueSaving, setCreateIssueSaving] = useState(false);
   const createIssueInFlightRef = useRef(false);
+  const createWoFromIssueInFlightRef = useRef(false);
   const [assets, setAssets] = useState([]);
   const [assetsSummary, setAssetsSummary] = useState(null);
   const [assetsLoading, setAssetsLoading] = useState(false);
@@ -1097,10 +1098,13 @@ export default function PropertyDetailPage() {
   };
 
   const handleCreateWoFromIssue = (issueId) => {
+    if (createWoFromIssueInFlightRef.current) return;
+    createWoFromIssueInFlightRef.current = true;
     clientAPI
       .createWorkOrderFromIssue(issueId)
-      .then(() => {
-        toast.success('Job created from issue');
+      .then((res) => {
+        const idempotentReplay = Boolean(res.data?.idempotent_replay);
+        toast.success(idempotentReplay ? 'This job was already created from this issue.' : 'Job created from issue');
         loadWorkOrders();
         loadMaintenanceIssues();
         setIssueDetailDrawer(null);
@@ -1108,6 +1112,9 @@ export default function PropertyDetailPage() {
       .catch((err) => {
         if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId })) return;
         toast.error(err?.response?.data?.detail || 'Failed');
+      })
+      .finally(() => {
+        createWoFromIssueInFlightRef.current = false;
       });
   };
 

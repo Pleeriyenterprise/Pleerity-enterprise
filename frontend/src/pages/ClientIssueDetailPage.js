@@ -2,7 +2,7 @@
  * Operations → Issue detail: triage result, reasoning, Create Work Order.
  * Route: /operations/issues/:issueId
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
@@ -25,6 +25,7 @@ function ClientIssueDetailPageInner() {
   const [closeNote, setCloseNote] = useState('');
   const [closing, setClosing] = useState(false);
   const [planJobGate, setPlanJobGate] = useState(null);
+  const createWoInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!issueId) return;
@@ -53,12 +54,14 @@ function ClientIssueDetailPageInner() {
   }, [issueId, issue]);
 
   const handleCreateWorkOrder = () => {
-    if (!issueId) return;
+    if (!issueId || createWoInFlightRef.current || creating) return;
+    createWoInFlightRef.current = true;
     setCreating(true);
     clientAPI
       .createWorkOrderFromIssue(issueId)
       .then((res) => {
-        toast.success('Maintenance job created');
+        const idempotentReplay = Boolean(res.data?.idempotent_replay);
+        toast.success(idempotentReplay ? 'This maintenance job was already created from this issue.' : 'Maintenance job created');
         const woId = res.data?.work_order_id;
         if (woId) navigate(buildSafeQueryPath('/operations/work-orders', { work_order_id: woId }));
         else navigate('/operations/issues');
@@ -67,7 +70,10 @@ function ClientIssueDetailPageInner() {
         if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId: issue?.property_id })) return;
         toast.error(err?.response?.data?.detail || 'Failed to create maintenance job');
       })
-      .finally(() => setCreating(false));
+      .finally(() => {
+        createWoInFlightRef.current = false;
+        setCreating(false);
+      });
   };
 
   const handleCloseIssue = () => {

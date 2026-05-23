@@ -45,6 +45,7 @@ function ClientIssuesPageInner() {
   const [creatingWoFromIssue, setCreatingWoFromIssue] = useState(null);
   const [planJobGate, setPlanJobGate] = useState(null);
   const createIssueInFlightRef = useRef(false);
+  const createWoFromIssueInFlightRef = useRef(false);
 
   const loadIssues = useCallback(() => {
     setIssuesLoading(true);
@@ -221,12 +222,15 @@ function ClientIssuesPageInner() {
   };
 
   const handleCreateWoFromIssue = (issueId) => {
+    if (createWoFromIssueInFlightRef.current || creatingWoFromIssue) return;
+    createWoFromIssueInFlightRef.current = true;
     setCreatingWoFromIssue(issueId);
     const iss = issues.find((i) => i.issue_id === issueId);
     clientAPI
       .createWorkOrderFromIssue(issueId)
-      .then(() => {
-        toast.success('Job created from issue.');
+      .then((res) => {
+        const idempotentReplay = Boolean(res.data?.idempotent_replay);
+        toast.success(idempotentReplay ? 'This job was already created from this issue.' : 'Job created from issue.');
         loadIssues();
         setIssueDetailDrawer(null);
         setIssueDetailData(null);
@@ -235,7 +239,10 @@ function ClientIssuesPageInner() {
         if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId: iss?.property_id })) return;
         toast.error(err?.response?.data?.detail || 'Could not start job');
       })
-      .finally(() => setCreatingWoFromIssue(null));
+      .finally(() => {
+        createWoFromIssueInFlightRef.current = false;
+        setCreatingWoFromIssue(null);
+      });
   };
 
   const applyFilter = (key, value) => {

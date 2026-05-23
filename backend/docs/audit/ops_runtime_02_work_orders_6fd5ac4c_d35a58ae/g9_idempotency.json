@@ -1,0 +1,27 @@
+{
+  "at_utc": "2026-05-23T14:48:36.366204+00:00",
+  "probes": [
+    {
+      "name": "duplicate_create_wo_from_issue",
+      "first_status": 200,
+      "second_status": 200,
+      "first_wo_id": "e3c67bd0-c568-48cf-bff8-1121099a4086",
+      "second_wo_id": "f7d080d0-c13a-4ba2-8d29-248bda1c01b5",
+      "second_idempotent_replay": false,
+      "distinct_wo_ids": true,
+      "visible_marker_wos": 3,
+      "visible_marker_wos_for_g9_issue": 2,
+      "pass": false,
+      "classification_if_fail": "FAIL_SYSTEM"
+    },
+    {
+      "name": "refresh_during_mutation",
+      "patch_status": 400,
+      "consistent_reads": true,
+      "pass": true
+    }
+  ],
+  "pass": false,
+  "fail_system": true,
+  "trust_risk": true
+}

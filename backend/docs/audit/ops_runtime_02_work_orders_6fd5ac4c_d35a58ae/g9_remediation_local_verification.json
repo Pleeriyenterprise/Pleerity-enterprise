@@ -1,0 +1,13 @@
+{
+  "at_utc": "2026-05-23T14:55:00+00:00",
+  "scope": "local_unit_and_http_tests",
+  "note": "Staging API G9 probe remains FAIL until backend deploy includes maintenance_wo_from_issue_idempotency.py",
+  "tests": [
+    "backend/tests/test_maintenance_wo_from_issue_idempotency.py — 5 passed",
+    "backend/tests/test_maintenance_wo_terminal_reopen_guard.py — 2 passed"
+  ],
+  "expected_staging_after_deploy": {
+    "duplicate_create_wo_from_issue": "same work_order_id + idempotent_replay true",
+    "completed_wo_reopen_blocked": "PATCH OPEN on COMPLETED returns 400"
+  }
+}

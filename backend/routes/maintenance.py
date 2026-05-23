@@ -291,6 +291,7 @@ async def update_work_order(request: Request, work_order_id: str, body: WorkOrde
             completion_notes=body.completion_notes,
             assigned_by=actor_id,
             allow_direct_contractor_assignment=True,
+            allow_terminal_reopen=True,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

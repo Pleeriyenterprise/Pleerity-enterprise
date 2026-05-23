@@ -1,0 +1,32 @@
+{
+  "at_utc": "2026-05-23T14:45:43.466239+00:00",
+  "ok": true,
+  "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+  "email": "f2-ops-heating-wales@yopmail.com",
+  "marker": "F2_ops_runtime_pilot_contractor_v1",
+  "property_postcode": "W8",
+  "checks": {
+    "assignable": true,
+    "assignable_reason": "",
+    "trade_heating": true,
+    "location": true,
+    "execution_gate": true,
+    "service_region": true
+  },
+  "verify": {
+    "assignable_on_open_wo": true,
+    "work_order_id": "d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+    "eligible": 1,
+    "diagnostics": {
+      "visible_in_directory": 4,
+      "excluded_not_assignment_ready": 1,
+      "excluded_wrong_client_scope": 0,
+      "excluded_property_scope": 0,
+      "excluded_location_postcode": 2,
+      "excluded_execution_capability": 0,
+      "excluded_maintenance_trade": 0,
+      "excluded_service_region_jurisdiction": 0,
+      "eligible": 1
+    }
+  }
+}

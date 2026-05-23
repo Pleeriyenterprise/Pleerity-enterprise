@@ -615,6 +615,7 @@ async def update_work_order(
     *,
     allow_direct_contractor_assignment: bool = False,
     assignment_profile: str = "standard",
+    allow_terminal_reopen: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """Update work order status, contractor, resolution outcome, notes, evidence. When contractor_id is set, records assignment and sets assigned_at. accepted_at set when contractor accepts (for response/completion metrics)."""
     db = database.get_db()
@@ -680,6 +681,15 @@ async def update_work_order(
     if status is not None:
         status = status.strip().upper()
         if status in ALL_STATUSES:
+            prev_u = str(prev_status or "").strip().upper()
+            if (
+                prev_u in (STATUS_COMPLETED, STATUS_VERIFIED, STATUS_CLOSED, STATUS_CANCELLED)
+                and status not in (STATUS_COMPLETED, STATUS_VERIFIED, STATUS_CLOSED, STATUS_CANCELLED)
+                and not allow_terminal_reopen
+            ):
+                raise ValueError(
+                    "This work order is already in a terminal state and cannot be reopened through this update."
+                )
             if status == STATUS_IN_PROGRESS:
                 wo_full = await db.work_orders.find_one({"work_order_id": work_order_id}, {"_id": 0})
                 if wo_full:

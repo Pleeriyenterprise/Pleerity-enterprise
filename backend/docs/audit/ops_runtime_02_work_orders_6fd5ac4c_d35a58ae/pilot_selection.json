@@ -1,0 +1,69 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_02_work_orders",
+  "authoritative_verification_owner": "ops_runtime_02_work_orders",
+  "selected_at_utc": "2026-05-23T14:47:36.465001+00:00",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "f1_dependency": {
+    "found": true,
+    "path": "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "raw": {
+      "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+      "family": "ops_runtime_01_issues",
+      "authoritative_verification_owner": "ops_runtime_01_issues",
+      "proof_mode": "operational_browser",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_flags": [],
+      "trust_risks": [],
+      "classified_at_utc": "2026-05-23T11:36:29.508914+00:00",
+      "mutations_verified_in_this_bundle": [
+        "issue_create",
+        "issue_view",
+        "issue_update",
+        "issue_status_transition",
+        "issue_close",
+        "issue_reopen_attempt",
+        "issue_refresh_persistence",
+        "issue_cross_surface_sync"
+      ],
+      "shared_dependency_bundle_ids": [],
+      "checkpoints": {
+        "G0_preflight": true,
+        "G1_browser": true,
+        "G2_user_outcome": true,
+        "G3_system_outcome": true,
+        "G4_async_convergence": true,
+        "G5_refresh": true,
+        "G9_idempotency": true,
+        "G10_authority": true
+      }
+    }
+  },
+  "session": {
+    "email": "nancy@yopmail.com",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "role": "ROLE_CLIENT_ADMIN"
+  },
+  "pilot": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "property_label": "Kensington Garden Flat",
+    "jurisdiction": "Wales",
+    "maintenance_workflows": true,
+    "work_orders_api_status": 200,
+    "issues_api_status": 200,
+    "issue_to_wo_path": "POST /client/maintenance/issues/{id}/create-work-order",
+    "linked_operational_surfaces": [
+      "/operations/issues",
+      "/operations/issues/:issueId",
+      "/operations/work-orders",
+      "/operations/jobs/:jobId",
+      "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad (Jobs & issues tab)"
+    ],
+    "selection_rationale": "Same Wales HMO pilot as F1; issue\u2192WO path verified in F1 bundle context."
+  },
+  "ready": true
+}

@@ -19,6 +19,13 @@ from services.maintenance_issue_create_idempotency import (
     issue_create_begin,
     issue_create_complete,
 )
+from services.maintenance_wo_from_issue_idempotency import (
+    build_wo_from_issue_fingerprint,
+    find_existing_work_order_for_issue,
+    wo_from_issue_abort,
+    wo_from_issue_begin,
+    wo_from_issue_complete,
+)
 from services import contractor_service
 from services import work_order_contractor_routing_service as wo_contractor_routing
 from services.ops_compliance_feature_flags import (
@@ -554,15 +561,56 @@ async def update_issue(request: Request, issue_id: str, body: UpdateIssueBody):
 async def create_work_order_from_issue(request: Request, issue_id: str):
     """Create a work order from an issue; links issue_id to the work order. Requires MAINTENANCE_WORKFLOWS."""
     user = await _require_maintenance_enabled(request)
+    client_id = user["client_id"]
+    actor_id = user.get("portal_user_id")
+    issue = await maintenance_issues_service.get_issue(issue_id, client_id=client_id)
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    if issue.get("status") in (
+        maintenance_issues_service.STATUS_CLOSED,
+        maintenance_issues_service.STATUS_CANCELLED,
+    ):
+        raise HTTPException(status_code=400, detail="Cannot create work order from closed or cancelled issue")
+
+    existing_wo = await find_existing_work_order_for_issue(issue_id, client_id)
+    if existing_wo:
+        return existing_wo
+
+    property_id = issue["property_id"]
+    db = database.get_db()
+    fingerprint = build_wo_from_issue_fingerprint(
+        client_id=client_id,
+        property_id=property_id,
+        issue_id=issue_id,
+        actor_id=actor_id,
+    )
+    mode, replay_doc = await wo_from_issue_begin(
+        db,
+        fingerprint=fingerprint,
+        client_id=client_id,
+        property_id=property_id,
+    )
+    if mode == "replay" and replay_doc:
+        return replay_doc
+    if mode == "in_progress":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A work order is already being created from this issue. Please wait a moment and refresh.",
+        )
     try:
         doc = await maintenance_issues_service.create_work_order_from_issue(
             issue_id=issue_id,
-            client_id=user["client_id"],
-            reporter_id=user.get("portal_user_id"),
+            client_id=client_id,
+            reporter_id=actor_id,
         )
+        await wo_from_issue_complete(db, fingerprint=fingerprint, work_order_id=doc.get("work_order_id"))
         return doc
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        await wo_from_issue_abort(db, fingerprint=fingerprint)
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception:
+        await wo_from_issue_abort(db, fingerprint=fingerprint)
+        raise
 
 
 @router.get("/maintenance/work-orders/{work_order_id}")

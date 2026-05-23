@@ -1,0 +1,79 @@
+{
+  "started_at_utc": "2026-05-23T14:47:50.031761+00:00",
+  "steps": [
+    {
+      "step": "create_issue_source",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T14:48:01.193806+00:00"
+    },
+    {
+      "step": "create_wo_from_issue",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-23T14:48:04.207265+00:00"
+    },
+    {
+      "step": "issue_wo_link",
+      "ok": true,
+      "detail": "issue_id=8d905fcc-7733-4c3f-9371-122271dbc0e5",
+      "at_utc": "2026-05-23T14:48:04.207265+00:00"
+    },
+    {
+      "step": "view_wo",
+      "ok": true,
+      "detail": "status=OPEN",
+      "at_utc": "2026-05-23T14:48:06.214523+00:00"
+    },
+    {
+      "step": "issue_reflects_wo",
+      "ok": true,
+      "detail": "issue_status=ready_for_work_order",
+      "at_utc": "2026-05-23T14:48:08.533315+00:00"
+    },
+    {
+      "step": "assign_contractor",
+      "ok": true,
+      "detail": "{\"assignable_status\": 200, \"assign_status\": 200}",
+      "at_utc": "2026-05-23T14:48:15.765541+00:00"
+    },
+    {
+      "step": "quote_prep",
+      "ok": true,
+      "detail": "ok",
+      "at_utc": "2026-05-23T14:48:17.942582+00:00"
+    },
+    {
+      "step": "transition_in_progress",
+      "ok": true,
+      "detail": "status=200 wo=IN_PROGRESS",
+      "at_utc": "2026-05-23T14:48:20.242428+00:00"
+    },
+    {
+      "step": "transition_complete",
+      "ok": true,
+      "detail": "status=COMPLETED",
+      "at_utc": "2026-05-23T14:48:34.086177+00:00"
+    },
+    {
+      "step": "g10_issue_not_false_closed",
+      "ok": true,
+      "detail": "issue_status=ready_for_work_order",
+      "at_utc": "2026-05-23T14:48:36.363682+00:00"
+    }
+  ],
+  "issue_id": "8d905fcc-7733-4c3f-9371-122271dbc0e5",
+  "work_order_id": "adc1c317-18ee-4985-86fd-dba1e878ca9b",
+  "assign_detail": {
+    "assignable_status": 200,
+    "assign_status": 200
+  },
+  "quote_prep": {
+    "ok": true,
+    "steps": [
+      "submit_quote",
+      "approve_quote"
+    ]
+  },
+  "finished_at_utc": "2026-05-23T14:48:36.363682+00:00"
+}
