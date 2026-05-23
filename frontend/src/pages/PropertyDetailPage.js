@@ -1714,6 +1714,7 @@ export default function PropertyDetailPage() {
       </nav>
 
       {activeTab === TAB_OPERATING && (
+        <>
         <PropertyOperatingHub
           propertyId={propertyId}
           hasFeature={hasFeature}
@@ -1755,6 +1756,7 @@ export default function PropertyDetailPage() {
           priorityTaskRequirementsById={operatingHubPriorityRequirementsById}
         />
         <PropertyFinancialSnapshotCard propertyId={propertyId} />
+        </>
       )}
 
       {/* Tab: Compliance */}
