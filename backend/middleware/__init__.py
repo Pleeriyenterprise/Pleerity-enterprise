@@ -179,77 +179,56 @@ async def require_owner(request: Request) -> dict:
     """Require owner role (OWNER-only actions)."""
     return await require_role(request, UserRole.ROLE_OWNER)
 
-async def client_route_guard(request: Request) -> dict:
-    """Guard for client routes - checks auth, provisioning, password status."""
+async def _portal_session_guard(request: Request) -> tuple[dict, dict]:
+    """Shared portal JWT session validation (auth, active user, password set)."""
     user = await require_auth(request)
-    
     db = database.get_db()
-    
-    # Get portal user
     portal_user = await db.portal_users.find_one(
         merge_active_portal_user({"portal_user_id": user["portal_user_id"]}),
         {"_id": 0},
     )
-
     if not portal_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
+            detail="User not found",
         )
-
-    # Check user status
     if portal_user["status"] != "ACTIVE":
         await log_route_guard_redirect(
             user["portal_user_id"],
             str(request.url.path),
-            "USER_NOT_ACTIVE"
+            "USER_NOT_ACTIVE",
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is not active"
+            detail="User account is not active",
         )
-    
-    # Check password status
     if portal_user["password_status"] != PasswordStatus.SET.value:
         await log_route_guard_redirect(
             user["portal_user_id"],
             str(request.url.path),
-            "PASSWORD_NOT_SET"
+            "PASSWORD_NOT_SET",
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Password not set",
-            headers={"X-Redirect": "/set-password"}
+            headers={"X-Redirect": "/set-password"},
         )
-
-    # Landlord/client operational APIs (/api/client/*) must not be reachable by tenant JWTs.
     role = (portal_user.get("role") or user.get("role") or "").strip()
-    if role == UserRole.ROLE_TENANT.value:
-        await log_route_guard_redirect(
-            user["portal_user_id"],
-            str(request.url.path),
-            "TENANT_LANDLORD_API_FORBIDDEN",
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": "TENANT_LANDLORD_API_FORBIDDEN",
-                "message": "Tenant accounts may not access landlord operational APIs. Use tenant portal routes.",
-            },
-        )
-    
-    # Get client
+    user["role"] = role
+    return user, portal_user
+
+
+async def _client_context_guard(request: Request, user: dict, db) -> dict:
+    """Client provisioning, lifecycle, and entitlement checks shared by portal guards."""
     client = await db.clients.find_one(
         {"client_id": user["client_id"]},
-        {"_id": 0}
+        {"_id": 0},
     )
-    
     if not client:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Client not found"
+            detail="Client not found",
         )
-
     if client.get("is_deleted"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -261,22 +240,18 @@ async def client_route_guard(request: Request) -> dict:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Client account is not available",
         )
-
-    # Check provisioning status
     if client["onboarding_status"] != OnboardingStatus.PROVISIONED.value:
         await log_route_guard_redirect(
             user["portal_user_id"],
             str(request.url.path),
-            "PROVISIONING_INCOMPLETE"
+            "PROVISIONING_INCOMPLETE",
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Provisioning incomplete",
-            headers={"X-Redirect": "/onboarding-status"}
+            headers={"X-Redirect": "/onboarding-status"},
         )
 
-    # Subscription / entitlement: block portal API when suspended or cancelled (billing routes still allowed).
-    # Clients without a client_billing row are not evaluated here (pre-provision / legacy edge cases).
     path = str(request.url.path) or ""
     billing_row = await db.client_billing.find_one(
         {"client_id": user["client_id"]},
@@ -306,8 +281,50 @@ async def client_route_guard(request: Request) -> dict:
                     "canonical_entitlement_state": canon,
                 },
             )
-
     return user
+
+
+_TENANT_ROUTE_ALLOWED_ROLES = (
+    UserRole.ROLE_TENANT.value,
+    UserRole.ROLE_CLIENT.value,
+    UserRole.ROLE_CLIENT_ADMIN.value,
+    UserRole.ROLE_ADMIN.value,
+)
+
+
+async def client_route_guard(request: Request) -> dict:
+    """Guard for /api/client/* — landlord operational domain; ROLE_TENANT forbidden."""
+    user, _portal_user = await _portal_session_guard(request)
+    if user.get("role") == UserRole.ROLE_TENANT.value:
+        await log_route_guard_redirect(
+            user["portal_user_id"],
+            str(request.url.path),
+            "TENANT_LANDLORD_API_FORBIDDEN",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error_code": "TENANT_LANDLORD_API_FORBIDDEN",
+                "message": "Tenant accounts may not access landlord operational APIs. Use tenant portal routes.",
+            },
+        )
+    db = database.get_db()
+    return await _client_context_guard(request, user, db)
+
+
+async def tenant_route_guard(request: Request) -> dict:
+    """Guard for /api/tenant/* — tenant-safe domain without landlord-route tenant block."""
+    user, _portal_user = await _portal_session_guard(request)
+    role = user.get("role")
+    if role not in _TENANT_ROUTE_ALLOWED_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
+    if role == UserRole.ROLE_TENANT.value:
+        db = database.get_db()
+        return await _client_context_guard(request, user, db)
+    return await client_route_guard(request)
 
 async def admin_route_guard(request: Request) -> dict:
     """Guard for admin routes."""

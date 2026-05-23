@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from starlette.requests import Request
 
 from middleware import client_route_guard as middleware_client_route_guard
+from middleware import tenant_route_guard as middleware_tenant_route_guard
 from models import OnboardingStatus, PasswordStatus, UserRole
 from server import app
 
@@ -57,6 +58,50 @@ async def test_client_route_guard_blocks_role_tenant():
         assert exc.value.status_code == 403
         detail = exc.value.detail
         assert detail.get("error_code") == "TENANT_LANDLORD_API_FORBIDDEN"
+
+
+@pytest.mark.asyncio
+async def test_tenant_route_guard_allows_role_tenant_on_tenant_domain():
+    request = _make_request("/api/tenant/dashboard")
+    with patch("middleware.require_auth", new_callable=AsyncMock) as mock_auth, patch(
+        "middleware.database.get_db"
+    ) as mock_get_db, patch("middleware.log_route_guard_redirect", new_callable=AsyncMock):
+        mock_auth.return_value = {
+            "portal_user_id": "pu-tenant-1",
+            "client_id": "cli-1",
+            "role": UserRole.ROLE_TENANT.value,
+            "email": "tenant@example.com",
+        }
+        db = MagicMock()
+        db.portal_users.find_one = AsyncMock(return_value=TENANT_PORTAL_USER)
+        db.clients.find_one = AsyncMock(return_value=CLIENT_DOC)
+        db.client_billing.find_one = AsyncMock(return_value=None)
+        mock_get_db.return_value = db
+
+        user = await middleware_tenant_route_guard(request)
+        assert user["role"] == UserRole.ROLE_TENANT.value
+        assert user["client_id"] == "cli-1"
+
+
+@pytest.mark.asyncio
+async def test_tenant_route_guard_rejects_unknown_role():
+    request = _make_request("/api/tenant/dashboard")
+    with patch("middleware.require_auth", new_callable=AsyncMock) as mock_auth, patch(
+        "middleware.database.get_db"
+    ) as mock_get_db, patch("middleware.log_route_guard_redirect", new_callable=AsyncMock):
+        mock_auth.return_value = {
+            "portal_user_id": "pu-contractor-1",
+            "client_id": "cli-1",
+            "role": UserRole.ROLE_CONTRACTOR.value,
+        }
+        portal_user = {**TENANT_PORTAL_USER, "role": UserRole.ROLE_CONTRACTOR.value}
+        db = MagicMock()
+        db.portal_users.find_one = AsyncMock(return_value=portal_user)
+        mock_get_db.return_value = db
+
+        with pytest.raises(HTTPException) as exc:
+            await middleware_tenant_route_guard(request)
+        assert exc.value.status_code == 403
 
 
 @pytest.mark.asyncio

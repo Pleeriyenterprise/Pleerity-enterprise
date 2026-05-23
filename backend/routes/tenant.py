@@ -11,7 +11,7 @@ Landlord is notified by email; messages/requests are stored for audit and landlo
 """
 from fastapi import APIRouter, HTTPException, Request, status
 from database import database
-from middleware import client_route_guard
+from middleware import tenant_route_guard
 from datetime import datetime, timezone
 from pydantic import BaseModel
 from typing import Optional
@@ -79,20 +79,6 @@ async def _ensure_tenant_property_access(request: Request, property_id: str):
                 detail="Not assigned to this property",
             )
     return db, user, client_id, property_doc
-
-
-async def tenant_route_guard(request: Request):
-    """Guard that allows ROLE_TENANT access (read-only)."""
-    user = await client_route_guard(request)
-    
-    # Tenants have their own role but share client_id with landlord
-    if user.get("role") not in ["ROLE_TENANT", "ROLE_CLIENT", "ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-    
-    return user
 
 
 @router.get("/dashboard")
