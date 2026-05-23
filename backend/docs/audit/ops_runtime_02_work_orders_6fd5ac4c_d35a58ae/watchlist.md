@@ -1,21 +1,17 @@
-# Watchlist — F2 `ops_runtime_02_work_orders` (post-remediation)
+# Watchlist — F2 `ops_runtime_02_work_orders`
 
-## Blocking (deploy + rerun)
+## Resolved (post-deploy `20260523T152330Z`)
 
-- **F2-deploy-g9-g10:** Backend remediation (G9 idempotency + G10 terminal reopen guard) implemented locally; staging API not yet deployed — G9/G10 probes fail on Render until deploy + same-run rerun.
-- **F2-post-deploy-rerun:** Rerun `tmp_ops_runtime_02_work_orders_execute.py` after deploy; require `VERIFIED_OPERATIONALLY` in single same-run.
+- G9 issue→WO idempotency — **PASS** on deployed staging
+- Lifecycle completion path — **PASS** (fixture contractor + quote gates)
+- G10 terminal reopen — **PASS** (400 on client PATCH)
+- Convergence — **PASS** (WO `COMPLETED` stable after 60s)
 
-## Resolved by remediation (pending deploy verification)
+## Residual (non-blocking)
 
-- ~~**F2-g9-wo-from-issue-idempotency**~~ — code + tests shipped; staging probe pending deploy
-- ~~**F2-lifecycle-completion-blocked**~~ — pilot contractor fixture `a1f2e3b4…` enables assign→quote→approve→complete path
+- **Historical marker WO rows:** pre-remediation duplicate WOs remain visible on pilot (`marker_wo_rows: 2` includes prior-run debt; G9 probe for current issue shows single row)
+- **Render GIT_COMMIT_SHA:** `/api/version` returns `unknown`; use behavioral smoke + bundle for deploy proof until CI env wired
 
-## Operational debt (pre-remediation runs)
+## Programme
 
-- Prior duplicate marker WO rows from failed G9 runs remain visible on pilot (historical debt; new duplicates blocked after deploy)
-
-## Remediation sequence
-
-1. Deploy backend + frontend to staging
-2. Rerun F2 harness (browser + G9 + G10 + convergence in same run)
-3. Classify; if `VERIFIED_OPERATIONALLY`, F3 may proceed per programme rules
+- F3 (`ops_runtime_03_contractor`) **may proceed** per programme execution order

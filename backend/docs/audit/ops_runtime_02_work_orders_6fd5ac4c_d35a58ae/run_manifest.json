@@ -1,7 +1,7 @@
 {
   "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
   "family": "ops_runtime_02_work_orders",
-  "run_id": "ops_runtime_02_work_orders_20260523T144540Z",
+  "run_id": "ops_runtime_02_work_orders_20260523T152330Z",
   "authoritative_verification_owner": "ops_runtime_02_work_orders",
   "proof_mode": "operational_browser",
   "shared_dependency_bundle_ids": [
@@ -9,5 +9,5 @@
   ],
   "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
   "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-  "classification": "FAIL_SYSTEM"
+  "classification": "VERIFIED_OPERATIONALLY"
 }

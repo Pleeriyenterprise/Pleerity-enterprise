@@ -4749,7 +4749,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-01 — operational domain runtime closure (DEFINED — hardened charter)
 
-**Status:** **IN_PROGRESS** — F1 `VERIFIED_OPERATIONALLY`. F2 remediation shipped; staging lifecycle+browser PASS post-fixture; `FAIL_SYSTEM` until deploy + G9/G10 same-run rerun. F3 blocked.
+**Status:** **IN_PROGRESS** — F1 + F2 `VERIFIED_OPERATIONALLY`. F3 may proceed.
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md)
 
@@ -4784,7 +4784,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 | Family | Slug | Status | Classification |
 |--------|------|--------|----------------|
 | Issues | `ops_runtime_01_issues` | VERIFIED_OPERATIONALLY | Post-G9 remediation rerun `20260523T113129Z`; bundle `ops_runtime_01_issues_6fd5ac4c_d35a58ae` |
-| Work orders | `ops_runtime_02_work_orders` | FAIL_SYSTEM (remediation shipped) | Run `20260523T144750Z` lifecycle+browser PASS; G9/G10 pending staging deploy; bundle `ops_runtime_02_work_orders_6fd5ac4c_d35a58ae` |
+| Work orders | `ops_runtime_02_work_orders` | VERIFIED_OPERATIONALLY | Post-deploy run `20260523T152330Z` commit `b921cbe7`; bundle `ops_runtime_02_work_orders_6fd5ac4c_d35a58ae` |
 | Contractor | `ops_runtime_03_contractor` | NOT_STARTED | — |
 | Risk signals | `ops_runtime_04_risk_signals` | NOT_STARTED | — |
 | Client sync | `ops_runtime_05_client_sync` | NOT_STARTED | — |

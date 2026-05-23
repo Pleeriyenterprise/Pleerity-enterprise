@@ -1,5 +1,5 @@
 {
-  "at_utc": "2026-05-23T14:49:02.299837+00:00",
+  "at_utc": "2026-05-23T15:26:30.810255+00:00",
   "probes": [
     {
       "name": "unauthenticated_patch_forbidden",
@@ -13,16 +13,16 @@
     },
     {
       "name": "completed_wo_reopen_blocked",
-      "pass": false,
-      "reopen_patch_status": 200,
-      "detail": "before=COMPLETED after=OPEN"
+      "pass": true,
+      "reopen_patch_status": 400,
+      "detail": "before=COMPLETED after=COMPLETED"
     },
     {
       "name": "wo_complete_issue_linkage_honest",
       "pass": true,
       "issue_status": "ready_for_work_order",
-      "wo_status": "OPEN"
+      "wo_status": "COMPLETED"
     }
   ],
-  "pass": false
+  "pass": true
 }

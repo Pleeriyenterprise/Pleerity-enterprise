@@ -1,8 +1,8 @@
 {
-  "at_utc": "2026-05-23T14:53:35.688424+00:00",
+  "at_utc": "2026-05-23T15:31:05.467793+00:00",
   "wait_seconds": 60,
-  "work_order_status": "OPEN",
+  "work_order_status": "COMPLETED",
   "issue_status": "ready_for_work_order",
-  "marker_wo_rows": 3,
-  "pass": false
+  "marker_wo_rows": 2,
+  "pass": true
 }

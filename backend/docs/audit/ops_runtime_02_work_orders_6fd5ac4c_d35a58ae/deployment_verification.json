@@ -1,0 +1,14 @@
+{
+  "verified_at_utc": "2026-05-23T15:26:00+00:00",
+  "local_head": "b921cbe7",
+  "origin_main_head": "b921cbe7",
+  "commit_message": "fix(ops): F2 issue→WO idempotency, terminal reopen guard, lifecycle fixture",
+  "render_api": "https://pleerity-enterprise.onrender.com",
+  "render_health": {"status": "healthy", "environment": "production"},
+  "render_version_endpoint": {"commit_sha": "unknown", "environment": "production"},
+  "render_deploy_proof": "behavioral — G9 idempotent_replay true on staging after push (commit SHA not wired in Render env)",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "frontend_deploy_proof": "Vercel auto-deploy from main (same commit b921cbe7); browser harness validates UI surfaces",
+  "deploy_poll_attempts": 6,
+  "deploy_transient": ["502/503 during Render rolling deploy attempts 2-5"]
+}

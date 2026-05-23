@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-05-23T15:26:00+00:00",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "g9": {
+    "first_status": 200,
+    "second_status": 200,
+    "first_wo_id": "c0c26d3b-1055-43e5-91ae-8fd90604bc39",
+    "second_wo_id": "c0c26d3b-1055-43e5-91ae-8fd90604bc39",
+    "idempotent_replay": true,
+    "pass": true
+  },
+  "g10": {
+    "before": "COMPLETED",
+    "reopen_status": 400,
+    "after": "COMPLETED",
+    "pass": true
+  },
+  "ready": true,
+  "classification_if_fail": "DEPLOYMENT_NOT_READY"
+}
