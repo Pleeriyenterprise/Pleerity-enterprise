@@ -1,23 +1,23 @@
 {
-  "precheck_at_utc": "2026-05-23T23:05:00+00:00",
+  "precheck_at_utc": "2026-05-23T23:12:16.464924+00:00",
+  "run_tag": "20260523T225234Z",
   "tenant_email": "f7-ops-wales@yopmail.com",
   "pilot_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-  "result": "FAIL_SYSTEM",
+  "result": "PASS",
   "landlord_routes_must_403": [
     {
       "method": "GET",
       "path": "/client/operations/rent/summary",
-      "status": 200,
-      "pass": false,
-      "classification": "unsafe_exposure"
+      "status": 403,
+      "pass": true,
+      "classification": "blocked_correctly"
     },
     {
       "method": "POST",
       "path": "/client/maintenance/issues",
-      "status": 200,
-      "pass": false,
-      "classification": "unsafe_exposure",
-      "note": "Created probe issue c652b763-9e5f-40a5-9959-03bf4bb7a04a; landlord cleanup attempted"
+      "status": 403,
+      "pass": true,
+      "classification": "blocked_correctly"
     }
   ],
   "tenant_safe_must_work": [
@@ -30,15 +30,9 @@
     {
       "method": "GET",
       "path": "/tenant/reported-issues",
-      "status": 404,
-      "pass": false,
-      "note": "Endpoint not on deployed build"
+      "status": 200,
+      "pass": true
     }
   ],
-  "tenant_login": {
-    "status": 200,
-    "pass": true
-  },
-  "full_ops_rerun_executed": false,
-  "reason": "Landlord routes still allow ROLE_TENANT; precheck gate failed per charter"
+  "full_ops_rerun_executed": true
 }

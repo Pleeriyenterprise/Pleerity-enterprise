@@ -1,39 +1,42 @@
 # PRELAUNCH-OPS-RUNTIME-VERIFY-01 — Family 7 Tenant Portal (`ops_runtime_07_tenant_portal`)
 
-**Initial run:** `20260523T211806Z` → `FAIL_SYSTEM` + `TRUST_RISK_PRESENT`  
-**Deploy verification:** `2026-05-23T23:05:00Z` → **BLOCKED_NOT_DEPLOYED**  
-**Post-deploy OPS rerun:** **NOT EXECUTED** (precheck gate failed)
+**Run:** `20260523T225234Z` (post-deploy same-run rerun)  
+**Classification:** `VERIFIED_OPERATIONALLY`  
+**Owner:** `ops_runtime_07_tenant_portal`  
+**Proof mode:** `operational_browser`
 
-## Deployment verification
+## Pilot
 
-| Check | Result |
-|-------|--------|
-| Local HEAD | `a4b23caa` (F4 — not F7 remediation) |
-| origin/main HEAD | `a4b23caa` (same) |
-| F7 remediation on origin/main | **NO** — local uncommitted only |
-| Staging behavioural proof | Tenant GET rent summary **200**, POST maintenance **200** |
-| Render deploy of F7 fix | **Not confirmed** |
+| Field | Value |
+|-------|-------|
+| client_id | `6fd5ac4c-3fd4-4112-ade7-156977deb49f` |
+| property_id | `d35a58ae-3c81-491c-9694-1d021dd3b8ad` |
+| tenant | `f7-ops-wales@yopmail.com` |
+| marker issue | `02e96768-cf9c-4bd7-ae34-754c01f481f3` |
+| marker WO | `0e0b6dd7-66aa-4a9c-9fc2-00f261551f69` |
 
-## Smoke precheck (staging)
+## Deploy baseline
 
-- Tenant login: **PASS**
-- Tenant dashboard: **PASS**
-- Landlord routes blocked: **FAIL** (still 200)
-- `GET /tenant/reported-issues`: **404** (not deployed)
+| Commit | Purpose |
+|--------|---------|
+| `83cbe99a` | Tenant blocked from `/api/client/*` |
+| `128736db` | Tenant-safe `/api/tenant/*` restored |
+| `5b4c1f7c` | F3/F5/F6 audit lineage parity |
 
-Full F7 harness **not run** per charter (landlord authority leakage persists on staging).
+## Same-run proof
 
-## Classification
-
-**`FAIL_SYSTEM` + `TRUST_RISK_PRESENT`** (unchanged)
+| Area | Result |
+|------|--------|
+| Tenant login + dashboard + property | PASS |
+| Tenant report-issue | PASS |
+| Landlord sees tenant issue + lifecycle + WO + close | PASS |
+| Tenant reported-issues lifecycle visibility | PASS |
+| Tenant blocked from landlord `/api/client/*` | PASS |
+| G9 idempotency | PASS |
+| G10 authority integrity | PASS |
+| Browser landlord + tenant | PASS |
+| 60s convergence | PASS |
 
 ## F8 may proceed
 
-**NO**
-
-## Required before rerun
-
-1. Commit + push F7 remediation (`middleware/__init__.py`, `routes/tenant.py`, tests)
-2. Confirm Render backend deploys that commit
-3. Re-run smoke precheck (tenant landlord routes → 403)
-4. Execute `tmp_ops_runtime_07_tenant_portal_execute.py` same-run OPS
+**YES** (F7 owner bundle `VERIFIED_OPERATIONALLY`; F8 subject to its own charter)

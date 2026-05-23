@@ -1,27 +1,11 @@
 {
-  "remediated_at_utc": "2026-05-23T22:55:00+00:00",
-  "failure_addressed": "ROLE_TENANT accessing /api/client/* landlord operational routes",
-  "approach": "Centralized server enforcement in client_route_guard — reject ROLE_TENANT before client context resolution",
-  "error_code": "TENANT_LANDLORD_API_FORBIDDEN",
-  "files_changed": [
-    "backend/middleware/__init__.py",
-    "backend/routes/tenant.py",
-    "backend/tests/test_tenant_client_route_authority.py"
+  "at_utc": "2026-05-23T23:06:05.115862+00:00",
+  "run_tag": "20260523T225234Z",
+  "remediation_commits": [
+    "83cbe99a",
+    "128736db"
   ],
-  "tenant_safe_additions": [
-    "GET /api/tenant/reported-issues — bounded lifecycle projection (reported/acknowledged/in_progress/completed)"
-  ],
-  "local_tests": {
-    "file": "tests/test_tenant_client_route_authority.py",
-    "result": "3 passed"
-  },
-  "staging_deploy_status": "NOT_DEPLOYED",
-  "staging_probe_at_utc": "2026-05-23T22:52:00+00:00",
-  "staging_probe": {
-    "tenant_rent_summary": 200,
-    "tenant_reported_issues": 404,
-    "note": "Staging still on pre-remediation build; F7 operational rerun requires deploy then re-execute harness"
-  },
-  "prior_run": "20260523T211806Z",
-  "prior_classification": "FAIL_SYSTEM + TRUST_RISK_PRESENT"
+  "denied_route_matrix_pass": true,
+  "tenant_safe_routes_pass": true,
+  "pass": true
 }

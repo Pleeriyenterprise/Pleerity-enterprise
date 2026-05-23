@@ -1,0 +1,26 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_07_tenant_portal",
+  "run_tag": "20260523T225234Z",
+  "authoritative_verification_owner": "ops_runtime_07_tenant_portal",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "classification": "VERIFIED_OPERATIONALLY",
+  "post_deploy_ops_rerun": true,
+  "deploy_commits": [
+    "83cbe99a",
+    "128736db",
+    "5b4c1f7c"
+  ],
+  "issue_id": "02e96768-cf9c-4bd7-ae34-754c01f481f3",
+  "work_order_id": "0e0b6dd7-66aa-4a9c-9fc2-00f261551f69",
+  "marker": "OPS-RUNTIME-F7-20260523T225234Z",
+  "finished_at_utc": "2026-05-23T23:12:16.464924+00:00"
+}

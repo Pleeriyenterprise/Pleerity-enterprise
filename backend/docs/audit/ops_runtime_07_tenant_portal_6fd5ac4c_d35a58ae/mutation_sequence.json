@@ -1,0 +1,62 @@
+{
+  "started_at_utc": "2026-05-23T22:59:15.665368+00:00",
+  "steps": [
+    {
+      "step": "tenant_report_issue",
+      "ok": true,
+      "detail": "issue=02e96768-cf9c-4bd7-ae34-754c01f481f3 status=200",
+      "at_utc": "2026-05-23T22:59:29.983158+00:00"
+    },
+    {
+      "step": "tenant_dashboard_stable_after_report",
+      "ok": true,
+      "detail": "props=1 compliance=RED",
+      "at_utc": "2026-05-23T23:01:01.907080+00:00"
+    },
+    {
+      "step": "landlord_sees_tenant_issue",
+      "ok": true,
+      "detail": "marker_open=1 open_count=45",
+      "at_utc": "2026-05-23T23:01:45.065906+00:00"
+    },
+    {
+      "step": "landlord_open_count_incremented",
+      "ok": true,
+      "detail": "base=44 after=45",
+      "at_utc": "2026-05-23T23:01:45.065906+00:00"
+    },
+    {
+      "step": "landlord_issue_source_tenant",
+      "ok": true,
+      "detail": "source=tenant_request",
+      "at_utc": "2026-05-23T23:01:50.797646+00:00"
+    },
+    {
+      "step": "landlord_transition_monitoring",
+      "ok": true,
+      "detail": "status=monitoring",
+      "at_utc": "2026-05-23T23:01:56.720389+00:00"
+    },
+    {
+      "step": "landlord_create_wo_from_issue",
+      "ok": true,
+      "detail": "wo=0e0b6dd7-66aa-4a9c-9fc2-00f261551f69",
+      "at_utc": "2026-05-23T23:02:04.053932+00:00"
+    },
+    {
+      "step": "landlord_close_issue",
+      "ok": true,
+      "detail": "status=closed",
+      "at_utc": "2026-05-23T23:02:18.844195+00:00"
+    },
+    {
+      "step": "cross_role_post_close_coherence",
+      "ok": true,
+      "detail": "marker_open=0 tenant_props=1",
+      "at_utc": "2026-05-23T23:03:14.835067+00:00"
+    }
+  ],
+  "issue_id": "02e96768-cf9c-4bd7-ae34-754c01f481f3",
+  "work_order_id": "0e0b6dd7-66aa-4a9c-9fc2-00f261551f69",
+  "finished_at_utc": "2026-05-23T23:03:14.835067+00:00"
+}

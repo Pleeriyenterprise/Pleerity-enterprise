@@ -1,0 +1,179 @@
+{
+  "wait_seconds": 60,
+  "finished_at_utc": "2026-05-23T23:12:16.464924+00:00",
+  "final_landlord": {
+    "at_utc": "2026-05-23T23:11:14.054233+00:00",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "dashboard_status": 200,
+    "open_count_status": 200,
+    "open_issues_count": 44,
+    "issues_status": 200,
+    "issue_count": 50,
+    "issues_marker_open": 0,
+    "issues_marker_total": 4,
+    "tenants_status": 200,
+    "tenant_count": 1
+  },
+  "final_tenant": {
+    "at_utc": "2026-05-23T23:11:58.318843+00:00",
+    "dashboard_status": 200,
+    "dashboard": {
+      "tenant_name": "f7-ops-wales@yopmail.com",
+      "summary": {
+        "total_properties": 1,
+        "fully_compliant": 0,
+        "needs_attention": 0,
+        "action_required": 1
+      },
+      "properties": [
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "address": "Kenny Cresent, London W8",
+          "property_type": "bungalow",
+          "compliance_status": "RED",
+          "effective_jurisdiction_label": "Wales",
+          "jurisdiction_source": "property_record",
+          "certificates": [
+            {
+              "type": "eicr",
+              "description": "Electrical Installation Condition Report (EICR)",
+              "status": "UNKNOWN_DATE",
+              "expiry": "2026-06-02"
+            },
+            {
+              "type": "legionella",
+              "description": "Legionella risk assessment",
+              "status": "UNKNOWN_DATE",
+              "expiry": "2026-06-02"
+            },
+            {
+              "type": "hmo_license",
+              "description": "HMO / selective / additional licensing (local authority)",
+              "status": "UNKNOWN_DATE",
+              "expiry": "2036-04-11"
+            },
+            {
+              "type": "gas_safety",
+              "description": "Gas safety certificate",
+              "status": "COMPLIANT",
+              "expiry": "2027-05-17"
+            },
+            {
+              "type": "epc",
+              "description": "Energy Performance Certificate (EPC)",
+              "status": "UNKNOWN_DATE",
+              "expiry": "2026-07-02"
+            },
+            {
+              "type": "occupation_contract",
+              "description": "Written occupation contract (Wales)",
+              "status": "UNKNOWN_DATE",
+              "expiry": "2026-06-04"
+            },
+            {
+              "type": "fire_alarm",
+              "description": "Smoke, Heat & CO Alarm Compliance",
+              "status": "UNKNOWN_DATE",
+              "expiry": "2026-06-19"
+            },
+            {
+              "type": "hmo_fire_risk_evidence",
+              "description": "HMO fire safety management evidence (log book, tests, compartmentation)",
+              "status": "EXPIRING_SOON",
+              "expiry": "2026-06-24"
+            }
+          ]
+        }
+      ],
+      "last_updated": "2026-05-23T23:12:04.218992+00:00",
+      "role": "ROLE_TENANT"
+    },
+    "property_count": 1,
+    "property_ids": [
+      "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    ],
+    "pilot_property_visible": true,
+    "pilot_compliance_status": "RED",
+    "property_detail_status": 200,
+    "property_detail": {
+      "property": {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "address": "Kenny Cresent, London W8",
+        "type": "bungalow",
+        "compliance_status": "RED",
+        "effective_jurisdiction_label": "Wales",
+        "jurisdiction_source": "property_record"
+      },
+      "certificates": [
+        {
+          "type": "eicr",
+          "description": "Electrical Installation Condition Report (EICR)",
+          "status": "UNKNOWN_DATE",
+          "status_color": "blue",
+          "expiry_date": "2026-06-02",
+          "renewal_frequency": "Every 1825 days"
+        },
+        {
+          "type": "legionella",
+          "description": "Legionella risk assessment",
+          "status": "UNKNOWN_DATE",
+          "status_color": "blue",
+          "expiry_date": "2026-06-02",
+          "renewal_frequency": "Every 730 days"
+        },
+        {
+          "type": "hmo_license",
+          "description": "HMO / selective / additional licensing (local authority)",
+          "status": "UNKNOWN_DATE",
+          "status_color": "blue",
+          "expiry_date": "2036-04-11",
+          "renewal_frequency": "Every 1825 days"
+        },
+        {
+          "type": "gas_safety",
+          "description": "Gas safety certificate",
+          "status": "COMPLIANT",
+          "status_color": "green",
+          "expiry_date": "2027-05-17",
+          "renewal_frequency": "Every 365 days"
+        },
+        {
+          "type": "epc",
+          "description": "Energy Performance Certificate (EPC)",
+          "status": "UNKNOWN_DATE",
+          "status_color": "blue",
+          "expiry_date": "2026-07-02",
+          "renewal_frequency": "Every 3650 days"
+        },
+        {
+          "type": "occupation_contract",
+          "description": "Written occupation contract (Wales)",
+          "status": "UNKNOWN_DATE",
+          "status_color": "blue",
+          "expiry_date": "2026-06-04",
+          "renewal_frequency": "Every 365 days"
+        },
+        {
+          "type": "fire_alarm",
+          "description": "Smoke, Heat & CO Alarm Compliance",
+          "status": "UNKNOWN_DATE",
+          "status_color": "blue",
+          "expiry_date": "2026-06-19",
+          "renewal_frequency": "Every 365 days"
+        },
+        {
+          "type": "hmo_fire_risk_evidence",
+          "description": "HMO fire safety management evidence (log book, tests, compartmentation)",
+          "status": "EXPIRING_SOON",
+          "status_color": "yellow",
+          "expiry_date": "2026-06-24",
+          "renewal_frequency": "Every 365 days"
+        }
+      ],
+      "note": "This view shows safety checks for your rental property. Renewals are your landlord's responsibility\u2014contact them if you need an update."
+    }
+  },
+  "issue_closed": true,
+  "pass": true,
+  "queue_ok": true
+}

@@ -1,0 +1,35 @@
+{
+  "at_utc": "2026-05-23T23:03:14.835067+00:00",
+  "probes": [
+    {
+      "name": "tenant_dashboard_stable_reads",
+      "pass": true,
+      "reads": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "name": "landlord_open_count_duplicate_reads",
+      "pass": true,
+      "a": 44,
+      "b": 44
+    },
+    {
+      "name": "landlord_issue_status_stable",
+      "pass": true,
+      "status": "closed"
+    },
+    {
+      "name": "duplicate_tenant_report_allowed",
+      "pass": true,
+      "issue_id": "d08ba50d-3333-4ac8-85ca-a8ccabce773e"
+    }
+  ],
+  "trust_risk": false,
+  "fail_system": false,
+  "g9_probe_issue_id": "d08ba50d-3333-4ac8-85ca-a8ccabce773e",
+  "pass": true
+}

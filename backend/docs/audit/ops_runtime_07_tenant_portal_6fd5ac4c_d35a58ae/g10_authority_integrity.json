@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-05-23T23:06:05.130733+00:00",
+  "probes": [
+    {
+      "name": "tenant_cannot_patch_landlord_issue",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "name": "tenant_cannot_create_landlord_issue",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "name": "tenant_cannot_access_landlord_rent_summary",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "name": "tenant_cannot_reopen_closed_issue",
+      "pass": true,
+      "tenant_patch_status": 403
+    },
+    {
+      "name": "tenant_report_issue_still_works",
+      "pass": true,
+      "status": 200
+    }
+  ],
+  "pass": true
+}

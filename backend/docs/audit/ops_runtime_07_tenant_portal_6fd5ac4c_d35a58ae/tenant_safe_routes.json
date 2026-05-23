@@ -1,17 +1,21 @@
 {
-  "tenant_safe_routes": [
-    "GET /api/tenant/dashboard",
-    "GET /api/tenant/property/{property_id}",
-    "POST /api/tenant/report-issue",
-    "POST /api/tenant/report-maintenance",
-    "POST /api/tenant/contact-landlord",
-    "GET /api/tenant/requests",
-    "GET /api/tenant/reported-issues"
+  "run_tag": "20260523T225234Z",
+  "routes": [
+    {
+      "route": "/tenant/dashboard",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "route": "/tenant/property/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "route": "/tenant/reported-issues",
+      "status": 200,
+      "pass": true
+    }
   ],
-  "preserved": true,
-  "lifecycle_visibility": {
-    "endpoint": "GET /api/tenant/reported-issues",
-    "phases": ["reported", "acknowledged", "in_progress", "completed"],
-    "scope": "tenant-reported issues only (source tenant_request/tenant, reporter_contact match, assigned properties)"
-  }
+  "pass": true
 }

@@ -1,6 +1,6 @@
 {
-  "run_tag": "20260523T225234Z",
-  "routes": [
+  "at_utc": "2026-05-23T23:06:05.115862+00:00",
+  "denied_route_matrix": [
     {
       "route": "/client/maintenance/issues/02e96768-cf9c-4bd7-ae34-754c01f481f3",
       "label": "maintenance_mutation",
@@ -32,5 +32,23 @@
       "classification": "blocked_correctly"
     }
   ],
+  "tenant_safe_routes": [
+    {
+      "route": "/tenant/dashboard",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "route": "/tenant/property/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "route": "/tenant/reported-issues",
+      "status": 200,
+      "pass": true
+    }
+  ],
+  "landlord_control_status": 200,
   "pass": true
 }
