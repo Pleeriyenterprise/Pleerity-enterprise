@@ -1,0 +1,31 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_01_issues",
+  "authoritative_verification_owner": "ops_runtime_01_issues",
+  "proof_mode": "operational_browser",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "trust_risks": [],
+  "classified_at_utc": "2026-05-23T11:36:29.508914+00:00",
+  "mutations_verified_in_this_bundle": [
+    "issue_create",
+    "issue_view",
+    "issue_update",
+    "issue_status_transition",
+    "issue_close",
+    "issue_reopen_attempt",
+    "issue_refresh_persistence",
+    "issue_cross_surface_sync"
+  ],
+  "shared_dependency_bundle_ids": [],
+  "checkpoints": {
+    "G0_preflight": true,
+    "G1_browser": true,
+    "G2_user_outcome": true,
+    "G3_system_outcome": true,
+    "G4_async_convergence": true,
+    "G5_refresh": true,
+    "G9_idempotency": true,
+    "G10_authority": true
+  }
+}

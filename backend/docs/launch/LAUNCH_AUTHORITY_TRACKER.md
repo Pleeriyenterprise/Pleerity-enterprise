@@ -4749,7 +4749,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-01 — operational domain runtime closure (DEFINED — hardened charter)
 
-**Status:** **IN_PROGRESS** — F1 (issues) executed 2026-05-23: `FAIL_SYSTEM` + `TRUST_RISK_PRESENT` (G9 duplicate create). **Not** launch authorization; **not** compliance evidence replacement (`OPS-VERIFY-01`).
+**Status:** **IN_PROGRESS** — F1 `VERIFIED_OPERATIONALLY` (2026-05-23 rerun post G9 fix). F2+ pending.
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md)
 
@@ -4783,7 +4783,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 | Family | Slug | Status | Classification |
 |--------|------|--------|----------------|
-| Issues | `ops_runtime_01_issues` | EXECUTED | `FAIL_SYSTEM` + `TRUST_RISK_PRESENT` (G9 duplicate create); bundle `ops_runtime_01_issues_6fd5ac4c_d35a58ae` |
+| Issues | `ops_runtime_01_issues` | VERIFIED_OPERATIONALLY | Post-G9 remediation rerun `20260523T113129Z`; bundle `ops_runtime_01_issues_6fd5ac4c_d35a58ae` |
 | Work orders | `ops_runtime_02_work_orders` | NOT_STARTED | — |
 | Contractor | `ops_runtime_03_contractor` | NOT_STARTED | — |
 | Risk signals | `ops_runtime_04_risk_signals` | NOT_STARTED | — |

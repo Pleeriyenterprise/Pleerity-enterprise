@@ -1,7 +1,7 @@
 # PRELAUNCH-OPS-RUNTIME-VERIFY-01 — Family 1 Issues (`ops_runtime_01_issues`)
 
-**Run:** `20260523T104439Z`  
-**Classification:** `FAIL_SYSTEM` (+ `TRUST_RISK_PRESENT`)  
+**Run:** `20260523T113129Z` (post-G9 remediation rerun)  
+**Classification:** `VERIFIED_OPERATIONALLY`  
 **Authoritative owner:** `ops_runtime_01_issues`  
 **Proof mode:** `operational_browser`  
 
@@ -10,16 +10,22 @@
 - property_id: `d35a58ae-3c81-491c-9694-1d021dd3b8ad`
 - jurisdiction: Wales
 
-## Summary
-- Preflight: PASS
-- API/browser lifecycle (create, view, edit, transition, close, refresh, cross-surface): PASS in same run
-- **G9 idempotency: FAIL** — rapid duplicate POST created two distinct issues with identical description visible in queue (no dedupe).
-- G10 authority: PASS (unauthenticated/forbidden; closed state monotonic)
-- Convergence: PASS (closed state stable after 35s)
-- Direct DB audit: not available on harness host (`MONGO_URL` absent); system outcome verified via production API reads.
+## Classification delta
+| Run | When | G9 | Classification |
+|-----|------|----|----------------|
+| Initial | `20260523T104439Z` | FAIL (twin visible issues) | `FAIL_SYSTEM` + `TRUST_RISK_PRESENT` |
+| Remediation | commit `56060eaf` | — | idempotent issue create (client + backend) |
+| Rerun | `20260523T113129Z` | PASS | **`VERIFIED_OPERATIONALLY`** |
 
-## Remediation before upgrade
-- Add idempotent create protection (client disable + server dedupe key) for maintenance issues.
+## Summary (rerun)
+- Preflight: PASS
+- API/browser lifecycle (create, view, edit, transition, close, refresh, cross-surface): PASS same run
+- G9 idempotency: PASS — duplicate POST returned same `issue_id` with `idempotent_replay: true`; one visible row
+- G10 authority: PASS
+- Convergence: PASS (35s; issue `closed`)
 
 ## F2 proceed
-**NO** — F2 requires `VERIFIED_OPERATIONALLY` or signed WATCHLIST with explicit issue-lifecycle waiver. Remediate G9 first, then rerun F1 browser bundle.
+**YES** — F1 achieved `VERIFIED_OPERATIONALLY` in post-remediation browser rerun.
+
+## Residual watchlist
+- **F1-reopen-semantics**: No client reopen UI; API retains closed on reopen patch — clarify before F8 chain.

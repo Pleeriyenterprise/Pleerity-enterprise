@@ -1,0 +1,12 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_01_issues",
+  "run_id": "ops_runtime_01_issues_20260523T113129Z",
+  "rerun_after": "F1-g9-duplicate-create-remediation",
+  "started_at_utc": "20260523T113129Z",
+  "authoritative_verification_owner": "ops_runtime_01_issues",
+  "proof_mode": "operational_browser",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "classification": "VERIFIED_OPERATIONALLY"
+}

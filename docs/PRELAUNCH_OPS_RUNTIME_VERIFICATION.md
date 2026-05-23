@@ -1,7 +1,7 @@
 # PRELAUNCH-OPS-RUNTIME-VERIFY-01 — Operational Domain Runtime Verification Charter
 
 **Programme ID:** `PRELAUNCH-OPS-RUNTIME-VERIFY-01`  
-**Status:** **IN_PROGRESS** (F1 executed 2026-05-23 — see `backend/docs/audit/ops_runtime_01_issues_6fd5ac4c_d35a58ae/REPORT.md`)  
+**Status:** **IN_PROGRESS** (F1 `VERIFIED_OPERATIONALLY` 2026-05-23 post-G9 rerun — see `backend/docs/audit/ops_runtime_01_issues_6fd5ac4c_d35a58ae/REPORT.md`)  
 **Authority:** Governed operational verification only — **not** launch authorization, UK rollout approval, compliance authority redesign, planner redesign, accounting certification, asset-native synthesis rollout, or AI operational orchestration.
 
 ---

@@ -1,0 +1,25 @@
+{
+  "at_utc": "2026-05-23T11:32:23.203576+00:00",
+  "probes": [
+    {
+      "name": "duplicate_create_post",
+      "first_status": 200,
+      "second_status": 200,
+      "first_issue_id": "3e135a1a-e8ea-47a7-a2b2-52ee415679b5",
+      "second_issue_id": "3e135a1a-e8ea-47a7-a2b2-52ee415679b5",
+      "idempotent_replay": true,
+      "same_issue_id": true,
+      "distinct_issue_ids": false,
+      "visible_rows_with_same_description": 1,
+      "pass": true,
+      "classification_if_fail": null
+    },
+    {
+      "name": "refresh_during_mutation",
+      "patch_status": 200,
+      "consistent_reads": true,
+      "pass": true
+    }
+  ],
+  "pass": true
+}
