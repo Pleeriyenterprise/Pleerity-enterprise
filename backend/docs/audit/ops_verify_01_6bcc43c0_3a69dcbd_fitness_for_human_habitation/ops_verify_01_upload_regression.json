@@ -1,0 +1,158 @@
+{
+  "at": "2026-05-23T00:04:24.265446+00:00",
+  "upload_status": 200,
+  "upload_body": {
+    "message": "Document uploaded successfully",
+    "document_id": "f307d17e-7d1a-4cea-be90-b7f41e72b686",
+    "outcome": {
+      "score_change": 0,
+      "new_score": 67,
+      "risk_change": "unchanged",
+      "status_change": "unchanged",
+      "message": "fitness_for_human_habitation evidence uploaded \u2014 file saved. Confirm extracted dates in Documents before this fully satisfies the requirement. (Compliance score +0; risk unchanged)",
+      "idempotent": false
+    },
+    "requirement_workflow_pending": false,
+    "evidence_match": {
+      "match_outcome": "UNKNOWN_TYPE",
+      "match_confidence": 0.0,
+      "predicted_document_type": "UNKNOWN",
+      "mismatch_reason_code": "LOW_SIGNAL",
+      "mismatch_reason_text": null,
+      "user_messages": [
+        "We could not confidently classify this file against a requirement yet. Link a requirement or wait for extraction, then confirm details."
+      ],
+      "evidence_satisfies_requirement": false
+    },
+    "document_validation": {
+      "valid": true,
+      "reason": null,
+      "jurisdiction": "England",
+      "scoring_jurisdiction": "ENGLAND_WALES",
+      "portfolio_jurisdiction": "England",
+      "missing_metadata_fields": []
+    },
+    "document_metadata": null,
+    "validation_result": {
+      "valid": true,
+      "jurisdiction": "England",
+      "validated_at": "2026-05-23T00:04:25.301939+00:00",
+      "missing_metadata_fields": [],
+      "reason": null,
+      "scoring_jurisdiction": "ENGLAND_WALES",
+      "portfolio_jurisdiction": "England",
+      "document_type_input": "other"
+    }
+  },
+  "post_upload_enriched": {
+    "found": true,
+    "requirement_id": "63c3deb8-bf2a-4828-b96a-6dfc84bc0b03",
+    "raw": {
+      "workflow_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "ops_verification_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "requirement_generation_source": "condition_standard_pilot_ops",
+      "client_surface_visible": true,
+      "applicability": "REQUIRED",
+      "applicability_state": "REQUIRED"
+    },
+    "enriched": {
+      "status": "PENDING",
+      "status_label": "Condition status needs review",
+      "evidence_badge_label": "Operational follow-up required",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "client_lifecycle_label": "Condition status needs review",
+      "needs_attention": null,
+      "take_action_primary": {
+        "label": "Manage related issues",
+        "route": "/operations/issues?property_id=3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "kind": "navigate",
+        "handler": "navigate",
+        "intent": "view_guidance"
+      },
+      "take_action_secondary": {
+        "label": "Review remediation progress",
+        "route": "/operations/work-orders?property_id=3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "kind": "navigate",
+        "handler": "navigate",
+        "external": false,
+        "intent": "maintenance"
+      },
+      "client_evidence_disclosure": "This standard is monitored through property condition, open issues, remediation work, and audit history. A single uploaded document does not prove this standard is met.",
+      "active_standard_status_summary": {
+        "state": "open_compliance_gaps_present",
+        "signal_counts": {
+          "open_issues": 0,
+          "open_work_orders": 1,
+          "open_risk_signals": 0,
+          "open_compliance_gaps": 6
+        },
+        "read_only": true
+      },
+      "evidence_authority": {
+        "version": 1,
+        "state": "UPLOADED_UNCONFIRMED",
+        "state_reason": "operational_followup_required_condition_standard",
+        "effective_expiry_date": null,
+        "effective_expiry_is_null": true,
+        "effective_issue_date": null,
+        "effective_verified_document_id": "f307d17e-7d1a-4cea-be90-b7f41e72b686",
+        "expiry_source": "NONE",
+        "evidence_last_verified_at": null,
+        "evidence_last_updated_at": "2026-05-23T00:05:12.253880+00:00",
+        "mismatch_flag": true,
+        "mismatch_reason": "evidence_document_match_blocks_satisfaction",
+        "evidence_confidence": null,
+        "authoritative_property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "evidence_scope_type": "PROPERTY",
+        "evidence_scope_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "predicted_document_type": "UNKNOWN",
+        "match_outcome": "UNKNOWN_TYPE",
+        "match_confidence": 0.0,
+        "mismatch_reason_code": "LOW_SIGNAL",
+        "evidence_match_blocks_satisfaction": true,
+        "primary_evidence_mode": "DOCUMENT_UPLOAD",
+        "evidence_confidence_level": "MEDIUM",
+        "non_document_verification_status": null,
+        "primary_evidence_record_id": null,
+        "pending_non_document_evidence_count": 3,
+        "semantic_state": "OPERATIONALLY_OPEN"
+      }
+    },
+    "ops_observability": {
+      "ops_verification_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "workflow_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "requirement_id": "63c3deb8-bf2a-4828-b96a-6dfc84bc0b03",
+      "requirement_type": "fitness_for_human_habitation",
+      "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "status": "PENDING",
+      "status_label": "Condition status needs review",
+      "evidence_badge_label": "Operational follow-up required",
+      "semantic_state": "OPERATIONALLY_OPEN",
+      "evidence_authority_state": "UPLOADED_UNCONFIRMED",
+      "evidence_authority_state_reason": "operational_followup_required_condition_standard",
+      "needs_attention": null,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "active_standard_status_summary": {
+        "state": "open_compliance_gaps_present",
+        "signal_counts": {
+          "open_issues": 0,
+          "open_work_orders": 1,
+          "open_risk_signals": 0,
+          "open_compliance_gaps": 6
+        },
+        "read_only": true
+      },
+      "primary_cta_label": "Manage related issues",
+      "primary_cta_route": "/operations/issues?property_id=3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "client_evidence_disclosure": "This standard is monitored through property condition, open issues, remediation work, and audit history. A single uploaded document does not prove this standard is met."
+    },
+    "signal_counts_db": {
+      "open_issues": 0,
+      "open_work_orders": 1,
+      "open_risk_signals": 0,
+      "open_compliance_gaps": 6
+    }
+  },
+  "upload_regression_pass": true
+}

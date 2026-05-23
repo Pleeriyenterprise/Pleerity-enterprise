@@ -1,0 +1,28 @@
+{
+  "at": "2026-05-22T23:49:05.846829+00:00",
+  "programme": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01",
+  "property_preflight": {
+    "jurisdiction": "England",
+    "tenancy_active_before": true,
+    "occupancy": "multi_family"
+  },
+  "materialisation": {
+    "ok": true,
+    "action": "already_materialised",
+    "requirement_id": "63c3deb8-bf2a-4828-b96a-6dfc84bc0b03",
+    "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+    "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+    "requirement_type": "fitness_for_human_habitation"
+  },
+  "materialisation_checks": {
+    "requirement_id": "63c3deb8-bf2a-4828-b96a-6dfc84bc0b03",
+    "client_surface_visible": true,
+    "workflow_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+    "ops_verification_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+    "applicability": "REQUIRED",
+    "primary_cta_label": null,
+    "primary_cta_route": null,
+    "upload_primary": false
+  },
+  "open_issues_before": 0
+}

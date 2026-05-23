@@ -231,7 +231,7 @@ docs/audit/ops_verify_01_{cid}_{pid}_{code}/
 
 | Obligation | Pilot materialisation | OPS status |
 |------------|----------------------|------------|
-| `fitness_for_human_habitation` | Allowlisted — admin path only | **NOT VERIFIED** — do not run until RS browser OPS complete |
+| `fitness_for_human_habitation` | Allowlisted — admin path only | **`VERIFIED_OPERATIONALLY`** (2026-05-23) — registry remediation `FITNESS_FOR_HUMAN_HABITATION\|ENGLAND` published (v24); same-run browser OPS passed — bundle `ops_verify_01_6bcc43c0_3a69dcbd_fitness_for_human_habitation/` |
 | `repairing_standard` | Allowlisted — admin path only | **`VERIFIED_OPERATIONALLY`** (2026-05-22) — matrix/inspect/CTA/disclosure/refresh + `?open=resolve` → issues/remediation; bundle `ops_verify_01_ec0b091b_def23b30_repairing_standard/` |
 
 **Prerequisites before OPS:** invoke pilot materialisation; confirm `tenancy_active`; jurisdiction gate (FFHH ≠ Scotland; RS = Scotland); maintenance workflows enabled.

@@ -1,0 +1,71 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01",
+  "obligation": "fitness_for_human_habitation",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "requirement_id": "63c3deb8-bf2a-4828-b96a-6dfc84bc0b03",
+  "pilot": {
+    "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+    "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1"
+  },
+  "checkpoints": {
+    "CS-PRE": true,
+    "CS-B0": true,
+    "CS-O1": true,
+    "CS-O2": true,
+    "CS-O6": true,
+    "CS-O5": true,
+    "CS-O10": true,
+    "CS-O11": true,
+    "CS-O14": true
+  },
+  "browser_proof": {
+    "matrix_row_visible": true,
+    "intel_modal_open": true,
+    "inspect_panel": true,
+    "primary_cta": true,
+    "resolve_deeplink": true,
+    "refresh_persistence": true,
+    "disclosure_present": true,
+    "cta_not_upload_primary": true,
+    "forbidden_certificate_wording": false,
+    "post_issue_matrix": false
+  },
+  "auth": "ops_signed_portal_token_rate_limit_bypass",
+  "client_api_visible": true,
+  "registry_remediation": {
+    "ok": true,
+    "action": "published",
+    "registry_key": "FITNESS_FOR_HUMAN_HABITATION|ENGLAND",
+    "draft_entry_id": "e779ee91-bc93-4829-a405-e02602d1ce03",
+    "queue_id": "aeb54ef5-af8c-41ed-b087-1135cd9ba70b",
+    "published": {
+      "queue_id": "aeb54ef5-af8c-41ed-b087-1135cd9ba70b",
+      "status": "published",
+      "published_version": 24,
+      "entry_count": 24,
+      "keys_updated_this_publish": [
+        "FITNESS_FOR_HUMAN_HABITATION|ENGLAND"
+      ]
+    },
+    "england_present_after": true,
+    "england_summary": {
+      "display_jurisdictions": [
+        "ENGLAND"
+      ],
+      "primary_action_mode": "view_guidance",
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "tenancy_active",
+            "op": "==",
+            "value": true
+          }
+        ]
+      }
+    },
+    "at": "2026-05-22T23:47:08.243974+00:00"
+  },
+  "bundle": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6bcc43c0_3a69dcbd_fitness_for_human_habitation",
+  "at": "2026-05-23T00:07:16.937217+00:00"
+}

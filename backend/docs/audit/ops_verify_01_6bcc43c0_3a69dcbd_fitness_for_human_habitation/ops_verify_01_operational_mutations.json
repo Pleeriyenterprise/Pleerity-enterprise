@@ -1,0 +1,57 @@
+{
+  "at": "2026-05-22T23:52:39.473459+00:00",
+  "create_issue": {
+    "status": 200,
+    "body": {
+      "issue_id": "c6a51922-c9b9-41d3-97e9-478b6a284ab2",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "asset_id": null,
+      "source": "client",
+      "category": "damp_mould",
+      "description": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01 damp condition ops verify 2026-05-22T23:52:39.719561+00:00",
+      "photos": [],
+      "reporter_name": null,
+      "reporter_contact": null,
+      "reported_urgency": "medium",
+      "severity": "medium",
+      "priority_score": 55,
+      "status": "triaged",
+      "recurrence_flag": false,
+      "risk_signal_id": null,
+      "created_from": "manual",
+      "source_requirement_code": null,
+      "operational_root_key": null,
+      "triggering_rule": null,
+      "created_at": "2026-05-22T23:52:40.787835+00:00",
+      "updated_at": "2026-05-22T23:52:40.787835+00:00",
+      "resolved_at": null,
+      "closed_at": null,
+      "triage": {
+        "severity": "medium",
+        "priority_score": 55,
+        "sla_hours": 72,
+        "recommended_contractor_type": "damp_inspection",
+        "reasoning": [
+          "Damp/mould mentioned; consider damp survey or inspection before repair."
+        ]
+      },
+      "outcome": {
+        "score_change": 0,
+        "new_score": 67,
+        "risk_change": "unchanged",
+        "status_change": "unchanged",
+        "message": "Issue created -> Compliance score +0 -> Risk unchanged",
+        "idempotent": false
+      }
+    }
+  },
+  "issue_id": "c6a51922-c9b9-41d3-97e9-478b6a284ab2",
+  "create_work_order": {
+    "status": 200
+  },
+  "resolve_issue": {
+    "status": 200
+  },
+  "issue_mutation_ok": true
+}

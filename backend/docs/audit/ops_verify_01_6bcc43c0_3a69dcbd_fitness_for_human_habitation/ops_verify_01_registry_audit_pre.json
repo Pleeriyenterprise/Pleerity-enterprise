@@ -1,0 +1,76 @@
+﻿{
+  "published_version": 23,
+  "published_keys_ffhh": [
+    "FITNESS_FOR_HUMAN_HABITATION|WALES"
+  ],
+  "wales_present": true,
+  "england_present": false,
+  "wales_summary": {
+    "scope_key": "WALES",
+    "status": "published",
+    "display_jurisdictions": [
+      "WALES"
+    ],
+    "primary_action_mode": "view_guidance",
+    "client_surface_visible": true,
+    "conditions_rules": [
+      {
+        "field": "tenancy_active",
+        "op": "==",
+        "value": true
+      }
+    ]
+  },
+  "england_summary": null,
+  "draft_count": 1,
+  "england_draft_ids": [],
+  "wales_draft_ids": [
+    "0c0c46fd-0f1a-420d-965a-678cfa0e61e1"
+  ],
+  "code_registry_england_wales": {
+    "description": null,
+    "frequency_days": null
+  },
+  "code_registry_england": {
+    "description": null
+  },
+  "diagnosis": "staging_data_drift",
+  "expected": "FITNESS_FOR_HUMAN_HABITATION|ENGLAND should exist for England portfolio (mirror WALES tenancy_active gate; view_guidance CTA)",
+  "wales_template_fields": {
+    "conditions": {
+      "logic": "ALL",
+      "rules": [
+        {
+          "field": "tenancy_active",
+          "op": "==",
+          "value": true
+        }
+      ]
+    },
+    "action_behaviour": {
+      "primary_action_mode": "view_guidance",
+      "cta_label_override": "Review habitability obligations",
+      "completion_notes": null
+    },
+    "classification": {
+      "requirement_type": "OBLIGATION",
+      "criticality": "HIGH",
+      "requires_document": false,
+      "requires_job": false,
+      "client_surface_visible": true,
+      "default_tracking_mode": null
+    },
+    "jurisdiction": {
+      "display_jurisdictions": [
+        "WALES"
+      ],
+      "scoring_jurisdiction_note": null,
+      "effective_from": null,
+      "effective_to": null,
+      "is_active": true,
+      "deprecated": false
+    },
+    "why_it_matters_short": "Unsafe or unhealthy rental conditions can place tenants at risk and may lead to legal disputes, enforcement action, or landlord repair obligations.",
+    "evidence_resolution": null
+  }
+}

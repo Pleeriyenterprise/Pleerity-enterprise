@@ -4731,7 +4731,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### CONDITION_STANDARD_ACTIVE_STANDARD — Phase 1 foundation (2026-05-20)
 
-**Status:** **IMPLEMENTED** (runtime foundation + bounded runtime-legitimacy + resolve deeplink fix 2026-05-22). **`repairing_standard`:** **`VERIFIED_OPERATIONALLY`** (Scotland pilot OPS closure). **FFHH:** not verified. **NOT** launch-ready.
+**Status:** **IMPLEMENTED** (runtime foundation). **`repairing_standard`:** **`VERIFIED_OPERATIONALLY`**. **`fitness_for_human_habitation`:** **`VERIFIED_OPERATIONALLY`** (2026-05-23 after staging registry remediation). **NOT** launch-ready.
 
 **Scope:** Bounded pilot materialisation for `fitness_for_human_habitation` / `repairing_standard`; operational convergence read-model (`active_standard_status_summary`); authority/lifecycle hardening; truthful UX + inspect panel; OPS readiness helpers. **No** upload-primary closure; **no** global planner materialisation; **no** asset-authoritative synthesis.
 
@@ -4739,11 +4739,11 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 **Pilot allowlist:** England FFHH `6bcc43c0…` / `3a69dcbd…`; Scotland RS `ec0b091b…` / `def23b30…` — rows exist only after explicit admin materialise invoke.
 
-**OPS programme:** `PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01` — `repairing_standard` browser attestation 2026-05-22: matrix/inspect/CTA/disclosure/refresh/**`?open=resolve`** **verified** (bundle `docs/audit/ops_verify_01_ec0b091b_def23b30_repairing_standard/`). Classification **`VERIFIED_OPERATIONALLY`** for RS only. FFHH **not run**.
+**OPS programme:** `PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01` — **`repairing_standard`** and **`fitness_for_human_habitation`** each **`VERIFIED_OPERATIONALLY`** in independent same-run browser OPS. FFHH required staging publish of `FITNESS_FOR_HUMAN_HABITATION|ENGLAND` (published v24) before runtime legitimacy passed — **not** a legitimacy bypass.
 
-**Watchlist:** FFHH OPS not started; do not widen pilot allowlist; no fleet rollout.
+**Watchlist:** Pilot-only posture retained; no fleet rollout; no launch authorization.
 
-**Done when:** OPS bundles per obligation classify `VERIFIED_OPERATIONALLY` in same run — **met for `repairing_standard`**; **not met for FFHH**.
+**Done when:** OPS bundles per obligation classify `VERIFIED_OPERATIONALLY` in same run — **met for both allowlisted obligations**.
 
 ---
 

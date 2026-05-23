@@ -79,6 +79,8 @@
 | Browser matrix / inspect / CTA / disclosure / refresh | **Verified** (2026-05-22 attestation) |
 | Browser `?open=resolve` deeplink (`repairing_standard`) | **Verified** (2026-05-22; routes to issues/remediation) |
 | End-to-end `VERIFIED_OPERATIONALLY` (`repairing_standard`) | **Met** (2026-05-22) |
+| FFHH OPS (`fitness_for_human_habitation`, England pilot) | **Verified** (2026-05-23; registry remediation + same-run browser OPS) |
+| End-to-end `VERIFIED_OPERATIONALLY` (`fitness_for_human_habitation`) | **Met** (2026-05-23) |
 | Launch readiness | **NOT READY** |
 
 ## Remaining limitations

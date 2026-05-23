@@ -1,0 +1,70 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01",
+  "at": "2026-05-22T23:53:42.435284+00:00",
+  "steps": [
+    {
+      "step": "matrix_row_visible",
+      "ok": true,
+      "detail": "Fitness For Human Habitation\t\u2014\t\nCondition status needs review\n\nCondition status ",
+      "at": "2026-05-22T23:53:52.271852+00:00"
+    },
+    {
+      "step": "intel_link_present",
+      "ok": true,
+      "detail": "count=1",
+      "at": "2026-05-22T23:53:52.275803+00:00"
+    },
+    {
+      "step": "intel_modal_open",
+      "ok": true,
+      "detail": "",
+      "at": "2026-05-22T23:53:55.498964+00:00"
+    },
+    {
+      "step": "inspect_panel",
+      "ok": true,
+      "detail": "OPERATIONAL CONDITION SUMMARY\n\nCondition status needs review\n\nOpen maintenance i",
+      "at": "2026-05-22T23:53:55.516078+00:00"
+    },
+    {
+      "step": "primary_cta",
+      "ok": true,
+      "detail": "Manage related issues",
+      "at": "2026-05-22T23:53:55.525714+00:00"
+    },
+    {
+      "step": "resolve_deeplink",
+      "ok": true,
+      "detail": "http://127.0.0.1:3000/operations/issues?property_id=3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "at": "2026-05-22T23:54:09.528382+00:00"
+    },
+    {
+      "step": "refresh_persistence",
+      "ok": true,
+      "detail": "Fitness For Human Habitation\t\u2014\t\nCondition status needs review\n\nCondition status ",
+      "at": "2026-05-22T23:54:26.148365+00:00"
+    },
+    {
+      "step": "matrix_post_issue",
+      "ok": false,
+      "detail": "",
+      "at": "2026-05-22T23:54:31.602262+00:00"
+    }
+  ],
+  "wording_checks": {
+    "forbidden_certificate_wording": false,
+    "operational_wording_present": true,
+    "disclosure_present": true,
+    "cta_not_upload_primary": true,
+    "refresh_persistence": true,
+    "post_issue_operational_wording": false
+  },
+  "inspect_excerpt": "OPERATIONAL CONDITION SUMMARY\n\nCondition status needs review\n\nOpen maintenance issues\n0\nOpen work orders\n1\nOpen risk signals\n0\nOpen compliance gaps\n5\n\nThis standard is monitored through property condition, open issues, remediation work, and audit history. A single uploaded document does not prove this standard is met.\n\nSupporting evidence may assist review but does not independently close this property standard.",
+  "requirement_row_excerpt": "Fitness For Human Habitation\t\u2014\t\nCondition status needs review\n\nCondition status needs review\n\n\t23 May 2027\t\u2014\tMedium\t\nManage related issues\nReview remediation progress\nNot applicable\nRequirement details",
+  "requirement_row_excerpt_post": "",
+  "screenshots": {
+    "matrix": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6bcc43c0_3a69dcbd_fitness_for_human_habitation\\screenshots\\ffhh_matrix.png",
+    "inspect": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\ops_verify_01_6bcc43c0_3a69dcbd_fitness_for_human_habitation\\screenshots\\ffhh_inspect.png"
+  },
+  "primary_cta_label": "Manage related issues"
+}

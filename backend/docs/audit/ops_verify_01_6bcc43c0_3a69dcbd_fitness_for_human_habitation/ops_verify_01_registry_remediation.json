@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "action": "published",
+  "registry_key": "FITNESS_FOR_HUMAN_HABITATION|ENGLAND",
+  "draft_entry_id": "e779ee91-bc93-4829-a405-e02602d1ce03",
+  "queue_id": "aeb54ef5-af8c-41ed-b087-1135cd9ba70b",
+  "published": {
+    "queue_id": "aeb54ef5-af8c-41ed-b087-1135cd9ba70b",
+    "status": "published",
+    "published_version": 24,
+    "entry_count": 24,
+    "keys_updated_this_publish": [
+      "FITNESS_FOR_HUMAN_HABITATION|ENGLAND"
+    ]
+  },
+  "england_present_after": true,
+  "england_summary": {
+    "display_jurisdictions": [
+      "ENGLAND"
+    ],
+    "primary_action_mode": "view_guidance",
+    "conditions": {
+      "logic": "ALL",
+      "rules": [
+        {
+          "field": "tenancy_active",
+          "op": "==",
+          "value": true
+        }
+      ]
+    }
+  },
+  "at": "2026-05-22T23:47:08.243974+00:00"
+}

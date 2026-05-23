@@ -1,0 +1,26 @@
+{
+  "programme": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01",
+  "obligation": "fitness_for_human_habitation",
+  "at": "2026-05-22T23:08:30.620Z",
+  "selected_pilot": {
+    "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+    "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+    "requirement_id": "63c3deb8-bf2a-4828-b96a-6dfc84bc0b03",
+    "requirement_type": "fitness_for_human_habitation",
+    "jurisdiction": "England",
+    "portfolio_jurisdiction_label": "England",
+    "tenancy_active": true,
+    "occupancy": "multi_family",
+    "workflow_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+    "ops_verification_family": "CONDITION_STANDARD_ACTIVE_STANDARD",
+    "applicability": "REQUIRED",
+    "applicability_state": "REQUIRED",
+    "note": "Allowlisted England AST pilot (david@yopmail.com stack); not inferred from repairing_standard pilot"
+  },
+  "repairing_standard_reference_only": {
+    "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+    "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "note": "Separate Scotland pilot — status not inherited"
+  }
+}
