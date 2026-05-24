@@ -1,0 +1,32 @@
+{
+  "started_at_utc": "2026-05-24T17:59:55.974308+00:00",
+  "steps": [
+    {
+      "step": "create_issue",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-24T18:00:13.621101+00:00"
+    },
+    {
+      "step": "property_lists_new_debt",
+      "ok": true,
+      "detail": "open_before=40",
+      "at_utc": "2026-05-24T18:00:16.813373+00:00"
+    },
+    {
+      "step": "property_summary_reflects_debt",
+      "ok": true,
+      "detail": "issues_or_kpis",
+      "at_utc": "2026-05-24T18:00:24.288098+00:00"
+    },
+    {
+      "step": "close_issue",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-24T18:00:34.953202+00:00"
+    }
+  ],
+  "issue_id": "77a1727c-ab39-4064-ba76-413c55a50ef0",
+  "finished_at_utc": "2026-05-24T18:00:34.953202+00:00",
+  "mutation_ok": true
+}

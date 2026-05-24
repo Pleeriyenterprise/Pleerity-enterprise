@@ -1,0 +1,29 @@
+{
+  "observations": [
+    {
+      "label": "post_close_property_issues",
+      "t0": {
+        "open_count": 40,
+        "has_marker": true
+      },
+      "reads": [
+        {
+          "ts": 1779645750.6414626,
+          "api": {
+            "open_count": 40,
+            "has_marker": true
+          }
+        }
+      ],
+      "converged": true,
+      "stale_projection": false,
+      "timeout_seconds": 75
+    }
+  ],
+  "any_stale": false,
+  "any_timeout": false,
+  "t0": {
+    "open_count": 40,
+    "has_marker": true
+  }
+}

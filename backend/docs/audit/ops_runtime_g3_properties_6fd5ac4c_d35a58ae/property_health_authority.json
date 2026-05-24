@@ -1,0 +1,13 @@
+{
+  "score": 39,
+  "risk_level": "High risk",
+  "score_status": "ok",
+  "last_calculated_at": "2026-05-24T17:54:59.904696+00:00",
+  "open_issues": 40,
+  "active_risks": 8,
+  "overdue_requirements": 0,
+  "false_healthy_during_active_debt": false,
+  "live_debt_visible": true,
+  "projection_hints": [],
+  "pass": true
+}

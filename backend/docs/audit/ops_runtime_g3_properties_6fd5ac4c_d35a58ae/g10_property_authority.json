@@ -1,0 +1,6 @@
+{
+  "active_debt_not_hidden": true,
+  "resolved_not_false_active": true,
+  "derived_does_not_override_live": true,
+  "pass": true
+}

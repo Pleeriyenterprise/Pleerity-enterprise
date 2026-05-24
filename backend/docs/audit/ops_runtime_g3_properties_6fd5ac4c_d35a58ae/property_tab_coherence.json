@@ -1,0 +1,43 @@
+{
+  "tabs": {
+    "overview": {
+      "score": 39,
+      "risk_level": "High risk",
+      "open_issues": 40
+    },
+    "compliance": {
+      "overdue": 0,
+      "missing": 6,
+      "matrix_rows": 8
+    },
+    "maintenance": {
+      "open_issues": 40,
+      "total_issues": 66
+    },
+    "risk_signals": {
+      "active": 8
+    }
+  },
+  "cross_widget_pairs": [
+    {
+      "a": "tab_maintenance",
+      "b": "property_health",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "tab_maintenance",
+      "b": "tab_risks",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "property_health",
+      "b": "tab_risks",
+      "coherent": true,
+      "note": ""
+    }
+  ],
+  "island_failures": [],
+  "pass": true
+}
