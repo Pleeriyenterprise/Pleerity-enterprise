@@ -1,0 +1,3 @@
+- deploy_sha unknown from `/api/version` (origin/main `5394bd47` recorded separately)
+- Static navigation graph reports 22 cycles / 4 unresolved escalation chains — runtime CTA walks in G1–G7 must confirm operator-visible loops
+- Depth violations (32) are static graph over-walk artifacts at max depth 5; review in G2/G3 drill-down probes

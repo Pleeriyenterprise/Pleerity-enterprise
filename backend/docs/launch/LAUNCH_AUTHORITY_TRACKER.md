@@ -4806,7 +4806,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-02 — operational control-plane verification (rev 4)
 
-**Status:** Framework **IMPLEMENTATION_READY** — **no G0/G1–G7 execution**. G0 programme precheck required before G1.
+**Status:** G0 **EXECUTED** — `CONTROL_PLANE_CIRCULARITY` (run `20260524T140328Z`); **G1–G7 NOT RUN**. G1 blocked until G0 `VERIFIED_OPERATIONALLY` or signed waiver.
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md)
 
@@ -4838,7 +4838,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 | Family | Slug | Status | Classification |
 |--------|------|--------|----------------|
-| Programme G0 | `ops_control_g0_programme_precheck` | NOT RUN | — |
+| Programme G0 | `ops_control_g0_programme_precheck` | EXECUTED | `CONTROL_PLANE_CIRCULARITY` — run `20260524T140328Z`; bundle `ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae` (static graph unresolved cycles; surfaces reachable) |
 | G1 Today | `ops_control_g1_today_page` | NOT RUN | — |
 | G2 Command Centre | `ops_control_g2_command_centre` | NOT RUN | — |
 | G3 Properties | `ops_control_g3_properties_page` | NOT RUN | — |

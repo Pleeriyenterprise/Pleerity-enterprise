@@ -1,0 +1,54 @@
+{
+  "checked_at": "2026-05-24T14:04:01.545195+00:00",
+  "run_tag": "20260524T140328Z",
+  "origin_main_sha": "5394bd47793080bf418b7fe21a8fc2a95d98bf4b",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "version_endpoint": {
+    "commit_sha": "unknown",
+    "environment": "production"
+  },
+  "deploy_sha": "unknown",
+  "deploy_sha_ambiguous": true,
+  "probes": [
+    {
+      "name": "api_root",
+      "url": "https://pleerity-enterprise.onrender.com/api/version",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "name": "frontend_root",
+      "url": "https://pleerityenterprise.co.uk",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "name": "auth_login",
+      "url": "https://pleerity-enterprise.onrender.com/api/auth/login",
+      "status": 422,
+      "ok": true
+    },
+    {
+      "name": "auth_contractor_login",
+      "url": "https://pleerity-enterprise.onrender.com/api/auth/contractor-login",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "name": "client_dashboard",
+      "url": "https://pleerity-enterprise.onrender.com/api/client/dashboard",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "name": "tenant_route_sample",
+      "url": "https://pleerity-enterprise.onrender.com/api/tenant/reported-issues",
+      "status": 403,
+      "ok": true
+    }
+  ],
+  "runtime_reachable": true,
+  "continuity_acceptable": true,
+  "note": "deploy_sha ambiguous \u2014 PARTIAL acceptable if runtime coherent"
+}

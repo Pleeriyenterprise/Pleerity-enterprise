@@ -1,0 +1,36 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
+  "family": "ops_control_g0_programme_precheck",
+  "authoritative_verification_owner": "ops_control_g0_programme_precheck",
+  "proof_mode": "operational_browser",
+  "classification": "CONTROL_PLANE_CIRCULARITY",
+  "execution_status": "CONTROL_PLANE_CIRCULARITY",
+  "secondary_classifications": [
+    "COGNITIVE_TRUST_RISK",
+    "deploy_sha_ambiguous"
+  ],
+  "reasons": [
+    "unresolved_control_plane_cycles",
+    "deploy_sha_ambiguous"
+  ],
+  "run_tag": "20260524T140328Z",
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_08_cross_domain_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "checkpoints": {
+    "G0_lineage": true,
+    "G0_deployment": true,
+    "G0_route_authority": true,
+    "G0_surfaces": true,
+    "G0_circularity_baseline": false,
+    "G0_orphan_baseline": true
+  }
+}

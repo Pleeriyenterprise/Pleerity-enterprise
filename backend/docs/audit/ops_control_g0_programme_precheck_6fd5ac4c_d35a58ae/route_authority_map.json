@@ -1,0 +1,491 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
+  "routes": [
+    {
+      "route": "/calendar",
+      "operational_domain": "calendar",
+      "authoritative_family_owner": "ops_control_g6_calendar_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g6_calendar_page",
+      "projection_authority_owner": "temporal_visibility",
+      "projection_resolution_rank": 3,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g6_calendar_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/calendar"
+      ]
+    },
+    {
+      "route": "/command-center",
+      "operational_domain": "live_projection",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/command-center"
+      ]
+    },
+    {
+      "route": "/documents",
+      "operational_domain": "document",
+      "authoritative_family_owner": "ops_control_g5_documents_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g5_documents_page",
+      "projection_authority_owner": "surface_visibility",
+      "projection_resolution_rank": 3,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g5_documents_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/documents"
+      ]
+    },
+    {
+      "route": "/documents/bulk-upload",
+      "operational_domain": "document",
+      "authoritative_family_owner": "ops_control_g5_documents_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g5_documents_page",
+      "projection_authority_owner": "surface_visibility",
+      "projection_resolution_rank": 3,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g5_documents_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/documents/bulk-upload"
+      ]
+    },
+    {
+      "route": "/operations/approvals",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/approvals"
+      ]
+    },
+    {
+      "route": "/operations/contractors",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/contractors"
+      ]
+    },
+    {
+      "route": "/operations/expenses",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/expenses"
+      ]
+    },
+    {
+      "route": "/operations/issues",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "ops_runtime_01_issues",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/issues"
+      ]
+    },
+    {
+      "route": "/operations/issues/:issueId",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "ops_runtime_01_issues",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/issues/:issueId"
+      ]
+    },
+    {
+      "route": "/operations/jobs/:jobId",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "ops_runtime_02_work_orders",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/jobs/:jobId"
+      ]
+    },
+    {
+      "route": "/operations/rent",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "ops_runtime_06_rent_ops",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/rent"
+      ]
+    },
+    {
+      "route": "/operations/risk-signals",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "ops_runtime_04_risk_signals",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/risk-signals"
+      ]
+    },
+    {
+      "route": "/operations/work-orders",
+      "operational_domain": "operations",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "ops_runtime_02_work_orders",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/operations/work-orders"
+      ]
+    },
+    {
+      "route": "/properties",
+      "operational_domain": "property_hub",
+      "authoritative_family_owner": "ops_control_g3_properties_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 3,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g3_properties_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/properties"
+      ]
+    },
+    {
+      "route": "/properties/:propertyId",
+      "operational_domain": "property_hub",
+      "authoritative_family_owner": "ops_control_g3_properties_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 3,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g3_properties_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/properties/:propertyId"
+      ]
+    },
+    {
+      "route": "/properties/create",
+      "operational_domain": "property_hub",
+      "authoritative_family_owner": "ops_control_g3_properties_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 3,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g3_properties_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/properties/create"
+      ]
+    },
+    {
+      "route": "/properties/import",
+      "operational_domain": "property_hub",
+      "authoritative_family_owner": "ops_control_g3_properties_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 3,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g3_properties_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/properties/import"
+      ]
+    },
+    {
+      "route": "/reports",
+      "operational_domain": "reporting",
+      "authoritative_family_owner": "ops_control_g7_reports_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g7_reports_page",
+      "projection_authority_owner": "derived",
+      "projection_resolution_rank": 4,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g7_reports_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/reports"
+      ]
+    },
+    {
+      "route": "/reports/audit-pack",
+      "operational_domain": "reporting",
+      "authoritative_family_owner": "ops_control_g7_reports_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g7_reports_page",
+      "projection_authority_owner": "exported",
+      "projection_resolution_rank": 5,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g7_reports_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/reports/audit-pack"
+      ]
+    },
+    {
+      "route": "/requirements",
+      "operational_domain": "requirement",
+      "authoritative_family_owner": "ops_control_g4_requirements_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g4_requirements_page",
+      "projection_authority_owner": "row",
+      "projection_resolution_rank": 3,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g4_requirements_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/requirements"
+      ]
+    },
+    {
+      "route": "/tasks",
+      "operational_domain": "attention",
+      "authoritative_family_owner": "ops_control_g1_today_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g1_today_page",
+      "projection_authority_owner": "attention_list",
+      "projection_resolution_rank": 2,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g1_today_page",
+      "cycle_detection_exemptions": [
+        "/today"
+      ],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/tasks"
+      ]
+    },
+    {
+      "route": "/today",
+      "operational_domain": "attention",
+      "authoritative_family_owner": "ops_control_g1_today_page",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g1_today_page",
+      "projection_authority_owner": "attention_list",
+      "projection_resolution_rank": 2,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g1_today_page",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/today"
+      ]
+    },
+    {
+      "route": "/work-queue",
+      "operational_domain": "live_projection",
+      "authoritative_family_owner": "ops_control_g2_command_centre",
+      "inherited_dependency_owners": [
+        "ops_runtime_01_issues",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_02_work_orders",
+        "ops_runtime_04_risk_signals"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "projection_authority_owner": "live",
+      "projection_resolution_rank": 1,
+      "mutation_owner": "none",
+      "primary_cta_owner": "ops_control_g2_command_centre",
+      "cycle_detection_exemptions": [],
+      "max_allowed_navigation_depth": 5,
+      "app_alias_routes": [
+        "/app/work-queue"
+      ]
+    }
+  ],
+  "route_count": 23
+}

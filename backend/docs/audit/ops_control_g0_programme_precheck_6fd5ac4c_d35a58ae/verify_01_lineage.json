@@ -1,0 +1,109 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "families": [
+    {
+      "family": "ops_runtime_01_issues",
+      "bundle_path": "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+      "present_on_disk": true,
+      "classification": "VERIFIED_OPERATIONALLY",
+      "shared_dependency_bundle_ids": [],
+      "proof_mode": "operational_browser"
+    },
+    {
+      "family": "ops_runtime_02_work_orders",
+      "bundle_path": "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+      "present_on_disk": true,
+      "classification": "VERIFIED_OPERATIONALLY",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "proof_mode": "operational_browser"
+    },
+    {
+      "family": "ops_runtime_03_contractor",
+      "bundle_path": "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+      "present_on_disk": true,
+      "classification": "VERIFIED_OPERATIONALLY",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "proof_mode": "operational_browser"
+    },
+    {
+      "family": "ops_runtime_04_risk_signals",
+      "bundle_path": "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+      "present_on_disk": true,
+      "classification": "VERIFIED_OPERATIONALLY",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "proof_mode": "operational_browser"
+    },
+    {
+      "family": "ops_runtime_05_client_sync",
+      "bundle_path": "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+      "present_on_disk": true,
+      "classification": "VERIFIED_OPERATIONALLY",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "proof_mode": "operational_browser"
+    },
+    {
+      "family": "ops_runtime_06_rent_ops",
+      "bundle_path": "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json",
+      "present_on_disk": true,
+      "classification": "VERIFIED_OPERATIONALLY",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "proof_mode": "operational_browser"
+    },
+    {
+      "family": "ops_runtime_07_tenant_portal",
+      "bundle_path": "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json",
+      "present_on_disk": true,
+      "classification": "VERIFIED_OPERATIONALLY",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "proof_mode": "operational_browser"
+    },
+    {
+      "family": "ops_runtime_08_cross_domain",
+      "bundle_path": "ops_runtime_08_cross_domain_6fd5ac4c_d35a58ae/07_classification.json",
+      "present_on_disk": true,
+      "classification": "VERIFIED_OPERATIONALLY",
+      "shared_dependency_bundle_ids": [
+        "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json",
+        "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json"
+      ],
+      "proof_mode": "operational_browser"
+    }
+  ],
+  "missing_families": [],
+  "not_verified_operationally": [],
+  "lineage_intact": true,
+  "all_verified_operationally": true
+}

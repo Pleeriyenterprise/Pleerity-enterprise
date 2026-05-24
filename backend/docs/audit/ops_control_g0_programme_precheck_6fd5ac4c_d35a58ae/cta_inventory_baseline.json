@@ -1,0 +1,834 @@
+{
+  "ctas": [
+    {
+      "source_route": "/today",
+      "label": "Compliance Vault Pro\nAI-Driven Solutions & Compliance",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Today",
+      "href": "/today",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Command center",
+      "href": "/command-center",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Dashboard",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Properties",
+      "href": "/properties",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Requirements",
+      "href": "/requirements",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Documents",
+      "href": "/documents",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Calendar",
+      "href": "/calendar",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Reports",
+      "href": "/reports",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Issues",
+      "href": "/operations/issues",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Jobs",
+      "href": "/operations/work-orders",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Contractors",
+      "href": "/operations/contractors",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Risk signals",
+      "href": "/operations/risk-signals",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Rent Operations",
+      "href": "/operations/rent",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Tenants",
+      "href": "/tenants",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Settings",
+      "href": "/settings",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "How inbox visibility works",
+      "href": "/help?article=how-inbox-visibility-works-today",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "info@pleerityenterprise.co.uk",
+      "href": "mailto:info@pleerityenterprise.co.uk",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Audit log",
+      "href": "/audit-log",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/today",
+      "label": "Help Centre",
+      "href": "/help",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Compliance Vault Pro\nAI-Driven Solutions & Compliance",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Today",
+      "href": "/today",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Command center",
+      "href": "/command-center",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Dashboard",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Properties",
+      "href": "/properties",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Requirements",
+      "href": "/requirements",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Documents",
+      "href": "/documents",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Calendar",
+      "href": "/calendar",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Reports",
+      "href": "/reports",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Issues",
+      "href": "/operations/issues",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Jobs",
+      "href": "/operations/work-orders",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Contractors",
+      "href": "/operations/contractors",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Risk signals",
+      "href": "/operations/risk-signals",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Rent Operations",
+      "href": "/operations/rent",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Tenants",
+      "href": "/tenants",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Settings",
+      "href": "/settings",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "info@pleerityenterprise.co.uk",
+      "href": "mailto:info@pleerityenterprise.co.uk",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Audit log",
+      "href": "/audit-log",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/command-center",
+      "label": "Help Centre",
+      "href": "/help",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Compliance Vault Pro\nAI-Driven Solutions & Compliance",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Today",
+      "href": "/today",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Command center",
+      "href": "/command-center",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Dashboard",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Properties",
+      "href": "/properties",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Requirements",
+      "href": "/requirements",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Documents",
+      "href": "/documents",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Calendar",
+      "href": "/calendar",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Reports",
+      "href": "/reports",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Issues",
+      "href": "/operations/issues",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Jobs",
+      "href": "/operations/work-orders",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Contractors",
+      "href": "/operations/contractors",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Risk signals",
+      "href": "/operations/risk-signals",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Rent Operations",
+      "href": "/operations/rent",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Tenants",
+      "href": "/tenants",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Settings",
+      "href": "/settings",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "info@pleerityenterprise.co.uk",
+      "href": "mailto:info@pleerityenterprise.co.uk",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Audit log",
+      "href": "/audit-log",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/properties",
+      "label": "Help Centre",
+      "href": "/help",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Compliance Vault Pro\nAI-Driven Solutions & Compliance",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Today",
+      "href": "/today",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Command center",
+      "href": "/command-center",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Dashboard",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Properties",
+      "href": "/properties",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Requirements",
+      "href": "/requirements",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Documents",
+      "href": "/documents",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Calendar",
+      "href": "/calendar",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Reports",
+      "href": "/reports",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Issues",
+      "href": "/operations/issues",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Jobs",
+      "href": "/operations/work-orders",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Contractors",
+      "href": "/operations/contractors",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Risk signals",
+      "href": "/operations/risk-signals",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Rent Operations",
+      "href": "/operations/rent",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Tenants",
+      "href": "/tenants",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Settings",
+      "href": "/settings",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "info@pleerityenterprise.co.uk",
+      "href": "mailto:info@pleerityenterprise.co.uk",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Audit log",
+      "href": "/audit-log",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/requirements",
+      "label": "Help Centre",
+      "href": "/help",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Compliance Vault Pro\nAI-Driven Solutions & Compliance",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Today",
+      "href": "/today",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Command center",
+      "href": "/command-center",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Dashboard",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Properties",
+      "href": "/properties",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Requirements",
+      "href": "/requirements",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Documents",
+      "href": "/documents",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Calendar",
+      "href": "/calendar",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Reports",
+      "href": "/reports",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Issues",
+      "href": "/operations/issues",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Jobs",
+      "href": "/operations/work-orders",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Contractors",
+      "href": "/operations/contractors",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Risk signals",
+      "href": "/operations/risk-signals",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Rent Operations",
+      "href": "/operations/rent",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Tenants",
+      "href": "/tenants",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Settings",
+      "href": "/settings",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "View affected requirements",
+      "href": "/requirements?status=OVERDUE_OR_MISSING",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "How score counts missing evidence",
+      "href": "/compliance-score",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Uploading documents",
+      "href": "/help?article=uploading-evidence",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "info@pleerityenterprise.co.uk",
+      "href": "mailto:info@pleerityenterprise.co.uk",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Audit log",
+      "href": "/audit-log",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/documents",
+      "label": "Help Centre",
+      "href": "/help",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Compliance Vault Pro\nAI-Driven Solutions & Compliance",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Today",
+      "href": "/today",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Command center",
+      "href": "/command-center",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Dashboard",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Properties",
+      "href": "/properties",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Requirements",
+      "href": "/requirements",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Documents",
+      "href": "/documents",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Calendar",
+      "href": "/calendar",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Reports",
+      "href": "/reports",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Issues",
+      "href": "/operations/issues",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Jobs",
+      "href": "/operations/work-orders",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Contractors",
+      "href": "/operations/contractors",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Risk signals",
+      "href": "/operations/risk-signals",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Rent Operations",
+      "href": "/operations/rent",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Tenants",
+      "href": "/tenants",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Settings",
+      "href": "/settings",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "info@pleerityenterprise.co.uk",
+      "href": "mailto:info@pleerityenterprise.co.uk",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Audit log",
+      "href": "/audit-log",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/calendar",
+      "label": "Help Centre",
+      "href": "/help",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Compliance Vault Pro\nAI-Driven Solutions & Compliance",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Today",
+      "href": "/today",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Command center",
+      "href": "/command-center",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Dashboard",
+      "href": "/dashboard",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Properties",
+      "href": "/properties",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Requirements",
+      "href": "/requirements",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Documents",
+      "href": "/documents",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Calendar",
+      "href": "/calendar",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Reports",
+      "href": "/reports",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Issues",
+      "href": "/operations/issues",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Jobs",
+      "href": "/operations/work-orders",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Contractors",
+      "href": "/operations/contractors",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Risk signals",
+      "href": "/operations/risk-signals",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Rent Operations",
+      "href": "/operations/rent",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Tenants",
+      "href": "/tenants",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Settings",
+      "href": "/settings",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Open audit evidence pack",
+      "href": "/reports/audit-pack",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "info@pleerityenterprise.co.uk",
+      "href": "mailto:info@pleerityenterprise.co.uk",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Audit log",
+      "href": "/audit-log",
+      "mutation_owner": "none"
+    },
+    {
+      "source_route": "/reports",
+      "label": "Help Centre",
+      "href": "/help",
+      "mutation_owner": "none"
+    }
+  ],
+  "count": 138,
+  "run_tag": "20260524T140328Z"
+}

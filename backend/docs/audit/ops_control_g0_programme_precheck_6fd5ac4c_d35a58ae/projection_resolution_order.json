@@ -1,0 +1,32 @@
+{
+  "canonical_order": [
+    {
+      "rank": 1,
+      "type": "live",
+      "owner": "ops_control_g2_command_centre"
+    },
+    {
+      "rank": 2,
+      "type": "attention_list",
+      "owner": "ops_control_g1_today_page"
+    },
+    {
+      "rank": 3,
+      "type": "property_summary",
+      "owner": "ops_control_g3_properties_page"
+    },
+    {
+      "rank": 4,
+      "type": "derived",
+      "owner": "ops_control_g7_reports_page"
+    },
+    {
+      "rank": 5,
+      "type": "exported",
+      "owner": "ops_control_g7_reports_page"
+    }
+  ],
+  "contradictions": [],
+  "contradiction_detected": false,
+  "registration_note": "G0 baseline rank 1-5 registration only; no runtime contradiction classification"
+}

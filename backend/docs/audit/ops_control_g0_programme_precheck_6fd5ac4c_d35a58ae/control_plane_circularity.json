@@ -1,0 +1,788 @@
+{
+  "cycles": [
+    {
+      "entry_surface": "/calendar",
+      "cycle_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/calendar"
+      ],
+      "authoritative_resolution_owner": "ops_control_g6_calendar_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/command-center",
+      "cycle_path": [
+        "/command-center",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/command-center",
+      "cycle_path": [
+        "/command-center",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/command-center",
+      "cycle_path": [
+        "/command-center",
+        "/reports",
+        "/command-center"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/command-center",
+      "cycle_path": [
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center"
+      ],
+      "authoritative_resolution_owner": "ops_control_g2_command_centre",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/documents",
+      "cycle_path": [
+        "/documents",
+        "/requirements",
+        "/documents"
+      ],
+      "authoritative_resolution_owner": "ops_control_g5_documents_page",
+      "mutation_owner_present": false,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": false,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/properties/:propertyId",
+      "cycle_path": [
+        "/properties/:propertyId",
+        "/calendar",
+        "/properties/:propertyId"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/properties/:propertyId",
+      "cycle_path": [
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/properties/:propertyId"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/properties/:propertyId",
+      "cycle_path": [
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/properties/:propertyId",
+      "cycle_path": [
+        "/properties/:propertyId",
+        "/today",
+        "/properties/:propertyId"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "mutation_owner_present": false,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": false,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/properties/:propertyId",
+      "cycle_path": [
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/properties/:propertyId",
+      "cycle_path": [
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/properties/:propertyId"
+      ],
+      "authoritative_resolution_owner": "ops_control_g3_properties_page",
+      "mutation_owner_present": false,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": false,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/reports",
+      "cycle_path": [
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/today",
+        "/reports"
+      ],
+      "authoritative_resolution_owner": "ops_control_g7_reports_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/reports",
+      "cycle_path": [
+        "/reports",
+        "/command-center",
+        "/reports"
+      ],
+      "authoritative_resolution_owner": "ops_control_g7_reports_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/reports",
+      "cycle_path": [
+        "/reports",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/reports"
+      ],
+      "authoritative_resolution_owner": "ops_control_g7_reports_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/reports",
+      "cycle_path": [
+        "/reports",
+        "/properties/:propertyId",
+        "/today",
+        "/reports"
+      ],
+      "authoritative_resolution_owner": "ops_control_g7_reports_page",
+      "mutation_owner_present": false,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": false,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/requirements",
+      "cycle_path": [
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "authoritative_resolution_owner": "ops_control_g4_requirements_page",
+      "mutation_owner_present": false,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": false,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/today",
+      "cycle_path": [
+        "/today",
+        "/command-center",
+        "/properties/:propertyId",
+        "/today"
+      ],
+      "authoritative_resolution_owner": "ops_control_g1_today_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/today",
+      "cycle_path": [
+        "/today",
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/today"
+      ],
+      "authoritative_resolution_owner": "ops_control_g1_today_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/today",
+      "cycle_path": [
+        "/today",
+        "/properties/:propertyId",
+        "/today"
+      ],
+      "authoritative_resolution_owner": "ops_control_g1_today_page",
+      "mutation_owner_present": false,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": false,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/today",
+      "cycle_path": [
+        "/today",
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/today"
+      ],
+      "authoritative_resolution_owner": "ops_control_g1_today_page",
+      "mutation_owner_present": true,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": true,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    },
+    {
+      "entry_surface": "/today",
+      "cycle_path": [
+        "/today",
+        "/reports",
+        "/properties/:propertyId",
+        "/today"
+      ],
+      "authoritative_resolution_owner": "ops_control_g1_today_page",
+      "mutation_owner_present": false,
+      "max_navigation_depth": 5,
+      "loop_detected": true,
+      "resolution_reachable": false,
+      "classification_hint": "CONTROL_PLANE_CIRCULARITY"
+    }
+  ],
+  "unresolved_escalation_chains": [
+    {
+      "from": "/today",
+      "to": "/command-center",
+      "cta_label": "View command centre",
+      "mutation_owner": "none",
+      "unresolved_escalation": true
+    },
+    {
+      "from": "/today",
+      "to": "/reports",
+      "cta_label": "View report",
+      "mutation_owner": "none",
+      "unresolved_escalation": true
+    },
+    {
+      "from": "/command-center",
+      "to": "/reports",
+      "cta_label": "Reports",
+      "mutation_owner": "none",
+      "unresolved_escalation": true
+    },
+    {
+      "from": "/reports",
+      "to": "/command-center",
+      "cta_label": "Back to command centre",
+      "mutation_owner": "none",
+      "unresolved_escalation": true
+    }
+  ],
+  "depth_violations": [
+    {
+      "entry_surface": "/calendar",
+      "path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/calendar",
+      "path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/reports",
+        "/command-center"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/calendar",
+      "path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/calendar",
+      "path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/calendar",
+      "path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/calendar",
+      "path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/operations/issues/:issueId"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/calendar",
+      "path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/calendar",
+      "path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/reports"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/command-center",
+      "path": [
+        "/command-center",
+        "/properties/:propertyId",
+        "/today",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/command-center",
+      "path": [
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/command-center",
+      "path": [
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/documents",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/command-center",
+      "path": [
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/today",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/properties/:propertyId",
+      "path": [
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/properties/:propertyId",
+      "path": [
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/reports",
+      "path": [
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/reports",
+      "path": [
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/documents",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/reports",
+      "path": [
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/today",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/reports",
+      "path": [
+        "/reports",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/reports",
+      "path": [
+        "/reports",
+        "/properties/:propertyId",
+        "/today",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/command-center",
+        "/properties/:propertyId",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/command-center",
+        "/properties/:propertyId",
+        "/documents",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/calendar",
+        "/properties/:propertyId"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/calendar",
+        "/operations/jobs/:jobId"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/calendar",
+        "/properties/:propertyId"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId",
+        "/calendar",
+        "/operations/jobs/:jobId"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/reports",
+        "/command-center",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/reports",
+        "/properties/:propertyId",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    },
+    {
+      "entry_surface": "/today",
+      "path": [
+        "/today",
+        "/reports",
+        "/properties/:propertyId",
+        "/documents",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "classification_hint": "RESOLUTION_EXHAUSTION"
+    }
+  ],
+  "loop_detected": true,
+  "summary": {
+    "cycle_count": 22,
+    "escalation_chain_count": 4,
+    "depth_violation_count": 32
+  }
+}

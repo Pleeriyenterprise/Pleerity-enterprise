@@ -1,0 +1,89 @@
+{
+  "surfaces": [
+    {
+      "route": "/today",
+      "url": "https://pleerityenterprise.co.uk/today",
+      "shell_renders": true,
+      "fatal_error": false,
+      "api_probe": {
+        "api_path": "/client/tasks",
+        "status": 200,
+        "ok": true
+      },
+      "auth_reachable": true
+    },
+    {
+      "route": "/command-center",
+      "url": "https://pleerityenterprise.co.uk/command-center",
+      "shell_renders": true,
+      "fatal_error": false,
+      "api_probe": {
+        "api_path": "/client/command-center",
+        "status": 200,
+        "ok": true
+      },
+      "auth_reachable": true
+    },
+    {
+      "route": "/properties",
+      "url": "https://pleerityenterprise.co.uk/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "shell_renders": true,
+      "fatal_error": false,
+      "api_probe": {
+        "api_path": "/client/properties",
+        "status": 200,
+        "ok": true
+      },
+      "auth_reachable": true
+    },
+    {
+      "route": "/requirements",
+      "url": "https://pleerityenterprise.co.uk/requirements",
+      "shell_renders": true,
+      "fatal_error": false,
+      "api_probe": {
+        "api_path": "/client/requirements",
+        "status": 200,
+        "ok": true
+      },
+      "auth_reachable": true
+    },
+    {
+      "route": "/documents",
+      "url": "https://pleerityenterprise.co.uk/documents",
+      "shell_renders": true,
+      "fatal_error": false,
+      "api_probe": {
+        "api_path": "/client/documents",
+        "status": 200,
+        "ok": true
+      },
+      "auth_reachable": true
+    },
+    {
+      "route": "/calendar",
+      "url": "https://pleerityenterprise.co.uk/calendar",
+      "shell_renders": true,
+      "fatal_error": false,
+      "api_probe": {
+        "api_path": "/calendar/events",
+        "status": 200,
+        "ok": true
+      },
+      "auth_reachable": true
+    },
+    {
+      "route": "/reports",
+      "url": "https://pleerityenterprise.co.uk/reports",
+      "shell_renders": true,
+      "fatal_error": false,
+      "api_probe": {
+        "api_path": "/reports",
+        "status": 200,
+        "ok": true
+      },
+      "auth_reachable": true
+    }
+  ],
+  "all_reachable": true
+}

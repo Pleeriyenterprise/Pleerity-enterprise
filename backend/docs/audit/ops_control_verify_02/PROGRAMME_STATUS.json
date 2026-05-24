@@ -1,0 +1,16 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "g0_run_tag": "20260524T140328Z",
+  "implementation_classification": "IMPLEMENTATION_READY",
+  "families": {
+    "ops_control_g0_programme_precheck": "CONTROL_PLANE_CIRCULARITY",
+    "ops_control_g1_today_page": "NOT_EXECUTED",
+    "ops_control_g2_command_centre": "NOT_EXECUTED",
+    "ops_control_g3_properties_page": "NOT_EXECUTED",
+    "ops_control_g4_requirements_page": "NOT_EXECUTED",
+    "ops_control_g5_documents_page": "NOT_EXECUTED",
+    "ops_control_g6_calendar_page": "NOT_EXECUTED",
+    "ops_control_g7_reports_page": "NOT_EXECUTED"
+  }
+}
