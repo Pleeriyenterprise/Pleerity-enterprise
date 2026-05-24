@@ -1,0 +1,39 @@
+{
+  "started_at_utc": "2026-05-24T18:29:21.235783+00:00",
+  "target_requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+  "steps": [
+    {
+      "step": "submit_evidence",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-24T18:29:32.188894+00:00"
+    },
+    {
+      "step": "requirement_state_propagates",
+      "ok": true,
+      "detail": "lc_before=ACTION_REQUIRED ea_before=MISSING ev_before=7",
+      "at_utc": "2026-05-24T18:29:34.160816+00:00"
+    },
+    {
+      "step": "no_instant_fake_verified",
+      "ok": true,
+      "detail": "upload_must_not_equal_verified",
+      "at_utc": "2026-05-24T18:29:34.160816+00:00"
+    }
+  ],
+  "submit_response_keys": [
+    "ok",
+    "workflow_complete",
+    "authority_synced",
+    "recalc_enqueued",
+    "message",
+    "requirement_id",
+    "property_id",
+    "requirement",
+    "evidence_record"
+  ],
+  "submit_authority_synced": true,
+  "submit_recalc_enqueued": true,
+  "finished_at_utc": "2026-05-24T18:29:34.160816+00:00",
+  "mutation_ok": true
+}

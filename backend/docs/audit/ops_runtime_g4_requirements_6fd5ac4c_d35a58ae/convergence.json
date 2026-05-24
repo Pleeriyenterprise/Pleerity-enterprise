@@ -1,0 +1,32 @@
+{
+  "observations": [
+    {
+      "label": "post_submit_requirement",
+      "t0": {
+        "lifecycle": "ACTION_REQUIRED",
+        "ea": "MISSING",
+        "has_marker": false
+      },
+      "reads": [
+        {
+          "ts": 1779647466.8686314,
+          "api": {
+            "lifecycle": "ACTION_REQUIRED",
+            "ea": "MISSING",
+            "has_marker": false
+          }
+        }
+      ],
+      "converged": true,
+      "stale_projection": false,
+      "timeout_seconds": 75
+    }
+  ],
+  "any_stale": false,
+  "any_timeout": false,
+  "t0": {
+    "lifecycle": "ACTION_REQUIRED",
+    "ea": "MISSING",
+    "has_marker": false
+  }
+}

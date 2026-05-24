@@ -4806,7 +4806,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-02 — operational control-plane verification (rev 4)
 
-**Status:** G0 **`VERIFIED_OPERATIONALLY`**. G1 **`VERIFIED_OPERATIONALLY`** (run `20260524T162503Z`). G2 **`VERIFIED_OPERATIONALLY`** (run `20260524T170848Z`). G3 **`VERIFIED_OPERATIONALLY`** (run `20260524T175910Z`; property health + tab coherence). **G4–G7 NOT RUN** — G4 may proceed.
+**Status:** G0 **`VERIFIED_OPERATIONALLY`**. G1 **`VERIFIED_OPERATIONALLY`** (run `20260524T162503Z`). G2 **`VERIFIED_OPERATIONALLY`** (run `20260524T170848Z`). G3 **`VERIFIED_OPERATIONALLY`** (run `20260524T175910Z`). G4 **`VERIFIED_OPERATIONALLY`** (run `20260524T182816Z`; requirement truth + evidence authority). **G5–G7 NOT RUN** — G5 may proceed.
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md)
 
@@ -4842,7 +4842,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 | G1 Today | `ops_control_g1_today_page` | VERIFIED_OPERATIONALLY | Run `20260524T162503Z`; bundle `ops_runtime_g1_today_6fd5ac4c_d35a58ae` (attention authority pass after ranking fix) |
 | G2 Command Centre | `ops_control_g2_command_centre` | **VERIFIED_OPERATIONALLY** | `20260524T170848Z` — bundle `ops_runtime_g2_command_centre_6fd5ac4c_d35a58ae` |
 | G3 Properties | `ops_control_g3_properties_page` | **VERIFIED_OPERATIONALLY** | `20260524T175910Z` — bundle `ops_runtime_g3_properties_6fd5ac4c_d35a58ae` |
-| G4 Requirements | `ops_control_g4_requirements_page` | NOT RUN | — |
+| G4 Requirements | `ops_control_g4_requirements_page` | **VERIFIED_OPERATIONALLY** | `20260524T182816Z` — bundle `ops_runtime_g4_requirements_6fd5ac4c_d35a58ae` |
 | G5 Documents | `ops_control_g5_documents_page` | NOT RUN | — |
 | G6 Calendar | `ops_control_g6_calendar_page` | NOT RUN | — |
 | G7 Reports | `ops_control_g7_reports_page` | NOT RUN | — |

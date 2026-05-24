@@ -1,0 +1,70 @@
+{
+  "buckets": {
+    "uploaded": 0,
+    "pending_review": 2,
+    "verified": 2,
+    "rejected": 1,
+    "action_required": 3,
+    "orphan_evidence": 0
+  },
+  "sample_rows": [
+    {
+      "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+      "lifecycle": "PENDING_REVIEW",
+      "ea_state": "PENDING_ADMIN_REVIEW",
+      "status": "PENDING",
+      "has_linked_doc": false
+    },
+    {
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "lifecycle": "ACTION_REQUIRED",
+      "ea_state": "MISSING",
+      "status": "PENDING",
+      "has_linked_doc": false
+    },
+    {
+      "requirement_id": "71e89158-5de0-422a-970c-5a2163fcc823",
+      "lifecycle": "ACTION_REQUIRED",
+      "ea_state": "MISMATCH_FLAGGED",
+      "status": "PENDING",
+      "has_linked_doc": false
+    },
+    {
+      "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+      "lifecycle": "PENDING_REVIEW",
+      "ea_state": "PENDING_ADMIN_REVIEW",
+      "status": "PENDING",
+      "has_linked_doc": false
+    },
+    {
+      "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+      "lifecycle": "VERIFIED",
+      "ea_state": "VERIFIED_CURRENT",
+      "status": "COMPLIANT",
+      "has_linked_doc": true
+    },
+    {
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "lifecycle": "ACTION_REQUIRED",
+      "ea_state": "MISSING",
+      "status": "PENDING",
+      "has_linked_doc": false
+    },
+    {
+      "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "lifecycle": "VERIFIED",
+      "ea_state": "VERIFIED_CURRENT",
+      "status": "COMPLIANT",
+      "has_linked_doc": false
+    },
+    {
+      "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "lifecycle": "ACTION_REQUIRED",
+      "ea_state": "",
+      "status": "PENDING",
+      "has_linked_doc": false
+    }
+  ],
+  "orphan_evidence_rows": [],
+  "pass": true
+}

@@ -1,0 +1,9 @@
+{
+  "property_missing_kpi": 6,
+  "property_overdue_kpi": 0,
+  "lifecycle_action_required": 4,
+  "lifecycle_pending_review": 2,
+  "today_requirement_tasks": 5,
+  "directionally_coherent": true,
+  "pass": true
+}

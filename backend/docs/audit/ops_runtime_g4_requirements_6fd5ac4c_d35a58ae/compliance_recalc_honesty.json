@@ -1,0 +1,10 @@
+{
+  "score_status": "ok",
+  "score_status_message": "Critical unresolved compliance risks require immediate operational action.",
+  "properties_pending_score_recalc_count": 0,
+  "property_score_recalc_pending": null,
+  "property_last_calculated_at": "2026-05-24T18:29:35.573885+00:00",
+  "recalc_enqueued_observed_in_mutation": true,
+  "disclosure_present": true,
+  "pass": true
+}
