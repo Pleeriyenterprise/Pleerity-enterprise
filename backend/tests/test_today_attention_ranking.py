@@ -161,3 +161,30 @@ def test_attention_class_matches_precedence_constants():
     assert ATTENTION_PRECEDENCE["active_risk"] < ATTENTION_PRECEDENCE["open_operational_debt"]
     assert ATTENTION_PRECEDENCE["open_operational_debt"] < ATTENTION_PRECEDENCE["time_bound_reminder"]
     assert attention_class_for_task({"source_type": "risk_signal", "metadata": {"action_type": ACTION_RISK_SIGNAL}}) == "active_risk"
+
+
+def test_enrich_task_bucket_preserves_attention_authority_order():
+    from datetime import datetime, timezone
+    from services.today_projection_service import enrich_task_bucket
+
+    approval = {
+        "id": "approval:a1",
+        "source_type": "approval",
+        "section": "in_progress",
+        "urgency_level": "medium",
+        "impact_score": 55,
+        "primary_action_url": "/billing",
+        "metadata": {"action_type": ACTION_PENDING_APPROVAL},
+    }
+    issue = {
+        "id": "issue:i1",
+        "source_type": "issue",
+        "section": "in_progress",
+        "urgency_level": "medium",
+        "impact_score": 45,
+        "primary_action_url": "/issues/i1",
+        "metadata": {"action_type": ACTION_OPEN_ISSUE},
+    }
+    now = datetime.now(timezone.utc)
+    out = enrich_task_bucket([approval, issue], now, filter_non_actionable=False)
+    assert [t["id"] for t in out] == ["issue:i1", "approval:a1"]

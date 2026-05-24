@@ -46,7 +46,7 @@ from services.client_priority_stream import (
     ACTION_WORK_ORDER_NEAR_BREACH,
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
-from services.requirement_action_resolver import resolve_take_action_envelope
+from services.today_attention_ranking import attention_rank_explanation, today_attention_sort_key
 
 logger = logging.getLogger(__name__)
 
@@ -566,13 +566,10 @@ def enrich_task_bucket(
         dropped = before - len(enriched)
         if dropped:
             logger.debug("today_projection: dropped %s non-actionable tasks from open bucket", dropped)
-    enriched.sort(
-        key=lambda x: (
-            -int(x.get("impact_score") or 0),
-            (x.get("urgency_level") or "") not in ("critical", "high"),
-            x.get("title") or "",
-        )
-    )
+    for t in enriched:
+        if not t.get("attention_authority"):
+            t["attention_authority"] = attention_rank_explanation(t)
+    enriched.sort(key=today_attention_sort_key)
     return enriched
 
 
