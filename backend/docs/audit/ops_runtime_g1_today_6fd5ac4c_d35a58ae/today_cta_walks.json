@@ -1,0 +1,55 @@
+{
+  "walks": [
+    {
+      "task_id": "work_order:e3c67bd0-c568-48cf-bff8-1121099a4086",
+      "label": "View job",
+      "route": "/operations/jobs/e3c67bd0-c568-48cf-bff8-1121099a4086",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    },
+    {
+      "task_id": "work_order:adc1c317-18ee-4985-86fd-dba1e878ca9b",
+      "label": "View job",
+      "route": "/operations/jobs/adc1c317-18ee-4985-86fd-dba1e878ca9b",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    },
+    {
+      "task_id": "work_order:d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+      "label": "View job",
+      "route": "/operations/jobs/d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    },
+    {
+      "task_id": "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+      "label": "View job",
+      "route": "/operations/jobs/6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    },
+    {
+      "task_id": "work_order:3ae8f694-8844-4d46-9b54-25b02e9160f7",
+      "label": "View job",
+      "route": "/operations/jobs/3ae8f694-8844-4d46-9b54-25b02e9160f7",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    },
+    {
+      "task_id": "work_order:ea78c6eb-97ae-4a60-972b-6c445772b66e",
+      "label": "View job",
+      "route": "/operations/jobs/ea78c6eb-97ae-4a60-972b-6c445772b66e",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    }
+  ],
+  "noop_detected": false,
+  "browser_interactive_elements": 15,
+  "sample_count": 6
+}

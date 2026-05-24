@@ -1,0 +1,33 @@
+{
+  "started_at_utc": "2026-05-24T15:24:38.630470+00:00",
+  "steps": [
+    {
+      "step": "create_issue",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-24T15:25:16.666447+00:00"
+    },
+    {
+      "step": "today_lists_new_issue",
+      "ok": true,
+      "detail": "task_id=issue:fb1e7b66-eefb-43b4-8111-1a9d62244534",
+      "at_utc": "2026-05-24T15:25:42.118901+00:00",
+      "issue_id": "fb1e7b66-eefb-43b4-8111-1a9d62244534"
+    },
+    {
+      "step": "close_issue",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-24T15:25:53.076805+00:00"
+    },
+    {
+      "step": "today_deprioritizes_after_close",
+      "ok": true,
+      "detail": "task_id=issue:fb1e7b66-eefb-43b4-8111-1a9d62244534",
+      "at_utc": "2026-05-24T15:26:18.934391+00:00"
+    }
+  ],
+  "issue_id": "fb1e7b66-eefb-43b4-8111-1a9d62244534",
+  "finished_at_utc": "2026-05-24T15:26:18.934391+00:00",
+  "mutation_ok": true
+}

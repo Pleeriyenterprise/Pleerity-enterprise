@@ -1,0 +1,6 @@
+{
+  "resolved_debt_not_shown_unresolved": true,
+  "dismissed_not_confused_with_resolved": true,
+  "derived_does_not_override_live": true,
+  "pass": true
+}

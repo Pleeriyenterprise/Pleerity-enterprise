@@ -1,0 +1,36 @@
+{
+  "today_urgent_count": 22,
+  "command_centre_urgent_count": 16,
+  "open_issues_count": 46,
+  "active_risk_signals": 0,
+  "reports_reachable": false,
+  "counts_directionally_coherent": true,
+  "widget_coherence": {
+    "widgets": [
+      {
+        "id": "today_urgent",
+        "metrics": {
+          "urgent_count": 22
+        }
+      },
+      {
+        "id": "command_centre_urgent",
+        "metrics": {
+          "urgent_actions": 16
+        }
+      }
+    ],
+    "cross_widget_pairs": [
+      {
+        "a": "today_urgent",
+        "b": "command_centre_urgent",
+        "coherent": true,
+        "note": ""
+      }
+    ],
+    "island_failures": [],
+    "classification_hints": []
+  },
+  "island_failures": [],
+  "classification_hints": []
+}

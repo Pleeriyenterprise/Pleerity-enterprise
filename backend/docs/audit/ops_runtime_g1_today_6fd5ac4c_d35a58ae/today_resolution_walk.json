@@ -1,0 +1,18 @@
+{
+  "issue_id": "fb1e7b66-eefb-43b4-8111-1a9d62244534",
+  "steps": [
+    {
+      "step": "visible_on_today",
+      "ok": false
+    },
+    {
+      "step": "property_mutation_surface",
+      "ok": false
+    },
+    {
+      "step": "return_to_today",
+      "ok": true
+    }
+  ],
+  "verdict": "needs_review"
+}

@@ -2,7 +2,7 @@
 
 **Programme ID:** `PRELAUNCH-OPS-RUNTIME-VERIFY-02`  
 **Programme type:** **OPERATIONAL_CONTROL_PLANE_VERIFICATION** (not generic surface QA)  
-**Status:** G0 **`VERIFIED_OPERATIONALLY`** (precheck `20260524T140328Z`; cycle triage `20260524T143953Z`); G1–G7 **NOT_EXECUTED** (G1 unblocked for execution)  
+**Status:** G0 **`VERIFIED_OPERATIONALLY`**; G1 **EXECUTED** (`ATTENTION_PRIORITY_DRIFT` run `20260524T152332Z`); G2–G7 **NOT_EXECUTED** (G2 blocked until G1 `VERIFIED_OPERATIONALLY` or waiver)  
 **Authority:** Governed operational-control-plane verification only — **not** launch authorization, UK rollout approval, architecture redesign, projection redesign, lifecycle redesign, reporting-engine certification, or calendar/scheduler certification.
 
 **Prerequisite:** `PRELAUNCH-OPS-RUNTIME-VERIFY-01` **COMPLETE** (F1–F8 `VERIFIED_OPERATIONALLY`) is a **lineage dependency only**. It does **not** confer surface coherence, CTA truth, or operator-trust guarantees.

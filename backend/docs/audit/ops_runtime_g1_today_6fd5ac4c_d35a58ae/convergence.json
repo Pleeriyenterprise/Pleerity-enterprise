@@ -1,0 +1,29 @@
+{
+  "observations": [
+    {
+      "label": "post_close_today_urgent",
+      "t0": {
+        "urgent_count": 22,
+        "has_marker": false
+      },
+      "reads": [
+        {
+          "ts": 1779636744.49959,
+          "api": {
+            "urgent_count": 22,
+            "has_marker": false
+          }
+        }
+      ],
+      "converged": true,
+      "stale_projection": false,
+      "timeout_seconds": 75
+    }
+  ],
+  "any_stale": false,
+  "any_timeout": false,
+  "t0": {
+    "urgent_count": 22,
+    "has_marker": false
+  }
+}

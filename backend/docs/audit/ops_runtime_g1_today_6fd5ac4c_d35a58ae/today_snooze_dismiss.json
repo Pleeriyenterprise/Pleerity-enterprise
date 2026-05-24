@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-05-24T15:26:21.539385+00:00",
+  "probes": [
+    {
+      "action": "snooze",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "check": "snoozed_bucket",
+      "ok": true
+    },
+    {
+      "action": "restore_after_snooze",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "action": "dismiss",
+      "task_id": "work_order:adc1c317-18ee-4985-86fd-dba1e878ca9b",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "check": "hidden_bucket",
+      "ok": true
+    }
+  ],
+  "target_task_id": "work_order:e3c67bd0-c568-48cf-bff8-1121099a4086",
+  "ok": true
+}
