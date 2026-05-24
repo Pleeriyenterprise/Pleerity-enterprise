@@ -7,6 +7,7 @@
   "g2_run_tag": "20260524T170848Z",
   "g3_run_tag": "20260524T175910Z",
   "g4_run_tag": "20260524T182816Z",
+  "g5_run_tag": "20260524T190110Z",
   "implementation_classification": "IMPLEMENTATION_READY",
   "families": {
     "ops_control_g0_programme_precheck": "VERIFIED_OPERATIONALLY",
@@ -14,7 +15,7 @@
     "ops_control_g2_command_centre": "VERIFIED_OPERATIONALLY",
     "ops_control_g3_properties_page": "VERIFIED_OPERATIONALLY",
     "ops_control_g4_requirements_page": "VERIFIED_OPERATIONALLY",
-    "ops_control_g5_documents_page": "NOT_EXECUTED",
+    "ops_control_g5_documents_page": "OPERATIONAL_ORPHAN_STATE",
     "ops_control_g6_calendar_page": "NOT_EXECUTED",
     "ops_control_g7_reports_page": "NOT_EXECUTED"
   }

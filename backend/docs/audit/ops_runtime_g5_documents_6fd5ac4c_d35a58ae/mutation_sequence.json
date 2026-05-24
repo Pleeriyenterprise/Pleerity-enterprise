@@ -1,0 +1,54 @@
+{
+  "steps": [
+    {
+      "step": "documents_page",
+      "ok": true,
+      "detail": "https://pleerityenterprise.co.uk/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=71e89158-5de0-422a-970c-5a2163fcc823&requirement_code=hmo_license&focus=upload state=ready",
+      "at_utc": "2026-05-24T19:01:59.472258+00:00"
+    },
+    {
+      "step": "upload_api",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-24T19:02:14.815338+00:00"
+    },
+    {
+      "step": "document_in_list",
+      "ok": true,
+      "detail": "be01b673-c810-48c7-87fc-871cac5161ec",
+      "at_utc": "2026-05-24T19:02:17.841730+00:00"
+    },
+    {
+      "step": "refresh_persistence",
+      "ok": true,
+      "detail": "be01b673-c810-48c7-87fc-871cac5161ec",
+      "at_utc": "2026-05-24T19:02:22.244394+00:00"
+    },
+    {
+      "step": "upload_not_instantly_verified",
+      "ok": true,
+      "detail": "review= op=",
+      "at_utc": "2026-05-24T19:02:25.267188+00:00"
+    }
+  ],
+  "upload_response": {
+    "http_status": 200,
+    "body_keys": [
+      "message",
+      "document_id",
+      "outcome",
+      "requirement_workflow_pending",
+      "evidence_match",
+      "document_validation",
+      "document_metadata",
+      "validation_result"
+    ],
+    "detail": null,
+    "document_id": "be01b673-c810-48c7-87fc-871cac5161ec"
+  },
+  "document_id": "be01b673-c810-48c7-87fc-871cac5161ec",
+  "upload_path": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=71e89158-5de0-422a-970c-5a2163fcc823&requirement_code=hmo_license&focus=upload",
+  "post_upload_review": "",
+  "post_upload_operational": "",
+  "mutation_ok": true
+}

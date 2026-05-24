@@ -1,0 +1,32 @@
+{
+  "observations": [
+    {
+      "label": "post_upload_document",
+      "t0": {
+        "found": true,
+        "review": "UPLOADED",
+        "operational": "EXTRACTION_FAILED"
+      },
+      "reads": [
+        {
+          "ts": 1779649354.1892533,
+          "api": {
+            "found": true,
+            "review": "UPLOADED",
+            "operational": "EXTRACTION_FAILED"
+          }
+        }
+      ],
+      "converged": true,
+      "stale_projection": false,
+      "timeout_seconds": 75
+    }
+  ],
+  "any_stale": false,
+  "any_timeout": false,
+  "t0": {
+    "found": true,
+    "review": "UPLOADED",
+    "operational": "EXTRACTION_FAILED"
+  }
+}

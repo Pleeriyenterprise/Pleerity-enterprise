@@ -1,0 +1,16 @@
+{
+  "linked_documents": 10,
+  "orphan_documents": [
+    "f3ad6a0e-3f48-4821-8344-9f02cc2be580",
+    "67f88f49-9101-448d-bd99-ca0b6a9ef2d9",
+    "76552abb-aefe-4c90-afcb-b883ac473288"
+  ],
+  "drift_rows": [
+    {
+      "document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+      "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+      "note": "requirement_not_in_runtime_set"
+    }
+  ],
+  "pass": false
+}
