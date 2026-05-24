@@ -1,9 +1,9 @@
 {
   "family": "ops_control_g1_today_page",
   "alias": "ops_runtime_g1_today",
-  "status": "EXECUTED",
-  "classification": "ATTENTION_PRIORITY_DRIFT",
-  "run_tag": "20260524T152332Z",
+  "status": "VERIFIED_OPERATIONALLY",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "run_tag": "20260524T162503Z",
   "pilot_slug": "6fd5ac4c_d35a58ae",
   "bundle": "ops_runtime_g1_today_6fd5ac4c_d35a58ae"
 }

@@ -1,33 +1,9 @@
 {
   "walks": [
     {
-      "task_id": "work_order:e3c67bd0-c568-48cf-bff8-1121099a4086",
+      "task_id": "work_order:27f744e0-f39d-4791-88cb-100b2e8635a3",
       "label": "View job",
-      "route": "/operations/jobs/e3c67bd0-c568-48cf-bff8-1121099a4086",
-      "mutation_owner_reachable": true,
-      "noop_risk": false,
-      "has_business_actions": true
-    },
-    {
-      "task_id": "work_order:adc1c317-18ee-4985-86fd-dba1e878ca9b",
-      "label": "View job",
-      "route": "/operations/jobs/adc1c317-18ee-4985-86fd-dba1e878ca9b",
-      "mutation_owner_reachable": true,
-      "noop_risk": false,
-      "has_business_actions": true
-    },
-    {
-      "task_id": "work_order:d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
-      "label": "View job",
-      "route": "/operations/jobs/d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
-      "mutation_owner_reachable": true,
-      "noop_risk": false,
-      "has_business_actions": true
-    },
-    {
-      "task_id": "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
-      "label": "View job",
-      "route": "/operations/jobs/6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+      "route": "/operations/jobs/27f744e0-f39d-4791-88cb-100b2e8635a3",
       "mutation_owner_reachable": true,
       "noop_risk": false,
       "has_business_actions": true
@@ -41,9 +17,33 @@
       "has_business_actions": true
     },
     {
-      "task_id": "work_order:ea78c6eb-97ae-4a60-972b-6c445772b66e",
+      "task_id": "work_order:50ba228a-f906-41d6-828a-7301d0a13bfa",
       "label": "View job",
-      "route": "/operations/jobs/ea78c6eb-97ae-4a60-972b-6c445772b66e",
+      "route": "/operations/jobs/50ba228a-f906-41d6-828a-7301d0a13bfa",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    },
+    {
+      "task_id": "work_order:55f206c4-9cc4-4119-b4a8-326954f6fd05",
+      "label": "View job",
+      "route": "/operations/jobs/55f206c4-9cc4-4119-b4a8-326954f6fd05",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    },
+    {
+      "task_id": "work_order:64571387-fcba-4302-ab4c-5b94a629ebae",
+      "label": "View job",
+      "route": "/operations/jobs/64571387-fcba-4302-ab4c-5b94a629ebae",
+      "mutation_owner_reachable": true,
+      "noop_risk": false,
+      "has_business_actions": true
+    },
+    {
+      "task_id": "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+      "label": "View job",
+      "route": "/operations/jobs/6b6d8b77-05d2-4bed-9141-d51e0787d18f",
       "mutation_owner_reachable": true,
       "noop_risk": false,
       "has_business_actions": true

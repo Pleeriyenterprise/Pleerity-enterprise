@@ -3,25 +3,21 @@
     {
       "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
       "family": "ops_control_g1_today_page",
-      "classification": "ATTENTION_PRIORITY_DRIFT",
-      "secondary_classifications": [
-        "ATTENTION_PRIORITY_DRIFT"
-      ],
-      "reasons": [
-        "violations=3"
-      ],
-      "blocking": true,
-      "execution_status": "ATTENTION_PRIORITY_DRIFT",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_classifications": [],
+      "reasons": [],
+      "blocking": false,
+      "execution_status": "VERIFIED_OPERATIONALLY",
       "authoritative_verification_owner": "ops_control_g1_today_page",
       "proof_mode": "operational_browser",
-      "run_tag": "20260524T152332Z",
+      "run_tag": "20260524T162503Z",
       "pilot_slug": "6fd5ac4c_d35a58ae",
       "shared_dependency_bundle_ids": [
         "ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae/07_classification.json"
       ],
       "checkpoints": {
         "G1_surface_boot": true,
-        "G1_attention_authority": false,
+        "G1_attention_authority": true,
         "G1_mutation_sequence": true,
         "G1_cta_coherence": true,
         "G1_cross_surface": true

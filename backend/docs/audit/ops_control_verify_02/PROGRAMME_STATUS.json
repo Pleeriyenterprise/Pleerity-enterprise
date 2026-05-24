@@ -3,11 +3,11 @@
   "pilot_slug": "6fd5ac4c_d35a58ae",
   "g0_run_tag": "20260524T143953Z",
   "g0_classification": "VERIFIED_OPERATIONALLY",
-  "g1_run_tag": "20260524T152332Z",
+  "g1_run_tag": "20260524T162503Z",
   "implementation_classification": "IMPLEMENTATION_READY",
   "families": {
     "ops_control_g0_programme_precheck": "VERIFIED_OPERATIONALLY",
-    "ops_control_g1_today_page": "ATTENTION_PRIORITY_DRIFT",
+    "ops_control_g1_today_page": "VERIFIED_OPERATIONALLY",
     "ops_control_g2_command_centre": "NOT_EXECUTED",
     "ops_control_g3_properties_page": "NOT_EXECUTED",
     "ops_control_g4_requirements_page": "NOT_EXECUTED",

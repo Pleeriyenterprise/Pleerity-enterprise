@@ -1,8 +1,8 @@
 {
   "ordered_items": [
     {
-      "id": "work_order:e3c67bd0-c568-48cf-bff8-1121099a4086",
-      "class": "open_operational_debt",
+      "id": "work_order:27f744e0-f39d-4791-88cb-100b2e8635a3",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 0,
       "section": "urgent",
@@ -19,8 +19,8 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:adc1c317-18ee-4985-86fd-dba1e878ca9b",
-      "class": "open_operational_debt",
+      "id": "work_order:3ae8f694-8844-4d46-9b54-25b02e9160f7",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 1,
       "section": "urgent",
@@ -37,8 +37,8 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
-      "class": "open_operational_debt",
+      "id": "work_order:50ba228a-f906-41d6-828a-7301d0a13bfa",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 2,
       "section": "urgent",
@@ -52,11 +52,11 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
     },
     {
-      "id": "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
-      "class": "open_operational_debt",
+      "id": "work_order:55f206c4-9cc4-4119-b4a8-326954f6fd05",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 3,
       "section": "urgent",
@@ -70,11 +70,11 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
     },
     {
-      "id": "work_order:3ae8f694-8844-4d46-9b54-25b02e9160f7",
-      "class": "open_operational_debt",
+      "id": "work_order:64571387-fcba-4302-ab4c-5b94a629ebae",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 4,
       "section": "urgent",
@@ -88,11 +88,11 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
     },
     {
-      "id": "work_order:ea78c6eb-97ae-4a60-972b-6c445772b66e",
-      "class": "open_operational_debt",
+      "id": "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 5,
       "section": "urgent",
@@ -109,8 +109,8 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:ad374b2c-cba7-4e40-819d-f8ed4cb32c8c",
-      "class": "open_operational_debt",
+      "id": "work_order:74469ca1-0382-49a7-8208-572567762cc3",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 6,
       "section": "urgent",
@@ -127,8 +127,8 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:8dc4e08b-40d1-4e8c-90de-4b854c7183d8",
-      "class": "open_operational_debt",
+      "id": "work_order:7faad62e-c860-4f7e-8ec6-1fc92a3baf32",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 7,
       "section": "urgent",
@@ -142,11 +142,11 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
     },
     {
       "id": "work_order:86a9a83a-4f04-4a4b-9114-1161b193e87e",
-      "class": "open_operational_debt",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 8,
       "section": "urgent",
@@ -163,8 +163,8 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:27f744e0-f39d-4791-88cb-100b2e8635a3",
-      "class": "open_operational_debt",
+      "id": "work_order:8729beb8-0344-4067-a4a2-31de2b513943",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 9,
       "section": "urgent",
@@ -181,8 +181,8 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:922c0d05-9294-47a1-b735-99e2139a65df",
-      "class": "open_operational_debt",
+      "id": "work_order:8dc4e08b-40d1-4e8c-90de-4b854c7183d8",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 10,
       "section": "urgent",
@@ -199,8 +199,8 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:55f206c4-9cc4-4119-b4a8-326954f6fd05",
-      "class": "open_operational_debt",
+      "id": "work_order:922c0d05-9294-47a1-b735-99e2139a65df",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 11,
       "section": "urgent",
@@ -214,11 +214,11 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:dcc28a43-9a2b-4327-a058-e3b9cb577a5b",
-      "class": "open_operational_debt",
+      "id": "work_order:ad374b2c-cba7-4e40-819d-f8ed4cb32c8c",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 12,
       "section": "urgent",
@@ -232,11 +232,11 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "work_order:7faad62e-c860-4f7e-8ec6-1fc92a3baf32",
-      "class": "open_operational_debt",
+      "id": "work_order:adc1c317-18ee-4985-86fd-dba1e878ca9b",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 13,
       "section": "urgent",
@@ -250,67 +250,13 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
-    },
-    {
-      "id": "work_order:fcd4efd3-6904-44b8-9e0d-e8c7eb7cea4b",
-      "class": "open_operational_debt",
-      "urgency_rank": 3,
-      "position": 14,
-      "section": "urgent",
-      "source_type": "work_order",
-      "title": "Job \u2014 needs attention",
-      "badges": [
-        "due_soon",
-        "critical"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
-    },
-    {
-      "id": "work_order:64571387-fcba-4302-ab4c-5b94a629ebae",
-      "class": "open_operational_debt",
-      "urgency_rank": 3,
-      "position": 15,
-      "section": "urgent",
-      "source_type": "work_order",
-      "title": "Job \u2014 needs attention",
-      "badges": [
-        "due_soon",
-        "critical"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
       "id": "work_order:afd41933-a06a-4d16-a8cc-697ec6d70649",
-      "class": "open_operational_debt",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
-      "position": 16,
-      "section": "urgent",
-      "source_type": "work_order",
-      "title": "Job \u2014 needs attention",
-      "badges": [
-        "due_soon",
-        "critical"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
-    },
-    {
-      "id": "work_order:50ba228a-f906-41d6-828a-7301d0a13bfa",
-      "class": "open_operational_debt",
-      "urgency_rank": 3,
-      "position": 17,
+      "position": 14,
       "section": "urgent",
       "source_type": "work_order",
       "title": "Job \u2014 needs attention",
@@ -326,7 +272,61 @@
     },
     {
       "id": "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee",
-      "class": "open_operational_debt",
+      "class": "overdue_remediation",
+      "urgency_rank": 3,
+      "position": 15,
+      "section": "urgent",
+      "source_type": "work_order",
+      "title": "Job \u2014 needs attention",
+      "badges": [
+        "due_soon",
+        "critical"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "work_order:d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+      "class": "overdue_remediation",
+      "urgency_rank": 3,
+      "position": 16,
+      "section": "urgent",
+      "source_type": "work_order",
+      "title": "Job \u2014 needs attention",
+      "badges": [
+        "due_soon",
+        "critical"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "work_order:dcc28a43-9a2b-4327-a058-e3b9cb577a5b",
+      "class": "overdue_remediation",
+      "urgency_rank": 3,
+      "position": 17,
+      "section": "urgent",
+      "source_type": "work_order",
+      "title": "Job \u2014 needs attention",
+      "badges": [
+        "due_soon",
+        "critical"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+    },
+    {
+      "id": "work_order:e3c67bd0-c568-48cf-bff8-1121099a4086",
+      "class": "overdue_remediation",
       "urgency_rank": 3,
       "position": 18,
       "section": "urgent",
@@ -343,34 +343,34 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "risk_signal:rs_99c4f85b2781",
-      "class": "active_risk",
-      "urgency_rank": 5,
+      "id": "work_order:ea78c6eb-97ae-4a60-972b-6c445772b66e",
+      "class": "overdue_remediation",
+      "urgency_rank": 3,
       "position": 19,
       "section": "urgent",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
+      "source_type": "work_order",
+      "title": "Job \u2014 needs attention",
       "badges": [
-        "on_track",
-        "high"
+        "due_soon",
+        "critical"
       ],
       "snoozed": false,
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "risk_signal:rs_95fc6c0e9aa5",
-      "class": "active_risk",
-      "urgency_rank": 5,
+      "id": "work_order:fcd4efd3-6904-44b8-9e0d-e8c7eb7cea4b",
+      "class": "overdue_remediation",
+      "urgency_rank": 3,
       "position": 20,
       "section": "urgent",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
+      "source_type": "work_order",
+      "title": "Job \u2014 needs attention",
       "badges": [
-        "on_track",
-        "high"
+        "due_soon",
+        "critical"
       ],
       "snoozed": false,
       "snooze_expires_at": null,
@@ -397,10 +397,226 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
+      "id": "risk_signal:rs_95fc6c0e9aa5",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 22,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "high"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+    },
+    {
+      "id": "risk_signal:rs_99c4f85b2781",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 23,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "high"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+    },
+    {
+      "id": "risk_signal:rs_07ee44011761",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 24,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+    },
+    {
+      "id": "risk_signal:rs_253d4d210a05",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 25,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+    },
+    {
+      "id": "risk_signal:rs_325e24089d7f",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 26,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+    },
+    {
+      "id": "risk_signal:rs_50f624a49b07",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 27,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+    },
+    {
+      "id": "risk_signal:rs_b4a413652f30",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 28,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+    },
+    {
+      "id": "risk_signal:rs_eedb193e464e",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 29,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+    },
+    {
+      "id": "risk_signal:rs_ef19be3832c7",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 30,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+    },
+    {
+      "id": "risk_signal:rs_f048cdc863ce",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 31,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+    },
+    {
+      "id": "risk_signal:rs_f2098118aef9",
+      "class": "active_risk",
+      "urgency_rank": 5,
+      "position": 32,
+      "section": "urgent",
+      "source_type": "risk_signal",
+      "title": "Issue \u2014 needs review",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+    },
+    {
+      "id": "work_order:8f54b5fd-0636-42d4-8233-1b2db14df33e",
+      "class": "open_operational_debt",
+      "urgency_rank": 3,
+      "position": 33,
+      "section": "upcoming",
+      "source_type": "work_order",
+      "title": "Job \u2014 needs attention",
+      "badges": [
+        "due_soon",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
       "id": "work_order:914abf84-33cf-4adb-990f-ef3112fcc30f",
       "class": "open_operational_debt",
       "urgency_rank": 3,
-      "position": 22,
+      "position": 34,
       "section": "upcoming",
       "source_type": "work_order",
       "title": "Job \u2014 needs attention",
@@ -418,7 +634,7 @@
       "id": "work_order:b54782db-5684-4b12-b18a-2a69efd5ef7c",
       "class": "open_operational_debt",
       "urgency_rank": 3,
-      "position": 23,
+      "position": 35,
       "section": "upcoming",
       "source_type": "work_order",
       "title": "Job \u2014 needs attention",
@@ -436,61 +652,7 @@
       "id": "work_order:cdc1f384-50c5-4921-9cb8-8507d7cb8182",
       "class": "open_operational_debt",
       "urgency_rank": 3,
-      "position": 24,
-      "section": "upcoming",
-      "source_type": "work_order",
-      "title": "Job \u2014 needs attention",
-      "badges": [
-        "due_soon",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "work_order:8f54b5fd-0636-42d4-8233-1b2db14df33e",
-      "class": "open_operational_debt",
-      "urgency_rank": 3,
-      "position": 25,
-      "section": "upcoming",
-      "source_type": "work_order",
-      "title": "Job \u2014 needs attention",
-      "badges": [
-        "due_soon",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "work_order:8729beb8-0344-4067-a4a2-31de2b513943",
-      "class": "open_operational_debt",
-      "urgency_rank": 3,
-      "position": 26,
-      "section": "upcoming",
-      "source_type": "work_order",
-      "title": "Job \u2014 needs attention",
-      "badges": [
-        "due_soon",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "work_order:74469ca1-0382-49a7-8208-572567762cc3",
-      "class": "open_operational_debt",
-      "urgency_rank": 3,
-      "position": 27,
+      "position": 36,
       "section": "upcoming",
       "source_type": "work_order",
       "title": "Job \u2014 needs attention",
@@ -508,7 +670,7 @@
       "id": "requirement:71e89158-5de0-422a-970c-5a2163fcc823",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 28,
+      "position": 37,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Renew or obtain an HMO licence where required",
@@ -523,82 +685,10 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "requirement:6c819fb6-a069-4979-9953-353c4b74abb3",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 29,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Renew or upload your gas safety certificate",
-      "badges": [
-        "on_track",
-        "high"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
-    },
-    {
-      "id": "requirement:abf48f3d-a3df-4205-8666-1df11687cf30",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 30,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Renew or upload your gas safety certificate",
-      "badges": [
-        "on_track",
-        "high"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
-    },
-    {
-      "id": "requirement:901564f9-fab0-4550-99ba-e13432ee845e",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 31,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Renew or upload your gas safety certificate",
-      "badges": [
-        "on_track",
-        "high"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
-    },
-    {
-      "id": "requirement:e76b95d8-d652-470e-ab0b-fcd25e6fb3e9",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 32,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Renew or upload your gas safety certificate",
-      "badges": [
-        "on_track",
-        "high"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
-    },
-    {
       "id": "requirement:43a6a5ac-060f-4aae-9766-835e40106788",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 33,
+      "position": 38,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Renew or upload your gas safety certificate",
@@ -613,16 +703,16 @@
       "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
     },
     {
-      "id": "requirement:e3f6459c-cf42-40d9-bfc8-37507affeffb",
+      "id": "requirement:6c819fb6-a069-4979-9953-353c4b74abb3",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 34,
+      "position": 39,
       "section": "upcoming",
       "source_type": "requirement",
-      "title": "Review or renew your EPC",
+      "title": "Renew or upload your gas safety certificate",
       "badges": [
         "on_track",
-        "medium"
+        "high"
       ],
       "snoozed": false,
       "snooze_expires_at": null,
@@ -631,34 +721,16 @@
       "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
     },
     {
-      "id": "requirement:b713877f-b8fc-4505-9947-40f7d960c0eb",
+      "id": "requirement:901564f9-fab0-4550-99ba-e13432ee845e",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 35,
+      "position": 40,
       "section": "upcoming",
       "source_type": "requirement",
-      "title": "Review or renew your EPC",
+      "title": "Renew or upload your gas safety certificate",
       "badges": [
         "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
-    },
-    {
-      "id": "requirement:57e66e0c-3288-47f6-95ef-6b4d59e715bf",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 36,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Review or renew your EPC",
-      "badges": [
-        "on_track",
-        "medium"
+        "high"
       ],
       "snoozed": false,
       "snooze_expires_at": null,
@@ -667,16 +739,34 @@
       "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
     },
     {
-      "id": "requirement:cb63e083-ba4c-4244-8549-de757960cdcf",
+      "id": "requirement:abf48f3d-a3df-4205-8666-1df11687cf30",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 37,
+      "position": 41,
       "section": "upcoming",
       "source_type": "requirement",
-      "title": "Review or renew your EPC",
+      "title": "Renew or upload your gas safety certificate",
       "badges": [
         "on_track",
-        "medium"
+        "high"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+    },
+    {
+      "id": "requirement:e76b95d8-d652-470e-ab0b-fcd25e6fb3e9",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 42,
+      "section": "upcoming",
+      "source_type": "requirement",
+      "title": "Renew or upload your gas safety certificate",
+      "badges": [
+        "on_track",
+        "high"
       ],
       "snoozed": false,
       "snooze_expires_at": null,
@@ -688,7 +778,7 @@
       "id": "requirement:4fde5533-ba46-4245-b55a-7e45f8c72557",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 38,
+      "position": 43,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Review or renew your EPC",
@@ -703,13 +793,67 @@
       "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
     },
     {
-      "id": "requirement:ea22a50c-1421-4516-bcbe-e65f54cf7b25",
+      "id": "requirement:57e66e0c-3288-47f6-95ef-6b4d59e715bf",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 39,
+      "position": 44,
       "section": "upcoming",
       "source_type": "requirement",
-      "title": "Review your electrical certificate and arrange inspection if needed",
+      "title": "Review or renew your EPC",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+    },
+    {
+      "id": "requirement:b713877f-b8fc-4505-9947-40f7d960c0eb",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 45,
+      "section": "upcoming",
+      "source_type": "requirement",
+      "title": "Review or renew your EPC",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+    },
+    {
+      "id": "requirement:cb63e083-ba4c-4244-8549-de757960cdcf",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 46,
+      "section": "upcoming",
+      "source_type": "requirement",
+      "title": "Review or renew your EPC",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+    },
+    {
+      "id": "requirement:e3f6459c-cf42-40d9-bfc8-37507affeffb",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 47,
+      "section": "upcoming",
+      "source_type": "requirement",
+      "title": "Review or renew your EPC",
       "badges": [
         "on_track",
         "medium"
@@ -721,10 +865,28 @@
       "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
     },
     {
+      "id": "requirement:2eb01d80-9fa6-472c-b845-f3b2bb38e382",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 48,
+      "section": "upcoming",
+      "source_type": "requirement",
+      "title": "Review your electrical certificate and arrange inspection if needed",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+    },
+    {
       "id": "requirement:33d417bd-26b3-4d02-a750-52b105307329",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 40,
+      "position": 49,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Review your electrical certificate and arrange inspection if needed",
@@ -742,7 +904,7 @@
       "id": "requirement:b1f7d382-e434-4d5f-86b9-00fded1a3a82",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 41,
+      "position": 50,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Review your electrical certificate and arrange inspection if needed",
@@ -760,172 +922,10 @@
       "id": "requirement:d13a0b57-ad3f-4edd-99d6-6b6e38d85071",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 42,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Review your electrical certificate and arrange inspection if needed",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
-    },
-    {
-      "id": "requirement:2eb01d80-9fa6-472c-b845-f3b2bb38e382",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 43,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Review your electrical certificate and arrange inspection if needed",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
-    },
-    {
-      "id": "risk_signal:rs_eedb193e464e",
-      "class": "active_risk",
-      "urgency_rank": 5,
-      "position": 44,
-      "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
-    },
-    {
-      "id": "risk_signal:rs_ef19be3832c7",
-      "class": "active_risk",
-      "urgency_rank": 5,
-      "position": 45,
-      "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
-    },
-    {
-      "id": "risk_signal:rs_50f624a49b07",
-      "class": "active_risk",
-      "urgency_rank": 5,
-      "position": 46,
-      "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
-    },
-    {
-      "id": "risk_signal:rs_f2098118aef9",
-      "class": "active_risk",
-      "urgency_rank": 5,
-      "position": 47,
-      "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
-    },
-    {
-      "id": "risk_signal:rs_f048cdc863ce",
-      "class": "active_risk",
-      "urgency_rank": 5,
-      "position": 48,
-      "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
-    },
-    {
-      "id": "risk_signal:rs_253d4d210a05",
-      "class": "active_risk",
-      "urgency_rank": 5,
-      "position": 49,
-      "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
-    },
-    {
-      "id": "risk_signal:rs_07ee44011761",
-      "class": "active_risk",
-      "urgency_rank": 5,
-      "position": 50,
-      "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
-    },
-    {
-      "id": "risk_signal:rs_b4a413652f30",
-      "class": "active_risk",
-      "urgency_rank": 5,
       "position": 51,
       "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
+      "source_type": "requirement",
+      "title": "Review your electrical certificate and arrange inspection if needed",
       "badges": [
         "on_track",
         "medium"
@@ -934,16 +934,16 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
     },
     {
-      "id": "risk_signal:rs_325e24089d7f",
-      "class": "active_risk",
+      "id": "requirement:ea22a50c-1421-4516-bcbe-e65f54cf7b25",
+      "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 52,
       "section": "upcoming",
-      "source_type": "risk_signal",
-      "title": "Issue \u2014 needs review",
+      "source_type": "requirement",
+      "title": "Review your electrical certificate and arrange inspection if needed",
       "badges": [
         "on_track",
         "medium"
@@ -952,10 +952,10 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
     },
     {
-      "id": "requirement:ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
+      "id": "requirement:69042628-c672-44dd-9bd7-cb51768f9730",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 53,
@@ -970,31 +970,13 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
-    },
-    {
-      "id": "requirement:edf564a2-ea75-4919-88f5-85aab93b42a5",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 54,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Add compliance evidence",
-      "badges": [
-        "on_track",
-        "low"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
     },
     {
       "id": "requirement:89308629-f183-44e4-b07d-71c564a14eca",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 55,
+      "position": 54,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Add compliance evidence",
@@ -1012,7 +994,7 @@
       "id": "requirement:d1a70f19-94d1-4eca-8a4c-dab8bfc2c05b",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 56,
+      "position": 55,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Add compliance evidence",
@@ -1027,7 +1009,25 @@
       "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
     },
     {
-      "id": "requirement:69042628-c672-44dd-9bd7-cb51768f9730",
+      "id": "requirement:ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 56,
+      "section": "upcoming",
+      "source_type": "requirement",
+      "title": "Add compliance evidence",
+      "badges": [
+        "on_track",
+        "low"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+    },
+    {
+      "id": "requirement:edf564a2-ea75-4919-88f5-85aab93b42a5",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 57,
@@ -1042,10 +1042,10 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
     },
     {
-      "id": "requirement:537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "id": "requirement:43375303-fdfc-46f4-b153-2bc8e8ad53ee",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 58,
@@ -1060,10 +1060,10 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
     },
     {
-      "id": "requirement:43375303-fdfc-46f4-b153-2bc8e8ad53ee",
+      "id": "requirement:537da91b-d80c-49b2-bc92-f32514b00a2a",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 59,
@@ -1078,7 +1078,7 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
       "id": "requirement:5dfd5abf-8642-4d2a-b25e-54afd9d5a9de",
@@ -1099,28 +1099,10 @@
       "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
     },
     {
-      "id": "requirement:f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 61,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Review your legionella assessment and water system records",
-      "badges": [
-        "on_track",
-        "low"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
-    },
-    {
       "id": "requirement:77f4422f-099e-48f8-a61f-18ca9a3f57f3",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 62,
+      "position": 61,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Review your legionella assessment and water system records",
@@ -1138,7 +1120,7 @@
       "id": "requirement:e7540d87-2ae8-4231-b142-311bcf0b370b",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 63,
+      "position": 62,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Review your legionella assessment and water system records",
@@ -1151,6 +1133,24 @@
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
       "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+    },
+    {
+      "id": "requirement:f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 63,
+      "section": "upcoming",
+      "source_type": "requirement",
+      "title": "Review your legionella assessment and water system records",
+      "badges": [
+        "on_track",
+        "low"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
     },
     {
       "id": "requirement:62589167-4e34-4aef-ad75-4967383e71bc",
@@ -1189,28 +1189,10 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "requirement:91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 66,
-      "section": "upcoming",
-      "source_type": "requirement",
-      "title": "Complete this obligation: Landlord Registration Ni",
-      "badges": [
-        "on_track",
-        "low"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
-    },
-    {
       "id": "requirement:40ddb2cc-4c36-474f-981d-296e0248ab31",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 67,
+      "position": 66,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Complete this obligation: Landlord Registration Ni",
@@ -1228,7 +1210,7 @@
       "id": "requirement:81cef5bd-cccf-421c-8758-ae916898b0bb",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 68,
+      "position": 67,
       "section": "upcoming",
       "source_type": "requirement",
       "title": "Complete this obligation: Landlord Registration Ni",
@@ -1241,6 +1223,24 @@
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
       "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+    },
+    {
+      "id": "requirement:91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 68,
+      "section": "upcoming",
+      "source_type": "requirement",
+      "title": "Complete this obligation: Landlord Registration Ni",
+      "badges": [
+        "on_track",
+        "low"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
     },
     {
       "id": "requirement:ad878819-8de2-4a32-85f2-9ee21f09817c",
@@ -1261,7 +1261,7 @@
       "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
     },
     {
-      "id": "requirement:b2f4cc3b-5a10-4274-b6fb-83f0f4681385",
+      "id": "requirement:0b317b5b-a760-4f76-baf0-9cbee75f983e",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 70,
@@ -1276,10 +1276,10 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
     },
     {
-      "id": "requirement:0b317b5b-a760-4f76-baf0-9cbee75f983e",
+      "id": "requirement:b2f4cc3b-5a10-4274-b6fb-83f0f4681385",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 71,
@@ -1294,7 +1294,7 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
     },
     {
       "id": "requirement:ef6abb19-75a0-4382-a846-ff4c51dcddfa",
@@ -1315,7 +1315,7 @@
       "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
     },
     {
-      "id": "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "id": "requirement:27981630-213a-4210-8b0c-5061a4a08e7b",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 73,
@@ -1330,7 +1330,7 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
     },
     {
       "id": "requirement:524648e3-60e0-4888-985a-d014f0bb7a94",
@@ -1351,7 +1351,7 @@
       "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
     },
     {
-      "id": "requirement:27981630-213a-4210-8b0c-5061a4a08e7b",
+      "id": "requirement:84954d53-09fd-4d49-9e69-3285b7c644f5",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 75,
@@ -1366,10 +1366,10 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
     },
     {
-      "id": "requirement:84954d53-09fd-4d49-9e69-3285b7c644f5",
+      "id": "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 76,
@@ -1384,391 +1384,13 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
-      "class": "time_bound_reminder",
-      "urgency_rank": 3,
+      "id": "issue:0536cc28-7551-44d7-8b63-dce46fa830d6",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
       "position": 77,
-      "section": "in_progress",
-      "source_type": "approval",
-      "title": "Review or approve this invoice",
-      "badges": [
-        "due_soon",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:96882b8e-2f76-43c4-b42b-fed170ce8d89",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 78,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:38ce8e63-35c2-4269-94f3-96753acf4781",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 79,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:68a973e9-c48a-49fa-ab5d-6cda1129599f",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 80,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:7f70e523-4849-4d72-bf8c-e104ccdb0615",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 81,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:e20bcfdb-440d-4078-a4fb-172db18309ca",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 82,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:72a04b1f-e327-4004-b689-5e9e34c1d0e9",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 83,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:a55cf2ee-45af-440c-9cba-848978f5e162",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 84,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:93723035-94c1-45b9-9d72-579e6e2feb52",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 85,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:7dfb6280-3140-431f-a39a-6f85724ce489",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 86,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:878eb547-9f00-43b6-93e9-607a6321eac5",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 87,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:f98b6f66-48c9-4a74-84cd-1ffe6881ebab",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 88,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:5c8a09ad-5c07-45eb-a92d-a954fa14e0b3",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 89,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 90,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:cf51e75d-1e76-4846-8902-8ed0b9f47617",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 91,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
-    },
-    {
-      "id": "issue:afea735f-da5a-46a4-918d-73bff02320a8",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 92,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
-    },
-    {
-      "id": "issue:3c124efb-1506-4a72-98e7-b7b7d8ec19c5",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 93,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
-    },
-    {
-      "id": "issue:6720122b-e492-4961-90f8-8abe265e7fd1",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 94,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
-    },
-    {
-      "id": "issue:c3932ab3-6191-45e8-bf3c-d6416fd7c2ff",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 95,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
-    },
-    {
-      "id": "issue:3e135a1a-e8ea-47a7-a2b2-52ee415679b5",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 96,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:80268100-1ac5-49d4-badf-ad55b35918c9",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 97,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:b1ff6319-b22e-4690-8f45-c8ee61ba0c19",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 98,
       "section": "in_progress",
       "source_type": "issue",
       "title": "Maintenance issue \u2014 needs attention",
@@ -1786,7 +1408,7 @@
       "id": "issue:091408f5-b889-4d42-baf9-e6956795c1d9",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 99,
+      "position": 78,
       "section": "in_progress",
       "source_type": "issue",
       "title": "Maintenance issue \u2014 needs attention",
@@ -1801,64 +1423,10 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:b0e3dd8b-9b5a-4ec7-b59c-28d727ba498b",
+      "id": "issue:1989b5ea-418d-4772-970a-eb74aac8ef1e",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 100,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:225fd14f-eaab-4daa-bc6e-2507c5b1e4dd",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 101,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:c4ac23f9-39c4-497d-afe8-58e98a8a0a1e",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 102,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
-    },
-    {
-      "id": "issue:3a700c77-e984-4adc-9ffc-91f65f0c47e2",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 103,
+      "position": 79,
       "section": "in_progress",
       "source_type": "issue",
       "title": "Maintenance issue \u2014 needs attention",
@@ -1876,7 +1444,7 @@
       "id": "issue:1af72bcd-890c-44e7-b559-3d9219fb1ad1",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 104,
+      "position": 80,
       "section": "in_progress",
       "source_type": "issue",
       "title": "Maintenance issue \u2014 needs attention",
@@ -1891,10 +1459,172 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43",
+      "id": "issue:1ddf04a6-473a-4d07-8da4-592557ab7942",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 105,
+      "position": 81,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:225fd14f-eaab-4daa-bc6e-2507c5b1e4dd",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 82,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:2e7e906c-0040-4ae3-bc5c-f85da00810c5",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 83,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:31741b34-c578-4cbb-8b9a-9675eccc1e2d",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 84,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:38ce8e63-35c2-4269-94f3-96753acf4781",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 85,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:3a700c77-e984-4adc-9ffc-91f65f0c47e2",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 86,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:3c124efb-1506-4a72-98e7-b7b7d8ec19c5",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 87,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+    },
+    {
+      "id": "issue:3e135a1a-e8ea-47a7-a2b2-52ee415679b5",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 88,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:4e1176c6-934e-45e5-b10f-8f9f102ebe08",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 89,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+    },
+    {
+      "id": "issue:5c8a09ad-5c07-45eb-a92d-a954fa14e0b3",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 90,
       "section": "in_progress",
       "source_type": "issue",
       "title": "Maintenance issue \u2014 needs attention",
@@ -1912,7 +1642,241 @@
       "id": "issue:61bb4a91-dce5-4185-904b-0e613a07bbbb",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 106,
+      "position": 91,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:6720122b-e492-4961-90f8-8abe265e7fd1",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 92,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+    },
+    {
+      "id": "issue:68a973e9-c48a-49fa-ab5d-6cda1129599f",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 93,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:72a04b1f-e327-4004-b689-5e9e34c1d0e9",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 94,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:757177b4-ac14-4532-92bf-7bf97886c7e1",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 95,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 96,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:7dfb6280-3140-431f-a39a-6f85724ce489",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 97,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:7f6bf0f9-93c5-4eb6-b85e-25e48998fd33",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 98,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:7f70e523-4849-4d72-bf8c-e104ccdb0615",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 99,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:80268100-1ac5-49d4-badf-ad55b35918c9",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 100,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:878eb547-9f00-43b6-93e9-607a6321eac5",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 101,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:8d905fcc-7733-4c3f-9371-122271dbc0e5",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 102,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:93723035-94c1-45b9-9d72-579e6e2feb52",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 103,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:96882b8e-2f76-43c4-b42b-fed170ce8d89",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 104,
       "section": "in_progress",
       "source_type": "issue",
       "title": "Maintenance issue \u2014 needs attention",
@@ -1930,7 +1894,7 @@
       "id": "issue:9adc5d71-5088-4433-957b-0ade3dacc3fb",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 107,
+      "position": 105,
       "section": "in_progress",
       "source_type": "issue",
       "title": "Maintenance issue \u2014 needs attention",
@@ -1948,7 +1912,7 @@
       "id": "issue:a51f52c0-12eb-4766-9b9b-3910c5c4d55e",
       "class": "open_operational_debt",
       "urgency_rank": 5,
-      "position": 108,
+      "position": 106,
       "section": "in_progress",
       "source_type": "issue",
       "title": "Maintenance issue \u2014 needs attention",
@@ -1963,7 +1927,43 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:eb1fe00d-957d-4f5e-a035-ffa19fca4dd1",
+      "id": "issue:a55cf2ee-45af-440c-9cba-848978f5e162",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 107,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "issue:afea735f-da5a-46a4-918d-73bff02320a8",
+      "class": "open_operational_debt",
+      "urgency_rank": 5,
+      "position": 108,
+      "section": "in_progress",
+      "source_type": "issue",
+      "title": "Maintenance issue \u2014 needs attention",
+      "badges": [
+        "on_track",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+    },
+    {
+      "id": "issue:b0e3dd8b-9b5a-4ec7-b59c-28d727ba498b",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 109,
@@ -1981,7 +1981,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:31741b34-c578-4cbb-8b9a-9675eccc1e2d",
+      "id": "issue:b1ff6319-b22e-4690-8f45-c8ee61ba0c19",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 110,
@@ -2017,7 +2017,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:e22a120d-33bd-4e5c-acbe-60fdd044c4b2",
+      "id": "issue:b6ec6fc6-cd33-48c1-8c20-d774fba82cef",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 112,
@@ -2035,7 +2035,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:0536cc28-7551-44d7-8b63-dce46fa830d6",
+      "id": "issue:c3932ab3-6191-45e8-bf3c-d6416fd7c2ff",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 113,
@@ -2050,10 +2050,10 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
     },
     {
-      "id": "issue:b6ec6fc6-cd33-48c1-8c20-d774fba82cef",
+      "id": "issue:c46a4197-5449-4387-a329-d81e77f0f55a",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 114,
@@ -2071,7 +2071,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:2e7e906c-0040-4ae3-bc5c-f85da00810c5",
+      "id": "issue:c4ac23f9-39c4-497d-afe8-58e98a8a0a1e",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 115,
@@ -2089,7 +2089,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:e7857956-1435-4ce2-9571-d2ef48b215b7",
+      "id": "issue:cf51e75d-1e76-4846-8902-8ed0b9f47617",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 116,
@@ -2104,10 +2104,10 @@
       "snooze_expires_at": null,
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
-      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
     },
     {
-      "id": "issue:8d905fcc-7733-4c3f-9371-122271dbc0e5",
+      "id": "issue:e20bcfdb-440d-4078-a4fb-172db18309ca",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 117,
@@ -2125,7 +2125,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:1989b5ea-418d-4772-970a-eb74aac8ef1e",
+      "id": "issue:e22a120d-33bd-4e5c-acbe-60fdd044c4b2",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 118,
@@ -2143,7 +2143,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:1ddf04a6-473a-4d07-8da4-592557ab7942",
+      "id": "issue:e7857956-1435-4ce2-9571-d2ef48b215b7",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 119,
@@ -2161,7 +2161,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:757177b4-ac14-4532-92bf-7bf97886c7e1",
+      "id": "issue:eb1fe00d-957d-4f5e-a035-ffa19fca4dd1",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 120,
@@ -2179,7 +2179,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:c46a4197-5449-4387-a329-d81e77f0f55a",
+      "id": "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 121,
@@ -2197,7 +2197,7 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:7f6bf0f9-93c5-4eb6-b85e-25e48998fd33",
+      "id": "issue:f98b6f66-48c9-4a74-84cd-1ffe6881ebab",
       "class": "open_operational_debt",
       "urgency_rank": 5,
       "position": 122,
@@ -2215,28 +2215,10 @@
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     },
     {
-      "id": "issue:4e1176c6-934e-45e5-b10f-8f9f102ebe08",
-      "class": "open_operational_debt",
-      "urgency_rank": 5,
-      "position": 123,
-      "section": "in_progress",
-      "source_type": "issue",
-      "title": "Maintenance issue \u2014 needs attention",
-      "badges": [
-        "on_track",
-        "medium"
-      ],
-      "snoozed": false,
-      "snooze_expires_at": null,
-      "dismissed_in_api": false,
-      "dismissed_in_ui": false,
-      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
-    },
-    {
       "id": "work_order:0e0b6dd7-66aa-4a9c-9fc2-00f261551f69",
       "class": "open_operational_debt",
       "urgency_rank": 3,
-      "position": 124,
+      "position": 123,
       "section": "in_progress",
       "source_type": "work_order",
       "title": "Job \u2014 needs attention",
@@ -2254,7 +2236,7 @@
       "id": "work_order:249f969d-0214-4cb6-aef5-4f614c91c3be",
       "class": "open_operational_debt",
       "urgency_rank": 3,
-      "position": 125,
+      "position": 124,
       "section": "in_progress",
       "source_type": "work_order",
       "title": "Job \u2014 needs attention",
@@ -2267,172 +2249,169 @@
       "dismissed_in_api": false,
       "dismissed_in_ui": false,
       "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    {
+      "id": "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
+      "class": "time_bound_reminder",
+      "urgency_rank": 3,
+      "position": 125,
+      "section": "in_progress",
+      "source_type": "approval",
+      "title": "Review or approve this invoice",
+      "badges": [
+        "due_soon",
+        "medium"
+      ],
+      "snoozed": false,
+      "snooze_expires_at": null,
+      "dismissed_in_api": false,
+      "dismissed_in_ui": false,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
     }
   ],
   "expected_order_ids": [
-    "risk_signal:rs_99c4f85b2781",
-    "risk_signal:rs_95fc6c0e9aa5",
+    "work_order:27f744e0-f39d-4791-88cb-100b2e8635a3",
+    "work_order:3ae8f694-8844-4d46-9b54-25b02e9160f7",
+    "work_order:50ba228a-f906-41d6-828a-7301d0a13bfa",
+    "work_order:55f206c4-9cc4-4119-b4a8-326954f6fd05",
+    "work_order:64571387-fcba-4302-ab4c-5b94a629ebae",
+    "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+    "work_order:74469ca1-0382-49a7-8208-572567762cc3",
+    "work_order:7faad62e-c860-4f7e-8ec6-1fc92a3baf32",
+    "work_order:86a9a83a-4f04-4a4b-9114-1161b193e87e",
+    "work_order:8729beb8-0344-4067-a4a2-31de2b513943",
+    "work_order:8dc4e08b-40d1-4e8c-90de-4b854c7183d8",
+    "work_order:922c0d05-9294-47a1-b735-99e2139a65df",
+    "work_order:ad374b2c-cba7-4e40-819d-f8ed4cb32c8c",
+    "work_order:adc1c317-18ee-4985-86fd-dba1e878ca9b",
+    "work_order:afd41933-a06a-4d16-a8cc-697ec6d70649",
+    "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee",
+    "work_order:d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+    "work_order:dcc28a43-9a2b-4327-a058-e3b9cb577a5b",
+    "work_order:e3c67bd0-c568-48cf-bff8-1121099a4086",
+    "work_order:ea78c6eb-97ae-4a60-972b-6c445772b66e",
+    "work_order:fcd4efd3-6904-44b8-9e0d-e8c7eb7cea4b",
     "risk_signal:rs_874f6ddef1dd",
+    "risk_signal:rs_95fc6c0e9aa5",
+    "risk_signal:rs_99c4f85b2781",
+    "risk_signal:rs_07ee44011761",
+    "risk_signal:rs_253d4d210a05",
+    "risk_signal:rs_325e24089d7f",
+    "risk_signal:rs_50f624a49b07",
+    "risk_signal:rs_b4a413652f30",
     "risk_signal:rs_eedb193e464e",
     "risk_signal:rs_ef19be3832c7",
-    "risk_signal:rs_50f624a49b07",
-    "risk_signal:rs_f2098118aef9",
     "risk_signal:rs_f048cdc863ce",
-    "risk_signal:rs_253d4d210a05",
-    "risk_signal:rs_07ee44011761",
-    "risk_signal:rs_b4a413652f30",
-    "risk_signal:rs_325e24089d7f",
-    "work_order:e3c67bd0-c568-48cf-bff8-1121099a4086",
-    "work_order:adc1c317-18ee-4985-86fd-dba1e878ca9b",
-    "work_order:d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
-    "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
-    "work_order:3ae8f694-8844-4d46-9b54-25b02e9160f7",
-    "work_order:ea78c6eb-97ae-4a60-972b-6c445772b66e",
-    "work_order:ad374b2c-cba7-4e40-819d-f8ed4cb32c8c",
-    "work_order:8dc4e08b-40d1-4e8c-90de-4b854c7183d8",
-    "work_order:86a9a83a-4f04-4a4b-9114-1161b193e87e",
-    "work_order:27f744e0-f39d-4791-88cb-100b2e8635a3",
-    "work_order:922c0d05-9294-47a1-b735-99e2139a65df",
-    "work_order:55f206c4-9cc4-4119-b4a8-326954f6fd05",
-    "work_order:dcc28a43-9a2b-4327-a058-e3b9cb577a5b",
-    "work_order:7faad62e-c860-4f7e-8ec6-1fc92a3baf32",
-    "work_order:fcd4efd3-6904-44b8-9e0d-e8c7eb7cea4b",
-    "work_order:64571387-fcba-4302-ab4c-5b94a629ebae",
-    "work_order:afd41933-a06a-4d16-a8cc-697ec6d70649",
-    "work_order:50ba228a-f906-41d6-828a-7301d0a13bfa",
-    "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee",
+    "risk_signal:rs_f2098118aef9",
+    "work_order:8f54b5fd-0636-42d4-8233-1b2db14df33e",
     "work_order:914abf84-33cf-4adb-990f-ef3112fcc30f",
     "work_order:b54782db-5684-4b12-b18a-2a69efd5ef7c",
     "work_order:cdc1f384-50c5-4921-9cb8-8507d7cb8182",
-    "work_order:8f54b5fd-0636-42d4-8233-1b2db14df33e",
-    "work_order:8729beb8-0344-4067-a4a2-31de2b513943",
-    "work_order:74469ca1-0382-49a7-8208-572567762cc3",
     "work_order:0e0b6dd7-66aa-4a9c-9fc2-00f261551f69",
     "work_order:249f969d-0214-4cb6-aef5-4f614c91c3be",
     "requirement:71e89158-5de0-422a-970c-5a2163fcc823",
-    "requirement:6c819fb6-a069-4979-9953-353c4b74abb3",
-    "requirement:abf48f3d-a3df-4205-8666-1df11687cf30",
-    "requirement:901564f9-fab0-4550-99ba-e13432ee845e",
-    "requirement:e76b95d8-d652-470e-ab0b-fcd25e6fb3e9",
     "requirement:43a6a5ac-060f-4aae-9766-835e40106788",
-    "requirement:e3f6459c-cf42-40d9-bfc8-37507affeffb",
-    "requirement:b713877f-b8fc-4505-9947-40f7d960c0eb",
-    "requirement:57e66e0c-3288-47f6-95ef-6b4d59e715bf",
-    "requirement:cb63e083-ba4c-4244-8549-de757960cdcf",
+    "requirement:6c819fb6-a069-4979-9953-353c4b74abb3",
+    "requirement:901564f9-fab0-4550-99ba-e13432ee845e",
+    "requirement:abf48f3d-a3df-4205-8666-1df11687cf30",
+    "requirement:e76b95d8-d652-470e-ab0b-fcd25e6fb3e9",
     "requirement:4fde5533-ba46-4245-b55a-7e45f8c72557",
-    "requirement:ea22a50c-1421-4516-bcbe-e65f54cf7b25",
+    "requirement:57e66e0c-3288-47f6-95ef-6b4d59e715bf",
+    "requirement:b713877f-b8fc-4505-9947-40f7d960c0eb",
+    "requirement:cb63e083-ba4c-4244-8549-de757960cdcf",
+    "requirement:e3f6459c-cf42-40d9-bfc8-37507affeffb",
+    "requirement:2eb01d80-9fa6-472c-b845-f3b2bb38e382",
     "requirement:33d417bd-26b3-4d02-a750-52b105307329",
     "requirement:b1f7d382-e434-4d5f-86b9-00fded1a3a82",
     "requirement:d13a0b57-ad3f-4edd-99d6-6b6e38d85071",
-    "requirement:2eb01d80-9fa6-472c-b845-f3b2bb38e382",
-    "requirement:ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
-    "requirement:edf564a2-ea75-4919-88f5-85aab93b42a5",
+    "requirement:ea22a50c-1421-4516-bcbe-e65f54cf7b25",
+    "requirement:69042628-c672-44dd-9bd7-cb51768f9730",
     "requirement:89308629-f183-44e4-b07d-71c564a14eca",
     "requirement:d1a70f19-94d1-4eca-8a4c-dab8bfc2c05b",
-    "requirement:69042628-c672-44dd-9bd7-cb51768f9730",
-    "requirement:537da91b-d80c-49b2-bc92-f32514b00a2a",
+    "requirement:ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
+    "requirement:edf564a2-ea75-4919-88f5-85aab93b42a5",
     "requirement:43375303-fdfc-46f4-b153-2bc8e8ad53ee",
+    "requirement:537da91b-d80c-49b2-bc92-f32514b00a2a",
     "requirement:5dfd5abf-8642-4d2a-b25e-54afd9d5a9de",
-    "requirement:f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
     "requirement:77f4422f-099e-48f8-a61f-18ca9a3f57f3",
     "requirement:e7540d87-2ae8-4231-b142-311bcf0b370b",
+    "requirement:f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
     "requirement:62589167-4e34-4aef-ad75-4967383e71bc",
     "requirement:216ed196-883b-42a2-9011-39918534d32d",
-    "requirement:91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
     "requirement:40ddb2cc-4c36-474f-981d-296e0248ab31",
     "requirement:81cef5bd-cccf-421c-8758-ae916898b0bb",
+    "requirement:91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
     "requirement:ad878819-8de2-4a32-85f2-9ee21f09817c",
-    "requirement:b2f4cc3b-5a10-4274-b6fb-83f0f4681385",
     "requirement:0b317b5b-a760-4f76-baf0-9cbee75f983e",
+    "requirement:b2f4cc3b-5a10-4274-b6fb-83f0f4681385",
     "requirement:ef6abb19-75a0-4382-a846-ff4c51dcddfa",
-    "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
-    "requirement:524648e3-60e0-4888-985a-d014f0bb7a94",
     "requirement:27981630-213a-4210-8b0c-5061a4a08e7b",
+    "requirement:524648e3-60e0-4888-985a-d014f0bb7a94",
     "requirement:84954d53-09fd-4d49-9e69-3285b7c644f5",
-    "issue:96882b8e-2f76-43c4-b42b-fed170ce8d89",
-    "issue:38ce8e63-35c2-4269-94f3-96753acf4781",
-    "issue:68a973e9-c48a-49fa-ab5d-6cda1129599f",
-    "issue:7f70e523-4849-4d72-bf8c-e104ccdb0615",
-    "issue:e20bcfdb-440d-4078-a4fb-172db18309ca",
-    "issue:72a04b1f-e327-4004-b689-5e9e34c1d0e9",
-    "issue:a55cf2ee-45af-440c-9cba-848978f5e162",
-    "issue:93723035-94c1-45b9-9d72-579e6e2feb52",
-    "issue:7dfb6280-3140-431f-a39a-6f85724ce489",
-    "issue:878eb547-9f00-43b6-93e9-607a6321eac5",
-    "issue:f98b6f66-48c9-4a74-84cd-1ffe6881ebab",
-    "issue:5c8a09ad-5c07-45eb-a92d-a954fa14e0b3",
-    "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
-    "issue:cf51e75d-1e76-4846-8902-8ed0b9f47617",
-    "issue:afea735f-da5a-46a4-918d-73bff02320a8",
-    "issue:3c124efb-1506-4a72-98e7-b7b7d8ec19c5",
-    "issue:6720122b-e492-4961-90f8-8abe265e7fd1",
-    "issue:c3932ab3-6191-45e8-bf3c-d6416fd7c2ff",
-    "issue:3e135a1a-e8ea-47a7-a2b2-52ee415679b5",
-    "issue:80268100-1ac5-49d4-badf-ad55b35918c9",
-    "issue:b1ff6319-b22e-4690-8f45-c8ee61ba0c19",
+    "requirement:8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+    "issue:0536cc28-7551-44d7-8b63-dce46fa830d6",
     "issue:091408f5-b889-4d42-baf9-e6956795c1d9",
-    "issue:b0e3dd8b-9b5a-4ec7-b59c-28d727ba498b",
-    "issue:225fd14f-eaab-4daa-bc6e-2507c5b1e4dd",
-    "issue:c4ac23f9-39c4-497d-afe8-58e98a8a0a1e",
-    "issue:3a700c77-e984-4adc-9ffc-91f65f0c47e2",
+    "issue:1989b5ea-418d-4772-970a-eb74aac8ef1e",
     "issue:1af72bcd-890c-44e7-b559-3d9219fb1ad1",
-    "issue:7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43",
+    "issue:1ddf04a6-473a-4d07-8da4-592557ab7942",
+    "issue:225fd14f-eaab-4daa-bc6e-2507c5b1e4dd",
+    "issue:2e7e906c-0040-4ae3-bc5c-f85da00810c5",
+    "issue:31741b34-c578-4cbb-8b9a-9675eccc1e2d",
+    "issue:38ce8e63-35c2-4269-94f3-96753acf4781",
+    "issue:3a700c77-e984-4adc-9ffc-91f65f0c47e2",
+    "issue:3c124efb-1506-4a72-98e7-b7b7d8ec19c5",
+    "issue:3e135a1a-e8ea-47a7-a2b2-52ee415679b5",
+    "issue:4e1176c6-934e-45e5-b10f-8f9f102ebe08",
+    "issue:5c8a09ad-5c07-45eb-a92d-a954fa14e0b3",
     "issue:61bb4a91-dce5-4185-904b-0e613a07bbbb",
+    "issue:6720122b-e492-4961-90f8-8abe265e7fd1",
+    "issue:68a973e9-c48a-49fa-ab5d-6cda1129599f",
+    "issue:72a04b1f-e327-4004-b689-5e9e34c1d0e9",
+    "issue:757177b4-ac14-4532-92bf-7bf97886c7e1",
+    "issue:7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43",
+    "issue:7dfb6280-3140-431f-a39a-6f85724ce489",
+    "issue:7f6bf0f9-93c5-4eb6-b85e-25e48998fd33",
+    "issue:7f70e523-4849-4d72-bf8c-e104ccdb0615",
+    "issue:80268100-1ac5-49d4-badf-ad55b35918c9",
+    "issue:878eb547-9f00-43b6-93e9-607a6321eac5",
+    "issue:8d905fcc-7733-4c3f-9371-122271dbc0e5",
+    "issue:93723035-94c1-45b9-9d72-579e6e2feb52",
+    "issue:96882b8e-2f76-43c4-b42b-fed170ce8d89",
     "issue:9adc5d71-5088-4433-957b-0ade3dacc3fb",
     "issue:a51f52c0-12eb-4766-9b9b-3910c5c4d55e",
-    "issue:eb1fe00d-957d-4f5e-a035-ffa19fca4dd1",
-    "issue:31741b34-c578-4cbb-8b9a-9675eccc1e2d",
+    "issue:a55cf2ee-45af-440c-9cba-848978f5e162",
+    "issue:afea735f-da5a-46a4-918d-73bff02320a8",
+    "issue:b0e3dd8b-9b5a-4ec7-b59c-28d727ba498b",
+    "issue:b1ff6319-b22e-4690-8f45-c8ee61ba0c19",
     "issue:b690c925-7a1b-41fc-87a8-52bb5653e515",
-    "issue:e22a120d-33bd-4e5c-acbe-60fdd044c4b2",
-    "issue:0536cc28-7551-44d7-8b63-dce46fa830d6",
     "issue:b6ec6fc6-cd33-48c1-8c20-d774fba82cef",
-    "issue:2e7e906c-0040-4ae3-bc5c-f85da00810c5",
-    "issue:e7857956-1435-4ce2-9571-d2ef48b215b7",
-    "issue:8d905fcc-7733-4c3f-9371-122271dbc0e5",
-    "issue:1989b5ea-418d-4772-970a-eb74aac8ef1e",
-    "issue:1ddf04a6-473a-4d07-8da4-592557ab7942",
-    "issue:757177b4-ac14-4532-92bf-7bf97886c7e1",
+    "issue:c3932ab3-6191-45e8-bf3c-d6416fd7c2ff",
     "issue:c46a4197-5449-4387-a329-d81e77f0f55a",
-    "issue:7f6bf0f9-93c5-4eb6-b85e-25e48998fd33",
-    "issue:4e1176c6-934e-45e5-b10f-8f9f102ebe08",
+    "issue:c4ac23f9-39c4-497d-afe8-58e98a8a0a1e",
+    "issue:cf51e75d-1e76-4846-8902-8ed0b9f47617",
+    "issue:e20bcfdb-440d-4078-a4fb-172db18309ca",
+    "issue:e22a120d-33bd-4e5c-acbe-60fdd044c4b2",
+    "issue:e7857956-1435-4ce2-9571-d2ef48b215b7",
+    "issue:eb1fe00d-957d-4f5e-a035-ffa19fca4dd1",
+    "issue:f87da17b-34d6-4a20-b30b-78df9782ee24",
+    "issue:f98b6f66-48c9-4a74-84cd-1ffe6881ebab",
     "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73"
   ],
-  "precedence_violations": [
-    {
-      "type": "ATTENTION_PRIORITY_DRIFT",
-      "lower_item": "work_order:c6332094-f53d-44a2-a953-98a3eb2068ee",
-      "higher_item": "risk_signal:rs_99c4f85b2781",
-      "note": "Displayed order violates precedence"
-    },
-    {
-      "type": "ATTENTION_PRIORITY_DRIFT",
-      "lower_item": "requirement:2eb01d80-9fa6-472c-b845-f3b2bb38e382",
-      "higher_item": "risk_signal:rs_eedb193e464e",
-      "note": "Displayed order violates precedence"
-    },
-    {
-      "type": "ATTENTION_PRIORITY_DRIFT",
-      "lower_item": "approval:0c2d3e8f-1074-414f-b75e-0c44b26d7e73",
-      "higher_item": "issue:96882b8e-2f76-43c4-b42b-fed170ce8d89",
-      "note": "Displayed order violates precedence"
-    }
-  ],
+  "precedence_violations": [],
   "cross_badge_contradictions": [],
   "snooze_expiry_checks": [],
   "dismiss_resurrection_checks": [],
-  "classification_hints": [
-    "ATTENTION_PRIORITY_DRIFT"
-  ],
+  "classification_hints": [],
   "pilot": {
     "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
     "family": "ops_control_g1_today_page",
     "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
     "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
     "slug": "6fd5ac4c_d35a58ae",
-    "run_tag": "20260524T152332Z",
+    "run_tag": "20260524T162503Z",
     "g0_classification": "VERIFIED_OPERATIONALLY",
     "g0_ready": true,
-    "marker": "OPS-VERIFY02-G1-20260524T152332Z"
+    "marker": "OPS-VERIFY02-G1-20260524T162503Z"
   },
   "active_item_count": 126
 }

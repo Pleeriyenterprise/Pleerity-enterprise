@@ -1,5 +1,5 @@
 {
-  "today_urgent_count": 22,
+  "today_urgent_count": 33,
   "command_centre_urgent_count": 16,
   "open_issues_count": 46,
   "active_risk_signals": 0,
@@ -10,7 +10,7 @@
       {
         "id": "today_urgent",
         "metrics": {
-          "urgent_count": 22
+          "urgent_count": 33
         }
       },
       {

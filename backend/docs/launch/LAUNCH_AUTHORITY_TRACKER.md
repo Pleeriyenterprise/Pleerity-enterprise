@@ -4806,7 +4806,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-02 — operational control-plane verification (rev 4)
 
-**Status:** G0 **`VERIFIED_OPERATIONALLY`**. G1 **EXECUTED** — `ATTENTION_PRIORITY_DRIFT` (3 precedence violations; mutation/snooze/CTA/G9/G10 pass). Run `20260524T152332Z`; bundle `ops_runtime_g1_today_6fd5ac4c_d35a58ae`. **G2 blocked.** Watchlist: deploy SHA; Today vs CC urgent count delta.
+**Status:** G0 **`VERIFIED_OPERATIONALLY`**. G1 **`VERIFIED_OPERATIONALLY`** (run `20260524T162503Z`; 0 precedence violations post-remediation). **G2–G7 NOT RUN** — G2 may proceed.
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md)
 
@@ -4839,7 +4839,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 | Family | Slug | Status | Classification |
 |--------|------|--------|----------------|
 | Programme G0 | `ops_control_g0_programme_precheck` | VERIFIED_OPERATIONALLY | Precheck `20260524T140328Z` + triage `20260524T143953Z`; bundles `ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae` + `ops_control_g0_cycle_triage_6fd5ac4c_d35a58ae` (static graph superseded at runtime; hub cycles benign) |
-| G1 Today | `ops_control_g1_today_page` | EXECUTED | `ATTENTION_PRIORITY_DRIFT` — run `20260524T152332Z`; bundle `ops_runtime_g1_today_6fd5ac4c_d35a58ae` (3 precedence violations; mutation/convergence pass) |
+| G1 Today | `ops_control_g1_today_page` | VERIFIED_OPERATIONALLY | Run `20260524T162503Z`; bundle `ops_runtime_g1_today_6fd5ac4c_d35a58ae` (attention authority pass after ranking fix) |
 | G2 Command Centre | `ops_control_g2_command_centre` | NOT RUN | — |
 | G3 Properties | `ops_control_g3_properties_page` | NOT RUN | — |
 | G4 Requirements | `ops_control_g4_requirements_page` | NOT RUN | — |
