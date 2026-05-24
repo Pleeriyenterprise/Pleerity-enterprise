@@ -1,0 +1,6 @@
+{
+  "resolved_not_shown_active_after_close": true,
+  "live_not_hidden_when_open_issues": true,
+  "derived_does_not_override_live": true,
+  "pass": true
+}

@@ -1,0 +1,29 @@
+{
+  "observations": [
+    {
+      "label": "post_close_cc_convergence",
+      "t0": {
+        "urgent_count": 16,
+        "has_marker": false
+      },
+      "reads": [
+        {
+          "ts": 1779643316.0356083,
+          "api": {
+            "urgent_count": 16,
+            "has_marker": false
+          }
+        }
+      ],
+      "converged": true,
+      "stale_projection": false,
+      "timeout_seconds": 75
+    }
+  ],
+  "any_stale": false,
+  "any_timeout": false,
+  "t0": {
+    "urgent_count": 16,
+    "has_marker": false
+  }
+}

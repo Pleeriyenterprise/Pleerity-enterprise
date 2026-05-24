@@ -1,0 +1,7 @@
+{
+  "duplicate_widget_surfaces": false,
+  "urgent_count_before": 16,
+  "urgent_count_after_refresh": 16,
+  "unstable_count_swing": false,
+  "pass": true
+}

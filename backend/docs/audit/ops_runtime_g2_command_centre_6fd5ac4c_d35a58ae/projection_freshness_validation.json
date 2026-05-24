@@ -1,0 +1,12 @@
+{
+  "trust_surface_metadata_present": true,
+  "stale_sections": [],
+  "degraded_sections": [],
+  "rebuild_age_seconds": 0.0,
+  "score_status": "ok",
+  "last_calculated_at": "2026-05-24T17:16:29.331651+00:00",
+  "tasks_refreshed_at": "2026-05-24T17:16:45.775108+00:00",
+  "stale_disclosed": true,
+  "false_healthy_during_active_debt": false,
+  "pass": true
+}

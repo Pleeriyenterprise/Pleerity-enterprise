@@ -1,0 +1,118 @@
+{
+  "shell_ok": true,
+  "urgent_widget_visible": true,
+  "walks": [
+    {
+      "task_id": "work_order:27f744e0-f39d-4791-88cb-100b2e8635a3",
+      "label": "View work order",
+      "route": "/operations/work-orders?work_order_id=27f744e0-f39d-4791-88cb-100b2e8635a3",
+      "mutation_owner_reachable": true,
+      "noop_risk": false
+    },
+    {
+      "task_id": "work_order:3ae8f694-8844-4d46-9b54-25b02e9160f7",
+      "label": "View work order",
+      "route": "/operations/work-orders?work_order_id=3ae8f694-8844-4d46-9b54-25b02e9160f7",
+      "mutation_owner_reachable": true,
+      "noop_risk": false
+    },
+    {
+      "task_id": "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+      "label": "View work order",
+      "route": "/operations/work-orders?work_order_id=6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+      "mutation_owner_reachable": true,
+      "noop_risk": false
+    },
+    {
+      "task_id": "work_order:74469ca1-0382-49a7-8208-572567762cc3",
+      "label": "View work order",
+      "route": "/operations/work-orders?work_order_id=74469ca1-0382-49a7-8208-572567762cc3",
+      "mutation_owner_reachable": true,
+      "noop_risk": false
+    },
+    {
+      "task_id": "work_order:86a9a83a-4f04-4a4b-9114-1161b193e87e",
+      "label": "View work order",
+      "route": "/operations/work-orders?work_order_id=86a9a83a-4f04-4a4b-9114-1161b193e87e",
+      "mutation_owner_reachable": true,
+      "noop_risk": false
+    }
+  ],
+  "noop_detected": false,
+  "cta_matrix": {
+    "probes": [
+      {
+        "cta_id": "work_order:27f744e0-f39d-4791-88cb-100b2e8635a3",
+        "label": "View work order",
+        "source_route": "/command-center",
+        "destination_route": "/operations/work-orders?work_order_id=27f744e0-f39d-4791-88cb-100b2e8635a3",
+        "reachable": false,
+        "mutation_owner_present": true,
+        "noop_detected": false,
+        "duplicate_cta": false,
+        "contradictory_cta": false,
+        "dead_end": false,
+        "notes": []
+      },
+      {
+        "cta_id": "work_order:3ae8f694-8844-4d46-9b54-25b02e9160f7",
+        "label": "View work order",
+        "source_route": "/command-center",
+        "destination_route": "/operations/work-orders?work_order_id=3ae8f694-8844-4d46-9b54-25b02e9160f7",
+        "reachable": false,
+        "mutation_owner_present": true,
+        "noop_detected": false,
+        "duplicate_cta": false,
+        "contradictory_cta": false,
+        "dead_end": false,
+        "notes": []
+      },
+      {
+        "cta_id": "work_order:6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+        "label": "View work order",
+        "source_route": "/command-center",
+        "destination_route": "/operations/work-orders?work_order_id=6b6d8b77-05d2-4bed-9141-d51e0787d18f",
+        "reachable": false,
+        "mutation_owner_present": true,
+        "noop_detected": false,
+        "duplicate_cta": false,
+        "contradictory_cta": false,
+        "dead_end": false,
+        "notes": []
+      },
+      {
+        "cta_id": "work_order:74469ca1-0382-49a7-8208-572567762cc3",
+        "label": "View work order",
+        "source_route": "/command-center",
+        "destination_route": "/operations/work-orders?work_order_id=74469ca1-0382-49a7-8208-572567762cc3",
+        "reachable": false,
+        "mutation_owner_present": true,
+        "noop_detected": false,
+        "duplicate_cta": false,
+        "contradictory_cta": false,
+        "dead_end": false,
+        "notes": []
+      },
+      {
+        "cta_id": "work_order:86a9a83a-4f04-4a4b-9114-1161b193e87e",
+        "label": "View work order",
+        "source_route": "/command-center",
+        "destination_route": "/operations/work-orders?work_order_id=86a9a83a-4f04-4a4b-9114-1161b193e87e",
+        "reachable": false,
+        "mutation_owner_present": true,
+        "noop_detected": false,
+        "duplicate_cta": false,
+        "contradictory_cta": false,
+        "dead_end": false,
+        "notes": []
+      }
+    ],
+    "noop_detected": false,
+    "duplicate_cta": false,
+    "dead_end": false,
+    "contradictory": false
+  },
+  "today_escalation_link": true,
+  "operator_trapped": false,
+  "verdict": "resolution_path_reachable"
+}

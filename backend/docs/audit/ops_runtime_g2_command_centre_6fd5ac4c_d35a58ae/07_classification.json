@@ -1,0 +1,24 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
+  "family": "ops_control_g2_command_centre",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_classifications": [],
+  "reasons": [],
+  "blocking": false,
+  "execution_status": "VERIFIED_OPERATIONALLY",
+  "authoritative_verification_owner": "ops_control_g2_command_centre",
+  "proof_mode": "operational_browser",
+  "run_tag": "20260524T170848Z",
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "shared_dependency_bundle_ids": [
+    "ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g1_today_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "checkpoints": {
+    "G2_surface_boot": true,
+    "G2_widget_coherence": true,
+    "G2_projection_authority": true,
+    "G2_mutation_sequence": true,
+    "G2_resolution_walks": true
+  }
+}

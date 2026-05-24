@@ -1,0 +1,108 @@
+{
+  "widgets": [
+    {
+      "id": "command_centre_urgent",
+      "metrics": {
+        "urgent_actions": 16,
+        "open_issues": 46
+      }
+    },
+    {
+      "id": "attention",
+      "metrics": {
+        "urgent_actions": 16
+      }
+    },
+    {
+      "id": "risk_projection",
+      "metrics": {
+        "critical_count": 0,
+        "upcoming_risks": 1
+      }
+    },
+    {
+      "id": "property_health",
+      "metrics": {
+        "health": "at_risk",
+        "open_issues": 46
+      }
+    },
+    {
+      "id": "compliance_score",
+      "metrics": {
+        "overdue": 0,
+        "score": 24
+      }
+    }
+  ],
+  "cross_widget_pairs": [
+    {
+      "a": "command_centre_urgent",
+      "b": "attention",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "command_centre_urgent",
+      "b": "risk_projection",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "command_centre_urgent",
+      "b": "property_health",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "command_centre_urgent",
+      "b": "compliance_score",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "attention",
+      "b": "risk_projection",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "attention",
+      "b": "property_health",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "attention",
+      "b": "compliance_score",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "risk_projection",
+      "b": "property_health",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "risk_projection",
+      "b": "compliance_score",
+      "coherent": true,
+      "note": ""
+    },
+    {
+      "a": "property_health",
+      "b": "compliance_score",
+      "coherent": true,
+      "note": ""
+    }
+  ],
+  "island_failures": [],
+  "classification_hints": [],
+  "directional_checks": {
+    "today_vs_cc_urgent_directionally_coherent": true,
+    "live_debt_visible_when_open_issues": true,
+    "today_urgent": 16,
+    "cc_urgent": 16
+  }
+}

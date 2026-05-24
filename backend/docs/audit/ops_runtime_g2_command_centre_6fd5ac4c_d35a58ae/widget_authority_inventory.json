@@ -1,0 +1,79 @@
+{
+  "widgets": [
+    {
+      "widget_id": "command_centre_urgent_actions",
+      "projection_type": "live",
+      "authoritative_owner": "ops_control_g2_command_centre",
+      "source_domain": "unified_tasks",
+      "freshness_basis": "2026-05-24T17:10:44.667296+00:00",
+      "live_vs_derived": "live",
+      "mutation_owner": "ops_control_g2_command_centre",
+      "drilldown_target": "/today",
+      "stale_disclosure_present": true,
+      "count": 16
+    },
+    {
+      "widget_id": "command_centre_upcoming_risks",
+      "projection_type": "live",
+      "authoritative_owner": "ops_control_g2_command_centre",
+      "source_domain": "risk_signals",
+      "freshness_basis": "2026-05-24T17:10:44.667296+00:00",
+      "live_vs_derived": "live",
+      "mutation_owner": "ops_runtime_04_risk_signals",
+      "drilldown_target": "/operations/risk-signals",
+      "stale_disclosure_present": true,
+      "count": 1
+    },
+    {
+      "widget_id": "command_centre_compliance_status",
+      "projection_type": "derived",
+      "authoritative_owner": "ops_control_g2_command_centre",
+      "source_domain": "compliance_score",
+      "freshness_basis": "2026-05-24T17:10:44.667296+00:00",
+      "live_vs_derived": "derived",
+      "mutation_owner": "ops_control_g4_requirements_page",
+      "drilldown_target": "/requirements",
+      "stale_disclosure_present": true,
+      "score": 24,
+      "score_status": "ok",
+      "requirements_overdue": 0
+    },
+    {
+      "widget_id": "command_centre_recent_activity",
+      "projection_type": "derived",
+      "authoritative_owner": "ops_control_g2_command_centre",
+      "source_domain": "activity_feed",
+      "freshness_basis": "2026-05-24T17:10:44.667296+00:00",
+      "live_vs_derived": "derived",
+      "mutation_owner": null,
+      "drilldown_target": "/today",
+      "stale_disclosure_present": true,
+      "count": 20
+    },
+    {
+      "widget_id": "today_cross_reference",
+      "projection_type": "attention_list",
+      "authoritative_owner": "ops_control_g1_today_page",
+      "source_domain": "today_items",
+      "freshness_basis": "2026-05-24T17:10:44.667296+00:00",
+      "live_vs_derived": "live",
+      "mutation_owner": null,
+      "drilldown_target": null,
+      "stale_disclosure_present": true,
+      "urgent_count": 16
+    },
+    {
+      "widget_id": "reports_cross_reference",
+      "projection_type": "derived",
+      "authoritative_owner": "ops_control_g7_reports_page",
+      "source_domain": "reports",
+      "freshness_basis": "2026-05-24T17:10:44.667296+00:00",
+      "live_vs_derived": "derived",
+      "mutation_owner": null,
+      "drilldown_target": null,
+      "stale_disclosure_present": true,
+      "reachable": false
+    }
+  ],
+  "run_tag": "20260524T170848Z"
+}

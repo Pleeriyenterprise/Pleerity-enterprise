@@ -1,0 +1,82 @@
+{
+  "projection_resolution": {
+    "canonical_order": [
+      {
+        "rank": 1,
+        "type": "live",
+        "owner": "ops_control_g2_command_centre"
+      },
+      {
+        "rank": 2,
+        "type": "attention_list",
+        "owner": "ops_control_g1_today_page"
+      },
+      {
+        "rank": 3,
+        "type": "property_summary",
+        "owner": "ops_control_g3_properties_page"
+      },
+      {
+        "rank": 4,
+        "type": "derived",
+        "owner": "ops_control_g7_reports_page"
+      },
+      {
+        "rank": 5,
+        "type": "exported",
+        "owner": "ops_control_g7_reports_page"
+      }
+    ],
+    "contradictions": [
+      {
+        "source_surface": "/command-center",
+        "projection_type": "live",
+        "authority_rank": 1,
+        "value": 16.0,
+        "freshness_window_seconds": 60,
+        "disclosure_required": false,
+        "disclosure_present": false,
+        "reconciliation_owner": "ops_control_g2_command_centre",
+        "contradiction_detected": false,
+        "resolution": "unresolved"
+      },
+      {
+        "source_surface": "/today",
+        "projection_type": "attention_list",
+        "authority_rank": 2,
+        "value": 16.0,
+        "freshness_window_seconds": 60,
+        "disclosure_required": false,
+        "disclosure_present": false,
+        "reconciliation_owner": "ops_control_g1_today_page",
+        "contradiction_detected": false,
+        "resolution": "unresolved"
+      },
+      {
+        "source_surface": "/command-center",
+        "projection_type": "derived",
+        "authority_rank": 4,
+        "value": 24.0,
+        "freshness_window_seconds": 60,
+        "disclosure_required": true,
+        "disclosure_present": true,
+        "reconciliation_owner": "ops_control_g7_reports_page",
+        "contradiction_detected": false,
+        "resolution": "unresolved"
+      }
+    ],
+    "contradiction_detected": false
+  },
+  "reporting_lag": {
+    "live_value": 16.0,
+    "derived_value": 24.0,
+    "staleness_seconds": 0,
+    "freshness_window_seconds": 60,
+    "disclosure_present": true,
+    "acceptable_lag": true,
+    "classification_hint": null
+  },
+  "cc_urgent_cap_note": false,
+  "live_outranks_derived": true,
+  "classification_hints": []
+}

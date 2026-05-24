@@ -1,0 +1,35 @@
+{
+  "at_utc": "2026-05-24T17:08:59.790749+00:00",
+  "checks": [
+    {
+      "name": "route",
+      "ok": true
+    },
+    {
+      "name": "shell",
+      "ok": true
+    },
+    {
+      "name": "forbidden",
+      "ok": true
+    },
+    {
+      "name": "urgent_widget",
+      "ok": true
+    },
+    {
+      "name": "status_widget",
+      "ok": true
+    },
+    {
+      "name": "api_command_centre",
+      "ok": true
+    },
+    {
+      "name": "refresh_persistence",
+      "ok": true
+    }
+  ],
+  "shell_state": "root",
+  "boot_ok": true
+}

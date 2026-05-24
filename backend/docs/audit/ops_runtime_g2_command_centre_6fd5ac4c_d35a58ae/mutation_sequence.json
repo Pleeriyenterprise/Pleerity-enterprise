@@ -1,0 +1,32 @@
+{
+  "started_at_utc": "2026-05-24T17:14:39.849070+00:00",
+  "steps": [
+    {
+      "step": "create_issue",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-24T17:14:54.369880+00:00"
+    },
+    {
+      "step": "operational_debt_propagates",
+      "ok": true,
+      "detail": "open_before=46",
+      "at_utc": "2026-05-24T17:15:21.448941+00:00"
+    },
+    {
+      "step": "cc_surface_reflects_debt",
+      "ok": true,
+      "detail": "activity_or_urgent_or_today",
+      "at_utc": "2026-05-24T17:16:24.373940+00:00"
+    },
+    {
+      "step": "close_issue",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-05-24T17:16:35.595370+00:00"
+    }
+  ],
+  "issue_id": "e6e4d9cf-7a85-4467-937d-669dc446f7d5",
+  "finished_at_utc": "2026-05-24T17:16:35.595370+00:00",
+  "mutation_ok": true
+}
