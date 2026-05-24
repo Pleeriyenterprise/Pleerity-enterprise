@@ -610,6 +610,17 @@ class ExtractionApplyRequest(BaseModel):
     confirmed_data: Optional[Dict[str, Any]] = None
 
 
+class DocumentLinkageReconcileRequest(BaseModel):
+    """Client post-ingestion document↔requirement linkage reconciliation."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    action: str
+    requirement_id: Optional[str] = None
+    property_id: Optional[str] = None
+    reason: Optional[str] = None
+
+
 class VerifyDocumentBody(BaseModel):
     """Admin verify: optional override when evidence match engine blocked verification."""
 
@@ -1576,6 +1587,19 @@ async def perform_client_document_upload(
     apply_v2_defaults_to_new_upload(doc)
     if is_supporting_only_upload:
         doc["source"] = source_stored
+    from services.document_linkage_governance import (
+        DocumentLinkageState,
+        persist_fields_for_intentionally_unlinked,
+        persist_fields_for_new_other_upload,
+        persist_fields_for_upload_without_requirement,
+    )
+
+    if requirement_id:
+        doc["document_linkage_state"] = DocumentLinkageState.LINKED.value
+    elif document_type_stored == "Other":
+        doc.update(persist_fields_for_new_other_upload())
+    else:
+        doc.update(persist_fields_for_upload_without_requirement())
     await db.documents.insert_one(doc)
     client_upload_fanout: Optional[Dict[str, Any]] = None
     if requirement_id and not is_supporting_only_upload:
@@ -3290,6 +3314,14 @@ async def list_documents(request: Request, property_id: str = None, requirement_
         ).sort("uploaded_at", -1).to_list(100)
         from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
         from services.document_operational_state import attach_document_operational_projection
+        from services.document_linkage_governance import (
+            attach_document_linkage_projection_batch,
+            load_runtime_requirements_for_client,
+        )
+
+        runtime_ids, runtime_reqs = await load_runtime_requirements_for_client(
+            db, client_id=user["client_id"], property_id=property_id
+        )
 
         for d in documents:
             d["evidence_review_state"] = effective_evidence_review_state(d)
@@ -3302,6 +3334,11 @@ async def list_documents(request: Request, property_id: str = None, requirement_
             d.setdefault("external_verification_method", None)
             d.setdefault("external_verification_reference", None)
             d.setdefault("ai_assistance", None)
+        attach_document_linkage_projection_batch(
+            documents,
+            runtime_requirement_ids=runtime_ids,
+            runtime_requirements=runtime_reqs,
+        )
         
         return {
             "documents": documents,
@@ -3862,6 +3899,265 @@ async def reject_ai_extraction(request: Request, document_id: str, reason: str =
         )
 
 
+@router.post("/{document_id}/reconcile-linkage")
+async def reconcile_document_linkage(
+    request: Request,
+    document_id: str,
+    body: DocumentLinkageReconcileRequest = Body(...),
+):
+    """Post-ingestion document↔requirement linkage reconciliation (client)."""
+    user = await client_route_guard(request)
+    db = database.get_db()
+    from services.document_linkage_governance import (
+        DocumentLinkageState,
+        derive_document_linkage_state,
+        load_runtime_requirements_for_client,
+        persist_fields_for_intentionally_unlinked,
+        persist_fields_for_linked_requirement,
+    )
+    from services.requirement_evidence_authority import document_evidence_compatible_with_requirement
+
+    doc = await db.documents.find_one({"document_id": document_id, "client_id": user["client_id"]}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    action = str(body.action or "").strip().lower()
+    if action not in ("link_requirement", "mark_intentionally_unlinked", "clear_broken_linkage", "update_property"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=structured_error("LINKAGE_ACTION_INVALID", "Unsupported reconciliation action."),
+        )
+
+    property_id = str(doc.get("property_id") or doc.get("authoritative_property_id") or "")
+    runtime_ids, runtime_reqs = await load_runtime_requirements_for_client(
+        db, client_id=user["client_id"], property_id=property_id or None
+    )
+    prior_state = derive_document_linkage_state(doc, runtime_requirement_ids=runtime_ids)
+    prior_requirement_id = doc.get("requirement_id")
+
+    if action == "update_property":
+        new_pid = str(body.property_id or "").strip()
+        if not new_pid:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id is required")
+        prop = await db.properties.find_one(
+            {"property_id": new_pid, "client_id": user["client_id"]},
+            {"_id": 0},
+        )
+        if not prop:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {
+                "$set": {
+                    "property_id": new_pid,
+                    "authoritative_property_id": new_pid,
+                    **{
+                        k: v
+                        for k, v in {
+                            "linkage_reconciliation_at": datetime.now(timezone.utc).isoformat(),
+                            "linkage_reconciliation_by": user.get("portal_user_id"),
+                            "linkage_reconciliation_action": action,
+                            "linkage_reconciliation_reason": (body.reason or "").strip()[:500] or None,
+                        }.items()
+                        if v is not None
+                    },
+                }
+            },
+        )
+    elif action == "mark_intentionally_unlinked":
+        review = str(doc.get("evidence_review_state") or doc.get("status") or "").upper()
+        if review in ("VERIFIED", "ACCEPTED_UNVERIFIED"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=structured_error(
+                    "LINKAGE_CANNOT_UNLINK_VERIFIED",
+                    "Verified evidence cannot be marked intentionally unlinked without admin review.",
+                ),
+            )
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {
+                "$set": persist_fields_for_intentionally_unlinked(
+                    actor_user_id=user.get("portal_user_id"),
+                    reason=body.reason,
+                    prior_requirement_id=str(prior_requirement_id) if prior_requirement_id else None,
+                )
+            },
+        )
+        if prior_requirement_id:
+            unlink_fanout: Dict[str, Any] = {}
+            await authority_sync_with_transition_observability(
+                db,
+                str(prior_requirement_id),
+                property_id=property_id or None,
+                client_id=user["client_id"],
+                correlation_base=f"AUTHORITY_SYNC:CLIENT_UNLINK:{document_id}",
+                transition_origin="routes.documents.reconcile_document_linkage",
+                transition_fanout=unlink_fanout,
+            )
+            from services.compliance_recalc_queue import TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+
+            await _document_path_enqueue_recalc(
+                unlink_fanout,
+                property_id=property_id,
+                client_id=user["client_id"],
+                trigger_reason=TRIGGER_DOC_UPLOADED,
+                actor_type=ACTOR_CLIENT,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=f"AUTHORITY_SYNC:CLIENT_UNLINK:{document_id}",
+                trigger_origin="routes.documents.reconcile_document_linkage",
+                propagation_stage="post_client_unlink_reconcile",
+            )
+    elif action == "clear_broken_linkage":
+        if prior_state != DocumentLinkageState.BROKEN_LINKAGE.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=structured_error(
+                    "LINKAGE_NOT_BROKEN",
+                    "Document linkage is not broken; use link_requirement or mark_intentionally_unlinked.",
+                ),
+            )
+        stale_rid = str(prior_requirement_id or "")
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {
+                "$set": {
+                    "requirement_id": None,
+                    "document_linkage_state": DocumentLinkageState.RECONCILIATION_REQUIRED.value,
+                    "linkage_intent": None,
+                    "linkage_reconciliation_at": datetime.now(timezone.utc).isoformat(),
+                    "linkage_reconciliation_by": user.get("portal_user_id"),
+                    "linkage_reconciliation_action": action,
+                    "linkage_reconciliation_reason": (body.reason or "Cleared stale requirement linkage")[:500],
+                    "linkage_reconciliation_prior_requirement_id": stale_rid or None,
+                }
+            },
+        )
+        if stale_rid:
+            clear_fanout: Dict[str, Any] = {}
+            await authority_sync_with_transition_observability(
+                db,
+                stale_rid,
+                property_id=property_id or None,
+                client_id=user["client_id"],
+                correlation_base=f"AUTHORITY_SYNC:CLIENT_CLEAR_BROKEN:{document_id}",
+                transition_origin="routes.documents.reconcile_document_linkage",
+                transition_fanout=clear_fanout,
+            )
+    elif action == "link_requirement":
+        rid = str(body.requirement_id or "").strip()
+        if not rid:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="requirement_id is required")
+        req = await db.requirements.find_one(
+            {"requirement_id": rid, "client_id": user["client_id"]},
+            {"_id": 0},
+        )
+        if not req:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
+        from services.requirement_client_runtime_surface import requirement_row_eligible_on_client_runtime_surfaces
+
+        prop_d = await db.properties.find_one(
+            {"property_id": req.get("property_id") or property_id, "client_id": user["client_id"]},
+            {"_id": 0},
+        )
+        if not prop_d or not await requirement_row_eligible_on_client_runtime_surfaces(
+            db,
+            client_id=user["client_id"],
+            row=req,
+            property_doc=prop_d,
+        ):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
+        candidate = {**doc, "requirement_id": rid, "property_id": req.get("property_id") or property_id}
+        if not document_evidence_compatible_with_requirement(candidate, req):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=structured_error(
+                    "LINKAGE_SCOPE_INCOMPATIBLE",
+                    "Document scope is incompatible with requirement scope.",
+                ),
+            )
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {
+                "$set": persist_fields_for_linked_requirement(
+                    rid,
+                    actor_user_id=user.get("portal_user_id"),
+                    reason=body.reason,
+                    prior_requirement_id=str(prior_requirement_id) if prior_requirement_id else None,
+                )
+            },
+        )
+        await safe_upsert_document_upload_evidence_for_linked_document(
+            db,
+            client_id=user["client_id"],
+            property_id=str(req.get("property_id") or property_id),
+            requirement_id=rid,
+            document_id=document_id,
+            actor_user_id=user.get("portal_user_id"),
+            filename=doc.get("file_name"),
+            context="client_linkage_reconcile",
+        )
+        link_fanout: Dict[str, Any] = {}
+        await _document_path_sync_requirement_authority(
+            db,
+            rid,
+            property_id=str(req.get("property_id") or property_id),
+            client_id=user["client_id"],
+            correlation_base=f"AUTHORITY_SYNC:CLIENT_LINK_RECONCILE:{document_id}",
+            transition_origin="routes.documents.reconcile_document_linkage",
+            transition_fanout=link_fanout,
+            document_id=document_id,
+            stale_document_transition_possible=True,
+        )
+        from services.compliance_recalc_queue import TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+
+        await _document_path_enqueue_recalc(
+            link_fanout,
+            property_id=str(req.get("property_id") or property_id),
+            client_id=user["client_id"],
+            trigger_reason=TRIGGER_DOC_UPLOADED,
+            actor_type=ACTOR_CLIENT,
+            actor_id=user.get("portal_user_id"),
+            correlation_id=f"AUTHORITY_SYNC:CLIENT_LINK_RECONCILE:{document_id}",
+            trigger_origin="routes.documents.reconcile_document_linkage",
+            propagation_stage="post_client_link_reconcile",
+        )
+
+    updated = await db.documents.find_one({"document_id": document_id}, {"_id": 0, "file_path": 0})
+    runtime_ids_after, runtime_reqs_after = await load_runtime_requirements_for_client(
+        db, client_id=user["client_id"], property_id=str(updated.get("property_id") or "") or None
+    )
+    from services.document_operational_state import attach_document_operational_projection
+    from services.document_linkage_governance import attach_document_linkage_projection
+
+    attach_document_operational_projection(updated)
+    attach_document_linkage_projection(
+        updated,
+        runtime_requirement_ids=runtime_ids_after,
+        runtime_requirements=runtime_reqs_after,
+    )
+    await create_audit_log(
+        action=AuditAction.DOCUMENT_UPLOADED,
+        actor_id=user.get("portal_user_id"),
+        client_id=user["client_id"],
+        resource_type="document",
+        resource_id=document_id,
+        metadata={
+            "action_type": "DOCUMENT_LINKAGE_RECONCILED",
+            "reconcile_action": action,
+            "prior_linkage_state": prior_state,
+            "new_linkage_state": updated.get("document_linkage_state"),
+            "requirement_id": updated.get("requirement_id"),
+            "reason": (body.reason or "")[:200] or None,
+        },
+    )
+    return {
+        "message": "Document linkage reconciled",
+        "document_id": document_id,
+        "document": updated,
+    }
+
+
 @router.get("/{document_id}/details")
 async def get_document_details(request: Request, document_id: str):
     """Get full document details including AI extraction and requirement info."""
@@ -3918,6 +4214,33 @@ async def get_document_details(request: Request, document_id: str):
                 {"_id": 0, "address_line_1": 1, "city": 1, "postcode": 1}
             )
         
+        if document.get("property_id"):
+            property_doc = await db.properties.find_one(
+                {"property_id": document["property_id"]},
+                {"_id": 0, "address_line_1": 1, "city": 1, "postcode": 1}
+            )
+
+        from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
+        from services.document_operational_state import attach_document_operational_projection
+        from services.document_linkage_governance import (
+            attach_document_linkage_projection,
+            load_runtime_requirements_for_client,
+        )
+
+        document["evidence_review_state"] = effective_evidence_review_state(document)
+        document["assurance_tier"] = effective_assurance_tier(document)
+        attach_document_operational_projection(document)
+        runtime_ids, runtime_reqs = await load_runtime_requirements_for_client(
+            db,
+            client_id=user["client_id"],
+            property_id=str(document.get("property_id") or "") or None,
+        )
+        attach_document_linkage_projection(
+            document,
+            runtime_requirement_ids=runtime_ids,
+            runtime_requirements=runtime_reqs,
+        )
+
         return {
             "document": document,
             "requirement": requirement,

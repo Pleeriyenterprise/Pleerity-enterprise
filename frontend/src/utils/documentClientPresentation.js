@@ -65,6 +65,48 @@ const OPERATIONAL_EVIDENCE_BADGE = {
   },
 };
 
+/** @type {Record<string, { key: string, label: string, color: string }>} */
+export const LINKAGE_STATE_BADGE = {
+  INTENTIONALLY_UNLINKED: {
+    key: 'INTENTIONALLY_UNLINKED',
+    label: 'Intentionally unlinked',
+    color: 'bg-slate-100 text-slate-700',
+  },
+  RECONCILIATION_REQUIRED: {
+    key: 'RECONCILIATION_REQUIRED',
+    label: 'Linkage reconciliation required',
+    color: 'bg-orange-100 text-orange-900',
+  },
+  BROKEN_LINKAGE: {
+    key: 'BROKEN_LINKAGE',
+    label: 'Broken requirement linkage',
+    color: 'bg-red-100 text-red-900',
+  },
+};
+
+/**
+ * @param {Record<string, unknown>} doc
+ */
+export function linkageReconciliationRequired(doc = {}) {
+  if (doc.linkage_reconciliation_required === true) return true;
+  const state = String(doc.document_linkage_state || '').toUpperCase();
+  return state === 'RECONCILIATION_REQUIRED' || state === 'BROKEN_LINKAGE';
+}
+
+/**
+ * @param {Record<string, unknown>} doc
+ */
+export function getClientDocumentLinkageBadge(doc = {}) {
+  const state = String(doc.document_linkage_state || '').toUpperCase();
+  if (state && LINKAGE_STATE_BADGE[state]) {
+    return LINKAGE_STATE_BADGE[state];
+  }
+  if (doc.document_linkage_label && state && state !== 'LINKED') {
+    return { key: state, label: String(doc.document_linkage_label), color: 'bg-gray-100 text-gray-700' };
+  }
+  return null;
+}
+
 /**
  * @param {Record<string, unknown>} doc
  */

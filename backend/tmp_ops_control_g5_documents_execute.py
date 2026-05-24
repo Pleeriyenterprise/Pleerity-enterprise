@@ -248,33 +248,156 @@ def _truth_authority(docs: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _linkage_matrix(docs: List[Dict[str, Any]], reqs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    from services.document_linkage_governance import DocumentLinkageState, linkage_matrix_passes_g5
+
     req_by_id = {r.get("requirement_id"): r for r in reqs}
     orphans: List[str] = []
     drift: List[Dict[str, Any]] = []
+    reconciliation_required: List[str] = []
+    intentionally_unlinked: List[str] = []
+    broken_linkage: List[str] = []
+    runtime_ids = {str(r.get("requirement_id")) for r in reqs if r.get("requirement_id")}
     for d in docs:
-        did = d.get("document_id")
-        rid = d.get("requirement_id")
-        if not rid:
+        did = str(d.get("document_id") or "")
+        state = str(d.get("document_linkage_state") or "").upper()
+        if state == DocumentLinkageState.INTENTIONALLY_UNLINKED.value:
+            intentionally_unlinked.append(did)
+            continue
+        ok, kind = linkage_matrix_passes_g5(d, runtime_requirement_ids=runtime_ids)
+        if ok:
+            rid = d.get("requirement_id")
+            if rid:
+                req = req_by_id.get(rid)
+                if req:
+                    review = str(d.get("evidence_review_state") or "").upper()
+                    lc = str(req.get("client_lifecycle_state") or "").upper()
+                    if review == "REJECTED" and lc == "VERIFIED":
+                        drift.append({"document_id": did, "requirement_id": rid, "kind": "EVIDENCE_AUTHORITY_DRIFT"})
+                    if review == "VERIFIED" and lc == "ACTION_REQUIRED" and str(req.get("evidence_doc_id") or "") == str(did):
+                        drift.append(
+                            {
+                                "document_id": did,
+                                "requirement_id": rid,
+                                "kind": "OPERATIONAL_ORPHAN_STATE",
+                                "note": "verified_doc_action_required_req",
+                            }
+                        )
+            continue
+        if kind == "BROKEN_LINKAGE":
+            broken_linkage.append(did)
+            drift.append({"document_id": did, "requirement_id": d.get("requirement_id"), "kind": "BROKEN_LINKAGE"})
+        elif kind == "RECONCILIATION_REQUIRED" or kind == "LEGACY_ORPHAN":
+            reconciliation_required.append(did)
             if d.get("evidence_scope_type") not in ("INTAKE_STAGING", "PORTFOLIO", "UNRESOLVED"):
-                orphans.append(str(did))
-            continue
-        req = req_by_id.get(rid)
-        if not req:
-            drift.append({"document_id": did, "requirement_id": rid, "note": "requirement_not_in_runtime_set"})
-            continue
-        review = str(d.get("evidence_review_state") or "").upper()
-        lc = str(req.get("client_lifecycle_state") or "").upper()
-        if review == "REJECTED" and lc == "VERIFIED":
-            drift.append({"document_id": did, "requirement_id": rid, "kind": "EVIDENCE_AUTHORITY_DRIFT"})
-        if review == "VERIFIED" and lc == "ACTION_REQUIRED" and str(req.get("evidence_doc_id") or "") == str(did):
-            drift.append({"document_id": did, "requirement_id": rid, "kind": "OPERATIONAL_ORPHAN_STATE", "note": "verified_doc_action_required_req"})
-    linked = sum(1 for d in docs if d.get("requirement_id"))
+                orphans.append(did)
+    linked = sum(
+        1
+        for d in docs
+        if str(d.get("document_linkage_state") or "").upper() == DocumentLinkageState.LINKED.value
+        or (d.get("requirement_id") and linkage_matrix_passes_g5(d)[0])
+    )
     return {
         "linked_documents": linked,
         "orphan_documents": orphans,
+        "reconciliation_required_documents": reconciliation_required,
+        "intentionally_unlinked_documents": intentionally_unlinked,
+        "broken_linkage_documents": broken_linkage,
         "drift_rows": drift,
-        "pass": len(orphans) == 0 and len(drift) == 0,
+        "pass": len(reconciliation_required) == 0 and len(broken_linkage) == 0 and len(drift) == 0,
     }
+
+
+PILOT_ORPHAN_DOCS = [
+    "f3ad6a0e-3f48-4821-8344-9f02cc2be580",
+    "67f88f49-9101-448d-bd99-ca0b6a9ef2d9",
+    "76552abb-aefe-4c90-afcb-b883ac473288",
+]
+PILOT_BROKEN_LINK_DOC = "65cfb0b0-b983-47cd-96bc-93fa7b61e896"
+PILOT_LINK_TARGET_EPC = "62589167-4e34-4aef-ad75-4967383e71bc"
+PILOT_LINK_TARGET_HMO_FIRE = "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23"
+
+
+def _reconcile_linkage(token: str, document_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    r = _http(
+        "post",
+        f"{API}/documents/{document_id}/reconcile-linkage",
+        headers=_headers(token),
+        json=payload,
+        timeout=90,
+    )
+    body = r.json() if r.status_code in (200, 201) else {"detail": r.text}
+    return {"status": r.status_code, "body": body}
+
+
+def _reconciliation_mutation(token: str, reqs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"steps": [], "mutation_ok": True}
+
+    def step(name: str, ok: bool, detail: str = "") -> None:
+        out["steps"].append({"step": name, "ok": ok, "detail": detail, "at_utc": _utc()})
+        if not ok:
+            out["mutation_ok"] = False
+
+    broken = _reconcile_linkage(
+        token,
+        PILOT_BROKEN_LINK_DOC,
+        {"action": "clear_broken_linkage", "reason": f"{MARKER} clear stale requirement d2066cd2"},
+    )
+    step("clear_broken_linkage", broken.get("status") == 200, f"status={broken.get('status')}")
+
+    relink = _reconcile_linkage(
+        token,
+        PILOT_BROKEN_LINK_DOC,
+        {
+            "action": "link_requirement",
+            "requirement_id": PILOT_LINK_TARGET_EPC,
+            "reason": f"{MARKER} relink to active epc requirement",
+        },
+    )
+    step("relink_broken_doc", relink.get("status") == 200, f"status={relink.get('status')}")
+
+    for did in PILOT_ORPHAN_DOCS[:2]:
+        resp = _reconcile_linkage(
+            token,
+            did,
+            {"action": "mark_intentionally_unlinked", "reason": f"{MARKER} misc property document"},
+        )
+        step(f"intentional_unlink_{did[:8]}", resp.get("status") == 200, f"status={resp.get('status')}")
+
+    link_orphan = _reconcile_linkage(
+        token,
+        PILOT_ORPHAN_DOCS[2],
+        {
+            "action": "link_requirement",
+            "requirement_id": PILOT_LINK_TARGET_HMO_FIRE,
+            "reason": f"{MARKER} reconcile imported compliance doc",
+        },
+    )
+    step("link_reconciliation_orphan", link_orphan.get("status") == 200, f"status={link_orphan.get('status')}")
+
+    return out
+
+
+def _browser_reconcile_cta(token: str, user: dict, password: str, document_id: str) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"steps": [], "mutation_ok": True}
+
+    def step(name: str, ok: bool, detail: str = "") -> None:
+        out["steps"].append({"step": name, "ok": ok, "detail": detail, "at_utc": _utc()})
+        if not ok:
+            out["mutation_ok"] = False
+
+    p, browser, page = _browser_session(token, user, password)
+    page.goto(f"{FRONTEND}/documents?property_id={PROPERTY_ID}", wait_until="domcontentloaded", timeout=120_000)
+    _wait_documents_shell(page, 90_000)
+    btn = page.locator(f'[data-testid="resolve-linkage-btn-{document_id}"]')
+    visible = btn.count() > 0
+    step("resolve_linkage_cta_visible", visible, document_id)
+    if visible:
+        btn.first.click()
+        page.wait_for_selector('[data-testid="linkage-reconcile-modal"]', timeout=30_000)
+        step("resolve_linkage_modal", page.locator('[data-testid="linkage-reconcile-modal"]').count() > 0, document_id)
+    browser.close()
+    p.stop()
+    return out
 
 
 def _review_honesty(docs: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -517,6 +640,29 @@ def run_g5() -> Dict[str, Any]:
     linkage = _linkage_matrix(docs_before, reqs)
     _write("document_requirement_linkage.json", linkage)
 
+    pending_reconcile_id = next(
+        (
+            str(d.get("document_id"))
+            for d in docs_before
+            if str(d.get("document_linkage_state") or "").upper() in ("RECONCILIATION_REQUIRED", "BROKEN_LINKAGE")
+            or (
+                not d.get("requirement_id")
+                and str(d.get("document_linkage_state") or "").upper() != "INTENTIONALLY_UNLINKED"
+                and d.get("evidence_scope_type") not in ("INTAKE_STAGING", "PORTFOLIO", "UNRESOLVED")
+            )
+        ),
+        PILOT_ORPHAN_DOCS[0],
+    )
+    browser_reconcile = _browser_reconcile_cta(token, user, pw, pending_reconcile_id)
+    _write("linkage_reconciliation_browser.json", browser_reconcile)
+
+    reconcile = _reconciliation_mutation(token, reqs)
+    _write("linkage_reconciliation_mutation.json", reconcile)
+
+    docs_mid = _fetch_documents(token, PROPERTY_ID).get("documents") or []
+    linkage_mid = _linkage_matrix(docs_mid, reqs)
+    _write("document_requirement_linkage_post_reconcile.json", linkage_mid)
+
     mutation = _browser_upload(token, user, target, pw)
     _write("mutation_sequence.json", mutation)
 
@@ -585,6 +731,10 @@ def run_g5() -> Dict[str, Any]:
         agg.add("EVIDENCE_AUTHORITY_DRIFT", "linkage_drift")
         if linkage_after.get("orphan_documents"):
             agg.add("OPERATIONAL_ORPHAN_STATE", "orphan_documents")
+    if not reconcile.get("mutation_ok"):
+        agg.add("FAIL_OPERATIONAL", "linkage_reconciliation")
+    if not browser_reconcile.get("mutation_ok"):
+        agg.add("FAIL_OPERATIONAL_NOOP", "linkage_reconcile_cta")
     if not mutation.get("mutation_ok"):
         agg.add("FAIL_OPERATIONAL", "mutation_sequence")
     if resolution.get("noop_detected"):
@@ -601,6 +751,8 @@ def run_g5() -> Dict[str, Any]:
         and boot.get("boot_ok")
         and truth_after.get("pass")
         and linkage_after.get("pass")
+        and reconcile.get("mutation_ok")
+        and browser_reconcile.get("mutation_ok")
         and mutation.get("mutation_ok")
         and not resolution.get("noop_detected")
         and cross.get("pass")
@@ -630,6 +782,7 @@ def run_g5() -> Dict[str, Any]:
                 "G5_surface_boot": boot.get("boot_ok"),
                 "G5_document_truth": truth_after.get("pass"),
                 "G5_linkage": linkage_after.get("pass"),
+                "G5_linkage_reconciliation": reconcile.get("mutation_ok"),
                 "G5_mutation_sequence": mutation.get("mutation_ok"),
                 "G5_resolution_walks": not resolution.get("noop_detected"),
                 "G5_cross_surface": cross.get("pass"),

@@ -32,7 +32,8 @@ import {
   Award,
   FileCheck,
   Files,
-  Trash2
+  Trash2,
+  Link2,
 } from 'lucide-react';
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import PropagationNoticeCallout from '../components/client/PropagationNoticeCallout';
@@ -49,6 +50,8 @@ import {
   shouldShowAiExtractedDataPanel,
   shouldShowReviewAndApplyData,
   shouldShowViewExtractedDataAction,
+  getClientDocumentLinkageBadge,
+  linkageReconciliationRequired,
 } from '../utils/documentClientPresentation';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
@@ -90,6 +93,13 @@ const DocumentsPage = () => {
   const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
   /** Optional L-009 `propagation_notice` from last document mutation — read-only async honesty. */
   const [documentPropagationNotice, setDocumentPropagationNotice] = useState(null);
+  const [linkageReconcileModal, setLinkageReconcileModal] = useState(null);
+  const [linkageReconcileSaving, setLinkageReconcileSaving] = useState(false);
+  const [linkageReconcileForm, setLinkageReconcileForm] = useState({
+    property_id: '',
+    requirement_id: '',
+    reason: '',
+  });
   const [uploadForm, setUploadForm] = useState({
     property_id: '',
     requirement_id: '',
@@ -417,6 +427,83 @@ const DocumentsPage = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const openLinkageReconcileModal = (doc) => {
+    setLinkageReconcileForm({
+      property_id: doc.property_id || '',
+      requirement_id: '',
+      reason: '',
+    });
+    setLinkageReconcileModal(doc);
+  };
+
+  const submitLinkageReconcile = async (action) => {
+    if (!linkageReconcileModal?.document_id) return;
+    setLinkageReconcileSaving(true);
+    try {
+      const payload = {
+        action,
+        reason: linkageReconcileForm.reason?.trim() || undefined,
+      };
+      if (action === 'link_requirement') {
+        if (!linkageReconcileForm.requirement_id) {
+          toast.error('Select a requirement to link');
+          return;
+        }
+        payload.requirement_id = linkageReconcileForm.requirement_id;
+      }
+      if (action === 'update_property') {
+        if (!linkageReconcileForm.property_id) {
+          toast.error('Select a property');
+          return;
+        }
+        payload.property_id = linkageReconcileForm.property_id;
+      }
+      const res = await api.post(
+        `/documents/${linkageReconcileModal.document_id}/reconcile-linkage`,
+        payload,
+      );
+      if (res.data?.propagation_notice) {
+        setDocumentPropagationNotice(res.data.propagation_notice);
+      }
+      toast.success(
+        action === 'mark_intentionally_unlinked'
+          ? 'Document marked as intentionally unlinked'
+          : 'Document linkage updated',
+      );
+      setLinkageReconcileModal(null);
+      fetchData();
+    } catch (error) {
+      toast.error(parseApiError(error, 'Failed to reconcile document linkage'));
+    } finally {
+      setLinkageReconcileSaving(false);
+    }
+  };
+
+  const linkageReconcileCount = useMemo(
+    () => documents.filter((d) => linkageReconciliationRequired(d)).length,
+    [documents],
+  );
+
+  const linkageReconcileRequirements = useMemo(() => {
+    const pid = linkageReconcileForm.property_id || linkageReconcileModal?.property_id;
+    if (!pid) return requirements;
+    return requirements.filter((r) => r.property_id === pid);
+  }, [requirements, linkageReconcileForm.property_id, linkageReconcileModal?.property_id]);
+
+  const getLinkageBadge = (doc) => {
+    const badge = getClientDocumentLinkageBadge(doc);
+    if (!badge) return null;
+    return (
+      <span
+        data-testid={`doc-linkage-${String(badge.key || '').toLowerCase()}`}
+        className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}
+      >
+        <Link2 className="w-3 h-3" />
+        {badge.label}
+      </span>
+    );
   };
 
   const analyzeDocument = async (documentId) => {
@@ -881,6 +968,19 @@ const DocumentsPage = () => {
             onDismiss={() => setDocumentPropagationNotice(null)}
           />
         ) : null}
+        {linkageReconcileCount > 0 && (
+          <div
+            className="mb-6 rounded-xl border border-orange-200 bg-orange-50/90 px-4 py-3"
+            data-testid="documents-linkage-reconciliation-banner"
+          >
+            <p className="text-sm text-orange-950">
+              <span className="font-semibold">{linkageReconcileCount}</span>{' '}
+              {linkageReconcileCount === 1 ? 'document needs' : 'documents need'} requirement linkage reconciliation.
+              Use <strong>Resolve linkage</strong> on each row — link to a requirement, or mark as intentionally unlinked
+              for non-compliance files.
+            </p>
+          </div>
+        )}
         {requirementsNeedingDocuments > 0 && (
           <div
             className="mb-6 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 flex flex-col gap-3"
@@ -1231,6 +1331,7 @@ const DocumentsPage = () => {
                                 {doc.file_name || doc.original_filename || 'Document'}
                               </span>
                               {getStatusBadge(doc)}
+                              {getLinkageBadge(doc)}
                               {(doc.extraction_id || doc.ai_extraction || extractingDocumentId === doc.document_id) && getExtractionStatusBadge(doc, extractingDocumentId)}
                             </div>
                             {doc.property_id && (
@@ -1253,6 +1354,20 @@ const DocumentsPage = () => {
                                 <span className="font-medium">Possible wrong document for this requirement.</span>{' '}
                                 {doc.requirement_evidence_mismatch_reason ||
                                   'Check the file matches the selected requirement, or correct the extracted type before applying.'}
+                              </div>
+                            ) : null}
+                            {linkageReconciliationRequired(doc) ? (
+                              <div
+                                className="mb-3 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-950"
+                                data-testid={`doc-linkage-callout-${doc.document_id}`}
+                              >
+                                <span className="font-medium">
+                                  {String(doc.document_linkage_state || '').toUpperCase() === 'BROKEN_LINKAGE'
+                                    ? 'This document is linked to a requirement that is no longer active.'
+                                    : 'This document is not linked to a compliance requirement.'}
+                                </span>{' '}
+                                Use Resolve linkage to connect it to the correct requirement, or mark it as intentionally
+                                unlinked if it is not compliance evidence.
                               </div>
                             ) : null}
 
@@ -1407,6 +1522,18 @@ const DocumentsPage = () => {
                                 <Download className="w-4 h-4 mr-1" />
                                 Download
                               </Button>
+                              {linkageReconciliationRequired(doc) ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openLinkageReconcileModal(doc)}
+                                  className="border-orange-300 text-orange-900 hover:bg-orange-50"
+                                  data-testid={`resolve-linkage-btn-${doc.document_id}`}
+                                >
+                                  <Link2 className="w-4 h-4 mr-1" />
+                                  Resolve linkage
+                                </Button>
+                              ) : null}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -1726,6 +1853,103 @@ const DocumentsPage = () => {
                   Save
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {linkageReconcileModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          data-testid="linkage-reconcile-modal"
+        >
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-semibold text-midnight-blue">Resolve document linkage</h3>
+              <Button variant="ghost" size="sm" onClick={() => setLinkageReconcileModal(null)} data-testid="close-linkage-reconcile-modal">
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              {linkageReconcileModal.file_name || 'Document'} — link to a compliance requirement or mark as intentionally
+              unlinked (non-compliance file).
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                <select
+                  value={linkageReconcileForm.property_id}
+                  onChange={(e) => setLinkageReconcileForm({ ...linkageReconcileForm, property_id: e.target.value, requirement_id: '' })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  data-testid="linkage-reconcile-property-select"
+                >
+                  <option value="">Select property…</option>
+                  {properties.map((p) => (
+                    <option key={p.property_id} value={p.property_id}>
+                      {p.nickname || p.address_line_1 || p.property_id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Requirement (to link)</label>
+                <select
+                  value={linkageReconcileForm.requirement_id}
+                  onChange={(e) => setLinkageReconcileForm({ ...linkageReconcileForm, requirement_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  data-testid="linkage-reconcile-requirement-select"
+                >
+                  <option value="">Select requirement…</option>
+                  {linkageReconcileRequirements.map((r) => (
+                    <option key={r.requirement_id} value={r.requirement_id}>
+                      {r.display_label || r.description || r.requirement_type || r.requirement_id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {(linkageReconcileModal.linkage_suggested_requirement_ids || []).length > 0 ? (
+                <p className="text-xs text-gray-500" data-testid="linkage-suggested-requirements">
+                  Suggested: {(linkageReconcileModal.linkage_suggested_requirement_ids || []).slice(0, 3).join(', ')}
+                </p>
+              ) : null}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
+                <textarea
+                  value={linkageReconcileForm.reason}
+                  onChange={(e) => setLinkageReconcileForm({ ...linkageReconcileForm, reason: e.target.value })}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  data-testid="linkage-reconcile-reason"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 mt-6">
+              {String(linkageReconcileModal.document_linkage_state || '').toUpperCase() === 'BROKEN_LINKAGE' ? (
+                <Button
+                  variant="outline"
+                  disabled={linkageReconcileSaving}
+                  onClick={() => submitLinkageReconcile('clear_broken_linkage')}
+                  data-testid="linkage-reconcile-clear-broken-btn"
+                >
+                  Clear broken linkage
+                </Button>
+              ) : null}
+              <Button
+                disabled={linkageReconcileSaving}
+                onClick={() => submitLinkageReconcile('link_requirement')}
+                data-testid="linkage-reconcile-link-btn"
+              >
+                {linkageReconcileSaving ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+                Link to requirement
+              </Button>
+              <Button
+                variant="outline"
+                disabled={linkageReconcileSaving}
+                onClick={() => submitLinkageReconcile('mark_intentionally_unlinked')}
+                data-testid="linkage-reconcile-intentional-btn"
+              >
+                Mark intentionally unlinked
+              </Button>
             </div>
           </div>
         </div>
