@@ -1,14 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, Download } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
-import { documentTypeLabel } from '../domain/presentDomain';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { documentTypeLabel } from '../../domain/presentDomain';
 import {
   getClientDocumentLinkageBadge,
   linkageReconciliationRequired,
-} from '../utils/documentClientPresentation';
-import { groupDocumentsForPropertyRegistry } from '../utils/documentVisibilityRegistry';
+} from '../../utils/documentClientPresentation';
+import { groupDocumentsForPropertyRegistry } from '../../utils/documentVisibilityRegistry';
 
 /**
  * Property Evidence Registry — operational sections (not filesystem folders).
