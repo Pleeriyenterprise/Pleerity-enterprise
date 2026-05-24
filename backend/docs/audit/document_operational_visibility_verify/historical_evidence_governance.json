@@ -1,6 +1,6 @@
 {
-  "historical_count": 0,
+  "historical_count": 1,
   "violations": [],
-  "historical_filter_reachable": false,
+  "historical_filter_reachable": true,
   "pass": true
 }

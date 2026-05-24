@@ -1,9 +1,23 @@
 {
-  "attention_document_ids": [],
+  "attention_document_ids": [
+    "930278e4-fe98-4c9c-bdfd-cf64dddda1f5",
+    "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+    "d4b6058e-d00d-444a-9818-db9f1675c4b5",
+    "be6ffaec-b482-4489-b3bc-466878408d80",
+    "914b1e3b-ef2a-4d59-960b-74b7421d5dbb",
+    "c31a0f1d-699c-4bf8-a059-185613004079",
+    "6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+    "56026075-06cb-4877-b1a3-dafd9cfc41f4",
+    "ab913543-6b17-4470-b3d6-aae117c8e3c3",
+    "be01b673-c810-48c7-87fc-871cac5161ec",
+    "381443ee-f30b-4bfa-aac8-e64bce92e726",
+    "400f1090-1476-4ea9-bc15-494b5617005e",
+    "63c7d2f9-d259-4810-9016-966f9e08c930"
+  ],
   "reconciliation_visible_in_attention": true,
   "hidden_reconciliation": [],
-  "requirements_action_required": 0,
-  "today_status": 401,
-  "command_centre_status": 401,
-  "pass": false
+  "requirements_action_required": 6,
+  "today_status": 200,
+  "command_centre_status": 200,
+  "pass": true
 }

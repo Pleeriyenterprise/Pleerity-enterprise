@@ -3,15 +3,15 @@
     {
       "label": "attention_queue",
       "t0": {
-        "count": 0,
-        "total": 0
+        "count": 13,
+        "total": 25
       },
       "reads": [
         {
-          "ts": 1779662664.8373973,
+          "ts": 1779666688.452377,
           "api": {
-            "count": 0,
-            "total": 0
+            "count": 13,
+            "total": 25
           }
         }
       ],
@@ -23,7 +23,7 @@
   "any_stale": false,
   "any_timeout": false,
   "t0": {
-    "count": 0,
-    "total": 0
+    "count": 13,
+    "total": 25
   }
 }

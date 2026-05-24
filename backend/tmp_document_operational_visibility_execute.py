@@ -288,13 +288,12 @@ def _browser_session(token: str, user: dict, password: str):
     page.fill("#email", CLIENT_EMAIL)
     page.fill("#password", password)
     page.click('button[type="submit"]')
-    page.wait_for_timeout(5000)
-    body = page.locator("body").inner_text()
-    if "Sign In" in body[:250] and "Compliance" not in body:
-        page.evaluate(
-            "([t,u])=>{localStorage.setItem('auth_token',t);localStorage.setItem('user',JSON.stringify(u));}",
-            [token, user],
-        )
+    page.wait_for_timeout(3000)
+    page.evaluate(
+        "([t,u])=>{localStorage.setItem('auth_token',t);localStorage.setItem('user',JSON.stringify(u));}",
+        [token, user],
+    )
+    page.wait_for_timeout(1000)
     return p, browser, page
 
 
@@ -324,7 +323,10 @@ def _browser_queue_verification(token: str, user: dict, password: str, api_atten
     all_rows = page.locator('[data-testid^="document-"]').count()
     step("all_view_expands", all_rows >= visible_rows, f"all={all_rows} attention={visible_rows}")
     page.reload(wait_until="domcontentloaded")
-    page.wait_for_timeout(3000)
+    for _ in range(30):
+        if page.locator('[data-testid="documents-page"]').count() > 0:
+            break
+        page.wait_for_timeout(2000)
     step("refresh_persistence", page.locator('[data-testid="documents-page"]').count() > 0)
     browser.close()
     p.stop()
@@ -355,13 +357,30 @@ def _registry_verification(token: str, user: dict, password: str) -> Dict[str, A
 
     p, browser, page = _browser_session(token, user, password)
     page.goto(f"{FRONTEND}/properties/{PROPERTY_ID}", wait_until="domcontentloaded", timeout=120_000)
-    page.wait_for_timeout(4000)
-    doc_tab = page.locator('button').filter(has_text="Documents")
+    for _ in range(60):
+        if page.locator('nav button').filter(has_text="Operating").count() > 0:
+            break
+        page.wait_for_timeout(2000)
+    doc_tab = page.locator('[data-testid="property-tab-documents"]')
+    if doc_tab.count() == 0:
+        doc_tab = page.locator('nav button').filter(has_text="Documents")
     if doc_tab.count():
-        doc_tab.first.click()
-        page.wait_for_timeout(4000)
-    step("evidence_registry_panel", page.locator('[data-testid="property-evidence-registry"]').count() > 0 or "Evidence Registry" in page.locator("body").inner_text())
-    step("registry_sections_rendered", page.locator('[data-testid^="evidence-registry-section-"]').count() > 0 or sections)
+        doc_tab.last.click()
+    for _ in range(45):
+        if page.locator('[data-testid="property-evidence-registry"]').count() > 0:
+            break
+        if page.locator('[data-testid^="evidence-registry-section-"]').count() > 0:
+            break
+        page.wait_for_timeout(2000)
+    step(
+        "evidence_registry_panel",
+        page.locator('[data-testid="property-evidence-registry"]').count() > 0
+        or "Evidence Registry" in page.locator("body").inner_text(),
+    )
+    step(
+        "registry_sections_rendered",
+        page.locator('[data-testid^="evidence-registry-section-"]').count() > 0,
+    )
     browser.close()
     p.stop()
     api_pass = (
@@ -370,7 +389,7 @@ def _registry_verification(token: str, user: dict, password: str) -> Dict[str, A
         and expected.issubset(section_keys)
         and "attentionRequired" in summary
     )
-    browser_pass = all(s["ok"] for s in steps if s["name"] != "registry_sections_rendered")
+    browser_pass = all(s["ok"] for s in steps)
     return {
         "api_status": api.get("status"),
         "summary": summary,
@@ -401,10 +420,15 @@ def _reconciliation_runtime(token: str, user: dict, password: str) -> Dict[str, 
 
     p, browser, page = _browser_session(token, user, password)
     page.goto(f"{FRONTEND}/documents?property_id={PROPERTY_ID}", wait_until="domcontentloaded", timeout=120_000)
-    page.wait_for_timeout(5000)
-    btn = page.locator(f'[data-testid="document-{probe_id}"] button:has-text("Resolve linkage")')
+    for _ in range(45):
+        if page.locator(f'[data-testid="resolve-linkage-btn-{probe_id}"]').count() > 0:
+            break
+        if page.locator(f'[data-testid="document-{probe_id}"]').count() > 0:
+            break
+        page.wait_for_timeout(2000)
+    btn = page.locator(f'[data-testid="resolve-linkage-btn-{probe_id}"]')
     if btn.count() == 0:
-        btn = page.locator('button:has-text("Resolve linkage")').first
+        btn = page.locator(f'[data-testid="document-{probe_id}"] button:has-text("Resolve linkage")')
     step("resolve_cta_reachable", btn.count() > 0)
     if btn.count():
         btn.first.click()

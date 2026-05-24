@@ -1,8 +1,8 @@
 {
-  "total_documents": 21,
+  "total_documents": 24,
   "attention_required_count": 13,
   "active_evidence_count": 1,
-  "operational_attachment_count": 6,
+  "operational_attachment_count": 9,
   "historical_count": 1,
   "settled_leaking_into_attention": 0,
   "missing_visibility_projection": [],
@@ -106,7 +106,7 @@
     }
   ],
   "api_pass": true,
-  "pass": false,
+  "pass": true,
   "browser": {
     "steps": [
       {
@@ -116,35 +116,35 @@
       },
       {
         "name": "title_operations",
-        "ok": false,
+        "ok": true,
         "detail": ""
       },
       {
         "name": "queue_filter_present",
-        "ok": false,
+        "ok": true,
         "detail": ""
       },
       {
         "name": "default_attention_queue",
-        "ok": false,
-        "detail": ""
+        "ok": true,
+        "detail": "attention"
       },
       {
         "name": "attention_rows_visible",
-        "ok": false,
-        "detail": "visible=22 api_attention=13"
+        "ok": true,
+        "detail": "visible=14 api_attention=13"
       },
       {
         "name": "all_view_expands",
         "ok": true,
-        "detail": "all=22 attention=22"
+        "detail": "all=25 attention=14"
       },
       {
         "name": "refresh_persistence",
-        "ok": false,
+        "ok": true,
         "detail": ""
       }
     ],
-    "pass": false
+    "pass": true
   }
 }

@@ -3,21 +3,26 @@
     {
       "name": "seed_probe",
       "ok": true,
-      "detail": "f342202c-a4b8-4c4c-8e3b-1186f29afeb8"
+      "detail": "026c1ded-474c-494f-805f-f351d4f76f26"
     },
     {
       "name": "probe_reconciliation_required",
-      "ok": false,
-      "detail": "INTENTIONALLY_UNLINKED"
+      "ok": true,
+      "detail": "RECONCILIATION_REQUIRED"
     },
     {
       "name": "probe_attention_queue",
-      "ok": false,
+      "ok": true,
       "detail": ""
     },
     {
       "name": "resolve_cta_reachable",
-      "ok": false,
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "modal_visible",
+      "ok": true,
       "detail": ""
     },
     {
@@ -36,6 +41,6 @@
       "detail": ""
     }
   ],
-  "probe_id": "f342202c-a4b8-4c4c-8e3b-1186f29afeb8",
-  "pass": false
+  "probe_id": "026c1ded-474c-494f-805f-f351d4f76f26",
+  "pass": true
 }

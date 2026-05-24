@@ -1710,7 +1710,13 @@ export default function PropertyDetailPage() {
             <button
               key={id}
               type="button"
-              data-testid={id === TAB_COMPLIANCE ? 'property-tab-compliance' : undefined}
+              data-testid={
+                id === TAB_COMPLIANCE
+                  ? 'property-tab-compliance'
+                  : id === TAB_EVIDENCE
+                    ? 'property-tab-documents'
+                    : undefined
+              }
               onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2 px-3 sm:px-4 py-3 min-h-11 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-md ${
                 activeTab === id
