@@ -278,7 +278,9 @@ def _section_for_action(
         return "urgent"
     if overdue_days and overdue_days > 0:
         return "urgent"
-    if action_type == ACTION_RISK_SIGNAL and severity in ("high", "critical"):
+    if action_type == ACTION_RISK_SIGNAL:
+        return "urgent"
+    if action_type == ACTION_OPEN_ISSUE and severity in ("high", "critical", "urgent"):
         return "urgent"
     if action_type in (ACTION_CERT_EXPIRING_SOON, ACTION_MISSING_DOCUMENT, ACTION_WORK_ORDER_NEAR_BREACH):
         return "upcoming"
@@ -288,8 +290,6 @@ def _section_for_action(
         return "in_progress"
     if action_type == ACTION_OPEN_ISSUE:
         return "in_progress"
-    if action_type == ACTION_RISK_SIGNAL:
-        return "upcoming"
     return "upcoming"
 
 

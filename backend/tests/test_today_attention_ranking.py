@@ -130,6 +130,33 @@ def test_sort_key_is_deterministic_with_stable_tiebreaker():
     assert today_attention_sort_key(a) < today_attention_sort_key(b)
 
 
+def test_active_risk_signal_section_is_urgent():
+    section = uts._section_for_action(uts.ACTION_RISK_SIGNAL, "medium", None)
+    assert section == "urgent"
+
+
+def test_cross_section_urgent_work_order_before_upcoming_risk_resolved_by_risk_in_urgent():
+    """Regression: WO in urgent must not precede active risk relegated to upcoming."""
+    risk = {
+        "id": "risk_signal:rs_x",
+        "source_type": "risk_signal",
+        "section": "urgent",
+        "urgency_level": "medium",
+        "impact_score": 5,
+        "metadata": {"action_type": ACTION_RISK_SIGNAL, "severity": "medium"},
+    }
+    wo = {
+        "id": "work_order:wo_x",
+        "source_type": "work_order",
+        "section": "urgent",
+        "urgency_level": "critical",
+        "impact_score": 90,
+        "metadata": {"action_type": ACTION_OPEN_WORK_ORDER},
+    }
+    flat = uts._sort_tasks([wo, risk])
+    _assert_no_precedence_violations(flat)
+
+
 def test_attention_class_matches_precedence_constants():
     assert ATTENTION_PRECEDENCE["active_risk"] < ATTENTION_PRECEDENCE["open_operational_debt"]
     assert ATTENTION_PRECEDENCE["open_operational_debt"] < ATTENTION_PRECEDENCE["time_bound_reminder"]
