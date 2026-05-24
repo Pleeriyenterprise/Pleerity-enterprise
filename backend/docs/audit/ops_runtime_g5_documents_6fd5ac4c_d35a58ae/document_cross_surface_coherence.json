@@ -1,8 +1,8 @@
 {
-  "pilot_documents": 13,
-  "pending_review_documents": 11,
-  "pending_review_requirements": 2,
-  "action_required_requirements": 4,
+  "pilot_documents": 20,
+  "pending_review_documents": 18,
+  "pending_review_requirements": 1,
+  "action_required_requirements": 5,
   "directionally_coherent": true,
   "pass": true
 }

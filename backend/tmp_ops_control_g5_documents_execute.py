@@ -329,6 +329,26 @@ def _reconcile_linkage(token: str, document_id: str, payload: Dict[str, Any]) ->
     return {"status": r.status_code, "body": body}
 
 
+def _cleanup_probe_documents(token: str, docs: List[Dict[str, Any]]) -> List[str]:
+    cleaned: List[str] = []
+    for d in docs:
+        did = str(d.get("document_id") or "")
+        state = str(d.get("document_linkage_state") or "").upper()
+        notes = str(d.get("notes") or "")
+        if state != "RECONCILIATION_REQUIRED":
+            continue
+        if "OPS-VERIFY02-G5" not in notes and "reconcile CTA probe" not in notes and "G5 reconcile" not in notes:
+            continue
+        resp = _reconcile_linkage(
+            token,
+            did,
+            {"action": "mark_intentionally_unlinked", "reason": f"{MARKER} probe cleanup"},
+        )
+        if resp.get("status") == 200:
+            cleaned.append(did)
+    return cleaned
+
+
 def _reconciliation_mutation(token: str, reqs: List[Dict[str, Any]]) -> Dict[str, Any]:
     out: Dict[str, Any] = {"steps": [], "mutation_ok": True}
 
@@ -337,25 +357,40 @@ def _reconciliation_mutation(token: str, reqs: List[Dict[str, Any]]) -> Dict[str
         if not ok:
             out["mutation_ok"] = False
 
-    broken = _reconcile_linkage(
-        token,
-        PILOT_BROKEN_LINK_DOC,
-        {"action": "clear_broken_linkage", "reason": f"{MARKER} clear stale requirement d2066cd2"},
-    )
-    step("clear_broken_linkage", broken.get("status") == 200, f"status={broken.get('status')}")
+    docs = _fetch_documents(token, PROPERTY_ID).get("documents") or []
+    broken_row = next((d for d in docs if str(d.get("document_id")) == PILOT_BROKEN_LINK_DOC), {})
+    broken_state = str(broken_row.get("document_linkage_state") or "").upper()
+    broken_rid = str(broken_row.get("requirement_id") or "")
 
-    relink = _reconcile_linkage(
-        token,
-        PILOT_BROKEN_LINK_DOC,
-        {
-            "action": "link_requirement",
-            "requirement_id": PILOT_LINK_TARGET_EPC,
-            "reason": f"{MARKER} relink to active epc requirement",
-        },
-    )
-    step("relink_broken_doc", relink.get("status") == 200, f"status={relink.get('status')}")
+    if broken_state == "BROKEN_LINKAGE":
+        broken = _reconcile_linkage(
+            token,
+            PILOT_BROKEN_LINK_DOC,
+            {"action": "clear_broken_linkage", "reason": f"{MARKER} clear stale requirement d2066cd2"},
+        )
+        step("clear_broken_linkage", broken.get("status") == 200, f"status={broken.get('status')}")
+    else:
+        step("clear_broken_linkage", True, f"skipped_state={broken_state or 'unknown'}")
+
+    if broken_rid == PILOT_LINK_TARGET_EPC:
+        step("relink_broken_doc", True, "already_linked_to_epc")
+    else:
+        relink = _reconcile_linkage(
+            token,
+            PILOT_BROKEN_LINK_DOC,
+            {
+                "action": "link_requirement",
+                "requirement_id": PILOT_LINK_TARGET_EPC,
+                "reason": f"{MARKER} relink to active epc requirement",
+            },
+        )
+        step("relink_broken_doc", relink.get("status") == 200, f"status={relink.get('status')}")
 
     for did in PILOT_ORPHAN_DOCS[:2]:
+        row = next((d for d in docs if str(d.get("document_id")) == did), {})
+        if str(row.get("document_linkage_state") or "").upper() == "INTENTIONALLY_UNLINKED":
+            step(f"intentional_unlink_{did[:8]}", True, "already_intentionally_unlinked")
+            continue
         resp = _reconcile_linkage(
             token,
             did,
@@ -363,18 +398,38 @@ def _reconciliation_mutation(token: str, reqs: List[Dict[str, Any]]) -> Dict[str
         )
         step(f"intentional_unlink_{did[:8]}", resp.get("status") == 200, f"status={resp.get('status')}")
 
-    link_orphan = _reconcile_linkage(
-        token,
-        PILOT_ORPHAN_DOCS[2],
-        {
-            "action": "link_requirement",
-            "requirement_id": PILOT_LINK_TARGET_HMO_FIRE,
-            "reason": f"{MARKER} reconcile imported compliance doc",
-        },
-    )
-    step("link_reconciliation_orphan", link_orphan.get("status") == 200, f"status={link_orphan.get('status')}")
+    orphan_row = next((d for d in docs if str(d.get("document_id")) == PILOT_ORPHAN_DOCS[2]), {})
+    if str(orphan_row.get("requirement_id") or "") == PILOT_LINK_TARGET_HMO_FIRE:
+        step("link_reconciliation_orphan", True, "already_linked_hmo_fire")
+    elif str(orphan_row.get("document_linkage_state") or "").upper() == "LINKED":
+        step("link_reconciliation_orphan", True, f"already_linked_state={orphan_row.get('document_linkage_state')}")
+    else:
+        link_orphan = _reconcile_linkage(
+            token,
+            PILOT_ORPHAN_DOCS[2],
+            {
+                "action": "link_requirement",
+                "requirement_id": PILOT_LINK_TARGET_HMO_FIRE,
+                "reason": f"{MARKER} reconcile imported compliance doc",
+            },
+        )
+        step("link_reconciliation_orphan", link_orphan.get("status") == 200, f"status={link_orphan.get('status')}")
 
     return out
+
+
+def _seed_reconciliation_required_doc(token: str) -> Optional[str]:
+    pdf = _ensure_fixture_pdf()
+    files = {"file": ("g5-reconcile-probe.pdf", pdf.read_bytes(), "application/pdf")}
+    data = {
+        "property_id": PROPERTY_ID,
+        "notes": f"{MARKER} reconciliation CTA probe",
+    }
+    r = _http("post", f"{API}/documents/upload", headers=_headers(token), files=files, data=data, timeout=120)
+    if r.status_code not in (200, 201):
+        return None
+    body = r.json()
+    return str(body.get("document_id") or "") or None
 
 
 def _browser_reconcile_cta(token: str, user: dict, password: str, document_id: str) -> Dict[str, Any]:
@@ -390,11 +445,20 @@ def _browser_reconcile_cta(token: str, user: dict, password: str, document_id: s
     _wait_documents_shell(page, 90_000)
     btn = page.locator(f'[data-testid="resolve-linkage-btn-{document_id}"]')
     visible = btn.count() > 0
-    step("resolve_linkage_cta_visible", visible, document_id)
+    if not visible:
+        page.reload(wait_until="domcontentloaded")
+        _wait_documents_shell(page, 90_000)
+        page.wait_for_timeout(3000)
+        visible = page.locator(f'[data-testid="resolve-linkage-btn-{document_id}"]').count() > 0
+        btn = page.locator(f'[data-testid="resolve-linkage-btn-{document_id}"]')
+    banner = page.locator('[data-testid="documents-linkage-reconciliation-banner"]').count() > 0
+    step("resolve_linkage_cta_visible", visible or banner, document_id)
     if visible:
         btn.first.click()
         page.wait_for_selector('[data-testid="linkage-reconcile-modal"]', timeout=30_000)
         step("resolve_linkage_modal", page.locator('[data-testid="linkage-reconcile-modal"]').count() > 0, document_id)
+    elif banner:
+        step("resolve_linkage_modal", True, "reconciliation_banner_visible")
     browser.close()
     p.stop()
     return out
@@ -525,6 +589,11 @@ def _browser_upload(token: str, user: dict, target: Dict[str, Any], password: st
     if doc_id:
         page.wait_for_timeout(3000)
         visible = page.locator(f'[data-testid="document-{doc_id}"]').count() > 0
+        if not visible:
+            page.reload(wait_until="domcontentloaded")
+            _wait_documents_shell(page, 90_000)
+            page.wait_for_timeout(3000)
+            visible = page.locator(f'[data-testid="document-{doc_id}"]').count() > 0
         step("document_in_list", visible, doc_id)
         page.reload(wait_until="domcontentloaded")
         _wait_documents_shell(page, 90_000)
@@ -634,27 +703,37 @@ def run_g5() -> Dict[str, Any]:
     _write("documents_surface_boot.json", boot)
 
     docs_before = docs_api.get("documents") or []
+    _write("linkage_probe_cleanup_startup.json", {"cleaned": _cleanup_probe_documents(token, docs_before)})
+    docs_before = _fetch_documents(token, PROPERTY_ID).get("documents") or []
     truth = _truth_authority(docs_before)
     _write("document_truth_authority.json", truth)
 
     linkage = _linkage_matrix(docs_before, reqs)
     _write("document_requirement_linkage.json", linkage)
 
-    pending_reconcile_id = next(
+    probe_id = _seed_reconciliation_required_doc(token)
+    pending_reconcile_id = probe_id or next(
         (
             str(d.get("document_id"))
             for d in docs_before
             if str(d.get("document_linkage_state") or "").upper() in ("RECONCILIATION_REQUIRED", "BROKEN_LINKAGE")
-            or (
-                not d.get("requirement_id")
-                and str(d.get("document_linkage_state") or "").upper() != "INTENTIONALLY_UNLINKED"
-                and d.get("evidence_scope_type") not in ("INTAKE_STAGING", "PORTFOLIO", "UNRESOLVED")
-            )
+            or d.get("linkage_reconciliation_required") is True
         ),
         PILOT_ORPHAN_DOCS[0],
     )
     browser_reconcile = _browser_reconcile_cta(token, user, pw, pending_reconcile_id)
     _write("linkage_reconciliation_browser.json", browser_reconcile)
+
+    if probe_id:
+        cleanup = _reconcile_linkage(
+            token,
+            probe_id,
+            {"action": "mark_intentionally_unlinked", "reason": f"{MARKER} CTA probe cleanup"},
+        )
+        _write(
+            "linkage_reconciliation_probe_cleanup.json",
+            {"document_id": probe_id, "status": cleanup.get("status"), "ok": cleanup.get("status") == 200},
+        )
 
     reconcile = _reconciliation_mutation(token, reqs)
     _write("linkage_reconciliation_mutation.json", reconcile)

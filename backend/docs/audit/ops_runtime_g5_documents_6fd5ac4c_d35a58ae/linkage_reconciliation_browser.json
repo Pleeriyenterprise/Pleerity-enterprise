@@ -1,0 +1,17 @@
+{
+  "steps": [
+    {
+      "step": "resolve_linkage_cta_visible",
+      "ok": true,
+      "detail": "1084edd4-cad7-40db-b4e8-7bafde431566",
+      "at_utc": "2026-05-24T20:42:23.075667+00:00"
+    },
+    {
+      "step": "resolve_linkage_modal",
+      "ok": true,
+      "detail": "1084edd4-cad7-40db-b4e8-7bafde431566",
+      "at_utc": "2026-05-24T20:42:23.183856+00:00"
+    }
+  ],
+  "mutation_ok": true
+}

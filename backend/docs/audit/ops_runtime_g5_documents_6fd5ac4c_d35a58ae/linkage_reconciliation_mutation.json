@@ -1,0 +1,35 @@
+{
+  "steps": [
+    {
+      "step": "clear_broken_linkage",
+      "ok": true,
+      "detail": "skipped_state=LINKED",
+      "at_utc": "2026-05-24T20:42:44.596066+00:00"
+    },
+    {
+      "step": "relink_broken_doc",
+      "ok": true,
+      "detail": "already_linked_to_epc",
+      "at_utc": "2026-05-24T20:42:44.596066+00:00"
+    },
+    {
+      "step": "intentional_unlink_f3ad6a0e",
+      "ok": true,
+      "detail": "already_intentionally_unlinked",
+      "at_utc": "2026-05-24T20:42:44.596066+00:00"
+    },
+    {
+      "step": "intentional_unlink_67f88f49",
+      "ok": true,
+      "detail": "already_intentionally_unlinked",
+      "at_utc": "2026-05-24T20:42:44.596066+00:00"
+    },
+    {
+      "step": "link_reconciliation_orphan",
+      "ok": true,
+      "detail": "already_linked_hmo_fire",
+      "at_utc": "2026-05-24T20:42:44.596066+00:00"
+    }
+  ],
+  "mutation_ok": true
+}

@@ -1,19 +1,14 @@
 {
   "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
   "family": "ops_control_g5_documents_page",
-  "classification": "OPERATIONAL_ORPHAN_STATE",
-  "secondary_classifications": [
-    "EVIDENCE_AUTHORITY_DRIFT"
-  ],
-  "reasons": [
-    "linkage_drift",
-    "orphan_documents"
-  ],
-  "blocking": true,
-  "execution_status": "OPERATIONAL_ORPHAN_STATE",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_classifications": [],
+  "reasons": [],
+  "blocking": false,
+  "execution_status": "VERIFIED_OPERATIONALLY",
   "authoritative_verification_owner": "ops_control_g5_documents_page",
   "proof_mode": "operational_browser",
-  "run_tag": "20260524T190110Z",
+  "run_tag": "20260524T203943Z",
   "pilot_slug": "6fd5ac4c_d35a58ae",
   "shared_dependency_bundle_ids": [
     "ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae/07_classification.json",
@@ -25,7 +20,8 @@
   "checkpoints": {
     "G5_surface_boot": true,
     "G5_document_truth": true,
-    "G5_linkage": false,
+    "G5_linkage": true,
+    "G5_linkage_reconciliation": true,
     "G5_mutation_sequence": true,
     "G5_resolution_walks": true,
     "G5_cross_surface": true
