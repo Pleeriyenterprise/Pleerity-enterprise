@@ -1,0 +1,36 @@
+{
+  "resurfaced_documents": [
+    {
+      "document_id": "6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "expiring_soon",
+      "days_to_expiry": 26,
+      "expiry_resurface": true
+    },
+    {
+      "document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "expiring_soon",
+      "days_to_expiry": 39,
+      "expiry_resurface": true
+    },
+    {
+      "document_id": "63c7d2f9-d259-4810-9016-966f9e08c930",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "expiring_soon",
+      "days_to_expiry": 39,
+      "expiry_resurface": true
+    },
+    {
+      "document_id": "381443ee-f30b-4bfa-aac8-e64bce92e726",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "expiring_soon",
+      "days_to_expiry": 9,
+      "expiry_resurface": true
+    }
+  ],
+  "resurfaced_count": 4,
+  "active_with_resurface_flag": 0,
+  "pass": true,
+  "note": "No expiring-soon docs on pilot is acceptable if resurfacing logic present on API fields"
+}

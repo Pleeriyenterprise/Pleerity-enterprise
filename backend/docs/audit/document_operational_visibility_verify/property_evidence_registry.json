@@ -1,0 +1,43 @@
+{
+  "api_status": 200,
+  "summary": {
+    "totalDocuments": 21,
+    "linked": 16,
+    "pendingConfirmation": 0,
+    "missingCriticalEvidence": 2,
+    "lastUploadedAt": "2026-05-24T22:14:19.788057+00:00",
+    "attentionRequired": 13,
+    "activeEvidence": 1,
+    "operationalAttachments": 6
+  },
+  "section_counts": {
+    "active_evidence": 1,
+    "pending_review": 9,
+    "expiring_soon": 4,
+    "reconciliation_required": 0,
+    "historical_superseded": 1,
+    "operational_attachments": 6
+  },
+  "missing_visibility_projection": [],
+  "browser_steps": [
+    {
+      "name": "evidence_registry_panel",
+      "ok": false,
+      "detail": ""
+    },
+    {
+      "name": "registry_sections_rendered",
+      "ok": {
+        "active_evidence": 1,
+        "pending_review": 9,
+        "expiring_soon": 4,
+        "reconciliation_required": 0,
+        "historical_superseded": 1,
+        "operational_attachments": 6
+      },
+      "detail": ""
+    }
+  ],
+  "api_pass": true,
+  "pass": false
+}

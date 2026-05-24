@@ -1,0 +1,150 @@
+{
+  "total_documents": 21,
+  "attention_required_count": 13,
+  "active_evidence_count": 1,
+  "operational_attachment_count": 6,
+  "historical_count": 1,
+  "settled_leaking_into_attention": 0,
+  "missing_visibility_projection": [],
+  "api_attention_filter_total": 13,
+  "attention_reasons_sample": [
+    {
+      "document_id": "914b1e3b-ef2a-4d59-960b-74b7421d5dbb",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "pending_review",
+      "reason_codes": [
+        "OPERATIONAL_EXTRACTION_FAILED"
+      ]
+    },
+    {
+      "document_id": "d4b6058e-d00d-444a-9818-db9f1675c4b5",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "pending_review",
+      "reason_codes": [
+        "OPERATIONAL_EXTRACTION_FAILED"
+      ]
+    },
+    {
+      "document_id": "ab913543-6b17-4470-b3d6-aae117c8e3c3",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "pending_review",
+      "reason_codes": [
+        "OPERATIONAL_EXTRACTION_FAILED"
+      ]
+    },
+    {
+      "document_id": "c31a0f1d-699c-4bf8-a059-185613004079",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "pending_review",
+      "reason_codes": [
+        "OPERATIONAL_EXTRACTION_FAILED"
+      ]
+    },
+    {
+      "document_id": "930278e4-fe98-4c9c-bdfd-cf64dddda1f5",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "pending_review",
+      "reason_codes": [
+        "OPERATIONAL_EXTRACTION_FAILED"
+      ]
+    },
+    {
+      "document_id": "be01b673-c810-48c7-87fc-871cac5161ec",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "pending_review",
+      "reason_codes": [
+        "OPERATIONAL_EXTRACTION_FAILED"
+      ]
+    },
+    {
+      "document_id": "be6ffaec-b482-4489-b3bc-466878408d80",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "pending_review",
+      "reason_codes": [
+        "OPERATIONAL_EXTRACTION_FAILED"
+      ]
+    },
+    {
+      "document_id": "6bcba949-dd04-40bd-b724-cf4c9d91be8f",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "expiring_soon",
+      "reason_codes": [
+        "EXPIRY_RESURFACE"
+      ]
+    },
+    {
+      "document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "expiring_soon",
+      "reason_codes": [
+        "EXPIRY_RESURFACE"
+      ]
+    },
+    {
+      "document_id": "56026075-06cb-4877-b1a3-dafd9cfc41f4",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "pending_review",
+      "reason_codes": [
+        "OPERATIONAL_EXTRACTION_FAILED"
+      ]
+    },
+    {
+      "document_id": "63c7d2f9-d259-4810-9016-966f9e08c930",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "expiring_soon",
+      "reason_codes": [
+        "EXPIRY_RESURFACE"
+      ]
+    },
+    {
+      "document_id": "381443ee-f30b-4bfa-aac8-e64bce92e726",
+      "visibility": "ATTENTION_REQUIRED",
+      "registry_section": "expiring_soon",
+      "reason_codes": [
+        "EXPIRY_RESURFACE"
+      ]
+    }
+  ],
+  "api_pass": true,
+  "pass": false,
+  "browser": {
+    "steps": [
+      {
+        "name": "documents_page",
+        "ok": true,
+        "detail": "https://pleerityenterprise.co.uk/documents"
+      },
+      {
+        "name": "title_operations",
+        "ok": false,
+        "detail": ""
+      },
+      {
+        "name": "queue_filter_present",
+        "ok": false,
+        "detail": ""
+      },
+      {
+        "name": "default_attention_queue",
+        "ok": false,
+        "detail": ""
+      },
+      {
+        "name": "attention_rows_visible",
+        "ok": false,
+        "detail": "visible=22 api_attention=13"
+      },
+      {
+        "name": "all_view_expands",
+        "ok": true,
+        "detail": "all=22 attention=22"
+      },
+      {
+        "name": "refresh_persistence",
+        "ok": false,
+        "detail": ""
+      }
+    ],
+    "pass": false
+  }
+}

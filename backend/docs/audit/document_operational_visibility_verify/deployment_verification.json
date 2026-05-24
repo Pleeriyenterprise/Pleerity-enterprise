@@ -1,0 +1,29 @@
+{
+  "verified_at_utc": "2026-05-24T22:41:32.732371+00:00",
+  "run_tag": "20260524T224107Z",
+  "local_head": "531f0e74",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "version_endpoint": {
+    "commit_sha": "unknown",
+    "environment": "production"
+  },
+  "deploy_sha": "unknown",
+  "health": {
+    "status": "healthy",
+    "environment": "production"
+  },
+  "visibility_api_probe": {
+    "documents_count": 21,
+    "with_visibility_projection": 21,
+    "with_registry_section": 21,
+    "evidence_registry_present": true,
+    "attention_required_count": 13,
+    "pass": true,
+    "checked_at": "2026-05-24T22:41:31.249936+00:00"
+  },
+  "frontend_reachable": true,
+  "frontend_visibility_bundle": false,
+  "deploy_ready": false,
+  "pass": false
+}

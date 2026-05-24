@@ -1,0 +1,29 @@
+{
+  "observations": [
+    {
+      "label": "attention_queue",
+      "t0": {
+        "count": 0,
+        "total": 0
+      },
+      "reads": [
+        {
+          "ts": 1779662664.8373973,
+          "api": {
+            "count": 0,
+            "total": 0
+          }
+        }
+      ],
+      "converged": true,
+      "stale_projection": false,
+      "timeout_seconds": 90
+    }
+  ],
+  "any_stale": false,
+  "any_timeout": false,
+  "t0": {
+    "count": 0,
+    "total": 0
+  }
+}

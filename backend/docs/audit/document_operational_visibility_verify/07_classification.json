@@ -1,0 +1,34 @@
+{
+  "programme": "DOCUMENT_OPERATIONAL_VISIBILITY",
+  "family": "document_operational_visibility",
+  "classification": "BLOCKED",
+  "execution_status": "BLOCKED",
+  "secondary_classifications": [
+    "PROJECTION_RESOLUTION_FAILURE"
+  ],
+  "reasons": [
+    "deploy_continuity_failed",
+    "operations_queue_incoherent",
+    "property_registry_incoherent",
+    "reconciliation_runtime_failed"
+  ],
+  "blocking": true,
+  "authoritative_verification_owner": "document_operational_visibility",
+  "proof_mode": "operational_browser",
+  "run_tag": "20260524T224107Z",
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "checkpoints": {
+    "deploy_continuity": false,
+    "operations_queue": false,
+    "property_registry": false,
+    "reconciliation": false,
+    "expiry_resurfacing": true,
+    "historical_governance": true,
+    "cross_surface": false,
+    "g9": true,
+    "g10": true,
+    "convergence": true
+  }
+}
