@@ -4804,4 +4804,55 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ---
 
+### PRELAUNCH-OPS-RUNTIME-VERIFY-02 — operational control-plane verification (rev 4)
+
+**Status:** Framework **IMPLEMENTATION_READY** — **no G0/G1–G7 execution**. G0 programme precheck required before G1.
+
+**Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md)
+
+**Programme type:** **OPERATIONAL_CONTROL_PLANE_VERIFICATION** — cognitively truthful, navigable, trustworthy control plane under real runtime (not generic QA).
+
+**Prerequisite:** VERIFY-01 **COMPLETE** (F1–F8) — lineage dependency only; does **not** imply surface coherence.
+
+**Scope:** Real browser + API/DB + convergence for client control plane: Today (attention arbitration), Command Centre (live + cross-widget), Properties, Requirements, Documents, Calendar, Reports (derived + freshness).
+
+**Core governance (rev 4):**
+
+| Mechanism | Purpose |
+|-----------|---------|
+| **Control-plane doctrine** | Truthful operational **resolution** without recursion, projection ambiguity, or trust collapse |
+| **G0 `route_authority_map.json`** | Route owner + `authoritative_resolution_owner` + `projection_resolution_rank` + cycle exemptions |
+| **`PROJECTION_RESOLUTION_ORDER`** | Canonical rank 1–5 when projections disagree; `projection_resolution_order.json` |
+| **`CONTROL_PLANE_CIRCULARITY`** | No routing loops without resolution owner; `control_plane_circularity.json` |
+| **G1 `ATTENTION_AUTHORITY_RULES`** | Today attention arbitration |
+| **G2 `WIDGET_ISLAND_FAILURE`** | Cross-widget coherence; primary **live** reconciler |
+| **G7 `REPORT_FRESHNESS_AUTHORITY`** | Derived truth + lag disclosure; derived reconciler |
+| **Operational orphan model** | Orphan + orphan-to-loop interaction |
+| **Classifications (rev 4)** | `CONTROL_PLANE_CIRCULARITY`, `PROJECTION_RESOLUTION_FAILURE`, `PROJECTION_LAG_UNDISCLOSED` |
+| **Checkpoints** | G-ATTN / G-WIDGET / G-FRESH / G-ORPHAN / **G-CYCLE** / **G-RESOLVE** |
+| **G5/G6 boundaries** | Surface-only; no VERIFY-01 re-proof |
+| **G-CTA-NOOP** | `FAIL_OPERATIONAL_NOOP` |
+| **Framework** | `backend/services/ops_runtime_verify_02/` + `tmp_ops_control_g0_programme_precheck_execute.py` |
+
+**Family status:**
+
+| Family | Slug | Status | Classification |
+|--------|------|--------|----------------|
+| Programme G0 | `ops_control_g0_programme_precheck` | NOT RUN | — |
+| G1 Today | `ops_control_g1_today_page` | NOT RUN | — |
+| G2 Command Centre | `ops_control_g2_command_centre` | NOT RUN | — |
+| G3 Properties | `ops_control_g3_properties_page` | NOT RUN | — |
+| G4 Requirements | `ops_control_g4_requirements_page` | NOT RUN | — |
+| G5 Documents | `ops_control_g5_documents_page` | NOT RUN | — |
+| G6 Calendar | `ops_control_g6_calendar_page` | NOT RUN | — |
+| G7 Reports | `ops_control_g7_reports_page` | NOT RUN | — |
+
+**Execution order:** G0 → G1 → G2 → G3 → G4 → G5 → G6 → G7 (sequential).
+
+**Done when:** G0 + G1–G7 each `VERIFIED_OPERATIONALLY` or signed `WATCHLIST`; no open `TRUST_RISK_PRESENT` / `COGNITIVE_TRUST_RISK` / `PROJECTION_AUTHORITY_DRIFT` without remediation.
+
+**Out of scope:** Launch authorization · architecture/projection/lifecycle/reporting/calendar redesign · VERIFY-01 re-proof · generic QA / mock-data / a11y certification.
+
+---
+
 *Maintainers: **L-00x** rows use **§ Finishable unit contract**; **A1–G2** rows use **§ Recovery unit implementation contract** (end-to-end, status lifecycle, ten DONE gates). After each pass: update statuses (never skip `IMPLEMENTED_PENDING_VERIFICATION` → `VERIFIED` → `DONE`), paste closure evidence, unlock next unit. Do not declare wider launch without updating this file and the ten-gate table.*

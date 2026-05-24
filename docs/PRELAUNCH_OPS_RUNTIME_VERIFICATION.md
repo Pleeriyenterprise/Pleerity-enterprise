@@ -392,6 +392,7 @@ backend/docs/audit/ops_runtime_{family_slug}/
 | **PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01** | Condition-standard pilots — separate |
 | **RENT-OPS-OPERATIONAL-VERIFY-01** | Baseline system integrity for rent — Family 6 **depends on** but does not inherit `VERIFIED_OPERATIONALLY` |
 | **C2 / E1 / F1** | Compliance convergence/authority — observe-only; ops programme does not replace |
+| **PRELAUNCH-OPS-RUNTIME-VERIFY-02** | Client **control-surface** operational cognition — **depends on** VERIFY-01 lineage; does **not** inherit surface coherence from F1–F8 PASS — see [`PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md) |
 
 ---
 
