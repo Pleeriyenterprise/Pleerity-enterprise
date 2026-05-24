@@ -20,7 +20,10 @@ export const WORKSPACE_COMMAND_CENTER_PRIMARY =
   'Single-screen portfolio triage — verdict, drivers, and ranked next steps. Execution stays in Today, Requirements, Documents, and Jobs.';
 
 export const WORKSPACE_DOCUMENTS_SUBTITLE =
-  'Evidence vault — files are stored here first. Linked requirements and your compliance score update after you confirm extracted details (when applicable) and after any propagation or score recalculation catches up.';
+  'Document operations queue — items needing review, linkage, or expiry action appear here first. Settled evidence lives in each property’s Evidence Registry; upload still starts here.';
+
+export const WORKSPACE_DOCUMENTS_QUEUE_EMPTY_DESCRIPTION =
+  'No documents need operator action right now. Settled evidence is in Property → Documents (Evidence Registry). Upload new files here — they appear in this queue until review and linkage are complete.';
 
 export const WORKSPACE_DOCUMENTS_EMPTY_DESCRIPTION =
   'Upload certificates or proof here first. Linked requirements and your score update after you confirm extracted dates and the system applies them — not the instant the file lands.';

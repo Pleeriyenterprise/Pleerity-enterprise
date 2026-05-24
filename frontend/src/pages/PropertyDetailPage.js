@@ -115,6 +115,7 @@ import {
 import { isConditionStandardActiveStandardRow } from '../utils/workflowSemantics';
 import { requirementHasPersistedClientSubmission } from '../utils/clientPersistedSubmissionPresentation';
 import ClientDocumentPreviewModal from '../components/client/ClientDocumentPreviewModal';
+import PropertyEvidenceRegistrySections from '../components/client/PropertyEvidenceRegistrySections';
 import { downloadClientDocumentFile } from '../utils/clientDocumentPreview';
 import { toast } from '@/utils/portalNotifications';
 import { buildEntityRoute, buildSafeQueryPath, resolveClientPortalPath, resolveDocumentsPath } from '../utils/clientPortalNavigation';
@@ -3146,8 +3147,8 @@ export default function PropertyDetailPage() {
         <div className="space-y-6" id="property-documents-panel">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold text-midnight-blue">Documents for this property</h2>
-              <p className="text-xs text-gray-500 mt-1">What you have uploaded and linked. Requirements and status stay on the Compliance tab.</p>
+              <h2 className="text-lg font-semibold text-midnight-blue">Evidence Registry</h2>
+              <p className="text-xs text-gray-500 mt-1">Operational groupings for this property — active evidence, pending review, and attachments. The Document operations queue shows portfolio-wide items needing action.</p>
             </div>
             <Button
               className="bg-electric-teal text-white hover:bg-electric-teal/90 min-h-11 shrink-0"
@@ -3197,7 +3198,10 @@ export default function PropertyDetailPage() {
                     <strong className="text-midnight-blue">Total documents:</strong> {evidenceData.summary?.totalDocuments ?? 0}
                   </span>
                   <span>
-                    <strong className="text-midnight-blue">Linked:</strong> {evidenceData.summary?.linked ?? 0}
+                    <strong className="text-midnight-blue">Needs action:</strong> {evidenceData.summary?.attentionRequired ?? 0}
+                  </span>
+                  <span>
+                    <strong className="text-midnight-blue">Active evidence:</strong> {evidenceData.summary?.activeEvidence ?? 0}
                   </span>
                   <span>
                     <strong className="text-midnight-blue">Awaiting verification:</strong> {evidenceData.summary?.pendingConfirmation ?? 0}
@@ -3296,9 +3300,9 @@ export default function PropertyDetailPage() {
                 </div>
               )}
 
-              {/* All uploaded files */}
+              {/* Evidence registry sections */}
               <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-2">All documents</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Registry sections</h3>
                 {(evidenceData.documents?.length ?? 0) === 0 ? (
                   <Card className="border border-gray-200">
                     <CardContent className="py-6 px-4 sm:px-6 text-center text-sm text-gray-600 space-y-4">
@@ -3340,114 +3344,22 @@ export default function PropertyDetailPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <>
-                    <div className="hidden md:block rounded-xl border border-gray-200 bg-white overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-200 text-left text-gray-600 bg-gray-50">
-                              <th className="p-3">Document</th>
-                              <th className="p-3">Document type</th>
-                              <th className="p-3">Linked requirement</th>
-                              <th className="p-3">Status</th>
-                              <th className="p-3">Uploaded by</th>
-                              <th className="p-3">Uploaded at</th>
-                              <th className="p-3">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {evidenceData.documents.map((doc) => {
-                              const evidencePrimary = evidenceDocStatusLabel(doc);
-                              const showVerificationSubline = !clientVerificationLabelRedundantWithPrimary(doc, evidencePrimary);
-                              const reqLabel = linkedRequirementLabelForDocument(doc, requirements, rowTitle);
-                              const upLabel = formatEvidenceUploaderLabel(doc.uploaded_by, portalUserId);
-                              const workspaceHref = resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id });
-                              return (
-                              <tr key={doc.document_id} className="border-b border-gray-100 hover:bg-gray-50">
-                                <td className="p-3 font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</td>
-                                <td className="p-3 text-gray-600">{doc.document_type ? documentTypeLabel(doc.document_type) : '—'}</td>
-                                <td className="p-3 text-gray-600">{reqLabel}</td>
-                                <td className="p-3">
-                                  <div className="flex flex-col gap-1">
-                                    <span className="inline-flex px-2 py-1 rounded border text-xs bg-gray-100 text-gray-700 border-gray-200">{evidencePrimary}</span>
-                                    {showVerificationSubline ? (
-                                      <span className="text-[11px] text-gray-500">{clientFacingVerificationLabel(doc)}</span>
-                                    ) : null}
-                                  </div>
-                                </td>
-                                <td className="p-3 text-gray-600">{upLabel}</td>
-                                <td className="p-3 text-gray-600">{doc.uploaded_at ? formatDate(doc.uploaded_at) : '—'}</td>
-                                <td className="p-3">
-                                  <div className="flex flex-wrap gap-1">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="text-electric-teal border-electric-teal"
-                                      onClick={() => setPropertyDocumentPreview(doc)}
-                                      data-testid={`property-doc-preview-open-${doc.document_id}`}
-                                    >
-                                      <Eye className="w-3 h-3 mr-1" /> View
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}><Download className="w-3 h-3 mr-1" /> Download</Button>
-                                    {isPendingConfirmation(doc) && (
-                                      <Button variant="outline" size="sm" className="border-amber-300 text-amber-700" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>Confirm details</Button>
-                                    )}
-                                    <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}><History className="w-3 h-3 mr-1" /> History</Button>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="mt-1.5 block text-left text-xs text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline"
-                                    onClick={() => navigate(workspaceHref)}
-                                  >
-                                    Open in Documents workspace
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <div className="md:hidden space-y-2">
-                      {evidenceData.documents.map((doc) => {
-                        const evidencePrimary = evidenceDocStatusLabel(doc);
-                        const verificationSub = clientVerificationLabelRedundantWithPrimary(doc, evidencePrimary)
-                          ? null
-                          : clientFacingVerificationLabel(doc);
-                        const reqLabel = linkedRequirementLabelForDocument(doc, requirements, rowTitle);
-                        const upLabel = formatEvidenceUploaderLabel(doc.uploaded_by, portalUserId);
-                        const metaBits = [
-                          doc.document_type ? documentTypeLabel(doc.document_type) : '—',
-                          evidencePrimary,
-                          verificationSub,
-                          reqLabel !== '—' ? `Requirement: ${reqLabel}` : null,
-                          upLabel !== '—' ? `Uploaded by: ${upLabel}` : null,
-                          doc.uploaded_at ? formatDate(doc.uploaded_at) : null,
-                        ].filter(Boolean);
-                        const workspaceHref = resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id });
-                        return (
-                        <Card key={doc.document_id} className="border border-gray-200 p-3">
-                          <div className="font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</div>
-                          <div className="text-xs text-gray-600 mt-1">{metaBits.join(' · ')}</div>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            <Button variant="outline" size="sm" onClick={() => setPropertyDocumentPreview(doc)}>View</Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEvidenceDocumentDownload(doc)}>Download</Button>
-                            {isPendingConfirmation(doc) && <Button variant="outline" size="sm" onClick={() => navigate(resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id }))}>Confirm</Button>}
-                            <Button variant="ghost" size="sm" onClick={() => { setActiveTab(TAB_TIMELINE); setTimelineFilters((f) => ({ ...f, category: 'EVIDENCE' })); }}>History</Button>
-                          </div>
-                          <button
-                            type="button"
-                            className="mt-2 text-left text-xs text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline w-full"
-                            onClick={() => navigate(workspaceHref)}
-                          >
-                            Open in Documents workspace
-                          </button>
-                        </Card>
-                        );
-                      })}
-                    </div>
-                  </>
+                  <PropertyEvidenceRegistrySections
+                    evidenceData={evidenceData}
+                    requirements={requirements}
+                    propertyId={propertyId}
+                    evidenceDocStatusLabel={evidenceDocStatusLabel}
+                    linkedRequirementLabelForDocument={linkedRequirementLabelForDocument}
+                    rowTitle={rowTitle}
+                    clientVerificationLabelRedundantWithPrimary={clientVerificationLabelRedundantWithPrimary}
+                    clientFacingVerificationLabel={clientFacingVerificationLabel}
+                    isPendingConfirmation={isPendingConfirmation}
+                    resolveDocumentsPath={resolveDocumentsPath}
+                    navigate={navigate}
+                    onPreview={setPropertyDocumentPreview}
+                    onDownload={handleEvidenceDocumentDownload}
+                    formatDate={formatDate}
+                  />
                 )}
               </div>
 

@@ -38,7 +38,7 @@ import {
 import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import PropagationNoticeCallout from '../components/client/PropagationNoticeCallout';
 import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
-import { WORKSPACE_DOCUMENTS_SUBTITLE, WORKSPACE_DOCUMENTS_EMPTY_DESCRIPTION } from '../utils/workspaceOrientationCopy';
+import { WORKSPACE_DOCUMENTS_SUBTITLE, WORKSPACE_DOCUMENTS_EMPTY_DESCRIPTION, WORKSPACE_DOCUMENTS_QUEUE_EMPTY_DESCRIPTION } from '../utils/workspaceOrientationCopy';
 import {
   reviewStateLabel,
 } from '../utils/evidenceReviewUi';
@@ -53,6 +53,11 @@ import {
   getClientDocumentLinkageBadge,
   linkageReconciliationRequired,
 } from '../utils/documentClientPresentation';
+import {
+  countAttentionRequiredDocuments,
+  filterDocumentsForQueueView,
+  getClientDocumentVisibilityBadge,
+} from '../utils/documentVisibilityRegistry';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
@@ -109,6 +114,8 @@ const DocumentsPage = () => {
   });
   const [filterPropertyId, setFilterPropertyId] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [queueView, setQueueView] = useState('attention');
+  const [attentionRequiredCount, setAttentionRequiredCount] = useState(0);
   const [confirmDetailsModal, setConfirmDetailsModal] = useState(null);
   const [confirmExpiryDate, setConfirmExpiryDate] = useState('');
   const [confirmIssueDate, setConfirmIssueDate] = useState('');
@@ -289,6 +296,11 @@ const DocumentsPage = () => {
         clientAPI.getRequirements()
       ]);
       setDocuments(docsRes.data.documents || []);
+      setAttentionRequiredCount(
+        typeof docsRes.data.attention_required_count === 'number'
+          ? docsRes.data.attention_required_count
+          : countAttentionRequiredDocuments(docsRes.data.documents || []),
+      );
       setProperties(propsRes.data.properties || []);
       setRequirements(reqsRes.data.requirements || []);
     } catch (error) {
@@ -917,11 +929,16 @@ const DocumentsPage = () => {
     return String(r.display_label || r.description || r.requirement_type || r.requirement_code || '').trim();
   }, [uploadForm.requirement_id, requirements]);
 
-  const filteredDocuments = documents.filter((doc) => {
-    if (filterPropertyId && doc.property_id !== filterPropertyId) return false;
-    if (filterStatus && (doc.status || '').toUpperCase() !== filterStatus.toUpperCase()) return false;
-    return true;
-  });
+  const filteredDocuments = useMemo(() => {
+    const queueFiltered = filterDocumentsForQueueView(documents, queueView);
+    return queueFiltered.filter((doc) => {
+      if (filterPropertyId && doc.property_id !== filterPropertyId) return false;
+      if (filterStatus && (doc.status || '').toUpperCase() !== filterStatus.toUpperCase()) return false;
+      return true;
+    });
+  }, [documents, queueView, filterPropertyId, filterStatus]);
+
+  const attentionCount = attentionRequiredCount || countAttentionRequiredDocuments(documents);
 
   if (loading) {
     return (
@@ -945,8 +962,13 @@ const DocumentsPage = () => {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Documents</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Document operations</h1>
             <p className="text-sm text-gray-500 mt-0.5">{WORKSPACE_DOCUMENTS_SUBTITLE}</p>
+            {attentionCount > 0 ? (
+              <p className="text-xs text-amber-800 mt-1" data-testid="documents-attention-count">
+                {attentionCount} {attentionCount === 1 ? 'document needs' : 'documents need'} operator action.
+              </p>
+            ) : null}
           </div>
         </div>
         <Button
@@ -1257,12 +1279,12 @@ const DocumentsPage = () => {
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <FileText className="w-5 h-5" />
-                    Your Documents ({filteredDocuments.length}{filteredDocuments.length !== documents.length ? ` of ${documents.length}` : ''})
+                    Your operations queue ({filteredDocuments.length}{filteredDocuments.length !== documents.length ? ` of ${documents.length}` : ''})
                   </span>
                 </CardTitle>
                 <p className="text-sm text-gray-500 mt-1">
-                  After upload, extraction suggests dates — confirm them (Review and Apply or the post-upload prompt)
-                  before the requirement and compliance score treat the certificate as final evidence.
+                  Default view shows documents needing action. Settled evidence is in Property → Documents (Evidence Registry).
+                  Upload ≠ verified; confirm extracted details before requirements treat files as final evidence.
                 </p>
               </CardHeader>
               <CardContent>
@@ -1277,6 +1299,18 @@ const DocumentsPage = () => {
                 ) : (
                   <>
                     <PortalFilterStack className="mb-4">
+                      <select
+                        value={queueView}
+                        onChange={(e) => setQueueView(e.target.value)}
+                        className="w-full md:w-auto min-h-11 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-electric-teal font-medium"
+                        data-testid="filter-queue-view"
+                      >
+                        <option value="attention">Needs action (default)</option>
+                        <option value="all">All documents (searchable)</option>
+                        <option value="active_evidence">Active evidence only</option>
+                        <option value="operational_attachments">Operational attachments</option>
+                        <option value="historical">Historical / superseded</option>
+                      </select>
                       <select
                         value={filterPropertyId}
                         onChange={(e) => setFilterPropertyId(e.target.value)}
@@ -1302,16 +1336,20 @@ const DocumentsPage = () => {
                         <option value="VERIFIED">Confirmed</option>
                         <option value="REJECTED">Rejected</option>
                       </select>
-                      {(filterPropertyId || filterStatus) && (
-                        <Button variant="ghost" size="sm" className="min-h-11 w-full md:w-auto" onClick={() => { setFilterPropertyId(''); setFilterStatus(''); }} data-testid="clear-filters">
+                      {(filterPropertyId || filterStatus || queueView !== 'attention') && (
+                        <Button variant="ghost" size="sm" className="min-h-11 w-full md:w-auto" onClick={() => { setFilterPropertyId(''); setFilterStatus(''); setQueueView('attention'); }} data-testid="clear-filters">
                           Clear filters
                         </Button>
                       )}
                     </PortalFilterStack>
                     {filteredDocuments.length === 0 ? (
                       <EmptyState
-                        title="No documents match"
-                        description="No files match the current filters. Clear filters or upload on this page — new files can take a moment to appear after upload."
+                        title={queueView === 'attention' ? 'Operations queue clear' : 'No documents match'}
+                        description={
+                          queueView === 'attention'
+                            ? WORKSPACE_DOCUMENTS_QUEUE_EMPTY_DESCRIPTION
+                            : 'No files match the current filters. Clear filters or switch queue view.'
+                        }
                         testId="no-documents-match"
                         className="py-8"
                       />
@@ -1331,6 +1369,11 @@ const DocumentsPage = () => {
                                 {doc.file_name || doc.original_filename || 'Document'}
                               </span>
                               {getStatusBadge(doc)}
+                              {getClientDocumentVisibilityBadge(doc) ? (
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium ${getClientDocumentVisibilityBadge(doc).color}`}>
+                                  {getClientDocumentVisibilityBadge(doc).label}
+                                </span>
+                              ) : null}
                               {getLinkageBadge(doc)}
                               {(doc.extraction_id || doc.ai_extraction || extractingDocumentId === doc.document_id) && getExtractionStatusBadge(doc, extractingDocumentId)}
                             </div>

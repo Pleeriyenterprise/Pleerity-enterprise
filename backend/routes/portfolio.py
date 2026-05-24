@@ -722,9 +722,44 @@ async def get_property_evidence(request: Request, property_id: str):
         logger.warning("Evidence timeline fallback: %s", e)
         recent_events = []
 
+    from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
+    from services.document_operational_state import attach_document_operational_projection
+    from services.document_linkage_governance import (
+        attach_document_linkage_projection_batch,
+        load_runtime_requirements_for_client,
+    )
+    from services.document_visibility_governance import (
+        attach_document_visibility_projection_batch,
+        group_documents_by_registry_section,
+    )
+
+    runtime_ids, runtime_reqs = await load_runtime_requirements_for_client(
+        db, client_id=client_id, property_id=property_id
+    )
+    for d in documents:
+        d["evidence_review_state"] = effective_evidence_review_state(d)
+        d["assurance_tier"] = effective_assurance_tier(d)
+        attach_document_operational_projection(d)
+    attach_document_linkage_projection_batch(
+        documents,
+        runtime_requirement_ids=runtime_ids,
+        runtime_requirements=runtime_reqs,
+    )
+    attach_document_visibility_projection_batch(
+        documents,
+        requirements=runtime_reqs,
+    )
+    registry = group_documents_by_registry_section(documents)
+    attention_required_count = sum(1 for d in documents if d.get("document_attention_required") is True)
+
+    summary["attentionRequired"] = attention_required_count
+    summary["activeEvidence"] = len(registry.get("active_evidence") or [])
+    summary["operationalAttachments"] = len(registry.get("operational_attachments") or [])
+
     return {
         "summary": summary,
         "documents": documents,
+        "registry": registry,
         "recentEvents": recent_events,
     }
 

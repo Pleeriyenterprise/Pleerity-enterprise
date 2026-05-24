@@ -3290,7 +3290,13 @@ async def get_document_extraction(request: Request, document_id: str):
 
 
 @router.get("")
-async def list_documents(request: Request, property_id: str = None, requirement_id: str = None):
+async def list_documents(
+    request: Request,
+    property_id: str = None,
+    requirement_id: str = None,
+    visibility_state: str = None,
+    queue: str = None,
+):
     """List documents for the client."""
     user = await client_route_guard(request)
     db = database.get_db()
@@ -3318,6 +3324,10 @@ async def list_documents(request: Request, property_id: str = None, requirement_
             attach_document_linkage_projection_batch,
             load_runtime_requirements_for_client,
         )
+        from services.document_visibility_governance import (
+            attach_document_visibility_projection_batch,
+            filter_documents_by_visibility,
+        )
 
         runtime_ids, runtime_reqs = await load_runtime_requirements_for_client(
             db, client_id=user["client_id"], property_id=property_id
@@ -3339,10 +3349,21 @@ async def list_documents(request: Request, property_id: str = None, requirement_
             runtime_requirement_ids=runtime_ids,
             runtime_requirements=runtime_reqs,
         )
-        
+        attach_document_visibility_projection_batch(
+            documents,
+            requirements=runtime_reqs,
+        )
+
+        vis_filter = visibility_state or queue
+        filtered = filter_documents_by_visibility(documents, vis_filter)
+        attention_count = sum(1 for d in documents if d.get("document_attention_required") is True)
+
         return {
-            "documents": documents,
-            "total": len(documents)
+            "documents": filtered,
+            "total": len(filtered),
+            "total_unfiltered": len(documents),
+            "attention_required_count": attention_count,
+            "visibility_filter": vis_filter,
         }
     
     except Exception as e:
@@ -4129,12 +4150,22 @@ async def reconcile_document_linkage(
     )
     from services.document_operational_state import attach_document_operational_projection
     from services.document_linkage_governance import attach_document_linkage_projection
+    from services.document_visibility_governance import attach_document_visibility_projection
 
     attach_document_operational_projection(updated)
     attach_document_linkage_projection(
         updated,
         runtime_requirement_ids=runtime_ids_after,
         runtime_requirements=runtime_reqs_after,
+    )
+    attach_document_visibility_projection(
+        updated,
+        requirements_by_id={str(r.get("requirement_id")): r for r in runtime_reqs_after if r.get("requirement_id")},
+        primary_document_ids={
+            str(r.get("evidence_doc_id") or r.get("document_id") or "").strip()
+            for r in runtime_reqs_after
+            if str(r.get("evidence_doc_id") or r.get("document_id") or "").strip()
+        },
     )
     await create_audit_log(
         action=AuditAction.DOCUMENT_UPLOADED,
