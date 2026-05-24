@@ -1,0 +1,15 @@
+{
+  "browser": {
+    "role": "contractor",
+    "steps": [
+      {
+        "step": "contractor_dashboard",
+        "ok": true,
+        "detail": "Contractor Portal\nF2 Ops Verify Heating\n(f2-ops-heating-wale"
+      }
+    ],
+    "auth_mode": "form_login"
+  },
+  "work_order_id": "2711efb1-69e7-494c-8678-d63b8c751805",
+  "at_utc": "2026-05-24T12:19:12.354753+00:00"
+}

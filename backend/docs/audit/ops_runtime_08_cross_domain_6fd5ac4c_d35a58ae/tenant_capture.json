@@ -1,0 +1,105 @@
+{
+  "browser": {
+    "role": "tenant",
+    "steps": [
+      {
+        "step": "tenant_dashboard",
+        "ok": true,
+        "detail": "Compliance Vault Pro\nf7-ops-wales@yopmail.com\nCompliance Vau"
+      },
+      {
+        "step": "tenant_refresh",
+        "ok": true,
+        "detail": "reload"
+      }
+    ],
+    "auth_mode": "form_login"
+  },
+  "lifecycle": {
+    "status": 200,
+    "pass": true,
+    "issues": [
+      {
+        "issue_id": "b0e3dd8b-9b5a-4ec7-b59c-28d727ba498b",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "summary": "OPS-RUNTIME-F8-20260524T115943Z \u2014 cross-domain tenant trigger heating",
+        "category": "heating",
+        "lifecycle_phase": "in_progress",
+        "landlord_status": "ready_for_work_order",
+        "created_at": "2026-05-24T12:04:06.566853+00:00",
+        "updated_at": "2026-05-24T12:06:40.975107+00:00"
+      },
+      {
+        "issue_id": "4748d3f2-71f3-4a61-8106-f410eef9b9ad",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "summary": "OPS-RUNTIME-F7-20260523T225234Z \u2014 g10 tenant-safe report probe",
+        "category": "general",
+        "lifecycle_phase": "completed",
+        "landlord_status": "closed",
+        "created_at": "2026-05-23T23:06:42.414868+00:00",
+        "updated_at": "2026-05-23T23:06:57.011841+00:00"
+      },
+      {
+        "issue_id": "d08ba50d-3333-4ac8-85ca-a8ccabce773e",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "summary": "OPS-RUNTIME-F7-20260523T225234Z \u2014 duplicate observation probe",
+        "category": "general",
+        "lifecycle_phase": "completed",
+        "landlord_status": "closed",
+        "created_at": "2026-05-23T23:04:33.733782+00:00",
+        "updated_at": "2026-05-23T23:04:47.915085+00:00"
+      },
+      {
+        "issue_id": "02e96768-cf9c-4bd7-ae34-754c01f481f3",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "summary": "OPS-RUNTIME-F7-20260523T225234Z \u2014 tenant-reported damp in bathroom",
+        "category": "general",
+        "lifecycle_phase": "completed",
+        "landlord_status": "closed",
+        "created_at": "2026-05-23T22:59:21.115402+00:00",
+        "updated_at": "2026-05-23T23:02:09.996116+00:00"
+      },
+      {
+        "issue_id": "35ad641f-2d95-4002-ba5a-618b37673a6c",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "summary": "OPS-RUNTIME-F7-20260523T225234Z-preflight-probe",
+        "category": "general",
+        "lifecycle_phase": "completed",
+        "landlord_status": "closed",
+        "created_at": "2026-05-23T22:57:56.618280+00:00",
+        "updated_at": "2026-05-23T22:58:11.737552+00:00"
+      },
+      {
+        "issue_id": "7f70e523-4849-4d72-bf8c-e104ccdb0615",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "summary": "OPS-RUNTIME-F7-20260523T211806Z \u2014 duplicate observation probe",
+        "category": "general",
+        "lifecycle_phase": "reported",
+        "landlord_status": "triaged",
+        "created_at": "2026-05-23T21:26:56.181385+00:00",
+        "updated_at": "2026-05-23T21:26:56.181385+00:00"
+      },
+      {
+        "issue_id": "4ff3ebf7-cddf-4998-8518-74f93f0b6189",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "summary": "OPS-RUNTIME-F7-20260523T211806Z \u2014 tenant-reported damp in bathroom",
+        "category": "general",
+        "lifecycle_phase": "completed",
+        "landlord_status": "closed",
+        "created_at": "2026-05-23T21:23:04.221889+00:00",
+        "updated_at": "2026-05-23T21:27:16.069780+00:00"
+      },
+      {
+        "issue_id": "9fc5405d-abd6-4536-a9f3-c4b58a44e454",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "summary": "OPS-RUNTIME-F7-20260523T211806Z-preflight-probe",
+        "category": "general",
+        "lifecycle_phase": "completed",
+        "landlord_status": "closed",
+        "created_at": "2026-05-23T21:21:39.151803+00:00",
+        "updated_at": "2026-05-23T21:21:52.985283+00:00"
+      }
+    ]
+  },
+  "at_utc": "2026-05-24T12:19:12.354753+00:00"
+}

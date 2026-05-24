@@ -1,7 +1,7 @@
 # PRELAUNCH-OPS-RUNTIME-VERIFY-01 — Operational Domain Runtime Verification Charter
 
 **Programme ID:** `PRELAUNCH-OPS-RUNTIME-VERIFY-01`  
-**Status:** **IN_PROGRESS** (F1–F7 `VERIFIED_OPERATIONALLY`; F8 may proceed subject to charter; cross-domain F8 not auto-started)  
+**Status:** **COMPLETE** (F1–F8 `VERIFIED_OPERATIONALLY`; operational runtime verification programme closed — **not** launch authorization)  
 **Authority:** Governed operational verification only — **not** launch authorization, UK rollout approval, compliance authority redesign, planner redesign, accounting certification, asset-native synthesis rollout, or AI operational orchestration.
 
 ---

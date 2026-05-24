@@ -4749,7 +4749,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-01 — operational domain runtime closure (DEFINED — hardened charter)
 
-**Status:** **IN_PROGRESS** — F1–F7 `VERIFIED_OPERATIONALLY`. F8 may proceed.
+**Status:** **COMPLETE** — F1–F8 `VERIFIED_OPERATIONALLY`.
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION.md)
 
@@ -4790,7 +4790,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 | Client sync | `ops_runtime_05_client_sync` | VERIFIED_OPERATIONALLY | Run `20260523T184731Z`; bundle `ops_runtime_05_client_sync_6fd5ac4c_d35a58ae` |
 | Rent ops | `ops_runtime_06_rent_ops` | VERIFIED_OPERATIONALLY | Refinement run `20260523T204027Z`; bundle `ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae` |
 | Tenant portal | `ops_runtime_07_tenant_portal` | VERIFIED_OPERATIONALLY | Post-deploy same-run rerun `20260523T225234Z`; commits `83cbe99a`+`128736db`; bundle `ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae` |
-| Cross-domain | `ops_runtime_08_cross_domain` | NOT_STARTED | BLOCKED until upstream owner bundles exist |
+| Cross-domain | `ops_runtime_08_cross_domain` | VERIFIED_OPERATIONALLY | Same-run chain `20260524T115943Z`; bundle `ops_runtime_08_cross_domain_6fd5ac4c_d35a58ae` |
 
 **Related baseline (does not confer runtime VERIFIED_OPERATIONALLY):**
 

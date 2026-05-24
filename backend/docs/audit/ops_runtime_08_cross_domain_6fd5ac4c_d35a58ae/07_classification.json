@@ -1,0 +1,35 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_08_cross_domain",
+  "authoritative_verification_owner": "ops_runtime_08_cross_domain",
+  "proof_mode": "operational_browser",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "trust_risks": [],
+  "classified_at_utc": "2026-05-24T12:23:43.131052+00:00",
+  "run_tag": "20260524T115943Z",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "mutations_verified_in_this_bundle": [
+    "cross_domain_chain_continuity",
+    "cross_family_propagation_integrity",
+    "cross_domain_convergence"
+  ],
+  "checkpoints": {
+    "G0_chain_precheck": true,
+    "G1_browser_landlord": true,
+    "G1_browser_tenant": true,
+    "G1_browser_contractor": true,
+    "G3_cross_domain_chain": true,
+    "G4_async_convergence": true,
+    "G9_idempotency": true,
+    "G10_authority": true
+  }
+}

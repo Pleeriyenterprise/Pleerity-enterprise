@@ -1,0 +1,28 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_08_cross_domain",
+  "run_tag": "20260524T115943Z",
+  "authoritative_verification_owner": "ops_runtime_08_cross_domain",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "deploy_lineage_commits": {
+    "f2": "b921cbe7",
+    "f4": "a4b23caa",
+    "f7_remediation": "128736db",
+    "f7_verified": "96984ad7",
+    "chain_parity": "5b4c1f7c"
+  },
+  "classification": "VERIFIED_OPERATIONALLY",
+  "issue_id": "b0e3dd8b-9b5a-4ec7-b59c-28d727ba498b",
+  "work_order_id": "2711efb1-69e7-494c-8678-d63b8c751805",
+  "marker": "OPS-RUNTIME-F8-20260524T115943Z",
+  "finished_at_utc": "2026-05-24T12:23:43.137408+00:00"
+}

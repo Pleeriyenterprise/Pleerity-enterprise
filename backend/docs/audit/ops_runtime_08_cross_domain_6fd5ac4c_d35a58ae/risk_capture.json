@@ -1,0 +1,10 @@
+{
+  "at_utc": "2026-05-24T12:08:09.745155+00:00",
+  "recalculate_status": 200,
+  "list_status": 200,
+  "signal_count": 37,
+  "recalculate_replay_status": 200,
+  "signal_count_after_replay": 37,
+  "count_stable_on_regen_replay": true,
+  "pass": true
+}

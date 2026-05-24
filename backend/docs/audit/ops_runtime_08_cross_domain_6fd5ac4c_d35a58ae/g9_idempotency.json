@@ -1,0 +1,34 @@
+{
+  "at_utc": "2026-05-24T12:10:38.381867+00:00",
+  "probes": [
+    {
+      "name": "repeated_open_count_reads",
+      "reads": [
+        45,
+        45,
+        45
+      ],
+      "pass": true
+    },
+    {
+      "name": "duplicate_protection_snapshot",
+      "first": 39,
+      "second": 39,
+      "pass": true
+    },
+    {
+      "name": "risk_regen_no_duplicate_inflation",
+      "count_a": 37,
+      "count_b": 37,
+      "pass": true
+    },
+    {
+      "name": "wo_status_stable_reads",
+      "pass": true,
+      "status": "COMPLETED"
+    }
+  ],
+  "pass": true,
+  "fail_system": false,
+  "trust_risk": false
+}

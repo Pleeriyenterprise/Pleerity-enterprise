@@ -1,0 +1,29 @@
+{
+  "at_utc": "2026-05-24T12:14:11.567602+00:00",
+  "probes": [
+    {
+      "name": "tenant_cannot_access_rent_summary",
+      "pass": true
+    },
+    {
+      "name": "tenant_cannot_patch_landlord_issue",
+      "pass": true
+    },
+    {
+      "name": "contractor_cannot_access_landlord_dashboard",
+      "pass": true
+    },
+    {
+      "name": "completed_wo_monotonic",
+      "pass": true,
+      "status": "COMPLETED"
+    },
+    {
+      "name": "rent_truth_monotonic_reads",
+      "pass": true,
+      "a": 171000,
+      "b": 171000
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,37 @@
+{
+  "wait_seconds": 60,
+  "finished_at_utc": "2026-05-24T12:23:43.131052+00:00",
+  "final_projection": {
+    "at_utc": "2026-05-24T12:20:42.718046+00:00",
+    "dashboard_status": 200,
+    "protection_snapshot_status": 200,
+    "open_issues": 39,
+    "active_risk_signals": 1,
+    "open_count_status": 200,
+    "open_issues_count": 45,
+    "command_center_status": 200,
+    "issues_marker_open": 1
+  },
+  "final_rent": {
+    "at_utc": "2026-05-24T12:23:02.554099+00:00",
+    "summary_status": 200,
+    "financial_snapshot_status": 200,
+    "summary_collected": 171000,
+    "snapshot_collected": 171000,
+    "coherent": true
+  },
+  "final_risk": {
+    "at_utc": "2026-05-24T12:23:32.202522+00:00",
+    "recalculate_status": 200,
+    "list_status": 200,
+    "signal_count": 37,
+    "recalculate_replay_status": 200,
+    "signal_count_after_replay": 37,
+    "count_stable_on_regen_replay": true,
+    "pass": true
+  },
+  "final_tenant_reported_issues_status": 200,
+  "wo_completed": true,
+  "pass": true,
+  "queue_ok": true
+}

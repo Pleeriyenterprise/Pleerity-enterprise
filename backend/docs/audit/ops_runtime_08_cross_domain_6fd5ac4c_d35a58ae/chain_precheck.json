@@ -1,0 +1,409 @@
+{
+  "at_utc": "2026-05-24T12:01:00.975594+00:00",
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+  "family": "ops_runtime_08_cross_domain",
+  "authoritative_verification_owner": "ops_runtime_08_cross_domain",
+  "proof_mode": "operational_browser",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "deploy_lineage_commits": {
+    "f2": "b921cbe7",
+    "f4": "a4b23caa",
+    "f7_remediation": "128736db",
+    "f7_verified": "96984ad7",
+    "chain_parity": "5b4c1f7c"
+  },
+  "dependencies": {
+    "f1": {
+      "found": true,
+      "path": "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "raw": {
+        "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+        "family": "ops_runtime_01_issues",
+        "authoritative_verification_owner": "ops_runtime_01_issues",
+        "proof_mode": "operational_browser",
+        "classification": "VERIFIED_OPERATIONALLY",
+        "secondary_flags": [],
+        "trust_risks": [],
+        "classified_at_utc": "2026-05-23T11:36:29.508914+00:00",
+        "mutations_verified_in_this_bundle": [
+          "issue_create",
+          "issue_view",
+          "issue_update",
+          "issue_status_transition",
+          "issue_close",
+          "issue_reopen_attempt",
+          "issue_refresh_persistence",
+          "issue_cross_surface_sync"
+        ],
+        "shared_dependency_bundle_ids": [],
+        "checkpoints": {
+          "G0_preflight": true,
+          "G1_browser": true,
+          "G2_user_outcome": true,
+          "G3_system_outcome": true,
+          "G4_async_convergence": true,
+          "G5_refresh": true,
+          "G9_idempotency": true,
+          "G10_authority": true
+        }
+      }
+    },
+    "f2": {
+      "found": true,
+      "path": "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "raw": {
+        "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+        "family": "ops_runtime_02_work_orders",
+        "authoritative_verification_owner": "ops_runtime_02_work_orders",
+        "proof_mode": "operational_browser",
+        "classification": "VERIFIED_OPERATIONALLY",
+        "secondary_flags": [],
+        "trust_risks": [],
+        "classified_at_utc": "2026-05-23T15:31:05.467793+00:00",
+        "shared_dependency_bundle_ids": [
+          "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json"
+        ],
+        "mutations_verified_in_this_bundle": [
+          "issue_create_for_wo_source",
+          "work_order_create_from_issue",
+          "work_order_view",
+          "work_order_status_transition",
+          "work_order_complete",
+          "work_order_refresh_persistence",
+          "issue_wo_cross_surface_sync"
+        ],
+        "checkpoints": {
+          "G0_preflight": true,
+          "G1_browser": true,
+          "G2_user_outcome": true,
+          "G3_system_outcome": true,
+          "G4_async_convergence": true,
+          "G5_refresh": true,
+          "G9_idempotency": true,
+          "G10_authority": true
+        }
+      }
+    },
+    "f3": {
+      "found": true,
+      "path": "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "raw": {
+        "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+        "family": "ops_runtime_03_contractor",
+        "authoritative_verification_owner": "ops_runtime_03_contractor",
+        "proof_mode": "operational_browser",
+        "classification": "VERIFIED_OPERATIONALLY",
+        "secondary_flags": [],
+        "trust_risks": [],
+        "classified_at_utc": "2026-05-23T15:53:48.679592+00:00",
+        "shared_dependency_bundle_ids": [
+          "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json"
+        ],
+        "checkpoints": {
+          "G0_preflight": true,
+          "G1_browser_client": true,
+          "G1_browser_contractor": true,
+          "G2_user_outcome": true,
+          "G3_system_outcome": true,
+          "G4_async_convergence": true,
+          "G5_refresh": true,
+          "G9_idempotency": true,
+          "G10_authority": true,
+          "visibility_trust": true
+        }
+      }
+    },
+    "f4": {
+      "found": true,
+      "path": "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "raw": {
+        "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+        "family": "ops_runtime_04_risk_signals",
+        "authoritative_verification_owner": "ops_runtime_04_risk_signals",
+        "proof_mode": "operational_browser",
+        "classification": "VERIFIED_OPERATIONALLY",
+        "secondary_flags": [],
+        "trust_risks": [],
+        "classified_at_utc": "2026-05-23T17:56:35.010012+00:00",
+        "deploy_commit": "a4b23caa",
+        "post_deploy_run_tag": "20260523T174844Z",
+        "shared_dependency_bundle_ids": [
+          "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json"
+        ],
+        "mutations_verified_in_this_bundle": [
+          "risk_signal_visible",
+          "signal_stable_through_regen",
+          "signal_create_issue",
+          "issue_create_work_order",
+          "contractor_remediation_complete",
+          "signal_remediation_in_progress",
+          "signal_resolve_after_execution",
+          "g9_duplicate_create_issue_replay",
+          "g10_authority_integrity"
+        ],
+        "checkpoints": {
+          "G0_preflight": true,
+          "G1_browser_client": true,
+          "G1_browser_contractor": true,
+          "G2_user_outcome": true,
+          "G3_system_outcome": true,
+          "G4_async_convergence": true,
+          "G5_refresh": true,
+          "G9_idempotency": true,
+          "G10_authority": true,
+          "signal_remediation_coherence": true
+        }
+      }
+    },
+    "f5": {
+      "found": true,
+      "path": "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "raw": {
+        "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+        "family": "ops_runtime_05_client_sync",
+        "authoritative_verification_owner": "ops_runtime_05_client_sync",
+        "proof_mode": "operational_browser",
+        "classification": "VERIFIED_OPERATIONALLY",
+        "secondary_flags": [],
+        "trust_risks": [],
+        "classified_at_utc": "2026-05-23T19:18:10.004495+00:00",
+        "run_tag": "20260523T184731Z",
+        "mutations_verified_in_this_bundle": [
+          "baseline_projections",
+          "issue_create_open_count_increment",
+          "wo_create_and_contractor_complete",
+          "projection_after_wo_complete",
+          "g9_idempotency",
+          "g10_authority_integrity",
+          "browser_cross_surface",
+          "async_convergence"
+        ],
+        "shared_dependency_bundle_ids": [
+          "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json"
+        ],
+        "checkpoints": {
+          "G0_preflight": true,
+          "G1_browser_client": true,
+          "G2_user_outcome": true,
+          "G3_system_outcome": true,
+          "G4_async_convergence": true,
+          "G5_refresh": true,
+          "G9_idempotency": true,
+          "G10_authority": true
+        }
+      }
+    },
+    "f6": {
+      "found": true,
+      "path": "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "raw": {
+        "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+        "family": "ops_runtime_06_rent_ops",
+        "authoritative_verification_owner": "ops_runtime_06_rent_ops",
+        "proof_mode": "operational_browser",
+        "classification": "VERIFIED_OPERATIONALLY",
+        "secondary_flags": [],
+        "trust_risks": [],
+        "classified_at_utc": "2026-05-23T20:55:18.246121+00:00",
+        "run_tag": "20260523T204027Z",
+        "refinement_run": true,
+        "shared_dependency_bundle_ids": [
+          "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json"
+        ],
+        "payment_date_authority_result": "PASS",
+        "partial_overdue_truth_result": "PASS",
+        "mobile_operational_clarity_result": "PASS",
+        "monotonic_financial_truth_result": "PASS",
+        "reminder_reliability_result": "PASS",
+        "checkpoints": {
+          "G0_preflight": true,
+          "G1_browser_landlord": true,
+          "G2_user_outcome": true,
+          "G3_system_outcome": true,
+          "G4_async_convergence": true,
+          "G5_refresh": true,
+          "G9_idempotency": true,
+          "G10_authority": true,
+          "R1_payment_date_authority": true,
+          "R2_partial_overdue_truth": true,
+          "R3_mobile_clarity": true,
+          "R4_monotonic_truth": true,
+          "R5_reminder_reliability": true
+        }
+      }
+    },
+    "f7": {
+      "found": true,
+      "path": "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "raw": {
+        "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-01",
+        "family": "ops_runtime_07_tenant_portal",
+        "authoritative_verification_owner": "ops_runtime_07_tenant_portal",
+        "proof_mode": "operational_browser",
+        "classification": "VERIFIED_OPERATIONALLY",
+        "secondary_flags": [],
+        "trust_risks": [],
+        "classified_at_utc": "2026-05-23T23:12:16.464924+00:00",
+        "run_tag": "20260523T225234Z",
+        "post_deploy_ops_rerun": true,
+        "deploy_commits": [
+          "83cbe99a",
+          "128736db",
+          "5b4c1f7c"
+        ],
+        "issue_id": "02e96768-cf9c-4bd7-ae34-754c01f481f3",
+        "work_order_id": "0e0b6dd7-66aa-4a9c-9fc2-00f261551f69",
+        "shared_dependency_bundle_ids": [
+          "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json",
+          "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json"
+        ],
+        "cross_role_synchronization_result": true,
+        "authority_boundary_result": true,
+        "lifecycle_visibility_result": true,
+        "checkpoints": {
+          "G0_preflight": true,
+          "G1_browser_landlord": true,
+          "G2_browser_tenant": true,
+          "G3_cross_role_sync": true,
+          "G4_async_convergence": true,
+          "G5_refresh": true,
+          "G9_idempotency": true,
+          "G10_authority": true
+        }
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "dep_f1_bundle",
+      "ok": true,
+      "detail": "ops_runtime_01_issues_6fd5ac4c_d35a58ae/07_classification.json"
+    },
+    {
+      "name": "dep_f1_verified",
+      "ok": true,
+      "detail": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "name": "dep_f2_bundle",
+      "ok": true,
+      "detail": "ops_runtime_02_work_orders_6fd5ac4c_d35a58ae/07_classification.json"
+    },
+    {
+      "name": "dep_f2_verified",
+      "ok": true,
+      "detail": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "name": "dep_f3_bundle",
+      "ok": true,
+      "detail": "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json"
+    },
+    {
+      "name": "dep_f3_verified",
+      "ok": true,
+      "detail": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "name": "dep_f4_bundle",
+      "ok": true,
+      "detail": "ops_runtime_04_risk_signals_6fd5ac4c_d35a58ae/07_classification.json"
+    },
+    {
+      "name": "dep_f4_verified",
+      "ok": true,
+      "detail": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "name": "dep_f5_bundle",
+      "ok": true,
+      "detail": "ops_runtime_05_client_sync_6fd5ac4c_d35a58ae/07_classification.json"
+    },
+    {
+      "name": "dep_f5_verified",
+      "ok": true,
+      "detail": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "name": "dep_f6_bundle",
+      "ok": true,
+      "detail": "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json"
+    },
+    {
+      "name": "dep_f6_verified",
+      "ok": true,
+      "detail": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "name": "dep_f7_bundle",
+      "ok": true,
+      "detail": "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json"
+    },
+    {
+      "name": "dep_f7_verified",
+      "ok": true,
+      "detail": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "name": "staging_health",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "tenant_dashboard",
+      "ok": true,
+      "detail": "200"
+    },
+    {
+      "name": "landlord_dashboard",
+      "ok": true,
+      "detail": "200"
+    },
+    {
+      "name": "contractor_wos",
+      "ok": true,
+      "detail": "200"
+    },
+    {
+      "name": "tenant_landlord_boundary",
+      "ok": true,
+      "detail": "403"
+    },
+    {
+      "name": "tenant_safe_reported_issues",
+      "ok": true,
+      "detail": "200"
+    }
+  ],
+  "verification_chain_intact": true,
+  "ready": true
+}
