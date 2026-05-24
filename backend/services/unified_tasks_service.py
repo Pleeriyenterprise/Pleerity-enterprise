@@ -44,6 +44,7 @@ from services.requirement_read_model_guard import get_canonical_requirement_ids_
 from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
 from services.requirement_truth import requirement_has_active_negative_actionability
 from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
+from services.today_attention_ranking import attention_rank_explanation, today_attention_sort_key
 from utils.compliance_fanout_log import compliance_fanout_extra
 
 logger = logging.getLogger(__name__)
@@ -968,14 +969,10 @@ async def _freshness_block(client_id: str) -> Dict[str, Any]:
 
 
 def _sort_tasks(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    return sorted(
-        items,
-        key=lambda t: (
-            -int(t.get("impact_score") or 0),
-            t.get("urgency_level") not in ("critical", "high"),
-            (t.get("title") or ""),
-        ),
-    )
+    """ATTENTION_AUTHORITY_RULES ordering, then impact_score / title / id tie-breakers."""
+    for t in items:
+        t["attention_authority"] = attention_rank_explanation(t)
+    return sorted(items, key=today_attention_sort_key)
 
 
 def _task_requirement_identity(task: Dict[str, Any]) -> Tuple[str, str]:
@@ -1128,7 +1125,7 @@ async def get_unified_tasks_for_client(
     """
     Build unified task list + sections + summary + freshness + spend (when invoicing data exists).
 
-    Prioritization: impact_score (overdue, SLA, engine priority) then urgency tier then title.
+    Prioritization: ATTENTION_AUTHORITY_RULES (``today_attention_ranking``) then impact_score tie-breakers.
     """
     now = datetime.now(timezone.utc)
     db = database.get_db()

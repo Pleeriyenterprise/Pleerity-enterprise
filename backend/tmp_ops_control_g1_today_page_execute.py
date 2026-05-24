@@ -24,6 +24,7 @@ from services.ops_runtime_verify_02.classification_helpers import Classification
 from services.ops_runtime_verify_02.convergence_observer import ConvergenceObserver
 from services.ops_runtime_verify_02.cta_runtime_verifier import CtaRuntimeVerifier
 from services.ops_runtime_verify_02.widget_coherence_service import WidgetCoherenceService
+from services.today_attention_ranking import attention_class_for_task
 
 PROGRAMME = "PRELAUNCH-OPS-RUNTIME-VERIFY-02"
 FAMILY = "ops_control_g1_today_page"
@@ -127,20 +128,9 @@ def _urgency_rank(task: Dict[str, Any]) -> int:
 
 
 def _attention_class(task: Dict[str, Any]) -> str:
-    section = task.get("_section") or ""
-    source = str(task.get("source_type") or "").lower()
-    u = str(task.get("urgency") or "").lower()
-    if u == "overdue" or (task.get("overdue_days") or 0) > 0:
-        return "overdue_remediation"
-    if source in ("risk_signal", "risk") or "risk" in source:
-        return "active_risk"
-    if source in ("work_order", "issue", "maintenance_issue", "requirement", "compliance_job"):
-        return "open_operational_debt"
-    if u == "due_soon" or section == "upcoming":
-        return "time_bound_reminder"
-    if section in ("snoozed", "hidden"):
-        return "informational"
-    return "open_operational_debt" if section in ("urgent", "in_progress") else "informational"
+    row = dict(task)
+    row.setdefault("section", task.get("_section") or "")
+    return attention_class_for_task(row)
 
 
 def _items_for_attention(tasks: List[Dict[str, Any]], *, active_only: bool = True) -> List[Dict[str, Any]]:
