@@ -4806,7 +4806,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-02 — operational control-plane verification (rev 4)
 
-**Status:** G0 **EXECUTED** — `CONTROL_PLANE_CIRCULARITY` (run `20260524T140328Z`); **G1–G7 NOT RUN**. G1 blocked until G0 `VERIFIED_OPERATIONALLY` or signed waiver.
+**Status:** G0 **`VERIFIED_OPERATIONALLY`** (precheck `20260524T140328Z`; cycle triage `20260524T143953Z` — 7/7 static cycles runtime-exempted as benign hub navigation; 4/4 escalation chains benign; 0 resolution exhaustion). **G1–G7 NOT RUN** — G1 may proceed. Watchlist: `deploy_sha_ambiguous` (`/api/version` commit unknown).
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md)
 
@@ -4838,7 +4838,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 | Family | Slug | Status | Classification |
 |--------|------|--------|----------------|
-| Programme G0 | `ops_control_g0_programme_precheck` | EXECUTED | `CONTROL_PLANE_CIRCULARITY` — run `20260524T140328Z`; bundle `ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae` (static graph unresolved cycles; surfaces reachable) |
+| Programme G0 | `ops_control_g0_programme_precheck` | VERIFIED_OPERATIONALLY | Precheck `20260524T140328Z` + triage `20260524T143953Z`; bundles `ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae` + `ops_control_g0_cycle_triage_6fd5ac4c_d35a58ae` (static graph superseded at runtime; hub cycles benign) |
 | G1 Today | `ops_control_g1_today_page` | NOT RUN | — |
 | G2 Command Centre | `ops_control_g2_command_centre` | NOT RUN | — |
 | G3 Properties | `ops_control_g3_properties_page` | NOT RUN | — |

@@ -1,0 +1,52 @@
+{
+  "chains": [
+    {
+      "from": "/today",
+      "to": "/command-center",
+      "label": "View command centre",
+      "mutation_visible_at_target": false,
+      "live_vs_derived": "live",
+      "resolution_owner": "ops_control_g2_command_centre",
+      "operator_can_drill_to_property": true,
+      "reports_false_resolution": false,
+      "benign_escalation": true
+    },
+    {
+      "from": "/today",
+      "to": "/reports",
+      "label": "View report",
+      "mutation_visible_at_target": false,
+      "live_vs_derived": "derived",
+      "resolution_owner": "ops_control_g7_reports_page",
+      "operator_can_drill_to_property": true,
+      "reports_false_resolution": true,
+      "benign_escalation": true
+    },
+    {
+      "from": "/command-center",
+      "to": "/reports",
+      "label": "Reports",
+      "mutation_visible_at_target": false,
+      "live_vs_derived": "derived",
+      "resolution_owner": "ops_control_g7_reports_page",
+      "operator_can_drill_to_property": true,
+      "reports_false_resolution": true,
+      "benign_escalation": true
+    },
+    {
+      "from": "/reports",
+      "to": "/command-center",
+      "label": "Back to command centre",
+      "mutation_visible_at_target": false,
+      "live_vs_derived": "live",
+      "resolution_owner": "ops_control_g2_command_centre",
+      "operator_can_drill_to_property": true,
+      "reports_false_resolution": false,
+      "benign_escalation": true
+    }
+  ],
+  "live_truth_owner": "ops_control_g2_command_centre",
+  "derived_truth_owner": "ops_control_g7_reports_page",
+  "mutation_terminates_at": "property_detail_or_operational_drilldown",
+  "all_escalations_benign": true
+}

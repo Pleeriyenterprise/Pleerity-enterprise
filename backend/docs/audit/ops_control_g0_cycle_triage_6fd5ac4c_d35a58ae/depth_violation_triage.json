@@ -1,0 +1,472 @@
+{
+  "violations": [
+    {
+      "static_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/calendar",
+          "actual": "/calendar"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        },
+        {
+          "route": "/documents",
+          "actual": "/documents"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/reports",
+        "/command-center"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/calendar",
+          "actual": "/calendar"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/calendar",
+          "actual": "/calendar"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/calendar",
+          "actual": "/calendar"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        },
+        {
+          "route": "/documents",
+          "actual": "/documents"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/properties/:propertyId"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/calendar",
+          "actual": "/calendar"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/operations/issues/:issueId"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/calendar",
+          "actual": "/calendar"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/operations/issues/:issueId",
+          "actual": "/operations/issues/:issueId"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/requirements"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/calendar",
+          "actual": "/calendar"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/calendar",
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/command-center",
+        "/reports"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/calendar",
+          "actual": "/calendar"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/command-center",
+        "/properties/:propertyId",
+        "/today",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        },
+        {
+          "route": "/documents",
+          "actual": "/documents"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        },
+        {
+          "route": "/documents",
+          "actual": "/documents"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/documents",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/documents",
+          "actual": "/documents"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        },
+        {
+          "route": "/documents",
+          "actual": "/documents"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    },
+    {
+      "static_path": [
+        "/command-center",
+        "/reports",
+        "/properties/:propertyId",
+        "/today",
+        "/requirements",
+        "/documents"
+      ],
+      "depth": 6,
+      "steps_observed": [
+        {
+          "route": "/command-center",
+          "actual": "/command-center"
+        },
+        {
+          "route": "/reports",
+          "actual": "/reports"
+        },
+        {
+          "route": "/properties/:propertyId",
+          "actual": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+        },
+        {
+          "route": "/today",
+          "actual": "/today"
+        },
+        {
+          "route": "/requirements",
+          "actual": "/requirements"
+        },
+        {
+          "route": "/documents",
+          "actual": "/documents"
+        }
+      ],
+      "mutation_at_terminal": false,
+      "classification": "legitimate_drilldown"
+    }
+  ]
+}

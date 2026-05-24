@@ -1,0 +1,19 @@
+{
+  "today_has_operational_content": true,
+  "property_navigation": true,
+  "property_mutation_visible": false,
+  "return_to_today": true,
+  "authoritative_resolution_owner": "ops_control_g3_properties_page",
+  "verdict": "benign_hub_navigation",
+  "false_recursion": false,
+  "note": "Today escalates to Property for resolution; return via nav is hub not loop trap",
+  "resolution_probe": {
+    "probes": [
+      {
+        "surface": "command_centre",
+        "drilldown_links": true
+      }
+    ],
+    "reachable": true
+  }
+}

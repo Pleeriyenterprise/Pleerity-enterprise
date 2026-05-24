@@ -1,0 +1,39 @@
+{
+  "walk": [
+    {
+      "route": "/documents",
+      "actual": "/documents",
+      "mutation_visible": false,
+      "requirement_links": 1
+    },
+    {
+      "route": "/requirements",
+      "actual": "/requirements",
+      "mutation_visible": false,
+      "requirement_links": 1
+    },
+    {
+      "route": "/documents",
+      "actual": "/documents",
+      "mutation_visible": false,
+      "requirement_links": 1
+    }
+  ],
+  "documents_requirements_sidebar_cycle": true,
+  "property_detail_mutation_visible": false,
+  "authoritative_resolution_owner": "ops_control_g4_requirements_page",
+  "resolution_via_property_or_row": false,
+  "upload_only_closure_risk": false,
+  "operator_trapped": false,
+  "verdict": "benign_hub_navigation",
+  "note": "Documents\u2194Requirements is primary-nav cross-link; mutations on property/requirement rows",
+  "resolution_probe": {
+    "probes": [
+      {
+        "surface": "command_centre",
+        "drilldown_links": true
+      }
+    ],
+    "reachable": true
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "probes": [
+    {
+      "surface": "command_centre",
+      "drilldown_links": true
+    }
+  ],
+  "reachable": true
+}

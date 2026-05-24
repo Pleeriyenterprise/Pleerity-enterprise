@@ -1,0 +1,11 @@
+{
+  "g0_reclassification": "VERIFIED_OPERATIONALLY",
+  "secondary": [
+    "deploy_sha_ambiguous",
+    "static_graph_superseded_by_runtime_triage"
+  ],
+  "reasons": [
+    "runtime_cycle_triage_all_benign_or_proven",
+    "escalation_chains_benign"
+  ]
+}

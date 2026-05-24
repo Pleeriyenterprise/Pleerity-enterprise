@@ -2,7 +2,7 @@
 
 **Programme ID:** `PRELAUNCH-OPS-RUNTIME-VERIFY-02`  
 **Programme type:** **OPERATIONAL_CONTROL_PLANE_VERIFICATION** (not generic surface QA)  
-**Status:** G0 **EXECUTED** (`CONTROL_PLANE_CIRCULARITY` run `20260524T140328Z`); G1–G7 **NOT_EXECUTED**  
+**Status:** G0 **`VERIFIED_OPERATIONALLY`** (precheck `20260524T140328Z`; cycle triage `20260524T143953Z`); G1–G7 **NOT_EXECUTED** (G1 unblocked for execution)  
 **Authority:** Governed operational-control-plane verification only — **not** launch authorization, UK rollout approval, architecture redesign, projection redesign, lifecycle redesign, reporting-engine certification, or calendar/scheduler certification.
 
 **Prerequisite:** `PRELAUNCH-OPS-RUNTIME-VERIFY-01` **COMPLETE** (F1–F8 `VERIFIED_OPERATIONALLY`) is a **lineage dependency only**. It does **not** confer surface coherence, CTA truth, or operator-trust guarantees.
@@ -71,6 +71,7 @@ This doctrine guides **G-CTA**, **G-CTA-NOOP**, **G-CYCLE**, **G-RESOLVE**, **G7
 |-----------|----------|
 | Shared framework | `backend/services/ops_runtime_verify_02/` |
 | G0 harness (local) | `backend/tmp_ops_control_g0_programme_precheck_execute.py` |
+| G0 cycle triage harness (local) | `backend/tmp_ops_control_g0_cycle_triage_execute.py` |
 | Programme audit root | `backend/docs/audit/ops_control_verify_02/` |
 | Family alias scaffolds | `backend/docs/audit/ops_runtime_g{1..7}_*/STATUS.json` |
 | Unit tests | `backend/tests/test_ops_runtime_verify_02_framework.py` |

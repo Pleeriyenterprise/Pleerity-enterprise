@@ -1,0 +1,9 @@
+{
+  "run_tag": "20260524T143953Z",
+  "static_unresolved_count": 7,
+  "runtime_benign_count": 7,
+  "runtime_still_unresolved_count": 0,
+  "escalation_benign_count": 4,
+  "escalation_unresolved_count": 0,
+  "depth_exhaustion_count": 0
+}

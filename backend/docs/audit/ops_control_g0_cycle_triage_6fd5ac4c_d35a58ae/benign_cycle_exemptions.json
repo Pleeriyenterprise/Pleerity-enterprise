@@ -1,0 +1,452 @@
+{
+  "exemptions": [
+    {
+      "cycle_path": [
+        "/documents",
+        "/requirements",
+        "/documents"
+      ],
+      "static_unresolved": true,
+      "runtime": {
+        "cycle_path": [
+          "/documents",
+          "/requirements",
+          "/documents"
+        ],
+        "authoritative_resolution_owner": "ops_control_g5_documents_page",
+        "steps": [
+          {
+            "step": 0,
+            "route": "/documents",
+            "actual_path": "/documents",
+            "mutation_visible": false
+          },
+          {
+            "step": 1,
+            "route": "/requirements",
+            "actual_path": "/requirements",
+            "mutation_visible": false
+          },
+          {
+            "step": 2,
+            "route": "/documents",
+            "actual_path": "/documents",
+            "mutation_visible": false
+          }
+        ],
+        "steps_taken": 3,
+        "mutation_owner_visible": false,
+        "operational_debt_resolvable": false,
+        "navigation_terminates": true,
+        "operator_not_trapped": true,
+        "no_infinite_recursion": true,
+        "refresh_coherent": true,
+        "no_mutationless_ping_pong": true,
+        "hub_navigation_only": true,
+        "runtime_note": "sidebar/hub navigation \u2014 not forced CTA recursion",
+        "static_cycle_id": "/documents->/requirements->/documents",
+        "benign_evaluation": true,
+        "fail_reasons": []
+      },
+      "exemption": "BENIGN_CONTROL_PLANE_CYCLE"
+    },
+    {
+      "cycle_path": [
+        "/properties/:propertyId",
+        "/today",
+        "/properties/:propertyId"
+      ],
+      "static_unresolved": true,
+      "runtime": {
+        "cycle_path": [
+          "/properties/:propertyId",
+          "/today",
+          "/properties/:propertyId"
+        ],
+        "authoritative_resolution_owner": "ops_control_g3_properties_page",
+        "steps": [
+          {
+            "step": 0,
+            "route": "/properties/:propertyId",
+            "actual_path": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "mutation_visible": false
+          },
+          {
+            "step": 1,
+            "route": "/today",
+            "actual_path": "/today",
+            "mutation_visible": false
+          },
+          {
+            "step": 2,
+            "route": "/properties/:propertyId",
+            "actual_path": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "mutation_visible": false
+          }
+        ],
+        "steps_taken": 3,
+        "mutation_owner_visible": false,
+        "operational_debt_resolvable": true,
+        "navigation_terminates": true,
+        "operator_not_trapped": true,
+        "no_infinite_recursion": true,
+        "refresh_coherent": true,
+        "no_mutationless_ping_pong": false,
+        "hub_navigation_only": true,
+        "runtime_note": "sidebar/hub navigation \u2014 not forced CTA recursion",
+        "static_cycle_id": "/properties/:propertyId->/today->/properties/:propertyId",
+        "benign_evaluation": true,
+        "fail_reasons": []
+      },
+      "exemption": "BENIGN_CONTROL_PLANE_CYCLE"
+    },
+    {
+      "cycle_path": [
+        "/properties/:propertyId",
+        "/today",
+        "/reports",
+        "/properties/:propertyId"
+      ],
+      "static_unresolved": true,
+      "runtime": {
+        "cycle_path": [
+          "/properties/:propertyId",
+          "/today",
+          "/reports",
+          "/properties/:propertyId"
+        ],
+        "authoritative_resolution_owner": "ops_control_g3_properties_page",
+        "steps": [
+          {
+            "step": 0,
+            "route": "/properties/:propertyId",
+            "actual_path": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "mutation_visible": false
+          },
+          {
+            "step": 1,
+            "route": "/today",
+            "actual_path": "/today",
+            "mutation_visible": false
+          },
+          {
+            "step": 2,
+            "route": "/reports",
+            "actual_path": "/reports",
+            "mutation_visible": true
+          },
+          {
+            "step": 3,
+            "route": "/properties/:propertyId",
+            "actual_path": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "mutation_visible": false
+          }
+        ],
+        "steps_taken": 4,
+        "mutation_owner_visible": true,
+        "operational_debt_resolvable": true,
+        "navigation_terminates": true,
+        "operator_not_trapped": true,
+        "no_infinite_recursion": true,
+        "refresh_coherent": true,
+        "no_mutationless_ping_pong": true,
+        "hub_navigation_only": true,
+        "runtime_note": "sidebar/hub navigation \u2014 not forced CTA recursion",
+        "static_cycle_id": "/properties/:propertyId->/today->/reports->/properties/:propertyId",
+        "benign_evaluation": true,
+        "fail_reasons": []
+      },
+      "exemption": "BENIGN_CONTROL_PLANE_CYCLE"
+    },
+    {
+      "cycle_path": [
+        "/reports",
+        "/properties/:propertyId",
+        "/today",
+        "/reports"
+      ],
+      "static_unresolved": true,
+      "runtime": {
+        "cycle_path": [
+          "/reports",
+          "/properties/:propertyId",
+          "/today",
+          "/reports"
+        ],
+        "authoritative_resolution_owner": "ops_control_g7_reports_page",
+        "steps": [
+          {
+            "step": 0,
+            "route": "/reports",
+            "actual_path": "/reports",
+            "mutation_visible": true
+          },
+          {
+            "step": 1,
+            "route": "/properties/:propertyId",
+            "actual_path": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "mutation_visible": false
+          },
+          {
+            "step": 2,
+            "route": "/today",
+            "actual_path": "/today",
+            "mutation_visible": false
+          },
+          {
+            "step": 3,
+            "route": "/reports",
+            "actual_path": "/reports",
+            "mutation_visible": true
+          }
+        ],
+        "steps_taken": 4,
+        "mutation_owner_visible": true,
+        "operational_debt_resolvable": true,
+        "navigation_terminates": true,
+        "operator_not_trapped": true,
+        "no_infinite_recursion": true,
+        "refresh_coherent": true,
+        "no_mutationless_ping_pong": true,
+        "hub_navigation_only": true,
+        "runtime_note": "sidebar/hub navigation \u2014 not forced CTA recursion",
+        "static_cycle_id": "/reports->/properties/:propertyId->/today->/reports",
+        "benign_evaluation": true,
+        "fail_reasons": []
+      },
+      "exemption": "BENIGN_CONTROL_PLANE_CYCLE"
+    },
+    {
+      "cycle_path": [
+        "/requirements",
+        "/documents",
+        "/requirements"
+      ],
+      "static_unresolved": true,
+      "runtime": {
+        "cycle_path": [
+          "/requirements",
+          "/documents",
+          "/requirements"
+        ],
+        "authoritative_resolution_owner": "ops_control_g4_requirements_page",
+        "steps": [
+          {
+            "step": 0,
+            "route": "/requirements",
+            "actual_path": "/requirements",
+            "mutation_visible": false
+          },
+          {
+            "step": 1,
+            "route": "/documents",
+            "actual_path": "/documents",
+            "mutation_visible": false
+          },
+          {
+            "step": 2,
+            "route": "/requirements",
+            "actual_path": "/requirements",
+            "mutation_visible": false
+          }
+        ],
+        "steps_taken": 3,
+        "mutation_owner_visible": false,
+        "operational_debt_resolvable": false,
+        "navigation_terminates": true,
+        "operator_not_trapped": true,
+        "no_infinite_recursion": true,
+        "refresh_coherent": true,
+        "no_mutationless_ping_pong": true,
+        "hub_navigation_only": true,
+        "runtime_note": "sidebar/hub navigation \u2014 not forced CTA recursion",
+        "static_cycle_id": "/requirements->/documents->/requirements",
+        "benign_evaluation": true,
+        "fail_reasons": []
+      },
+      "exemption": "BENIGN_CONTROL_PLANE_CYCLE"
+    },
+    {
+      "cycle_path": [
+        "/today",
+        "/properties/:propertyId",
+        "/today"
+      ],
+      "static_unresolved": true,
+      "runtime": {
+        "cycle_path": [
+          "/today",
+          "/properties/:propertyId",
+          "/today"
+        ],
+        "authoritative_resolution_owner": "ops_control_g1_today_page",
+        "steps": [
+          {
+            "step": 0,
+            "route": "/today",
+            "actual_path": "/today",
+            "mutation_visible": false
+          },
+          {
+            "step": 1,
+            "route": "/properties/:propertyId",
+            "actual_path": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "mutation_visible": false
+          },
+          {
+            "step": 2,
+            "route": "/today",
+            "actual_path": "/today",
+            "mutation_visible": false
+          }
+        ],
+        "steps_taken": 3,
+        "mutation_owner_visible": false,
+        "operational_debt_resolvable": false,
+        "navigation_terminates": true,
+        "operator_not_trapped": true,
+        "no_infinite_recursion": true,
+        "refresh_coherent": true,
+        "no_mutationless_ping_pong": false,
+        "hub_navigation_only": true,
+        "runtime_note": "sidebar/hub navigation \u2014 not forced CTA recursion",
+        "static_cycle_id": "/today->/properties/:propertyId->/today",
+        "benign_evaluation": true,
+        "fail_reasons": []
+      },
+      "exemption": "BENIGN_CONTROL_PLANE_CYCLE"
+    },
+    {
+      "cycle_path": [
+        "/today",
+        "/reports",
+        "/properties/:propertyId",
+        "/today"
+      ],
+      "static_unresolved": true,
+      "runtime": {
+        "cycle_path": [
+          "/today",
+          "/reports",
+          "/properties/:propertyId",
+          "/today"
+        ],
+        "authoritative_resolution_owner": "ops_control_g1_today_page",
+        "steps": [
+          {
+            "step": 0,
+            "route": "/today",
+            "actual_path": "/today",
+            "mutation_visible": false
+          },
+          {
+            "step": 1,
+            "route": "/reports",
+            "actual_path": "/reports",
+            "mutation_visible": false
+          },
+          {
+            "step": 2,
+            "route": "/properties/:propertyId",
+            "actual_path": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "mutation_visible": false
+          },
+          {
+            "step": 3,
+            "route": "/today",
+            "actual_path": "/today",
+            "mutation_visible": false
+          }
+        ],
+        "steps_taken": 4,
+        "mutation_owner_visible": false,
+        "operational_debt_resolvable": false,
+        "navigation_terminates": true,
+        "operator_not_trapped": true,
+        "no_infinite_recursion": true,
+        "refresh_coherent": true,
+        "no_mutationless_ping_pong": false,
+        "hub_navigation_only": true,
+        "runtime_note": "sidebar/hub navigation \u2014 not forced CTA recursion",
+        "static_cycle_id": "/today->/reports->/properties/:propertyId->/today",
+        "benign_evaluation": true,
+        "fail_reasons": []
+      },
+      "exemption": "BENIGN_CONTROL_PLANE_CYCLE"
+    }
+  ],
+  "escalation_benign": [
+    {
+      "from": "/today",
+      "to": "/command-center",
+      "cta_label": "View command centre",
+      "mutation_owner": "none",
+      "unresolved_escalation": true,
+      "runtime": {
+        "from": "/today",
+        "to": "/command-center",
+        "label": "View command centre",
+        "mutation_visible_at_target": false,
+        "live_vs_derived": "live",
+        "resolution_owner": "ops_control_g2_command_centre",
+        "operator_can_drill_to_property": true,
+        "reports_false_resolution": false,
+        "benign_escalation": true
+      }
+    },
+    {
+      "from": "/today",
+      "to": "/reports",
+      "cta_label": "View report",
+      "mutation_owner": "none",
+      "unresolved_escalation": true,
+      "runtime": {
+        "from": "/today",
+        "to": "/reports",
+        "label": "View report",
+        "mutation_visible_at_target": false,
+        "live_vs_derived": "derived",
+        "resolution_owner": "ops_control_g7_reports_page",
+        "operator_can_drill_to_property": true,
+        "reports_false_resolution": true,
+        "benign_escalation": true
+      }
+    },
+    {
+      "from": "/command-center",
+      "to": "/reports",
+      "cta_label": "Reports",
+      "mutation_owner": "none",
+      "unresolved_escalation": true,
+      "runtime": {
+        "from": "/command-center",
+        "to": "/reports",
+        "label": "Reports",
+        "mutation_visible_at_target": false,
+        "live_vs_derived": "derived",
+        "resolution_owner": "ops_control_g7_reports_page",
+        "operator_can_drill_to_property": true,
+        "reports_false_resolution": true,
+        "benign_escalation": true
+      }
+    },
+    {
+      "from": "/reports",
+      "to": "/command-center",
+      "cta_label": "Back to command centre",
+      "mutation_owner": "none",
+      "unresolved_escalation": true,
+      "runtime": {
+        "from": "/reports",
+        "to": "/command-center",
+        "label": "Back to command centre",
+        "mutation_visible_at_target": false,
+        "live_vs_derived": "live",
+        "resolution_owner": "ops_control_g2_command_centre",
+        "operator_can_drill_to_property": true,
+        "reports_false_resolution": false,
+        "benign_escalation": true
+      }
+    }
+  ]
+}

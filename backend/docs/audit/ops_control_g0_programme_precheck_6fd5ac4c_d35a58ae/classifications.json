@@ -5,15 +5,15 @@
       "family": "ops_control_g0_programme_precheck",
       "authoritative_verification_owner": "ops_control_g0_programme_precheck",
       "proof_mode": "operational_browser",
-      "classification": "CONTROL_PLANE_CIRCULARITY",
-      "execution_status": "CONTROL_PLANE_CIRCULARITY",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "execution_status": "VERIFIED_OPERATIONALLY",
       "secondary_classifications": [
-        "COGNITIVE_TRUST_RISK",
-        "deploy_sha_ambiguous"
+        "deploy_sha_ambiguous",
+        "static_graph_superseded_by_runtime_triage"
       ],
       "reasons": [
-        "unresolved_control_plane_cycles",
-        "deploy_sha_ambiguous"
+        "runtime_cycle_triage_all_benign_or_proven",
+        "escalation_chains_benign"
       ],
       "run_tag": "20260524T140328Z",
       "pilot_slug": "6fd5ac4c_d35a58ae",
@@ -32,9 +32,12 @@
         "G0_deployment": true,
         "G0_route_authority": true,
         "G0_surfaces": true,
-        "G0_circularity_baseline": false,
-        "G0_orphan_baseline": true
-      }
+        "G0_circularity_baseline": true,
+        "G0_orphan_baseline": true,
+        "G0_cycle_triage_complete": true
+      },
+      "cycle_triage_run_tag": "20260524T143953Z",
+      "cycle_triage_bundle": "ops_control_g0_cycle_triage_6fd5ac4c_d35a58ae"
     }
   ]
 }
