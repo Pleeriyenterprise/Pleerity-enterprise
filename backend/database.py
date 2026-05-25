@@ -602,8 +602,14 @@ class Database:
             await self.db.rent_ledger_periods.create_index("ledger_id", unique=True)
             await self.db.rent_ledger_periods.create_index([("client_id", 1), ("property_id", 1), ("due_date", -1)])
             await self.db.rent_ledger_periods.create_index([("client_id", 1), ("status", 1), ("due_date", 1)])
+            # Tenancy-authority materialisation uses schedule_id+period_key; legacy unique on property+period_key blocks new schedules.
+            legacy_period_idx = "client_id_1_property_id_1_period_key_1"
+            try:
+                await self.db.rent_ledger_periods.drop_index(legacy_period_idx)
+            except Exception:
+                pass
             await self.db.rent_ledger_periods.create_index(
-                [("client_id", 1), ("property_id", 1), ("period_key", 1)], unique=True
+                [("client_id", 1), ("property_id", 1), ("period_key", 1)]
             )
             await self.db.rent_payments.create_index("payment_id", unique=True)
             await self.db.rent_payments.create_index([("ledger_id", 1), ("payment_date", -1)])

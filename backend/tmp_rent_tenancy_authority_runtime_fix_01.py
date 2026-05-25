@@ -465,22 +465,25 @@ def main() -> int:
     properties, properties_probe = _list_properties(auth)
     if len(properties) < 2:
         defects.append("insufficient_properties_for_multi_property_pilot")
+    prop_ids = {p["property_id"] for p in properties}
     prop_a = (
-        properties[0]["property_id"]
-        if properties
-        else (PILOT_PROPERTY_A or None)
+        PILOT_PROPERTY_A
+        if PILOT_PROPERTY_A and PILOT_PROPERTY_A in prop_ids
+        else (properties[0]["property_id"] if properties else (PILOT_PROPERTY_A or None))
     )
     prop_b = (
-        properties[1]["property_id"]
-        if len(properties) > 1
+        PILOT_PROPERTY_B
+        if PILOT_PROPERTY_B and PILOT_PROPERTY_B in prop_ids and PILOT_PROPERTY_B != prop_a
         else (
-            properties[0]["property_id"]
-            if len(properties) == 1 and PILOT_PROPERTY_B
-            else (PILOT_PROPERTY_B or prop_a)
+            properties[1]["property_id"]
+            if len(properties) > 1 and properties[1]["property_id"] != prop_a
+            else (
+                properties[0]["property_id"]
+                if len(properties) == 1
+                else (PILOT_PROPERTY_B or prop_a)
+            )
         )
     )
-    if prop_b == prop_a and len(properties) >= 2:
-        prop_b = properties[1]["property_id"]
 
     pilot = {
         "property_a": prop_a,
