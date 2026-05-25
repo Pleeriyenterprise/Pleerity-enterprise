@@ -1,0 +1,34 @@
+{
+  "walks": [
+    {
+      "class": "expiring_requirement",
+      "event_id": null,
+      "ok": true,
+      "skipped": true
+    },
+    {
+      "class": "overdue_requirement",
+      "event_id": null,
+      "ok": true,
+      "skipped": true
+    },
+    {
+      "class": "scheduled_visit",
+      "event_id": null,
+      "ok": true,
+      "skipped": true
+    },
+    {
+      "class": "compliance_job",
+      "event_id": "evt_e0b66f4c147ff0d5d4659dcd",
+      "ok": true,
+      "before": "https://pleerityenterprise.co.uk/calendar",
+      "after": "https://pleerityenterprise.co.uk/operations/jobs/c6332094-f53d-44a2-a953-98a3eb2068ee",
+      "primary_route": "/operations/work-orders?work_order_id=c6332094-f53d-44a2-a953-98a3eb2068ee",
+      "navigated": true,
+      "noop": false
+    }
+  ],
+  "noop_detected": false,
+  "pass": true
+}

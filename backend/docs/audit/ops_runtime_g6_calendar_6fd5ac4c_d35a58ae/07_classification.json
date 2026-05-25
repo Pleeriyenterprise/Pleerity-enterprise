@@ -1,0 +1,34 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
+  "family": "ops_control_g6_calendar_page",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_classifications": [],
+  "reasons": [],
+  "blocking": false,
+  "execution_status": "VERIFIED_OPERATIONALLY",
+  "authoritative_verification_owner": "ops_control_g6_calendar_page",
+  "proof_mode": "operational_browser",
+  "run_tag": "20260525T001535Z",
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "shared_dependency_bundle_ids": [
+    "ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g1_today_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g2_command_centre_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g3_properties_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g4_requirements_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g5_documents_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "checkpoints": {
+    "G6_surface_boot": true,
+    "G6_scheduling_truth": true,
+    "G6_resolution_walks": true,
+    "G6_cross_surface": true,
+    "G6_property_requirement": true,
+    "G6_reminder_governance": true,
+    "G6_cognition": true,
+    "G6_g9_g10": true,
+    "G6_convergence": true
+  }
+}

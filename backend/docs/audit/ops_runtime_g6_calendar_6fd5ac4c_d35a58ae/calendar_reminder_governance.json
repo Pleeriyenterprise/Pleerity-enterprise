@@ -1,0 +1,19 @@
+{
+  "probes": [
+    {
+      "action": "snooze",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "check": "snooze_not_resolution",
+      "ok": true
+    },
+    {
+      "action": "restore",
+      "status": 200,
+      "ok": true
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,11 @@
+{
+  "pilot_calendar_events": 11,
+  "expiring_requirements": 0,
+  "expiring_calendar_events": 0,
+  "overdue_requirements": 0,
+  "overdue_calendar_events": 0,
+  "cancelled_visit_events": 0,
+  "directionally_coherent": true,
+  "no_phantom_compliance": true,
+  "pass": true
+}

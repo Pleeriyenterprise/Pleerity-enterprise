@@ -2,7 +2,7 @@
 
 **Programme ID:** `PRELAUNCH-OPS-RUNTIME-VERIFY-02`  
 **Programme type:** **OPERATIONAL_CONTROL_PLANE_VERIFICATION** (not generic surface QA)  
-**Status:** G0 **`VERIFIED_OPERATIONALLY`**; G1 **`VERIFIED_OPERATIONALLY`** (run `20260524T162503Z`); G2 **`VERIFIED_OPERATIONALLY`** (run `20260524T170848Z`); G3 **`VERIFIED_OPERATIONALLY`** (run `20260524T175910Z`); G4 **`VERIFIED_OPERATIONALLY`** (run `20260524T182816Z`); G5 **`VERIFIED_OPERATIONALLY`** (run `20260524T203943Z`; post-ingestion linkage reconciliation); G6–G7 **NOT_EXECUTED** (G6 unblocked)  
+**Status:** G0 **`VERIFIED_OPERATIONALLY`**; G1 **`VERIFIED_OPERATIONALLY`** (run `20260524T162503Z`); G2 **`VERIFIED_OPERATIONALLY`** (run `20260524T170848Z`); G3 **`VERIFIED_OPERATIONALLY`** (run `20260524T175910Z`); G4 **`VERIFIED_OPERATIONALLY`** (run `20260524T182816Z`); G5 **`VERIFIED_OPERATIONALLY`** (run `20260524T203943Z`; post-ingestion linkage reconciliation); G6 **`VERIFIED_OPERATIONALLY`** (run `20260525T001535Z`; calendar scheduling authority); G7 **NOT_EXECUTED** (G7 unblocked)  
 **Authority:** Governed operational-control-plane verification only — **not** launch authorization, UK rollout approval, architecture redesign, projection redesign, lifecycle redesign, reporting-engine certification, or calendar/scheduler certification.
 
 **Prerequisite:** `PRELAUNCH-OPS-RUNTIME-VERIFY-01` **COMPLETE** (F1–F8 `VERIFIED_OPERATIONALLY`) is a **lineage dependency only**. It does **not** confer surface coherence, CTA truth, or operator-trust guarantees.

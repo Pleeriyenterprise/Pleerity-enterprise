@@ -1,0 +1,11 @@
+{
+  "violations": [],
+  "checks_sample": [],
+  "overdue_requirements": 0,
+  "scheduled_open_work_orders": 0,
+  "overdue_calendar_events": 0,
+  "future_visit_events": 0,
+  "dual_debt_coherent": true,
+  "scheduled_not_resolved_preserved": true,
+  "pass": true
+}

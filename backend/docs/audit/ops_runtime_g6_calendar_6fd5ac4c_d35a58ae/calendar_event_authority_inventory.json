@@ -1,0 +1,53 @@
+{
+  "total_events": 21,
+  "pilot_events": 11,
+  "event_classes": [
+    {
+      "event_category": "compliance_job",
+      "event_type": "compliance_job_completed",
+      "authority_owner": "work_order_schedule",
+      "source_system": "client_calendar_timeline_service",
+      "operational_meaning": "compliance job completed",
+      "mutation_owner": "/operations/work-orders",
+      "live_or_derived": "derived_projection",
+      "actionable": true,
+      "sample_count": 1,
+      "sample_titles": [
+        "Compliance job completed"
+      ]
+    },
+    {
+      "event_category": "scheduled_job",
+      "event_type": "maintenance_job_completed",
+      "authority_owner": "work_order_schedule",
+      "source_system": "client_calendar_timeline_service",
+      "operational_meaning": "maintenance job completed",
+      "mutation_owner": "/operations/work-orders",
+      "live_or_derived": "derived_projection",
+      "actionable": true,
+      "sample_count": 10,
+      "sample_titles": [
+        "Repair job completed",
+        "Repair job completed",
+        "Repair job completed"
+      ]
+    },
+    {
+      "event_category": "requirement",
+      "event_type": "requirement_expiring_soon",
+      "authority_owner": "requirement_engine",
+      "source_system": "client_calendar_timeline_service",
+      "operational_meaning": "requirement expiring soon",
+      "mutation_owner": "/requirements",
+      "live_or_derived": "derived_projection",
+      "actionable": true,
+      "sample_count": 10,
+      "sample_titles": [
+        "Requirement expiring soon: Landlord Registration Ni",
+        "Requirement expiring soon: HMO licence",
+        "Requirement expiring soon: HMO licence"
+      ]
+    }
+  ],
+  "pass": true
+}

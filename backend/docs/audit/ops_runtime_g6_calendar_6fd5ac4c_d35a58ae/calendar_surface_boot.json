@@ -1,0 +1,53 @@
+{
+  "at_utc": "2026-05-25T00:15:51.019986+00:00",
+  "checks": [
+    {
+      "name": "calendar_events_api",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "calendar_upcoming_api",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "events_loaded",
+      "ok": true,
+      "detail": "total=21"
+    }
+  ],
+  "browser": {
+    "steps": [
+      {
+        "name": "calendar_route",
+        "ok": true
+      },
+      {
+        "name": "calendar_shell",
+        "ok": true,
+        "detail": "ready"
+      },
+      {
+        "name": "operational_shell",
+        "ok": true
+      },
+      {
+        "name": "pilot_event_visible",
+        "ok": true,
+        "detail": "evt_e0b66f4c147ff0d5d4659dcd"
+      },
+      {
+        "name": "filters_present",
+        "ok": true
+      },
+      {
+        "name": "refresh_persistence",
+        "ok": true,
+        "detail": "ready"
+      }
+    ],
+    "pass": true
+  },
+  "boot_ok": true
+}

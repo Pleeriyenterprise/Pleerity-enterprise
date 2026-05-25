@@ -1,0 +1,11 @@
+{
+  "today_status": 200,
+  "command_centre_status": 200,
+  "overdue_calendar_events": 0,
+  "urgent_today_count": 28,
+  "cc_urgent_count": 0,
+  "open_scheduled_work_orders": 0,
+  "overdue_still_in_today": true,
+  "scheduled_not_suppressing_debt": true,
+  "pass": true
+}

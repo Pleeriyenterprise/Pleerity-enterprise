@@ -1,0 +1,10 @@
+{
+  "api_overdue_count": 0,
+  "api_expiring_soon_count": 10,
+  "browser_overdue_disclosed": true,
+  "browser_expiring_disclosed": true,
+  "false_calm_when_overdue": false,
+  "urgency_context_visible": false,
+  "scheduled_not_resolved": true,
+  "pass": true
+}
