@@ -614,6 +614,27 @@ class Database:
             await self.db.rent_reminder_events.create_index([("client_id", 1), ("ledger_id", 1)])
             await self.db.rent_schedules.create_index("schedule_id", unique=True)
             await self.db.rent_schedules.create_index([("client_id", 1), ("property_id", 1), ("is_active", 1)])
+            await self.db.rent_schedules.create_index(
+                [("client_id", 1), ("idempotency_key", 1)], unique=True, sparse=True
+            )
+            await self.db.rent_schedules.create_index(
+                [("client_id", 1), ("property_id", 1), ("tenancy_id", 1), ("rent_type", 1), ("is_active", 1)]
+            )
+            await self.db.rent_ledger_periods.create_index(
+                [("client_id", 1), ("schedule_id", 1), ("period_key", 1)], unique=True, sparse=True
+            )
+            await self.db.rent_payments.create_index(
+                [("client_id", 1), ("idempotency_key", 1)], unique=True, sparse=True
+            )
+            await self.db.rent_payments.create_index([("client_id", 1), ("tenancy_id", 1), ("payment_date", -1)], sparse=True)
+            await self.db.property_tenancies.create_index("tenancy_id", unique=True)
+            await self.db.property_tenancies.create_index(
+                [("client_id", 1), ("property_id", 1), ("status", 1)]
+            )
+            await self.db.rent_unallocated_payments.create_index("unallocated_id", unique=True)
+            await self.db.rent_unallocated_payments.create_index(
+                [("client_id", 1), ("property_id", 1), ("tenancy_id", 1)], sparse=True
+            )
             await self.db.property_expenses.create_index("expense_id", unique=True)
             await self.db.property_expenses.create_index([("client_id", 1), ("property_id", 1), ("expense_date", -1)])
             await self.db.property_expenses.create_index([("client_id", 1), ("category", 1), ("expense_date", -1)])

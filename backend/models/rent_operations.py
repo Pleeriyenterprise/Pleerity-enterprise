@@ -64,7 +64,7 @@ class ExpenseCategory(str, Enum):
 
 class CreateRentScheduleBody(BaseModel):
     property_id: str
-    tenant_name: str
+    tenant_name: Optional[str] = None
     expected_amount_minor: int = Field(..., gt=0)
     currency: str = Field(default=DEFAULT_CURRENCY, min_length=3, max_length=3)
     rent_frequency: RentFrequency = RentFrequency.MONTHLY
@@ -99,6 +99,33 @@ class UpdateRentLedgerBody(BaseModel):
         return _coerce_iso_date(v)
 
 
+class RentSchedulePreviewBody(BaseModel):
+    property_id: str
+    expected_amount_minor: int = Field(..., gt=0)
+    rent_frequency: RentFrequency = RentFrequency.MONTHLY
+    due_day: int = Field(default=1, ge=1, le=28)
+    start_date: date
+    end_date: Optional[date] = None
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def validate_preview_dates(cls, v):
+        if v is None:
+            return v
+        return _coerce_iso_date(v)
+
+
+class CreatePropertyTenancyBody(BaseModel):
+    property_id: str
+    tenant_display_name: Optional[str] = None
+    tenant_ids: Optional[list[str]] = None
+    rent_tracking_enabled: bool = False
+
+
+class ClosePropertyTenancyBody(BaseModel):
+    status: str = Field(default="moved_out", pattern="^(moved_out|archived|ending_soon)$")
+
+
 class RecordPaymentBody(BaseModel):
     amount_minor: int = Field(..., gt=0)
     payment_date: date
@@ -106,13 +133,18 @@ class RecordPaymentBody(BaseModel):
     reference: Optional[str] = None
     note: Optional[str] = None
     document_id: Optional[str] = None
+    idempotency_key: Optional[str] = Field(None, max_length=128)
     ledger_id: Optional[str] = Field(
         None,
-        description="Explicit allocation target; omit for oldest-outstanding-first allocation",
+        description="Explicit allocation target; required for operational payment authority",
     )
     property_id: Optional[str] = Field(
         None,
-        description="Required when allocating across property without explicit ledger_id",
+        description="Required with tenancy_id when not using ledger_id",
+    )
+    tenancy_id: Optional[str] = Field(
+        None,
+        description="Required with property_id when not using ledger_id",
     )
 
     @field_validator("payment_date", mode="before")

@@ -162,13 +162,18 @@ async def test_payment_allocation_oldest_first():
         ),
     ), patch(
         "services.rent_payment_service._recalc_ledgers", new_callable=AsyncMock
-    ), patch("services.rent_payment_service.create_audit_log", new_callable=AsyncMock):
+    ), patch("services.rent_payment_service.create_audit_log", new_callable=AsyncMock), patch(
+        "services.rent_payment_service.tenancy_authority.get_tenancy",
+        new_callable=AsyncMock,
+        return_value={"tenancy_id": "pty_alloc", "property_id": property_id, "client_id": client_id},
+    ):
         result = await rent_payment_service.record_payment(
             client_id,
             {
                 "amount_minor": 150000,
                 "payment_date": "2026-06-15",
                 "property_id": property_id,
+                "tenancy_id": "pty_alloc",
             },
         )
 

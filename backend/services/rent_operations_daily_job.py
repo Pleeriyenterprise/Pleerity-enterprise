@@ -7,6 +7,11 @@ from services.ops_compliance_feature_flags import get_effective_flags, RENT_OPER
 from services import rent_ledger_service
 from services import rent_reminder_service
 from services import rent_operations_risk_hooks
+from services.rent_tenancy_authority_service import (
+    COLLECTION_TENANCIES,
+    TENANCY_STATUS_ACTIVE,
+    TENANCY_STATUS_ENDING_SOON,
+)
 from services.job_run_service import OUTCOME_DEGRADED, OUTCOME_SUCCESS
 
 logger = logging.getLogger(__name__)
@@ -28,6 +33,17 @@ async def run_rent_operations_daily_for_client(client_id: str) -> Dict[str, Any]
     ).to_list(500)
     periods_created = 0
     for schedule in schedules:
+        tid = schedule.get("tenancy_id")
+        if tid and not str(tid).startswith("ext_"):
+            tenancy = await db[COLLECTION_TENANCIES].find_one(
+                {"tenancy_id": tid, "client_id": client_id},
+                {"_id": 0, "status": 1},
+            )
+            if tenancy and tenancy.get("status") not in (
+                TENANCY_STATUS_ACTIVE,
+                TENANCY_STATUS_ENDING_SOON,
+            ):
+                continue
         periods_created += await rent_ledger_service.ensure_future_periods_for_schedule(schedule)
 
     reminder_result = await rent_reminder_service.process_reminders_for_client(client_id)

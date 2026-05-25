@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "authority_chain_enforced": true,
+  "orphan_schedule_blocked": true,
+  "payment_without_ledger_blocked": true,
+  "notes": "G10: tenancy authority integrity"
+}

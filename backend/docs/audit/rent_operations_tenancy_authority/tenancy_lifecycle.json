@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "statuses": ["active", "ending_soon", "moved_out", "archived"],
+  "moved_out_closes_schedules": true,
+  "historical_ledgers_preserved": true,
+  "replacement_lineage": true
+}

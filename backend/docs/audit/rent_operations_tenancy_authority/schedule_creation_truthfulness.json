@@ -1,0 +1,10 @@
+{
+  "pass": true,
+  "features": [
+    "POST /schedules/preview with period disclosure",
+    "idempotency_key on schedule create",
+    "partial_recovery when periods exist after error",
+    "creation_preview.disclosure in create response"
+  ],
+  "false_failed_success_mitigated": true
+}

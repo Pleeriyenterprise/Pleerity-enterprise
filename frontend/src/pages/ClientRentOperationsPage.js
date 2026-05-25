@@ -15,10 +15,11 @@ import { RentAttentionList } from '../components/rent/RentAttentionList';
 import { RentLedgerList } from '../components/rent/RentLedgerList';
 import { RentLedgerDetailDrawer } from '../components/rent/RentLedgerDetailDrawer';
 import { RecordPaymentModal } from '../components/rent/RecordPaymentModal';
+import { RentScheduleSetupModal } from '../components/rent/RentScheduleSetupModal';
 import { MarkReminderSentModal } from '../components/rent/MarkReminderSentModal';
 import { ExpenseFormModal } from '../components/rent/ExpenseFormModal';
 import { PropertyExpensesPanel } from '../components/rent/PropertyExpensesPanel';
-import { formatMinorUnits, parseMajorToMinor } from '../utils/rentMoney';
+import { formatMinorUnits } from '../utils/rentMoney';
 
 const TABS = [
   { id: 'attention', label: 'Attention' },
@@ -45,15 +46,6 @@ function ClientRentOperationsPageInner() {
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [expenseSaving, setExpenseSaving] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState({
-    property_id: '',
-    tenant_name: '',
-    expected_amount: '',
-    due_day: '1',
-    start_date: new Date().toISOString().slice(0, 10),
-    rent_frequency: 'monthly',
-  });
-  const [scheduleSaving, setScheduleSaving] = useState(false);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -175,25 +167,17 @@ function ClientRentOperationsPageInner() {
       .finally(() => setExpenseSaving(false));
   };
 
-  const handleCreateSchedule = (e) => {
-    e.preventDefault();
-    setScheduleSaving(true);
-    clientAPI
-      .createRentSchedule({
-        property_id: scheduleForm.property_id,
-        tenant_name: scheduleForm.tenant_name,
-        expected_amount_minor: parseMajorToMinor(scheduleForm.expected_amount),
-        due_day: parseInt(scheduleForm.due_day, 10) || 1,
-        start_date: scheduleForm.start_date,
-        rent_frequency: scheduleForm.rent_frequency,
-      })
-      .then((res) => {
-        toast.success(`Rent schedule created (${res.data?.periods_created || 0} periods generated)`);
-        setScheduleOpen(false);
-        refresh();
-      })
-      .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to create schedule'))
-      .finally(() => setScheduleSaving(false));
+  const handleScheduleCreated = async (data) => {
+    const msg = data?.message || `Rent schedule created (${data?.periods_created || 0} periods).`;
+    if (data?.partial_recovery) {
+      toast.success(msg);
+    } else if (data?.idempotent_replay) {
+      toast.success('Schedule already created for this submission.');
+    } else {
+      toast.success(msg);
+    }
+    setScheduleOpen(false);
+    refresh();
   };
 
   const showEmptySetup = !loading && tab !== 'expenses' && ledgers.length === 0;
@@ -207,28 +191,19 @@ function ClientRentOperationsPageInner() {
               <PoundSterling className="h-5 w-5" aria-hidden />
               Rent Operations
             </h1>
-            <p className="text-sm text-white/80 mt-1">Operational rent tracking — not accounting or tax software</p>
+            <p className="text-sm text-white/80 mt-1">
+              Monitoring, arrears, and payments — tenancy authority is set from Occupancy &amp; tenancy
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="bg-white/10 text-white border-white/20 hover:bg-white/20"
-              onClick={() => setScheduleOpen(true)}
-            >
-              Set up rent
-            </Button>
-            <Button
-              size="sm"
-              className="bg-electric-teal text-midnight-blue hover:bg-electric-teal/90"
-              onClick={() => {
-                setPaymentLedger(null);
-                setPaymentOpen(true);
-              }}
-            >
-              Record payment
-            </Button>
-          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="bg-white/10 text-white border-white/20 hover:bg-white/20"
+            onClick={() => setScheduleOpen(true)}
+            data-testid="rent-enable-tracking"
+          >
+            Enable rent tracking
+          </Button>
         </div>
       </header>
 
@@ -296,10 +271,10 @@ function ClientRentOperationsPageInner() {
               <p className="text-gray-600">
                 {tab === 'attention'
                   ? 'Nothing needs attention right now.'
-                  : 'No rent periods yet. Set up rent for a property.'}
+                  : 'No ledger periods yet. Enable rent tracking from a property tenancy or here.'}
               </p>
               <Button className="mt-4" size="sm" onClick={() => setScheduleOpen(true)}>
-                Set up rent
+                Enable rent tracking
               </Button>
             </CardContent>
           </Card>
@@ -361,61 +336,14 @@ function ClientRentOperationsPageInner() {
         properties={properties}
       />
 
-      {scheduleOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" data-testid="rent-schedule-modal">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">Set up rent schedule</h3>
-            <form onSubmit={handleCreateSchedule} className="space-y-3">
-              <select
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                value={scheduleForm.property_id}
-                onChange={(e) => setScheduleForm((f) => ({ ...f, property_id: e.target.value }))}
-                required
-              >
-                <option value="">Property</option>
-                {properties.map((p) => (
-                  <option key={p.property_id} value={p.property_id}>
-                    {p.nickname || p.address_line_1}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                placeholder="Tenant name"
-                value={scheduleForm.tenant_name}
-                onChange={(e) => setScheduleForm((f) => ({ ...f, tenant_name: e.target.value }))}
-                required
-              />
-              <input
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                placeholder="Monthly rent (£)"
-                value={scheduleForm.expected_amount}
-                onChange={(e) => setScheduleForm((f) => ({ ...f, expected_amount: e.target.value }))}
-                required
-              />
-              <input
-                type="number"
-                min={1}
-                max={28}
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                value={scheduleForm.due_day}
-                onChange={(e) => setScheduleForm((f) => ({ ...f, due_day: e.target.value }))}
-              />
-              <input
-                type="date"
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                value={scheduleForm.start_date}
-                onChange={(e) => setScheduleForm((f) => ({ ...f, start_date: e.target.value }))}
-                required
-              />
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={() => setScheduleOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={scheduleSaving}>Create schedule</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <RentScheduleSetupModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        onCreated={handleScheduleCreated}
+        onError={(err) => toast.error(err?.message || 'Failed to create schedule')}
+        properties={properties}
+        initialPropertyId={filterProperty}
+      />
     </div>
   );
 }

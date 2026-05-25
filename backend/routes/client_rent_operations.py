@@ -10,6 +10,9 @@ from typing import Optional
 from middleware import client_route_guard
 from models.rent_operations import (
     CreateRentScheduleBody,
+    RentSchedulePreviewBody,
+    CreatePropertyTenancyBody,
+    ClosePropertyTenancyBody,
     UpdateRentLedgerBody,
     RecordPaymentBody,
     MarkReminderSentBody,
@@ -19,6 +22,7 @@ from models.rent_operations import (
 from services.ops_compliance_feature_flags import get_effective_flags, RENT_OPERATIONS
 from services import rent_ledger_service
 from services import rent_payment_service
+from services import rent_tenancy_authority_service as tenancy_authority
 from services import rent_reminder_service
 from services import property_expense_service
 from utils.api_errors import structured_error
@@ -163,13 +167,7 @@ async def record_rent_payment(request: Request, body: RecordPaymentBody):
             actor_role=_actor_role(user),
         )
     except ValueError as e:
-        code = str(e)
-        if code == "PROPERTY_NOT_FOUND":
-            raise HTTPException(status_code=404, detail="Property not found")
-        if code == "DOCUMENT_NOT_FOUND":
-            raise HTTPException(status_code=404, detail="Document not found")
-        status_code = 404 if code == "LEDGER_NOT_FOUND" else 400
-        raise HTTPException(status_code=status_code, detail=code)
+        _raise_rent_value_error(str(e))
 
 
 @router.post("/operations/rent/ledgers/{ledger_id}/payments", dependencies=[Depends(_require_rent_operations_enabled)])
@@ -179,14 +177,12 @@ async def record_ledger_payment(request: Request, ledger_id: str, body: RecordPa
         return await rent_payment_service.record_payment_for_ledger(
             ledger_id,
             user["client_id"],
-            body.model_dump(mode="json", exclude={"ledger_id"}, exclude_unset=True),
+            body.model_dump(mode="json", exclude_unset=True),
             actor_id=user.get("portal_user_id"),
             actor_role=_actor_role(user),
         )
     except ValueError as e:
-        code = str(e)
-        status_code = 404 if code == "LEDGER_NOT_FOUND" else 400
-        raise HTTPException(status_code=status_code, detail=code)
+        _raise_rent_value_error(str(e))
 
 
 @router.post(

@@ -1,0 +1,15 @@
+{
+  "pass": true,
+  "collection": "property_tenancies",
+  "rules_enforced": [
+    "schedule requires tenancy_id or is_external_payer + external_payer_name",
+    "one active schedule per (client, property, tenancy, rent_type)",
+    "moved_out closes active schedules; history preserved",
+    "replacement tenancy gets new lineage_parent_tenancy_id"
+  ],
+  "api": [
+    "GET /client/operations/rent/tenancies",
+    "POST /client/operations/rent/tenancies",
+    "POST /client/operations/rent/tenancies/{id}/close"
+  ]
+}

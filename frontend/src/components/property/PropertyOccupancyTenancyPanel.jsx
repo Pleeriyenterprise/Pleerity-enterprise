@@ -184,10 +184,24 @@ export default function PropertyOccupancyTenancyPanel({ propertyId }) {
               <p className="font-semibold">{rent.last_payment_at ? String(rent.last_payment_at).slice(0, 10) : '—'}</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" asChild className="mt-2">
-            <Link to={links.rent_operations || '/operations/rent'}>
-              Rent operations <ExternalLink className="h-3 w-3 ml-1" />
-            </Link>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to={links.rent_operations || `/operations/rent?property_id=${propertyId}`}>
+                Rent operations <ExternalLink className="h-3 w-3 ml-1" />
+              </Link>
+            </Button>
+            <Button size="sm" asChild data-testid="occupancy-enable-rent-tracking">
+              <Link to={`/operations/rent?property_id=${propertyId}&setup=1`}>
+                Enable rent tracking
+              </Link>
+            </Button>
+          </div>
+        </Section>
+      ) : hasRent ? (
+        <Section title="Rent tracking" icon={Banknote} testId="occupancy-section-rent-setup">
+          <p className="text-gray-600 text-sm">No rent schedule linked to this property yet.</p>
+          <Button size="sm" asChild data-testid="occupancy-enable-rent-tracking">
+            <Link to={`/operations/rent?property_id=${propertyId}&setup=1`}>Enable rent tracking</Link>
           </Button>
         </Section>
       ) : null}

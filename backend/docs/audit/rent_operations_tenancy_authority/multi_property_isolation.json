@@ -1,0 +1,6 @@
+{
+  "pass": true,
+  "ledger_list_filters": ["property_id", "tenancy_id"],
+  "payment_scoped_to_ledger_client_id": true,
+  "existing_http_tests": "test_client_rent_operations_http.py cross-client 404"
+}

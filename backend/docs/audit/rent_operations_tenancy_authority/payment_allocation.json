@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "states_derived": ["unpaid", "partially_paid", "paid", "overpaid_minor_on_ledger"],
+  "unallocated_persisted": "rent_unallocated_payments",
+  "allocation_order": "oldest_outstanding_first within tenancy scope",
+  "cross_property_blocked": true
+}

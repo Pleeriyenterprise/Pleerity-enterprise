@@ -1,0 +1,6 @@
+{
+  "pass": true,
+  "unit_tests": "backend/tests/test_rent_tenancy_authority.py",
+  "runtime_browser": "PARTIAL — requires staging credentials re-run after deploy",
+  "api_contract_verified": true
+}

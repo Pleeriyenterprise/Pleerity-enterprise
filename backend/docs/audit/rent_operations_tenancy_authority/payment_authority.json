@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "ledger_first_required": true,
+  "fallback_requires": ["property_id", "ledger_id"],
+  "detached_amount_only_blocked": true,
+  "payment_fields": ["tenancy_id", "schedule_id", "ledger_id", "idempotency_key"]
+}

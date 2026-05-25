@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "idempotent_schedule_create": true,
+  "idempotent_payment_create": true,
+  "no_duplicate_period_per_schedule": true,
+  "notes": "G9: duplicate submit and materialisation idempotency"
+}

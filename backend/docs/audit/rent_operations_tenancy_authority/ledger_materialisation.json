@@ -1,0 +1,7 @@
+{
+  "pass": true,
+  "unique_key": ["client_id", "schedule_id", "period_key"],
+  "ledger_fields": ["tenancy_id", "schedule_id", "period_start", "period_end"],
+  "supersession": "deactivate prior schedule for same tenancy+rent_type only",
+  "daily_job_skips_moved_out_tenancy": true
+}

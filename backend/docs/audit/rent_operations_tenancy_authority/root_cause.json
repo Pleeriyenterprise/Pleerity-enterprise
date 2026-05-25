@@ -1,0 +1,61 @@
+{
+  "audit_id": "rent_operations_tenancy_authority",
+  "verified_at_utc": "2026-05-20T12:00:00Z",
+  "authority_chain_required": "Property → Tenancy → Tenant(s) → Rent Schedule → Ledger Periods → Payments",
+  "findings": [
+    {
+      "classification": "RENT_AUTHORITY_DRIFT",
+      "severity": "high",
+      "summary": "Rent schedules were property-scoped with optional unvalidated tenancy_id; UI created schedules with property_id + free-text tenant_name only.",
+      "evidence": [
+        "create_rent_schedule deactivated all active schedules per property, not per tenancy",
+        "ledger period dedupe used (client_id, property_id, period_key) ignoring schedule_id",
+        "Rent Operations page was authority source for schedule creation without tenancy picker"
+      ]
+    },
+    {
+      "classification": "PAYMENT_ATTRIBUTION_FAILURE",
+      "severity": "high",
+      "summary": "Header Record payment allowed amount/date-only POST without ledger_id or tenancy_id.",
+      "evidence": [
+        "RecordPaymentModal submitted property_id only when no ledger selected",
+        "rent_payments documents lacked tenancy_id before remediation"
+      ]
+    },
+    {
+      "classification": "TENANCY_LINEAGE_BREAK",
+      "severity": "medium",
+      "summary": "No hooks from tenancy lifecycle (move-out, replacement) to rent schedule closure or new lineage.",
+      "evidence": [
+        "properties.tenancy_active unrelated to rent_schedules.is_active",
+        "No property_tenancies collection before remediation"
+      ]
+    },
+    {
+      "classification": "LEDGER_DUPLICATION_RISK",
+      "severity": "medium",
+      "summary": "Superseded schedules left ledger rows; new schedule skipped existing period_keys on property causing amount/frequency drift.",
+      "evidence": [
+        "ensure_future_periods_for_schedule skipped on property+period_key only"
+      ]
+    },
+    {
+      "classification": "MULTI_PROPERTY_LEAKAGE",
+      "severity": "medium",
+      "summary": "Payment allocation by property_id without tenancy filter could allocate across tenancies on same property.",
+      "evidence": [
+        "_outstanding_ledgers matched property_id only"
+      ]
+    },
+    {
+      "classification": "TRUST_RISK_PRESENT",
+      "severity": "high",
+      "summary": "False failed-success: API could error after schedule insert while periods existed; UI showed generic failure.",
+      "evidence": [
+        "Non-atomic create_rent_schedule without partial_recovery messaging",
+        "No idempotency_key on schedule or payment create"
+      ]
+    }
+  ],
+  "remediation_summary": "Introduced property_tenancies authority, mandatory tenancy_id (or disclosed external payer), schedule-scoped ledger materialisation, payment ledger-first authority, idempotent create, preview disclosure, unallocated payment persistence."
+}

@@ -1,0 +1,24 @@
+{
+  "classification": "PARTIAL",
+  "verified_operationally": false,
+  "reason": "Tenancy authority model implemented and unit-tested; full browser staging verification pending post-deploy run.",
+  "signals_resolved": [
+    "RENT_AUTHORITY_DRIFT",
+    "PAYMENT_ATTRIBUTION_FAILURE",
+    "TENANCY_LINEAGE_BREAK",
+    "LEDGER_DUPLICATION_RISK",
+    "MULTI_PROPERTY_LEAKAGE",
+    "TRUST_RISK_PRESENT"
+  ],
+  "tests_run": [
+    "test_rent_tenancy_authority.py",
+    "test_rent_operations.py",
+    "test_client_rent_operations_http.py"
+  ],
+  "post_deploy_required": [
+    "create tenancy from occupancy",
+    "enable rent tracking with preview",
+    "record payment from ledger row",
+    "moved-out tenancy blocks new periods"
+  ]
+}

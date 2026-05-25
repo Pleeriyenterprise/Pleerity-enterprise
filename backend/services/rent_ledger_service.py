@@ -21,6 +21,7 @@ from models.rent_operations import (
 )
 from utils.audit import create_audit_log
 from models import AuditAction, UserRole
+from services import rent_tenancy_authority_service as tenancy_authority
 
 logger = logging.getLogger(__name__)
 
@@ -158,9 +159,11 @@ async def recalculate_and_persist_ledger(
         {"_id": 0, "amount_minor": 1},
     ).to_list(500)
     received = sum(int(p.get("amount_minor") or 0) for p in payments)
+    expected = int(doc.get("expected_amount_minor") or 0)
+    overpaid_minor = max(0, received - expected)
 
     status, days_overdue, outstanding = recalculate_rent_ledger_status(
-        expected_amount_minor=int(doc.get("expected_amount_minor") or 0),
+        expected_amount_minor=expected,
         received_amount_minor=received,
         due_date_str=doc.get("due_date", ""),
         waived_at=doc.get("waived_at"),
@@ -182,6 +185,7 @@ async def recalculate_and_persist_ledger(
                 "status": status,
                 "days_overdue": days_overdue,
                 "is_overdue": is_overdue,
+                "overpaid_minor": overpaid_minor,
                 "updated_at": now,
             }
         },
@@ -208,6 +212,7 @@ async def recalculate_and_persist_ledger(
             "status": status,
             "days_overdue": days_overdue,
             "is_overdue": is_overdue,
+            "overpaid_minor": overpaid_minor,
             "updated_at": now,
         }
     )
@@ -303,19 +308,26 @@ async def ensure_future_periods_for_schedule(
     created = 0
     now = _now_iso()
 
+    schedule_id = schedule.get("schedule_id")
+    tenancy_id = schedule.get("tenancy_id")
+
     for p in periods:
-        existing = await db[COLLECTION_PERIODS].find_one(
-            {
-                "client_id": client_id,
-                "property_id": property_id,
-                "period_key": p["period_key"],
-                "is_deleted": {"$ne": True},
-            },
-            {"_id": 1},
-        )
+        period_query: Dict[str, Any] = {
+            "client_id": client_id,
+            "property_id": property_id,
+            "period_key": p["period_key"],
+            "is_deleted": {"$ne": True},
+        }
+        if schedule_id:
+            period_query["schedule_id"] = schedule_id
+        elif tenancy_id:
+            period_query["tenancy_id"] = tenancy_id
+        existing = await db[COLLECTION_PERIODS].find_one(period_query, {"_id": 1})
         if existing:
             continue
         ledger_id = f"rlp_{uuid.uuid4().hex[:12]}"
+        period_start = p["due_date"]
+        period_end = p["due_date"]
         status, days_overdue, outstanding = recalculate_rent_ledger_status(
             expected_amount_minor=p["expected_amount_minor"],
             received_amount_minor=0,
@@ -330,6 +342,8 @@ async def ensure_future_periods_for_schedule(
             "tenancy_id": schedule.get("tenancy_id"),
             "tenant_name": schedule.get("tenant_name"),
             "period_key": p["period_key"],
+            "period_start": period_start,
+            "period_end": period_end,
             "expected_amount_minor": p["expected_amount_minor"],
             "currency": p["currency"],
             "rent_frequency": p["rent_frequency"],
@@ -365,6 +379,51 @@ async def ensure_future_periods_for_schedule(
     return created
 
 
+def preview_schedule_periods(body: Dict[str, Any]) -> Dict[str, Any]:
+    """Non-persisting preview for schedule creation honesty (period count, range, cadence)."""
+    rent_frequency = (body.get("rent_frequency") or RentFrequency.MONTHLY.value).lower()
+    due_day = int(body.get("due_day") or 1)
+    start_raw = body["start_date"]
+    start_date = _parse_date(start_raw if isinstance(start_raw, str) else str(start_raw))
+    end_raw = body.get("end_date")
+    end_date = _parse_date(end_raw) if end_raw else None
+    stub = {
+        "rent_frequency": rent_frequency,
+        "due_day": due_day,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat() if end_date else None,
+        "expected_amount_minor": int(body.get("expected_amount_minor") or 0),
+    }
+    today = datetime.now(timezone.utc).date()
+    periods = _generate_periods_for_schedule(stub, today)
+    if not periods:
+        return {
+            "period_count": 0,
+            "period_start": None,
+            "period_end": None,
+            "cadence_label": rent_frequency,
+            "next_due_date": None,
+            "disclosure": "No rent periods would be generated for the selected dates.",
+        }
+    due_dates = [_parse_date(p["due_date"]) for p in periods]
+    next_due = min((d for d in due_dates if d >= today), default=due_dates[0])
+    start_label = min(due_dates).strftime("%b %Y")
+    end_label = max(due_dates).strftime("%b %Y")
+    cadence = "monthly" if rent_frequency == RentFrequency.MONTHLY.value else "weekly"
+    disclosure = (
+        f"This will create {len(periods)} {cadence} rent periods from {start_label} to {end_label}. "
+        f"Next due date: {next_due.isoformat()}."
+    )
+    return {
+        "period_count": len(periods),
+        "period_start": min(due_dates).isoformat(),
+        "period_end": max(due_dates).isoformat(),
+        "cadence_label": cadence,
+        "next_due_date": next_due.isoformat(),
+        "disclosure": disclosure,
+    }
+
+
 async def create_rent_schedule(
     client_id: str,
     body: Dict[str, Any],
@@ -372,11 +431,37 @@ async def create_rent_schedule(
 ) -> Dict[str, Any]:
     db = database.get_db()
     property_id = body["property_id"]
-    await _validate_property(db, client_id, property_id)
+    idempotency_key = (body.get("idempotency_key") or "").strip() or None
+
+    if idempotency_key:
+        prior = await db[COLLECTION_SCHEDULES].find_one(
+            {"client_id": client_id, "idempotency_key": idempotency_key},
+            {"_id": 0},
+        )
+        if prior:
+            prior["idempotent_replay"] = True
+            prior["periods_created"] = 0
+            return prior
+
+    _prop, tenancy, is_external = await tenancy_authority.validate_schedule_authority(client_id, body)
+    tenancy_id = tenancy["tenancy_id"]
+    rent_type = body.get("rent_type") or tenancy_authority.DEFAULT_RENT_TYPE
+    tenant_name = (
+        body.get("tenant_name")
+        or tenancy.get("tenant_display_name")
+        or body.get("external_payer_name")
+        or "Tenant"
+    )
 
     await db[COLLECTION_SCHEDULES].update_many(
-        {"client_id": client_id, "property_id": property_id, "is_active": True},
-        {"$set": {"is_active": False, "updated_at": _now_iso()}},
+        {
+            "client_id": client_id,
+            "property_id": property_id,
+            "tenancy_id": tenancy_id,
+            "rent_type": rent_type,
+            "is_active": True,
+        },
+        {"$set": {"is_active": False, "superseded_at": _now_iso(), "updated_at": _now_iso()}},
     )
 
     schedule_id = f"rs_{uuid.uuid4().hex[:12]}"
@@ -386,8 +471,11 @@ async def create_rent_schedule(
         "schedule_id": schedule_id,
         "client_id": client_id,
         "property_id": property_id,
-        "tenancy_id": body.get("tenancy_id"),
-        "tenant_name": body["tenant_name"],
+        "tenancy_id": tenancy_id,
+        "rent_type": rent_type,
+        "tenant_name": tenant_name,
+        "is_external_payer": is_external,
+        "external_payer_name": body.get("external_payer_name") if is_external else None,
         "expected_amount_minor": int(body["expected_amount_minor"]),
         "currency": body.get("currency") or DEFAULT_CURRENCY,
         "rent_frequency": (body.get("rent_frequency") or RentFrequency.MONTHLY.value).lower(),
@@ -396,14 +484,42 @@ async def create_rent_schedule(
         "end_date": ed if ed is None or isinstance(ed, str) else str(ed),
         "notes": body.get("notes"),
         "is_active": True,
+        "idempotency_key": idempotency_key,
         "created_at": now,
         "updated_at": now,
         "created_by": actor_id,
     }
-    await db[COLLECTION_SCHEDULES].insert_one(schedule)
-    periods_created = await ensure_future_periods_for_schedule(schedule, actor_id=actor_id)
-    schedule["periods_created"] = periods_created
-    return schedule
+    preview = preview_schedule_periods(body)
+    schedule["creation_preview"] = preview
+
+    try:
+        await db[COLLECTION_SCHEDULES].insert_one(schedule)
+        periods_created = await ensure_future_periods_for_schedule(schedule, actor_id=actor_id)
+        schedule["periods_created"] = periods_created
+        schedule["success"] = True
+        schedule["message"] = preview.get("disclosure") or f"Rent schedule created ({periods_created} periods)."
+        if not is_external:
+            await db[tenancy_authority.COLLECTION_TENANCIES].update_one(
+                {"tenancy_id": tenancy_id, "client_id": client_id},
+                {"$set": {"rent_tracking_enabled": True, "updated_at": now}},
+            )
+        return schedule
+    except Exception as exc:
+        logger.exception("rent schedule create failed schedule_id=%s", schedule_id)
+        existing_periods = await db[COLLECTION_PERIODS].count_documents(
+            {"client_id": client_id, "schedule_id": schedule_id, "is_deleted": {"$ne": True}},
+        )
+        if existing_periods:
+            schedule["success"] = True
+            schedule["partial_recovery"] = True
+            schedule["periods_created"] = existing_periods
+            schedule["message"] = (
+                f"Schedule saved with {existing_periods} ledger period(s) already materialised. "
+                "Refresh to view — do not resubmit."
+            )
+            return schedule
+        await db[COLLECTION_SCHEDULES].delete_one({"schedule_id": schedule_id, "client_id": client_id})
+        raise exc
 
 
 async def list_schedules(client_id: str, property_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -420,6 +536,7 @@ async def list_schedules(client_id: str, property_id: Optional[str] = None) -> L
 async def list_ledgers(
     client_id: str,
     property_id: Optional[str] = None,
+    tenancy_id: Optional[str] = None,
     status: Optional[str] = None,
     due_from: Optional[str] = None,
     due_to: Optional[str] = None,
@@ -435,6 +552,8 @@ async def list_ledgers(
     q: Dict[str, Any] = {"client_id": client_id, "is_deleted": {"$ne": True}}
     if property_id:
         q["property_id"] = property_id
+    if tenancy_id:
+        q["tenancy_id"] = tenancy_id
     if status:
         q["status"] = status
     if tenant_name:
@@ -581,7 +700,16 @@ async def get_rent_summary(client_id: str, property_id: Optional[str] = None) ->
 
     arrears_pipeline = [
         {"$match": {**base, "outstanding_balance_minor": {"$gt": 0}}},
-        {"$group": {"_id": "$property_id"}},
+        {
+            "$group": {
+                "_id": {
+                    "$ifNull": [
+                        "$tenancy_id",
+                        {"$concat": ["property:", "$property_id"]},
+                    ]
+                }
+            }
+        },
         {"$count": "tenancies"},
     ]
     arrears = await db[COLLECTION_PERIODS].aggregate(arrears_pipeline).to_list(1)

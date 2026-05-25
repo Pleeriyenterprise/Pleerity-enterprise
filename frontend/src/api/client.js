@@ -761,6 +761,11 @@ export const clientAPI = {
   exportApprovals: (params = {}) => apiClient.get('/client/approvals/export', { params, responseType: 'blob' }),
   /** Rent Operations (operational rent tracking — not accounting). Requires rent_operations. */
   getRentSummary: (params = {}) => apiClient.get('/client/operations/rent/summary', { params }),
+  getRentTenancies: (params = {}) => apiClient.get('/client/operations/rent/tenancies', { params }),
+  createRentTenancy: (body) => apiClient.post('/client/operations/rent/tenancies', body),
+  closeRentTenancy: (tenancyId, body = {}) =>
+    apiClient.post(`/client/operations/rent/tenancies/${encodeURIComponent(tenancyId)}/close`, body),
+  previewRentSchedule: (body) => apiClient.post('/client/operations/rent/schedules/preview', body),
   getRentSchedules: (params = {}) => apiClient.get('/client/operations/rent/schedules', { params }),
   createRentSchedule: (body) => apiClient.post('/client/operations/rent/schedules', body),
   getRentLedgers: (params = {}) => apiClient.get('/client/operations/rent/ledgers', { params }),
