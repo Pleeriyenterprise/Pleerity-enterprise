@@ -100,6 +100,12 @@ function ClientRentOperationsPageInner() {
   }, []);
 
   useEffect(() => {
+    const pid = searchParams.get('property_id');
+    if (pid) setFilterProperty(pid);
+    if (searchParams.get('setup') === '1') setScheduleOpen(true);
+  }, [searchParams]);
+
+  useEffect(() => {
     refresh();
   }, [refresh, tab]);
 

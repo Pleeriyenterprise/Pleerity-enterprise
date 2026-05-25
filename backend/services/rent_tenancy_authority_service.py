@@ -117,6 +117,17 @@ async def resolve_or_create_active_tenancy(
     if not display:
         display = "Occupancy tenant"
 
+    parent_row = await db[COLLECTION_TENANCIES].find_one(
+        {
+            "client_id": client_id,
+            "property_id": property_id,
+            "status": {"$in": [TENANCY_STATUS_MOVED_OUT, TENANCY_STATUS_ARCHIVED]},
+        },
+        {"_id": 0, "tenancy_id": 1},
+        sort=[("ended_at", -1)],
+    )
+    lineage_parent_tenancy_id = parent_row["tenancy_id"] if parent_row else None
+
     tenancy_id = f"pty_{uuid.uuid4().hex[:12]}"
     now = _now_iso()
     doc = {
@@ -128,7 +139,7 @@ async def resolve_or_create_active_tenancy(
         "status": TENANCY_STATUS_ACTIVE,
         "rent_tracking_enabled": rent_tracking_enabled,
         "rent_type": DEFAULT_RENT_TYPE,
-        "lineage_parent_tenancy_id": None,
+        "lineage_parent_tenancy_id": lineage_parent_tenancy_id,
         "started_at": now,
         "ended_at": None,
         "created_at": now,

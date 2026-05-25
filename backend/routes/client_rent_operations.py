@@ -113,14 +113,24 @@ async def list_rent_tenancies(
 async def create_rent_tenancy(request: Request, body: CreatePropertyTenancyBody):
     user = await _require_rent_operations_enabled(request)
     try:
-        doc = await tenancy_authority.resolve_or_create_active_tenancy(
-            user["client_id"],
-            body.property_id,
-            tenant_ids=body.tenant_ids,
-            tenant_display_name=body.tenant_display_name,
-            rent_tracking_enabled=body.rent_tracking_enabled,
-            actor_id=user.get("portal_user_id"),
-        )
+        if body.lineage_parent_tenancy_id:
+            doc = await tenancy_authority.create_replacement_tenancy(
+                user["client_id"],
+                body.property_id,
+                body.lineage_parent_tenancy_id,
+                tenant_ids=body.tenant_ids,
+                tenant_display_name=body.tenant_display_name,
+                actor_id=user.get("portal_user_id"),
+            )
+        else:
+            doc = await tenancy_authority.resolve_or_create_active_tenancy(
+                user["client_id"],
+                body.property_id,
+                tenant_ids=body.tenant_ids,
+                tenant_display_name=body.tenant_display_name,
+                rent_tracking_enabled=body.rent_tracking_enabled,
+                actor_id=user.get("portal_user_id"),
+            )
         return doc
     except ValueError as e:
         _raise_rent_value_error(str(e))

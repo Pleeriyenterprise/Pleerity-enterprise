@@ -29,6 +29,7 @@ export function RentScheduleSetupModal({
   const [tenancies, setTenancies] = useState([]);
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(makeIdempotencyKey);
 
@@ -212,9 +213,15 @@ export function RentScheduleSetupModal({
                 ))}
               </select>
               {form.property_id && tenancies.length === 0 && (
-                <Button type="button" variant="outline" size="sm" onClick={ensureTenancy}>
-                  Create tenancy from occupancy
-                </Button>
+                <div className="space-y-2" data-testid="rent-schedule-no-tenancy">
+                  <p className="text-xs text-gray-600">
+                    No active tenancy for this property. Create one from Occupancy or use the button below
+                    before confirming a schedule.
+                  </p>
+                  <Button type="button" variant="outline" size="sm" onClick={ensureTenancy}>
+                    Create tenancy from occupancy
+                  </Button>
+                </div>
               )}
             </div>
           )}

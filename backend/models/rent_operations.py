@@ -124,6 +124,10 @@ class CreatePropertyTenancyBody(BaseModel):
     tenant_display_name: Optional[str] = None
     tenant_ids: Optional[list[str]] = None
     rent_tracking_enabled: bool = False
+    lineage_parent_tenancy_id: Optional[str] = Field(
+        None,
+        description="Prior tenancy when creating a replacement lineage after move-out",
+    )
 
 
 class ClosePropertyTenancyBody(BaseModel):

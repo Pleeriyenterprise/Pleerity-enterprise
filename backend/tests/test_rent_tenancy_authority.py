@@ -161,6 +161,76 @@ async def test_payment_requires_ledger_or_full_authority():
 
 
 @pytest.mark.asyncio
+async def test_new_tenancy_links_lineage_after_move_out():
+    """Replacement tenancy after move-out must reference prior tenancy lineage."""
+    client_id = "c_lineage"
+    property_id = "p_lineage"
+    parent_id = "pty_old"
+    mock_db = MagicMock()
+    tenancies = MagicMock()
+    tenancies.find_one = AsyncMock(
+        side_effect=[
+            None,  # no active tenancy
+            {"tenancy_id": parent_id},  # latest moved_out parent
+        ]
+    )
+    tenancies.insert_one = AsyncMock()
+    props = MagicMock()
+    props.find_one = AsyncMock(return_value={"property_id": property_id, "client_id": client_id})
+    portal_users = MagicMock()
+    portal_users.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+    assignments = MagicMock()
+    assignments.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+    mock_db.properties = props
+    mock_db.portal_users = portal_users
+    mock_db.tenant_assignments = assignments
+    mock_db.__getitem__ = MagicMock(return_value=tenancies)
+
+    with patch("services.rent_tenancy_authority_service.database.get_db", return_value=mock_db):
+        doc = await tenancy_authority.resolve_or_create_active_tenancy(
+            client_id,
+            property_id,
+            tenant_display_name="New tenant",
+            rent_tracking_enabled=False,
+            actor_id="actor-1",
+        )
+    assert doc["lineage_parent_tenancy_id"] == parent_id
+    insert_doc = tenancies.insert_one.call_args[0][0]
+    assert insert_doc["lineage_parent_tenancy_id"] == parent_id
+
+
+@pytest.mark.asyncio
+async def test_create_replacement_tenancy_sets_parent():
+    parent_id = "pty_parent"
+    mock_db = MagicMock()
+    tenancies = MagicMock()
+    tenancies.find_one = AsyncMock(
+        return_value={
+            "tenancy_id": parent_id,
+            "client_id": "c1",
+            "property_id": "p1",
+            "status": "moved_out",
+            "tenant_display_name": "Old",
+            "tenant_ids": [],
+            "rent_type": "residential_rent",
+        }
+    )
+    tenancies.insert_one = AsyncMock()
+    schedules = MagicMock()
+    schedules.update_many = AsyncMock()
+    mock_db.rent_schedules = schedules
+    mock_db.__getitem__ = MagicMock(return_value=tenancies)
+    with patch("services.rent_tenancy_authority_service.database.get_db", return_value=mock_db):
+        doc = await tenancy_authority.create_replacement_tenancy(
+            "c1",
+            "p1",
+            parent_id,
+            actor_id="actor-1",
+        )
+    assert doc["lineage_parent_tenancy_id"] == parent_id
+
+
+@pytest.mark.asyncio
 async def test_close_tenancy_deactivates_schedules():
     mock_db = MagicMock()
     tenancies = MagicMock()
