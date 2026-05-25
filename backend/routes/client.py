@@ -1696,6 +1696,47 @@ async def get_properties(request: Request):
             detail="Failed to load properties"
         )
 
+
+@router.get("/properties/{property_id}/occupancy-operational-summary")
+async def get_property_occupancy_operational_summary(request: Request, property_id: str):
+    """
+    Read-only property-scoped tenant/occupancy operational aggregation.
+    Composes tenant portal, maintenance, rent ops, and calendar projections — does not own domain truth.
+    """
+    from services.plan_registry import plan_registry
+    from services.ops_compliance_feature_flags import get_effective_flags, RENT_OPERATIONS, MAINTENANCE_WORKFLOWS
+    from services.property_occupancy_operational_service import build_property_occupancy_operational_summary
+
+    user = await client_route_guard(request)
+    client_id = user["client_id"]
+    flags = await get_effective_flags(client_id)
+    tenant_allowed, _, _ = await plan_registry.enforce_feature(client_id, "tenant_portal")
+    try:
+        body = await build_property_occupancy_operational_summary(
+            client_id,
+            property_id,
+            include_rent=bool(flags.get(RENT_OPERATIONS)),
+            include_maintenance=bool(flags.get(MAINTENANCE_WORKFLOWS)),
+            include_tenant_portal=tenant_allowed,
+        )
+        body["feature_gates"] = {
+            "tenant_portal": tenant_allowed,
+            "rent_operations": bool(flags.get(RENT_OPERATIONS)),
+            "maintenance_workflows": bool(flags.get(MAINTENANCE_WORKFLOWS)),
+        }
+        return body
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail="Property not found")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error("occupancy-operational-summary error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load occupancy operational summary",
+        )
+
+
 @router.get("/properties/{property_id}/requirements")
 async def get_property_requirements(request: Request, property_id: str):
     """Get requirements for a property."""

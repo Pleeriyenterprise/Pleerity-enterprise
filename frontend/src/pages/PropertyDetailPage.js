@@ -142,6 +142,7 @@ import {
 } from '../utils/jurisdictionComplianceCopy';
 import { propertyPageJurisdictionBanners } from '../utils/jurisdictionUiPolicy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
+import PropertyOccupancyTenancyPanel from '../components/property/PropertyOccupancyTenancyPanel';
 import { PropertyFinancialSnapshotCard } from '../components/rent/PropertyFinancialSnapshotCard';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import {
@@ -164,6 +165,7 @@ const PROPERTY_JURISDICTION_SELECT_UNSET = '__property_jurisdiction_unset__';
 
 /** Default landing: single-property operating hub (not a mini-dashboard). */
 const TAB_OPERATING = 'operating';
+const TAB_OCCUPANCY = 'occupancy';
 const TAB_COMPLIANCE = 'compliance';
 const TAB_MAINTENANCE = 'maintenance';
 const TAB_EVIDENCE = 'evidence';
@@ -1695,6 +1697,7 @@ export default function PropertyDetailPage() {
       <nav className="flex flex-wrap gap-1 border-b border-gray-200 mb-6 pb-px" aria-label="Property sections">
         {[
           { id: TAB_OPERATING, label: 'Operating', icon: Building2, feature: null },
+          { id: TAB_OCCUPANCY, label: 'Occupancy & tenancy', icon: Users, feature: null },
           { id: TAB_COMPLIANCE, label: 'Compliance', icon: ClipboardCheck, feature: null },
           { id: TAB_MAINTENANCE, label: 'Jobs & issues', icon: Wrench, feature: 'maintenance_workflows' },
           { id: TAB_EVIDENCE, label: 'Documents', icon: FileText, feature: null },
@@ -1715,7 +1718,9 @@ export default function PropertyDetailPage() {
                   ? 'property-tab-compliance'
                   : id === TAB_EVIDENCE
                     ? 'property-tab-documents'
-                    : undefined
+                    : id === TAB_OCCUPANCY
+                      ? 'property-tab-occupancy'
+                      : undefined
               }
               onClick={() => setActiveTab(id)}
               className={`flex items-center gap-2 px-3 sm:px-4 py-3 min-h-11 text-sm font-medium border-b-2 -mb-px transition-colors rounded-t-md ${
@@ -1780,6 +1785,10 @@ export default function PropertyDetailPage() {
         />
         <PropertyFinancialSnapshotCard propertyId={propertyId} />
         </>
+      )}
+
+      {activeTab === TAB_OCCUPANCY && (
+        <PropertyOccupancyTenancyPanel propertyId={propertyId} />
       )}
 
       {/* Tab: Compliance */}

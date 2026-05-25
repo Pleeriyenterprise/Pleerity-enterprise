@@ -779,6 +779,8 @@ export const clientAPI = {
   deleteRentExpense: (expenseId) => apiClient.delete(`/client/operations/expenses/${encodeURIComponent(expenseId)}`),
   getPropertyFinancialSnapshot: (propertyId) =>
     apiClient.get(`/client/properties/${encodeURIComponent(propertyId)}/financial-snapshot`),
+  getPropertyOccupancyOperationalSummary: (propertyId) =>
+    apiClient.get(`/client/properties/${encodeURIComponent(propertyId)}/occupancy-operational-summary`),
   /** In-app notifications (portal user). */
   getInAppNotifications: (params = {}) => apiClient.get('/profile/in-app-notifications', { params }),
   getInAppNotificationsUnreadCount: () => apiClient.get('/profile/in-app-notifications/unread-count'),

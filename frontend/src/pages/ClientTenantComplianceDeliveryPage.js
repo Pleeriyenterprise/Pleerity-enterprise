@@ -82,7 +82,7 @@ export default function ClientTenantComplianceDeliveryPage() {
 
   const tenantsForProperty = useMemo(() => {
     if (!propertyId) return [];
-    return (tenants || []).filter((t) => (t.property_ids || []).includes(propertyId));
+    return (tenants || []).filter((t) => (t.assigned_properties || t.property_ids || []).includes(propertyId));
   }, [tenants, propertyId]);
 
   const onPropertyChange = (pid) => {

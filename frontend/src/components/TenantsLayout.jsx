@@ -18,9 +18,9 @@ export default function TenantsLayout() {
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="tenants-layout">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <h1 className="text-2xl font-bold text-midnight-blue">Tenants</h1>
+        <h1 className="text-2xl font-bold text-midnight-blue">Tenant operations</h1>
         <p className="text-sm text-slate-600 mt-1 max-w-3xl">
-          Invite tenants, respond to messages and requests, send compliance packs by email, and review delivery proof.
+          Operational participants on your portfolio — invites, requests, compliance pack delivery, and property-linked tenancy context. Financial rent truth stays in Rent operations.
         </p>
 
         <nav
