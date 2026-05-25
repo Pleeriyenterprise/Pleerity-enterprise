@@ -24,13 +24,14 @@ export function RecordPaymentModal({
   const [fallbackProperty, setFallbackProperty] = useState('');
   const [fallbackTenancy, setFallbackTenancy] = useState('');
   const [fallbackLedger, setFallbackLedger] = useState('');
-  const [idempotencyKey] = useState(makeIdempotencyKey);
+  const [idempotencyKey, setIdempotencyKey] = useState(makeIdempotencyKey);
 
   const hasLedgerContext = Boolean(ledger?.ledger_id);
   const outstanding = ledger?.outstanding_balance_minor ?? 0;
 
   useEffect(() => {
     if (!open) return;
+    setIdempotencyKey(makeIdempotencyKey());
     setAmount('');
     setPaymentDate(new Date().toISOString().slice(0, 10));
     setMethod('');

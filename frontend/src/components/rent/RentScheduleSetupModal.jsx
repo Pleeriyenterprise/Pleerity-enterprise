@@ -29,10 +29,11 @@ export function RentScheduleSetupModal({
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [idempotencyKey] = useState(makeIdempotencyKey);
+  const [idempotencyKey, setIdempotencyKey] = useState(makeIdempotencyKey);
 
   useEffect(() => {
     if (!open) return;
+    setIdempotencyKey(makeIdempotencyKey());
     setForm((f) => ({ ...f, property_id: initialPropertyId || f.property_id }));
   }, [open, initialPropertyId]);
 

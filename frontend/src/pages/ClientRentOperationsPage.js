@@ -300,8 +300,9 @@ function ClientRentOperationsPageInner() {
         }}
         onSubmit={handleRecordPayment}
         saving={paymentSaving}
-        propertyId={paymentLedger?.property_id || filterProperty}
-        ledgerId={paymentLedger?.ledger_id}
+        ledger={paymentLedger}
+        properties={properties}
+        ledgers={ledgers}
       />
 
       <RentLedgerDetailDrawer
