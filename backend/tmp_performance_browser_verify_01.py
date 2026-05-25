@@ -32,6 +32,9 @@ DEPLOY_MARKERS = [
     "OPERATIONAL_CACHE_KEYS",
 ]
 
+# Must match frontend/src/utils/clientOperationalFetch.js DEFAULT_STALE_MS
+OPERATIONAL_CACHE_STALE_MS = 45_000
+
 SURFACES = [
     ("P1_Today", "/today", "client-tasks-page", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
     ("P2_CommandCentre", "/command-center", "command-center-root", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
@@ -203,6 +206,51 @@ def measure_surface(page, name: str, path: str, root_testid: str, skeleton_ids: 
     }
 
 
+def probe_stale_refresh_disclosure(page) -> dict[str, Any]:
+    """Force expired in-session cache + slow refresh so stale-while-refresh banner must show."""
+    banner_testid = "portal-stale-refresh-banner"
+    refresh_delay_ms = 3000
+    expiry_wait_ms = OPERATIONAL_CACHE_STALE_MS + 1000
+
+    page.goto(f"{FRONTEND}/properties", wait_until="domcontentloaded", timeout=180_000)
+    page.wait_for_selector('[data-testid="properties-page"]', timeout=180_000)
+
+    page.goto(f"{FRONTEND}/dashboard", wait_until="domcontentloaded", timeout=60_000)
+    page.wait_for_timeout(expiry_wait_ms)
+
+    def delayed_properties(route):
+        time.sleep(refresh_delay_ms / 1000)
+        route.continue_()
+
+    page.route("**/client/properties**", delayed_properties)
+    t0 = time.perf_counter()
+    page.goto(f"{FRONTEND}/properties", wait_until="domcontentloaded", timeout=180_000)
+
+    seen_at = None
+    text = None
+    for _ in range(100):
+        loc = page.locator(f'[data-testid="{banner_testid}"]')
+        if loc.count() and loc.first.is_visible():
+            seen_at = int((time.perf_counter() - t0) * 1000)
+            text = (loc.first.inner_text() or "").strip()
+            break
+        page.wait_for_timeout(50)
+
+    try:
+        page.unroute("**/client/properties**", delayed_properties)
+    except Exception:
+        pass
+
+    return {
+        "stale_banner_seen": seen_at is not None,
+        "stale_banner_ms": seen_at,
+        "stale_banner_text": text,
+        "cache_expiry_wait_ms": expiry_wait_ms,
+        "refresh_delay_ms": refresh_delay_ms,
+        "charter_gate": "stale_refresh_disclosed_in_browser",
+    }
+
+
 def run_browser() -> dict[str, Any]:
     out: dict[str, Any] = {"attempted": False}
     if sync_playwright is None:
@@ -242,6 +290,8 @@ def run_browser() -> dict[str, Any]:
         warm.append(measure_surface(page, "P6_Documents_revisit", "/documents", "documents-page", ["portal-section-skeleton"], banner, warm=True))
         warm.append(measure_surface(page, "P4_Properties_revisit", "/properties", "properties-page", ["portal-section-skeleton"], banner, warm=True))
 
+        out["stale_refresh_disclosure_probe"] = probe_stale_refresh_disclosure(page)
+
         # Truth: error visibility probe — force bad token should not show fake calm on dashboard
         page.evaluate("() => localStorage.removeItem('auth_token')")
         err_t0 = time.perf_counter()
@@ -278,8 +328,19 @@ def classify(deploy: dict, browser: dict) -> dict[str, Any]:
             improvements += 1
 
     warm = browser.get("warm_navigation") or []
-    cache_honest = any(r.get("stale_banner_seen") for r in warm) or any(
-        (r.get("primary_content_ms") or 99999) < 5000 for r in warm if "revisit" in r["surface"]
+    stale_probe = browser.get("stale_refresh_disclosure_probe") or {}
+
+    # Charter gate: stale banner must be observed — never inferred from fast warm revisit alone.
+    stale_refresh_disclosed_in_browser = (
+        any(r.get("stale_banner_seen") for r in warm)
+        or any(r.get("stale_banner_seen") for r in cold)
+        or stale_probe.get("stale_banner_seen") is True
+    )
+
+    warm_revisit_fast = any(
+        (r.get("primary_content_ms") or 99999) < 5000
+        for r in warm
+        if "revisit" in r.get("surface", "")
     )
 
     unacceptable_backend = any(
@@ -297,12 +358,18 @@ def classify(deploy: dict, browser: dict) -> dict[str, Any]:
     if unacceptable_backend and verified:
         classification = "PARTIAL"
         reason = "progressive UX verified but backend latency remains unacceptable on Today/Command Centre"
-    elif verified and cache_honest:
+    elif verified and stale_refresh_disclosed_in_browser:
         classification = "VERIFIED_OPERATIONALLY"
-        reason = "deploy markers present; progressive shell and warm revisit improvement observed"
+        reason = (
+            "deploy markers present; progressive shell verified; "
+            "stale-while-refresh banner disclosed in browser"
+        )
     elif verified:
         classification = "PARTIAL"
-        reason = "progressive loading verified; stale-refresh banner not observed on warm revisit"
+        reason = (
+            "progressive loading verified; stale-refresh banner not observed in browser "
+            "(fast warm revisit alone is insufficient for operational verification)"
+        )
     elif deploy_ok and improvements >= 2:
         classification = "PARTIAL"
         reason = "deploy present with partial progressive improvement"
@@ -316,7 +383,8 @@ def classify(deploy: dict, browser: dict) -> dict[str, Any]:
         "reason": reason,
         "improvement_signals": improvements,
         "regression_signals": regressions,
-        "cache_honest": cache_honest,
+        "stale_refresh_disclosed_in_browser": stale_refresh_disclosed_in_browser,
+        "warm_revisit_fast": warm_revisit_fast,
         "unacceptable_backend_latency": unacceptable_backend,
     }
 
@@ -335,6 +403,7 @@ def main() -> int:
         "cold_navigation": browser.get("cold_navigation", []),
         "warm_navigation": browser.get("warm_navigation", []),
         "auth_error_surface": browser.get("auth_error_surface"),
+        "stale_refresh_disclosure_probe": browser.get("stale_refresh_disclosure_probe"),
         "login_status": browser.get("login_status"),
         "browser_attempted": browser.get("attempted"),
     }
