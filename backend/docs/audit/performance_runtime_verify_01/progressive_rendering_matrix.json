@@ -1,49 +1,51 @@
 {
+  "post_deploy_browser_verified": true,
+  "verified_at_utc": "2026-05-25T16:04:47Z",
   "surfaces": {
     "P1_Today": {
-      "shell_immediate": true,
-      "primary_first": "GET /today/items",
-      "deferred": ["GET /client/requirements inbox alignment", "command-center jurisdiction notice"],
-      "cache": ["compliance-summary property filter", "today-items keyed by property"]
+      "shell_immediate_browser": true,
+      "shell_visible_ms": 334,
+      "primary_deferred": "requirements inbox alignment",
+      "full_page_spinner_removed": true
     },
     "P2_CommandCentre": {
-      "shell_immediate": true,
-      "primary_first": "GET /client/command-center",
-      "deferred": ["portfolio compliance-summary", "work-orders limit 200"],
-      "cache": ["command-center", "requirements", "compliance-summary"]
+      "shell_immediate_browser": true,
+      "shell_visible_ms": 580,
+      "primary_first": "command-center verdict",
+      "secondary_deferred": "portfolio summary, work-orders",
+      "full_page_spinner_removed": true,
+      "backend_blocks_primary_truth": true
     },
     "P3_Dashboard": {
-      "shell_immediate": true,
-      "primary_first": "GET /client/dashboard",
-      "deferred": "existing widget-level loaders (score, ROI, protection, today KPIs)",
-      "cache": ["client:dashboard with stale-refresh banner"]
+      "shell_immediate_browser": true,
+      "shell_visible_ms": 218,
+      "skeleton_while_dashboard_loads": true,
+      "full_page_spinner_removed": true
     },
     "P4_Properties": {
-      "shell_immediate": true,
-      "primary_first": "GET /client/properties",
-      "deferred": ["GET /client/value-insights"],
-      "cache": ["client:properties"]
+      "shell_immediate_browser": true,
+      "shell_visible_ms": 199,
+      "primary_ms": 2558,
+      "endpoint": "/client/properties",
+      "full_page_spinner_removed": true
     },
     "P5_Requirements": {
-      "shell_immediate": true,
-      "primary_first": "GET /client/properties + GET /client/requirements",
-      "deferred": ["GET /documents for per-requirement counts"],
-      "cache": ["properties", "requirements", "documents"]
+      "shell_immediate_browser": true,
+      "shell_visible_ms": 192,
+      "documents_counts_deferred": true,
+      "full_page_spinner_removed": true
     },
     "P6_Documents": {
-      "shell_immediate": true,
-      "primary_first": "GET /documents queue",
-      "deferred": ["properties + requirements registry"],
-      "cache": ["documents", "properties", "requirements"]
+      "shell_immediate_browser": true,
+      "shell_visible_ms": 200,
+      "queue_first": true,
+      "registry_deferred": true,
+      "full_page_spinner_removed": true
     },
     "P7_RentOperations": {
-      "shell_immediate": true,
-      "tab_scoped": {
-        "attention": ["summary", "ledgers attention_only"],
-        "ledger": ["summary", "ledgers"],
-        "expenses": ["summary", "expenses + expense summary"]
-      },
-      "cache": []
+      "page_chrome_immediate": true,
+      "tab_body_spinner_only": true,
+      "tab_scoped_fetch": true
     }
   }
 }

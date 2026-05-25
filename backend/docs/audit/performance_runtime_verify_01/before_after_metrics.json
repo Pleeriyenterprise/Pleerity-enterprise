@@ -1,58 +1,79 @@
 {
-  "note": "Before = pre-change frontend blocking model + staging API sample 2026-05-25. After = progressive gating + lighter endpoints (deploy required for UI).",
+  "note": "Before = pre-cb14b437 full-page gate model (API sample 2026-05-25). After = post-deploy browser timings same day.",
   "metrics": [
     {
-      "surface": "P4 Properties",
+      "surface": "P4_Properties",
       "before_blocking_api": "GET /client/dashboard",
       "before_estimated_ms": 24183,
-      "after_blocking_api": "GET /client/properties",
-      "after_estimated_ms": 1798,
-      "improvement_ratio": 0.93
+      "after_shell_ms": 199,
+      "after_primary_ms": 2558,
+      "full_page_spinner_eliminated": true
     },
     {
-      "surface": "P5 Requirements",
-      "before_blocking": "Promise.all(dashboard, requirements, documents)",
+      "surface": "P1_Today",
+      "before_blocking": "Promise.all today + requirements",
+      "before_estimated_ms": 29643,
+      "after_shell_ms": 334,
+      "after_primary_ms": 3148,
+      "full_page_spinner_eliminated": true
+    },
+    {
+      "surface": "P2_CommandCentre",
+      "before_blocking": "Promise.all CC + portfolio + jobs",
+      "before_estimated_ms": 75197,
+      "after_shell_ms": 580,
+      "after_primary_ms": 96824,
+      "full_page_spinner_eliminated": true,
+      "backend_still_blocking_truth": true
+    },
+    {
+      "surface": "P3_Dashboard",
+      "before_blocking": "GET /client/dashboard full page",
+      "before_estimated_ms": 24183,
+      "after_shell_ms": 218,
+      "after_primary_ms": 25044,
+      "full_page_spinner_eliminated": true
+    },
+    {
+      "surface": "P5_Requirements",
+      "before_blocking": "dashboard + requirements + documents",
       "before_estimated_ms": 28321,
-      "after_blocking": "properties + requirements only",
-      "after_estimated_ms": 5303,
-      "improvement_ratio": 0.81
+      "after_shell_ms": 192,
+      "after_primary_ms": 24132,
+      "full_page_spinner_eliminated": true
     },
     {
-      "surface": "P6 Documents",
-      "before_blocking": "all three APIs",
+      "surface": "P6_Documents",
+      "before_blocking": "three-way Promise.all",
       "before_estimated_ms": 22397,
-      "after_primary_paint": "documents API only",
-      "after_estimated_ms": 21753,
-      "improvement_ratio": 0.03,
-      "note": "Registry deferred; queue visible once documents return"
+      "after_shell_ms": 200,
+      "after_primary_ms": 22396,
+      "full_page_spinner_eliminated": true
     },
     {
-      "surface": "P7 Rent attention tab",
-      "before_blocking": "summary + ledgers + expenses",
-      "before_estimated_ms": 9298,
-      "after_blocking": "summary + ledgers",
-      "after_estimated_ms": 6600,
-      "improvement_ratio": 0.29
-    },
-    {
-      "surface": "P3 Dashboard revisit",
-      "before_blocking": "full page spinner every navigation",
-      "after_blocking": "cached dashboard shell + stale refresh banner",
-      "after_estimated_ms": 0,
-      "improvement_ratio": "perceived near-instant within TTL"
+      "surface": "P7_Rent_attention",
+      "before_blocking": "summary + ledgers + expenses every tab",
+      "after_shell_ms": 236,
+      "after_primary_ms": 2610,
+      "tab_body_spinner_only": true
     }
   ],
   "backend_watchlist": [
     {
       "endpoint": "/today/items",
-      "latency_ms": 29643,
-      "payload_bytes": 1633041,
-      "recommendation": "Endpoint projection/pagination — out of scope for this frontend-only bundle"
+      "api_latency_ms": 29643,
+      "payload_bytes": 1633041
     },
     {
       "endpoint": "/client/command-center",
-      "latency_ms": 75197,
-      "recommendation": "Backend profiling — frontend now paints after CC only but CC remains slow"
+      "api_latency_ms": 75197,
+      "browser_primary_ms": 96824
+    },
+    {
+      "endpoint": "/client/requirements",
+      "api_latency_ms": 3505,
+      "browser_primary_ms": 24132,
+      "note": "Browser wait includes presentation/render; API alone faster"
     }
   ]
 }

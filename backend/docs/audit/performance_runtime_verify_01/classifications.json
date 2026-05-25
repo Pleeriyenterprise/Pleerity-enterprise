@@ -2,19 +2,22 @@
   "bundle": "performance_runtime_verify_01",
   "classification": "PARTIAL",
   "verified_operationally": false,
+  "post_deploy_classification": "PARTIAL",
+  "performance_degradation_flags": ["P2_CommandCentre_backend", "P3_Dashboard_cold", "P5_Requirements_cold", "P6_Documents_cold"],
   "checks": {
-    "progressive_rendering_implemented": true,
-    "operational_cache_dedupe": true,
-    "stale_refresh_disclosure": true,
-    "properties_lighter_endpoint": true,
-    "requirements_documents_deferred": true,
-    "rent_tab_scoped_fetch": true,
-    "unit_tests_pass": true,
-    "staging_api_latency_captured": true,
-    "browser_navigation_timings": false,
-    "backend_today_command_center_slowness": "PERFORMANCE_DEGRADATION",
+    "deploy_cb14b437_on_staging": true,
+    "bundle_markers_present": true,
+    "progressive_shell_all_surfaces": true,
+    "full_page_spinner_eliminated": true,
+    "meaningful_improvement_p1_p4_p7": true,
+    "stale_refresh_banner_observed_browser": false,
+    "stale_refresh_code_deployed": true,
+    "warm_cache_fast_properties": true,
+    "auth_error_truthful": true,
     "authority_regression": false,
     "async_truth_risk": false,
-    "stale_disclosure_failure": false
-  }
+    "stale_disclosure_failure": false,
+    "browser_e2e_executed": true
+  },
+  "reason": "Frontend progressive loading verified in browser (shell <600ms, no full-page blocking). Stale-refresh banner not observed in automation. Command Centre primary wait ~97s and several surfaces still >20s primary — backend PERFORMANCE_DEGRADATION; cannot mark VERIFIED_OPERATIONALLY per charter."
 }

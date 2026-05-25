@@ -1,7 +1,7 @@
 # Watchlist — performance_runtime_verify_01
 
-1. **Browser E2E** — Run manual checklist in `browser_navigation_timings.json` after frontend deploy; target `VERIFIED_OPERATIONALLY`.
-2. **Backend `/today/items`** — ~30s / ~1.6MB on pilot account; needs projection or pagination (frontend cannot fix alone).
-3. **Backend `/client/command-center`** — ~75s on staging; P2 now unblocks after CC response but CC remains bottleneck.
-4. **Dashboard cold load** — Still gated on `/client/dashboard` (~24s); revisit path should feel instant via cache.
-5. **Intake/layout** — `ClientPortalLayout` still fire-and-forgets dashboard for CRN; consider shared cache wiring.
+1. **Backend `/client/command-center`** — Browser primary ~97s with shell at 580ms; classify as capacity/perf workstream (not hidden by UI).
+2. **Backend `/today/items`** — API ~30s / ~1.6MB; Today primary ~3s in browser (progressive win) but payload slimming still needed.
+3. **Stale-refresh banner** — Shipped (`portal-stale-refresh-banner` in `main.2865d241.js`); add manual UX check on rapid cross-nav during slow refetch, or extend harness to force expired cache + in-flight refresh.
+4. **Requirements/Documents cold primary ~22–24s** — Shell immediate; investigate requirements presentation payload and documents list projection.
+5. **Dashboard cold ~25s** — Revisit within 45s should use cache (not re-probed after long cold run); confirm with operator session.

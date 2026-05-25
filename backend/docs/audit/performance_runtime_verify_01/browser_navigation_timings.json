@@ -1,14 +1,118 @@
 {
-  "browser_e2e_executed": false,
-  "reason": "No Playwright harness in repo; staging UI deploy pending for progressive components",
-  "manual_checklist": [
-    "Login as provisioned landlord on staging",
-    "Cold load each P1–P7: confirm page chrome/shell visible before full data",
-    "Warm navigate P5→P6→P1 within 30s: confirm stale-refresh banner and no duplicate spinner lock",
-    "P4 Properties: list appears without 20s+ full-page spinner",
-    "P5 Requirements: rows before document count badges",
-    "P7 Rent: attention tab does not load expenses panel data",
-    "Hard refresh: errors still surface (no infinite skeleton)"
+  "verified_at_utc": "2026-05-25T16:04:47Z",
+  "expected_commit": "cb14b437",
+  "environment": {
+    "frontend": "https://pleerityenterprise.co.uk",
+    "api": "https://pleerity-enterprise.onrender.com/api",
+    "account": "nancy@yopmail.com (pilot landlord)",
+    "browser": "playwright chromium headless 1280x900"
+  },
+  "cold_navigation": [
+    {
+      "surface": "P1_Today",
+      "path": "/today",
+      "shell_visible_ms": 334,
+      "primary_content_ms": 3148,
+      "full_page_spinner_only": false,
+      "progressive_shell": true,
+      "notes": "Shell + inbox within ~3s; no legacy full-page gate"
+    },
+    {
+      "surface": "P2_CommandCentre",
+      "path": "/command-center",
+      "shell_visible_ms": 580,
+      "primary_content_ms": 96824,
+      "full_page_spinner_only": false,
+      "progressive_shell": true,
+      "notes": "Shell <1s; verdict block ~97s — backend /client/command-center bottleneck"
+    },
+    {
+      "surface": "P3_Dashboard",
+      "path": "/dashboard",
+      "shell_visible_ms": 218,
+      "primary_content_ms": 25044,
+      "full_page_spinner_only": false,
+      "progressive_shell": true,
+      "notes": "Skeleton shell immediate; dashboard API ~25s"
+    },
+    {
+      "surface": "P4_Properties",
+      "path": "/properties",
+      "shell_visible_ms": 199,
+      "primary_content_ms": 2558,
+      "full_page_spinner_only": false,
+      "progressive_shell": true,
+      "notes": "Primary ~2.5s using /client/properties — major improvement vs dashboard endpoint"
+    },
+    {
+      "surface": "P5_Requirements",
+      "path": "/requirements",
+      "shell_visible_ms": 192,
+      "primary_content_ms": 24132,
+      "full_page_spinner_only": false,
+      "progressive_shell": true,
+      "notes": "Shell immediate; rows ~24s (requirements API + presentation)"
+    },
+    {
+      "surface": "P6_Documents",
+      "path": "/documents",
+      "shell_visible_ms": 200,
+      "primary_content_ms": 22396,
+      "full_page_spinner_only": false,
+      "progressive_shell": true,
+      "notes": "Queue chrome immediate; document corpus ~22s"
+    },
+    {
+      "surface": "P7_RentOperations",
+      "path": "/operations/rent?tab=attention",
+      "shell_visible_ms": 2610,
+      "primary_content_ms": 2610,
+      "tab_body_spinner_only": true,
+      "full_page_spinner_only": false,
+      "progressive_shell": false,
+      "notes": "Page chrome/tabs visible; tab-body rent-loading only (~2.6s)"
+    }
   ],
-  "api_proxy_observations": "Staging API timings captured in page_latency_matrix.json for landlord nancy@yopmail.com"
+  "warm_navigation": [
+    {
+      "surface": "P5_Requirements_revisit",
+      "primary_content_ms": 24417,
+      "stale_banner_seen": false
+    },
+    {
+      "surface": "P6_Documents_revisit",
+      "primary_content_ms": 23228,
+      "stale_banner_seen": false
+    },
+    {
+      "surface": "P4_Properties_revisit",
+      "primary_content_ms": 2332,
+      "stale_banner_seen": false,
+      "notes": "Near-instant shell; primary still ~2.3s — fresh cache hit (<45s), no banner expected"
+    }
+  ],
+  "stale_refresh_disclosure_probe": {
+    "script": "tmp_stale_banner_probe.py",
+    "rapid_revisit_stale_banner_ms": null,
+    "after_46s_cache_gap_stale_banner_ms": null,
+    "interpretation": "Banner not captured in automation; fresh-cache revisits correctly omit banner. Code + bundle markers confirm component shipped."
+  },
+  "truth_checks": {
+    "auth_error_redirect": {
+      "pass": true,
+      "detail": "Cleared token → /login/client?next=%2Fdashboard (no fake dashboard calm)"
+    },
+    "full_page_blocking_removed": {
+      "pass": true,
+      "detail": "No surface showed legacy full-page-only PortalLoadingPanel without h1/shell"
+    },
+    "fake_counts": {
+      "pass": true,
+      "detail": "No synthetic KPI placeholders introduced in verify run"
+    },
+    "stale_banner_observed_in_browser": false,
+    "stale_banner_code_deployed": true
+  },
+  "login_status": 200,
+  "browser_attempted": true
 }

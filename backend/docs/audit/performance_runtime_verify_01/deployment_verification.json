@@ -1,0 +1,26 @@
+{
+  "verified_at_utc": "2026-05-25T16:00:27Z",
+  "post_deploy_verified_at_utc": "2026-05-25T16:04:47Z",
+  "expected_commit": "cb14b437",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "frontend_status": 200,
+  "frontend_bundle": {
+    "main_chunk": "/static/js/main.2865d241.js",
+    "note": "CRA single-chunk build on staging at time of verify"
+  },
+  "marker_hits": {
+    "portal-stale-refresh-banner": ["/static/js/main.2865d241.js"],
+    "Showing last loaded data while refreshing": ["/static/js/main.2865d241.js"],
+    "portal-section-skeleton": ["/static/js/main.2865d241.js"]
+  },
+  "markers_found_count": 3,
+  "deploy_ready": true,
+  "origin_main_short": "cb14b437",
+  "origin_matches_expected": true,
+  "api_version": {
+    "commit_sha": "unknown",
+    "environment": "production",
+    "note": "Render GIT_COMMIT_SHA not wired; bundle marker proof used"
+  },
+  "harness": "tmp_performance_browser_verify_01.py"
+}
