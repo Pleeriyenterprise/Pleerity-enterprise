@@ -120,6 +120,10 @@ async def test_create_schedule_response_has_no_object_id():
         )
     assert "_id" not in out
     assert out.get("schedule_id")
+
+
+@pytest.mark.asyncio
+async def test_duplicate_schedule_idempotency_replay():
     client_id = "c_idem"
     idem = f"idem_{uuid.uuid4().hex[:8]}"
     prior = {"schedule_id": "rs_prior", "client_id": client_id, "idempotency_key": idem}
