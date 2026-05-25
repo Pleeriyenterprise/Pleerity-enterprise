@@ -869,6 +869,15 @@ export const adminAPI = {
   retryProvisioningJob: (jobId, body) => apiClient.post(`/admin/provisioning-jobs/${jobId}/retry`, body),
   listUnresolvedEvidenceDocuments: (params = {}) =>
     apiClient.get('/admin/documents/unresolved', { params }),
+  issueConfirmationToken: (body) => apiClient.post('/admin/governance/confirmation-token', body),
+  resolveUnresolvedDocumentScope: (documentId, body, config = {}) =>
+    apiClient.post(`/admin/documents/${encodeURIComponent(documentId)}/resolve-scope`, body, config),
+  linkUnresolvedDocumentRequirement: (documentId, body, config = {}) =>
+    apiClient.post(`/admin/documents/${encodeURIComponent(documentId)}/link-requirement`, body, config),
+  rejectUnresolvedDocument: (documentId, body, config = {}) =>
+    apiClient.post(`/admin/documents/${encodeURIComponent(documentId)}/reject-unresolved`, body, config),
+  retryDocumentExtraction: (documentId, body, config = {}) =>
+    apiClient.post(`/admin/documents/${encodeURIComponent(documentId)}/retry-extraction`, body, config),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
   getClientAgreementsSummary: (clientId) => apiClient.get(`/admin/clients/${clientId}/agreements/summary`),
   downloadClientIssuedAgreementPdf: (clientId, issuedId) =>
@@ -1034,10 +1043,10 @@ export const adminAPI = {
   /** Read-only workflow class drift diagnostics (decision-record reference vs resolver runtime). */
   getRequirementWorkflowAudit: (params = {}) => apiClient.get('/admin/requirement-workflow-audit', { params }),
   /** Run a background job; pass a string job id or { job, client_id?, property_id? } for scoped runs (e.g. monthly_digest + client_id). */
-  runJobNow: (jobOrBody) =>
+  runJobNow: (jobOrBody, config = {}) =>
     typeof jobOrBody === 'string'
-      ? apiClient.post('/admin/jobs/run', { job: jobOrBody })
-      : apiClient.post('/admin/jobs/run', jobOrBody),
+      ? apiClient.post('/admin/jobs/run', { job: jobOrBody }, config)
+      : apiClient.post('/admin/jobs/run', jobOrBody, config),
   // Operations & Compliance
   getOpsOverview: () => apiClient.get('/admin/ops/overview'),
   /** Admin priority actions (action queue / operational priorities). */

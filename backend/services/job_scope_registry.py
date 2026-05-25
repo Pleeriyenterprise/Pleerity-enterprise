@@ -86,3 +86,30 @@ def validate_manual_job_scope(
         return "'property_ids' requires 'client_id' (monthly digest subset for one account)."
 
     return None
+
+
+async def validate_property_ids_belong_to_client(
+    client_id: str,
+    property_ids: List[str],
+) -> Optional[str]:
+    """Ensure every property_id belongs to client_id. Returns error message or None."""
+    from database import database
+
+    cid = (client_id or "").strip()
+    pids = [str(x).strip() for x in (property_ids or []) if x and str(x).strip()]
+    if not cid or not pids:
+        return None
+    db = database.get_db()
+    owned = await db.properties.find(
+        {"client_id": cid, "property_id": {"$in": pids}},
+        {"_id": 0, "property_id": 1},
+    ).to_list(len(pids) + 1)
+    owned_set = {row.get("property_id") for row in owned if row.get("property_id")}
+    orphan = [p for p in pids if p not in owned_set]
+    if orphan:
+        return f"property_ids not owned by client: {', '.join(orphan[:5])}"
+    return None
+
+
+async def validate_property_belongs_to_client(client_id: str, property_id: str) -> Optional[str]:
+    return await validate_property_ids_belong_to_client(client_id, [property_id])

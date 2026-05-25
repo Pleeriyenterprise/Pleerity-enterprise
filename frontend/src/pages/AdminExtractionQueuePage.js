@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Loader2, Check, X, FileText, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Loader2, Check, X, FileText, AlertTriangle, RotateCcw } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { toast } from '@/utils/portalNotifications';
-import api from '../api/client';
+import api, { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { getExtractionStatusPresentation } from '../utils/adminOperationalPresentation';
+import { runGovernedAdminMutation } from '../utils/adminGovernedMutation';
 
 const AdminExtractionQueuePage = () => {
   const [items, setItems] = useState([]);
@@ -48,6 +49,31 @@ const AdminExtractionQueuePage = () => {
       fetchQueue();
     } catch (err) {
       toast.error('Failed to reject');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  const handleRetry = async (documentId) => {
+    const reason = window.prompt('Support reason for extraction retry (min 10 characters):');
+    if (!reason || reason.trim().length < 10) {
+      toast.error('Reason of at least 10 characters is required');
+      return;
+    }
+    setActing(documentId);
+    try {
+      const res = await runGovernedAdminMutation({
+        actionId: 'retry_document_extraction',
+        reason: reason.trim(),
+        resourceKey: documentId,
+        mutate: (headers) =>
+          adminAPI.retryDocumentExtraction(documentId, { reason: reason.trim() }, { headers }),
+      });
+      toast.success(res.data?.message || 'Extraction retry enqueued');
+      fetchQueue();
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.message || 'Retry failed';
+      toast.error(typeof detail === 'string' ? detail : 'Retry failed');
     } finally {
       setActing(null);
     }
@@ -122,32 +148,51 @@ const AdminExtractionQueuePage = () => {
                       </td>
                       <td className="py-2">{formatDate(row.updated_at)}</td>
                       <td className="py-2 text-right">
-                        {row.status === 'NEEDS_REVIEW' && (
+                        {(row.status === 'NEEDS_REVIEW' || row.status === 'FAILED') && (
                           <>
+                            {row.status === 'NEEDS_REVIEW' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  className="mr-2"
+                                  disabled={acting === row.document_id}
+                                  onClick={() => handleConfirm(row.document_id)}
+                                  data-testid={`confirm-extraction-${row.document_id}`}
+                                >
+                                  {acting === row.document_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                  Confirm
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={acting === row.document_id}
+                                  onClick={() => handleReject(row.document_id)}
+                                  data-testid={`reject-extraction-${row.document_id}`}
+                                >
+                                  <X className="h-3 w-3" />
+                                  Reject
+                                </Button>
+                              </>
+                            )}
                             <Button
                               size="sm"
-                              className="mr-2"
+                              variant="secondary"
+                              className="ml-2"
                               disabled={acting === row.document_id}
-                              onClick={() => handleConfirm(row.document_id)}
-                              data-testid={`confirm-extraction-${row.document_id}`}
+                              onClick={() => handleRetry(row.document_id)}
+                              data-testid={`retry-extraction-${row.document_id}`}
                             >
-                              {acting === row.document_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                              Confirm
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={acting === row.document_id}
-                              onClick={() => handleReject(row.document_id)}
-                              data-testid={`reject-extraction-${row.document_id}`}
-                            >
-                              <X className="h-3 w-3" />
-                              Reject
+                              {acting === row.document_id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <RotateCcw className="h-3 w-3" />
+                              )}
+                              Retry
                             </Button>
                           </>
                         )}
-                        {row.status === 'FAILED' && (
-                          <span className="text-muted-foreground text-xs">No action (failed)</span>
+                        {row.status === 'PENDING' && (
+                          <span className="text-muted-foreground text-xs">Extraction in progress…</span>
                         )}
                       </td>
                     </tr>

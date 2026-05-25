@@ -764,6 +764,8 @@ class Database:
             # Step-up tokens - one-time use; validate by token_hash + user_id
             await self.db.step_up_tokens.create_index("token_hash")
             await self.db.step_up_tokens.create_index([("user_id", 1), ("expires_at", 1)])
+            await self.db.admin_confirmation_tokens.create_index("token_hash", unique=True)
+            await self.db.admin_confirmation_tokens.create_index([("user_id", 1), ("expires_at", 1)])
 
             # Intake uploads - for migration and list by session
             await self.db.intake_uploads.create_index("intake_session_id")

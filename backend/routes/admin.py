@@ -60,6 +60,8 @@ from services.admin_action_governance import (
     enforce_step_up_if_required,
     ensure_action_reason,
     normalized_admin_action_metadata,
+    enforce_governed_admin_action,
+    create_confirmation_token_for_action,
 )
 from services.client_propagation_notice import (
     build_propagation_notice_from_transition_fanout,
@@ -575,10 +577,29 @@ async def list_unresolved_evidence_documents(
     }
 
 
+class AdminConfirmationTokenRequest(BaseModel):
+    action_id: str = Field(..., min_length=3, max_length=128)
+    reason: Optional[str] = Field(None, max_length=2000)
+    resource_key: Optional[str] = Field(None, max_length=256)
+
+
+@router.post("/governance/confirmation-token")
+async def issue_admin_governance_confirmation_token(request: Request, body: AdminConfirmationTokenRequest):
+    """Issue short-lived confirmation token after reason validation (for governed admin mutations)."""
+    user = await admin_route_guard(request)
+    return await create_confirmation_token_for_action(
+        user,
+        body.action_id.strip(),
+        reason=body.reason,
+        resource_key=body.resource_key,
+    )
+
+
 class ResolveUnresolvedScopeRequest(BaseModel):
     scope_type: str  # PROPERTY | PORTFOLIO
     property_id: Optional[str] = None
     requirement_id: Optional[str] = None
+    reason: str = Field(..., min_length=10, max_length=2000)
 
 
 @router.post("/documents/{document_id}/resolve-scope", dependencies=[Depends(require_owner_or_admin)])
@@ -589,6 +610,13 @@ async def resolve_unresolved_document_scope(
 ):
     """Resolve UNRESOLVED evidence to PROPERTY or PORTFOLIO scope with validation and audit."""
     user = await admin_route_guard(request)
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        "resolve_unresolved_scope",
+        reason=body.reason,
+        resource_key=document_id,
+    )
     db = database.get_db()
     from services.authority_mutation_fanout import authority_sync_with_transition_observability
     from services.requirement_evidence_authority import normalize_document_evidence_scope
@@ -668,6 +696,7 @@ async def resolve_unresolved_document_scope(
             "resolved_scope_type": "PROPERTY",
             "property_id": body.property_id.strip(),
             "requirement_id": update_payload.get("requirement_id"),
+            **normalized_admin_action_metadata("resolve_unresolved_scope", support_reason),
         },
     )
     out_scope: Dict[str, Any] = {
@@ -684,11 +713,19 @@ async def resolve_unresolved_document_scope(
 
 class AdminDocumentRequirementLinkRequest(BaseModel):
     requirement_id: str
+    reason: str = Field(..., min_length=10, max_length=2000)
 
 
 @router.post("/documents/{document_id}/link-requirement", dependencies=[Depends(require_owner_or_admin)])
 async def admin_link_document_requirement(request: Request, document_id: str, body: AdminDocumentRequirementLinkRequest):
     user = await admin_route_guard(request)
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        "link_unresolved_requirement",
+        reason=body.reason,
+        resource_key=document_id,
+    )
     db = database.get_db()
     from services.requirement_evidence_authority import document_evidence_compatible_with_requirement
 
@@ -747,7 +784,11 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
         client_id=doc.get("client_id"),
         resource_type="document",
         resource_id=document_id,
-        metadata={"action_type": "DOCUMENT_REQUIREMENT_LINKED", "requirement_id": body.requirement_id},
+        metadata={
+            "action_type": "DOCUMENT_REQUIREMENT_LINKED",
+            "requirement_id": body.requirement_id,
+            **normalized_admin_action_metadata("link_unresolved_requirement", support_reason),
+        },
     )
     out_link_req: Dict[str, Any] = {
         "message": "Requirement linked",
@@ -810,9 +851,24 @@ async def admin_unlink_document_requirement(request: Request, document_id: str):
     return out_unlink
 
 
+class AdminRejectUnresolvedRequest(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
 @router.post("/documents/{document_id}/reject-unresolved", dependencies=[Depends(require_owner_or_admin)])
-async def admin_reject_unresolved_document(request: Request, document_id: str):
+async def admin_reject_unresolved_document(
+    request: Request,
+    document_id: str,
+    body: AdminRejectUnresolvedRequest,
+):
     user = await admin_route_guard(request)
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        "reject_unresolved_document",
+        reason=body.reason,
+        resource_key=document_id,
+    )
     db = database.get_db()
     from services.authority_mutation_fanout import authority_sync_with_transition_observability
     from services.requirement_transition_observability import merge_document_path_lineage_flags, merge_review_admin_lineage_flags
@@ -853,7 +909,10 @@ async def admin_reject_unresolved_document(request: Request, document_id: str):
         client_id=doc.get("client_id"),
         resource_type="document",
         resource_id=document_id,
-        metadata={"action_type": "UNRESOLVED_DOCUMENT_REJECTED"},
+        metadata={
+            "action_type": "UNRESOLVED_DOCUMENT_REJECTED",
+            **normalized_admin_action_metadata("reject_unresolved_document", support_reason),
+        },
     )
     out_rej_unres: Dict[str, Any] = {"message": "Unresolved document rejected", "document_id": document_id}
     if prior_requirement_id:
@@ -861,6 +920,105 @@ async def admin_reject_unresolved_document(request: Request, document_id: str):
         if pn_rej_un:
             out_rej_unres["propagation_notice"] = pn_rej_un
     return out_rej_unres
+
+
+class AdminRetryExtractionRequest(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
+_RETRY_SUPPRESSION_SECONDS = 60
+
+
+@router.post("/documents/{document_id}/retry-extraction", dependencies=[Depends(require_owner_or_admin)])
+async def admin_retry_document_extraction(
+    request: Request,
+    document_id: str,
+    body: AdminRetryExtractionRequest,
+):
+    """Re-enqueue AI extraction for a single document (client-scoped, idempotent suppression window)."""
+    user = await admin_route_guard(request)
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        "retry_document_extraction",
+        reason=body.reason,
+        resource_key=document_id,
+    )
+    db = database.get_db()
+    doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    client_id = str(doc.get("client_id") or "")
+    if not client_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Document missing client_id")
+    ext_status = (doc.get("extraction_status") or "").upper()
+    if ext_status == "PENDING":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Extraction already in progress")
+    last_retry = doc.get("extraction_last_retry_at")
+    if last_retry:
+        try:
+            if isinstance(last_retry, str):
+                last_dt = datetime.fromisoformat(last_retry.replace("Z", "+00:00"))
+            else:
+                last_dt = last_retry
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            if (datetime.now(timezone.utc) - last_dt).total_seconds() < _RETRY_SUPPRESSION_SECONDS:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Retry suppressed — wait before retrying extraction again.",
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+    from services.document_extraction_service import enqueue_extraction
+
+    extraction_id = await enqueue_extraction(
+        document_id=document_id,
+        client_id=client_id,
+        source="admin_retry",
+        property_id=doc.get("property_id"),
+        intake_session_id=doc.get("intake_session_id"),
+    )
+    if not extraction_id:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Extraction retry rate limited or document unavailable",
+        )
+    now_iso = datetime.now(timezone.utc).isoformat()
+    retry_entry = {
+        "at": now_iso,
+        "by": user.get("portal_user_id"),
+        "extraction_id": extraction_id,
+        "reason": support_reason[:500],
+    }
+    await db.documents.update_one(
+        {"document_id": document_id},
+        {
+            "$set": {"extraction_last_retry_at": now_iso},
+            "$push": {"extraction_retry_history": {"$each": [retry_entry], "$slice": -20}},
+        },
+    )
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=client_id,
+        resource_type="document",
+        resource_id=document_id,
+        metadata={
+            "action_type": "DOCUMENT_EXTRACTION_RETRY",
+            "extraction_id": extraction_id,
+            **normalized_admin_action_metadata("retry_document_extraction", support_reason),
+        },
+    )
+    return {
+        "message": "Extraction retry enqueued",
+        "document_id": document_id,
+        "extraction_id": extraction_id,
+        "extraction_status": "PENDING",
+        "retry_at": now_iso,
+    }
 
 
 class AdminEvidenceMatchResolutionBody(BaseModel):
@@ -2664,6 +2822,79 @@ async def admin_post_property_requirements_sync_from_registry(
         "client_id": client_id,
         **(result or {}),
     }
+
+
+@router.get("/condition-standard-pilot/targets")
+async def admin_list_condition_standard_pilot_targets(
+    user: dict = Depends(require_support_or_above),
+):
+    """Allowlisted OPS pilot tuples for condition-standard materialisation (read-only)."""
+    from services.condition_standard_pilot_materialisation import list_condition_standard_pilot_targets
+
+    return {"ok": True, "targets": list_condition_standard_pilot_targets()}
+
+
+@router.post("/properties/{property_id}/requirements/condition-standard-pilot-materialise")
+async def admin_materialise_condition_standard_pilot_row(
+    request: Request,
+    property_id: str,
+    requirement_type: str = Query(..., description="fitness_for_human_habitation or repairing_standard"),
+    force: bool = Query(False),
+    user: dict = Depends(require_support_or_above),
+):
+    """
+    Bounded pilot materialisation for FFHH / Repairing Standard rows only.
+
+    Does not enable global planner generation. Property must be on the allowlist.
+    """
+    db = database.get_db()
+    prop = await db.properties.find_one({"property_id": property_id}, {"_id": 0, "client_id": 1})
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    client_id = str(prop.get("client_id") or "").strip()
+    if not client_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Property has no client_id")
+
+    from services.condition_standard_pilot_materialisation import materialise_condition_standard_pilot_row
+    from services.compliance_recalc_queue import ACTOR_ADMIN, TRIGGER_ADMIN_MANUAL_JOB, enqueue_compliance_recalc
+
+    actor_id = str(user.get("portal_user_id") or user.get("user_id") or "admin")
+    result = await materialise_condition_standard_pilot_row(
+        client_id,
+        property_id,
+        requirement_type,
+        actor_id=actor_id,
+        force=force,
+    )
+    if not result.get("ok"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result,
+        )
+
+    corr = f"{TRIGGER_ADMIN_MANUAL_JOB}:CONDITION_STANDARD_PILOT:{property_id}:{uuid.uuid4().hex[:12]}"
+    await enqueue_compliance_recalc(
+        property_id=property_id,
+        client_id=client_id,
+        trigger_reason=TRIGGER_ADMIN_MANUAL_JOB,
+        actor_type=ACTOR_ADMIN,
+        actor_id=actor_id,
+        correlation_id=corr,
+    )
+
+    ip_address = request.client.host if request.client else None
+    await create_audit_log(
+        action=AuditAction.COMPLIANCE_REGISTRY_ADMIN_PROPERTY_REQUIREMENTS_SYNCED,
+        actor_role=_portal_user_role_for_audit(user),
+        actor_id=actor_id,
+        client_id=client_id,
+        resource_type="property",
+        resource_id=property_id,
+        metadata={"condition_standard_pilot": result},
+        ip_address=ip_address,
+    )
+
+    return {"ok": True, **result}
 
 
 class _ActionLinksDraftBody(BaseModel):
@@ -4627,6 +4858,13 @@ class RunJobRequest(BaseModel):
     property_id: Optional[str] = None
     # Monthly digest: optional filter (requires client_id). See job_scope_registry.
     property_ids: Optional[List[str]] = None
+    portfolio_wide: bool = False
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
+class LegacyTriggerJobBody(BaseModel):
+    portfolio_wide: bool = True
+    reason: str = Field(..., min_length=10, max_length=2000)
 
 
 class ClientMonthlyDigestActionBody(BaseModel):
@@ -4646,7 +4884,12 @@ async def run_job_now(request: Request, body: RunJobRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid job. Use one of: {', '.join(sorted(JOB_RUNNERS.keys()))}"
         )
-    from services.job_scope_registry import get_job_run_scope, validate_manual_job_scope
+    from services.job_scope_registry import (
+        get_job_run_scope,
+        validate_manual_job_scope,
+        validate_property_ids_belong_to_client,
+        validate_property_belongs_to_client,
+    )
 
     scope_err = validate_manual_job_scope(
         job_id,
@@ -4657,16 +4900,56 @@ async def run_job_now(request: Request, body: RunJobRequest):
     if scope_err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=scope_err)
 
+    scope = get_job_run_scope(job_id)
+    cid = (body.client_id or "").strip()
+    pid = (body.property_id or "").strip()
+    pids_meta = [str(x).strip() for x in (body.property_ids or []) if x and str(x).strip()]
+    is_global_run = not cid and not pid and not pids_meta
+
+    if scope.accepts_client_id and is_global_run and not body.portfolio_wide:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Job '{job_id}' supports client scope. Provide client_id or set portfolio_wide=true "
+                "with reason and confirmation for portfolio-wide execution."
+            ),
+        )
+
+    action_id = "run_portfolio_wide_job" if is_global_run or body.portfolio_wide else "run_scoped_automation_job"
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        action_id,
+        reason=body.reason,
+        resource_key=f"{job_id}:{cid or 'global'}",
+    )
+
+    if cid:
+        client_doc = await database.get_db().clients.find_one({"client_id": cid}, {"_id": 1})
+        if not client_doc:
+            raise HTTPException(status_code=404, detail="Client not found")
+    if pids_meta and cid:
+        own_err = await validate_property_ids_belong_to_client(cid, pids_meta)
+        if own_err:
+            raise HTTPException(status_code=400, detail=own_err)
+    if pid and scope.manual_requires_property_id:
+        prop = await database.get_db().properties.find_one({"property_id": pid}, {"_id": 0, "client_id": 1})
+        if not prop:
+            raise HTTPException(status_code=404, detail="Property not found")
+        if cid and prop.get("client_id") != cid:
+            raise HTTPException(status_code=400, detail="property_id does not belong to client_id")
+
     job_kwargs = None
     start_metadata = None
-    if body.client_id and body.client_id.strip():
-        start_metadata = {"scope": "client", "client_id": body.client_id.strip()}
+    if cid:
+        start_metadata = {"scope": "client", "client_id": cid}
+    elif body.portfolio_wide:
+        start_metadata = {"scope": "global", "portfolio_wide": True}
     else:
         start_metadata = {"scope": "global"}
-    if body.property_id and body.property_id.strip():
+    if pid:
         start_metadata = dict(start_metadata or {})
-        start_metadata["property_id"] = body.property_id.strip()
-    pids_meta = [str(x).strip() for x in (body.property_ids or []) if x and str(x).strip()]
+        start_metadata["property_id"] = pid
     if pids_meta:
         start_metadata = dict(start_metadata or {})
         start_metadata["property_ids"] = pids_meta
@@ -4692,16 +4975,18 @@ async def run_job_now(request: Request, body: RunJobRequest):
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
-            client_id=body.client_id.strip() if body.client_id and body.client_id.strip() else None,
+            client_id=cid or None,
             metadata={
                 "action": "manual_job_run",
                 "job_id": job_id,
                 "run_scope": (start_metadata or {}).get("scope"),
-                "target_client_id": body.client_id.strip() if body.client_id and body.client_id.strip() else None,
-                "target_property_id": body.property_id.strip() if body.property_id and body.property_id.strip() else None,
+                "portfolio_wide": bool(body.portfolio_wide or is_global_run),
+                "target_client_id": cid or None,
+                "target_property_id": pid or None,
                 "target_property_ids": pids_meta if pids_meta else None,
                 "admin_email": user["email"],
                 "job_kwargs": job_kwargs,
+                **normalized_admin_action_metadata(action_id, support_reason),
             },
         )
         return {"success": True, "job": job_id, "message": message, "result": result}
@@ -4714,10 +4999,22 @@ async def run_job_now(request: Request, body: RunJobRequest):
 
 
 @router.post("/jobs/trigger/{job_type}")
-async def trigger_job(request: Request, job_type: str):
-    """Legacy: manually trigger daily/monthly/compliance (admin only). Prefer POST /jobs/run with body { job: '<id>' }."""
+async def trigger_job(request: Request, job_type: str, body: LegacyTriggerJobBody):
+    """Legacy global job trigger — requires portfolio_wide acknowledgement, reason, and confirmation token."""
     user = await admin_route_guard(request)
     await _enforce_admin_job_run_rate(user["portal_user_id"])
+    if not body.portfolio_wide:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Legacy trigger requires portfolio_wide=true. Prefer POST /jobs/run with explicit scope.",
+        )
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        "run_portfolio_wide_job",
+        reason=body.reason,
+        resource_key=f"legacy_trigger:{job_type}",
+    )
     if job_type not in ["daily", "monthly", "compliance"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -4734,10 +5031,13 @@ async def trigger_job(request: Request, job_type: str):
             actor_id=user["portal_user_id"],
             client_id=None,
             metadata={
-                "action": f"manual_job_trigger_{job_type}",
+                "action": "GLOBAL_ADMIN_ACTION",
+                "legacy_action": f"manual_job_trigger_{job_type}",
                 "result_count": count,
-                "admin_email": user["email"]
-            }
+                "admin_email": user["email"],
+                "portfolio_wide": True,
+                **normalized_admin_action_metadata("run_portfolio_wide_job", support_reason),
+            },
         )
         logger.warning("Deprecated endpoint used: POST /api/admin/jobs/trigger/%s", job_type)
         return {

@@ -2,7 +2,14 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, status
+
+from services.admin_confirmation_token_service import (
+    consume_admin_confirmation_token,
+    issue_admin_confirmation_token,
+)
+
+CONFIRMATION_HEADER = "X-Admin-Confirmation-Token"
 
 
 _REGISTRY_PATH = (
@@ -48,6 +55,48 @@ async def enforce_step_up_if_required(action_id: str, request: Any, user: Dict[s
     policy = get_admin_action_policy(action_id)
     if policy.get("requires_step_up"):
         await require_recent_step_up(request, user)
+
+
+async def enforce_governed_admin_action(
+    request: Request,
+    user: Dict[str, Any],
+    action_id: str,
+    *,
+    reason: Optional[str] = None,
+    resource_key: Optional[str] = None,
+    require_recent_step_up: Any = None,
+) -> str:
+    """Enforce registry policy: reason, confirmation token, optional step-up."""
+    support_reason = ensure_action_reason(action_id, reason)
+    policy = get_admin_action_policy(action_id)
+    if policy.get("requires_confirmation"):
+        token = (request.headers.get(CONFIRMATION_HEADER) or "").strip()
+        await consume_admin_confirmation_token(
+            token,
+            user["portal_user_id"],
+            action_id,
+            resource_key=resource_key,
+        )
+    if policy.get("requires_step_up") and require_recent_step_up is not None:
+        await require_recent_step_up(request, user)
+    return support_reason
+
+
+async def create_confirmation_token_for_action(
+    user: Dict[str, Any],
+    action_id: str,
+    *,
+    reason: Optional[str] = None,
+    resource_key: Optional[str] = None,
+) -> Dict[str, str]:
+    support_reason = ensure_action_reason(action_id, reason)
+    token = await issue_admin_confirmation_token(
+        user["portal_user_id"],
+        action_id,
+        resource_key=resource_key,
+        reason=support_reason,
+    )
+    return {"token": token, "expires_in_seconds": "300"}
 
 
 def normalized_admin_action_metadata(

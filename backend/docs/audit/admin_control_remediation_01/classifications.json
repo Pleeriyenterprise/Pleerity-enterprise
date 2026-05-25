@@ -1,0 +1,25 @@
+{
+  "classification": "ADMIN_READY",
+  "admin_ready": true,
+  "run_tag": "ADMIN-REMEDIATION-20260525T214639Z",
+  "verified_at_utc": "2026-05-25T21:46:52.114274+00:00",
+  "static": {
+    "run_tag": "ADMIN-REMEDIATION-20260525T214639Z",
+    "verified_at_utc": "2026-05-25T21:46:52.106693+00:00",
+    "backend_routes": {
+      "confirmation_token": "POST /api/admin/governance/confirmation-token",
+      "resolve_scope": "POST /api/admin/documents/{id}/resolve-scope",
+      "link_requirement": "POST /api/admin/documents/{id}/link-requirement",
+      "reject_unresolved": "POST /api/admin/documents/{id}/reject-unresolved",
+      "retry_extraction": "POST /api/admin/documents/{id}/retry-extraction",
+      "jobs_run_scoped": "POST /api/admin/jobs/run (client_id/property_id/portfolio_wide/reason)",
+      "legacy_trigger_gated": "POST /api/admin/jobs/trigger/{type} (portfolio_wide+reason+token)"
+    },
+    "frontend": {
+      "unresolved_queue_actions": "AdminUnresolvedEvidenceQueuePage",
+      "extraction_retry": "AdminExtractionQueuePage",
+      "scoped_automation": "AdminAutomationCentrePage",
+      "governed_mutation_helper": "frontend/src/utils/adminGovernedMutation.js"
+    }
+  }
+}

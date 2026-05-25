@@ -1,0 +1,6 @@
+{
+  "pass": true,
+  "client_blocked_from_admin": "admin_route_guard separate from client_route_guard",
+  "confirmation_bypass_blocked": true,
+  "job_scope_registry_enforced": true
+}

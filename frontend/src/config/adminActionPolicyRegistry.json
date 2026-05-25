@@ -88,5 +88,65 @@
     "requires_step_up": false,
     "affects_multiple_customers": true,
     "irreversible": false
+  },
+  "resolve_unresolved_scope": {
+    "action_id": "resolve_unresolved_scope",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "link_unresolved_requirement": {
+    "action_id": "link_unresolved_requirement",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "reject_unresolved_document": {
+    "action_id": "reject_unresolved_document",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "retry_document_extraction": {
+    "action_id": "retry_document_extraction",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "run_scoped_automation_job": {
+    "action_id": "run_scoped_automation_job",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "run_portfolio_wide_job": {
+    "action_id": "run_portfolio_wide_job",
+    "risk_class": "dangerous_global",
+    "operator_level": "owner_or_senior_ops",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": true,
+    "irreversible": false
   }
 }
