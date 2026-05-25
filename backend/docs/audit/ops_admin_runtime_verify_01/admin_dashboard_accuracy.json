@@ -1,0 +1,54 @@
+{
+  "at_utc": "2026-05-25T14:16:40.846925+00:00",
+  "dashboard_status": 200,
+  "metrics": [
+    {
+      "name": "total_clients",
+      "ui": 43,
+      "api": 43,
+      "db": null,
+      "match": true,
+      "material_mismatch": false
+    },
+    {
+      "name": "active_clients",
+      "ui": 33,
+      "api": 33,
+      "db": null,
+      "match": true,
+      "material_mismatch": false
+    },
+    {
+      "name": "total_properties",
+      "ui": 66,
+      "api": 66,
+      "db": null,
+      "match": true,
+      "material_mismatch": false
+    },
+    {
+      "name": "unverified_documents_count",
+      "ui": 33,
+      "api": 33,
+      "db": null,
+      "match": true,
+      "material_mismatch": false
+    },
+    {
+      "name": "compliance_red",
+      "ui": 13,
+      "api": 13,
+      "db": null,
+      "match": true,
+      "material_mismatch": false
+    }
+  ],
+  "material_mismatches": [],
+  "db_connected": true,
+  "browser": {
+    "dashboard_reachable": true,
+    "total_clients_in_ui": true,
+    "pass": true
+  },
+  "pass": true
+}

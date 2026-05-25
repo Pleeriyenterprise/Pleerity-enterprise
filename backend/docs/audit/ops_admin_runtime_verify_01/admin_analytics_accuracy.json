@@ -1,0 +1,23 @@
+{
+  "at_utc": "2026-05-25T14:17:48.577773+00:00",
+  "checks": [
+    {
+      "period": "30d",
+      "status": 200,
+      "has_data_quality": true,
+      "orders_count": null
+    },
+    {
+      "period": "7d",
+      "status": 200,
+      "has_data_quality": true,
+      "orders_count": null
+    }
+  ],
+  "no_leakage_probe": true,
+  "browser": {
+    "analytics_reachable": true,
+    "pass": true
+  },
+  "pass": true
+}

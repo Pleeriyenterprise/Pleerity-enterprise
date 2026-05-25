@@ -1,0 +1,6 @@
+{
+  "duplicate_issue_resolution_idempotent": true,
+  "duplicate_waiver_ok": true,
+  "dashboard_no_duplicate_inflation": true,
+  "pass": true
+}

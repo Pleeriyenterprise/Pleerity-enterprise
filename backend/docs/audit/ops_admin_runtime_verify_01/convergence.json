@@ -1,0 +1,46 @@
+{
+  "observations": [
+    {
+      "label": "issue_resolution_state",
+      "t0": {
+        "status": "resolved"
+      },
+      "reads": [
+        {
+          "ts": 1779718738.7336109,
+          "api": {
+            "status": "resolved"
+          }
+        }
+      ],
+      "converged": true,
+      "stale_projection": false,
+      "timeout_seconds": 100
+    },
+    {
+      "label": "waiver_override_state",
+      "t0": {
+        "recover_onboarding_count": 7
+      },
+      "reads": [
+        {
+          "ts": 1779718745.1648831,
+          "api": {
+            "recover_onboarding_count": 7
+          }
+        }
+      ],
+      "converged": true,
+      "stale_projection": false,
+      "timeout_seconds": 60
+    }
+  ],
+  "any_stale": false,
+  "any_timeout": false,
+  "t0_issue": {
+    "status": "resolved"
+  },
+  "t0_waiver": {
+    "recover_onboarding_count": 7
+  }
+}

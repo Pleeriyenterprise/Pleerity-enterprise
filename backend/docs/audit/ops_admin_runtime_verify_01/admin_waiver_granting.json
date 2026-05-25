@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-05-25T14:14:15.851857+00:00",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "control_panel_status": 200,
+  "subscription_status": "ACTIVE",
+  "active_subscriber": true,
+  "pilot_lifecycle_account_status": 404,
+  "wales_is_pilot_lifecycle_account": false,
+  "subscriber_override_status": 200,
+  "override_id": "dc662e4f-de22-41a2-8c03-b583d2cee9f5",
+  "duplicate_override_status": 200,
+  "override_count_delta": 2,
+  "recover_onboarding_visible": true,
+  "pilot_reference_client_id": "1e15cd2f-ee89-4905-aa96-1735f3ff99cc",
+  "pilot_onboarding_fee_policy_status": 200,
+  "plan_before": "PLAN_3_PRO",
+  "plan_after": "PLAN_3_PRO",
+  "client_waiver_blocked_status": 403,
+  "client_access_after_waiver_status": 200,
+  "audit_waiver_action": true,
+  "browser": {
+    "pilot_account_visible": true,
+    "pass": true
+  },
+  "no_plan_upgrade": true,
+  "duplicate_waiver_ok": true,
+  "pass": true
+}

@@ -1,0 +1,6 @@
+{
+  "waiver_no_billing_plan_corruption": true,
+  "resolved_issue_terminal": true,
+  "non_admin_mutations_blocked": true,
+  "pass": true
+}

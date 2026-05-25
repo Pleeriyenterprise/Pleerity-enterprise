@@ -1,0 +1,22 @@
+{
+  "programme": "PRELAUNCH-ADMIN-RUNTIME-VERIFY-01",
+  "family": "admin_runtime_verify_01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "execution_status": "VERIFIED_OPERATIONALLY",
+  "blocking": false,
+  "authoritative_verification_owner": "admin_runtime_verify_01",
+  "proof_mode": "operational_browser",
+  "run_tag": "20260525T141144Z",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "checkpoints": {
+    "A1_issue_resolution": true,
+    "A2_waiver": true,
+    "A3_dashboard": true,
+    "A4_analytics": true,
+    "A5_security": true,
+    "G9": true,
+    "G10": true,
+    "convergence": true
+  }
+}
