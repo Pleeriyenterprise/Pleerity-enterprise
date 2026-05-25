@@ -205,6 +205,7 @@ async def create_rent_schedule(request: Request, body: CreateRentScheduleBody):
 async def list_rent_ledgers(
     request: Request,
     property_id: Optional[str] = Query(None),
+    tenancy_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     due_from: Optional[str] = Query(None),
     due_to: Optional[str] = Query(None),

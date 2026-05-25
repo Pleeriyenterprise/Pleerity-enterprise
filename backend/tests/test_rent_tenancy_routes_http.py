@@ -69,6 +69,22 @@ def test_schedule_preview_route_registered(client, rent_http):
     assert r.json()["period_count"] == 3
 
 
+def test_list_ledgers_accepts_tenancy_id_query(client, rent_http):
+    with patch.object(
+        client_rent_operations.rent_ledger_service,
+        "list_ledgers",
+        new_callable=AsyncMock,
+        return_value={"ledgers": [], "total": 0},
+    ) as list_mock:
+        r = client.get(
+            "/api/client/operations/rent/ledgers",
+            params={"property_id": "p1", "tenancy_id": "pty_1"},
+        )
+    assert r.status_code == 200
+    list_mock.assert_awaited_once()
+    assert list_mock.call_args.kwargs["tenancy_id"] == "pty_1"
+
+
 def test_create_schedule_external_payer_passes_body(client, rent_http):
     with patch.object(
         client_rent_operations.rent_ledger_service,
