@@ -1,0 +1,17 @@
+{
+  "bundle": "add_property_address_lookup_parity",
+  "classification": "IMPLEMENTED_TESTS_AND_API_VERIFIED",
+  "verified_operationally": false,
+  "checks": {
+    "intake_api_unchanged": true,
+    "shared_hook_extracted": true,
+    "dashboard_wired": true,
+    "manual_fallback_preserved": true,
+    "duplicate_submit_guard": true,
+    "frontend_unit_tests": true,
+    "backend_payload_test": true,
+    "staging_api_autocomplete": true,
+    "staging_api_create_property": true,
+    "browser_dashboard_e2e": false
+  }
+}

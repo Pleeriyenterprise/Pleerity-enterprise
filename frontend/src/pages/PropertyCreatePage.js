@@ -1,15 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import { UkPostcodeLookupField } from '../components/address/UkPostcodeLookupField';
 import { ArrowLeft, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../api/client';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { JURISDICTION_OPTIONS } from '../utils/jurisdictionComplianceCopy';
+import { useUkPostcodeLookup } from '../hooks/useUkPostcodeLookup';
+import { normalizeUkPostcode } from '../utils/ukPostcode';
 
 const PropertyCreatePage = () => {
   const navigate = useNavigate();
@@ -19,6 +22,7 @@ const PropertyCreatePage = () => {
   const [error, setError] = useState('');
   const [isPlanLimit, setIsPlanLimit] = useState(false);
   const [defaultJurisdiction, setDefaultJurisdiction] = useState('');
+  const submitInFlight = useRef(false);
 
   const [formData, setFormData] = useState({
     nickname: '',
@@ -28,7 +32,20 @@ const PropertyCreatePage = () => {
     postcode: '',
     jurisdiction: '',
     property_type: 'residential',
-    number_of_units: 1
+    number_of_units: 1,
+  });
+
+  const postcodeLookup = useUkPostcodeLookup({
+    postcode: formData.postcode,
+    onPostcodeChange: (postcode) => setFormData((prev) => ({ ...prev, postcode })),
+    onLookupComplete: (_data, applied) => {
+      if (!applied || !Object.keys(applied).length) return;
+      setFormData((prev) => ({
+        ...prev,
+        ...applied,
+        jurisdiction: applied.jurisdiction || prev.jurisdiction,
+      }));
+    },
   });
 
   useEffect(() => {
@@ -53,6 +70,8 @@ const PropertyCreatePage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitInFlight.current || loading) return;
+    submitInFlight.current = true;
     setError('');
     setIsPlanLimit(false);
     setSuccess(false);
@@ -64,6 +83,7 @@ const PropertyCreatePage = () => {
       else payload.nickname = payload.nickname.trim();
       if (!payload.jurisdiction?.trim()) delete payload.jurisdiction;
       else payload.jurisdiction = payload.jurisdiction.trim();
+      payload.postcode = normalizeUkPostcode(payload.postcode);
       await api.post('/properties/create', payload);
 
       setSuccess(true);
@@ -83,6 +103,7 @@ const PropertyCreatePage = () => {
       }
     } finally {
       setLoading(false);
+      submitInFlight.current = false;
     }
   };
 
@@ -100,9 +121,10 @@ const PropertyCreatePage = () => {
     );
   }
 
+  const lookupContext = { city: formData.city, jurisdiction: formData.jurisdiction };
+
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')}>
-      {/* Header */}
       <header className="bg-midnight-blue text-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
@@ -139,7 +161,6 @@ const PropertyCreatePage = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card>
           <CardHeader>
@@ -180,6 +201,24 @@ const PropertyCreatePage = () => {
                 <p className="text-xs text-gray-500">If provided, this name will be used to identify the property across the dashboard. Otherwise the address is used.</p>
               </div>
 
+              <UkPostcodeLookupField
+                postcodeRef={postcodeLookup.postcodeRef}
+                postcodeInput={postcodeLookup.postcodeInput}
+                onPostcodeChange={postcodeLookup.handlePostcodeChange}
+                onPostcodeFocus={() =>
+                  postcodeLookup.postcodeInput.length >= 2 && postcodeLookup.setShowPostcodeDropdown(true)
+                }
+                onPostcodeBlur={() => postcodeLookup.handlePostcodeBlur(lookupContext)}
+                postcodeSuggestions={postcodeLookup.postcodeSuggestions}
+                showPostcodeDropdown={postcodeLookup.showPostcodeDropdown}
+                loadingPostcodes={postcodeLookup.loadingPostcodes}
+                lookingUpPostcode={postcodeLookup.lookingUpPostcode}
+                postcodeLookupDone={postcodeLookup.postcodeLookupDone}
+                postcodeError={postcodeLookup.postcodeError}
+                onSelectSuggestion={(s) => postcodeLookup.selectPostcode(s, lookupContext)}
+                testId="postcode-input"
+              />
+
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Address Line 1 *</label>
                 <Input
@@ -201,28 +240,15 @@ const PropertyCreatePage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">City *</label>
-                  <Input
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    placeholder="London"
-                    required
-                    data-testid="city-input"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Postcode *</label>
-                  <Input
-                    value={formData.postcode}
-                    onChange={(e) => setFormData({ ...formData, postcode: e.target.value.toUpperCase() })}
-                    placeholder="SW1A 1AA"
-                    required
-                    data-testid="postcode-input"
-                  />
-                </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">City *</label>
+                <Input
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="London"
+                  required
+                  data-testid="city-input"
+                />
               </div>
 
               <div className="space-y-2">
@@ -243,6 +269,9 @@ const PropertyCreatePage = () => {
                 <p className="text-xs text-gray-500">
                   Default jurisdiction is used for new properties and any property that does not yet have its own jurisdiction set.
                   {defaultJurisdiction ? ` Current account default: ${defaultJurisdiction}.` : ''}
+                  {postcodeLookup.postcodeLookupDone
+                    ? ' Postcode lookup may suggest a jurisdiction when country is known; you can still change it here.'
+                    : ''}
                 </p>
               </div>
 
@@ -267,7 +296,7 @@ const PropertyCreatePage = () => {
                   type="number"
                   min="1"
                   value={formData.number_of_units}
-                  onChange={(e) => setFormData({ ...formData, number_of_units: parseInt(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, number_of_units: parseInt(e.target.value, 10) })}
                   data-testid="units-input"
                 />
               </div>
