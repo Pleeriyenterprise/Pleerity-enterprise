@@ -643,11 +643,29 @@ Certain **high-assurance** words (**compliant**, **verified**, **resolved**, **s
 
 | Aspect | Policy |
 |--------|--------|
-| **Runtime note** | Resolver/runtime may keep **GUIDANCE_ONLY**; governance capability profile **`CONDITION_STANDARD_ACTIVE_STANDARD`** applies to `fitness_for_human_habitation`, `repairing_standard`. |
+| **Runtime note** | Resolver/runtime may keep **GUIDANCE_ONLY**; governance capability profile **`CONDITION_STANDARD_ACTIVE_STANDARD`** applies to `fitness_for_human_habitation`, `repairing_standard`. Phase 1 (2026-05-20): bounded pilot materialisation (`condition_standard_pilot_ops`), property-scoped `active_standard_status_summary`, OPS family `PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01` — see `docs/audit/CONDITION_STANDARD_ACTIVE_STANDARD_OPS.md`. |
 | **Purpose** | Condition standards monitored via **operational signals** (issues, remediation), not single-document proof. |
 | **Complete** | **Operational convergence** — not document upload. |
 | **Must not complete from document-only** | **Yes** — single upload must not prove standard met. |
 | **Audit** | Condition-standard drift flags (upload-primary, satisfied-without-signals, jurisdiction misuse). |
+
+---
+
+## Rent Operations — tenancy authority (operational verification)
+
+**Authority chain (normative):** Property → Tenancy → Rent schedule → Ledger period → Payment.
+
+**Runtime verification (2026-05-25):** Programme `RENT-TENANCY-AUTHORITY-RUNTIME-VERIFY-01` on staging — classification **`BLOCKED`**, not `VERIFIED_OPERATIONALLY`. Evidence: `docs/audit/rent_operations_tenancy_authority/`.
+
+| Layer | Status |
+|-------|--------|
+| Frontend bundle (`main.bdf21962.js`) | Tenancy-linked schedule preview + ledger-context payment modal markers **present** |
+| Backend API (`/client/operations/rent/tenancies`, `/schedules/preview`) | **404** on staging |
+| Repo routes (`routes/client_rent_operations.py`) | Tenancy handlers **not registered** (imports only as of `10a510e0`) |
+
+**Operational rules (when live):** Schedule create requires `tenancy_id` or disclosed `is_external_payer`; payments require `ledger_id`; one active schedule per tenancy+rent_type; ledger dedupe by `schedule_id`+`period_key`. Legacy ledgers with `tenancy_id: null` must not be treated as proof of tenancy-attributed authority.
+
+**Do not** classify rent ops as operationally verified from unit tests alone. Re-run browser + API harness after backend deploy.
 
 ---
 

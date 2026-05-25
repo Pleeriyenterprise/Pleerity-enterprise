@@ -1239,7 +1239,17 @@ async def get_today_items(
         property_id_filter=(property_id.strip() if property_id else None),
         portal_user_id=user.get("portal_user_id"),
     )
-    return build_today_payload_from_unified(payload)
+    out = build_today_payload_from_unified(payload)
+    from services.rent_attention_projection import (
+        list_rent_attention_tasks,
+        merge_rent_into_today_payload,
+    )
+
+    rent_tasks = await list_rent_attention_tasks(
+        user["client_id"],
+        property_id_filter=(property_id.strip() if property_id else None),
+    )
+    return merge_rent_into_today_payload(out, rent_tasks)
 
 
 class SnoozeBody(BaseModel):

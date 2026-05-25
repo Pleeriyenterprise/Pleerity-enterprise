@@ -760,6 +760,7 @@ export const clientAPI = {
   createInvoice: (body) => apiClient.post('/client/invoices', body),
   exportApprovals: (params = {}) => apiClient.get('/client/approvals/export', { params, responseType: 'blob' }),
   /** Rent Operations (operational rent tracking — not accounting). Requires rent_operations. */
+  getRentCapabilities: () => apiClient.get('/client/operations/rent/capabilities'),
   getRentSummary: (params = {}) => apiClient.get('/client/operations/rent/summary', { params }),
   getRentTenancies: (params = {}) => apiClient.get('/client/operations/rent/tenancies', { params }),
   createRentTenancy: (body) => apiClient.post('/client/operations/rent/tenancies', body),

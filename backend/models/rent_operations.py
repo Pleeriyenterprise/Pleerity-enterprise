@@ -72,6 +72,10 @@ class CreateRentScheduleBody(BaseModel):
     start_date: date
     end_date: Optional[date] = None
     tenancy_id: Optional[str] = None
+    is_external_payer: bool = False
+    external_payer_name: Optional[str] = None
+    idempotency_key: Optional[str] = Field(None, max_length=128)
+    rent_type: Optional[str] = None
     notes: Optional[str] = None
 
     @field_validator("start_date", "end_date", mode="before")

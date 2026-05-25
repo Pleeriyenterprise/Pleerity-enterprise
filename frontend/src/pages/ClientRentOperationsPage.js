@@ -51,6 +51,7 @@ function ClientRentOperationsPageInner() {
   const [reminderOpen, setReminderOpen] = useState(false);
   const [reminderLedger, setReminderLedger] = useState(null);
   const [reminderSaving, setReminderSaving] = useState(false);
+  const [tenancyBackendReady, setTenancyBackendReady] = useState(null);
 
   const loadSummary = useCallback(() => {
     const params = filterProperty ? { property_id: filterProperty } : {};
@@ -92,6 +93,10 @@ function ClientRentOperationsPageInner() {
 
   useEffect(() => {
     clientAPI.getProperties().then((res) => setProperties(res.data?.properties || res.data || [])).catch(() => setProperties([]));
+    clientAPI
+      .getRentCapabilities()
+      .then((res) => setTenancyBackendReady(Boolean(res.data?.tenancy_authority)))
+      .catch(() => setTenancyBackendReady(false));
   }, []);
 
   useEffect(() => {
@@ -236,6 +241,15 @@ function ClientRentOperationsPageInner() {
           )}
         </PortalFilterStack>
 
+        {tenancyBackendReady === false && (
+          <Card className="mb-4 border-amber-200 bg-amber-50/60" data-testid="rent-backend-unavailable">
+            <CardContent className="py-3 text-sm text-amber-900">
+              Tenancy-authority rent services are not live on this environment yet. Ledger payments on
+              existing periods may still work; new schedules require a backend deploy.
+            </CardContent>
+          </Card>
+        )}
+
         <RentSummaryCards summary={summary} activeFilter={activeKpi} onFilter={handleKpiFilter} />
 
         <div className="flex gap-2 border-b border-gray-200 mb-4">
@@ -288,7 +302,14 @@ function ClientRentOperationsPageInner() {
             }}
           />
         ) : (
-          <RentLedgerList ledgers={ledgers} onSelect={openLedgerDetail} />
+          <RentLedgerList
+            ledgers={ledgers}
+            onSelect={openLedgerDetail}
+            onRecordPayment={(row) => {
+              setPaymentLedger(row);
+              setPaymentOpen(true);
+            }}
+          />
         )}
       </main>
 
@@ -344,6 +365,7 @@ function ClientRentOperationsPageInner() {
         onError={(err) => toast.error(err?.message || 'Failed to create schedule')}
         properties={properties}
         initialPropertyId={filterProperty}
+        tenancyBackendReady={tenancyBackendReady}
       />
     </div>
   );

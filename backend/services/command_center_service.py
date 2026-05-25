@@ -219,6 +219,23 @@ async def get_command_center_bundle(
         in_prog = tasks.get("in_progress") or []
         for t in (urgent[:10] + in_prog[:6]):
             urgent_actions.append(_slim_task(t))
+        try:
+            from services.ops_compliance_feature_flags import RENT_OPERATIONS, get_effective_flags
+            from services.rent_attention_projection import (
+                append_rent_to_command_center_urgent,
+                list_rent_attention_tasks,
+            )
+
+            flags = await get_effective_flags(client_id)
+            if flags.get(RENT_OPERATIONS):
+                rent_tasks = await list_rent_attention_tasks(
+                    client_id,
+                    property_id_filter=property_id_filter,
+                    limit=6,
+                )
+                urgent_actions = append_rent_to_command_center_urgent(urgent_actions, rent_tasks)
+        except Exception as rent_exc:
+            logger.warning("command_center rent attention merge failed: %s", rent_exc)
     except Exception as e:
         failed_sections.append(
             build_trust_surface_section_record(

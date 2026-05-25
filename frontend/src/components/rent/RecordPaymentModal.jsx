@@ -44,12 +44,12 @@ export function RecordPaymentModal({
 
   if (!open) return null;
 
-  const filteredLedgers = ledgers.filter(
-    (l) =>
-      (!fallbackProperty || l.property_id === fallbackProperty) &&
-      (!fallbackTenancy || l.tenancy_id === fallbackTenancy) &&
-      (l.outstanding_balance_minor || 0) > 0,
-  );
+  const filteredLedgers = ledgers.filter((l) => {
+    if ((l.outstanding_balance_minor || 0) <= 0) return false;
+    if (fallbackProperty && l.property_id !== fallbackProperty) return false;
+    if (fallbackTenancy && l.tenancy_id !== fallbackTenancy) return false;
+    return true;
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -94,6 +94,11 @@ export function RecordPaymentModal({
             <p>
               <span className="font-medium">Status:</span> {ledger.status}
             </p>
+            {ledger.legacy_rent_authority && (
+              <p className="text-amber-800">
+                Legacy rent period (no tenancy link). Payment applies to this ledger only.
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-2 mb-4">

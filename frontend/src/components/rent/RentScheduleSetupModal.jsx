@@ -14,6 +14,7 @@ export function RentScheduleSetupModal({
   onError,
   properties,
   initialPropertyId = '',
+  tenancyBackendReady = true,
 }) {
   const [form, setForm] = useState({
     property_id: initialPropertyId || '',
@@ -42,11 +43,15 @@ export function RentScheduleSetupModal({
       setTenancies([]);
       return;
     }
+    if (tenancyBackendReady === false) {
+      setTenancies([]);
+      return;
+    }
     clientAPI
       .getRentTenancies({ property_id: form.property_id })
       .then((res) => setTenancies(res.data?.tenancies || []))
       .catch(() => setTenancies([]));
-  }, [open, form.property_id]);
+  }, [open, form.property_id, tenancyBackendReady]);
 
   const canPreview = useMemo(
     () =>
@@ -144,6 +149,11 @@ export function RentScheduleSetupModal({
         <p className="text-xs text-gray-500 mb-4">
           Schedules belong to a property tenancy. Create or select tenancy authority before generating ledger periods.
         </p>
+        {tenancyBackendReady === false && (
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-3" data-testid="rent-schedule-backend-unavailable">
+            Rent tenancy services are not available on this environment yet. Schedule creation is disabled until the backend deploy completes.
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-3">
           <select
             className="w-full border rounded-md px-3 py-2 text-sm"
@@ -233,6 +243,11 @@ export function RentScheduleSetupModal({
           />
 
           {previewLoading && <p className="text-xs text-gray-500">Calculating period preview…</p>}
+          {previewError === 'backend_unavailable' && (
+            <p className="text-xs text-amber-800" data-testid="rent-schedule-preview-unavailable">
+              Period preview unavailable — backend tenancy routes not live.
+            </p>
+          )}
           {preview?.disclosure && (
             <p className="text-xs text-midnight-blue bg-slate-50 border rounded p-2" data-testid="rent-schedule-preview">
               {preview.disclosure}
@@ -243,7 +258,11 @@ export function RentScheduleSetupModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !canPreview} data-testid="rent-schedule-submit">
+            <Button
+              type="submit"
+              disabled={saving || !canPreview || tenancyBackendReady === false}
+              data-testid="rent-schedule-submit"
+            >
               {saving ? 'Creating…' : 'Confirm schedule'}
             </Button>
           </div>

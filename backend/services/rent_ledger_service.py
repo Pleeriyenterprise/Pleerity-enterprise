@@ -583,6 +583,12 @@ async def list_ledgers(
         .limit(limit)
         .to_list(limit)
     )
+    for row in rows:
+        row["legacy_rent_authority"] = row.get("tenancy_id") is None
+        if row["legacy_rent_authority"]:
+            row["authority_disclosure"] = (
+                "Legacy rent period — created before tenancy authority; payments attach to this ledger only."
+            )
     return {"ledgers": rows, "total": total}
 
 

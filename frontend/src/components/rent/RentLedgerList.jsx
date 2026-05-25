@@ -1,9 +1,18 @@
 import React from 'react';
 import { Card, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
 import { RentStatusBadge } from './RentStatusBadge';
 import { formatMinorUnits } from '../../utils/rentMoney';
 
-export function RentLedgerList({ ledgers, onSelect }) {
+const PAYABLE_STATUSES = new Set(['UPCOMING', 'DUE_TODAY', 'PARTIALLY_PAID', 'OVERDUE', 'SEVERELY_OVERDUE', 'DISPUTED']);
+
+function isPayable(row) {
+  if (!row || (row.status || '') === 'PAID' || (row.status || '') === 'WAIVED') return false;
+  const outstanding = parseInt(row.outstanding_balance_minor, 10) || 0;
+  return outstanding > 0 || PAYABLE_STATUSES.has(row.status);
+}
+
+export function RentLedgerList({ ledgers, onSelect, onRecordPayment }) {
   if (!ledgers.length) {
     return (
       <Card data-testid="rent-ledger-empty">
@@ -25,11 +34,27 @@ export function RentLedgerList({ ledgers, onSelect }) {
               <p className="font-medium text-midnight-blue">{row.tenant_name || 'Tenant'}</p>
               <p className="text-sm text-gray-500">{row.period_key} · {row.due_date}</p>
             </div>
-            <div className="text-right">
+            <div className="text-right flex flex-col items-end gap-1">
               <RentStatusBadge status={row.status} />
-              <p className="text-sm font-semibold mt-1">
+              {row.legacy_rent_authority && (
+                <span className="text-[10px] text-amber-700 font-medium">Legacy period</span>
+              )}
+              <p className="text-sm font-semibold">
                 {formatMinorUnits(row.outstanding_balance_minor, row.currency)}
               </p>
+              {onRecordPayment && isPayable(row) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  data-testid="ledger-record-payment"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRecordPayment(row);
+                  }}
+                >
+                  Record payment
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

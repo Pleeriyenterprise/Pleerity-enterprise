@@ -55,6 +55,108 @@ def _actor_role(user) -> UserRole:
         return UserRole.ROLE_CLIENT
 
 
+def _raise_rent_value_error(code: str) -> None:
+    """Map rent service ValueError codes to HTTP errors."""
+    if code == "PROPERTY_NOT_FOUND":
+        raise HTTPException(status_code=404, detail="Property not found")
+    if code == "LEDGER_NOT_FOUND":
+        raise HTTPException(status_code=404, detail="Rent ledger not found")
+    if code == "TENANCY_NOT_FOUND":
+        raise HTTPException(
+            status_code=404,
+            detail=structured_error("TENANCY_NOT_FOUND", "Tenancy not found for this property."),
+        )
+    if code in ("TENANCY_ID_REQUIRED", "EXTERNAL_PAYER_NAME_REQUIRED", "TENANCY_NOT_ACTIVE", "TENANCY_LINEAGE_INVALID"):
+        raise HTTPException(status_code=400, detail=structured_error(code, code.replace("_", " ").title()))
+    if code in (
+        "PAYMENT_AUTHORITY_INCOMPLETE",
+        "LEDGER_ID_REQUIRED",
+        "NO_OUTSTANDING_LEDGER",
+        "NO_ALLOCATION_MADE",
+    ):
+        raise HTTPException(status_code=400, detail=structured_error(code, code.replace("_", " ").title()))
+    raise HTTPException(status_code=400, detail=code)
+
+
+@router.get("/operations/rent/capabilities", dependencies=[Depends(_require_rent_operations_enabled)])
+async def get_rent_operations_capabilities(request: Request):
+    """Handshake for frontend deploy continuity — tenancy-authority APIs."""
+    await _require_rent_operations_enabled(request)
+    return {
+        "tenancy_authority": True,
+        "tenancies_api": True,
+        "schedule_preview_api": True,
+        "ledger_payment_api": True,
+        "version": "tenancy_authority_v1",
+    }
+
+
+@router.get("/operations/rent/tenancies", dependencies=[Depends(_require_rent_operations_enabled)])
+async def list_rent_tenancies(
+    request: Request,
+    property_id: str = Query(..., description="Property scope"),
+    active_only: bool = Query(True),
+):
+    user = await _require_rent_operations_enabled(request)
+    try:
+        tenancies = await tenancy_authority.list_property_tenancies(
+            user["client_id"],
+            property_id,
+            active_only=active_only,
+        )
+        return {"tenancies": tenancies}
+    except ValueError as e:
+        _raise_rent_value_error(str(e))
+
+
+@router.post("/operations/rent/tenancies", dependencies=[Depends(_require_rent_operations_enabled)])
+async def create_rent_tenancy(request: Request, body: CreatePropertyTenancyBody):
+    user = await _require_rent_operations_enabled(request)
+    try:
+        doc = await tenancy_authority.resolve_or_create_active_tenancy(
+            user["client_id"],
+            body.property_id,
+            tenant_ids=body.tenant_ids,
+            tenant_display_name=body.tenant_display_name,
+            rent_tracking_enabled=body.rent_tracking_enabled,
+            actor_id=user.get("portal_user_id"),
+        )
+        return doc
+    except ValueError as e:
+        _raise_rent_value_error(str(e))
+
+
+@router.post(
+    "/operations/rent/tenancies/{tenancy_id}/close",
+    dependencies=[Depends(_require_rent_operations_enabled)],
+)
+async def close_rent_tenancy(
+    request: Request,
+    tenancy_id: str,
+    body: ClosePropertyTenancyBody,
+):
+    user = await _require_rent_operations_enabled(request)
+    try:
+        return await tenancy_authority.close_tenancy_rent_lineage(
+            tenancy_id,
+            user["client_id"],
+            status=body.status,
+            actor_id=user.get("portal_user_id"),
+        )
+    except ValueError as e:
+        _raise_rent_value_error(str(e))
+
+
+@router.post("/operations/rent/schedules/preview", dependencies=[Depends(_require_rent_operations_enabled)])
+async def preview_rent_schedule(request: Request, body: RentSchedulePreviewBody):
+    user = await _require_rent_operations_enabled(request)
+    try:
+        await rent_ledger_service.ensure_property_scope(user["client_id"], body.property_id)
+        return rent_ledger_service.preview_schedule_periods(body.model_dump(mode="json"))
+    except ValueError as e:
+        _raise_rent_value_error(str(e))
+
+
 @router.get("/operations/rent/summary", dependencies=[Depends(_require_rent_operations_enabled)])
 async def get_rent_summary(
     request: Request,
@@ -96,7 +198,7 @@ async def create_rent_schedule(request: Request, body: CreateRentScheduleBody):
                 status_code=404,
                 detail=structured_error("PROPERTY_NOT_FOUND", "Property not found or not in your account."),
             )
-        raise HTTPException(status_code=400, detail=str(e))
+        _raise_rent_value_error(code)
 
 
 @router.get("/operations/rent/ledgers", dependencies=[Depends(_require_rent_operations_enabled)])
@@ -117,6 +219,7 @@ async def list_rent_ledgers(
         return await rent_ledger_service.list_ledgers(
             user["client_id"],
             property_id=property_id,
+            tenancy_id=tenancy_id,
             status=status,
             due_from=due_from,
             due_to=due_to,
