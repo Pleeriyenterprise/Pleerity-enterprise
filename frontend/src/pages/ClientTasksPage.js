@@ -38,6 +38,11 @@ import {
 } from '../utils/jobWorkflowUi';
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI } from '../api/client';
+import { PortalSectionSkeleton, PortalStaleRefreshBanner } from '../components/client/ClientPortalPatterns';
+import {
+  fetchOperational,
+  OPERATIONAL_CACHE_KEYS,
+} from '../utils/clientOperationalFetch';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
@@ -890,6 +895,8 @@ export default function ClientTasksPage() {
   const { openGuidedEvidence } = useGuidedEvidenceModal();
   const { hasFeature } = useEntitlements();
   const [loading, setLoading] = useState(true);
+  const [inboxEnrichmentLoading, setInboxEnrichmentLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [payload, setPayload] = useState(null);
   const [filter, setFilter] = useState('all');
@@ -1539,11 +1546,9 @@ export default function ClientTasksPage() {
         </Alert>
       )}
 
-      {loading && (
-        <div className="flex justify-center py-16">
-          <Loader2 className="w-10 h-10 animate-spin text-electric-teal" />
-        </div>
-      )}
+      {loading && !payload ? (
+        <PortalSectionSkeleton rows={6} />
+      ) : null}
 
       <Dialog open={Boolean(dismissModalTask)} onOpenChange={(open) => !open && setDismissModalTask(null)}>
         <DialogContent className="max-w-md">

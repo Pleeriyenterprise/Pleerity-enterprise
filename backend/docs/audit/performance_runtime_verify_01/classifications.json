@@ -1,0 +1,20 @@
+{
+  "bundle": "performance_runtime_verify_01",
+  "classification": "PARTIAL",
+  "verified_operationally": false,
+  "checks": {
+    "progressive_rendering_implemented": true,
+    "operational_cache_dedupe": true,
+    "stale_refresh_disclosure": true,
+    "properties_lighter_endpoint": true,
+    "requirements_documents_deferred": true,
+    "rent_tab_scoped_fetch": true,
+    "unit_tests_pass": true,
+    "staging_api_latency_captured": true,
+    "browser_navigation_timings": false,
+    "backend_today_command_center_slowness": "PERFORMANCE_DEGRADATION",
+    "authority_regression": false,
+    "async_truth_risk": false,
+    "stale_disclosure_failure": false
+  }
+}

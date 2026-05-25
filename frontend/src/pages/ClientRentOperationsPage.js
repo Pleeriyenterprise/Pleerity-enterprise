@@ -86,10 +86,17 @@ function ClientRentOperationsPageInner() {
 
   const refresh = useCallback(() => {
     setLoading(true);
-    Promise.all([loadSummary(), loadLedgers(), loadExpenses()])
+    const jobs = [loadSummary()];
+    if (tab === 'attention' || tab === 'ledger') {
+      jobs.push(loadLedgers());
+    }
+    if (tab === 'expenses') {
+      jobs.push(loadExpenses());
+    }
+    Promise.all(jobs)
       .catch((err) => toast.error(err?.response?.data?.detail || 'Failed to load rent operations'))
       .finally(() => setLoading(false));
-  }, [loadSummary, loadLedgers, loadExpenses]);
+  }, [loadSummary, loadLedgers, loadExpenses, tab]);
 
   useEffect(() => {
     clientAPI.getProperties().then((res) => setProperties(res.data?.properties || res.data || [])).catch(() => setProperties([]));

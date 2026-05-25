@@ -1,0 +1,18 @@
+{
+  "patterns_removed": [
+    "Full-page PortalLoadingPanel blocking entire route chrome on P4,P5,P6,P2,P3 (first visit)",
+    "Promise.all gating UI on slowest secondary fetch (Requirements documents, Today requirements)",
+    "Rent Operations reloading expenses on attention/ledger tab switches"
+  ],
+  "patterns_introduced": [
+    "PortalPageShell: header visible during hydration",
+    "PortalSectionSkeleton: list/card placeholders",
+    "PortalStaleRefreshBanner: truthful cached data disclosure while refreshing",
+    "PortalWidgetLoading / inline status for secondary panels"
+  ],
+  "not_changed": [
+    "Authority/jurisdiction gates on dashboard",
+    "Compliance outcome refresh listeners",
+    "Error banners and retry paths"
+  ]
+}

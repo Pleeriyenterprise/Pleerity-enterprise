@@ -35,7 +35,17 @@ import {
   Trash2,
   Link2,
 } from 'lucide-react';
-import { PortalFilterStack, PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import {
+  PortalFilterStack,
+  PortalPageShell,
+  PortalSectionSkeleton,
+  PortalStaleRefreshBanner,
+  portalPageRoot,
+} from '../components/client/ClientPortalPatterns';
+import {
+  fetchOperational,
+  OPERATIONAL_CACHE_KEYS,
+} from '../utils/clientOperationalFetch';
 import PropagationNoticeCallout from '../components/client/PropagationNoticeCallout';
 import { normalizeRequirementCode, documentListStatusLabel } from '../domain/presentDomain';
 import { WORKSPACE_DOCUMENTS_SUBTITLE, WORKSPACE_DOCUMENTS_EMPTY_DESCRIPTION, WORKSPACE_DOCUMENTS_QUEUE_EMPTY_DESCRIPTION } from '../utils/workspaceOrientationCopy';
@@ -89,6 +99,8 @@ const DocumentsPage = () => {
   const [properties, setProperties] = useState([]);
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [registryLoading, setRegistryLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadEvidenceBanner, setUploadEvidenceBanner] = useState(null);
   const [analyzing, setAnalyzing] = useState(null);
@@ -940,16 +952,27 @@ const DocumentsPage = () => {
 
   const attentionCount = attentionRequiredCount || countAttentionRequiredDocuments(documents);
 
-  if (loading) {
+  if (loading && documents.length === 0) {
     return (
-      <div className={portalPageRoot} data-testid="documents-loading">
-        <PortalLoadingPanel message="Loading documents…" />
-      </div>
+      <PortalPageShell
+        title="Document operations"
+        subtitle={WORKSPACE_DOCUMENTS_SUBTITLE}
+        refreshing={refreshing}
+        testId="documents-loading"
+      >
+        <PortalSectionSkeleton rows={6} />
+      </PortalPageShell>
     );
   }
 
   return (
     <div className={portalPageRoot} data-testid="documents-page">
+      <PortalStaleRefreshBanner refreshing={refreshing} />
+      {registryLoading ? (
+        <p className="text-xs text-gray-500 mb-3" data-testid="documents-registry-loading">
+          Loading property and requirement registry…
+        </p>
+      ) : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div className="flex items-start gap-3 min-w-0">
           <Button

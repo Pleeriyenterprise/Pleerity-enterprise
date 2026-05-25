@@ -1,0 +1,19 @@
+{
+  "implementation": "clientOperationalFetch.js",
+  "behaviours": {
+    "in_flight_dedupe": "Concurrent requests for the same cache key share one network call",
+    "fresh_ttl_ms": 45000,
+    "stale_while_refresh": "Returns last good payload immediately with PortalStaleRefreshBanner while background refresh runs",
+    "on_refresh_callback": "Updates React state when fresher data arrives — no fake calm"
+  },
+  "keys": [
+    "client:dashboard",
+    "client:properties",
+    "client:requirements",
+    "client:documents",
+    "client:command-center",
+    "client:compliance-summary",
+    "client:today-items:{propertyId|all}"
+  ],
+  "expected_session_effect": "Navigating P1→P5→P6 within 45s avoids duplicate cold fetches for requirements and compliance-summary"
+}

@@ -1,0 +1,14 @@
+{
+  "browser_e2e_executed": false,
+  "reason": "No Playwright harness in repo; staging UI deploy pending for progressive components",
+  "manual_checklist": [
+    "Login as provisioned landlord on staging",
+    "Cold load each P1–P7: confirm page chrome/shell visible before full data",
+    "Warm navigate P5→P6→P1 within 30s: confirm stale-refresh banner and no duplicate spinner lock",
+    "P4 Properties: list appears without 20s+ full-page spinner",
+    "P5 Requirements: rows before document count badges",
+    "P7 Rent: attention tab does not load expenses panel data",
+    "Hard refresh: errors still surface (no infinite skeleton)"
+  ],
+  "api_proxy_observations": "Staging API timings captured in page_latency_matrix.json for landlord nancy@yopmail.com"
+}

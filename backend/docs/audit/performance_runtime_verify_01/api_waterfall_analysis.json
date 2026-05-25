@@ -1,0 +1,53 @@
+{
+  "findings": [
+    {
+      "surface": "P1 Today",
+      "blocking_chain": ["GET /today/items", "GET /client/requirements (was parallel-gated UI)"],
+      "largest_payload": "/today/items (~1.6MB staging sample)",
+      "slowest_endpoint_ms": 29643,
+      "remediation": "Today items first; requirements inbox alignment deferred; compliance-summary cached"
+    },
+    {
+      "surface": "P2 Command Centre",
+      "blocking_chain": ["GET /client/command-center", "GET /portfolio/compliance-summary", "GET work-orders limit 200"],
+      "slowest_endpoint_ms": 75197,
+      "remediation": "Verdict bundle gates UI; portfolio/jobs hydrate with inline loading; requirements via shared cache"
+    },
+    {
+      "surface": "P3 Dashboard",
+      "blocking_chain": ["GET /client/dashboard (sole full-page gate)", "15+ parallel secondary fetches"],
+      "slowest_endpoint_ms": 24183,
+      "remediation": "Skeleton shell; 45s operational cache with stale-refresh disclosure on revisit"
+    },
+    {
+      "surface": "P4 Properties",
+      "blocking_chain": ["GET /client/dashboard (removed)"],
+      "before_endpoint": "/client/dashboard ~24s",
+      "after_endpoint": "/client/properties ~1.8s",
+      "remediation": "Dedicated properties endpoint + deferred value insights"
+    },
+    {
+      "surface": "P5 Requirements",
+      "blocking_chain": ["Promise.all dashboard + requirements + documents"],
+      "slowest_in_bundle_ms": 21753,
+      "remediation": "Properties + requirements gate; documents counts deferred"
+    },
+    {
+      "surface": "P6 Documents",
+      "blocking_chain": ["Promise.all documents + properties + requirements"],
+      "remediation": "Document queue first; registry context progressive"
+    },
+    {
+      "surface": "P7 Rent Operations",
+      "blocking_chain": ["summary + ledgers + expenses on every tab switch"],
+      "remediation": "Tab-scoped refresh (expenses only on expenses tab)"
+    }
+  ],
+  "cross_cutting_duplicates": [
+    "GET /client/requirements on P1,P2,P3,P5,P6",
+    "GET /client/command-center on P1,P2,P3",
+    "GET /portfolio/compliance-summary on P1,P2,P3",
+    "GET /client/dashboard on P3,P5 (removed from P4)"
+  ],
+  "dedupe_mechanism": "frontend/src/utils/clientOperationalFetch.js (in-flight dedupe + 45s stale-while-refresh)"
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { resolvePropertyPath } from '../utils/clientPortalNavigation';
-import api, { clientAPI, parseApiError } from '../api/client';
+import { clientAPI, parseApiError } from '../api/client';
 import { toast } from '@/utils/portalNotifications';
 import { 
   Building2, 
@@ -21,7 +21,14 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import {
+  PortalPageShell,
+  PortalSectionSkeleton,
+} from '../components/client/ClientPortalPatterns';
+import {
+  fetchOperational,
+  OPERATIONAL_CACHE_KEYS,
+} from '../utils/clientOperationalFetch';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
@@ -30,6 +37,8 @@ const PropertiesPage = () => {
   const navigate = useNavigate();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [clientData, setClientData] = useState(null);
@@ -41,19 +50,35 @@ const PropertiesPage = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setInsightsLoading(true);
     try {
-      const [response, insightsRes] = await Promise.all([
-        api.get('/client/dashboard'),
-        clientAPI.getValueInsights().catch(() => null),
-      ]);
-      setClientData(response.data);
-      setProperties(response.data.properties || []);
-      if (insightsRes?.data) setValueInsights(insightsRes.data);
-      else setValueInsights(null);
+      const propsResult = await fetchOperational(
+        OPERATIONAL_CACHE_KEYS.properties,
+        () => clientAPI.getProperties().then((r) => r.data),
+        {
+          onRefresh: (data) => {
+            setProperties(data?.properties || []);
+            setRefreshing(false);
+          },
+        },
+      );
+      setProperties(propsResult.data?.properties || []);
+      setClientData((prev) => ({ ...(prev || {}), properties: propsResult.data?.properties || [] }));
+      setRefreshing(propsResult.refreshing);
+      setLoading(false);
+
+      clientAPI
+        .getValueInsights()
+        .then((insightsRes) => {
+          if (insightsRes?.data) setValueInsights(insightsRes.data);
+          else setValueInsights(null);
+        })
+        .catch(() => setValueInsights(null))
+        .finally(() => setInsightsLoading(false));
     } catch (error) {
       toast.error(parseApiError(error, 'Failed to load properties'));
-    } finally {
       setLoading(false);
+      setInsightsLoading(false);
     }
   };
 
@@ -90,36 +115,49 @@ const PropertiesPage = () => {
     red: properties.filter(p => p.compliance_status === 'RED').length
   };
 
-  if (loading) {
+  const headerActions = (
+    <Button
+      onClick={() => navigate('/properties/create')}
+      className="bg-electric-teal hover:bg-teal-600"
+      data-testid="add-property-btn"
+    >
+      <Plus className="w-4 h-4 mr-2" />
+      Add Property
+    </Button>
+  );
+
+  if (loading && properties.length === 0) {
     return (
-      <div className={portalPageRoot}>
-        <PortalLoadingPanel message={PORTAL_COPY.loadingProperties} />
-      </div>
+      <PortalPageShell
+        title="Properties"
+        subtitle="Manage your property portfolio"
+        actions={headerActions}
+        refreshing={refreshing}
+        testId="properties-loading"
+      >
+        <PortalSectionSkeleton rows={5} />
+      </PortalPageShell>
     );
   }
 
   return (
-    <div className={portalPageRoot}>
-        {/* Page Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold text-midnight-blue">Properties</h2>
-            <p className="text-gray-500 mt-1">Manage your property portfolio</p>
-            {valueInsights?.generated_at && (
-              <p className="text-xs text-gray-400 mt-1">
-                Usage insights refreshed: {new Date(valueInsights.generated_at).toLocaleString()}
-              </p>
-            )}
-          </div>
-          <Button
-            onClick={() => navigate('/properties/create')}
-            className="bg-electric-teal hover:bg-teal-600"
-            data-testid="add-property-btn"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Property
-          </Button>
-        </div>
+    <PortalPageShell
+      title="Properties"
+      subtitle="Manage your property portfolio"
+      actions={headerActions}
+      refreshing={refreshing}
+      testId="properties-page"
+    >
+        {insightsLoading && !valueInsights?.generated_at ? (
+          <p className="text-xs text-gray-400 mb-4" data-testid="properties-insights-loading">
+            Loading usage insights…
+          </p>
+        ) : null}
+        {valueInsights?.generated_at && (
+          <p className="text-xs text-gray-400 mb-4">
+            Usage insights refreshed: {new Date(valueInsights.generated_at).toLocaleString()}
+          </p>
+        )}
 
         {valueInsights &&
           (valueInsights.upgrade_nudge_reasons || []).length > 0 &&
@@ -356,7 +394,7 @@ const PropertiesPage = () => {
             Showing {filteredProperties.length} of {properties.length} properties
           </div>
         )}
-    </div>
+    </PortalPageShell>
   );
 };
 

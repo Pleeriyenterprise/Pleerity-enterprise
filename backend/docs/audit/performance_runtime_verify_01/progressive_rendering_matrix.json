@@ -1,0 +1,49 @@
+{
+  "surfaces": {
+    "P1_Today": {
+      "shell_immediate": true,
+      "primary_first": "GET /today/items",
+      "deferred": ["GET /client/requirements inbox alignment", "command-center jurisdiction notice"],
+      "cache": ["compliance-summary property filter", "today-items keyed by property"]
+    },
+    "P2_CommandCentre": {
+      "shell_immediate": true,
+      "primary_first": "GET /client/command-center",
+      "deferred": ["portfolio compliance-summary", "work-orders limit 200"],
+      "cache": ["command-center", "requirements", "compliance-summary"]
+    },
+    "P3_Dashboard": {
+      "shell_immediate": true,
+      "primary_first": "GET /client/dashboard",
+      "deferred": "existing widget-level loaders (score, ROI, protection, today KPIs)",
+      "cache": ["client:dashboard with stale-refresh banner"]
+    },
+    "P4_Properties": {
+      "shell_immediate": true,
+      "primary_first": "GET /client/properties",
+      "deferred": ["GET /client/value-insights"],
+      "cache": ["client:properties"]
+    },
+    "P5_Requirements": {
+      "shell_immediate": true,
+      "primary_first": "GET /client/properties + GET /client/requirements",
+      "deferred": ["GET /documents for per-requirement counts"],
+      "cache": ["properties", "requirements", "documents"]
+    },
+    "P6_Documents": {
+      "shell_immediate": true,
+      "primary_first": "GET /documents queue",
+      "deferred": ["properties + requirements registry"],
+      "cache": ["documents", "properties", "requirements"]
+    },
+    "P7_RentOperations": {
+      "shell_immediate": true,
+      "tab_scoped": {
+        "attention": ["summary", "ledgers attention_only"],
+        "ledger": ["summary", "ledgers"],
+        "expenses": ["summary", "expenses + expense summary"]
+      },
+      "cache": []
+    }
+  }
+}

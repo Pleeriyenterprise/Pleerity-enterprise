@@ -22,7 +22,16 @@ import {
   clientInboxJobCtaLabel,
   CLIENT_INBOX_JOB_FALLBACK_CTA,
 } from '../utils/jobWorkflowUi';
-import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import {
+  PortalPageShell,
+  PortalSectionSkeleton,
+  PortalStaleRefreshBanner,
+  portalPageRoot,
+} from '../components/client/ClientPortalPatterns';
+import {
+  fetchOperational,
+  OPERATIONAL_CACHE_KEYS,
+} from '../utils/clientOperationalFetch';
 import {
   aggregateJobSignals,
   attentionBadgeForJob,
@@ -94,6 +103,8 @@ export default function ClientCommandCenterPage() {
   const predictiveEnabled = hasFeature('predictive_maintenance');
 
   const [loading, setLoading] = useState(true);
+  const [secondaryLoading, setSecondaryLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [bundle, setBundle] = useState(null);
   const [portfolioSummary, setPortfolioSummary] = useState(null);
@@ -444,16 +455,27 @@ export default function ClientCommandCenterPage() {
     );
   }
 
-  if (loading) {
+  if (loading && !bundle) {
     return (
-      <div className={portalPageRoot} data-testid="command-center-loading">
-        <PortalLoadingPanel message="Loading command center…" />
-      </div>
+      <PortalPageShell
+        title="Command center"
+        subtitle={WORKSPACE_COMMAND_CENTER_PRIMARY}
+        refreshing={refreshing}
+        testId="command-center-loading"
+      >
+        <PortalSectionSkeleton rows={4} />
+      </PortalPageShell>
     );
   }
 
   return (
     <div className={portalPageRoot} data-testid="command-center-root">
+      <PortalStaleRefreshBanner refreshing={refreshing} />
+      {secondaryLoading && !portfolioSummary ? (
+        <p className="text-xs text-gray-500 mb-3" data-testid="command-center-secondary-loading">
+          Loading portfolio summary…
+        </p>
+      ) : null}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-midnight-blue flex items-center gap-2">

@@ -26,7 +26,16 @@ import {
 } from '../utils/clientPortalNavigation';
 import { resolveTaskCta } from '../utils/ctaRegistry';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
-import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import {
+  PortalPageShell,
+  PortalSectionSkeleton,
+  PortalStaleRefreshBanner,
+  portalPageRoot,
+} from '../components/client/ClientPortalPatterns';
+import {
+  fetchOperational,
+  OPERATIONAL_CACHE_KEYS,
+} from '../utils/clientOperationalFetch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../components/ui/tooltip';
 import {
   Dialog,
@@ -187,6 +196,7 @@ const ClientDashboard = () => {
   const { hasFeature } = useEntitlements();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [notificationPrefs, setNotificationPrefs] = useState(null);
   const [complianceScore, setComplianceScore] = useState(null);
@@ -621,7 +631,7 @@ const ClientDashboard = () => {
         setComplianceScore((prev) => prev || h);
       }
       // Defensive: detect missing plan/entitlement (test accounts not fully provisioned)
-      const client = response.data?.client;
+      const client = result.data?.client;
       if (client && client.billing_plan == null && client.plan_code == null) {
         setRestrictReason('not_provisioned');
       }
@@ -1117,17 +1127,23 @@ const ClientDashboard = () => {
   );
 
 
-  if (loading) {
+  if (loading && !data) {
     return (
-      <div className={portalPageRoot} data-testid="client-dashboard-loading">
-        <PortalLoadingPanel message="Loading dashboard…" />
-      </div>
+      <PortalPageShell
+        title="Dashboard"
+        subtitle={workspaceDashboardWelcomeLead(data?.client?.name)}
+        refreshing={dashboardRefreshing}
+        testId="client-dashboard-loading"
+      >
+        <PortalSectionSkeleton rows={6} />
+      </PortalPageShell>
     );
   }
 
   return (
     <TooltipProvider delayDuration={250}>
     <div className={portalPageRoot} data-testid="client-dashboard">
+        <PortalStaleRefreshBanner refreshing={dashboardRefreshing} />
         <ErrorBanner message={error} onRetry={fetchDashboard} retryLabel="Retry" />
 
         <Dialog open={showJurisdictionOnboardingGate} modal>

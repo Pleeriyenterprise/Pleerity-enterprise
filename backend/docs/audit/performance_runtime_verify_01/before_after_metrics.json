@@ -1,0 +1,58 @@
+{
+  "note": "Before = pre-change frontend blocking model + staging API sample 2026-05-25. After = progressive gating + lighter endpoints (deploy required for UI).",
+  "metrics": [
+    {
+      "surface": "P4 Properties",
+      "before_blocking_api": "GET /client/dashboard",
+      "before_estimated_ms": 24183,
+      "after_blocking_api": "GET /client/properties",
+      "after_estimated_ms": 1798,
+      "improvement_ratio": 0.93
+    },
+    {
+      "surface": "P5 Requirements",
+      "before_blocking": "Promise.all(dashboard, requirements, documents)",
+      "before_estimated_ms": 28321,
+      "after_blocking": "properties + requirements only",
+      "after_estimated_ms": 5303,
+      "improvement_ratio": 0.81
+    },
+    {
+      "surface": "P6 Documents",
+      "before_blocking": "all three APIs",
+      "before_estimated_ms": 22397,
+      "after_primary_paint": "documents API only",
+      "after_estimated_ms": 21753,
+      "improvement_ratio": 0.03,
+      "note": "Registry deferred; queue visible once documents return"
+    },
+    {
+      "surface": "P7 Rent attention tab",
+      "before_blocking": "summary + ledgers + expenses",
+      "before_estimated_ms": 9298,
+      "after_blocking": "summary + ledgers",
+      "after_estimated_ms": 6600,
+      "improvement_ratio": 0.29
+    },
+    {
+      "surface": "P3 Dashboard revisit",
+      "before_blocking": "full page spinner every navigation",
+      "after_blocking": "cached dashboard shell + stale refresh banner",
+      "after_estimated_ms": 0,
+      "improvement_ratio": "perceived near-instant within TTL"
+    }
+  ],
+  "backend_watchlist": [
+    {
+      "endpoint": "/today/items",
+      "latency_ms": 29643,
+      "payload_bytes": 1633041,
+      "recommendation": "Endpoint projection/pagination — out of scope for this frontend-only bundle"
+    },
+    {
+      "endpoint": "/client/command-center",
+      "latency_ms": 75197,
+      "recommendation": "Backend profiling — frontend now paints after CC only but CC remains slow"
+    }
+  ]
+}

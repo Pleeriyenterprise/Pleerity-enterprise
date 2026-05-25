@@ -1,0 +1,82 @@
+{
+  "login_ms": 2208,
+  "endpoints": [
+    {
+      "surface_key": "P1_today",
+      "method": "GET",
+      "path": "/today/items",
+      "status": 200,
+      "latency_ms": 29643,
+      "payload_bytes": 1633041
+    },
+    {
+      "surface_key": "P2_command_center",
+      "method": "GET",
+      "path": "/client/command-center",
+      "status": 200,
+      "latency_ms": 75197,
+      "payload_bytes": 53186
+    },
+    {
+      "surface_key": "P3_dashboard",
+      "method": "GET",
+      "path": "/client/dashboard",
+      "status": 200,
+      "latency_ms": 24183,
+      "payload_bytes": 64209
+    },
+    {
+      "surface_key": "P4_properties",
+      "method": "GET",
+      "path": "/client/properties",
+      "status": 200,
+      "latency_ms": 1798,
+      "payload_bytes": 57152
+    },
+    {
+      "surface_key": "P5_requirements",
+      "method": "GET",
+      "path": "/client/requirements",
+      "status": 200,
+      "latency_ms": 3505,
+      "payload_bytes": 351084
+    },
+    {
+      "surface_key": "P6_documents",
+      "method": "GET",
+      "path": "/documents",
+      "status": 200,
+      "latency_ms": 21753,
+      "payload_bytes": 84264
+    },
+    {
+      "surface_key": "P7_rent_summary",
+      "method": "GET",
+      "path": "/client/operations/rent/summary",
+      "status": 200,
+      "latency_ms": 3698,
+      "payload_bytes": 297
+    },
+    {
+      "surface_key": "P7_rent_ledgers",
+      "method": "GET",
+      "path": "/client/operations/rent/ledgers",
+      "status": 200,
+      "latency_ms": 2902,
+      "payload_bytes": 7474
+    },
+    {
+      "surface_key": "portfolio_compliance_summary",
+      "method": "GET",
+      "path": "/portfolio/compliance-summary",
+      "status": 200,
+      "latency_ms": 17034,
+      "payload_bytes": 7093
+    }
+  ],
+  "waterfall_dashboard_then_requirements_ms": 28321,
+  "parallel_properties_requirements_documents_ms": 22397,
+  "captured_at_utc": "2026-05-25T15:48:49Z",
+  "environment": "https://pleerity-enterprise.onrender.com/api",
+  "account": "nancy@yopmail.com (pilot landlord)"
+}

@@ -30,7 +30,15 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import EmptyState from '../components/EmptyState';
 import { requirementDisplayTitle, requirementLabel } from '../domain/presentDomain';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
-import { PortalLoadingPanel } from '../components/client/ClientPortalPatterns';
+import {
+  PortalPageShell,
+  PortalSectionSkeleton,
+  PortalStaleRefreshBanner,
+} from '../components/client/ClientPortalPatterns';
+import {
+  fetchOperational,
+  OPERATIONAL_CACHE_KEYS,
+} from '../utils/clientOperationalFetch';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
@@ -108,6 +116,8 @@ const RequirementsPage = () => {
   const [recentSupportingUploadAt, setRecentSupportingUploadAt] = useState({});
   const [requirementsLoadError, setRequirementsLoadError] = useState(null);
   const [requirementsLoaded, setRequirementsLoaded] = useState(false);
+  const [documentsEnrichmentLoading, setDocumentsEnrichmentLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Get filter from URL params
   const statusFilter = searchParams.get('status') || 'all';
@@ -758,12 +768,27 @@ const RequirementsPage = () => {
     pendingReview: statsBase.filter((r) => resolveClientRequirementLifecycle(r).state === 'PENDING_REVIEW').length,
   };
 
-  if (loading) {
-    return <PortalLoadingPanel message={`Loading ${PORTAL_COPY.requirements.toLowerCase()}…`} />;
+  if (loading && !requirementsLoaded) {
+    return (
+      <PortalPageShell
+        title={getPageTitle()}
+        subtitle={getPageDescription()}
+        refreshing={refreshing}
+        testId="requirements-loading"
+      >
+        <PortalSectionSkeleton rows={6} />
+      </PortalPageShell>
+    );
   }
 
   return (
     <div data-testid="requirements-page">
+        <PortalStaleRefreshBanner refreshing={refreshing} />
+        {documentsEnrichmentLoading ? (
+          <p className="text-xs text-gray-500 mb-3" data-testid="requirements-doc-counts-loading">
+            Loading document counts…
+          </p>
+        ) : null}
         {/* Back Button + Page Header */}
         <div className="mb-6">
           <Button
