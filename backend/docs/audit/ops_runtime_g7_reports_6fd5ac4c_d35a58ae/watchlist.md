@@ -1,0 +1,1 @@
+"# G7 Reports watchlist \u2014 6fd5ac4c_d35a58ae\n\n**Run:** `20260525T003853Z`\n**Classification:** `VERIFIED_OPERATIONALLY`\n\n## Watchlist\n\n- Today vs CC urgent delta today=28 cc=0 (expected cap)"

@@ -1,0 +1,111 @@
+{
+  "report_classes": [
+    {
+      "class": "Audit Evidence Pack",
+      "authority_owner": "compliance_audit_evidence_pack_service",
+      "live_or_derived": "exported_snapshot",
+      "mutation_owner": "/reports/audit-pack",
+      "intended_audience": "regulator/lender/tribunal",
+      "operational_risk_level": "critical",
+      "external_facing": true,
+      "legally_sensitive": true,
+      "endpoint": "/client/compliance/audit-pack/generate",
+      "catalogue_present": true
+    },
+    {
+      "class": "Evidence Readiness Report",
+      "authority_owner": "report_service.load_evidence_readiness_data",
+      "live_or_derived": "derived",
+      "mutation_owner": "/reports/generate",
+      "intended_audience": "landlord/operator",
+      "operational_risk_level": "high",
+      "external_facing": true,
+      "legally_sensitive": true,
+      "endpoint": "/reports/generate",
+      "catalogue_present": true
+    },
+    {
+      "class": "Compliance Status Summary",
+      "authority_owner": "reporting_service",
+      "live_or_derived": "derived",
+      "mutation_owner": "/reports/compliance-summary",
+      "intended_audience": "landlord/operator",
+      "operational_risk_level": "high",
+      "external_facing": true,
+      "legally_sensitive": false,
+      "endpoint": "/reports/compliance-summary",
+      "catalogue_present": true
+    },
+    {
+      "class": "Requirements Report",
+      "authority_owner": "reporting_service",
+      "live_or_derived": "derived",
+      "mutation_owner": "/reports/requirements",
+      "intended_audience": "landlord/operator",
+      "operational_risk_level": "medium",
+      "external_facing": false,
+      "legally_sensitive": false,
+      "endpoint": "/reports/requirements",
+      "catalogue_present": true
+    },
+    {
+      "class": "Score Drivers CSV / Regulatory Export",
+      "authority_owner": "compliance_score",
+      "live_or_derived": "exported_snapshot",
+      "mutation_owner": "/reports/score-drivers.csv",
+      "intended_audience": "systems/analysts",
+      "operational_risk_level": "medium",
+      "external_facing": true,
+      "legally_sensitive": false,
+      "endpoint": "/reports/score-drivers.csv",
+      "catalogue_present": true
+    },
+    {
+      "class": "Compliance Score Summary PDF",
+      "authority_owner": "compliance_score + pdf_report_builder",
+      "live_or_derived": "derived",
+      "mutation_owner": "/reports/score-explanation.pdf",
+      "intended_audience": "landlord/insurer",
+      "operational_risk_level": "high",
+      "external_facing": true,
+      "legally_sensitive": true,
+      "endpoint": "/reports/score-explanation.pdf",
+      "catalogue_present": true
+    },
+    {
+      "class": "Scheduled Reports",
+      "authority_owner": "report_schedules collection",
+      "live_or_derived": "derived_scheduled",
+      "mutation_owner": "/reports/schedules",
+      "intended_audience": "landlord/email",
+      "operational_risk_level": "medium",
+      "external_facing": true,
+      "legally_sensitive": false,
+      "endpoint": "/reports/schedules",
+      "catalogue_present": true
+    }
+  ],
+  "available_api_reports": [
+    {
+      "id": "compliance_summary",
+      "name": "Compliance Status Summary",
+      "description": "Overview of property compliance including statistics and breakdown",
+      "formats": [
+        "csv",
+        "pdf"
+      ],
+      "endpoint": "/reports/compliance-summary"
+    },
+    {
+      "id": "requirements",
+      "name": "Requirements Report",
+      "description": "Detailed list of all requirements with status and due dates",
+      "formats": [
+        "csv",
+        "pdf"
+      ],
+      "endpoint": "/reports/requirements"
+    }
+  ],
+  "pass": true
+}

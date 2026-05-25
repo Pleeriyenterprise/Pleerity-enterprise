@@ -4806,7 +4806,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 ### PRELAUNCH-OPS-RUNTIME-VERIFY-02 — operational control-plane verification (rev 4)
 
-**Status:** G0 **`VERIFIED_OPERATIONALLY`**. G1 **`VERIFIED_OPERATIONALLY`** (run `20260524T162503Z`). G2 **`VERIFIED_OPERATIONALLY`** (run `20260524T170848Z`). G3 **`VERIFIED_OPERATIONALLY`** (run `20260524T175910Z`). G4 **`VERIFIED_OPERATIONALLY`** (run `20260524T182816Z`). G5 **`VERIFIED_OPERATIONALLY`** (run `20260524T203943Z`; linkage reconciliation governance). **Document operational visibility** **`VERIFIED_OPERATIONALLY`** (run `20260524T234406Z`; queue + registry UX). G6 **`VERIFIED_OPERATIONALLY`** (run `20260525T001535Z`; calendar scheduling authority). **G7 NOT RUN** — G7 may proceed.
+**Status:** G0 **`VERIFIED_OPERATIONALLY`**. G1 **`VERIFIED_OPERATIONALLY`** (run `20260524T162503Z`). G2 **`VERIFIED_OPERATIONALLY`** (run `20260524T170848Z`). G3 **`VERIFIED_OPERATIONALLY`** (run `20260524T175910Z`). G4 **`VERIFIED_OPERATIONALLY`** (run `20260524T182816Z`). G5 **`VERIFIED_OPERATIONALLY`** (run `20260524T203943Z`; linkage reconciliation governance). **Document operational visibility** **`VERIFIED_OPERATIONALLY`** (run `20260524T234406Z`; queue + registry UX). G6 **`VERIFIED_OPERATIONALLY`** (run `20260525T001535Z`; calendar scheduling authority). G7 **`VERIFIED_OPERATIONALLY`** (run `20260525T003853Z`; reporting authority). **VERIFY-02 programme complete** (G0–G7).
 
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md)
 
@@ -4845,7 +4845,7 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 | G4 Requirements | `ops_control_g4_requirements_page` | **VERIFIED_OPERATIONALLY** | `20260524T182816Z` — bundle `ops_runtime_g4_requirements_6fd5ac4c_d35a58ae` |
 | G5 Documents | `ops_control_g5_documents_page` | **VERIFIED_OPERATIONALLY** | `20260524T203943Z` — bundle `ops_runtime_g5_documents_6fd5ac4c_d35a58ae` (linkage reconciliation) |
 | G6 Calendar | `ops_control_g6_calendar_page` | VERIFIED_OPERATIONALLY | `20260525T001535Z` |
-| G7 Reports | `ops_control_g7_reports_page` | NOT RUN | — |
+| G7 Reports | `ops_control_g7_reports_page` | VERIFIED_OPERATIONALLY | `20260525T003853Z` |
 
 **Execution order:** G0 → G1 → G2 → G3 → G4 → G5 → G6 → G7 (sequential).
 

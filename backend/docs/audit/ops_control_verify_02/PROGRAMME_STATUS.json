@@ -4,10 +4,13 @@
   "g0_run_tag": "20260524T143953Z",
   "g0_classification": "VERIFIED_OPERATIONALLY",
   "g1_run_tag": "20260524T162503Z",
-  "g2_run_tag": "20260524T175910Z",
+  "g2_run_tag": "20260524T170848Z",
   "g3_run_tag": "20260524T175910Z",
   "g4_run_tag": "20260524T182816Z",
   "g5_run_tag": "20260524T203943Z",
+  "g6_run_tag": "20260525T001535Z",
+  "g7_run_tag": "20260525T003853Z",
+  "programme_classification": "VERIFIED_OPERATIONALLY",
   "implementation_classification": "IMPLEMENTATION_READY",
   "families": {
     "ops_control_g0_programme_precheck": "VERIFIED_OPERATIONALLY",
@@ -16,7 +19,7 @@
     "ops_control_g3_properties_page": "VERIFIED_OPERATIONALLY",
     "ops_control_g4_requirements_page": "VERIFIED_OPERATIONALLY",
     "ops_control_g5_documents_page": "VERIFIED_OPERATIONALLY",
-    "ops_control_g6_calendar_page": "NOT_EXECUTED",
-    "ops_control_g7_reports_page": "NOT_EXECUTED"
+    "ops_control_g6_calendar_page": "VERIFIED_OPERATIONALLY",
+    "ops_control_g7_reports_page": "VERIFIED_OPERATIONALLY"
   }
 }

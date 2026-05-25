@@ -1,0 +1,12 @@
+{
+  "previous_reports_count": 0,
+  "pilot_reports_sample": [],
+  "created_at_disclosed": true,
+  "digests_count": 1,
+  "digest_timestamps_disclosed": true,
+  "schedules_count": 0,
+  "schedules_status": 200,
+  "live_vs_report_distinction": true,
+  "snapshot_not_live_truth": true,
+  "pass": true
+}

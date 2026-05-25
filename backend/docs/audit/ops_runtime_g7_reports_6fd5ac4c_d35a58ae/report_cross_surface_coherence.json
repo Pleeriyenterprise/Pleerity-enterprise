@@ -1,0 +1,18 @@
+{
+  "live_snapshot": {
+    "today_urgent": 28,
+    "cc_urgent": 0,
+    "action_required_requirements": 5,
+    "pending_review_requirements": 1,
+    "attention_documents": 13,
+    "live_score": 24,
+    "score_status": "ok",
+    "open_issues": null
+  },
+  "g2_reference_score": 24,
+  "audit_manifest_summary": {},
+  "reports_hiding_active_debt": false,
+  "live_outranks_export": true,
+  "directionally_coherent": true,
+  "pass": true
+}

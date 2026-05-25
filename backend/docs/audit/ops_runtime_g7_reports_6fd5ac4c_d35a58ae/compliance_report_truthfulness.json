@@ -1,0 +1,28 @@
+{
+  "checks": [
+    {
+      "name": "compliance_csv_generated",
+      "ok": true
+    },
+    {
+      "name": "operational_debt_visible_in_csv",
+      "ok": true
+    },
+    {
+      "name": "score_pdf_integrity",
+      "ok": true
+    },
+    {
+      "name": "no_false_calm",
+      "ok": true
+    }
+  ],
+  "pass": true,
+  "compliance_summary_status": 200,
+  "score_pdf_status": 200,
+  "score_pdf": {
+    "is_pdf": true,
+    "size_bytes": 8901,
+    "pass": true
+  }
+}

@@ -1,6 +1,8 @@
 {
   "family": "ops_control_g7_reports_page",
   "alias": "ops_runtime_g7_reports",
-  "execution_status": "NOT_EXECUTED",
-  "classification": "NOT_EXECUTED"
+  "execution_status": "VERIFIED_OPERATIONALLY",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "run_tag": "20260525T003853Z",
+  "pilot_slug": "6fd5ac4c_d35a58ae"
 }

@@ -1,0 +1,82 @@
+{
+  "steps": [
+    {
+      "name": "generate",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "name": "download",
+      "ok": true,
+      "status": 200,
+      "bytes": 46500
+    }
+  ],
+  "pass": true,
+  "pack_id": "cap_b2e1a440564f4e17a04e47fd",
+  "zip_inspection": {
+    "files": [
+      "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+      "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+      "Audit_Evidence_Pack/02_PROPERTY_PROFILE/property_profile.json",
+      "Audit_Evidence_Pack/03_COMPLIANCE_EVIDENCE/FIRE_ALARM/document_upload_cer_04f2ea36e9d04b37b434fa93f433c80d.json",
+      "Audit_Evidence_Pack/03_COMPLIANCE_EVIDENCE/FIRE_ALARM/document_upload_cer_a4d14ca95e364b5a95fdb0b2f8cd16be.json",
+      "Audit_Evidence_Pack/03_COMPLIANCE_EVIDENCE/FIRE_ALARM/document_upload_cer_b38ebf6415b8425185af229c018db49d.json",
+      "Audit_Evidence_Pack/03_COMPLIANCE_EVIDENCE/GAS_SAFETY/document_upload_cer_c027ac8079a74c0baba5d3d68153fc67.json",
+      "Audit_Evidence_Pack/04_DELIVERY_PROOF/tenant_delivery_records.json",
+      "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_timeline.json",
+      "Audit_Evidence_Pack/06_GOVERNANCE/checksums.sha256",
+      "Audit_Evidence_Pack/06_GOVERNANCE/generation_metadata.json",
+      "Audit_Evidence_Pack/06_GOVERNANCE/manifest.json",
+      "Audit_Evidence_Pack/07_EXCEPTIONS/missing_or_pending_items.json"
+    ],
+    "checks": [
+      {
+        "name": "manifest_present",
+        "ok": true,
+        "detail": "Audit_Evidence_Pack/06_GOVERNANCE/manifest.json"
+      },
+      {
+        "name": "pending_exceptions_present",
+        "ok": true,
+        "detail": "Audit_Evidence_Pack/07_EXCEPTIONS/missing_or_pending_items.json"
+      },
+      {
+        "name": "checksums_present",
+        "ok": true,
+        "detail": "Audit_Evidence_Pack/06_GOVERNANCE/checksums.sha256"
+      },
+      {
+        "name": "summary_pdf_present",
+        "ok": true,
+        "detail": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf"
+      },
+      {
+        "name": "manifest_generated_at",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "pending_disclosed",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "name": "no_duplicate_checksums",
+        "ok": true,
+        "detail": "unique=11 total=11"
+      }
+    ],
+    "pass": true,
+    "file_count": 13,
+    "manifest_generated_at": "2026-05-25T00:41:17.800455+00:00",
+    "manifest_contract": "cvp_audit_evidence_pack_v2",
+    "manifest_summary": {},
+    "pending_items_count": 0
+  },
+  "external_defensibility": {
+    "manifest_with_timestamps": true,
+    "unresolved_disclosed": true,
+    "checksum_integrity": true
+  }
+}

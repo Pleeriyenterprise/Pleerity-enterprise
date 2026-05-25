@@ -1,0 +1,50 @@
+{
+  "at_utc": "2026-05-25T00:40:57.685077+00:00",
+  "checks": [
+    {
+      "name": "reports_available_api",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "reports_history_api",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "schedules_api",
+      "ok": true,
+      "detail": "status=200"
+    }
+  ],
+  "browser": {
+    "steps": [
+      {
+        "name": "reports_route",
+        "ok": true
+      },
+      {
+        "name": "reports_shell",
+        "ok": true,
+        "detail": "ready"
+      },
+      {
+        "name": "catalogue_visible",
+        "ok": true
+      },
+      {
+        "name": "audit_pack_cta",
+        "ok": true
+      },
+      {
+        "name": "refresh_persistence",
+        "ok": true,
+        "detail": "ready"
+      }
+    ],
+    "pass": true
+  },
+  "available_count": 2,
+  "boot_ok": true,
+  "shell_state": "ready"
+}

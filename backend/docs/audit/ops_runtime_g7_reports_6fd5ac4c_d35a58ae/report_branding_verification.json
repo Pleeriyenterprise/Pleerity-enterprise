@@ -1,0 +1,14 @@
+{
+  "branding_status": 200,
+  "white_label_enabled": false,
+  "include_pleerity_branding": true,
+  "company_name": "Oxford Heritage Lettings",
+  "pdf_integrity": {
+    "is_pdf": true,
+    "size_bytes": 8901,
+    "pass": true
+  },
+  "layout_integrity": true,
+  "white_label_safe": true,
+  "pass": true
+}

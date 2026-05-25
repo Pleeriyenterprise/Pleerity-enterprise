@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "score_drivers": {
+    "freshness_metadata_rows": [
+      "\ufeff# export_format=SCORING_SEMANTICS_EXPORT_V1",
+      "score_status,ok",
+      "score_status_message,",
+      "export_generated_at,2026-05-25T00:42:24.075767+00:00"
+    ],
+    "has_freshness_disclosure": true,
+    "header": [
+      "\ufeff# export_format=SCORING_SEMANTICS_EXPORT_V1"
+    ],
+    "row_count": 37,
+    "duplicate_rows": false,
+    "pass": true
+  },
+  "requirements_export_status": 200,
+  "requirements_export_rows": 12,
+  "encoding_utf8_sig": true,
+  "pass": true
+}
