@@ -1,0 +1,10 @@
+{
+  "portal_states_observed": [
+    "active"
+  ],
+  "active_tenant_count": 1,
+  "certificate_request_count": 0,
+  "landlord_summary_security_leak": false,
+  "tenant_profile_security_leak": false,
+  "pass": true
+}

@@ -1,0 +1,20 @@
+{
+  "api_occupancy_summary_ok": true,
+  "authority_note_present": true,
+  "feature_gates": {
+    "tenant_portal": true,
+    "rent_operations": true,
+    "maintenance_workflows": true
+  },
+  "browser": {
+    "tenants_reachable": true,
+    "tenants_title": "Tenant operations",
+    "occupancy_tab_visible": true,
+    "occupancy_panel_ready": true,
+    "occupancy_panel_loading_stuck": false,
+    "refresh_persistence": true,
+    "pass": true
+  },
+  "boot_ok": true,
+  "pass": true
+}

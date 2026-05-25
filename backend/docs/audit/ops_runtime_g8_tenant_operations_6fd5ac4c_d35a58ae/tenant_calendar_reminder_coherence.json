@@ -1,0 +1,9 @@
+{
+  "reminder_count": 6,
+  "visit_count": 0,
+  "calendar_property_events": 0,
+  "scheduled_overstated_as_resolved": false,
+  "reminders_suppress_arrears_signal": false,
+  "overdue_still_visible_with_visits": true,
+  "pass": true
+}

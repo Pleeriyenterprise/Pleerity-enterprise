@@ -1,0 +1,40 @@
+{
+  "programme": "PRELAUNCH-OPS-RUNTIME-VERIFY-02",
+  "family": "ops_control_g8_tenant_operations",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_classifications": [],
+  "reasons": [],
+  "blocking": false,
+  "execution_status": "VERIFIED_OPERATIONALLY",
+  "authoritative_verification_owner": "ops_control_g8_tenant_operations",
+  "proof_mode": "operational_browser",
+  "run_tag": "20260525T025630Z",
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "shared_dependency_bundle_ids": [
+    "ops_control_g0_programme_precheck_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g1_today_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g2_command_centre_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g3_properties_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g4_requirements_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g5_documents_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g6_calendar_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g7_reports_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "f7_reference": "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json",
+  "f6_reference": "ops_runtime_06_rent_ops_6fd5ac4c_d35a58ae/07_classification.json",
+  "checkpoints": {
+    "G8_boot": true,
+    "G8_property_tenancy": true,
+    "G8_rent_sync": true,
+    "G8_maintenance": true,
+    "G8_calendar": true,
+    "G8_portal": true,
+    "G8_authority": true,
+    "G8_cross_surface": true,
+    "G8_cognition": true,
+    "G8_g9_g10": true,
+    "G8_convergence": true
+  }
+}

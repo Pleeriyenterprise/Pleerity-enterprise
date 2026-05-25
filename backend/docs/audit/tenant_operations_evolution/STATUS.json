@@ -1,9 +1,10 @@
 {
   "programme": "TENANT_OPERATIONS_EVOLUTION",
-  "classification": "IMPLEMENTATION_READY",
-  "execution_status": "IMPLEMENTATION_READY",
-  "operational_verification": "NOT_EXECUTED",
-  "verify02_g8": "NOT_EXECUTED",
-  "run_tag": "20260525T004500Z",
-  "note": "Bounded property occupancy layer + tenant operations framing. Does not amend G1-G7 VERIFIED_OPERATIONALLY lineage."
+  "classification": "VERIFIED_OPERATIONALLY",
+  "execution_status": "VERIFIED_OPERATIONALLY",
+  "operational_verification": "G8_EXECUTED",
+  "verify02_g8": "VERIFIED_OPERATIONALLY",
+  "g8_run_tag": "20260525T025630Z",
+  "g8_bundle": "ops_runtime_g8_tenant_operations_6fd5ac4c_d35a58ae",
+  "note": "G8 tenant operational truth verified on Wales HMO pilot. Does not amend G1-G7 classifications."
 }

@@ -10,6 +10,7 @@
   "g5_run_tag": "20260524T203943Z",
   "g6_run_tag": "20260525T001535Z",
   "g7_run_tag": "20260525T003853Z",
+  "g8_run_tag": "20260525T025630Z",
   "programme_classification": "VERIFIED_OPERATIONALLY",
   "implementation_classification": "IMPLEMENTATION_READY",
   "families": {
@@ -20,6 +21,7 @@
     "ops_control_g4_requirements_page": "VERIFIED_OPERATIONALLY",
     "ops_control_g5_documents_page": "VERIFIED_OPERATIONALLY",
     "ops_control_g6_calendar_page": "VERIFIED_OPERATIONALLY",
-    "ops_control_g7_reports_page": "VERIFIED_OPERATIONALLY"
+    "ops_control_g7_reports_page": "VERIFIED_OPERATIONALLY",
+    "ops_control_g8_tenant_operations": "VERIFIED_OPERATIONALLY"
   }
 }

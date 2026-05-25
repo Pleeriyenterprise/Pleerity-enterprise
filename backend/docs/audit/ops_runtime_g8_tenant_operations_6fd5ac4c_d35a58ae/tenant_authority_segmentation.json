@@ -1,0 +1,61 @@
+{
+  "probes": [
+    {
+      "probe": "tenant_client_dashboard",
+      "status": 403,
+      "expected": [
+        401,
+        403
+      ],
+      "ok": true
+    },
+    {
+      "probe": "tenant_occupancy_summary",
+      "status": 403,
+      "expected": [
+        401,
+        403
+      ],
+      "ok": true
+    },
+    {
+      "probe": "tenant_rent_summary",
+      "status": 403,
+      "expected": [
+        401,
+        403
+      ],
+      "ok": true
+    },
+    {
+      "probe": "tenant_maintenance_mutate",
+      "status": 403,
+      "expected": [
+        401,
+        403,
+        405,
+        422
+      ],
+      "ok": true
+    },
+    {
+      "probe": "tenant_issues_allowed",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "ok": true
+    },
+    {
+      "probe": "landlord_occupancy_allowed",
+      "status": 200,
+      "expected": [
+        200
+      ],
+      "ok": true
+    }
+  ],
+  "failures": [],
+  "authority_boundary_failure": false,
+  "pass": true
+}

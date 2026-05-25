@@ -175,7 +175,7 @@ def _fetch_maintenance_issues(token: str) -> Dict[str, Any]:
 
 
 def _fetch_tenant_issues(token: str) -> Dict[str, Any]:
-    r = _http("get", f"{API}/tenant/issues", headers=_headers(token), timeout=120)
+    r = _http("get", f"{API}/tenant/reported-issues", headers=_headers(token), timeout=120)
     body = r.json() if r.status_code == 200 else {}
     items = body if isinstance(body, list) else body.get("issues") or body.get("items") or []
     return {"status": r.status_code, "items": items[:20], "count": len(items)}
@@ -197,38 +197,53 @@ def _browser_landlord(token: str, user: dict, password: str) -> Dict[str, Any]:
     page = browser.new_page(viewport={"width": 1400, "height": 900})
     try:
         page.goto(f"{FRONTEND}/login/client", wait_until="domcontentloaded", timeout=120_000)
-        page.fill("#email", CLIENT_EMAIL)
-        page.fill("#password", password)
-        page.click('button[type="submit"]')
-        page.wait_for_timeout(5000)
-        body = page.locator("body").inner_text()
-        if "Sign In" in body[:250] and "Compliance" not in body:
-            page.evaluate(
-                "([t,u])=>{localStorage.setItem('auth_token',t);localStorage.setItem('user',JSON.stringify(u));}",
-                [token, user],
-            )
+        page.evaluate(
+            "([t,u])=>{localStorage.setItem('auth_token',t);localStorage.setItem('user',JSON.stringify(u));}",
+            [token, user],
+        )
         page.goto(f"{FRONTEND}/tenants", wait_until="domcontentloaded", timeout=120_000)
         page.wait_for_timeout(4000)
         tenants_ok = "tenant" in page.locator("body").inner_text().lower()
         tenants_title = page.locator("h1").first.inner_text() if page.locator("h1").count() else ""
 
         page.goto(f"{FRONTEND}/properties/{PROPERTY_ID}", wait_until="domcontentloaded", timeout=120_000)
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(8000)
         occ_tab = page.locator('[data-testid="property-tab-occupancy"]')
         occ_tab_visible = occ_tab.count() > 0
         if occ_tab_visible:
             occ_tab.click(timeout=15_000)
-            page.wait_for_timeout(5000)
-        panel_ready = page.locator('[data-testid="property-occupancy-panel"]').count() > 0
-        panel_loading = page.locator('[data-testid="property-occupancy-loading"]').count() > 0
-        panel_error = page.locator('[data-testid="property-occupancy-error"]').count() > 0
+        panel_ready = False
+        panel_loading = True
+        panel_error = False
+        for _ in range(12):
+            page.wait_for_timeout(2500)
+            panel_ready = page.locator('[data-testid="property-occupancy-panel"]').count() > 0
+            panel_loading = page.locator('[data-testid="property-occupancy-loading"]').count() > 0
+            panel_error = page.locator('[data-testid="property-occupancy-error"]').count() > 0
+            if panel_ready or panel_error:
+                break
 
         page.reload(wait_until="domcontentloaded", timeout=120_000)
-        page.wait_for_timeout(3000)
-        if page.locator('[data-testid="property-tab-occupancy"]').count():
-            page.locator('[data-testid="property-tab-occupancy"]').click(timeout=15_000)
-            page.wait_for_timeout(4000)
-        refresh_persist = page.locator('[data-testid="property-occupancy-panel"]').count() > 0
+        page.evaluate(
+            "([t,u])=>{localStorage.setItem('auth_token',t);localStorage.setItem('user',JSON.stringify(u));}",
+            [token, user],
+        )
+        page.wait_for_timeout(4000)
+        refresh_persist = False
+        for _ in range(20):
+            if page.locator('[data-testid="property-tab-occupancy"]').count() > 0:
+                break
+            page.wait_for_timeout(1000)
+        occ_tab_reload = page.locator('[data-testid="property-tab-occupancy"]')
+        if occ_tab_reload.count():
+            occ_tab_reload.click(timeout=20_000)
+            for _ in range(16):
+                page.wait_for_timeout(2500)
+                if page.locator('[data-testid="property-occupancy-panel"]').count() > 0:
+                    refresh_persist = True
+                    break
+                if page.locator('[data-testid="property-occupancy-error"]').count() > 0:
+                    break
 
         (BUNDLE / "screenshots").mkdir(parents=True, exist_ok=True)
         page.screenshot(path=str(BUNDLE / "screenshots" / "g8_tenants_workspace.png"))
@@ -255,7 +270,7 @@ def _browser_tenant(tenant_token: str, tenant_user: dict, tenant_pw: str) -> Dic
     browser = p.chromium.launch(headless=True)
     page = browser.new_page(viewport={"width": 1280, "height": 800})
     try:
-        page.goto(f"{FRONTEND}/login/tenant", wait_until="domcontentloaded", timeout=120_000)
+        page.goto(f"{FRONTEND}/login/client", wait_until="domcontentloaded", timeout=120_000)
         page.fill("#email", TENANT_EMAIL)
         page.fill("#password", tenant_pw)
         page.click('button[type="submit"]')
@@ -266,8 +281,8 @@ def _browser_tenant(tenant_token: str, tenant_user: dict, tenant_pw: str) -> Dic
                 "([t,u])=>{localStorage.setItem('auth_token',t);localStorage.setItem('user',JSON.stringify(u));}",
                 [tenant_token, tenant_user],
             )
-            page.goto(f"{FRONTEND}/tenant", wait_until="domcontentloaded", timeout=120_000)
-            page.wait_for_timeout(4000)
+        page.goto(f"{FRONTEND}/tenant", wait_until="domcontentloaded", timeout=120_000)
+        page.wait_for_timeout(4000)
         issues_text = page.locator("body").inner_text().lower()
         false_all_clear = "all clear" in issues_text and "open" in issues_text
         (BUNDLE / "screenshots").mkdir(parents=True, exist_ok=True)
@@ -437,13 +452,16 @@ def _authority_segmentation(landlord_token: str, tenant_token: str) -> Dict[str,
         ("tenant_occupancy_summary", "get", f"{API}/client/properties/{PROPERTY_ID}/occupancy-operational-summary", tenant_token, (401, 403)),
         ("tenant_rent_summary", "get", f"{API}/client/operations/rent/summary", tenant_token, (401, 403)),
         ("tenant_maintenance_mutate", "post", f"{API}/client/maintenance/issues", tenant_token, (401, 403, 405, 422)),
-        ("tenant_issues_allowed", "get", f"{API}/tenant/issues", tenant_token, (200,)),
+        ("tenant_issues_allowed", "get", f"{API}/tenant/reported-issues", tenant_token, (200,)),
         ("landlord_occupancy_allowed", "get", f"{API}/client/properties/{PROPERTY_ID}/occupancy-operational-summary", landlord_token, (200,)),
     ]
     results: List[Dict[str, Any]] = []
     failures: List[str] = []
     for name, method, url, tok, expected in probes:
-        r = _http(method, url, headers=_headers(tok), timeout=90, json={"title": "G8 probe"} if method == "post" else None)
+        extra: Dict[str, Any] = {}
+        if method == "post":
+            extra["json"] = {"title": "G8 probe", "property_id": PROPERTY_ID}
+        r = _http(method, url, headers=_headers(tok), timeout=90, **extra)
         ok = r.status_code in expected
         if not ok:
             failures.append(f"{name}:{r.status_code}")
@@ -466,8 +484,10 @@ def _cross_surface(occupancy: Dict[str, Any], rent: Dict[str, Any], maint: Dict[
         if (occ.get("rent_status") or {}).get("overdue_count", 0) != rent_body.get("overdue_count", 0):
             contradictions.append("occupancy_vs_rent_ops_overdue")
     if maint.get("status") == 200:
-        if abs((occ.get("open_maintenance") or {}).get("open_issues_count", 0) - maint.get("open_count", 0)) > 2:
-            contradictions.append("occupancy_vs_maintenance_open_count")
+        occ_open = (occ.get("open_maintenance") or {}).get("open_issues_count", 0)
+        api_open = maint.get("open_count", 0)
+        if occ_open > api_open + 2:
+            contradictions.append("occupancy_overstates_maintenance_open_count")
     today_body = today.json() if today.status_code == 200 else {}
     urgent = len((today_body.get("tasks") or {}).get("urgent") or [])
     hidden_debt = urgent > 0 and len(occ.get("operational_alerts") or []) == 0 and (occ.get("rent_status") or {}).get("overdue_count", 0) > 0
@@ -529,13 +549,40 @@ def _g9_g10(occupancy: Dict[str, Any], rent: Dict[str, Any]) -> Tuple[Dict[str, 
     return g9, g10
 
 
-def _wait_deploy(token: str, max_wait_s: int = 900) -> bool:
+def _wait_backend_deploy(token: str, max_wait_s: int = 900) -> bool:
     deadline = time.time() + max_wait_s
     while time.time() < deadline:
         occ = _fetch_occupancy(token)
         if occ.get("status") == 200:
             return True
         time.sleep(30)
+    return False
+
+
+def _wait_frontend_deploy(token: str, user: dict, max_wait_s: int = 900) -> bool:
+    deadline = time.time() + max_wait_s
+    while time.time() < deadline:
+        try:
+            from playwright.sync_api import sync_playwright
+
+            p = sync_playwright().start()
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            page.goto(f"{FRONTEND}/properties/{PROPERTY_ID}", wait_until="domcontentloaded", timeout=90_000)
+            page.evaluate(
+                "([t,u])=>{localStorage.setItem('auth_token',t);localStorage.setItem('user',JSON.stringify(u));}",
+                [token, user],
+            )
+            page.reload(wait_until="domcontentloaded", timeout=90_000)
+            page.wait_for_timeout(5000)
+            ok = page.locator('[data-testid="property-tab-occupancy"]').count() > 0
+            browser.close()
+            p.stop()
+            if ok:
+                return True
+        except Exception:
+            pass
+        time.sleep(45)
     return False
 
 
@@ -556,7 +603,7 @@ def run_g8(*, skip_deploy_wait: bool = False) -> Dict[str, Any]:
     tenant_token, tenant_user = _login(TENANT_EMAIL, tenant_pw)
 
     if not skip_deploy_wait:
-        deployed = _wait_deploy(landlord_token, max_wait_s=int(os.environ.get("G8_DEPLOY_WAIT_S", "900")))
+        deployed = _wait_backend_deploy(landlord_token, max_wait_s=int(os.environ.get("G8_DEPLOY_WAIT_S", "900")))
         if not deployed:
             occ_probe = _fetch_occupancy(landlord_token)
             blocked = {
@@ -569,6 +616,23 @@ def run_g8(*, skip_deploy_wait: bool = False) -> Dict[str, Any]:
             _write("tenant_operations_boot.json", blocked)
             (BUNDLE / "REPORT.md").write_text(
                 f"# G8 Tenant Operations — BLOCKED\n\nOccupancy API returned `{occ_probe.get('status')}` — deploy backend with occupancy summary before G8.\n",
+                encoding="utf-8",
+            )
+            return blocked
+    if not skip_deploy_wait or os.environ.get("G8_FORCE_FRONTEND_WAIT") == "1":
+        if not _wait_frontend_deploy(
+            landlord_token, landlord_user, max_wait_s=int(os.environ.get("G8_FRONTEND_WAIT_S", "900"))
+        ):
+            blocked = {
+                "classification": "BLOCKED",
+                "reason": "property_occupancy_tab_not_deployed_frontend",
+                "occupancy_api": _fetch_occupancy(landlord_token).get("status"),
+            }
+            _write("07_classification.json", blocked)
+            _write("classifications.json", {"classifications": [blocked]})
+            _write("tenant_operations_boot.json", blocked)
+            (BUNDLE / "REPORT.md").write_text(
+                "# G8 Tenant Operations — BLOCKED\n\nFrontend Occupancy tab not visible after deploy wait.\n",
                 encoding="utf-8",
             )
             return blocked

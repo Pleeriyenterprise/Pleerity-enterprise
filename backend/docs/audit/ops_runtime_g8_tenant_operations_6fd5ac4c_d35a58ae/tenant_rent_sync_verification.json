@@ -1,0 +1,32 @@
+{
+  "rent_authority_owner": "rent_operations",
+  "drift_fields": [],
+  "false_rent_assurance": false,
+  "reminder_disclaimer_present": true,
+  "occupancy_rent": {
+    "authority": "rent_operations",
+    "currency": "GBP",
+    "overdue_count": 2,
+    "severely_overdue_count": 0,
+    "partially_paid_count": 2,
+    "upcoming_due_count": 6,
+    "total_outstanding_minor": 674000,
+    "rent_collected_this_month_minor": 171000,
+    "last_payment_at": "2026-05-23",
+    "disclaimer": "Financial authority: Rent Operations. Snapshot is operational, not accounting truth."
+  },
+  "rent_ops_summary": {
+    "rent_collected_this_month_minor": 171000,
+    "currency": "GBP",
+    "upcoming_due_count": 6,
+    "overdue_count": 2,
+    "severely_overdue_count": 0,
+    "partially_paid_count": 2,
+    "partial_overdue_count": 2,
+    "due_today_count": 0,
+    "tenancies_with_arrears_count": 1,
+    "average_payment_delay_days": 0.0,
+    "total_outstanding_minor": 674000
+  },
+  "pass": true
+}

@@ -1,0 +1,5 @@
+{
+  "duplicate_tenant_rows": false,
+  "duplicate_reminder_keys": false,
+  "pass": true
+}

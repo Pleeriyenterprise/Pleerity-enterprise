@@ -1,0 +1,8 @@
+{
+  "operational_alerts_count": 2,
+  "landlord_false_calm": false,
+  "crm_clutter_risk": false,
+  "tenant_false_reassurance": false,
+  "occupancy_panel_boot": true,
+  "pass": true
+}

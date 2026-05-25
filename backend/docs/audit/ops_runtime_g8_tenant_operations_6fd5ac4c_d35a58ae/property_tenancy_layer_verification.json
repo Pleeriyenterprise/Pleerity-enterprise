@@ -1,0 +1,26 @@
+{
+  "sections_present": {
+    "active_tenants": true,
+    "tenancy_lifecycle": true,
+    "rent_status": true,
+    "open_maintenance": true,
+    "certificate_requests": true,
+    "compliance_pack_deliveries": true,
+    "reminder_history": true,
+    "upcoming_visits": true,
+    "portal_activity": true,
+    "operational_alerts": true
+  },
+  "property_authority_context": true,
+  "duplicate_rent_authority": false,
+  "contradictory_states": false,
+  "stale_occupancy_api": false,
+  "deep_links": {
+    "tenants": "/tenants",
+    "tenant_delivery": "/tenants/delivery?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "rent_operations": "/operations/rent?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "maintenance": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?tab=maintenance",
+    "calendar": "/calendar"
+  },
+  "pass": true
+}

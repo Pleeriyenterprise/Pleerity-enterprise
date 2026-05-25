@@ -2,7 +2,7 @@
 
 **Programme:** `PRELAUNCH-OPS-RUNTIME-VERIFY-02` (optional extension family)  
 **Owner:** `ops_control_g8_tenant_operations` (proposed)  
-**Status:** `NOT_EXECUTED` — implementation layer `IMPLEMENTATION_READY` only
+**Status:** `VERIFIED_OPERATIONALLY` — run `20260525T025630Z`; bundle `ops_runtime_g8_tenant_operations_6fd5ac4c_d35a58ae`
 
 ## Purpose
 

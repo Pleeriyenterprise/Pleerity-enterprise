@@ -1,0 +1,12 @@
+{
+  "landlord_open_count": 41,
+  "occupancy_open_count": 12,
+  "tenant_reported_open_occ": 2,
+  "projection_count_drift": false,
+  "tenant_false_resolved_label": false,
+  "scheduled_not_fixed_disclaimer": true,
+  "f7_reference_classification": "VERIFIED_OPERATIONALLY",
+  "f7_issue_id": "02e96768-cf9c-4bd7-ae34-754c01f481f3",
+  "reported_ne_resolved_preserved": true,
+  "pass": true
+}
