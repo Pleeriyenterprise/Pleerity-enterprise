@@ -36,7 +36,7 @@ PILOT_PROPERTY_A = os.environ.get(
 PILOT_PROPERTY_B = os.environ.get(
     "OPS_VERIFY_PROPERTY_B", "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
 )
-EXPECTED_COMMITS = ["a3599669", "10a510e0"]
+EXPECTED_COMMITS = ["a3599669", "10a510e0", "425087f0"]
 RUN_TAG = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 MARKER = f"RTA-VERIFY-{RUN_TAG}"
 

@@ -68,7 +68,58 @@ async def test_external_payer_allowed_without_tenancy():
 
 
 @pytest.mark.asyncio
-async def test_duplicate_schedule_idempotency_replay():
+async def test_create_schedule_response_has_no_object_id():
+    """Mongo insert_one mutates dict with _id; responses must not leak ObjectId."""
+    client_id = "c_oid"
+    mock_db = MagicMock()
+    schedules = MagicMock()
+    schedules.find_one = AsyncMock(return_value=None)
+    schedules.insert_one = MagicMock(side_effect=lambda d: d.update({"_id": "fake_oid"}))
+    schedules.update_many = AsyncMock()
+    periods = MagicMock()
+    periods.find_one = AsyncMock(return_value=None)
+    periods.insert_one = AsyncMock()
+    periods.count_documents = AsyncMock(return_value=0)
+    tenancies = MagicMock()
+    tenancies.find_one = AsyncMock(
+        return_value={
+            "tenancy_id": "pty_oid",
+            "client_id": client_id,
+            "property_id": "p1",
+            "status": "active",
+        }
+    )
+    tenancies.update_one = AsyncMock()
+    props = MagicMock()
+    props.find_one = AsyncMock(return_value={"property_id": "p1", "client_id": client_id})
+
+    def getter(k):
+        return {
+            "rent_schedules": schedules,
+            "rent_ledger_periods": periods,
+            "property_tenancies": tenancies,
+            "properties": props,
+        }.get(k, MagicMock())
+
+    mock_db.properties = props
+    mock_db.__getitem__ = MagicMock(side_effect=getter)
+    with patch("services.rent_ledger_service.database.get_db", return_value=mock_db), patch(
+        "services.rent_tenancy_authority_service.database.get_db", return_value=mock_db
+    ), patch("services.rent_ledger_service.create_audit_log", new_callable=AsyncMock):
+        out = await rent_ledger_service.create_rent_schedule(
+            client_id,
+            {
+                "property_id": "p1",
+                "tenancy_id": "pty_oid",
+                "expected_amount_minor": 100000,
+                "start_date": "2026-06-01",
+                "due_day": 1,
+                "rent_frequency": "monthly",
+                "tenant_name": "T",
+            },
+        )
+    assert "_id" not in out
+    assert out.get("schedule_id")
     client_id = "c_idem"
     idem = f"idem_{uuid.uuid4().hex[:8]}"
     prior = {"schedule_id": "rs_prior", "client_id": client_id, "idempotency_key": idem}

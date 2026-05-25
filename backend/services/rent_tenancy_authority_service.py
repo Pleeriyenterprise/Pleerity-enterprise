@@ -136,6 +136,7 @@ async def resolve_or_create_active_tenancy(
         "created_by": actor_id,
     }
     await db[COLLECTION_TENANCIES].insert_one(doc)
+    doc.pop("_id", None)
     return doc
 
 
@@ -217,6 +218,7 @@ async def create_replacement_tenancy(
         "created_by": actor_id,
     }
     await db[COLLECTION_TENANCIES].insert_one(doc)
+    doc.pop("_id", None)
     return doc
 
 

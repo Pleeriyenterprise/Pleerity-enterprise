@@ -494,6 +494,7 @@ async def create_rent_schedule(
 
     try:
         await db[COLLECTION_SCHEDULES].insert_one(schedule)
+        schedule.pop("_id", None)
         periods_created = await ensure_future_periods_for_schedule(schedule, actor_id=actor_id)
         schedule["periods_created"] = periods_created
         schedule["success"] = True
@@ -506,6 +507,7 @@ async def create_rent_schedule(
         return schedule
     except Exception as exc:
         logger.exception("rent schedule create failed schedule_id=%s", schedule_id)
+        schedule.pop("_id", None)
         existing_periods = await db[COLLECTION_PERIODS].count_documents(
             {"client_id": client_id, "schedule_id": schedule_id, "is_deleted": {"$ne": True}},
         )
