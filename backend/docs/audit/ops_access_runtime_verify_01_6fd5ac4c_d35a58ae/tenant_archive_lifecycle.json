@@ -1,0 +1,17 @@
+{
+  "at_utc": "2026-05-25T10:52:28.396258+00:00",
+  "marker": "ACCESS-VERIFY01-20260525T102829Z",
+  "a4_email": "access-a4-20260525t102829z@yopmail.com",
+  "invite_status": 200,
+  "tenant_id": "314cb1dd-5f88-484b-bf15-824eed659147",
+  "setup_token_found": true,
+  "tenant_active_login_ok": true,
+  "unassign_status": 200,
+  "removed_from_active_occupancy": true,
+  "revoke_status": 200,
+  "revoked_login_blocked": true,
+  "delivery_history_preserved": true,
+  "lifecycle_model": "unassign_property + revoke(DISABLED); no hard-delete of delivery proofs",
+  "moved_out_ne_deleted": true,
+  "pass": true
+}

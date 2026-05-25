@@ -1,0 +1,5 @@
+# Deploy continuity — ACCESS-RUNTIME-VERIFY-01
+
+**Run:** `20260525T102829Z`
+
+VERIFIED_OPERATIONALLY on Wales HMO pilot.

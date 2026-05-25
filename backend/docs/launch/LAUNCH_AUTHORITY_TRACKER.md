@@ -4808,6 +4808,10 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 **Status:** G0 **`VERIFIED_OPERATIONALLY`**. G1 **`VERIFIED_OPERATIONALLY`** (run `20260524T162503Z`). G2 **`VERIFIED_OPERATIONALLY`** (run `20260524T170848Z`). G3 **`VERIFIED_OPERATIONALLY`** (run `20260524T175910Z`). G4 **`VERIFIED_OPERATIONALLY`** (run `20260524T182816Z`). G5 **`VERIFIED_OPERATIONALLY`** (run `20260524T203943Z`; linkage reconciliation governance). **Document operational visibility** **`VERIFIED_OPERATIONALLY`** (run `20260524T234406Z`; queue + registry UX). G6 **`VERIFIED_OPERATIONALLY`** (run `20260525T001535Z`; calendar scheduling authority). G7 **`VERIFIED_OPERATIONALLY`** (run `20260525T003853Z`; reporting authority). G8 **`VERIFIED_OPERATIONALLY`** (run `20260525T025630Z`; tenant operations aggregation + authority segregation). **VERIFY-02 programme complete** (G0–G8).
 
+### PRELAUNCH-ACCESS-RUNTIME-VERIFY-01 — access, onboarding, identity, lifecycle
+
+**Status:** **`VERIFIED_OPERATIONALLY`** (run `20260525T102829Z`) — Wales HMO pilot `6fd5ac4c_d35a58ae`. Bundle `ops_access_runtime_verify_01_6fd5ac4c_d35a58ae`. Families A1–A7 + G9/G10 pass (contractor onboarding/approval, visibility, tenant archive without history loss, password reset runtime, email/token governance, session coherence).
+
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md)
 
 **Programme type:** **OPERATIONAL_CONTROL_PLANE_VERIFICATION** — cognitively truthful, navigable, trustworthy control plane under real runtime (not generic QA).

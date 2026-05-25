@@ -1,0 +1,10 @@
+{
+  "at_utc": "2026-05-25T10:52:16.384022+00:00",
+  "landlord_contractors_status": 200,
+  "f3_visible_to_landlord": true,
+  "contractor_dashboard_status": 200,
+  "contractor_work_orders_status": 200,
+  "contractor_work_order_count": 13,
+  "scoped_visibility_ok": true,
+  "pass": true
+}

@@ -1,0 +1,30 @@
+{
+  "programme": "PRELAUNCH-ACCESS-RUNTIME-VERIFY-01",
+  "family": "access_runtime_verify_01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "execution_status": "VERIFIED_OPERATIONALLY",
+  "blocking": false,
+  "authoritative_verification_owner": "access_runtime_verify_01",
+  "proof_mode": "operational_browser",
+  "run_tag": "20260525T102829Z",
+  "pilot_slug": "6fd5ac4c_d35a58ae",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "shared_dependency_bundle_ids": [
+    "ops_runtime_03_contractor_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_07_tenant_portal_6fd5ac4c_d35a58ae/07_classification.json",
+    "ops_runtime_g8_tenant_operations_6fd5ac4c_d35a58ae/07_classification.json"
+  ],
+  "checkpoints": {
+    "A1_onboarding": true,
+    "A2_visibility": true,
+    "A3_admin_approval": true,
+    "A4_tenant_archive": true,
+    "A5_password_reset": true,
+    "A6_email_token": true,
+    "A7_session_coherence": true,
+    "G9": true,
+    "G10": true,
+    "convergence": true
+  }
+}

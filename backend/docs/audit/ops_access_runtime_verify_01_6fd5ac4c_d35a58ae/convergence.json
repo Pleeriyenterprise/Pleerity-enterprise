@@ -1,0 +1,24 @@
+{
+  "observations": [
+    {
+      "label": "admin_pending_contractors",
+      "t0": {
+        "dry_run": true
+      },
+      "reads": [
+        {
+          "dry_run": true,
+          "note": "No runtime observation executed"
+        }
+      ],
+      "converged": false,
+      "stale_projection": false,
+      "timeout_seconds": 100
+    }
+  ],
+  "any_stale": false,
+  "any_timeout": false,
+  "t0": {
+    "pending": 0
+  }
+}

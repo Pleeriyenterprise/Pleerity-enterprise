@@ -1,0 +1,5 @@
+{
+  "duplicate_approve_idempotent": true,
+  "token_reuse_blocked": true,
+  "pass": true
+}

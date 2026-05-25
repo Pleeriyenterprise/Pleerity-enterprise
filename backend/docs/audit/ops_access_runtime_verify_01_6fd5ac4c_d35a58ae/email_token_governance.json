@@ -1,0 +1,18 @@
+{
+  "at_utc": "2026-05-25T10:54:15.603578+00:00",
+  "templates_observed": [
+    "CLIENT_QUOTE_REVIEW_REQUIRED",
+    "COMPLIANCE_EXPIRY_REMINDER",
+    "CONTRACTOR_INVOICE_READY",
+    "CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED",
+    "CONTRACTOR_QUOTE_APPROVED",
+    "PASSWORD_RESET",
+    "TENANT_INVITE"
+  ],
+  "sent_count": 0,
+  "password_reset_observed": true,
+  "contractor_invite_observed": true,
+  "stale_link_rejected": true,
+  "email_sent_ne_received_proxy": "message_logs_capture_only",
+  "pass": true
+}

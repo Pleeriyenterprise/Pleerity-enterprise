@@ -1,0 +1,26 @@
+{
+  "marker": "ACCESS-VERIFY01-20260525T102829Z",
+  "at_utc": "2026-05-25T10:51:38.570598+00:00",
+  "a1_email": "access-a1-20260525t102829z@yopmail.com",
+  "registration_open_status": 200,
+  "registration_open": {
+    "enabled": true
+  },
+  "register_status": 200,
+  "contractor_id": "ea40a790-1edd-41dc-92ff-cd27cdd4654e",
+  "admin_get_status": 200,
+  "pending_status": "pending_approval",
+  "vetted_before": false,
+  "pre_approve_login_blocked": true,
+  "f3_reference_login_ok": true,
+  "approve_status": 200,
+  "status_after_approve": "approved",
+  "invite_token_found": false,
+  "portal_invite_resend_status": 200,
+  "invite_token_found_after_resend": true,
+  "set_password_status": 200,
+  "token_reuse_blocked": true,
+  "post_approve_login_ok": true,
+  "invited_ne_approved_preserved": true,
+  "pass": true
+}
