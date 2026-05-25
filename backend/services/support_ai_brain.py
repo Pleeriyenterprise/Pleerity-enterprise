@@ -567,6 +567,12 @@ async def run_public_support_ai_brain(
     Full AI-first path: protected shortcuts, then brain.
     Returns None to signal legacy fallback.
     """
+    from services.support_conversation_recovery import try_frustration_recovery_turn
+
+    recovery = try_frustration_recovery_turn(message, ctx, conversation_history)
+    if recovery:
+        return recovery
+
     shortcut = await try_protected_deterministic_shortcuts(
         conversation_id=conversation_id,
         message=message,

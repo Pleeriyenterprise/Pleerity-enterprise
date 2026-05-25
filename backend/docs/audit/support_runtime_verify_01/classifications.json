@@ -1,0 +1,23 @@
+{
+  "classifications": [
+    {
+      "programme": "PRELAUNCH-SUPPORT-RUNTIME-VERIFY-01",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "secondary_classifications": [],
+      "run_tag": "20260525T144034Z",
+      "verified": true,
+      "results": {
+        "knowledge": true,
+        "coherence": true,
+        "pricing": true,
+        "handoff": true,
+        "legal": true,
+        "hallucination": true,
+        "browser": true,
+        "local_recovery": true
+      },
+      "remediation_completed": true,
+      "remediation_note": "support_conversation_recovery.py wired into support_ai_brain \u2014 deploy required for staging API."
+    }
+  ]
+}

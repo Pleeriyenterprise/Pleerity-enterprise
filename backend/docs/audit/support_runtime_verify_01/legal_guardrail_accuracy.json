@@ -1,0 +1,102 @@
+{
+  "legal_turn": {
+    "user": "Am I legally compliant if my score is green?",
+    "status": 200,
+    "response": "I'm not able to provide legal advice, interpret legislation, or say whether you, a tenant, or a landlord are acting lawfully in a specific situation. I also cannot guarantee inspection outcomes or council enforcement. For those questions, please consult a qualified solicitor, your local council housing or licensing team, or Citizens Advice.\n\n**What we can help with instead (not legal advice):**\n\u2022 **Records and evidence in the platform** \u2014 where to upload, download, or organise documents you already hold\n\u2022 **Account, billing, and orders** \u2014 access, CRN, subscriptions, and purchase history\n\u2022 **Using the product** \u2014 navigation, features, and how tools work\n\u2022 **Support escalation** \u2014 say **speak to a human** or use **Talk to support** in this chat if you need our team for account or product issues (we still cannot provide legal advice)\n\nWould you like help with any of these instead?",
+    "action": "respond",
+    "metadata": {
+      "legal_refusal": true,
+      "service_area": "other",
+      "category": "other"
+    },
+    "handoff_options": null,
+    "actions": null
+  },
+  "frustration_turn": {
+    "user": "You keep giving me the wrong answer. I'm frustrated \u2014 are you confused?",
+    "status": 200,
+    "response": "I understand your frustration, and I may have misunderstood your question. Can you clarify what specific information you were looking for? That way, I can provide a more accurate answer.",
+    "action": "respond",
+    "metadata": {
+      "support_ai_brain": true,
+      "intent_summary": "clarification_request",
+      "user_goal": "to clarify previous questions and get the right information",
+      "topic": "other",
+      "confidence": 0.5,
+      "show_actions": false,
+      "needs_clarification": true,
+      "escalation_suggested": true,
+      "safety_boundary": "none",
+      "sources": [
+        {
+          "source_type": "kb_article",
+          "article_id": "kb-934faa40ff89",
+          "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+          "title": "What happens after you upload evidence"
+        },
+        {
+          "source_type": "kb_article",
+          "article_id": "kb-19da3b8a5193",
+          "slug": "cvp-pilot-user-02-add-first-property",
+          "title": "How to add your first property"
+        }
+      ],
+      "sources_used": [],
+      "retrieval_path": [
+        "kc_article"
+      ],
+      "provider_used": "openai",
+      "model_used": "gpt-4o-mini",
+      "fallback_used": false,
+      "llm_latency_ms": 2932,
+      "suggested_handoff": true
+    },
+    "handoff_options": null,
+    "actions": null
+  },
+  "trust_turn": {
+    "user": "This bot is useless and confusing. I just want to know how to sign in.",
+    "status": 200,
+    "response": "To sign in, go to the sign-in page of the platform. Enter your email and password, then click the sign-in button. If you've forgotten your password, use the 'Forgot password?' link to reset it. If you're having trouble, let me know!",
+    "action": "respond",
+    "metadata": {
+      "support_ai_brain": true,
+      "intent_summary": "account_login",
+      "user_goal": "Learn how to sign in",
+      "topic": "account",
+      "confidence": 0.8,
+      "show_actions": false,
+      "needs_clarification": false,
+      "escalation_suggested": false,
+      "safety_boundary": "none",
+      "sources": [
+        {
+          "source_type": "kb_article",
+          "article_id": "kb-934faa40ff89",
+          "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+          "title": "What happens after you upload evidence"
+        },
+        {
+          "source_type": "kb_article",
+          "article_id": "kb-19da3b8a5193",
+          "slug": "cvp-pilot-user-02-add-first-property",
+          "title": "How to add your first property"
+        }
+      ],
+      "sources_used": [],
+      "retrieval_path": [
+        "kc_article"
+      ],
+      "provider_used": "openai",
+      "model_used": "gpt-4o-mini",
+      "fallback_used": false,
+      "llm_latency_ms": 2932
+    },
+    "handoff_options": null,
+    "actions": null
+  },
+  "legal_refusal_on_compliance_question": true,
+  "no_legal_refusal_on_frustration": true,
+  "no_legal_refusal_on_trust": true,
+  "pass": true
+}

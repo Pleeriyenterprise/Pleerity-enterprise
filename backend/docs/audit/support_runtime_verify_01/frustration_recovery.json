@@ -1,0 +1,148 @@
+{
+  "coherence": {
+    "turns": [
+      {
+        "user": "What is the difference between Professional and Portfolio?",
+        "status": 200,
+        "response": "The main differences between the Professional and Portfolio plans are in the number of properties you can manage and the features included. \n\n- **Portfolio Plan**: Manage up to 10 properties. It includes bulk upload via ZIP file, scheduled reports, and SMS reminders.\n- **Professional Plan**: Manage up to 25 properties. It has all Portfolio features plus advanced AI extraction, a tenant portal for read-only access, and integration options like webhooks.\n\nIf you need more details about specific features, let me know!",
+        "action": "respond",
+        "metadata": {
+          "support_ai_brain": true,
+          "intent_summary": "plan_comparison",
+          "user_goal": "understand differences between Professional and Portfolio plans",
+          "topic": "pricing",
+          "confidence": 0.8,
+          "show_actions": false,
+          "needs_clarification": false,
+          "escalation_suggested": false,
+          "safety_boundary": "none",
+          "sources": [
+            {
+              "source_type": "kb_article",
+              "article_id": "kb-7c2cbc33a487",
+              "slug": "cvp-pilot-user-04-understanding-your-compliance-score",
+              "title": "Understanding your compliance score"
+            },
+            {
+              "source_type": "kb_article",
+              "article_id": "kb-4dbe509f1f7d",
+              "slug": "cvp-pilot-user-07-requirement-statuses-explained",
+              "title": "Requirement statuses explained"
+            }
+          ],
+          "sources_used": [],
+          "retrieval_path": [
+            "kc_article"
+          ],
+          "provider_used": "openai",
+          "model_used": "gpt-4o-mini",
+          "fallback_used": false,
+          "llm_latency_ms": 3392
+        },
+        "handoff_options": null,
+        "actions": null
+      },
+      {
+        "user": "You are not answering my question. I asked about Professional vs Portfolio and you went off topic. Are you confused?",
+        "status": 200,
+        "response": "The Professional and Portfolio plans differ mainly in features and property limits. \n\n- **Portfolio Plan**: Manage up to 10 properties, includes bulk upload via ZIP, scheduled reports, and SMS reminders.\n- **Professional Plan**: Manage up to 25 properties, adds advanced AI extraction, a tenant portal for tenants to view documents, and integration options like webhooks.\n\nIf you need more specifics about a feature, just ask!",
+        "action": "respond",
+        "metadata": {
+          "support_ai_brain": true,
+          "intent_summary": "pricing_inquiry",
+          "user_goal": "understand differences between Professional and Portfolio plans",
+          "topic": "pricing",
+          "confidence": 0.75,
+          "show_actions": false,
+          "needs_clarification": false,
+          "escalation_suggested": false,
+          "safety_boundary": "none",
+          "sources": [
+            {
+              "source_type": "kb_article",
+              "article_id": "kb-0e1e2f26bb35",
+              "slug": "cvp-pilot-user-03-understanding-your-dashboard",
+              "title": "Understanding your dashboard"
+            },
+            {
+              "source_type": "kb_article",
+              "article_id": "kb-934faa40ff89",
+              "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+              "title": "What happens after you upload evidence"
+            }
+          ],
+          "sources_used": [],
+          "retrieval_path": [
+            "kc_article"
+          ],
+          "provider_used": "openai",
+          "model_used": "gpt-4o-mini",
+          "fallback_used": false,
+          "llm_latency_ms": 3170
+        },
+        "handoff_options": null,
+        "actions": null
+      }
+    ],
+    "first_answered_compare": true,
+    "frustration_turn": {
+      "user": "You are not answering my question. I asked about Professional vs Portfolio and you went off topic. Are you confused?",
+      "status": 200,
+      "response": "The Professional and Portfolio plans differ mainly in features and property limits. \n\n- **Portfolio Plan**: Manage up to 10 properties, includes bulk upload via ZIP, scheduled reports, and SMS reminders.\n- **Professional Plan**: Manage up to 25 properties, adds advanced AI extraction, a tenant portal for tenants to view documents, and integration options like webhooks.\n\nIf you need more specifics about a feature, just ask!",
+      "action": "respond",
+      "metadata": {
+        "support_ai_brain": true,
+        "intent_summary": "pricing_inquiry",
+        "user_goal": "understand differences between Professional and Portfolio plans",
+        "topic": "pricing",
+        "confidence": 0.75,
+        "show_actions": false,
+        "needs_clarification": false,
+        "escalation_suggested": false,
+        "safety_boundary": "none",
+        "sources": [
+          {
+            "source_type": "kb_article",
+            "article_id": "kb-0e1e2f26bb35",
+            "slug": "cvp-pilot-user-03-understanding-your-dashboard",
+            "title": "Understanding your dashboard"
+          },
+          {
+            "source_type": "kb_article",
+            "article_id": "kb-934faa40ff89",
+            "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+            "title": "What happens after you upload evidence"
+          }
+        ],
+        "sources_used": [],
+        "retrieval_path": [
+          "kc_article"
+        ],
+        "provider_used": "openai",
+        "model_used": "gpt-4o-mini",
+        "fallback_used": false,
+        "llm_latency_ms": 3170
+      },
+      "handoff_options": null,
+      "actions": null
+    },
+    "recovery_metadata_on_staging": null,
+    "frustration_addresses_professional_vs_portfolio": true,
+    "frustration_has_apology": false,
+    "frustration_not_verbatim_repeat": true,
+    "frustration_generic_pricing_dump": false,
+    "pass": true,
+    "local_remediation_probe": {
+      "pass": true,
+      "recovery_kind": "plan_comparison",
+      "response_excerpt": "Sorry if my last reply missed what you needed \u2014 here is a direct **Professional vs Portfolio Landlord** comparison from our current plans:\n\n**Professional** \u2014 up to **25** properties, **\u00a379/month** + **\u00a3149** onboarding.\n**Portfolio Landlord** \u2014 up to **10** properties, **\u00a339/month** + **\u00a379** onboarding.\n\n**Professional** includes (not on **Portfolio Landlord**): AI Document Extraction (Advanced)",
+      "note": "Local code path with remediation module (may differ from staging until deployed)."
+    }
+  },
+  "local_probe": {
+    "pass": true,
+    "recovery_kind": "plan_comparison",
+    "response_excerpt": "Sorry if my last reply missed what you needed \u2014 here is a direct **Professional vs Portfolio Landlord** comparison from our current plans:\n\n**Professional** \u2014 up to **25** properties, **\u00a379/month** + **\u00a3149** onboarding.\n**Portfolio Landlord** \u2014 up to **10** properties, **\u00a339/month** + **\u00a379** onboarding.\n\n**Professional** includes (not on **Portfolio Landlord**): AI Document Extraction (Advanced)",
+    "note": "Local code path with remediation module (may differ from staging until deployed)."
+  }
+}

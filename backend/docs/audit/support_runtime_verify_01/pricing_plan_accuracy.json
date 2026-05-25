@@ -1,0 +1,23 @@
+{
+  "registry_prices_gbp": {
+    "solo": [
+      19,
+      49
+    ],
+    "portfolio": [
+      39,
+      79
+    ],
+    "professional": [
+      79,
+      149
+    ]
+  },
+  "checks": {
+    "pricing_lists_all_plans": true,
+    "solo_vs_portfolio_mentions_both": true,
+    "prof_vs_portfolio_mentions_both": true,
+    "signup_has_link_or_path": true
+  },
+  "pass": true
+}

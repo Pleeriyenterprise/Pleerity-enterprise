@@ -4816,6 +4816,10 @@ A1 → (A2 | A3 as triggered) → (B1 → B2 as triggered) → B3
 
 **Status:** **`VERIFIED_OPERATIONALLY`** (run `20260525T141144Z`) — Wales HMO pilot `6fd5ac4c-3fd4-4112-ade7-156977deb49f`. Bundle `docs/audit/ops_admin_runtime_verify_01`. Families A1–A5 + G9/G10 + convergence pass: admin work-order issue resolution (assign → close → impersonated resolve), subscriber `recover_onboarding` eligibility override + pilot onboarding-fee-policy reference, dashboard/analytics API↔UI alignment, RBAC boundaries, integrity guards.
 
+### PRELAUNCH-SUPPORT-RUNTIME-VERIFY-01 — public support assistant
+
+**Status:** **`VERIFIED_OPERATIONALLY`** (run `20260525T144034Z`). Bundle `docs/audit/support_runtime_verify_01`. Staging API + browser widget: registry-grounded pricing/plan compare, legal guardrail on compliance questions only, honest handoff (email ticket; WhatsApp only when configured), ticket create works. **Remediation shipped:** `support_conversation_recovery.py` (frustration/correction → registry plan comparison) — deploy to production API for deterministic recovery copy.
+
 **Charter:** [`docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md`](../../../docs/PRELAUNCH_OPS_RUNTIME_VERIFICATION_02.md)
 
 **Programme type:** **OPERATIONAL_CONTROL_PLANE_VERIFICATION** — cognitively truthful, navigable, trustworthy control plane under real runtime (not generic QA).

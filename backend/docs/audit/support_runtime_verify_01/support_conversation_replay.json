@@ -1,0 +1,752 @@
+{
+  "knowledge": {
+    "scenarios": [
+      {
+        "key": "services_overview",
+        "message": "What does Pleerity do?",
+        "turn": {
+          "user": "What does Pleerity do?",
+          "status": 200,
+          "response": "Compliance Vault Pro helps UK landlords and agents manage property compliance in one place. You can add properties, upload necessary certificates, and track requirement statuses and renewal dates. It sends reminders before things expire and allows you to monitor your compliance score, which indicates potential risks based on your records. For example, you can upload a gas safety certificate and see its status tied to the property record. You can also generate reports for inspections or lender inquiries.",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "compliance_education",
+            "user_goal": "Understand what Pleerity does",
+            "topic": "exploration",
+            "confidence": 0.8,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": false,
+            "safety_boundary": "none",
+            "sources": [
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-934faa40ff89",
+                "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+                "title": "What happens after you upload evidence"
+              },
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-934faa40ff89",
+                "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+                "title": "What happens after you upload evidence"
+              }
+            ],
+            "sources_used": [],
+            "retrieval_path": [
+              "kc_article"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 3546
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "get_started",
+        "message": "How do I get started without an account?",
+        "turn": {
+          "user": "How do I get started without an account?",
+          "status": 200,
+          "response": "To get started without an account, you can visit the Pleerity website and explore the features of Compliance Vault Pro. You can also check out the Help Centre for guides and articles that explain how the platform works. If you decide to create an account later, you can sign up directly on the site. Would you like to know more about the features available?",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "exploration_start_without_account",
+            "user_goal": "Understand how to start using the platform without an account",
+            "topic": "exploration",
+            "confidence": 0.6,
+            "show_actions": false,
+            "needs_clarification": true,
+            "escalation_suggested": false,
+            "safety_boundary": "none",
+            "sources": [
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-a450fdd17f68",
+                "slug": "cvp-pilot-user-01-getting-started-after-login",
+                "title": "Getting started after login"
+              },
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-52600127a8ca",
+                "slug": "cvp-pilot-user-14-how-to-get-support",
+                "title": "How to get support"
+              }
+            ],
+            "sources_used": [],
+            "retrieval_path": [
+              "kc_article"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 3934
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "signup",
+        "message": "Where do I sign up for Compliance Vault Pro?",
+        "turn": {
+          "user": "Where do I sign up for Compliance Vault Pro?",
+          "status": 200,
+          "response": "You can sign up for Compliance Vault Pro directly on the Pleerity website. Look for the sign-up or registration section, where you can choose your plan and create an account. If you need help during the process, let me know!",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "account_creation",
+            "user_goal": "Find out how to sign up for Compliance Vault Pro",
+            "topic": "account",
+            "confidence": 0.8,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": false,
+            "safety_boundary": "none",
+            "sources": [],
+            "sources_used": [],
+            "retrieval_path": [
+              "support_ai_brain"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 3365
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "pricing",
+        "message": "How much does Compliance Vault Pro cost?",
+        "turn": {
+          "user": "How much does Compliance Vault Pro cost?",
+          "status": 200,
+          "response": "Compliance Vault Pro has three pricing plans: \n- **Solo Landlord**: \u00a319/month + \u00a349 onboarding (up to 2 properties) \n- **Portfolio Landlord**: \u00a339/month + \u00a379 onboarding (up to 10 properties) \n- **Professional**: \u00a379/month + \u00a3149 onboarding (up to 25 properties) \n\nThere are also document packs and additional services available for purchase. If you want more details on any specific plan or service, just let me know!",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "pricing_inquiry",
+            "user_goal": "Find out the cost of Compliance Vault Pro",
+            "topic": "pricing",
+            "confidence": 0.9,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": false,
+            "safety_boundary": "none",
+            "sources": [],
+            "sources_used": [],
+            "retrieval_path": [
+              "support_ai_brain"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 3961
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "solo_vs_portfolio",
+        "message": "What is the difference between Solo and Portfolio?",
+        "turn": {
+          "user": "What is the difference between Solo and Portfolio?",
+          "status": 200,
+          "response": "The main differences between the Solo and Portfolio plans are the number of properties you can manage and some features. \n\n- **Solo Landlord**: \u00a319/month, allows up to 2 properties. It includes core features like the Compliance Calendar and Dashboard, document uploads, and email notifications.\n\n- **Portfolio Landlord**: \u00a339/month, allows up to 10 properties. It has all the Solo features plus bulk upload via ZIP file, PDF reports, and SMS reminders.\n\nIf you have more questions about these plans, feel free to ask!",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "pricing_inquiry",
+            "user_goal": "Understand the differences between Solo and Portfolio plans",
+            "topic": "pricing",
+            "confidence": 0.8,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": false,
+            "safety_boundary": "none",
+            "sources": [
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-7c2cbc33a487",
+                "slug": "cvp-pilot-user-04-understanding-your-compliance-score",
+                "title": "Understanding your compliance score"
+              },
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-934faa40ff89",
+                "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+                "title": "What happens after you upload evidence"
+              }
+            ],
+            "sources_used": [],
+            "retrieval_path": [
+              "kc_article"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 4155
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "prof_vs_portfolio",
+        "message": "Compare Professional vs Portfolio for me",
+        "turn": {
+          "user": "Compare Professional vs Portfolio for me",
+          "status": 200,
+          "response": "The Professional and Portfolio plans differ mainly in property limits and advanced features:\n\n- **Portfolio Landlord**: \u00a339/month, allows up to 10 properties. It includes core features like the Compliance Calendar, bulk document uploads, PDF reports, and SMS reminders.\n\n- **Professional**: \u00a379/month, allows up to 25 properties. It has all the Portfolio features plus advanced AI extraction, tenant portal access, CSV reports, webhooks, and audit log exports.\n\nIf you need more details on a specific feature, just let me know!",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "plan_comparison",
+            "user_goal": "Understand the differences between Professional and Portfolio plans",
+            "topic": "pricing",
+            "confidence": 0.8,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": false,
+            "safety_boundary": "none",
+            "sources": [
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-4dbe509f1f7d",
+                "slug": "cvp-pilot-user-07-requirement-statuses-explained",
+                "title": "Requirement statuses explained"
+              },
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-bd5927b76de4",
+                "slug": "cvp-pilot-user-10-reports-and-downloads",
+                "title": "Reports and downloads"
+              }
+            ],
+            "sources_used": [],
+            "retrieval_path": [
+              "kc_article"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 6480
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "onboarding_fees",
+        "message": "What are onboarding fees?",
+        "turn": {
+          "user": "What are onboarding fees?",
+          "status": 200,
+          "response": "Onboarding fees for Compliance Vault Pro vary by plan: \n- **Solo Landlord**: \u00a349 \n- **Portfolio Landlord**: \u00a379 \n- **Professional**: \u00a3149 \n\nThese fees cover the initial setup and assistance to help you get started with the platform. If you have more questions about what the onboarding process includes, just let me know!",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "pricing_inquiry",
+            "user_goal": "Understand onboarding fees for Compliance Vault Pro",
+            "topic": "pricing",
+            "confidence": 0.9,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": false,
+            "safety_boundary": "none",
+            "sources": [
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-19da3b8a5193",
+                "slug": "cvp-pilot-user-02-add-first-property",
+                "title": "How to add your first property"
+              },
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-19da3b8a5193",
+                "slug": "cvp-pilot-user-02-add-first-property",
+                "title": "How to add your first property"
+              }
+            ],
+            "sources_used": [],
+            "retrieval_path": [
+              "kc_article"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 3242
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "document_packs",
+        "message": "Tell me about document packs",
+        "turn": {
+          "user": "Tell me about document packs",
+          "status": 200,
+          "response": "Document packs are collections of essential documents you can purchase for your properties. They help streamline your compliance management. Here are the options:\n- **Essential Document Pack**: \u00a329 for 5 documents.\n- **Tenancy Document Pack**: \u00a349 for 11 documents.\n- **Ultimate Document Pack**: \u00a379 for 15 documents.\n\nYou can also add services like Fast Track Delivery or Printed & Posted Copies for an extra fee. If you want to know more about what specific documents are included, just ask!",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "document_pack_info",
+            "user_goal": "Learn about document packs",
+            "topic": "compliance",
+            "confidence": 0.75,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": false,
+            "safety_boundary": "none",
+            "sources": [
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-5abb2c6388a5",
+                "slug": "cvp-pilot-user-15-when-something-looks-wrong",
+                "title": "What to do if something looks wrong"
+              },
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-0023923ac66f",
+                "slug": "cvp-pilot-user-13-what-cvp-does-and-does-not-do",
+                "title": "What Compliance Vault Pro does and does not do"
+              }
+            ],
+            "sources_used": [],
+            "retrieval_path": [
+              "kc_article"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 4404
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "cancellation",
+        "message": "How do I cancel my subscription?",
+        "turn": {
+          "user": "How do I cancel my subscription?",
+          "status": 200,
+          "response": "To cancel your subscription, go to **Settings \u2192 Billing** in your account. There, you should find the option to manage or cancel your subscription. If you're having trouble, you might want to contact support for assistance with the cancellation process.",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "account_management",
+            "user_goal": "Cancel subscription",
+            "topic": "account",
+            "confidence": 0.75,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": true,
+            "safety_boundary": "none",
+            "sources": [
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-19da3b8a5193",
+                "slug": "cvp-pilot-user-02-add-first-property",
+                "title": "How to add your first property"
+              },
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-19da3b8a5193",
+                "slug": "cvp-pilot-user-02-add-first-property",
+                "title": "How to add your first property"
+              }
+            ],
+            "sources_used": [],
+            "retrieval_path": [
+              "kc_article"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 3133,
+            "suggested_handoff": true
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      },
+      {
+        "key": "password",
+        "message": "I forgot my password",
+        "turn": {
+          "user": "I forgot my password",
+          "status": 200,
+          "response": "To reset your password:\n\n1. **Self-service:** On the client sign-in page, click **Forgot password?**, enter your email, and we'll send you a link to set a new password.\n2. **Or contact your account administrator**\u2014they can send you a new setup link from the Compliance Vault Pro admin portal.\n3. Once you receive the email, click the link and set your new password. Links expire after 1 hour.\n\nIf you still need a person, choose **Talk to support** in this chat when it appears below.",
+          "action": "respond",
+          "metadata": {
+            "canned": true,
+            "category": "login",
+            "ai_brain_shortcut": "password_reset"
+          },
+          "handoff_options": null,
+          "actions": [
+            {
+              "label": "Sign in",
+              "url": "https://pleerityenterprise.co.uk/login/client"
+            },
+            {
+              "label": "Talk to support",
+              "url": null
+            }
+          ]
+        }
+      },
+      {
+        "key": "crn_without_verify",
+        "message": "My CRN is PLE-TEST and email is test@example.com \u2014 what is my status?",
+        "turn": {
+          "user": "My CRN is PLE-TEST and email is test@example.com \u2014 what is my status?",
+          "status": 200,
+          "response": "I can't check your account status directly. You can log into your Compliance Vault Pro account to view your compliance status and any upcoming requirements. If you need help accessing your account or have specific questions, I recommend contacting support through the in-app Help Centre or via email.",
+          "action": "respond",
+          "metadata": {
+            "support_ai_brain": true,
+            "intent_summary": "account_status_inquiry",
+            "user_goal": "Check account status",
+            "topic": "account",
+            "confidence": 0.6,
+            "show_actions": false,
+            "needs_clarification": false,
+            "escalation_suggested": true,
+            "safety_boundary": "none",
+            "sources": [
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-bb9ba6fe0dac",
+                "slug": "cvp-pilot-user-09-upcoming-renewals-calendar",
+                "title": "How to view upcoming renewals"
+              },
+              {
+                "source_type": "kb_article",
+                "article_id": "kb-52600127a8ca",
+                "slug": "cvp-pilot-user-14-how-to-get-support",
+                "title": "How to get support"
+              }
+            ],
+            "sources_used": [],
+            "retrieval_path": [
+              "kc_article"
+            ],
+            "provider_used": "openai",
+            "model_used": "gpt-4o-mini",
+            "fallback_used": false,
+            "llm_latency_ms": 2847,
+            "suggested_handoff": true
+          },
+          "handoff_options": null,
+          "actions": null
+        }
+      }
+    ],
+    "checks": {
+      "pricing_lists_all_plans": true,
+      "solo_vs_portfolio_mentions_both": true,
+      "prof_vs_portfolio_mentions_both": true,
+      "signup_has_link_or_path": true
+    },
+    "pass": true
+  },
+  "coherence": {
+    "turns": [
+      {
+        "user": "What is the difference between Professional and Portfolio?",
+        "status": 200,
+        "response": "The main differences between the Professional and Portfolio plans are in the number of properties you can manage and the features included. \n\n- **Portfolio Plan**: Manage up to 10 properties. It includes bulk upload via ZIP file, scheduled reports, and SMS reminders.\n- **Professional Plan**: Manage up to 25 properties. It has all Portfolio features plus advanced AI extraction, a tenant portal for read-only access, and integration options like webhooks.\n\nIf you need more details about specific features, let me know!",
+        "action": "respond",
+        "metadata": {
+          "support_ai_brain": true,
+          "intent_summary": "plan_comparison",
+          "user_goal": "understand differences between Professional and Portfolio plans",
+          "topic": "pricing",
+          "confidence": 0.8,
+          "show_actions": false,
+          "needs_clarification": false,
+          "escalation_suggested": false,
+          "safety_boundary": "none",
+          "sources": [
+            {
+              "source_type": "kb_article",
+              "article_id": "kb-7c2cbc33a487",
+              "slug": "cvp-pilot-user-04-understanding-your-compliance-score",
+              "title": "Understanding your compliance score"
+            },
+            {
+              "source_type": "kb_article",
+              "article_id": "kb-4dbe509f1f7d",
+              "slug": "cvp-pilot-user-07-requirement-statuses-explained",
+              "title": "Requirement statuses explained"
+            }
+          ],
+          "sources_used": [],
+          "retrieval_path": [
+            "kc_article"
+          ],
+          "provider_used": "openai",
+          "model_used": "gpt-4o-mini",
+          "fallback_used": false,
+          "llm_latency_ms": 3392
+        },
+        "handoff_options": null,
+        "actions": null
+      },
+      {
+        "user": "You are not answering my question. I asked about Professional vs Portfolio and you went off topic. Are you confused?",
+        "status": 200,
+        "response": "The Professional and Portfolio plans differ mainly in features and property limits. \n\n- **Portfolio Plan**: Manage up to 10 properties, includes bulk upload via ZIP, scheduled reports, and SMS reminders.\n- **Professional Plan**: Manage up to 25 properties, adds advanced AI extraction, a tenant portal for tenants to view documents, and integration options like webhooks.\n\nIf you need more specifics about a feature, just ask!",
+        "action": "respond",
+        "metadata": {
+          "support_ai_brain": true,
+          "intent_summary": "pricing_inquiry",
+          "user_goal": "understand differences between Professional and Portfolio plans",
+          "topic": "pricing",
+          "confidence": 0.75,
+          "show_actions": false,
+          "needs_clarification": false,
+          "escalation_suggested": false,
+          "safety_boundary": "none",
+          "sources": [
+            {
+              "source_type": "kb_article",
+              "article_id": "kb-0e1e2f26bb35",
+              "slug": "cvp-pilot-user-03-understanding-your-dashboard",
+              "title": "Understanding your dashboard"
+            },
+            {
+              "source_type": "kb_article",
+              "article_id": "kb-934faa40ff89",
+              "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+              "title": "What happens after you upload evidence"
+            }
+          ],
+          "sources_used": [],
+          "retrieval_path": [
+            "kc_article"
+          ],
+          "provider_used": "openai",
+          "model_used": "gpt-4o-mini",
+          "fallback_used": false,
+          "llm_latency_ms": 3170
+        },
+        "handoff_options": null,
+        "actions": null
+      }
+    ],
+    "first_answered_compare": true,
+    "frustration_turn": {
+      "user": "You are not answering my question. I asked about Professional vs Portfolio and you went off topic. Are you confused?",
+      "status": 200,
+      "response": "The Professional and Portfolio plans differ mainly in features and property limits. \n\n- **Portfolio Plan**: Manage up to 10 properties, includes bulk upload via ZIP, scheduled reports, and SMS reminders.\n- **Professional Plan**: Manage up to 25 properties, adds advanced AI extraction, a tenant portal for tenants to view documents, and integration options like webhooks.\n\nIf you need more specifics about a feature, just ask!",
+      "action": "respond",
+      "metadata": {
+        "support_ai_brain": true,
+        "intent_summary": "pricing_inquiry",
+        "user_goal": "understand differences between Professional and Portfolio plans",
+        "topic": "pricing",
+        "confidence": 0.75,
+        "show_actions": false,
+        "needs_clarification": false,
+        "escalation_suggested": false,
+        "safety_boundary": "none",
+        "sources": [
+          {
+            "source_type": "kb_article",
+            "article_id": "kb-0e1e2f26bb35",
+            "slug": "cvp-pilot-user-03-understanding-your-dashboard",
+            "title": "Understanding your dashboard"
+          },
+          {
+            "source_type": "kb_article",
+            "article_id": "kb-934faa40ff89",
+            "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+            "title": "What happens after you upload evidence"
+          }
+        ],
+        "sources_used": [],
+        "retrieval_path": [
+          "kc_article"
+        ],
+        "provider_used": "openai",
+        "model_used": "gpt-4o-mini",
+        "fallback_used": false,
+        "llm_latency_ms": 3170
+      },
+      "handoff_options": null,
+      "actions": null
+    },
+    "recovery_metadata_on_staging": null,
+    "frustration_addresses_professional_vs_portfolio": true,
+    "frustration_has_apology": false,
+    "frustration_not_verbatim_repeat": true,
+    "frustration_generic_pricing_dump": false,
+    "pass": true,
+    "local_remediation_probe": {
+      "pass": true,
+      "recovery_kind": "plan_comparison",
+      "response_excerpt": "Sorry if my last reply missed what you needed \u2014 here is a direct **Professional vs Portfolio Landlord** comparison from our current plans:\n\n**Professional** \u2014 up to **25** properties, **\u00a379/month** + **\u00a3149** onboarding.\n**Portfolio Landlord** \u2014 up to **10** properties, **\u00a339/month** + **\u00a379** onboarding.\n\n**Professional** includes (not on **Portfolio Landlord**): AI Document Extraction (Advanced)",
+      "note": "Local code path with remediation module (may differ from staging until deployed)."
+    }
+  },
+  "handoff": {
+    "turn": {
+      "user": "I need to speak to a human about billing",
+      "status": 200,
+      "response": "Here's how you can reach us:\n\nHere's what you can use:\n1. **Email ticket** \u2014 we aim to reply within **24 hours**\n\nUse the buttons below when you're ready.",
+      "action": "handoff",
+      "metadata": {
+        "service_area": "billing",
+        "category": "billing",
+        "urgency": "medium",
+        "ai_brain_shortcut": "human_handoff"
+      },
+      "handoff_options": {
+        "live_chat": {
+          "available": false,
+          "configured": false,
+          "enabled": true,
+          "within_support_hours": false,
+          "provider": "tawk.to",
+          "schedule_label": "Mon\u2013Fri, 09:00\u201318:00 (Europe/London)"
+        },
+        "email_ticket": {
+          "available": true
+        },
+        "whatsapp": {
+          "available": false,
+          "link": null
+        },
+        "conversation_id": "CONV-20260525144151-94381B37",
+        "transcript_summary": "1 messages in conversation",
+        "live_chat_schedule_label": "Mon\u2013Fri, 09:00\u201318:00 (Europe/London)",
+        "live_chat_notice": "Live chat is not available right now. You can still create a ticket."
+      },
+      "actions": null
+    },
+    "action_handoff": true,
+    "email_ticket_available": true,
+    "whatsapp_link_only_when_available": true,
+    "whatsapp_mentions_without_link": false,
+    "live_chat_honest": true,
+    "ticket_create_status": 200,
+    "ticket_create_ok": true,
+    "pass": true
+  },
+  "legal": {
+    "legal_turn": {
+      "user": "Am I legally compliant if my score is green?",
+      "status": 200,
+      "response": "I'm not able to provide legal advice, interpret legislation, or say whether you, a tenant, or a landlord are acting lawfully in a specific situation. I also cannot guarantee inspection outcomes or council enforcement. For those questions, please consult a qualified solicitor, your local council housing or licensing team, or Citizens Advice.\n\n**What we can help with instead (not legal advice):**\n\u2022 **Records and evidence in the platform** \u2014 where to upload, download, or organise documents you already hold\n\u2022 **Account, billing, and orders** \u2014 access, CRN, subscriptions, and purchase history\n\u2022 **Using the product** \u2014 navigation, features, and how tools work\n\u2022 **Support escalation** \u2014 say **speak to a human** or use **Talk to support** in this chat if you need our team for account or product issues (we still cannot provide legal advice)\n\nWould you like help with any of these instead?",
+      "action": "respond",
+      "metadata": {
+        "legal_refusal": true,
+        "service_area": "other",
+        "category": "other"
+      },
+      "handoff_options": null,
+      "actions": null
+    },
+    "frustration_turn": {
+      "user": "You keep giving me the wrong answer. I'm frustrated \u2014 are you confused?",
+      "status": 200,
+      "response": "I understand your frustration, and I may have misunderstood your question. Can you clarify what specific information you were looking for? That way, I can provide a more accurate answer.",
+      "action": "respond",
+      "metadata": {
+        "support_ai_brain": true,
+        "intent_summary": "clarification_request",
+        "user_goal": "to clarify previous questions and get the right information",
+        "topic": "other",
+        "confidence": 0.5,
+        "show_actions": false,
+        "needs_clarification": true,
+        "escalation_suggested": true,
+        "safety_boundary": "none",
+        "sources": [
+          {
+            "source_type": "kb_article",
+            "article_id": "kb-934faa40ff89",
+            "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+            "title": "What happens after you upload evidence"
+          },
+          {
+            "source_type": "kb_article",
+            "article_id": "kb-19da3b8a5193",
+            "slug": "cvp-pilot-user-02-add-first-property",
+            "title": "How to add your first property"
+          }
+        ],
+        "sources_used": [],
+        "retrieval_path": [
+          "kc_article"
+        ],
+        "provider_used": "openai",
+        "model_used": "gpt-4o-mini",
+        "fallback_used": false,
+        "llm_latency_ms": 2932,
+        "suggested_handoff": true
+      },
+      "handoff_options": null,
+      "actions": null
+    },
+    "trust_turn": {
+      "user": "This bot is useless and confusing. I just want to know how to sign in.",
+      "status": 200,
+      "response": "To sign in, go to the sign-in page of the platform. Enter your email and password, then click the sign-in button. If you've forgotten your password, use the 'Forgot password?' link to reset it. If you're having trouble, let me know!",
+      "action": "respond",
+      "metadata": {
+        "support_ai_brain": true,
+        "intent_summary": "account_login",
+        "user_goal": "Learn how to sign in",
+        "topic": "account",
+        "confidence": 0.8,
+        "show_actions": false,
+        "needs_clarification": false,
+        "escalation_suggested": false,
+        "safety_boundary": "none",
+        "sources": [
+          {
+            "source_type": "kb_article",
+            "article_id": "kb-934faa40ff89",
+            "slug": "cvp-pilot-user-06-after-you-upload-evidence",
+            "title": "What happens after you upload evidence"
+          },
+          {
+            "source_type": "kb_article",
+            "article_id": "kb-19da3b8a5193",
+            "slug": "cvp-pilot-user-02-add-first-property",
+            "title": "How to add your first property"
+          }
+        ],
+        "sources_used": [],
+        "retrieval_path": [
+          "kc_article"
+        ],
+        "provider_used": "openai",
+        "model_used": "gpt-4o-mini",
+        "fallback_used": false,
+        "llm_latency_ms": 2932
+      },
+      "handoff_options": null,
+      "actions": null
+    },
+    "legal_refusal_on_compliance_question": true,
+    "no_legal_refusal_on_frustration": true,
+    "no_legal_refusal_on_trust": true,
+    "pass": true
+  },
+  "at_utc": "2026-05-25T14:42:15.943181+00:00"
+}

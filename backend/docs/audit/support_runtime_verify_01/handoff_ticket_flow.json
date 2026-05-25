@@ -1,0 +1,44 @@
+{
+  "turn": {
+    "user": "I need to speak to a human about billing",
+    "status": 200,
+    "response": "Here's how you can reach us:\n\nHere's what you can use:\n1. **Email ticket** \u2014 we aim to reply within **24 hours**\n\nUse the buttons below when you're ready.",
+    "action": "handoff",
+    "metadata": {
+      "service_area": "billing",
+      "category": "billing",
+      "urgency": "medium",
+      "ai_brain_shortcut": "human_handoff"
+    },
+    "handoff_options": {
+      "live_chat": {
+        "available": false,
+        "configured": false,
+        "enabled": true,
+        "within_support_hours": false,
+        "provider": "tawk.to",
+        "schedule_label": "Mon\u2013Fri, 09:00\u201318:00 (Europe/London)"
+      },
+      "email_ticket": {
+        "available": true
+      },
+      "whatsapp": {
+        "available": false,
+        "link": null
+      },
+      "conversation_id": "CONV-20260525144151-94381B37",
+      "transcript_summary": "1 messages in conversation",
+      "live_chat_schedule_label": "Mon\u2013Fri, 09:00\u201318:00 (Europe/London)",
+      "live_chat_notice": "Live chat is not available right now. You can still create a ticket."
+    },
+    "actions": null
+  },
+  "action_handoff": true,
+  "email_ticket_available": true,
+  "whatsapp_link_only_when_available": true,
+  "whatsapp_mentions_without_link": false,
+  "live_chat_honest": true,
+  "ticket_create_status": 200,
+  "ticket_create_ok": true,
+  "pass": true
+}

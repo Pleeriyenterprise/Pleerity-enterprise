@@ -248,6 +248,11 @@ def test_is_legal_advice_request_direct_and_indirect():
     assert is_legal_advice_request("What should I legally do about my tenant?")
 
 
+def test_is_legal_advice_request_does_not_match_frustration():
+    assert is_legal_advice_request("You are not answering my question. Are you confused?") is False
+    assert is_legal_advice_request("This bot is useless and confusing") is False
+
+
 def test_is_legal_advice_request_does_not_match_normal_queries():
     assert not is_legal_advice_request("What is your pricing for CVP?")
     assert not is_legal_advice_request("how are you?")
