@@ -451,7 +451,11 @@ def authority_smoke(auth: Auth, prop_a: str, prop_b: str) -> dict:
     }
     _write("g9_rent_integrity.json", g9)
 
-    occ = httpx.get(f"{API}/client/properties/{prop_a}/occupancy-summary", headers=auth.h(), timeout=90)
+    occ = httpx.get(
+        f"{API}/client/properties/{prop_a}/occupancy-operational-summary",
+        headers=auth.h(),
+        timeout=90,
+    )
     summ = httpx.get(f"{API}/client/operations/rent/summary", headers=auth.h(), params={"property_id": prop_a}, timeout=90)
     g10 = {
         "verified_at_utc": _utc(),
