@@ -94,11 +94,12 @@ def _load_probe() -> dict:
 def run_seed(admin_token: str) -> dict:
     if os.environ.get("ADMIN_CLOSEOUT_SEED", "1") != "1":
         return _load_probe()
+    seed_tok = _token(admin_token, "seed_admin_remediation_probe", CLIENT_ID)
     _pace()
     remote = httpx.post(
         f"{API}/admin/ops/remediation-probe-seed",
-        headers=_h(admin_token),
-        json={"client_id": CLIENT_ID, "property_id": PROPERTY_ID},
+        headers=_h(admin_token, seed_tok),
+        json={"client_id": CLIENT_ID, "property_id": PROPERTY_ID, "reason": REASON},
         timeout=120,
     )
     if remote.status_code == 200:
@@ -122,7 +123,7 @@ def run_seed(admin_token: str) -> dict:
         "remote_status": remote.status_code,
         "remote_detail": remote.text[:300],
         "local_error": local_err,
-        "hint": "Set ADMIN_REMEDIATION_PROBE_SEED_ENABLED=1 on staging or MONGO_URL locally",
+        "hint": "Governed POST /admin/ops/remediation-probe-seed failed; or set MONGO_URL for local seed script",
     }
 
 

@@ -148,5 +148,15 @@
     "requires_step_up": false,
     "affects_multiple_customers": true,
     "irreversible": false
+  },
+  "seed_admin_remediation_probe": {
+    "action_id": "seed_admin_remediation_probe",
+    "risk_class": "high_impact_operational",
+    "operator_level": "owner_or_senior_ops",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
   }
 }

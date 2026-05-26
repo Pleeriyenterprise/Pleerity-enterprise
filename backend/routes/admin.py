@@ -932,6 +932,7 @@ _RETRY_SUPPRESSION_SECONDS = 60
 class AdminRemediationProbeSeedBody(BaseModel):
     client_id: str = Field(..., min_length=8, max_length=64)
     property_id: str = Field(..., min_length=8, max_length=64)
+    reason: str = Field(..., min_length=10, max_length=2000)
 
 
 _REMEDIATION_PROBE_CLIENT_ALLOWLIST = frozenset(
@@ -945,17 +946,34 @@ _REMEDIATION_PROBE_CLIENT_ALLOWLIST = frozenset(
 async def admin_remediation_probe_seed_endpoint(request: Request, body: AdminRemediationProbeSeedBody):
     """
     Bounded OPS fixtures for PRELAUNCH admin closeout (pilot client only).
-    Requires ADMIN_REMEDIATION_PROBE_SEED_ENABLED=1 on the server.
+    Governed: confirmation token + reason; allowlisted client_id only.
     """
-    await admin_route_guard(request)
-    if os.environ.get("ADMIN_REMEDIATION_PROBE_SEED_ENABLED") != "1":
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    user = await admin_route_guard(request)
     cid = body.client_id.strip()
     if cid not in _REMEDIATION_PROBE_CLIENT_ALLOWLIST:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="client_id not allowlisted for probe seed")
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        "seed_admin_remediation_probe",
+        reason=body.reason,
+        resource_key=cid,
+    )
     from scripts.admin_remediation_probe_seed import seed_admin_remediation_probe
 
     report = await seed_admin_remediation_probe(cid, body.property_id.strip())
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        actor_email=user.get("email"),
+        client_id=cid,
+        metadata={
+            "action_type": "ADMIN_REMEDIATION_PROBE_SEED",
+            **normalized_admin_action_metadata("seed_admin_remediation_probe", support_reason),
+            "probe_marker": report.get("probe_marker"),
+            "unresolved_count": 3,
+        },
+    )
     return report
 
 
