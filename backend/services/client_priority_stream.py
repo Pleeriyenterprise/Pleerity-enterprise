@@ -333,7 +333,7 @@ async def fetch_client_priority_actions_primary(
         project_requirement_row_client_runtime,
     )
 
-    cap = min(max(limit * 3, 36), 72)
+    cap = min(max(limit * 2, 28), 48)
     q_gap: Dict[str, Any] = {
         "client_id": client_id,
         "$or": [
@@ -343,7 +343,7 @@ async def fetch_client_priority_actions_primary(
                     {"evidence_authority_synced_at": None},
                     {"evidence_authority.version": {"$lt": 1}},
                 ],
-                "status": {"$in": ["OVERDUE", "EXPIRED", "EXPIRING_SOON", "PENDING", "MISSING"]},
+                "status": {"$in": ["OVERDUE", "EXPIRED", "EXPIRING_SOON"]},
             },
         ],
     }

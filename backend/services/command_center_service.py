@@ -124,6 +124,56 @@ def _risk_sort_key(s: Dict[str, Any]):
     return (_LEVEL_ORDER.get(lvl, 9), s.get("updated_at") or s.get("generated_at") or "")
 
 
+def _priority_action_to_slim_urgent(
+    a: Dict[str, Any],
+    property_labels: Dict[str, str],
+) -> Dict[str, Any]:
+    """Map priority-stream row to Command Centre slim task without full unified enrichment."""
+    from services.unified_tasks_service import ACTION_TO_SOURCE
+
+    action_type = a.get("action_type") or ""
+    source_type = ACTION_TO_SOURCE.get(action_type, "priority_action")
+    source_id = (
+        a.get("related_requirement_id")
+        or a.get("related_work_order_id")
+        or a.get("related_risk_signal_id")
+        or a.get("related_issue_id")
+        or a.get("related_invoice_id")
+        or a.get("title")
+    )
+    task_id = f"{source_type}:{source_id}"
+    prop_id = a.get("related_property_id")
+    rid = a.get("related_requirement_id")
+    jur = a.get("jurisdiction")
+    meta: Dict[str, Any] = {
+        "action_type": action_type,
+        "requirement_code": a.get("requirement_code"),
+    }
+    if rid:
+        meta["requirement_id"] = rid
+        meta["linked_property_requirement_id"] = rid
+    if a.get("gap_key"):
+        meta["gap_key"] = a.get("gap_key")
+    return {
+        "id": task_id,
+        "task_id": task_id,
+        "title": a.get("title"),
+        "description": (a.get("description") or "").strip() or None,
+        "section": "urgent",
+        "source_type": source_type,
+        "property_id": prop_id,
+        "requirement_id": rid,
+        "jurisdiction": jur,
+        "property_jurisdiction": jur,
+        "property_label": property_labels.get(prop_id or "", "") if prop_id else None,
+        "urgency_level": "high" if (a.get("severity") or "").lower() == "high" else "medium",
+        "primary_action_type": action_type,
+        "primary_action_label": a.get("recommended_action_label") or "View",
+        "primary_action_url": a.get("recommended_url") or "/today",
+        "metadata": meta,
+    }
+
+
 def _profile_mark(profile: Optional[Dict[str, Any]], key: str, started: float) -> None:
     if profile is None:
         return
@@ -139,25 +189,17 @@ async def _load_urgent_slice_from_priority_stream(
     profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     from services.client_priority_stream import fetch_client_priority_actions_primary
-    from services.unified_tasks_service import _action_to_task, _freshness_block, _load_property_labels
+    from services.unified_tasks_service import _freshness_block, _load_property_labels
 
     t0 = time.perf_counter()
-    now = datetime.now(timezone.utc)
     actions = await fetch_client_priority_actions_primary(client_id, property_id_filter, 20)
     _profile_mark(profile, "priority_stream_ms", t0)
     t1 = time.perf_counter()
     prop_ids = [a.get("related_property_id") for a in actions if a.get("related_property_id")]
     property_labels = await _load_property_labels(client_id, [str(x) for x in prop_ids if x])
     _profile_mark(profile, "property_labels_ms", t1)
-    urgent_open_total = 0
-    slim_rows: List[Dict[str, Any]] = []
-    for a in actions:
-        t = _action_to_task(a, property_labels, now)
-        if t.get("section") not in ("urgent", "in_progress"):
-            continue
-        urgent_open_total += 1
-        if len(slim_rows) < display_cap:
-            slim_rows.append(_slim_task(t))
+    urgent_open_total = len(actions)
+    slim_rows = [_priority_action_to_slim_urgent(a, property_labels) for a in actions[:display_cap]]
     try:
         from services.ops_compliance_feature_flags import RENT_OPERATIONS, get_effective_flags
         from services.rent_attention_projection import (
@@ -212,7 +254,21 @@ async def _primary_compliance_status_summary(
             out["_cache_freshness"] = fresh
             _profile_mark(profile, "compliance_cache_hit_ms", t0)
             return out
-        head = await get_persisted_portfolio_headline_for_summary(client_id, skip_lazy_backfill=True)
+        db = database.get_db()
+        props = await db.properties.find(
+            {"client_id": client_id},
+            {
+                "_id": 0,
+                "property_id": 1,
+                "compliance_score": 1,
+                "compliance_last_calculated_at": 1,
+                "score_status": 1,
+            },
+        ).to_list(200)
+        from services.compliance_score import aggregate_persisted_portfolio_headline
+
+        head = aggregate_persisted_portfolio_headline(props)
+        head["properties"] = props
         _profile_mark(profile, "compliance_persisted_headline_ms", t0)
         return {
             "score": head.get("score"),
