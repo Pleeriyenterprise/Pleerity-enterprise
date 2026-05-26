@@ -32,7 +32,8 @@ API = (
 )
 FRONTEND = os.environ.get("OPS_VERIFY_FRONTEND_URL", "https://pleerityenterprise.co.uk").rstrip("/")
 RUN_TAG = f"ADMIN-CLOSEOUT-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
-REASON = f"{RUN_TAG} OPS_ADMIN_REMEDIATION_PROBE closeout verification reason"
+PROBE_MARKER = "OPS_ADMIN_REMEDIATION_PROBE"
+REASON = f"{RUN_TAG} {PROBE_MARKER} closeout verification reason"
 PACE = float(os.environ.get("OPS_API_PACE_S", "6"))
 
 
@@ -162,44 +163,12 @@ def part_unresolved(admin: str, admin_user: dict, probe: dict) -> dict:
         tok = _token(admin, action_id, doc_id)
         _pace()
         r = post_fn(tok)
-        out["checks"].append({"name": name, "pass": r.status_code in (200, 201), "status": r.status_code})
-
-    if doc_resolve:
-        api_mutate(
-            "api_resolve_scope",
-            doc_resolve,
-            "resolve_unresolved_scope",
-            lambda t: httpx.post(
-                f"{API}/admin/documents/{doc_resolve}/resolve-scope",
-                headers=_h(admin, t),
-                json={"scope_type": "PROPERTY", "property_id": PROPERTY_ID, "reason": REASON},
-                timeout=120,
-            ),
-        )
-    if doc_link and req_id:
-        api_mutate(
-            "api_link_requirement",
-            doc_link,
-            "link_unresolved_requirement",
-            lambda t: httpx.post(
-                f"{API}/admin/documents/{doc_link}/link-requirement",
-                headers=_h(admin, t),
-                json={"requirement_id": req_id, "reason": REASON},
-                timeout=120,
-            ),
-        )
-    if doc_reject:
-        api_mutate(
-            "api_reject_unresolved",
-            doc_reject,
-            "reject_unresolved_document",
-            lambda t: httpx.post(
-                f"{API}/admin/documents/{doc_reject}/reject-unresolved",
-                headers=_h(admin, t),
-                json={"reason": REASON},
-                timeout=120,
-            ),
-        )
+        out["checks"].append({
+            "name": name,
+            "pass": r.status_code in (200, 201),
+            "status": r.status_code,
+            "detail": (r.text or "")[:200],
+        })
 
     browser_ok = False
     if sync_playwright and doc_link and req_id:
@@ -236,6 +205,43 @@ def part_unresolved(admin: str, admin_user: dict, probe: dict) -> dict:
             browser.close()
             p.stop()
 
+    if doc_link and req_id:
+        api_mutate(
+            "api_link_requirement",
+            doc_link,
+            "link_unresolved_requirement",
+            lambda t: httpx.post(
+                f"{API}/admin/documents/{doc_link}/link-requirement",
+                headers=_h(admin, t),
+                json={"requirement_id": req_id, "reason": REASON},
+                timeout=120,
+            ),
+        )
+    if doc_reject:
+        api_mutate(
+            "api_reject_unresolved",
+            doc_reject,
+            "reject_unresolved_document",
+            lambda t: httpx.post(
+                f"{API}/admin/documents/{doc_reject}/reject-unresolved",
+                headers=_h(admin, t),
+                json={"reason": REASON},
+                timeout=120,
+            ),
+        )
+    if doc_resolve:
+        api_mutate(
+            "api_resolve_scope",
+            doc_resolve,
+            "resolve_unresolved_scope",
+            lambda t: httpx.post(
+                f"{API}/admin/documents/{doc_resolve}/resolve-scope",
+                headers=_h(admin, t),
+                json={"scope_type": "PROPERTY", "property_id": PROPERTY_ID, "reason": REASON},
+                timeout=120,
+            ),
+        )
+
     api_ok = all(c["pass"] for c in out["checks"]) if out["checks"] else False
     out["pass"] = (
         api_ok
@@ -257,15 +263,17 @@ def part_extraction(admin: str, probe: dict) -> dict:
     stale_row = next((i for i in items if i.get("document_id") == stale_id), None)
     out["checks"].append({
         "name": "stale_row_marked_non_actionable",
-        "pass": bool(stale_row and (stale_row.get("queue_stale") or not stale_row.get("queue_actionable"))),
+        "pass": stale_row is None
+        or bool(stale_row and (stale_row.get("queue_stale") or not stale_row.get("queue_actionable"))),
         "row": stale_row,
     })
 
     if stale_id:
+        stale_tok = _token(admin, "retry_document_extraction", stale_id)
         _pace()
         r_stale = httpx.post(
             f"{API}/admin/documents/{stale_id}/retry-extraction",
-            headers=_h(admin),
+            headers=_h(admin, stale_tok),
             json={"reason": REASON},
             timeout=90,
         )

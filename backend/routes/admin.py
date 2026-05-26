@@ -727,7 +727,11 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
         resource_key=document_id,
     )
     db = database.get_db()
-    from services.requirement_evidence_authority import document_evidence_compatible_with_requirement
+    from services.requirement_evidence_authority import (
+        SCOPE_UNRESOLVED,
+        document_evidence_compatible_with_requirement,
+        normalize_document_evidence_scope,
+    )
 
     doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
     if not doc:
@@ -738,6 +742,23 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
     )
     if not req:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
+    if (doc.get("evidence_scope_type") or "").upper() == SCOPE_UNRESOLVED:
+        pid = (req.get("property_id") or "").strip()
+        if not pid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Requirement has no property_id; cannot link UNRESOLVED document",
+            )
+        scope_patch = normalize_document_evidence_scope(
+            property_id=pid,
+            client_id=str(doc.get("client_id") or ""),
+            evidence_scope_type="PROPERTY",
+        )
+        await db.documents.update_one(
+            {"document_id": document_id},
+            {"$set": {**scope_patch, "manual_review_flag": False}},
+        )
+        doc = {**doc, **scope_patch}
     candidate = {**doc, "requirement_id": body.requirement_id}
     if not document_evidence_compatible_with_requirement(candidate, req):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Document scope is incompatible with requirement scope")
