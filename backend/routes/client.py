@@ -1946,15 +1946,37 @@ async def mark_requirement_not_applicable(request: Request, property_id: str):
 
 
 @router.get("/requirements")
-async def get_all_requirements(request: Request):
+async def get_all_requirements(
+    request: Request,
+    projection: str = Query(
+        "list",
+        description="list = faster portal list projection; full = enriched presentation + evidence linkage",
+    ),
+):
     """Get all requirements for the client."""
     user = await client_route_guard(request)
     db = database.get_db()
-    
+    list_mode = str(projection or "list").strip().lower() == "list"
+
     try:
+        req_projection = {
+            "_id": 0,
+            "requirement_id": 1,
+            "client_id": 1,
+            "property_id": 1,
+            "requirement_code": 1,
+            "requirement_type": 1,
+            "status": 1,
+            "due_date": 1,
+            "expiry_date": 1,
+            "applicability": 1,
+            "source": 1,
+            "jurisdiction": 1,
+            "client_surface_visible": 1,
+        } if list_mode else {"_id": 0}
         requirements = await db.requirements.find(
             {"client_id": user["client_id"]},
-            {"_id": 0}
+            req_projection,
         ).to_list(1000)
         from services.requirement_client_runtime_surface import (
             filter_requirement_rows_for_client_runtime_surfaces,

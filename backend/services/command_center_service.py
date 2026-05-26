@@ -138,12 +138,12 @@ async def _load_urgent_slice_from_priority_stream(
     display_cap: int = 12,
     profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    from services.client_priority_stream import fetch_client_priority_actions
+    from services.client_priority_stream import fetch_client_priority_actions_primary
     from services.unified_tasks_service import _action_to_task, _freshness_block, _load_property_labels
 
     t0 = time.perf_counter()
     now = datetime.now(timezone.utc)
-    actions = await fetch_client_priority_actions(client_id, property_id_filter, 28)
+    actions = await fetch_client_priority_actions_primary(client_id, property_id_filter, 20)
     _profile_mark(profile, "priority_stream_ms", t0)
     t1 = time.perf_counter()
     prop_ids = [a.get("related_property_id") for a in actions if a.get("related_property_id")]
@@ -193,7 +193,6 @@ async def _primary_compliance_status_summary(
     property_id_filter: Optional[str],
     profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    from services.compliance_gap_sync import aggregate_gap_counts_for_client
     from services.compliance_score import get_persisted_portfolio_headline_for_summary
     from services.operational_surface_cache import (
         compliance_score_cache_key,
@@ -238,15 +237,13 @@ async def _primary_compliance_status_summary(
             "_primary_stats_source": "persisted_headline",
         }
 
-    async def _gaps() -> Dict[str, Any]:
-        t0 = time.perf_counter()
-        out = await aggregate_gap_counts_for_client(
-            database.get_db(), client_id, property_id_filter
-        )
-        _profile_mark(profile, "gap_aggregate_ms", t0)
-        return out
-
-    cs, gap_engine_counts = await asyncio.gather(_headline(), _gaps())
+    cs = await _headline()
+    gap_engine_counts = {
+        "by_kind": {},
+        "by_severity": {},
+        "total_open": None,
+        "_deferred": True,
+    }
     stats = cs.get("stats") if isinstance(cs.get("stats"), dict) else {}
     return {
         "score": cs.get("score"),

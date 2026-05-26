@@ -310,3 +310,117 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
 
     return actions
 
+
+async def fetch_client_priority_actions_primary(
+    client_id: str,
+    property_id_filter: Optional[str],
+    limit: int = 20,
+) -> List[Dict[str, Any]]:
+    """
+    Lightweight priority stream for Command Centre primary paint: compliance gaps
+  (runtime projection only) + critical SLA work orders. Defers risks, open WOs,
+    approvals, and issues to secondary projection.
+    """
+    db = database.get_db()
+    actions: List[Dict[str, Any]] = []
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
+    props_surface = await db.properties.find(
+        {"client_id": client_id},
+        {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "jurisdiction": 1},
+    ).to_list(200)
+    from services.requirement_client_runtime_surface import (
+        filter_requirement_rows_for_client_runtime_surfaces,
+        project_requirement_row_client_runtime,
+    )
+
+    cap = min(max(limit * 3, 36), 72)
+    q_gap: Dict[str, Any] = {
+        "client_id": client_id,
+        "$or": [
+            {"evidence_authority_synced_at": {"$ne": None}, "evidence_authority.version": {"$gte": 1}},
+            {
+                "$or": [
+                    {"evidence_authority_synced_at": None},
+                    {"evidence_authority.version": {"$lt": 1}},
+                ],
+                "status": {"$in": ["OVERDUE", "EXPIRED", "EXPIRING_SOON", "PENDING", "MISSING"]},
+            },
+        ],
+    }
+    if property_id_filter:
+        q_gap["property_id"] = property_id_filter
+    gap_reqs = await db.requirements.find(
+        q_gap,
+        {
+            "_id": 0,
+            "requirement_id": 1,
+            "property_id": 1,
+            "requirement_code": 1,
+            "requirement_type": 1,
+            "status": 1,
+            "due_date": 1,
+            "expiry_date": 1,
+            "evidence_authority": 1,
+            "evidence_authority_synced_at": 1,
+            "client_surface_visible": 1,
+        },
+    ).limit(cap).to_list(cap)
+    gap_reqs = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=gap_reqs,
+        client_doc=client_doc,
+        properties=props_surface,
+    )
+    gap_reqs = [project_requirement_row_client_runtime(r) for r in gap_reqs]
+    gap_reqs_by_rid: Dict[str, Dict[str, Any]] = {}
+    for r in gap_reqs:
+        rid = r.get("requirement_id")
+        if rid:
+            gap_reqs_by_rid[str(rid)] = r
+    for r in gap_reqs_by_rid.values():
+        prop_doc = next((p for p in props_surface if p.get("property_id") == r.get("property_id")), None)
+        raw_gaps = infer_compliance_gaps_for_requirement(r, property_doc=prop_doc)
+        for g in raw_gaps:
+            kind = _priority_stream_kind_for_gap(g.gap_kind)
+            ok, _eng = requirement_row_in_client_priority_stream(r, kind=kind)
+            if not ok:
+                continue
+            actions.extend(gaps_to_priority_actions([g], r))
+
+    try:
+        from services import maintenance_service as ms
+
+        for sla_state, score, action in (
+            ("breached", SCORE_WORK_ORDER_BREACHED, ACTION_WORK_ORDER_BREACHED),
+            ("near_breach", SCORE_WORK_ORDER_NEAR_BREACH, ACTION_WORK_ORDER_NEAR_BREACH),
+        ):
+            wo_result = await ms.list_work_orders(
+                client_id=client_id, property_id=property_id_filter, sla_state=sla_state, limit=8
+            )
+            for wo in (wo_result.get("work_orders") or [])[:8]:
+                wo_id = wo.get("work_order_id")
+                prop_id = wo.get("property_id")
+                wo_upd = _iso_or_none(wo.get("updated_at"))
+                wo_url = f"/operations/work-orders?work_order_id={wo_id}" if wo_id else "/operations/work-orders"
+                state_key = "breached" if sla_state == "breached" else "near_breach"
+                actions.append(
+                    _action(
+                        action,
+                        f"Work order — {sla_state_label(state_key, 'client')}",
+                        wo.get("description") or f"Work order {str(wo_id)[:8]}…",
+                        score,
+                        SEVERITY_HIGH if sla_state == "breached" else SEVERITY_MEDIUM,
+                        related_work_order_id=wo_id,
+                        related_property_id=prop_id,
+                        source_updated_at=wo_upd,
+                        recommended_url=wo_url,
+                        recommended_action_label="View work order",
+                    )
+                )
+    except Exception as e:
+        logger.debug("Primary priority stream: SLA work orders failed for %s: %s", client_id, e)
+
+    actions.sort(key=lambda a: -(a.get("priority") or 0))
+    return actions[: max(limit * 2, 40)]
+
