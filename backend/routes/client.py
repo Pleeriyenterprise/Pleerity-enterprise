@@ -510,7 +510,14 @@ async def trigger_compliance_snapshot(request: Request):
         )
 
 @router.get("/dashboard")
-async def get_dashboard(request: Request):
+async def get_dashboard(
+    request: Request,
+    include_score_headline: bool = Query(
+        False,
+        description="When true, runs calculate_compliance_score for headline block (slow). "
+        "Prefer GET /client/compliance-score for score authority.",
+    ),
+):
     """Get client dashboard data."""
     user = await client_route_guard(request)
     db = database.get_db()
@@ -585,40 +592,41 @@ async def get_dashboard(request: Request):
             checklist = {"items": [], "completed_at": None, "all_required_complete": False}
 
         compliance_score_headline = None
-        try:
-            cs = await calculate_compliance_score(user["client_id"])
-            compliance_score_headline = {
-                "score": cs.get("score"),
-                "grade": cs.get("grade"),
-                "color": cs.get("color"),
-                "message": cs.get("message"),
-                "score_authority": cs.get("score_authority"),
-                "score_status": cs.get("score_status"),
-                "last_calculated_at": cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at"),
-                "score_coverage": cs.get("score_coverage"),
-                "score_status_message": cs.get("score_status_message"),
-                "scoring_semantics_version": cs.get("scoring_semantics_version"),
-                "properties_count": cs.get("properties_count"),
-                "properties_pending_score_recalc_count": cs.get("properties_pending_score_recalc_count"),
-                "portfolio_score_recalc_pending_note": cs.get("portfolio_score_recalc_pending_note"),
-            }
-        except Exception as headline_err:
-            logger.warning("dashboard compliance headline unavailable: %s", headline_err)
-            compliance_score_headline = {
-                "score": None,
-                "grade": None,
-                "color": "gray",
-                "message": "Compliance score summary unavailable.",
-                "score_authority": SCORE_AUTHORITY_UNAVAILABLE,
-                "score_status": SCORE_STATUS_UNAVAILABLE,
-                "last_calculated_at": None,
-                "score_coverage": None,
-                "score_status_message": None,
-                "scoring_semantics_version": None,
-                "properties_count": None,
-                "properties_pending_score_recalc_count": None,
-                "portfolio_score_recalc_pending_note": None,
-            }
+        if include_score_headline:
+            try:
+                cs = await calculate_compliance_score(user["client_id"])
+                compliance_score_headline = {
+                    "score": cs.get("score"),
+                    "grade": cs.get("grade"),
+                    "color": cs.get("color"),
+                    "message": cs.get("message"),
+                    "score_authority": cs.get("score_authority"),
+                    "score_status": cs.get("score_status"),
+                    "last_calculated_at": cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at"),
+                    "score_coverage": cs.get("score_coverage"),
+                    "score_status_message": cs.get("score_status_message"),
+                    "scoring_semantics_version": cs.get("scoring_semantics_version"),
+                    "properties_count": cs.get("properties_count"),
+                    "properties_pending_score_recalc_count": cs.get("properties_pending_score_recalc_count"),
+                    "portfolio_score_recalc_pending_note": cs.get("portfolio_score_recalc_pending_note"),
+                }
+            except Exception as headline_err:
+                logger.warning("dashboard compliance headline unavailable: %s", headline_err)
+                compliance_score_headline = {
+                    "score": None,
+                    "grade": None,
+                    "color": "gray",
+                    "message": "Compliance score summary unavailable.",
+                    "score_authority": SCORE_AUTHORITY_UNAVAILABLE,
+                    "score_status": SCORE_STATUS_UNAVAILABLE,
+                    "last_calculated_at": None,
+                    "score_coverage": None,
+                    "score_status_message": None,
+                    "scoring_semantics_version": None,
+                    "properties_count": None,
+                    "properties_pending_score_recalc_count": None,
+                    "portfolio_score_recalc_pending_note": None,
+                }
 
         return {
             "client": client,

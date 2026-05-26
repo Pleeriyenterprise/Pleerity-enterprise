@@ -1,0 +1,42 @@
+{
+  "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
+  "baseline_captured_at_utc": "2026-05-25T15:48:49Z",
+  "probe_captured_at_utc": "2026-05-26T17:38:02Z",
+  "rows": [
+    {
+      "endpoint": "GET /today/items",
+      "before_bytes": 1633041,
+      "probe_bytes": 1807159,
+      "expected_after_deploy_bytes": "<200000",
+      "reduction_strategy": "Omit flat items[] by default; slim task refs when include_flat_items=true; lower raw_limit"
+    },
+    {
+      "endpoint": "GET /client/command-center",
+      "before_bytes": 53186,
+      "probe_bytes": 59757,
+      "expected_after_deploy_bytes": "~55000",
+      "reduction_strategy": "No second unified rebuild; same slim urgent_actions"
+    },
+    {
+      "endpoint": "GET /client/dashboard",
+      "before_bytes": 64209,
+      "probe_bytes": 64208,
+      "expected_after_deploy_bytes": "~64000",
+      "reduction_strategy": "Skip score headline unless include_score_headline=true"
+    },
+    {
+      "endpoint": "GET /client/requirements",
+      "before_bytes": 351084,
+      "probe_bytes": 351084,
+      "expected_after_deploy_bytes": "351084",
+      "reduction_strategy": "No payload change; avoid duplicate fetches via cache"
+    },
+    {
+      "endpoint": "GET /documents",
+      "before_bytes": 84264,
+      "probe_bytes": 91162,
+      "expected_after_deploy_bytes": "<85000",
+      "reduction_strategy": "projection=list defers linkage fields; limit=80 default"
+    }
+  ]
+}

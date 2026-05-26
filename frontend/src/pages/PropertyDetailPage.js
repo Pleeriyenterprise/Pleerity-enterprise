@@ -464,20 +464,31 @@ export default function PropertyDetailPage() {
         setError('Invalid property link. Open a property from your portfolio.');
         return;
       }
-      const propsRes = await clientAPI.getProperties();
-      const prop = (propsRes.data.properties || []).find((p) => p.property_id === propertyId);
-      setProperty(prop || null);
       try {
         const detailRes = await clientAPI.getComplianceDetail(propertyId);
         if (detailRes?.data) {
-          setComplianceDetail(detailRes.data);
-          setRequirements(detailRes.data.matrix || []);
+          const detail = detailRes.data;
+          setComplianceDetail(detail);
+          setRequirements(detail.matrix || []);
+          setProperty({
+            property_id: propertyId,
+            nickname: detail.property_name || detail.nickname,
+            address_line_1: detail.address_line_1,
+            compliance_score: detail.property_score?.score ?? detail.compliance_score,
+            risk_level: detail.risk_level,
+            jurisdiction: detail.jurisdiction,
+          });
           return;
         }
       } catch (_) {
-        /* fallback to requirements list */
+        /* fallback below */
       }
-      const reqsRes = await clientAPI.getPropertyRequirements(propertyId);
+      const [propsRes, reqsRes] = await Promise.all([
+        clientAPI.getProperties(),
+        clientAPI.getPropertyRequirements(propertyId),
+      ]);
+      const prop = (propsRes.data.properties || []).find((p) => p.property_id === propertyId);
+      setProperty(prop || null);
       setRequirements(reqsRes.data?.requirements || []);
       setComplianceDetail(null);
     } catch (e) {

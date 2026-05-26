@@ -171,17 +171,27 @@ async def test_command_center_scopes_jurisdiction_notice_to_property_filter():
         },
     }
     with patch(
-        "services.command_center_service.get_unified_tasks_digest",
-        new=AsyncMock(return_value={"summary": {}, "freshness": {}, "activity_feed": []}),
-    ), patch(
         "services.command_center_service.get_unified_tasks_for_client",
-        new=AsyncMock(return_value={"tasks": {"urgent": [], "in_progress": []}}),
+        new=AsyncMock(
+            return_value={
+                "tasks": {"urgent": [], "in_progress": []},
+                "summary": {},
+                "freshness": {},
+                "activity_feed": [],
+            }
+        ),
     ), patch(
         "services.command_center_service.risk_signal_service.get_risk_signals_for_client",
         new=AsyncMock(return_value={"signals": []}),
     ), patch(
         "services.compliance_score.calculate_compliance_score",
         new=AsyncMock(return_value=cs),
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new=AsyncMock(return_value={"by_kind": {}, "by_severity": {}, "total_open": 0}),
+    ), patch(
+        "services.hiua_operational_uncertainty.hiua_tenant_operational_summary",
+        new=AsyncMock(return_value={"hiua_active": False, "hiua_open_gap_count": 0}),
     ):
         bundle = await get_command_center_bundle(
             "c1",
@@ -218,17 +228,27 @@ async def test_command_center_scoped_filter_hides_notice_when_property_not_affec
         },
     }
     with patch(
-        "services.command_center_service.get_unified_tasks_digest",
-        new=AsyncMock(return_value={"summary": {}, "freshness": {}, "activity_feed": []}),
-    ), patch(
         "services.command_center_service.get_unified_tasks_for_client",
-        new=AsyncMock(return_value={"tasks": {"urgent": [], "in_progress": []}}),
+        new=AsyncMock(
+            return_value={
+                "tasks": {"urgent": [], "in_progress": []},
+                "summary": {},
+                "freshness": {},
+                "activity_feed": [],
+            }
+        ),
     ), patch(
         "services.command_center_service.risk_signal_service.get_risk_signals_for_client",
         new=AsyncMock(return_value={"signals": []}),
     ), patch(
         "services.compliance_score.calculate_compliance_score",
         new=AsyncMock(return_value=cs),
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new=AsyncMock(return_value={"by_kind": {}, "by_severity": {}, "total_open": 0}),
+    ), patch(
+        "services.hiua_operational_uncertainty.hiua_tenant_operational_summary",
+        new=AsyncMock(return_value={"hiua_active": False, "hiua_open_gap_count": 0}),
     ):
         bundle = await get_command_center_bundle(
             "c1",

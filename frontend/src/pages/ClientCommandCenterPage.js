@@ -114,9 +114,12 @@ export default function ClientCommandCenterPage() {
 
   const loadPortalRequirements = useCallback(() => {
     if (!isClientUser) return;
-    clientAPI
-      .getRequirements()
-      .then((r) => setPortalRequirementsForInbox(Array.isArray(r.data?.requirements) ? r.data.requirements : []))
+    fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
+      clientAPI.getRequirements().then((r) => r.data),
+    )
+      .then((data) =>
+        setPortalRequirementsForInbox(Array.isArray(data?.requirements) ? data.requirements : []),
+      )
       .catch(() => setPortalRequirementsForInbox([]));
   }, [isClientUser]);
 
@@ -135,8 +138,12 @@ export default function ClientCommandCenterPage() {
 
     const maintenanceEnabled = hasFeature('maintenance_workflows');
     const tasks = [
-      clientAPI.getCommandCenter({}).then((r) => r.data),
-      clientAPI.getComplianceSummary().then((r) => r.data),
+      fetchOperational(OPERATIONAL_CACHE_KEYS.commandCenter, () =>
+        clientAPI.getCommandCenter({}).then((r) => r.data),
+      ).then((r) => r.data),
+      fetchOperational(OPERATIONAL_CACHE_KEYS.complianceSummary, () =>
+        clientAPI.getComplianceSummary().then((r) => r.data),
+      ).then((r) => r.data),
     ];
     if (maintenanceEnabled) {
       tasks.push(clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 }).then((r) => r.data));
@@ -144,7 +151,7 @@ export default function ClientCommandCenterPage() {
 
     Promise.all(
       tasks.map((p) =>
-        p.then((data) => ({ ok: true, data })).catch((err) => ({ ok: false, err }))
+        Promise.resolve(p).then((data) => ({ ok: true, data })).catch((err) => ({ ok: false, err }))
       )
     ).then((results) => {
       if (cancelled) return;

@@ -1,0 +1,82 @@
+{
+  "endpoints": [
+    {
+      "surface_key": "P1_today",
+      "method": "GET",
+      "path": "/today/items",
+      "params": null,
+      "status": 200,
+      "latency_ms": 28168,
+      "payload_bytes": 1807159,
+      "cache_hit": null
+    },
+    {
+      "surface_key": "P2_command_center",
+      "method": "GET",
+      "path": "/client/command-center",
+      "params": null,
+      "status": 200,
+      "latency_ms": 74403,
+      "payload_bytes": 59757,
+      "cache_hit": null
+    },
+    {
+      "surface_key": "P3_dashboard",
+      "method": "GET",
+      "path": "/client/dashboard",
+      "params": {
+        "include_score_headline": false
+      },
+      "status": 200,
+      "latency_ms": 24067,
+      "payload_bytes": 64208,
+      "cache_hit": null
+    },
+    {
+      "surface_key": "P4_properties",
+      "method": "GET",
+      "path": "/client/properties",
+      "params": null,
+      "status": 200,
+      "latency_ms": 2184,
+      "payload_bytes": 57153,
+      "cache_hit": null
+    },
+    {
+      "surface_key": "P5_requirements",
+      "method": "GET",
+      "path": "/client/requirements",
+      "params": null,
+      "status": 200,
+      "latency_ms": 3953,
+      "payload_bytes": 351084,
+      "cache_hit": null
+    },
+    {
+      "surface_key": "P6_documents",
+      "method": "GET",
+      "path": "/documents",
+      "params": {
+        "projection": "list",
+        "limit": 120
+      },
+      "status": 200,
+      "latency_ms": 22323,
+      "payload_bytes": 91162,
+      "cache_hit": null
+    },
+    {
+      "surface_key": "portfolio_compliance_summary",
+      "method": "GET",
+      "path": "/portfolio/compliance-summary",
+      "params": null,
+      "status": 401,
+      "latency_ms": 1352,
+      "payload_bytes": 30,
+      "cache_hit": null
+    }
+  ],
+  "parallel_properties_requirements_documents_ms": 1428,
+  "captured_at_utc": "2026-05-26T17:38:02Z",
+  "environment": "https://pleerity-enterprise.onrender.com/api"
+}

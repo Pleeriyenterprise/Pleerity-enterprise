@@ -4,6 +4,7 @@ Single read-model for dashboard / integrations; does not duplicate prioritisatio
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -25,7 +26,7 @@ from services.trust_surface_observability import (
     ensure_trust_surface_correlation_id,
     normalize_trust_surface_context,
 )
-from services.unified_tasks_service import get_unified_tasks_digest, get_unified_tasks_for_client
+from services.unified_tasks_service import digest_from_unified_tasks_full, get_unified_tasks_for_client
 from utils.compliance_fanout_log import compliance_fanout_extra
 
 logger = logging.getLogger(__name__)
@@ -140,6 +141,7 @@ async def get_command_center_bundle(
     digest: Dict[str, Any] = {}
     full_tasks: Dict[str, Any] = {}
     upcoming_risks: List[Dict[str, Any]] = []
+    prow_scoped: Optional[Dict[str, Any]] = None
 
     corr = ensure_trust_surface_correlation_id(SURFACE_COMMAND_CENTER_REFRESH, client_id, correlation_id)
     gen_at = datetime.now(timezone.utc)
@@ -168,52 +170,16 @@ async def get_command_center_bundle(
         )
     }
 
-    try:
-        digest = await get_unified_tasks_digest(
-            client_id,
-            property_id_filter=property_id_filter,
-            activity_limit=20,
-            portal_user_id=portal_user_id,
-            trust_surface_composition_context=digest_ctx,
-        )
-    except Exception as e:
-        failed_sections.append(
-            build_trust_surface_section_record(
-                section_name="tasks_digest",
-                section_status=SECTION_STATUS_DEGRADED_FALLBACK,
-                correlation_id=corr,
-                failure_stage="get_unified_tasks_digest",
-                degraded_reason=str(e),
-                fallback_used=True,
-                downstream_dependency="unified_tasks_service.get_unified_tasks_digest",
-            )
-        )
-        logger.warning(
-            "command_center digest failed: %s",
-            e,
-            extra=compliance_fanout_extra(
-                op="trust_surface",
-                stage="digest_failed",
-                client_id=client_id,
-                property_id=property_id_filter,
-                correlation_id=corr,
-                surface_name=SURFACE_COMMAND_CENTER_REFRESH,
-                section_name="tasks_digest",
-                degraded_reason=str(e),
-                fallback_used=True,
-                downstream_dependency="unified_tasks_service.get_unified_tasks_digest",
-            ),
-        )
-        digest = {"summary": {}, "freshness": {}, "activity_feed": []}
-
-    try:
+    async def _load_unified_tasks() -> None:
+        nonlocal digest, full_tasks, urgent_actions
         full_tasks = await get_unified_tasks_for_client(
             client_id,
             property_id_filter=property_id_filter,
-            raw_limit=80,
+            raw_limit=60,
             portal_user_id=portal_user_id,
             trust_surface_composition_context=tasks_ctx,
         )
+        digest = digest_from_unified_tasks_full(full_tasks, activity_limit=20)
         tasks = full_tasks.get("tasks") or {}
         urgent = tasks.get("urgent") or []
         in_prog = tasks.get("in_progress") or []
@@ -236,36 +202,19 @@ async def get_command_center_bundle(
                 urgent_actions = append_rent_to_command_center_urgent(urgent_actions, rent_tasks)
         except Exception as rent_exc:
             logger.warning("command_center rent attention merge failed: %s", rent_exc)
-    except Exception as e:
-        failed_sections.append(
-            build_trust_surface_section_record(
-                section_name="unified_tasks_urgent_actions",
-                section_status=SECTION_STATUS_FAILED,
-                correlation_id=corr,
-                failure_stage="get_unified_tasks_for_client",
-                degraded_reason=str(e),
-                fallback_used=True,
-                downstream_dependency="unified_tasks_service.get_unified_tasks_for_client",
-            )
-        )
-        logger.warning(
-            "command_center unified tasks failed: %s",
-            e,
-            extra=compliance_fanout_extra(
-                op="trust_surface",
-                stage="unified_tasks_failed",
-                client_id=client_id,
-                property_id=property_id_filter,
-                correlation_id=corr,
-                surface_name=SURFACE_COMMAND_CENTER_REFRESH,
-                section_name="unified_tasks_urgent_actions",
-                degraded_reason=str(e),
-                fallback_used=True,
-                downstream_dependency="unified_tasks_service.get_unified_tasks_for_client",
-            ),
-        )
 
-    if predictive_enabled:
+    async def _load_risk_signals() -> List[Dict[str, Any]]:
+        if not predictive_enabled:
+            omitted_sections.append(
+                build_trust_surface_section_record(
+                    section_name="risk_signals",
+                    section_status=SECTION_STATUS_OMITTED,
+                    correlation_id=corr,
+                    degraded_reason="predictive_maintenance_disabled",
+                    downstream_dependency="risk_signal_service.get_risk_signals_for_client",
+                )
+            )
+            return []
         try:
             r = await risk_signal_service.get_risk_signals_for_client(
                 client_id,
@@ -275,7 +224,7 @@ async def get_command_center_bundle(
             )
             signals = [s for s in (r.get("signals") or []) if (s.get("status") or "").lower() == "active"]
             signals.sort(key=_risk_sort_key)
-            upcoming_risks = [_slim_risk(s) for s in signals[:18]]
+            return [_slim_risk(s) for s in signals[:18]]
         except Exception as e:
             failed_sections.append(
                 build_trust_surface_section_record(
@@ -304,55 +253,42 @@ async def get_command_center_bundle(
                     downstream_dependency="risk_signal_service.get_risk_signals_for_client",
                 ),
             )
-    else:
-        omitted_sections.append(
-            build_trust_surface_section_record(
-                section_name="risk_signals",
-                section_status=SECTION_STATUS_OMITTED,
-                correlation_id=corr,
-                degraded_reason="predictive_maintenance_disabled",
-                downstream_dependency="risk_signal_service.get_risk_signals_for_client",
-            )
-        )
+            return []
 
-    compliance_status_summary: Dict[str, Any] = {}
-    prow_scoped: Optional[Dict[str, Any]] = None
-    try:
+    async def _build_compliance_status_summary() -> Dict[str, Any]:
+        nonlocal prow_scoped
         from services.compliance_score import calculate_compliance_score
 
-        cs = await calculate_compliance_score(client_id)
-        stats = cs.get("stats") if isinstance(cs.get("stats"), dict) else {}
-        notice = cs.get("jurisdiction_compliance_notice") or {}
-        jreq_ids = list(cs.get("jurisdiction_required_property_ids") or [])
-        jreq = bool(cs.get("jurisdiction_required"))
-        jconf = cs.get("compliance_confidence")
-        if property_id_filter:
-            aff = [x for x in (notice.get("affected_property_ids") or []) if x == property_id_filter]
-            notice = {
-                **notice,
-                "affected_property_ids": aff,
-                "affected_property_count": len(aff),
-                "active": bool(aff),
-                "compliance_basis": "default_fallback" if aff else None,
-            }
-            prow_scoped = next(
-                (x for x in (cs.get("property_breakdown") or []) if x.get("property_id") == property_id_filter),
-                None,
-            )
-            if prow_scoped is not None:
-                jreq = bool(prow_scoped.get("jurisdiction_required"))
-                jconf = prow_scoped.get("compliance_confidence")
-            else:
-                jreq = property_id_filter in jreq_ids
-                jconf = "fallback" if jreq else "explicit"
-        gap_engine_counts: Dict[str, Any] = {}
-        try:
+        async def _score():
+            return await calculate_compliance_score(client_id)
+
+        async def _gaps():
             from services.compliance_gap_sync import aggregate_gap_counts_for_client
 
-            gap_engine_counts = await aggregate_gap_counts_for_client(
+            return await aggregate_gap_counts_for_client(
                 database.get_db(), client_id, property_id_filter
             )
-        except Exception as e:
+
+        async def _hiua():
+            from services.hiua_operational_uncertainty import hiua_tenant_operational_summary
+
+            _db = database.get_db()
+            _pids = {str(property_id_filter)} if property_id_filter else None
+            return await hiua_tenant_operational_summary(
+                _db, client_id, property_ids=_pids, max_gaps_scan=400, max_detail=15
+            )
+
+        cs, gap_engine_counts, hiua_block = await asyncio.gather(
+            _score(),
+            _gaps(),
+            _hiua(),
+            return_exceptions=True,
+        )
+
+        if isinstance(cs, BaseException):
+            raise cs
+        if isinstance(gap_engine_counts, BaseException):
+            e = gap_engine_counts
             partial_sections.append(
                 build_trust_surface_section_record(
                     section_name="gap_engine_aggregate",
@@ -381,16 +317,8 @@ async def get_command_center_bundle(
                 ),
             )
             gap_engine_counts = {"by_kind": {}, "by_severity": {}, "total_open": 0}
-        hiua_block: Dict[str, Any] = {}
-        try:
-            from services.hiua_operational_uncertainty import hiua_tenant_operational_summary
-
-            _db = database.get_db()
-            _pids = {str(property_id_filter)} if property_id_filter else None
-            hiua_block = await hiua_tenant_operational_summary(
-                _db, client_id, property_ids=_pids, max_gaps_scan=400, max_detail=15
-            )
-        except Exception as e:
+        if isinstance(hiua_block, BaseException):
+            e = hiua_block
             partial_sections.append(
                 build_trust_surface_section_record(
                     section_name="hiua_operational_uncertainty",
@@ -429,7 +357,32 @@ async def get_command_center_bundle(
                 "hiua_digest_line": None,
                 "hiua_report_framing_notice": None,
             }
-        compliance_status_summary = {
+
+        stats = cs.get("stats") if isinstance(cs.get("stats"), dict) else {}
+        notice = cs.get("jurisdiction_compliance_notice") or {}
+        jreq_ids = list(cs.get("jurisdiction_required_property_ids") or [])
+        jreq = bool(cs.get("jurisdiction_required"))
+        jconf = cs.get("compliance_confidence")
+        if property_id_filter:
+            aff = [x for x in (notice.get("affected_property_ids") or []) if x == property_id_filter]
+            notice = {
+                **notice,
+                "affected_property_ids": aff,
+                "affected_property_count": len(aff),
+                "active": bool(aff),
+                "compliance_basis": "default_fallback" if aff else None,
+            }
+            prow_scoped = next(
+                (x for x in (cs.get("property_breakdown") or []) if x.get("property_id") == property_id_filter),
+                None,
+            )
+            if prow_scoped is not None:
+                jreq = bool(prow_scoped.get("jurisdiction_required"))
+                jconf = prow_scoped.get("compliance_confidence")
+            else:
+                jreq = property_id_filter in jreq_ids
+                jconf = "fallback" if jreq else "explicit"
+        summary_out: Dict[str, Any] = {
             "score": cs.get("score"),
             "grade": cs.get("grade"),
             "message": cs.get("message"),
@@ -443,8 +396,6 @@ async def get_command_center_bundle(
             "scoring_semantics_version": cs.get("scoring_semantics_version"),
             "properties_pending_score_recalc_count": cs.get("properties_pending_score_recalc_count"),
             "portfolio_score_recalc_pending_note": cs.get("portfolio_score_recalc_pending_note"),
-            # Canonical portfolio requirement KPIs (portal-visible + project_requirement_row_client_runtime).
-            # Command Centre UI must use these fields only — no Math.max with other APIs.
             "compliance_counts_authority": "calculate_compliance_score.stats",
             "requirements_overdue": stats.get("overdue"),
             "requirements_expiring_soon": stats.get("expiring_soon"),
@@ -461,28 +412,66 @@ async def get_command_center_bundle(
             "client_default_jurisdiction": cs.get("client_default_jurisdiction"),
         }
         if property_id_filter and prow_scoped:
-            compliance_status_summary["scoped_property_jurisdiction"] = {
+            summary_out["scoped_property_jurisdiction"] = {
                 "property_id": property_id_filter,
                 "compliance_basis": prow_scoped.get("compliance_basis"),
                 "effective_jurisdiction_label": prow_scoped.get("effective_jurisdiction_label"),
                 "jurisdiction_required": prow_scoped.get("jurisdiction_required"),
                 "compliance_confidence": prow_scoped.get("compliance_confidence"),
             }
-    except Exception as e:
+        return summary_out
+
+    compliance_status_summary: Dict[str, Any] = {}
+    unified_exc, compliance_exc, risks_list = await asyncio.gather(
+        _load_unified_tasks(),
+        _build_compliance_status_summary(),
+        _load_risk_signals(),
+        return_exceptions=True,
+    )
+    if isinstance(unified_exc, BaseException):
+        failed_sections.append(
+            build_trust_surface_section_record(
+                section_name="unified_tasks_urgent_actions",
+                section_status=SECTION_STATUS_FAILED,
+                correlation_id=corr,
+                failure_stage="get_unified_tasks_for_client",
+                degraded_reason=str(unified_exc),
+                fallback_used=True,
+                downstream_dependency="unified_tasks_service.get_unified_tasks_for_client",
+            )
+        )
+        logger.warning(
+            "command_center unified tasks failed: %s",
+            unified_exc,
+            extra=compliance_fanout_extra(
+                op="trust_surface",
+                stage="unified_tasks_failed",
+                client_id=client_id,
+                property_id=property_id_filter,
+                correlation_id=corr,
+                surface_name=SURFACE_COMMAND_CENTER_REFRESH,
+                section_name="unified_tasks_urgent_actions",
+                degraded_reason=str(unified_exc),
+                fallback_used=True,
+                downstream_dependency="unified_tasks_service.get_unified_tasks_for_client",
+            ),
+        )
+        digest = {"summary": {}, "freshness": {}, "activity_feed": []}
+    if isinstance(compliance_exc, BaseException):
         failed_sections.append(
             build_trust_surface_section_record(
                 section_name="compliance_score_summary",
                 section_status=SECTION_STATUS_FAILED,
                 correlation_id=corr,
                 failure_stage="calculate_compliance_score",
-                degraded_reason=str(e),
+                degraded_reason=str(compliance_exc),
                 fallback_used=True,
                 downstream_dependency="compliance_score.calculate_compliance_score",
             )
         )
         logger.warning(
             "command_center compliance score failed: %s",
-            e,
+            compliance_exc,
             extra=compliance_fanout_extra(
                 op="trust_surface",
                 stage="compliance_score_failed",
@@ -491,7 +480,7 @@ async def get_command_center_bundle(
                 correlation_id=corr,
                 surface_name=SURFACE_COMMAND_CENTER_REFRESH,
                 section_name="compliance_score_summary",
-                degraded_reason=str(e),
+                degraded_reason=str(compliance_exc),
                 fallback_used=True,
                 downstream_dependency="compliance_score.calculate_compliance_score",
             ),
@@ -532,6 +521,12 @@ async def get_command_center_bundle(
             "jurisdiction_fallback_acknowledged": None,
             "client_default_jurisdiction": None,
         }
+    else:
+        compliance_status_summary = compliance_exc
+    if isinstance(risks_list, BaseException):
+        upcoming_risks = []
+    else:
+        upcoming_risks = risks_list
 
     recent_activity = digest.get("activity_feed") or []
 

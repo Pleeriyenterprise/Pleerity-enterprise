@@ -270,10 +270,10 @@ const ClientDashboard = () => {
     ({ reset } = {}) => {
       if (!isClientUser) return;
       const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
+      const cacheKey = `${OPERATIONAL_CACHE_KEYS.todayItems}:${commandCenterScopePropertyId || 'all'}`;
       if (reset) setTodayInboxPayload(undefined);
-      clientAPI
-        .getTodayItems(params)
-        .then((r) => setTodayInboxPayload(r.data ?? null))
+      fetchOperational(cacheKey, () => clientAPI.getTodayItems(params).then((r) => r.data))
+        .then((hit) => setTodayInboxPayload(hit.data ?? null))
         .catch(() => setTodayInboxPayload(null));
     },
     [isClientUser, commandCenterScopePropertyId],
@@ -283,9 +283,12 @@ const ClientDashboard = () => {
 
   const loadPortalRequirements = useCallback(() => {
     if (!isClientUser) return;
-    clientAPI
-      .getRequirements()
-      .then((r) => setPortalRequirementsForInbox(Array.isArray(r.data?.requirements) ? r.data.requirements : []))
+    fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
+      clientAPI.getRequirements().then((r) => r.data),
+    )
+      .then((data) =>
+        setPortalRequirementsForInbox(Array.isArray(data?.requirements) ? data.requirements : []),
+      )
       .catch(() => setPortalRequirementsForInbox([]));
   }, [isClientUser]);
 
@@ -466,22 +469,23 @@ const ClientDashboard = () => {
       return;
     }
     const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
-    fetchTodayInbox({ reset: true });
-    clientAPI
-      .getCommandCenter(params)
-      .then((res) => {
-        const b = res.data || {};
-        setCommandCenter(b);
+    const ccKey = `${OPERATIONAL_CACHE_KEYS.commandCenter}:${commandCenterScopePropertyId || 'all'}`;
+    fetchOperational(ccKey, () => clientAPI.getCommandCenter(params).then((r) => r.data))
+      .then((hit) => {
+        const bundle = hit.data || {};
+        setCommandCenter(bundle);
         setTasksDigest({
-          summary: b.tasks_digest_summary || {},
-          activity_feed: Array.isArray(b.recent_activity) ? b.recent_activity.slice(0, 8) : [],
-          freshness: b.freshness || {},
+          summary: bundle.tasks_digest_summary || {},
+          activity_feed: Array.isArray(bundle.recent_activity) ? bundle.recent_activity.slice(0, 8) : [],
+          freshness: bundle.freshness || {},
         });
       })
       .catch(() => {
         setTasksDigest(null);
         setCommandCenter(null);
       });
+    const todayTimer = window.setTimeout(() => fetchTodayInbox({ reset: true }), 0);
+    return () => window.clearTimeout(todayTimer);
   }, [isClientUser, commandCenterScopePropertyId, fetchTodayInbox]);
 
   useEffect(() => {
@@ -624,14 +628,17 @@ const ClientDashboard = () => {
   const fetchDashboard = async () => {
     try {
       setRestrictReason(null);
-      const response = await clientAPI.getDashboard();
-      setData(response.data);
-      const h = response.data?.compliance_score_headline;
+      const response = await fetchOperational(OPERATIONAL_CACHE_KEYS.dashboard, () =>
+        clientAPI.getDashboard({ include_score_headline: false }).then((r) => r.data),
+      );
+      const dashboardData = response.data;
+      setData(dashboardData);
+      const h = dashboardData?.compliance_score_headline;
       if (h && typeof h === 'object') {
         setComplianceScore((prev) => prev || h);
       }
       // Defensive: detect missing plan/entitlement (test accounts not fully provisioned)
-      const client = result.data?.client;
+      const client = dashboardData?.client;
       if (client && client.billing_plan == null && client.plan_code == null) {
         setRestrictReason('not_provisioned');
       }

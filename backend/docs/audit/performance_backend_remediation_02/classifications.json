@@ -1,0 +1,12 @@
+{
+  "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
+  "classification": "IMPLEMENTED_PENDING_DEPLOY_VERIFY",
+  "rationale": "Backend and frontend remediations implemented and unit-tested. Staging API probe on 2026-05-26 still shows Command Centre ~74s and Today ~28s (pre-deploy behaviour). VERIFIED_OPERATIONALLY requires post-deploy browser timings meeting pass targets.",
+  "pass_targets": {
+    "shell_under_1s": "met at baseline for shell; primary content blocked by API",
+    "first_useful_content_under_3s": "pending deploy for Today/Properties",
+    "command_center_under_60s_primary": "pending deploy",
+    "no_skeleton_over_5s_undisclosed": "pending browser re-verify"
+  },
+  "next_step": "Deploy backend+frontend; re-run tmp_performance_backend_remediation_02.py and browser verify; upgrade to VERIFIED_OPERATIONALLY if material improvement"
+}

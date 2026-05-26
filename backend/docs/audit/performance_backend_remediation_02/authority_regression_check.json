@@ -1,0 +1,43 @@
+{
+  "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
+  "checked_at_utc": "2026-05-26T17:40:00Z",
+  "authority_preserved": true,
+  "checks": [
+    {
+      "rule": "Command Centre KPI counts from calculate_compliance_score.stats only",
+      "status": "PASS",
+      "evidence": "compliance_status_summary.compliance_counts_authority unchanged; no client-side Math.max"
+    },
+    {
+      "rule": "RBAC / client_route_guard on all touched routes",
+      "status": "PASS",
+      "evidence": "No guard changes; same dependencies"
+    },
+    {
+      "rule": "No fake counts or hidden failures",
+      "status": "PASS",
+      "evidence": "Trust surface failed_sections still populated; degraded states disclosed"
+    },
+    {
+      "rule": "Cache discloses freshness",
+      "status": "PASS",
+      "evidence": "unified tasks cache sets freshness.cache_hit, cached_at, cache_ttl_seconds"
+    },
+    {
+      "rule": "Documents list projection=list does not hide authority",
+      "status": "PASS",
+      "evidence": "linkage_projection_deferred flag on rows; full projection still available"
+    },
+    {
+      "rule": "Dashboard score headline optional not removed",
+      "status": "PASS",
+      "evidence": "include_score_headline=true restores calculate_compliance_score block"
+    }
+  ],
+  "regression_tests_run": [
+    "tests/test_operational_surface_cache.py",
+    "tests/test_today_items_unified_projection_http.py",
+    "tests/test_trust_surface_observability_phase2.py (command center)",
+    "tests/test_phase21_priority_unification.py::test_command_center_urgent_matches_unified_tasks_order"
+  ]
+}

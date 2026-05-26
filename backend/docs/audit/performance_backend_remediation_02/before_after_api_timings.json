@@ -1,0 +1,224 @@
+{
+  "before": {
+    "login_ms": 2208,
+    "endpoints": [
+      {
+        "surface_key": "P1_today",
+        "method": "GET",
+        "path": "/today/items",
+        "status": 200,
+        "latency_ms": 29643,
+        "payload_bytes": 1633041
+      },
+      {
+        "surface_key": "P2_command_center",
+        "method": "GET",
+        "path": "/client/command-center",
+        "status": 200,
+        "latency_ms": 75197,
+        "payload_bytes": 53186
+      },
+      {
+        "surface_key": "P3_dashboard",
+        "method": "GET",
+        "path": "/client/dashboard",
+        "status": 200,
+        "latency_ms": 24183,
+        "payload_bytes": 64209
+      },
+      {
+        "surface_key": "P4_properties",
+        "method": "GET",
+        "path": "/client/properties",
+        "status": 200,
+        "latency_ms": 1798,
+        "payload_bytes": 57152
+      },
+      {
+        "surface_key": "P5_requirements",
+        "method": "GET",
+        "path": "/client/requirements",
+        "status": 200,
+        "latency_ms": 3505,
+        "payload_bytes": 351084
+      },
+      {
+        "surface_key": "P6_documents",
+        "method": "GET",
+        "path": "/documents",
+        "status": 200,
+        "latency_ms": 21753,
+        "payload_bytes": 84264
+      },
+      {
+        "surface_key": "P7_rent_summary",
+        "method": "GET",
+        "path": "/client/operations/rent/summary",
+        "status": 200,
+        "latency_ms": 3698,
+        "payload_bytes": 297
+      },
+      {
+        "surface_key": "P7_rent_ledgers",
+        "method": "GET",
+        "path": "/client/operations/rent/ledgers",
+        "status": 200,
+        "latency_ms": 2902,
+        "payload_bytes": 7474
+      },
+      {
+        "surface_key": "portfolio_compliance_summary",
+        "method": "GET",
+        "path": "/portfolio/compliance-summary",
+        "status": 200,
+        "latency_ms": 17034,
+        "payload_bytes": 7093
+      }
+    ],
+    "waterfall_dashboard_then_requirements_ms": 28321,
+    "parallel_properties_requirements_documents_ms": 22397,
+    "captured_at_utc": "2026-05-25T15:48:49Z",
+    "environment": "https://pleerity-enterprise.onrender.com/api",
+    "account": "nancy@yopmail.com (pilot landlord)"
+  },
+  "after": {
+    "endpoints": [
+      {
+        "surface_key": "P1_today",
+        "method": "GET",
+        "path": "/today/items",
+        "params": null,
+        "status": 200,
+        "latency_ms": 28168,
+        "payload_bytes": 1807159,
+        "cache_hit": null
+      },
+      {
+        "surface_key": "P2_command_center",
+        "method": "GET",
+        "path": "/client/command-center",
+        "params": null,
+        "status": 200,
+        "latency_ms": 74403,
+        "payload_bytes": 59757,
+        "cache_hit": null
+      },
+      {
+        "surface_key": "P3_dashboard",
+        "method": "GET",
+        "path": "/client/dashboard",
+        "params": {
+          "include_score_headline": false
+        },
+        "status": 200,
+        "latency_ms": 24067,
+        "payload_bytes": 64208,
+        "cache_hit": null
+      },
+      {
+        "surface_key": "P4_properties",
+        "method": "GET",
+        "path": "/client/properties",
+        "params": null,
+        "status": 200,
+        "latency_ms": 2184,
+        "payload_bytes": 57153,
+        "cache_hit": null
+      },
+      {
+        "surface_key": "P5_requirements",
+        "method": "GET",
+        "path": "/client/requirements",
+        "params": null,
+        "status": 200,
+        "latency_ms": 3953,
+        "payload_bytes": 351084,
+        "cache_hit": null
+      },
+      {
+        "surface_key": "P6_documents",
+        "method": "GET",
+        "path": "/documents",
+        "params": {
+          "projection": "list",
+          "limit": 120
+        },
+        "status": 200,
+        "latency_ms": 22323,
+        "payload_bytes": 91162,
+        "cache_hit": null
+      },
+      {
+        "surface_key": "portfolio_compliance_summary",
+        "method": "GET",
+        "path": "/portfolio/compliance-summary",
+        "params": null,
+        "status": 401,
+        "latency_ms": 1352,
+        "payload_bytes": 30,
+        "cache_hit": null
+      }
+    ],
+    "parallel_properties_requirements_documents_ms": 1428,
+    "captured_at_utc": "2026-05-26T17:38:02Z",
+    "environment": "https://pleerity-enterprise.onrender.com/api"
+  },
+  "deltas": [
+    {
+      "surface_key": "P1_today",
+      "latency_ms_before": 29643,
+      "latency_ms_after": 28168,
+      "latency_delta_ms": -1475,
+      "payload_bytes_before": 1633041,
+      "payload_bytes_after": 1807159
+    },
+    {
+      "surface_key": "P2_command_center",
+      "latency_ms_before": 75197,
+      "latency_ms_after": 74403,
+      "latency_delta_ms": -794,
+      "payload_bytes_before": 53186,
+      "payload_bytes_after": 59757
+    },
+    {
+      "surface_key": "P3_dashboard",
+      "latency_ms_before": 24183,
+      "latency_ms_after": 24067,
+      "latency_delta_ms": -116,
+      "payload_bytes_before": 64209,
+      "payload_bytes_after": 64208
+    },
+    {
+      "surface_key": "P4_properties",
+      "latency_ms_before": 1798,
+      "latency_ms_after": 2184,
+      "latency_delta_ms": 386,
+      "payload_bytes_before": 57152,
+      "payload_bytes_after": 57153
+    },
+    {
+      "surface_key": "P5_requirements",
+      "latency_ms_before": 3505,
+      "latency_ms_after": 3953,
+      "latency_delta_ms": 448,
+      "payload_bytes_before": 351084,
+      "payload_bytes_after": 351084
+    },
+    {
+      "surface_key": "P6_documents",
+      "latency_ms_before": 21753,
+      "latency_ms_after": 22323,
+      "latency_delta_ms": 570,
+      "payload_bytes_before": 84264,
+      "payload_bytes_after": 91162
+    },
+    {
+      "surface_key": "portfolio_compliance_summary",
+      "latency_ms_before": 17034,
+      "latency_ms_after": 1352,
+      "latency_delta_ms": -15682,
+      "payload_bytes_before": 7093,
+      "payload_bytes_after": 30
+    }
+  ]
+}

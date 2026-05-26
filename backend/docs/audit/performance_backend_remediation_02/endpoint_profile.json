@@ -1,0 +1,62 @@
+{
+  "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
+  "captured_at_utc": "2026-05-26T17:38:02Z",
+  "environment": "https://pleerity-enterprise.onrender.com/api",
+  "deploy_note": "Staging probe run before backend deploy; latencies reflect pre-remediation behaviour except query-param paths accepted by current API.",
+  "pages": [
+    {
+      "page": "/today",
+      "slowest_endpoint": "GET /api/today/items",
+      "baseline_latency_ms": 29643,
+      "probe_latency_ms": 28168,
+      "root_cause": "Full unified task rebuild (raw_limit 120) + enrich_task_for_today + duplicate flat items[] mirroring tasks",
+      "remediation": "raw_limit 60; parallel rent merge; optional include_flat_items=false; 45s unified cache with freshness metadata"
+    },
+    {
+      "page": "/command-center",
+      "slowest_endpoint": "GET /api/client/command-center",
+      "baseline_latency_ms": 75197,
+      "probe_latency_ms": 74403,
+      "root_cause": "Sequential double unified rebuild (digest + full) then compliance score, gap, HIUA",
+      "remediation": "Single get_unified_tasks_for_client; derive digest; asyncio.gather unified + compliance + risks; parallel gap/HIUA inside compliance"
+    },
+    {
+      "page": "/dashboard",
+      "slowest_endpoint": "GET /api/client/dashboard (+ 15+ satellite calls)",
+      "baseline_latency_ms": 24183,
+      "probe_latency_ms": 24067,
+      "root_cause": "calculate_compliance_score on dashboard; duplicate command-center + today unified work",
+      "remediation": "include_score_headline=false default; fetchOperational cache; defer today inbox; separate compliance-score call"
+    },
+    {
+      "page": "/properties",
+      "slowest_endpoint": "GET /api/client/properties",
+      "baseline_latency_ms": 1798,
+      "probe_latency_ms": 2184,
+      "root_cause": "Already fast; was regressed when pages used /dashboard",
+      "remediation": "fetchOperational on Properties; Requirements uses getProperties not getDashboard"
+    },
+    {
+      "page": "/properties/:id",
+      "slowest_endpoint": "GET /api/client/properties (full list) before detail",
+      "baseline_latency_ms": 1798,
+      "root_cause": "Waterfall: list all properties to find one row",
+      "remediation": "Property detail loads compliance-detail first for header + matrix"
+    },
+    {
+      "page": "/requirements",
+      "slowest_endpoint": "GET /api/client/requirements",
+      "baseline_latency_ms": 3505,
+      "root_cause": "Parallel getDashboard (heavy) + requirements + documents",
+      "remediation": "getProperties + cached requirements/documents"
+    },
+    {
+      "page": "/documents",
+      "slowest_endpoint": "GET /api/documents",
+      "baseline_latency_ms": 21753,
+      "probe_latency_ms": 22323,
+      "root_cause": "Per-doc enrichment + linkage/visibility batch on up to 100 rows",
+      "remediation": "projection=list skips linkage batch; limit param; index client_id+uploaded_at"
+    }
+  ]
+}

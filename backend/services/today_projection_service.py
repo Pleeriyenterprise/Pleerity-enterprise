@@ -46,6 +46,7 @@ from services.client_priority_stream import (
     ACTION_WORK_ORDER_NEAR_BREACH,
 )
 from services.compliance_requirement_engine import resolve_engine_payload_from_code
+from services.requirement_action_resolver import resolve_take_action_envelope
 from services.today_attention_ranking import attention_rank_explanation, today_attention_sort_key
 
 logger = logging.getLogger(__name__)
@@ -573,8 +574,37 @@ def enrich_task_bucket(
     return enriched
 
 
-def build_today_payload_from_unified(full: Dict[str, Any]) -> Dict[str, Any]:
-    """Same shape as GET /client/tasks with enriched tasks + flat items list."""
+def _slim_today_flat_task(t: Dict[str, Any]) -> Dict[str, Any]:
+    """Reduced task projection for flat items list (UI reads tasks.* buckets)."""
+    meta = t.get("metadata") if isinstance(t.get("metadata"), dict) else {}
+    return {
+        "id": t.get("id"),
+        "title": t.get("title"),
+        "section": t.get("section"),
+        "property_id": t.get("property_id"),
+        "source_type": t.get("source_type"),
+        "urgency_level": t.get("urgency_level"),
+        "primary_action_url": t.get("primary_action_url"),
+        "primary_action_type": t.get("primary_action_type"),
+        "metadata": {
+            k: meta[k]
+            for k in (
+                "action_type",
+                "related_work_order_id",
+                "requirement_id",
+                "linked_property_requirement_id",
+            )
+            if meta.get(k) is not None
+        },
+    }
+
+
+def build_today_payload_from_unified(
+    full: Dict[str, Any],
+    *,
+    include_flat_items: bool = False,
+) -> Dict[str, Any]:
+    """Same shape as GET /client/tasks with enriched tasks + optional flat items list."""
     now = datetime.now(timezone.utc)
     tasks_root = full.get("tasks") or {}
     enriched_tasks = {
@@ -586,45 +616,47 @@ def build_today_payload_from_unified(full: Dict[str, Any]) -> Dict[str, Any]:
         "hidden": tasks_root.get("hidden") or [],
     }
     flat: List[Dict[str, Any]] = []
-    for section, key in (
-        ("urgent", "urgent"),
-        ("upcoming", "upcoming"),
-        ("in_progress", "in_progress"),
-        ("snoozed", "snoozed"),
-    ):
-        for t in enriched_tasks.get(key) or []:
-            tid = t.get("id")
+    if include_flat_items:
+        for section, key in (
+            ("urgent", "urgent"),
+            ("upcoming", "upcoming"),
+            ("in_progress", "in_progress"),
+            ("snoozed", "snoozed"),
+        ):
+            for t in enriched_tasks.get(key) or []:
+                tid = t.get("id")
+                if not tid:
+                    continue
+                flat.append(
+                    {
+                        "id": tid,
+                        "section": section,
+                        "title": t.get("title"),
+                        "description": t.get("description"),
+                        "property_id": t.get("property_id"),
+                        "task": _slim_today_flat_task(t),
+                        "business_actions": t.get("business_actions") or [],
+                        "visibility_actions": t.get("visibility_actions") or [],
+                    }
+                )
+        for h in enriched_tasks.get("hidden") or []:
+            tid = h.get("task_id") or h.get("id")
             if not tid:
                 continue
-            entry = {
-                "id": tid,
-                "section": section,
-                "title": t.get("title"),
-                "description": t.get("description"),
-                "property_id": t.get("property_id"),
-                "task": t,
-                "business_actions": t.get("business_actions") or [],
-                "visibility_actions": t.get("visibility_actions") or [],
-            }
-            flat.append(entry)
-    for h in enriched_tasks.get("hidden") or []:
-        tid = h.get("task_id") or h.get("id")
-        if not tid:
-            continue
-        flat.append(
-            {
-                "id": tid,
-                "section": "hidden",
-                "title": h.get("title"),
-                "description": None,
-                "property_id": h.get("property_id"),
-                "task": h,
-                "business_actions": [],
-                "visibility_actions": [
-                    {"id": "restore", "label": "Restore to inbox", "task_id": tid},
-                ],
-            }
-        )
+            flat.append(
+                {
+                    "id": tid,
+                    "section": "hidden",
+                    "title": h.get("title"),
+                    "description": None,
+                    "property_id": h.get("property_id"),
+                    "task": h,
+                    "business_actions": [],
+                    "visibility_actions": [
+                        {"id": "restore", "label": "Restore to inbox", "task_id": tid},
+                    ],
+                }
+            )
     summary = dict(full.get("summary") or {})
     summary["urgent_count"] = len(enriched_tasks["urgent"])
     summary["upcoming_count"] = len(enriched_tasks["upcoming"])

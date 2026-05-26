@@ -473,7 +473,7 @@ export const intakeAPI = {
 };
 
 export const clientAPI = {
-  getDashboard: () => apiClient.get('/client/dashboard'),
+  getDashboard: (params = {}) => apiClient.get('/client/dashboard', { params }),
   /** Month-to-date ROI-style metrics; fetch separately so main dashboard is not blocked. */
   getDashboardRoiSummary: () => apiClient.get('/client/dashboard/roi-summary'),
   /** Ranked priority actions (orchestration/copilot layer). */

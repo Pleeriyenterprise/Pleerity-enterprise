@@ -3305,10 +3305,16 @@ async def list_documents(
     requirement_id: str = None,
     visibility_state: str = None,
     queue: str = None,
+    limit: int = Query(80, ge=1, le=200, description="Max documents returned (newest first)"),
+    projection: str = Query(
+        "full",
+        description="full = linkage + visibility batch; list = operational badges only (faster)",
+    ),
 ):
     """List documents for the client."""
     user = await client_route_guard(request)
     db = database.get_db()
+    list_projection = str(projection or "full").strip().lower() == "list"
     
     try:
         query: Dict[str, Any] = {"client_id": user["client_id"]}
@@ -3326,7 +3332,7 @@ async def list_documents(
         documents = await db.documents.find(
             query,
             {"_id": 0, "file_path": 0}  # Don't expose file path
-        ).sort("uploaded_at", -1).to_list(100)
+        ).sort("uploaded_at", -1).to_list(int(limit))
         from services.evidence_review_migration import effective_assurance_tier, effective_evidence_review_state
         from services.document_operational_state import attach_document_operational_projection
         from services.document_linkage_governance import (
@@ -3353,15 +3359,20 @@ async def list_documents(
             d.setdefault("external_verification_method", None)
             d.setdefault("external_verification_reference", None)
             d.setdefault("ai_assistance", None)
-        attach_document_linkage_projection_batch(
-            documents,
-            runtime_requirement_ids=runtime_ids,
-            runtime_requirements=runtime_reqs,
-        )
-        attach_document_visibility_projection_batch(
-            documents,
-            requirements=runtime_reqs,
-        )
+        if not list_projection:
+            attach_document_linkage_projection_batch(
+                documents,
+                runtime_requirement_ids=runtime_ids,
+                runtime_requirements=runtime_reqs,
+            )
+            attach_document_visibility_projection_batch(
+                documents,
+                requirements=runtime_reqs,
+            )
+        else:
+            for d in documents:
+                d.setdefault("linkage_projection_deferred", True)
+                d.setdefault("visibility_projection_deferred", True)
 
         vis_filter = visibility_state or queue
         filtered = filter_documents_by_visibility(documents, vis_filter)

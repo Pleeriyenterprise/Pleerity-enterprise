@@ -941,28 +941,17 @@ export default function ClientTasksPage() {
     const params = propertyFilter ? { property_id: propertyFilter } : {};
     setJurisdictionComplianceNotice(null);
     setCommandCenterFallbackAcknowledged(null);
-    clientAPI
-      .getCommandCenter(params)
-      .then((res) => {
-        const summary = res.data?.compliance_status_summary;
-        const notice = summary?.jurisdiction_compliance_notice;
-        setJurisdictionComplianceNotice(notice && typeof notice === 'object' ? notice : null);
-        setCommandCenterFallbackAcknowledged(
-          typeof summary?.jurisdiction_fallback_acknowledged === 'boolean'
-            ? summary.jurisdiction_fallback_acknowledged
-            : null,
-        );
-      })
-      .catch(() => {
-        /* Do not surface errors; Today does not depend on command-center. */
-      });
+    const todayKey = `${OPERATIONAL_CACHE_KEYS.todayItems}:${propertyFilter || 'all'}`;
+    const reqKey = OPERATIONAL_CACHE_KEYS.requirements;
     Promise.all([
-      clientAPI.getTodayItems(params),
-      clientAPI.getRequirements().catch(() => ({ data: { requirements: [] } })),
+      fetchOperational(todayKey, () => clientAPI.getTodayItems(params).then((r) => r.data)),
+      fetchOperational(reqKey, () =>
+        clientAPI.getRequirements().then((r) => r.data).catch(() => ({ requirements: [] })),
+      ),
     ])
-      .then(([todayRes, reqRes]) => {
-        setPayload(todayRes.data);
-        const reqs = reqRes?.data?.requirements;
+      .then(([todayData, reqData]) => {
+        setPayload(todayData);
+        const reqs = reqData?.requirements;
         setPortalRequirementsForInbox(Array.isArray(reqs) ? reqs : []);
       })
       .catch((err) => {
@@ -974,6 +963,19 @@ export default function ClientTasksPage() {
         });
       })
       .finally(() => setLoading(false));
+    fetchOperational(OPERATIONAL_CACHE_KEYS.complianceSummary, () =>
+      clientAPI.getComplianceSummary().then((r) => r.data),
+    )
+      .then((data) => {
+        const notice = data?.jurisdiction_compliance_notice;
+        setJurisdictionComplianceNotice(notice && typeof notice === 'object' ? notice : null);
+        setCommandCenterFallbackAcknowledged(
+          typeof data?.jurisdiction_fallback_acknowledged === 'boolean'
+            ? data.jurisdiction_fallback_acknowledged
+            : null,
+        );
+      })
+      .catch(() => {});
   }, [isClientUser, propertyFilter, emitTodayAnalytics]);
 
   useEffect(() => {

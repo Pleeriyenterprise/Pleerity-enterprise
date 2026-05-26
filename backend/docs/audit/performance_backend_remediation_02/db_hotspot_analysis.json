@@ -1,0 +1,53 @@
+{
+  "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
+  "hotspots": [
+    {
+      "area": "unified_tasks",
+      "queries": [
+        "fetch_client_priority_actions (bounded by raw_limit)",
+        "client_task_state.load_active_overrides",
+        "client_task_state.list_recent_activity",
+        "_tenant_message_tasks / _tenant_request_tasks"
+      ],
+      "issue": "CPU-bound assembly + enrichment dominates; called twice on command-center pre-fix",
+      "mitigation": "Single call + in-process 45s cache; raw_limit 60 for portal surfaces"
+    },
+    {
+      "area": "command_center_compliance",
+      "queries": [
+        "calculate_compliance_score",
+        "aggregate_gap_counts_for_client",
+        "hiua_tenant_operational_summary"
+      ],
+      "issue": "Ran sequentially after unified tasks",
+      "mitigation": "asyncio.gather across unified, compliance block, risks; gap+HIUA parallel inside compliance"
+    },
+    {
+      "area": "dashboard",
+      "queries": [
+        "requirements.find to_list(1000)",
+        "filter_requirement_rows_for_client_runtime_surfaces",
+        "calculate_compliance_score (optional)"
+      ],
+      "issue": "Heavy requirements scan on every dashboard load",
+      "mitigation": "include_score_headline=false; use /client/compliance-score for score widget"
+    },
+    {
+      "area": "documents_list",
+      "queries": [
+        "documents.find sort uploaded_at",
+        "load_runtime_requirements_for_client",
+        "attach_document_linkage_projection_batch"
+      ],
+      "issue": "Linkage batch on every list row",
+      "mitigation": "projection=list skips batch; index (client_id, uploaded_at desc)"
+    }
+  ],
+  "indexes_added": [
+    {
+      "collection": "documents",
+      "keys": [["client_id", 1], ["uploaded_at", -1]],
+      "file": "backend/database.py"
+    }
+  ]
+}

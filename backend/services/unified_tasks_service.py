@@ -1114,6 +1114,25 @@ async def _enforce_canonical_requirement_task_guard(
     return out
 
 
+def digest_from_unified_tasks_full(
+    full: Dict[str, Any],
+    *,
+    activity_limit: int = 8,
+) -> Dict[str, Any]:
+    """Derive digest fields from an already-built unified tasks payload (avoids duplicate rebuild)."""
+    feed = full.get("activity_feed") or []
+    cap = max(1, min(int(activity_limit), 25))
+    digest_out: Dict[str, Any] = {
+        "summary": full.get("summary") or {},
+        "freshness": full.get("freshness") or {},
+        "activity_feed": feed[:cap],
+    }
+    meta = full.get("trust_surface_operational_metadata")
+    if meta is not None:
+        digest_out["trust_surface_operational_metadata"] = meta
+    return digest_out
+
+
 async def get_unified_tasks_for_client(
     client_id: str,
     property_id_filter: Optional[str] = None,
@@ -1121,12 +1140,31 @@ async def get_unified_tasks_for_client(
     portal_user_id: Optional[str] = None,
     *,
     trust_surface_composition_context: Optional[Dict[str, Any]] = None,
+    bypass_cache: bool = False,
 ) -> Dict[str, Any]:
     """
     Build unified task list + sections + summary + freshness + spend (when invoicing data exists).
 
     Prioritization: ATTENTION_AUTHORITY_RULES (``today_attention_ranking``) then impact_score tie-breakers.
     """
+    from services.operational_surface_cache import (
+        get_cached_unified_tasks,
+        set_cached_unified_tasks,
+        unified_tasks_cache_key,
+    )
+
+    cache_key = unified_tasks_cache_key(client_id, property_id_filter, portal_user_id, raw_limit)
+    if not bypass_cache:
+        cached = get_cached_unified_tasks(cache_key)
+        if cached:
+            out = dict(cached["payload"])
+            freshness = dict(out.get("freshness") or {})
+            freshness["cache_hit"] = True
+            freshness["cached_at"] = cached["cached_at"]
+            freshness["cache_ttl_seconds"] = cached["ttl_seconds"]
+            out["freshness"] = freshness
+            return out
+
     now = datetime.now(timezone.utc)
     db = database.get_db()
     actions = await fetch_client_priority_actions(client_id, property_id_filter, raw_limit)
@@ -1252,6 +1290,8 @@ async def get_unified_tasks_for_client(
             freshness=freshness,
             summary=summary,
         )
+    if not bypass_cache:
+        set_cached_unified_tasks(cache_key, out)
     return out
 
 
@@ -1262,26 +1302,21 @@ async def get_unified_tasks_digest(
     activity_limit: int = 8,
     portal_user_id: Optional[str] = None,
     trust_surface_composition_context: Optional[Dict[str, Any]] = None,
+    unified_tasks_full: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Lightweight dashboard payload: same prioritisation as full tasks, but no task lists
     (summary, freshness, truncated activity only).
+
+    When ``unified_tasks_full`` is supplied, derives digest without rebuilding unified tasks.
     """
+    if unified_tasks_full is not None:
+        return digest_from_unified_tasks_full(unified_tasks_full, activity_limit=activity_limit)
     full = await get_unified_tasks_for_client(
         client_id,
         property_id_filter=property_id_filter,
-        raw_limit=120,
+        raw_limit=60,
         portal_user_id=portal_user_id,
         trust_surface_composition_context=trust_surface_composition_context,
     )
-    feed = full.get("activity_feed") or []
-    cap = max(1, min(int(activity_limit), 25))
-    digest_out: Dict[str, Any] = {
-        "summary": full.get("summary") or {},
-        "freshness": full.get("freshness") or {},
-        "activity_feed": feed[:cap],
-    }
-    meta = full.get("trust_surface_operational_metadata")
-    if meta is not None:
-        digest_out["trust_surface_operational_metadata"] = meta
-    return digest_out
+    return digest_from_unified_tasks_full(full, activity_limit=activity_limit)

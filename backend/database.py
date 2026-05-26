@@ -94,6 +94,7 @@ class Database:
             # Documents - pending verification admin list (status + uploaded_at; client_id filter)
             await self.db.documents.create_index([("status", 1), ("uploaded_at", 1)])
             await self.db.documents.create_index([("client_id", 1), ("status", 1), ("uploaded_at", 1)])
+            await self.db.documents.create_index([("client_id", 1), ("uploaded_at", -1)])
 
             try:
                 await self.db.evidence_review_events.create_index([("document_id", 1), ("created_at", -1)])

@@ -40,11 +40,24 @@ async def test_command_center_urgent_matches_unified_tasks_order():
         }
     }
     with patch("services.command_center_service.get_unified_tasks_for_client", new=AsyncMock(return_value=full)), patch(
-        "services.command_center_service.get_unified_tasks_digest",
-        new=AsyncMock(return_value={"summary": {}, "freshness": {}, "activity_feed": []}),
-    ), patch("services.command_center_service.risk_signal_service.get_risk_signals_for_client", new=AsyncMock(return_value={"signals": []})), patch(
+        "services.command_center_service.risk_signal_service.get_risk_signals_for_client",
+        new=AsyncMock(return_value={"signals": []}),
+    ), patch(
         "services.compliance_score.calculate_compliance_score",
         new=AsyncMock(return_value={"score": 80, "grade": "B", "message": "ok", "stats": {}}),
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new=AsyncMock(return_value={"by_kind": {}, "by_severity": {}, "total_open": 0}),
+    ), patch(
+        "services.hiua_operational_uncertainty.hiua_tenant_operational_summary",
+        new=AsyncMock(
+            return_value={
+                "hiua_active": False,
+                "hiua_open_gap_count": 0,
+                "hiua_reason_codes": [],
+                "hiua_gap_details": [],
+            }
+        ),
     ):
         bundle = await get_command_center_bundle("phase21-client", predictive_enabled=True)
     assert [x.get("id") for x in bundle["urgent_actions"]] == ["a", "b", "c"]

@@ -146,13 +146,19 @@ const RequirementsPage = () => {
     setLoading(true);
     setRequirementsLoadError(null);
     try {
-      const [dashboardRes, requirementsRes, documentsRes] = await Promise.all([
-        clientAPI.getDashboard().then((r) => r.data),
-        clientAPI.getRequirements().then((r) => r.data),
-        clientAPI.getDocuments().then((r) => r.data).catch(() => ({ documents: [] }))
+      const [propsRes, requirementsRes, documentsRes] = await Promise.all([
+        fetchOperational(OPERATIONAL_CACHE_KEYS.properties, () =>
+          clientAPI.getProperties().then((r) => r.data),
+        ).then((r) => r.data),
+        fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
+          clientAPI.getRequirements().then((r) => r.data),
+        ).then((r) => r.data),
+        fetchOperational(OPERATIONAL_CACHE_KEYS.documents, () =>
+          clientAPI.getDocuments({ projection: 'list', limit: 120 }).then((r) => r.data).catch(() => ({ documents: [] })),
+        ).then((r) => r.data),
       ]);
-      setClientData(dashboardRes);
-      setProperties(dashboardRes?.properties || []);
+      setClientData((prev) => ({ ...(prev || {}), properties: propsRes?.properties || [] }));
+      setProperties(propsRes?.properties || []);
       setRequirements(requirementsRes?.requirements || []);
       setRequirementsPresentation(requirementsRes?.presentation || null);
       setRequirementsLoaded(true);

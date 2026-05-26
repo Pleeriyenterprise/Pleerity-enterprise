@@ -68,8 +68,12 @@ def client_today():
 def test_today_items_includes_open_compliance_job_task_when_unified_feed_has_work_order(client_today):
     wid = "wo-compliance-open"
     payload = _empty_tasks_payload(in_progress=[_work_order_task(wid)])
-    with patch.object(acw, "get_unified_tasks_for_client", new_callable=AsyncMock, return_value=payload):
-        res = client_today.get("/api/today/items")
+    with patch.object(acw, "get_unified_tasks_for_client", new_callable=AsyncMock, return_value=payload), patch(
+        "services.rent_attention_projection.list_rent_attention_tasks",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        res = client_today.get("/api/today/items", params={"include_flat_items": True})
     assert res.status_code == 200
     data = res.json()
     flat = data.get("items") or []
@@ -84,12 +88,17 @@ def test_today_items_omits_work_order_when_unified_feed_no_longer_surfaces_it(cl
     wid = "wo-finalized"
     before = _empty_tasks_payload(in_progress=[_work_order_task(wid)])
     after = _empty_tasks_payload(in_progress=[])
-    with patch.object(acw, "get_unified_tasks_for_client", new_callable=AsyncMock, return_value=before):
-        r1 = client_today.get("/api/today/items")
+    rent_patch = patch(
+        "services.rent_attention_projection.list_rent_attention_tasks",
+        new_callable=AsyncMock,
+        return_value=[],
+    )
+    with patch.object(acw, "get_unified_tasks_for_client", new_callable=AsyncMock, return_value=before), rent_patch:
+        r1 = client_today.get("/api/today/items", params={"include_flat_items": True})
     assert r1.status_code == 200
     assert any(wid in str(i) for i in (r1.json().get("items") or []))
-    with patch.object(acw, "get_unified_tasks_for_client", new_callable=AsyncMock, return_value=after):
-        r2 = client_today.get("/api/today/items")
+    with patch.object(acw, "get_unified_tasks_for_client", new_callable=AsyncMock, return_value=after), rent_patch:
+        r2 = client_today.get("/api/today/items", params={"include_flat_items": True})
     assert r2.status_code == 200
     assert not any(wid in str(i) for i in (r2.json().get("items") or [])), r2.json().get("items")
 
@@ -109,8 +118,12 @@ def test_today_recently_completed_surfaces_requirement_satisfied_when_unified_in
         "metadata": {"action_type": "requirement_satisfied"},
     }
     payload = _empty_tasks_payload(recently_completed=[req_task])
-    with patch.object(acw, "get_unified_tasks_for_client", new_callable=AsyncMock, return_value=payload):
-        res = client_today.get("/api/today/items")
+    with patch.object(acw, "get_unified_tasks_for_client", new_callable=AsyncMock, return_value=payload), patch(
+        "services.rent_attention_projection.list_rent_attention_tasks",
+        new_callable=AsyncMock,
+        return_value=[],
+    ):
+        res = client_today.get("/api/today/items", params={"include_flat_items": True})
     assert res.status_code == 200
     tasks = (res.json().get("tasks") or {}).get("recently_completed") or []
     assert any("req-xyz" in str(t) or "Gas safety" in str(t.get("title")) for t in tasks)

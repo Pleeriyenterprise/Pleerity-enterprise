@@ -1,0 +1,24 @@
+{
+  "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
+  "before": {
+    "source": "performance_runtime_verify_01/browser_navigation_timings.json",
+    "verified_at_utc": "2026-05-25T16:04:47Z",
+    "surfaces": {
+      "P1_Today": { "shell_visible_ms": 334, "primary_content_ms": 3148 },
+      "P2_CommandCentre": { "shell_visible_ms": 580, "primary_content_ms": 96824 },
+      "P3_Dashboard": { "shell_visible_ms": 218, "primary_content_ms": 25044 },
+      "P4_Properties": { "shell_visible_ms": 199, "primary_content_ms": 2558 },
+      "P5_Requirements": { "shell_visible_ms": 192, "primary_content_ms": 24132 },
+      "P6_Documents": { "shell_visible_ms": 200, "primary_content_ms": 22396 }
+    }
+  },
+  "after": {
+    "status": "PENDING_POST_DEPLOY_BROWSER_VERIFY",
+    "note": "Code remediation landed locally; staging API probe (2026-05-26) still shows ~74s command-center — fixes not deployed. Re-run tmp_performance_browser_verify_01.py after deploy.",
+    "expected_targets": {
+      "shell_visible_ms": "<1000",
+      "primary_content_ms": "<3000 where feasible",
+      "P2_CommandCentre_primary_content_ms": "<15000"
+    }
+  }
+}

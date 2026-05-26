@@ -156,8 +156,8 @@ async def test_command_center_bundle_includes_trust_metadata():
     with patch.object(cs_mod, "calculate_compliance_score", new=fake_calculate), patch.object(
         gap_mod, "aggregate_gap_counts_for_client", new=fake_gap
     ), patch.object(hiua_mod, "hiua_tenant_operational_summary", new=fake_hiua), patch.object(
-        ccs, "get_unified_tasks_digest", new=AsyncMock(return_value=digest)
-    ), patch.object(ccs, "get_unified_tasks_for_client", new=AsyncMock(return_value=full_tasks)), patch.object(
+        ccs, "get_unified_tasks_for_client", new=AsyncMock(return_value=full_tasks)
+    ), patch.object(
         ccs.risk_signal_service, "get_risk_signals_for_client", new=AsyncMock(return_value={"signals": []})
     ):
         bundle = await ccs.get_command_center_bundle("cc-test", predictive_enabled=False, correlation_id="fixed")
@@ -170,8 +170,8 @@ async def test_command_center_bundle_includes_trust_metadata():
 async def test_command_center_digest_failure_records_failed_section():
     from services import command_center_service as ccs
 
-    async def boom_digest(*_a, **_k):
-        raise RuntimeError("digest down")
+    async def boom_unified(*_a, **_k):
+        raise RuntimeError("unified tasks down")
 
     full_tasks = {
         "tasks": {"urgent": [], "in_progress": [], "upcoming": []},
@@ -219,13 +219,13 @@ async def test_command_center_digest_failure_records_failed_section():
     with patch.object(cs_mod, "calculate_compliance_score", new=fake_calculate), patch.object(
         gap_mod, "aggregate_gap_counts_for_client", new=fake_gap
     ), patch.object(hiua_mod, "hiua_tenant_operational_summary", new=fake_hiua), patch.object(
-        ccs, "get_unified_tasks_digest", new=boom_digest
-    ), patch.object(ccs, "get_unified_tasks_for_client", new=AsyncMock(return_value=full_tasks)), patch.object(
+        ccs, "get_unified_tasks_for_client", new=boom_unified
+    ), patch.object(
         ccs.risk_signal_service, "get_risk_signals_for_client", new=AsyncMock(return_value={"signals": []})
     ):
         bundle = await ccs.get_command_center_bundle("cc-test", predictive_enabled=False)
         failed = bundle["trust_surface_operational_metadata"]["failed_sections"]
-        assert any(s.get("section_name") == "tasks_digest" for s in failed)
+        assert any(s.get("section_name") == "unified_tasks_urgent_actions" for s in failed)
 
 
 @pytest.mark.asyncio

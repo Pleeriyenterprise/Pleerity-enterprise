@@ -1233,22 +1233,32 @@ async def get_today_items(
     request: Request,
     user: Dict[str, Any] = Depends(_require_client),
     property_id: Optional[str] = Query(None, description="Optional scope to one property"),
+    include_flat_items: bool = Query(
+        False,
+        description="Include legacy flat items[] list (slim task refs). Portal uses tasks.* buckets.",
+    ),
 ):
-    payload = await get_unified_tasks_for_client(
-        user["client_id"],
-        property_id_filter=(property_id.strip() if property_id else None),
-        portal_user_id=user.get("portal_user_id"),
-    )
-    out = build_today_payload_from_unified(payload)
+    import asyncio
+
+    prop_filter = property_id.strip() if property_id else None
     from services.rent_attention_projection import (
         list_rent_attention_tasks,
         merge_rent_into_today_payload,
     )
 
-    rent_tasks = await list_rent_attention_tasks(
-        user["client_id"],
-        property_id_filter=(property_id.strip() if property_id else None),
+    payload, rent_tasks = await asyncio.gather(
+        get_unified_tasks_for_client(
+            user["client_id"],
+            property_id_filter=prop_filter,
+            raw_limit=60,
+            portal_user_id=user.get("portal_user_id"),
+        ),
+        list_rent_attention_tasks(
+            user["client_id"],
+            property_id_filter=prop_filter,
+        ),
     )
+    out = build_today_payload_from_unified(payload, include_flat_items=include_flat_items)
     return merge_rent_into_today_payload(out, rent_tasks)
 
 
