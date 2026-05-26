@@ -1,42 +1,75 @@
 {
-  "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
-  "baseline_captured_at_utc": "2026-05-25T15:48:49Z",
-  "probe_captured_at_utc": "2026-05-26T17:38:02Z",
+  "captured_at_utc": "2026-05-26T17:59:43Z",
   "rows": [
     {
-      "endpoint": "GET /today/items",
+      "endpoint": "/today/items",
+      "probe_key": "P1_today_cold",
       "before_bytes": 1633041,
-      "probe_bytes": 1807159,
-      "expected_after_deploy_bytes": "<200000",
-      "reduction_strategy": "Omit flat items[] by default; slim task refs when include_flat_items=true; lower raw_limit"
+      "after_bytes": 780795,
+      "reduction_pct": 52.2
     },
     {
-      "endpoint": "GET /client/command-center",
+      "endpoint": "/today/items",
+      "probe_key": "P1_today_warm",
+      "before_bytes": 1633041,
+      "after_bytes": 780795,
+      "reduction_pct": 52.2
+    },
+    {
+      "endpoint": "/client/command-center",
+      "probe_key": "P2_command_center_cold",
       "before_bytes": 53186,
-      "probe_bytes": 59757,
-      "expected_after_deploy_bytes": "~55000",
-      "reduction_strategy": "No second unified rebuild; same slim urgent_actions"
+      "after_bytes": 59757,
+      "reduction_pct": -12.4
     },
     {
-      "endpoint": "GET /client/dashboard",
+      "endpoint": "/client/command-center",
+      "probe_key": "P2_command_center_warm",
+      "before_bytes": 53186,
+      "after_bytes": 59834,
+      "reduction_pct": -12.5
+    },
+    {
+      "endpoint": "/client/dashboard",
+      "probe_key": "P3_dashboard",
       "before_bytes": 64209,
-      "probe_bytes": 64208,
-      "expected_after_deploy_bytes": "~64000",
-      "reduction_strategy": "Skip score headline unless include_score_headline=true"
+      "after_bytes": 63657,
+      "reduction_pct": 0.9
     },
     {
-      "endpoint": "GET /client/requirements",
+      "endpoint": "/client/properties",
+      "probe_key": "P4_properties",
+      "before_bytes": 57152,
+      "after_bytes": 57153,
+      "reduction_pct": -0.0
+    },
+    {
+      "endpoint": "/client/requirements",
+      "probe_key": "P5_requirements",
       "before_bytes": 351084,
-      "probe_bytes": 351084,
-      "expected_after_deploy_bytes": "351084",
-      "reduction_strategy": "No payload change; avoid duplicate fetches via cache"
+      "after_bytes": 351084,
+      "reduction_pct": 0.0
     },
     {
-      "endpoint": "GET /documents",
+      "endpoint": "/documents",
+      "probe_key": "P6_documents",
       "before_bytes": 84264,
-      "probe_bytes": 91162,
-      "expected_after_deploy_bytes": "<85000",
-      "reduction_strategy": "projection=list defers linkage fields; limit=80 default"
+      "after_bytes": 78912,
+      "reduction_pct": 6.4
+    },
+    {
+      "endpoint": "/portfolio/compliance-summary",
+      "probe_key": "portfolio_compliance_summary",
+      "before_bytes": 7093,
+      "after_bytes": 7093,
+      "reduction_pct": 0.0
+    },
+    {
+      "endpoint": "/portfolio/properties/0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68/compliance-detail",
+      "probe_key": "P_property_compliance_detail",
+      "before_bytes": null,
+      "after_bytes": 19175,
+      "reduction_pct": null
     }
   ]
 }

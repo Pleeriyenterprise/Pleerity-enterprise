@@ -1,12 +1,20 @@
 {
   "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
-  "classification": "IMPLEMENTED_PENDING_DEPLOY_VERIFY",
-  "rationale": "Backend and frontend remediations implemented and unit-tested. Staging API probe on 2026-05-26 still shows Command Centre ~74s and Today ~28s (pre-deploy behaviour). VERIFIED_OPERATIONALLY requires post-deploy browser timings meeting pass targets.",
-  "pass_targets": {
-    "shell_under_1s": "met at baseline for shell; primary content blocked by API",
-    "first_useful_content_under_3s": "pending deploy for Today/Properties",
-    "command_center_under_60s_primary": "pending deploy",
-    "no_skeleton_over_5s_undisclosed": "pending browser re-verify"
+  "classification": "PARTIAL",
+  "verified_at_utc": "2026-05-26T18:10:00Z",
+  "expected_commit": "ceb653e2",
+  "verified_operationally": false,
+  "reason": "Material API latency gains on Today (29.6s→1.4s cached), Command Centre (75s→28s), and Dashboard (24s→3.9s) with cache/freshness disclosure and authority preserved. Blockers: Command Centre primary still ~29s (target <15s); Today payload ~781KB (target <200KB); Documents/Requirements primary still ~22s; property detail primary not observed in browser window; Render /api/version commit_sha=unknown.",
+  "post_deploy_probe": {
+    "deploy_behavioural_equivalent": true,
+    "api_material_improvement": true,
+    "payload_target_met": false,
+    "browser_primary_targets_met": false,
+    "authority_regression_pass": true
   },
-  "next_step": "Deploy backend+frontend; re-run tmp_performance_backend_remediation_02.py and browser verify; upgrade to VERIFIED_OPERATIONALLY if material improvement"
+  "defect_found": {
+    "id": "rent_merge_populates_items_when_flat_disabled",
+    "status": "fixed_locally_pending_deploy",
+    "detail": "merge_rent_into_today_payload appended rent rows to items[] even when include_flat_items=false"
+  }
 }

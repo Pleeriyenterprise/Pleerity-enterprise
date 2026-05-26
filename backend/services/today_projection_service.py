@@ -675,4 +675,5 @@ def build_today_payload_from_unified(
         "activity_feed": full.get("activity_feed") or [],
         "spend_this_month": full.get("spend_this_month"),
         "items": flat,
+        "flat_items_included": include_flat_items,
     }

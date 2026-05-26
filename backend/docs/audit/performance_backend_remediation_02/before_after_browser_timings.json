@@ -1,9 +1,9 @@
 {
   "programme": "PRELAUNCH-PERFORMANCE-BACKEND-REMEDIATION-02",
+  "verified_at_utc": "2026-05-26T18:05:14Z",
   "before": {
     "source": "performance_runtime_verify_01/browser_navigation_timings.json",
-    "verified_at_utc": "2026-05-25T16:04:47Z",
-    "surfaces": {
+    "cold_navigation": {
       "P1_Today": { "shell_visible_ms": 334, "primary_content_ms": 3148 },
       "P2_CommandCentre": { "shell_visible_ms": 580, "primary_content_ms": 96824 },
       "P3_Dashboard": { "shell_visible_ms": 218, "primary_content_ms": 25044 },
@@ -13,12 +13,30 @@
     }
   },
   "after": {
-    "status": "PENDING_POST_DEPLOY_BROWSER_VERIFY",
-    "note": "Code remediation landed locally; staging API probe (2026-05-26) still shows ~74s command-center — fixes not deployed. Re-run tmp_performance_browser_verify_01.py after deploy.",
-    "expected_targets": {
-      "shell_visible_ms": "<1000",
-      "primary_content_ms": "<3000 where feasible",
-      "P2_CommandCentre_primary_content_ms": "<15000"
-    }
+    "cold_navigation": [
+      { "surface": "P1_Today", "shell_visible_ms": 217, "primary_content_ms": 3100 },
+      { "surface": "P2_CommandCentre", "shell_visible_ms": 611, "primary_content_ms": 29413 },
+      { "surface": "P3_Dashboard", "shell_visible_ms": 319, "primary_content_ms": 4614 },
+      { "surface": "P4_Properties", "shell_visible_ms": 202, "primary_content_ms": 2394 },
+      { "surface": "P5_Requirements", "shell_visible_ms": 237, "primary_content_ms": 22425 },
+      { "surface": "P6_Documents", "shell_visible_ms": 219, "primary_content_ms": 22058 },
+      { "surface": "P_property_detail", "shell_visible_ms": 5023, "primary_content_ms": null, "observation_window_ms": 120519 }
+    ],
+    "warm_navigation": [
+      { "surface": "P5_Requirements_revisit", "shell_visible_ms": 183, "primary_content_ms": 22090 }
+    ]
+  },
+  "deltas_ms": {
+    "P1_Today_primary": -48,
+    "P2_CommandCentre_primary": -67411,
+    "P3_Dashboard_primary": -20430,
+    "P4_Properties_primary": -164,
+    "P5_Requirements_primary": -1707,
+    "P6_Documents_primary": -338
+  },
+  "targets": {
+    "shell_under_1s": true,
+    "command_centre_primary_under_15s": false,
+    "no_skeleton_over_5s_undisclosed": true
   }
 }

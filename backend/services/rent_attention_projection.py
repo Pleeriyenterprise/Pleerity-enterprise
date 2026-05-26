@@ -118,33 +118,39 @@ def merge_rent_into_today_payload(
     if not rent_tasks:
         return payload
 
-    items = list(payload.get("items") or [])
+    flat_items_included = payload.get("flat_items_included") is True
+    items = list(payload.get("items") or []) if flat_items_included else []
     tasks_root = payload.get("tasks") or {}
     urgent = list(tasks_root.get("urgent") or [])
     existing_ids = {i.get("id") for i in items}
+    existing_urgent_ids = {t.get("id") for t in urgent}
 
     for t in rent_tasks:
         tid = t["id"]
-        if tid in existing_ids:
-            continue
-        urgent.append(t)
-        items.append(
-            {
-                "id": tid,
-                "section": "urgent",
-                "title": t.get("title"),
-                "description": t.get("description"),
-                "property_id": t.get("property_id"),
-                "task": t,
-                "business_actions": t.get("business_actions") or [],
-                "visibility_actions": [],
-            }
-        )
-        existing_ids.add(tid)
+        if tid not in existing_urgent_ids:
+            urgent.append(t)
+            existing_urgent_ids.add(tid)
+        if flat_items_included and tid not in existing_ids:
+            items.append(
+                {
+                    "id": tid,
+                    "section": "urgent",
+                    "title": t.get("title"),
+                    "description": t.get("description"),
+                    "property_id": t.get("property_id"),
+                    "task": t,
+                    "business_actions": t.get("business_actions") or [],
+                    "visibility_actions": [],
+                }
+            )
+            existing_ids.add(tid)
 
     tasks_root["urgent"] = urgent
     payload["tasks"] = tasks_root
-    payload["items"] = items
+    if flat_items_included:
+        payload["items"] = items
+    else:
+        payload.setdefault("items", [])
     payload["rent_attention_count"] = len(rent_tasks)
     return payload
 

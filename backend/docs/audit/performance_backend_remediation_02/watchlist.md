@@ -1,23 +1,10 @@
-# Performance remediation 02 — watchlist
+# Post-deploy watchlist (2026-05-26)
 
-## Post-deploy verification (required)
-
-1. Deploy backend + frontend to staging/production.
-2. Run `python tmp_performance_backend_remediation_02.py` with `OPS_API_PACE_S=6`.
-3. Run `python tmp_performance_browser_verify_01.py` (or equivalent) on landlord pages.
-4. Confirm Command Centre primary content **<15s** (target **<3s** where feasible).
-5. Confirm Today payload **<200KB** without `include_flat_items`.
-6. Second navigation hit should show `freshness.cache_hit: true` on unified surfaces within 45s TTL.
-
-## Remaining optimisations
-
-- Requirements list payload (~351KB): field projection or pagination (out of scope for 02).
-- `portfolio/compliance-summary` used on Today for jurisdiction banner (~17s baseline) — consider scoped notice endpoint.
-- Dashboard satellite calls (score trend, timeline, work orders): batch or lazy-load tabs.
-- Invalidate unified cache on task override mutations (`client_task_state` writes).
-- Property detail: dedicated `GET /client/properties/{id}` header endpoint to avoid any list fallback.
-
-## Authority
-
-- Do not remove `compliance_counts_authority` or bypass `calculate_compliance_score.stats` on Command Centre.
-- Keep `projection=full` for document detail flows needing linkage governance.
+- Deploy rent/items fix (`flat_items_included` gate in `merge_rent_into_today_payload`) and re-verify Today `items_len=0` default.
+- Slim Today `tasks.*` enriched DTOs to meet <200KB (largest remaining payload gap).
+- Command Centre: profile remaining ~28s (compliance_score + unified build); target <15s.
+- Documents: linkage deferred but list path still ~22s — profile Mongo + operational projection loop.
+- Requirements: unchanged ~22s browser primary; consider pagination/field projection.
+- Property detail: add/verify `data-testid=property-detail-page` for browser probe; compliance-detail path is fast (~4s API).
+- Set `GIT_COMMIT_SHA` on Render for `/api/version` deploy continuity checks.
+- Re-run `tmp_performance_remediation_02_post_deploy_verify.py` after next deploy for VERIFIED_OPERATIONALLY upgrade.

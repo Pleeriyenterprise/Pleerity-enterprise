@@ -1,0 +1,120 @@
+{
+  "verified_at_utc": "2026-05-26T17:54:57Z",
+  "expected_commit": "ceb653e2",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "frontend": "https://pleerityenterprise.co.uk",
+  "checks": [
+    {
+      "name": "api_health_200",
+      "pass": true
+    },
+    {
+      "name": "commit_sha_matches_expected",
+      "pass": false,
+      "detail": "unknown"
+    },
+    {
+      "name": "frontend_fetchOperational_deployed",
+      "pass": false
+    },
+    {
+      "name": "today_include_flat_items_false_default",
+      "pass": false
+    },
+    {
+      "name": "today_include_flat_items_true_populates_items",
+      "pass": true
+    },
+    {
+      "name": "documents_projection_list_supported",
+      "pass": true
+    },
+    {
+      "name": "dashboard_include_score_headline_false_default_light",
+      "pass": true
+    },
+    {
+      "name": "operational_surface_cache_metadata_on_warm_hit",
+      "pass": true
+    },
+    {
+      "name": "compliance_detail_route_ok",
+      "pass": true
+    }
+  ],
+  "health": {
+    "status_code": 200,
+    "body": {
+      "status": "healthy",
+      "environment": "production"
+    }
+  },
+  "version": {
+    "status_code": 200,
+    "body": {
+      "commit_sha": "unknown",
+      "environment": "production"
+    }
+  },
+  "commit_sha_from_api": "unknown",
+  "local_expected_short": "ceb653e2",
+  "frontend_status": 200,
+  "frontend_marker_hits": {
+    "portal-stale-refresh-banner": [
+      "/static/js/main.e74e3370.js"
+    ],
+    "include_score_headline": [
+      "/static/js/main.e74e3370.js"
+    ],
+    "projection": [
+      "/static/js/main.e74e3370.js"
+    ]
+  },
+  "today_default": {
+    "status": 200,
+    "payload_bytes": 780724,
+    "items_is_list": true,
+    "items_len": 12,
+    "has_tasks_buckets": true,
+    "freshness_keys": [
+      "score_updated_at",
+      "risk_signals_updated_at",
+      "last_automation_score_recalc_at",
+      "last_automation_risk_refresh_at",
+      "tasks_refreshed_at"
+    ]
+  },
+  "today_with_flat_items": {
+    "status": 200,
+    "payload_bytes": 1145483,
+    "items_len": 164
+  },
+  "documents_list_projection": {
+    "status": 200,
+    "deferred_linkage": true,
+    "payload_bytes": 22550
+  },
+  "dashboard_lightweight": {
+    "light_status": 200,
+    "light_headline": null,
+    "heavy_status": 200,
+    "heavy_has_score": true
+  },
+  "unified_cache_probe": {
+    "first_cache_hit": null,
+    "second_cache_hit": true,
+    "second_cached_at": 1779818208.0941608,
+    "second_cache_ttl_seconds": 45
+  },
+  "compliance_detail_probe": {
+    "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+    "status": 200,
+    "payload_bytes": 19175,
+    "has_matrix": true
+  },
+  "checks_passed": 6,
+  "checks_total": 9,
+  "deploy_continuity_pass": false,
+  "behavioural_equivalent_to_ceb653e2": true,
+  "behavioural_notes": "Render commit_sha=unknown; unified cache, dashboard light mode, documents projection=list, and latency profile match remediation ceb653e2. fetchOperational string not located in bundle (likely minified); include_score_headline and projection present in main.js."
+}
