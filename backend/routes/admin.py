@@ -929,6 +929,36 @@ class AdminRetryExtractionRequest(BaseModel):
 _RETRY_SUPPRESSION_SECONDS = 60
 
 
+class AdminRemediationProbeSeedBody(BaseModel):
+    client_id: str = Field(..., min_length=8, max_length=64)
+    property_id: str = Field(..., min_length=8, max_length=64)
+
+
+_REMEDIATION_PROBE_CLIENT_ALLOWLIST = frozenset(
+    {
+        "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    }
+)
+
+
+@router.post("/ops/remediation-probe-seed", dependencies=[Depends(require_owner_or_admin)])
+async def admin_remediation_probe_seed_endpoint(request: Request, body: AdminRemediationProbeSeedBody):
+    """
+    Bounded OPS fixtures for PRELAUNCH admin closeout (pilot client only).
+    Requires ADMIN_REMEDIATION_PROBE_SEED_ENABLED=1 on the server.
+    """
+    await admin_route_guard(request)
+    if os.environ.get("ADMIN_REMEDIATION_PROBE_SEED_ENABLED") != "1":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    cid = body.client_id.strip()
+    if cid not in _REMEDIATION_PROBE_CLIENT_ALLOWLIST:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="client_id not allowlisted for probe seed")
+    from scripts.admin_remediation_probe_seed import seed_admin_remediation_probe
+
+    report = await seed_admin_remediation_probe(cid, body.property_id.strip())
+    return report
+
+
 @router.post("/documents/{document_id}/retry-extraction", dependencies=[Depends(require_owner_or_admin)])
 async def admin_retry_document_extraction(
     request: Request,
@@ -945,9 +975,22 @@ async def admin_retry_document_extraction(
         resource_key=document_id,
     )
     db = database.get_db()
+    from services.extraction_queue_staleness import STALE_DETAIL_CODE, mark_queue_row_stale
+
     doc = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        ext_row = await db.extracted_documents.find_one(
+            {"document_id": document_id},
+            {"_id": 0, "extraction_id": 1},
+        )
+        if ext_row and ext_row.get("extraction_id"):
+            await mark_queue_row_stale(
+                db,
+                extraction_id=str(ext_row["extraction_id"]),
+                document_id=document_id,
+                reason=STALE_DETAIL_CODE,
+            )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=STALE_DETAIL_CODE)
     client_id = str(doc.get("client_id") or "")
     if not client_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Document missing client_id")

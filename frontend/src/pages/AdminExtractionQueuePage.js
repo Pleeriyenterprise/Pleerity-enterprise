@@ -137,6 +137,11 @@ const AdminExtractionQueuePage = () => {
                         </span>
                           );
                         })()}
+                        {row.queue_stale && (
+                          <span className="ml-2 inline-flex items-center rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900" data-testid={`stale-badge-${row.document_id}`}>
+                            Stale — document missing
+                          </span>
+                        )}
                         {row.errors?.message && (
                           <span className="ml-1 text-red-600 text-xs" title={row.errors.message}>
                             <AlertTriangle className="inline w-3 h-3" />
@@ -148,7 +153,10 @@ const AdminExtractionQueuePage = () => {
                       </td>
                       <td className="py-2">{formatDate(row.updated_at)}</td>
                       <td className="py-2 text-right">
-                        {(row.status === 'NEEDS_REVIEW' || row.status === 'FAILED') && (
+                        {row.queue_stale && (
+                          <span className="text-xs text-amber-800">Not actionable — queue row references a missing document</span>
+                        )}
+                        {!row.queue_stale && (row.status === 'NEEDS_REVIEW' || row.status === 'FAILED') && row.queue_actionable !== false && (
                           <>
                             {row.status === 'NEEDS_REVIEW' && (
                               <>
@@ -178,7 +186,7 @@ const AdminExtractionQueuePage = () => {
                               size="sm"
                               variant="secondary"
                               className="ml-2"
-                              disabled={acting === row.document_id}
+                              disabled={acting === row.document_id || row.queue_stale}
                               onClick={() => handleRetry(row.document_id)}
                               data-testid={`retry-extraction-${row.document_id}`}
                             >

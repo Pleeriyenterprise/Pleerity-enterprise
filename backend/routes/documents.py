@@ -2085,29 +2085,38 @@ async def admin_upload_document(
 async def admin_extraction_queue(
     request: Request,
     status_filter: Optional[str] = Query(None, description="Comma-separated: NEEDS_REVIEW, FAILED"),
+    include_stale: bool = Query(True, description="Include stale queue rows (missing document)"),
 ):
-    """Admin: list extractions for review (NEEDS_REVIEW, FAILED)."""
+    """Admin: list extractions for review (NEEDS_REVIEW, FAILED, STALE_QUEUE)."""
     await admin_route_guard(request)
+    from services.extraction_queue_staleness import STALE_QUEUE_STATUS, enrich_extraction_queue_item
+
     db = database.get_db()
-    statuses = ["NEEDS_REVIEW", "FAILED"]
+    statuses = ["NEEDS_REVIEW", "FAILED", STALE_QUEUE_STATUS]
     if status_filter:
         statuses = [s.strip() for s in status_filter.split(",") if s.strip()]
     cursor = db.extracted_documents.find(
         {"status": {"$in": statuses}},
-        {"_id": 0, "extraction_id": 1, "document_id": 1, "client_id": 1, "file_name": 1, "status": 1, "extracted": 1, "errors": 1, "source": 1, "audit.updated_at": 1},
+        {"_id": 0, "extraction_id": 1, "document_id": 1, "client_id": 1, "file_name": 1, "status": 1, "extracted": 1, "errors": 1, "source": 1, "audit.updated_at": 1, "queue_stale": 1},
     ).sort("audit.updated_at", -1).limit(200)
     items = []
     async for row in cursor:
+        enriched = await enrich_extraction_queue_item(db, row, auto_mark_stale=True)
+        if not include_stale and enriched.get("queue_stale"):
+            continue
         items.append({
-            "extraction_id": row.get("extraction_id"),
-            "document_id": row.get("document_id"),
-            "client_id": row.get("client_id"),
-            "file_name": row.get("file_name"),
-            "status": row.get("status"),
-            "extracted": row.get("extracted"),
-            "errors": row.get("errors"),
-            "source": row.get("source"),
+            "extraction_id": enriched.get("extraction_id"),
+            "document_id": enriched.get("document_id"),
+            "client_id": enriched.get("client_id"),
+            "file_name": enriched.get("file_name"),
+            "status": enriched.get("status"),
+            "extracted": enriched.get("extracted"),
+            "errors": enriched.get("errors"),
+            "source": enriched.get("source"),
             "updated_at": row.get("audit", {}).get("updated_at").isoformat() if row.get("audit", {}).get("updated_at") else None,
+            "document_exists": enriched.get("document_exists"),
+            "queue_stale": enriched.get("queue_stale"),
+            "queue_actionable": enriched.get("queue_actionable"),
         })
     return {"items": items}
 
