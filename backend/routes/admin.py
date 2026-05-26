@@ -965,8 +965,9 @@ async def admin_remediation_probe_seed_endpoint(request: Request, body: AdminRem
     await create_audit_log(
         action=AuditAction.ADMIN_ACTION,
         actor_id=user.get("portal_user_id"),
-        actor_email=user.get("email"),
         client_id=cid,
+        resource_type="ops_probe",
+        resource_id=cid,
         metadata={
             "action_type": "ADMIN_REMEDIATION_PROBE_SEED",
             **normalized_admin_action_metadata("seed_admin_remediation_probe", support_reason),
