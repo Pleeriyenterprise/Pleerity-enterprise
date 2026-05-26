@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -121,6 +122,295 @@ def _slim_risk(s: Dict[str, Any]) -> Dict[str, Any]:
 def _risk_sort_key(s: Dict[str, Any]):
     lvl = (s.get("risk_level") or "").lower()
     return (_LEVEL_ORDER.get(lvl, 9), s.get("updated_at") or s.get("generated_at") or "")
+
+
+def _profile_mark(profile: Optional[Dict[str, Any]], key: str, started: float) -> None:
+    if profile is None:
+        return
+    profile[key] = round((time.perf_counter() - started) * 1000, 1)
+
+
+async def _load_urgent_slice_from_priority_stream(
+    client_id: str,
+    *,
+    property_id_filter: Optional[str],
+    portal_user_id: Optional[str],
+    display_cap: int = 12,
+    profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    from services.client_priority_stream import fetch_client_priority_actions
+    from services.unified_tasks_service import _action_to_task, _freshness_block, _load_property_labels
+
+    t0 = time.perf_counter()
+    now = datetime.now(timezone.utc)
+    actions = await fetch_client_priority_actions(client_id, property_id_filter, 28)
+    _profile_mark(profile, "priority_stream_ms", t0)
+    t1 = time.perf_counter()
+    prop_ids = [a.get("related_property_id") for a in actions if a.get("related_property_id")]
+    property_labels = await _load_property_labels(client_id, [str(x) for x in prop_ids if x])
+    _profile_mark(profile, "property_labels_ms", t1)
+    urgent_open_total = 0
+    slim_rows: List[Dict[str, Any]] = []
+    for a in actions:
+        t = _action_to_task(a, property_labels, now)
+        if t.get("section") not in ("urgent", "in_progress"):
+            continue
+        urgent_open_total += 1
+        if len(slim_rows) < display_cap:
+            slim_rows.append(_slim_task(t))
+    try:
+        from services.ops_compliance_feature_flags import RENT_OPERATIONS, get_effective_flags
+        from services.rent_attention_projection import (
+            append_rent_to_command_center_urgent,
+            list_rent_attention_tasks,
+        )
+
+        flags = await get_effective_flags(client_id)
+        if flags.get(RENT_OPERATIONS):
+            rent_tasks = await list_rent_attention_tasks(
+                client_id,
+                property_id_filter=property_id_filter,
+                limit=4,
+            )
+            slim_rows = append_rent_to_command_center_urgent(slim_rows, rent_tasks)
+            urgent_open_total += len(rent_tasks or [])
+    except Exception as rent_exc:
+        logger.warning("command_center primary rent merge failed: %s", rent_exc)
+    t2 = time.perf_counter()
+    freshness = await _freshness_block(client_id)
+    _profile_mark(profile, "freshness_ms", t2)
+    return {
+        "urgent_actions": slim_rows[:display_cap],
+        "urgent_open_total": urgent_open_total,
+        "urgent_continuation": max(0, urgent_open_total - len(slim_rows)),
+        "freshness": freshness,
+    }
+
+
+async def _primary_compliance_status_summary(
+    client_id: str,
+    *,
+    property_id_filter: Optional[str],
+    profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    from services.compliance_gap_sync import aggregate_gap_counts_for_client
+    from services.compliance_score import get_persisted_portfolio_headline_for_summary
+    from services.operational_surface_cache import (
+        compliance_score_cache_key,
+        get_cached_compliance_score,
+    )
+
+    async def _headline() -> Dict[str, Any]:
+        t0 = time.perf_counter()
+        ck = compliance_score_cache_key(client_id)
+        cached = get_cached_compliance_score(ck)
+        if cached:
+            out = dict(cached["payload"])
+            fresh = dict(out.get("_cache_freshness") or {})
+            fresh["cache_hit"] = True
+            fresh["cached_at"] = cached["cached_at"]
+            fresh["cache_ttl_seconds"] = cached["ttl_seconds"]
+            out["_cache_freshness"] = fresh
+            _profile_mark(profile, "compliance_cache_hit_ms", t0)
+            return out
+        head = await get_persisted_portfolio_headline_for_summary(client_id, skip_lazy_backfill=True)
+        _profile_mark(profile, "compliance_persisted_headline_ms", t0)
+        return {
+            "score": head.get("score"),
+            "grade": head.get("grade"),
+            "color": head.get("color") or "gray",
+            "message": head.get("score_status_message") or head.get("message"),
+            "score_status": head.get("score_status"),
+            "last_calculated_at": head.get("last_calculated_at") or head.get("portfolio_last_calculated_at"),
+            "score_authority": "persisted_portfolio_aggregate",
+            "score_status_message": head.get("score_status_message"),
+            "properties_count": len(head.get("properties") or []),
+            "stats": head.get("stats") if isinstance(head.get("stats"), dict) else {},
+            "jurisdiction_compliance_notice": head.get("jurisdiction_compliance_notice") or {
+                "active": False,
+                "affected_property_ids": [],
+                "affected_property_count": 0,
+            },
+            "jurisdiction_required": head.get("jurisdiction_required"),
+            "compliance_confidence": head.get("compliance_confidence"),
+            "jurisdiction_fallback_acknowledged": head.get("jurisdiction_fallback_acknowledged"),
+            "client_default_jurisdiction": head.get("client_default_jurisdiction"),
+            "_primary_stats_source": "persisted_headline",
+        }
+
+    async def _gaps() -> Dict[str, Any]:
+        t0 = time.perf_counter()
+        out = await aggregate_gap_counts_for_client(
+            database.get_db(), client_id, property_id_filter
+        )
+        _profile_mark(profile, "gap_aggregate_ms", t0)
+        return out
+
+    cs, gap_engine_counts = await asyncio.gather(_headline(), _gaps())
+    stats = cs.get("stats") if isinstance(cs.get("stats"), dict) else {}
+    return {
+        "score": cs.get("score"),
+        "grade": cs.get("grade"),
+        "message": cs.get("message"),
+        "color": cs.get("color"),
+        "properties_count": cs.get("properties_count"),
+        "score_authority": cs.get("score_authority") or "persisted_portfolio_aggregate",
+        "score_status": cs.get("score_status"),
+        "last_calculated_at": cs.get("last_calculated_at"),
+        "score_coverage": cs.get("score_coverage"),
+        "score_status_message": cs.get("score_status_message"),
+        "scoring_semantics_version": cs.get("scoring_semantics_version"),
+        "properties_pending_score_recalc_count": cs.get("properties_pending_score_recalc_count"),
+        "portfolio_score_recalc_pending_note": cs.get("portfolio_score_recalc_pending_note"),
+        "compliance_counts_authority": "calculate_compliance_score.stats"
+        if cs.get("_primary_stats_source") != "persisted_headline"
+        else "persisted_portfolio_headline.stats",
+        "requirements_overdue": stats.get("overdue"),
+        "requirements_expiring_soon": stats.get("expiring_soon"),
+        "requirements_pending": stats.get("pending"),
+        "requirements_missing_evidence": stats.get("missing_evidence"),
+        "requirements_total": stats.get("total_requirements"),
+        "properties_at_risk_count": stats.get("properties_at_risk_count"),
+        "gap_engine": gap_engine_counts,
+        "hiua_operational_uncertainty": {
+            "hiua_active": False,
+            "hiua_open_gap_count": 0,
+            "hiua_reason_codes": [],
+            "hiua_gap_details": [],
+            "hiua_command_centre_message": None,
+            "hiua_command_centre_tooltip": None,
+            "hiua_command_centre_filter_label": None,
+            "hiua_digest_line": None,
+            "hiua_report_framing_notice": None,
+            "_deferred": True,
+        },
+        "jurisdiction_compliance_notice": cs.get("jurisdiction_compliance_notice") or {},
+        "jurisdiction_required": cs.get("jurisdiction_required"),
+        "compliance_confidence": cs.get("compliance_confidence"),
+        "jurisdiction_fallback_acknowledged": cs.get("jurisdiction_fallback_acknowledged"),
+        "client_default_jurisdiction": cs.get("client_default_jurisdiction"),
+        "_primary_projection": True,
+    }
+
+
+async def get_command_center_primary_bundle(
+    client_id: str,
+    *,
+    predictive_enabled: bool,
+    property_id_filter: Optional[str] = None,
+    portal_user_id: Optional[str] = None,
+    correlation_id: Optional[str] = None,
+    profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Fast Command Centre primary contract — urgent slice + headline compliance; secondary deferred."""
+    corr = ensure_trust_surface_correlation_id(SURFACE_COMMAND_CENTER_REFRESH, client_id, correlation_id)
+    gen_at = datetime.now(timezone.utc)
+    t0 = time.perf_counter()
+    urgent_block, compliance_status_summary = await asyncio.gather(
+        _load_urgent_slice_from_priority_stream(
+            client_id,
+            property_id_filter=property_id_filter,
+            portal_user_id=portal_user_id,
+            profile=profile,
+        ),
+        _primary_compliance_status_summary(
+            client_id, property_id_filter=property_id_filter, profile=profile
+        ),
+    )
+    _profile_mark(profile, "primary_gather_ms", t0)
+    urgent_actions = urgent_block.get("urgent_actions") or []
+    urgent_open = int(urgent_block.get("urgent_open_total") or len(urgent_actions))
+    freshness = urgent_block.get("freshness") or {}
+    freshness = {**freshness, "projection": "primary", "cache_hit": False}
+    tasks_digest_summary = {
+        "urgent_count": urgent_open,
+        "upcoming_count": None,
+        "in_progress_count": None,
+        "habit": {"urgent_open_total": urgent_open},
+        "urgent_continuation": urgent_block.get("urgent_continuation"),
+    }
+    freshness_obs = compute_trust_surface_freshness_observability(
+        generated_at=gen_at,
+        freshness=freshness,
+        headline_score_status=str(compliance_status_summary.get("score_status") or "") or None,
+    )
+    trust_surface_operational_metadata: Dict[str, Any] = {
+        "surface_name": SURFACE_COMMAND_CENTER_REFRESH,
+        "client_id": client_id,
+        "correlation_id": corr,
+        "degraded_sections": [],
+        "stale_sections": [],
+        "partial_sections": [
+            build_trust_surface_section_record(
+                section_name="command_center_secondary",
+                section_status=SECTION_STATUS_PARTIAL_DATA,
+                correlation_id=corr,
+                degraded_reason="secondary_projection_deferred",
+                downstream_dependency="get_command_center_secondary_bundle",
+            )
+        ],
+        "failed_sections": [],
+        "omitted_sections": [],
+        "operational_health": build_command_center_health_summary(
+            {
+                "surface_name": SURFACE_COMMAND_CENTER_REFRESH,
+                "correlation_id": corr,
+                "degraded_sections": [],
+                "stale_sections": [],
+                "partial_sections": [],
+                "failed_sections": [],
+                "omitted_sections": [],
+            }
+        ),
+        "non_blocking": True,
+        **freshness_obs,
+    }
+    return {
+        "projection": "primary",
+        "urgent_actions": urgent_actions,
+        "upcoming_risks": [],
+        "recent_activity": [],
+        "compliance_status_summary": compliance_status_summary,
+        "tasks_digest_summary": tasks_digest_summary,
+        "freshness": freshness,
+        "trust_surface_operational_metadata": trust_surface_operational_metadata,
+        "secondary_sections_deferred": True,
+        "primary_complete": True,
+        "deferred_sections": ["upcoming_risks", "recent_activity", "hiua_operational_uncertainty"],
+        "predictive_enabled": predictive_enabled,
+    }
+
+
+async def get_command_center_secondary_bundle(
+    client_id: str,
+    *,
+    predictive_enabled: bool,
+    property_id_filter: Optional[str] = None,
+    portal_user_id: Optional[str] = None,
+    correlation_id: Optional[str] = None,
+    include_secondary_sections: bool = True,
+    profile: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Deferred Command Centre blocks: risks, activity, HIUA (optional), full compliance enrichment."""
+    corr = ensure_trust_surface_correlation_id(SURFACE_COMMAND_CENTER_REFRESH, client_id, correlation_id)
+    partial_bundle = await get_command_center_bundle(
+        client_id,
+        predictive_enabled=predictive_enabled,
+        property_id_filter=property_id_filter,
+        portal_user_id=portal_user_id,
+        correlation_id=corr,
+        include_secondary_sections=include_secondary_sections,
+    )
+    return {
+        "projection": "secondary",
+        "upcoming_risks": partial_bundle.get("upcoming_risks") or [],
+        "recent_activity": partial_bundle.get("recent_activity") or [],
+        "compliance_status_summary": partial_bundle.get("compliance_status_summary") or {},
+        "tasks_digest_summary": partial_bundle.get("tasks_digest_summary") or {},
+        "freshness": partial_bundle.get("freshness") or {},
+        "trust_surface_operational_metadata": partial_bundle.get("trust_surface_operational_metadata") or {},
+        "secondary_sections_deferred": False,
+    }
 
 
 async def get_command_center_bundle(

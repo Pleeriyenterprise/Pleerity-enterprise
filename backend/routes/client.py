@@ -748,9 +748,13 @@ async def get_client_tasks_digest(
 async def get_client_command_center(
     request: Request,
     property_id: Optional[str] = Query(None, description="Optional filter by property"),
+    projection: str = Query(
+        "full",
+        description="primary = fast first paint; secondary = deferred blocks; full = legacy composed bundle",
+    ),
     include_secondary: bool = Query(
         False,
-        description="When true, includes HIUA operational uncertainty block (slower). Primary KPIs always included.",
+        description="When true, includes HIUA operational uncertainty block (slower). Used with projection=full or secondary.",
     ),
 ):
     """
@@ -760,12 +764,33 @@ async def get_client_command_center(
     user = await client_route_guard(request)
     try:
         from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
-        from services.command_center_service import get_command_center_bundle
+        from services.command_center_service import (
+            get_command_center_bundle,
+            get_command_center_primary_bundle,
+            get_command_center_secondary_bundle,
+        )
 
         flags = await get_effective_flags(user["client_id"])
+        pred = bool(flags.get(PREDICTIVE_MAINTENANCE))
+        mode = str(projection or "full").strip().lower()
+        if mode == "primary":
+            return await get_command_center_primary_bundle(
+                user["client_id"],
+                predictive_enabled=pred,
+                property_id_filter=property_id,
+                portal_user_id=user.get("portal_user_id"),
+            )
+        if mode == "secondary":
+            return await get_command_center_secondary_bundle(
+                user["client_id"],
+                predictive_enabled=pred,
+                property_id_filter=property_id,
+                portal_user_id=user.get("portal_user_id"),
+                include_secondary_sections=include_secondary,
+            )
         return await get_command_center_bundle(
             user["client_id"],
-            predictive_enabled=bool(flags.get(PREDICTIVE_MAINTENANCE)),
+            predictive_enabled=pred,
             property_id_filter=property_id,
             portal_user_id=user.get("portal_user_id"),
             include_secondary_sections=include_secondary,

@@ -29,6 +29,7 @@ import {
   portalPageRoot,
 } from '../components/client/ClientPortalPatterns';
 import {
+  clearOperationalCache,
   fetchOperational,
   OPERATIONAL_CACHE_KEYS,
 } from '../utils/clientOperationalFetch';
@@ -104,9 +105,12 @@ export default function ClientCommandCenterPage() {
 
   const [loading, setLoading] = useState(true);
   const [secondaryLoading, setSecondaryLoading] = useState(false);
+  const [secondaryRisksLoading, setSecondaryRisksLoading] = useState(false);
+  const [secondaryJobsLoading, setSecondaryJobsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [bundle, setBundle] = useState(null);
+  const [primaryFreshness, setPrimaryFreshness] = useState(null);
   const [portfolioSummary, setPortfolioSummary] = useState(null);
   const [workOrdersRaw, setWorkOrdersRaw] = useState(null);
   const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
@@ -191,12 +195,34 @@ export default function ClientCommandCenterPage() {
   const reloadBundle = useCallback(() => {
     if (!isClientUser) return;
     const maintenanceEnabled = hasFeature('maintenance_workflows');
+    clearOperationalCache(OPERATIONAL_CACHE_KEYS.commandCenterPrimary);
+    clearOperationalCache(OPERATIONAL_CACHE_KEYS.commandCenterSecondary);
     clientAPI
-      .getCommandCenter({})
+      .getCommandCenterPrimary({})
       .then((r) => r.data)
       .then((cc) => {
-        if (cc) setBundle(cc);
+        if (cc) {
+          setBundle(cc);
+          setPrimaryFreshness(cc.freshness || null);
+        }
         setSecondaryLoading(true);
+        setSecondaryRisksLoading(true);
+        clientAPI
+          .getCommandCenterSecondary({})
+          .then((res) => {
+            const sec = res.data;
+            setBundle((prev) => ({
+              ...(prev || {}),
+              upcoming_risks: sec?.upcoming_risks ?? prev?.upcoming_risks ?? [],
+              recent_activity: sec?.recent_activity ?? prev?.recent_activity ?? [],
+              compliance_status_summary: {
+                ...(prev?.compliance_status_summary || {}),
+                ...(sec?.compliance_status_summary || {}),
+              },
+              secondary_sections_deferred: false,
+            }));
+          })
+          .finally(() => setSecondaryRisksLoading(false));
         const secondary = [clientAPI.getComplianceSummary().then((r) => r.data)];
         if (maintenanceEnabled) {
           secondary.push(clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 }).then((r) => r.data));
@@ -210,7 +236,10 @@ export default function ClientCommandCenterPage() {
         if (maintenanceEnabled && wo) setWorkOrdersRaw(wo);
       })
       .catch(() => {})
-      .finally(() => setSecondaryLoading(false));
+      .finally(() => {
+        setSecondaryLoading(false);
+        setSecondaryJobsLoading(false);
+      });
   }, [isClientUser, hasFeature]);
 
   useEffect(() => {
@@ -243,7 +272,10 @@ export default function ClientCommandCenterPage() {
     [bundle?.urgent_actions, inboxRequirementById],
   );
 
-  const urgentCount = alignedUrgentActions.length;
+  const urgentCount =
+    bundle?.tasks_digest_summary?.habit?.urgent_open_total ??
+    bundle?.tasks_digest_summary?.urgent_count ??
+    alignedUrgentActions.length;
   const propertyPriorityReps = useMemo(
     () => buildPropertyPriorityRepresentatives(alignedUrgentActions, 8),
     [alignedUrgentActions],
@@ -495,9 +527,28 @@ export default function ClientCommandCenterPage() {
   return (
     <div className={portalPageRoot} data-testid="command-center-root">
       <PortalStaleRefreshBanner refreshing={refreshing} />
+      {primaryFreshness?.projection === 'primary' ? (
+        <p className="text-xs text-gray-500 mb-2" data-testid="command-center-primary-freshness">
+          Operational snapshot loaded
+          {primaryFreshness?.cache_hit ? ' (cached)' : ''}
+          {bundle?.tasks_digest_summary?.urgent_continuation
+            ? ` · ${bundle.tasks_digest_summary.urgent_continuation} more urgent items on Today`
+            : ''}
+        </p>
+      ) : null}
+      {secondaryRisksLoading ? (
+        <p className="text-xs text-gray-500 mb-2" data-testid="command-center-secondary-risks-loading">
+          Loading risk signals and activity…
+        </p>
+      ) : null}
       {secondaryLoading && !portfolioSummary ? (
         <p className="text-xs text-gray-500 mb-3" data-testid="command-center-secondary-loading">
           Loading portfolio summary…
+        </p>
+      ) : null}
+      {secondaryJobsLoading ? (
+        <p className="text-xs text-gray-500 mb-2" data-testid="command-center-secondary-jobs-loading">
+          Loading jobs…
         </p>
       ) : null}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

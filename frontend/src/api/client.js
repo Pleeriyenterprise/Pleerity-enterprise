@@ -493,6 +493,16 @@ export const clientAPI = {
     apiClient.get('/client/command-center', {
       params: { include_secondary: false, ...params },
     }),
+  /** Fast Command Centre first paint (urgent slice + headline compliance). */
+  getCommandCenterPrimary: (params = {}) =>
+    apiClient.get('/client/command-center', {
+      params: { projection: 'primary', ...params },
+    }),
+  /** Deferred Command Centre blocks (risks, activity, enriched compliance). */
+  getCommandCenterSecondary: (params = {}) =>
+    apiClient.get('/client/command-center', {
+      params: { projection: 'secondary', include_secondary: true, ...params },
+    }),
   /** Read-only security / continuity snapshot (account hints, compliance counts, issues, risk signals). */
   getProtectionSnapshot: (params = {}) => apiClient.get('/client/protection-snapshot', { params }),
   /** Phase 2: snooze | dismiss | done | restore (inbox overlay). */

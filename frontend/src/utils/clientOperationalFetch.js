@@ -12,6 +12,8 @@ export const OPERATIONAL_CACHE_KEYS = {
   requirements: 'client:requirements',
   documents: 'client:documents',
   commandCenter: 'client:command-center',
+  commandCenterPrimary: 'client:command-center:primary',
+  commandCenterSecondary: 'client:command-center:secondary',
   complianceSummary: 'client:compliance-summary',
   todayItems: 'client:today-items',
 };
