@@ -48,6 +48,9 @@ async def seed_admin_remediation_probe(client_id: str, property_id: str) -> Dict
     now_iso = now.isoformat()
     db = database.get_db()
 
+    await db.documents.delete_many({"client_id": cid, "ops_admin_remediation_probe": PROBE_MARKER})
+    await db.extracted_documents.delete_many({"client_id": cid, "ops_admin_remediation_probe": PROBE_MARKER})
+
     async def upsert_unresolved(suffix: str) -> tuple[str, str]:
         doc_id = str(uuid.uuid4())
         payload: Dict[str, Any] = {

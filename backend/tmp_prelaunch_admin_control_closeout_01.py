@@ -127,12 +127,31 @@ def run_seed(admin_token: str) -> dict:
     }
 
 
+def _probe_doc_ids_from_queue(admin: str) -> Dict[str, str]:
+    """Map resolve/link/reject probe suffixes to live UNRESOLVED queue document_ids."""
+    _pace()
+    lst = httpx.get(f"{API}/admin/documents/unresolved", headers=_h(admin), params={"limit": 50}, timeout=90)
+    if lst.status_code != 200:
+        return {}
+    out: Dict[str, str] = {}
+    for row in (lst.json() or {}).get("documents") or []:
+        fn = str(row.get("file_name") or "")
+        if PROBE_MARKER not in fn:
+            continue
+        for suffix in ("resolve", "link", "reject"):
+            if fn.endswith(f"_{suffix}.pdf"):
+                out[suffix] = str(row.get("document_id") or "")
+    return out
+
+
 def part_unresolved(admin: str, admin_user: dict, probe: dict) -> dict:
     out: Dict[str, Any] = {"run_tag": RUN_TAG, "checks": [], "pass": False}
-    doc_resolve = probe.get("unresolved_resolve_document_id")
-    doc_link = probe.get("unresolved_link_document_id")
-    doc_reject = probe.get("unresolved_reject_document_id")
+    queue_ids = _probe_doc_ids_from_queue(admin)
+    doc_resolve = queue_ids.get("resolve") or probe.get("unresolved_resolve_document_id")
+    doc_link = queue_ids.get("link") or probe.get("unresolved_link_document_id")
+    doc_reject = queue_ids.get("reject") or probe.get("unresolved_reject_document_id")
     req_id = probe.get("sample_requirement_id")
+    out["queue_probe_ids"] = queue_ids
 
     _pace()
     lst = httpx.get(f"{API}/admin/documents/unresolved", headers=_h(admin), params={"limit": 50}, timeout=90)
@@ -218,7 +237,12 @@ def part_unresolved(admin: str, admin_user: dict, probe: dict) -> dict:
             p.stop()
 
     api_ok = all(c["pass"] for c in out["checks"]) if out["checks"] else False
-    out["pass"] = api_ok and (browser_ok or not sync_playwright) and out.get("unresolved_count", 0) >= 1
+    out["pass"] = (
+        api_ok
+        and (browser_ok or not sync_playwright)
+        and out.get("unresolved_count", 0) >= 1
+        and bool(queue_ids)
+    )
     return out
 
 
@@ -466,6 +490,11 @@ def main() -> int:
         _write("classifications.json", cls)
         print(json.dumps(cls))
         return 1
+
+    seed_report = run_seed(admin)
+    if not seed_report.get("unresolved_resolve_document_id"):
+        print("probe seed failed — governed seed endpoint or MONGO_URL local script required", file=sys.stderr)
+    _write("probe_seed.json", seed_report)
 
     unresolved = part_unresolved(admin, admin_user, seed_report)
     extraction = part_extraction(admin, probe=seed_report)
