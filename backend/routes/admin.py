@@ -766,7 +766,9 @@ async def admin_link_document_requirement(request: Request, document_id: str, bo
         {"document_id": document_id},
         {"$set": {"requirement_id": body.requirement_id, "manual_review_flag": False}},
     )
+    from services.authority_mutation_fanout import authority_sync_with_transition_observability
     from services.compliance_evidence_record_service import safe_upsert_document_upload_evidence_for_linked_document
+    from services.requirement_transition_observability import merge_document_path_lineage_flags, merge_review_admin_lineage_flags
 
     await safe_upsert_document_upload_evidence_for_linked_document(
         db,
