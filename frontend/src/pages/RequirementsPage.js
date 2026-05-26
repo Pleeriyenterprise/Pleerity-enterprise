@@ -146,12 +146,17 @@ const RequirementsPage = () => {
     setLoading(true);
     setRequirementsLoadError(null);
     try {
-      const [propsRes, requirementsRes, documentsRes] = await Promise.all([
+      const requirementsRes = await fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
+        clientAPI.getRequirements().then((r) => r.data),
+      ).then((r) => r.data);
+      setRequirements(requirementsRes?.requirements || []);
+      setRequirementsPresentation(requirementsRes?.presentation || null);
+      setRequirementsLoaded(true);
+      setLoading(false);
+
+      const [propsRes, documentsRes] = await Promise.all([
         fetchOperational(OPERATIONAL_CACHE_KEYS.properties, () =>
           clientAPI.getProperties().then((r) => r.data),
-        ).then((r) => r.data),
-        fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
-          clientAPI.getRequirements().then((r) => r.data),
         ).then((r) => r.data),
         fetchOperational(OPERATIONAL_CACHE_KEYS.documents, () =>
           clientAPI.getDocuments({ projection: 'list', limit: 120 }).then((r) => r.data).catch(() => ({ documents: [] })),
@@ -159,9 +164,6 @@ const RequirementsPage = () => {
       ]);
       setClientData((prev) => ({ ...(prev || {}), properties: propsRes?.properties || [] }));
       setProperties(propsRes?.properties || []);
-      setRequirements(requirementsRes?.requirements || []);
-      setRequirementsPresentation(requirementsRes?.presentation || null);
-      setRequirementsLoaded(true);
       const docs = documentsRes?.documents || [];
       const countBy = {};
       docs.forEach((d) => {

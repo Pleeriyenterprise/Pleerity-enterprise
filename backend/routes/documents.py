@@ -3307,8 +3307,8 @@ async def list_documents(
     queue: str = None,
     limit: int = Query(80, ge=1, le=200, description="Max documents returned (newest first)"),
     projection: str = Query(
-        "full",
-        description="full = linkage + visibility batch; list = operational badges only (faster)",
+        "list",
+        description="list = operational badges only (faster first paint); full = linkage + visibility batch",
     ),
 ):
     """List documents for the client."""
@@ -3344,9 +3344,12 @@ async def list_documents(
             filter_documents_by_visibility,
         )
 
-        runtime_ids, runtime_reqs = await load_runtime_requirements_for_client(
-            db, client_id=user["client_id"], property_id=property_id
-        )
+        runtime_ids: set = set()
+        runtime_reqs: list = []
+        if not list_projection:
+            runtime_ids, runtime_reqs = await load_runtime_requirements_for_client(
+                db, client_id=user["client_id"], property_id=property_id
+            )
 
         for d in documents:
             d["evidence_review_state"] = effective_evidence_review_state(d)

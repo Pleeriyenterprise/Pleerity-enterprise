@@ -53,6 +53,15 @@ logger = logging.getLogger(__name__)
 
 PROVENANCE_OPERATIONS_TEMPLATE = "operations_template"
 
+# List-view caps: summary counts remain truthful (full bucket sizes); only serialized rows are capped.
+TODAY_BUCKET_CAPS: Dict[str, int] = {
+    "urgent": 12,
+    "upcoming": 8,
+    "in_progress": 8,
+    "recently_completed": 5,
+    "snoozed": 5,
+}
+
 
 def _parse_dt(value: Any) -> Optional[datetime]:
     if value is None:
@@ -531,6 +540,57 @@ def today_task_is_actionable(task: Dict[str, Any]) -> bool:
     return bool((task.get("primary_action_url") or "").strip())
 
 
+def _slim_metadata_for_list(meta: Dict[str, Any]) -> Dict[str, Any]:
+    """Preserve CTA / attention fields only — omit heavy registry and display blobs."""
+    if not meta:
+        return {}
+    keep = (
+        "action_type",
+        "requirement_id",
+        "linked_property_requirement_id",
+        "related_work_order_id",
+        "related_risk_signal_id",
+        "requirement_code",
+        "requirement_action_type",
+        "property_jurisdiction",
+        "jurisdiction",
+        "timing_label",
+        "today_action_title",
+        "gap_key",
+        "semantic_state",
+        "workflow_class",
+    )
+    out: Dict[str, Any] = {k: meta[k] for k in keep if meta.get(k) is not None}
+    ta = meta.get("take_action")
+    if isinstance(ta, dict) and ta:
+        out["take_action"] = ta
+    return out
+
+
+def compact_task_for_today_list(task: Dict[str, Any], now: datetime) -> Dict[str, Any]:
+    """Compact inbox row: CTAs and attention preserved; heavy nested blobs omitted."""
+    t = dict(task)
+    meta = dict(t.get("metadata") or {})
+    raw_actions = build_business_actions_for_task(t)
+    t["business_actions"] = cap_and_order_business_actions(raw_actions, max_actions=2)
+    t["visibility_actions"] = build_visibility_actions_for_task(t)
+    t["urgency"] = derive_today_urgency(t, now)
+    new_title, action_flag = today_action_oriented_title(t)
+    if new_title:
+        t["title"] = new_title
+    if action_flag:
+        meta["today_action_title"] = True
+    t["metadata"] = _slim_metadata_for_list(meta)
+    desc = (t.get("description") or "").strip()
+    if len(desc) > 280:
+        t["description"] = desc[:277] + "..."
+    rank = attention_rank_explanation(t)
+    if isinstance(rank, dict):
+        t["attention_rank"] = rank.get("rank")
+        t["attention_reason"] = rank.get("reason") or rank.get("summary")
+    return t
+
+
 def enrich_task_for_today(task: Dict[str, Any], now: datetime) -> Dict[str, Any]:
     """Shallow copy: business_actions (capped), visibility_actions, urgency, title polish, metadata flag."""
     t = dict(task)
@@ -556,10 +616,12 @@ def enrich_task_bucket(
     now: datetime,
     *,
     filter_non_actionable: bool = False,
+    compact: bool = False,
 ) -> List[Dict[str, Any]]:
     if not tasks:
         return []
-    enriched = [enrich_task_for_today(dict(x), now) for x in tasks]
+    enricher = compact_task_for_today_list if compact else enrich_task_for_today
+    enriched = [enricher(dict(x), now) for x in tasks]
     enriched = dedupe_tasks_by_requirement(enriched)
     if filter_non_actionable:
         before = len(enriched)
@@ -567,11 +629,18 @@ def enrich_task_bucket(
         dropped = before - len(enriched)
         if dropped:
             logger.debug("today_projection: dropped %s non-actionable tasks from open bucket", dropped)
-    for t in enriched:
-        if not t.get("attention_authority"):
-            t["attention_authority"] = attention_rank_explanation(t)
+    if not compact:
+        for t in enriched:
+            if not t.get("attention_authority"):
+                t["attention_authority"] = attention_rank_explanation(t)
     enriched.sort(key=today_attention_sort_key)
     return enriched
+
+
+def _cap_bucket(tasks: List[Dict[str, Any]], cap: int) -> Tuple[List[Dict[str, Any]], int]:
+    if cap <= 0 or len(tasks) <= cap:
+        return tasks, 0
+    return tasks[:cap], len(tasks) - cap
 
 
 def _slim_today_flat_task(t: Dict[str, Any]) -> Dict[str, Any]:
@@ -603,18 +672,38 @@ def build_today_payload_from_unified(
     full: Dict[str, Any],
     *,
     include_flat_items: bool = False,
+    compact: bool = True,
 ) -> Dict[str, Any]:
     """Same shape as GET /client/tasks with enriched tasks + optional flat items list."""
     now = datetime.now(timezone.utc)
     tasks_root = full.get("tasks") or {}
     enriched_tasks = {
-        "urgent": enrich_task_bucket(tasks_root.get("urgent"), now, filter_non_actionable=True),
-        "upcoming": enrich_task_bucket(tasks_root.get("upcoming"), now, filter_non_actionable=True),
-        "in_progress": enrich_task_bucket(tasks_root.get("in_progress"), now, filter_non_actionable=True),
-        "recently_completed": enrich_task_bucket(tasks_root.get("recently_completed"), now, filter_non_actionable=False),
-        "snoozed": enrich_task_bucket(tasks_root.get("snoozed"), now, filter_non_actionable=False),
+        "urgent": enrich_task_bucket(tasks_root.get("urgent"), now, filter_non_actionable=True, compact=compact),
+        "upcoming": enrich_task_bucket(tasks_root.get("upcoming"), now, filter_non_actionable=True, compact=compact),
+        "in_progress": enrich_task_bucket(tasks_root.get("in_progress"), now, filter_non_actionable=True, compact=compact),
+        "recently_completed": enrich_task_bucket(
+            tasks_root.get("recently_completed"), now, filter_non_actionable=False, compact=compact
+        ),
+        "snoozed": enrich_task_bucket(tasks_root.get("snoozed"), now, filter_non_actionable=False, compact=compact),
         "hidden": tasks_root.get("hidden") or [],
     }
+    truthful_counts = {
+        "urgent_count": len(enriched_tasks["urgent"]),
+        "upcoming_count": len(enriched_tasks["upcoming"]),
+        "in_progress_count": len(enriched_tasks["in_progress"]),
+        "recently_completed_count": len(enriched_tasks["recently_completed"]),
+        "snoozed_count": len(enriched_tasks["snoozed"]),
+        "hidden_count": len(enriched_tasks["hidden"]),
+    }
+    continuation: Dict[str, int] = {}
+    if compact:
+        capped: Dict[str, Any] = {}
+        for key, cap in TODAY_BUCKET_CAPS.items():
+            rows, overflow = _cap_bucket(enriched_tasks.get(key) or [], cap)
+            capped[key] = rows
+            if overflow:
+                continuation[key] = overflow
+        enriched_tasks = {**enriched_tasks, **capped}
     flat: List[Dict[str, Any]] = []
     if include_flat_items:
         for section, key in (
@@ -658,22 +747,25 @@ def build_today_payload_from_unified(
                 }
             )
     summary = dict(full.get("summary") or {})
-    summary["urgent_count"] = len(enriched_tasks["urgent"])
-    summary["upcoming_count"] = len(enriched_tasks["upcoming"])
-    summary["in_progress_count"] = len(enriched_tasks["in_progress"])
-    summary["recently_completed_count"] = len(enriched_tasks["recently_completed"])
-    summary["snoozed_count"] = len(enriched_tasks["snoozed"])
-    summary["hidden_count"] = len(enriched_tasks["hidden"])
+    summary.update(truthful_counts)
     habit = dict(summary.get("habit") or {})
-    habit["urgent_open_total"] = len(enriched_tasks["urgent"])
+    habit["urgent_open_total"] = truthful_counts["urgent_count"]
     summary["habit"] = habit
 
-    return {
+    feed = full.get("activity_feed") or []
+    if compact:
+        feed = feed[:6]
+
+    out: Dict[str, Any] = {
         "tasks": enriched_tasks,
         "summary": summary,
         "freshness": full.get("freshness") or {},
-        "activity_feed": full.get("activity_feed") or [],
-        "spend_this_month": full.get("spend_this_month"),
+        "activity_feed": feed,
+        "spend_this_month": full.get("spend_this_month") if not compact else None,
         "items": flat,
         "flat_items_included": include_flat_items,
+        "list_projection": "compact" if compact else "full",
     }
+    if continuation:
+        out["bucket_continuation"] = continuation
+    return out

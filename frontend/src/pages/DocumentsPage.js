@@ -302,15 +302,12 @@ const DocumentsPage = () => {
 
   const fetchData = async () => {
     try {
-      const [docsData, propsData, reqsData] = await Promise.all([
+      const [docsData, propsData] = await Promise.all([
         fetchOperational(OPERATIONAL_CACHE_KEYS.documents, () =>
           api.get('/documents', { params: { projection: 'list', limit: 120 } }).then((r) => r.data),
         ).then((r) => r.data),
         fetchOperational(OPERATIONAL_CACHE_KEYS.properties, () =>
           clientAPI.getProperties().then((r) => r.data),
-        ).then((r) => r.data),
-        fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
-          clientAPI.getRequirements().then((r) => r.data),
         ).then((r) => r.data),
       ]);
       setDocuments(docsData.documents || []);
@@ -320,10 +317,15 @@ const DocumentsPage = () => {
           : countAttentionRequiredDocuments(docsData.documents || []),
       );
       setProperties(propsData.properties || []);
-      setRequirements(reqsData.requirements || []);
+      setLoading(false);
+
+      fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
+        clientAPI.getRequirements().then((r) => r.data),
+      )
+        .then((reqsData) => setRequirements(reqsData?.requirements || []))
+        .catch(() => {});
     } catch (error) {
       toast.error('Failed to load documents');
-    } finally {
       setLoading(false);
     }
   };

@@ -137,41 +137,51 @@ export default function ClientCommandCenterPage() {
     setError('');
 
     const maintenanceEnabled = hasFeature('maintenance_workflows');
-    const tasks = [
-      fetchOperational(OPERATIONAL_CACHE_KEYS.commandCenter, () =>
-        clientAPI.getCommandCenter({}).then((r) => r.data),
-      ).then((r) => r.data),
-      fetchOperational(OPERATIONAL_CACHE_KEYS.complianceSummary, () =>
-        clientAPI.getComplianceSummary().then((r) => r.data),
-      ).then((r) => r.data),
-    ];
-    if (maintenanceEnabled) {
-      tasks.push(clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 }).then((r) => r.data));
-    }
 
-    Promise.all(
-      tasks.map((p) =>
-        Promise.resolve(p).then((data) => ({ ok: true, data })).catch((err) => ({ ok: false, err }))
-      )
-    ).then((results) => {
-      if (cancelled) return;
-      const [ccRes, psRes, woRes] = maintenanceEnabled ? results : [...results, { ok: false, err: null }];
-      const cc = ccRes.ok && ccRes.data && typeof ccRes.data === 'object' ? ccRes.data : null;
-      const ps = psRes.ok && psRes.data && typeof psRes.data === 'object' ? psRes.data : null;
-      const wo =
-        maintenanceEnabled && woRes?.ok && woRes.data && typeof woRes.data === 'object' ? woRes.data : null;
-      if (!ccRes.ok && ccRes.err?.response?.status !== 403) {
-        setError(parseApiError(ccRes.err, 'Command center snapshot could not be loaded'));
-      } else if (!cc && !ps && !wo) {
-        setError('Command center data could not be loaded.');
-      } else {
-        setError('');
-      }
-      setBundle(cc);
-      setPortfolioSummary(ps);
-      setWorkOrdersRaw(maintenanceEnabled ? wo : null);
-      setLoading(false);
-    });
+    fetchOperational(OPERATIONAL_CACHE_KEYS.commandCenter, () =>
+      clientAPI.getCommandCenter({}).then((r) => r.data),
+    )
+      .then((cc) => {
+        if (cancelled) return;
+        setBundle(cc && typeof cc === 'object' ? cc : null);
+        if (!cc) {
+          setError('Command center data could not be loaded.');
+        } else {
+          setError('');
+        }
+        setLoading(false);
+        setSecondaryLoading(true);
+        const secondary = [
+          fetchOperational(OPERATIONAL_CACHE_KEYS.complianceSummary, () =>
+            clientAPI.getComplianceSummary().then((r) => r.data),
+          ).then((r) => r.data),
+        ];
+        if (maintenanceEnabled) {
+          secondary.push(
+            clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 }).then((r) => r.data),
+          );
+        }
+        return Promise.all(
+          secondary.map((p) =>
+            Promise.resolve(p).then((data) => ({ ok: true, data })).catch((err) => ({ ok: false, err })),
+          ),
+        );
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err?.response?.status !== 403) {
+          setError(parseApiError(err, 'Command center snapshot could not be loaded'));
+        }
+        setLoading(false);
+        return null;
+      })
+      .then((results) => {
+        if (cancelled || !results) return;
+        const [psRes, woRes] = maintenanceEnabled ? results : [results[0], { ok: false }];
+        if (psRes?.ok && psRes.data) setPortfolioSummary(psRes.data);
+        if (maintenanceEnabled && woRes?.ok && woRes.data) setWorkOrdersRaw(woRes.data);
+        setSecondaryLoading(false);
+      });
 
     return () => {
       cancelled = true;
@@ -181,19 +191,26 @@ export default function ClientCommandCenterPage() {
   const reloadBundle = useCallback(() => {
     if (!isClientUser) return;
     const maintenanceEnabled = hasFeature('maintenance_workflows');
-    const tasks = [
-      clientAPI.getCommandCenter({}).then((r) => r.data),
-      clientAPI.getComplianceSummary().then((r) => r.data),
-    ];
-    if (maintenanceEnabled) {
-      tasks.push(clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 }).then((r) => r.data));
-    }
-    Promise.all(tasks.map((p) => p.then((data) => ({ ok: true, data })).catch(() => ({ ok: false })))).then((results) => {
-      const [ccRes, psRes, woRes] = maintenanceEnabled ? results : [...results, { ok: false }];
-      if (ccRes.ok && ccRes.data) setBundle(ccRes.data);
-      if (psRes.ok && psRes.data) setPortfolioSummary(psRes.data);
-      if (maintenanceEnabled && woRes?.ok && woRes.data) setWorkOrdersRaw(woRes.data);
-    });
+    clientAPI
+      .getCommandCenter({})
+      .then((r) => r.data)
+      .then((cc) => {
+        if (cc) setBundle(cc);
+        setSecondaryLoading(true);
+        const secondary = [clientAPI.getComplianceSummary().then((r) => r.data)];
+        if (maintenanceEnabled) {
+          secondary.push(clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 }).then((r) => r.data));
+        }
+        return Promise.all(secondary);
+      })
+      .then((parts) => {
+        if (!parts) return;
+        const [ps, wo] = maintenanceEnabled ? parts : [parts[0], null];
+        if (ps) setPortfolioSummary(ps);
+        if (maintenanceEnabled && wo) setWorkOrdersRaw(wo);
+      })
+      .catch(() => {})
+      .finally(() => setSecondaryLoading(false));
   }, [isClientUser, hasFeature]);
 
   useEffect(() => {

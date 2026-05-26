@@ -1141,6 +1141,7 @@ async def get_unified_tasks_for_client(
     *,
     trust_surface_composition_context: Optional[Dict[str, Any]] = None,
     bypass_cache: bool = False,
+    surface_profile: str = "full",
 ) -> Dict[str, Any]:
     """
     Build unified task list + sections + summary + freshness + spend (when invoicing data exists).
@@ -1153,7 +1154,16 @@ async def get_unified_tasks_for_client(
         unified_tasks_cache_key,
     )
 
-    cache_key = unified_tasks_cache_key(client_id, property_id_filter, portal_user_id, raw_limit)
+    profile = str(surface_profile or "full").strip().lower()
+    list_surface = profile in ("portal_list", "command_center", "today")
+    tenant_msg_limit = 8 if list_surface else 12
+    tenant_req_limit = 10 if list_surface else 16
+    recent_completed_limit = 8 if list_surface else 12
+    activity_query_limit = 20 if list_surface else 40
+
+    cache_key = unified_tasks_cache_key(
+        client_id, property_id_filter, portal_user_id, raw_limit, profile
+    )
     if not bypass_cache:
         cached = get_cached_unified_tasks(cache_key)
         if cached:
@@ -1185,7 +1195,7 @@ async def get_unified_tasks_for_client(
             continue
         seen.add(tm["id"])
         tasks.append(tm)
-    for tr in await _tenant_request_tasks(client_id, property_id_filter, limit=16):
+    for tr in await _tenant_request_tasks(client_id, property_id_filter, limit=tenant_req_limit):
         if tr["id"] in seen:
             continue
         seen.add(tr["id"])
@@ -1207,14 +1217,14 @@ async def get_unified_tasks_for_client(
     urgent = _sort_tasks([t for t in visible if t.get("section") == "urgent"])
     upcoming = _sort_tasks([t for t in visible if t.get("section") == "upcoming"])
     in_progress = _sort_tasks([t for t in visible if t.get("section") == "in_progress"])
-    system_recent = await _recently_completed_tasks(client_id, limit=12)
+    system_recent = await _recently_completed_tasks(client_id, limit=recent_completed_limit)
     activity_rows = await client_task_state.list_recent_activity(
         client_id,
-        limit=40,
+        limit=activity_query_limit,
         portal_user_id=portal_user_id,
     )
     recent = client_task_state.merge_user_acknowledgements_into_recent(
-        system_recent, activity_rows, limit=22
+        system_recent, activity_rows, limit=12 if list_surface else 22
     )
 
     week_end = now + timedelta(days=7)
@@ -1236,10 +1246,15 @@ async def get_unified_tasks_for_client(
         portal_user_id=portal_user_id,
     )
 
-    hidden_inbox = await client_task_state.list_hidden_inbox_items(
-        client_id,
-        limit=40,
-        portal_user_id=portal_user_id,
+    hidden_limit = 0 if list_surface else 40
+    hidden_inbox = (
+        []
+        if hidden_limit == 0
+        else await client_task_state.list_hidden_inbox_items(
+            client_id,
+            limit=hidden_limit,
+            portal_user_id=portal_user_id,
+        )
     )
 
     summary = {
@@ -1257,15 +1272,17 @@ async def get_unified_tasks_for_client(
     }
 
     spend = None
-    try:
-        from services import approval_service
+    if not list_surface:
+        try:
+            from services import approval_service
 
-        spend = await approval_service.get_maintenance_invoice_spend_this_month(client_id)
-    except Exception as e:
-        logger.debug("unified_tasks: spend failed: %s", e)
+            spend = await approval_service.get_maintenance_invoice_spend_this_month(client_id)
+        except Exception as e:
+            logger.debug("unified_tasks: spend failed: %s", e)
 
     freshness = await _freshness_block(client_id)
-    activity_feed = activity_rows[:25]
+    feed_cap = 8 if list_surface else 25
+    activity_feed = activity_rows[:feed_cap]
 
     out: Dict[str, Any] = {
         "tasks": {

@@ -1457,10 +1457,33 @@ async def health_check(request: Request):
 
 
 # Version/build stamp for deployment verification (commit SHA set by CI/CD, e.g. GIT_COMMIT_SHA)
+def _resolve_build_commit_sha() -> str:
+    for key in (
+        "GIT_COMMIT_SHA",
+        "BUILD_SHA",
+        "RENDER_GIT_COMMIT",
+        "SOURCE_VERSION",
+        "COMMIT_SHA",
+        "VERCEL_GIT_COMMIT_SHA",
+    ):
+        val = (os.getenv(key) or "").strip()
+        if val and val.lower() != "unknown":
+            return val
+    build_file = Path(__file__).resolve().parent / ".build_commit"
+    try:
+        if build_file.is_file():
+            line = build_file.read_text(encoding="utf-8").strip()
+            if line:
+                return line
+    except OSError:
+        pass
+    return "unknown"
+
+
 @app.get("/api/version")
 async def version_info():
     return {
-        "commit_sha": os.getenv("GIT_COMMIT_SHA", os.getenv("BUILD_SHA", "unknown")),
+        "commit_sha": _resolve_build_commit_sha(),
         "environment": os.getenv("ENVIRONMENT", "development"),
     }
 

@@ -489,7 +489,10 @@ export const clientAPI = {
   /** Dashboard digest: summary, freshness, short activity (no full task lists). */
   getTasksDigest: (params = {}) => apiClient.get('/client/tasks/digest', { params }),
   /** Composed urgent tasks, risks, activity, compliance summary (read-only aggregate). */
-  getCommandCenter: (params = {}) => apiClient.get('/client/command-center', { params }),
+  getCommandCenter: (params = {}) =>
+    apiClient.get('/client/command-center', {
+      params: { include_secondary: false, ...params },
+    }),
   /** Read-only security / continuity snapshot (account hints, compliance counts, issues, risk signals). */
   getProtectionSnapshot: (params = {}) => apiClient.get('/client/protection-snapshot', { params }),
   /** Phase 2: snooze | dismiss | done | restore (inbox overlay). */
@@ -546,7 +549,8 @@ export const clientAPI = {
   /** Mark a catalog requirement as not applicable for this property (creates/updates requirement row). */
   markRequirementNotApplicable: (propertyId, body) =>
     apiClient.post(`/client/properties/${propertyId}/requirements/mark-not-applicable`, body),
-  getRequirements: () => apiClient.get('/client/requirements'),
+  getRequirements: (params = {}) =>
+    apiClient.get('/client/requirements', { params: { projection: 'list', ...params } }),
   /** List documents. Optional params: { property_id, requirement_id } to filter. */
   getDocuments: (params) => apiClient.get('/documents', { params: params || {} }),
   /** Audit Intelligence: portfolio score, risk_level, properties summary */

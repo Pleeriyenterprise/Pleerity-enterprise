@@ -130,6 +130,7 @@ async def get_command_center_bundle(
     property_id_filter: Optional[str] = None,
     portal_user_id: Optional[str] = None,
     correlation_id: Optional[str] = None,
+    include_secondary_sections: bool = False,
 ) -> Dict[str, Any]:
     """
     Return urgent_actions, upcoming_risks, recent_activity, compliance_status_summary
@@ -175,9 +176,10 @@ async def get_command_center_bundle(
         full_tasks = await get_unified_tasks_for_client(
             client_id,
             property_id_filter=property_id_filter,
-            raw_limit=60,
+            raw_limit=45,
             portal_user_id=portal_user_id,
             trust_surface_composition_context=tasks_ctx,
+            surface_profile="command_center",
         )
         digest = digest_from_unified_tasks_full(full_tasks, activity_limit=20)
         tasks = full_tasks.get("tasks") or {}
@@ -258,9 +260,26 @@ async def get_command_center_bundle(
     async def _build_compliance_status_summary() -> Dict[str, Any]:
         nonlocal prow_scoped
         from services.compliance_score import calculate_compliance_score
+        from services.operational_surface_cache import (
+            compliance_score_cache_key,
+            get_cached_compliance_score,
+            set_cached_compliance_score,
+        )
 
         async def _score():
-            return await calculate_compliance_score(client_id)
+            ck = compliance_score_cache_key(client_id)
+            cached = get_cached_compliance_score(ck)
+            if cached:
+                out = dict(cached["payload"])
+                fresh = dict(out.get("_cache_freshness") or {})
+                fresh["cache_hit"] = True
+                fresh["cached_at"] = cached["cached_at"]
+                fresh["cache_ttl_seconds"] = cached["ttl_seconds"]
+                out["_cache_freshness"] = fresh
+                return out
+            cs = await calculate_compliance_score(client_id)
+            set_cached_compliance_score(ck, cs)
+            return cs
 
         async def _gaps():
             from services.compliance_gap_sync import aggregate_gap_counts_for_client
@@ -270,12 +289,25 @@ async def get_command_center_bundle(
             )
 
         async def _hiua():
+            if not include_secondary_sections:
+                return {
+                    "hiua_active": False,
+                    "hiua_open_gap_count": 0,
+                    "hiua_reason_codes": [],
+                    "hiua_gap_details": [],
+                    "hiua_command_centre_message": None,
+                    "hiua_command_centre_tooltip": None,
+                    "hiua_command_centre_filter_label": None,
+                    "hiua_digest_line": None,
+                    "hiua_report_framing_notice": None,
+                    "_deferred": True,
+                }
             from services.hiua_operational_uncertainty import hiua_tenant_operational_summary
 
             _db = database.get_db()
             _pids = {str(property_id_filter)} if property_id_filter else None
             return await hiua_tenant_operational_summary(
-                _db, client_id, property_ids=_pids, max_gaps_scan=400, max_detail=15
+                _db, client_id, property_ids=_pids, max_gaps_scan=120, max_detail=10
             )
 
         cs, gap_engine_counts, hiua_block = await asyncio.gather(
@@ -580,4 +612,5 @@ async def get_command_center_bundle(
         "tasks_digest_summary": digest.get("summary") or {},
         "freshness": digest.get("freshness") or {},
         "trust_surface_operational_metadata": trust_surface_operational_metadata,
+        "secondary_sections_deferred": not include_secondary_sections,
     }

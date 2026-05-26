@@ -748,6 +748,10 @@ async def get_client_tasks_digest(
 async def get_client_command_center(
     request: Request,
     property_id: Optional[str] = Query(None, description="Optional filter by property"),
+    include_secondary: bool = Query(
+        False,
+        description="When true, includes HIUA operational uncertainty block (slower). Primary KPIs always included.",
+    ),
 ):
     """
     Composed operations + compliance snapshot: urgent task rows, active risk signals,
@@ -764,6 +768,7 @@ async def get_client_command_center(
             predictive_enabled=bool(flags.get(PREDICTIVE_MAINTENANCE)),
             property_id_filter=property_id,
             portal_user_id=user.get("portal_user_id"),
+            include_secondary_sections=include_secondary,
         )
     except Exception as e:
         logger.error("Command center error for client %s: %s", user.get("client_id"), e)
@@ -1941,6 +1946,18 @@ async def get_all_requirements(request: Request):
             client_doc=await db.clients.find_one({"client_id": user["client_id"]}, {"_id": 0}) or {},
             properties=props_all,
         )
+
+        if list_mode:
+            from services.requirement_client_runtime_surface import (
+                project_requirement_row_client_runtime,
+            )
+
+            projected = [project_requirement_row_client_runtime(r) for r in requirements]
+            visible = [r for r in projected if r.get("client_surface_visible", True)]
+            return {
+                "requirements": visible,
+                "presentation": {"projection": "list", "enrichment_deferred": True},
+            }
 
         from services.requirement_truth import enrich_requirements_for_client
 

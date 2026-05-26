@@ -1250,15 +1250,20 @@ async def get_today_items(
         get_unified_tasks_for_client(
             user["client_id"],
             property_id_filter=prop_filter,
-            raw_limit=60,
+            raw_limit=50,
             portal_user_id=user.get("portal_user_id"),
+            surface_profile="today",
         ),
         list_rent_attention_tasks(
             user["client_id"],
             property_id_filter=prop_filter,
         ),
     )
-    out = build_today_payload_from_unified(payload, include_flat_items=include_flat_items)
+    out = build_today_payload_from_unified(
+        payload,
+        include_flat_items=include_flat_items,
+        compact=not include_flat_items,
+    )
     return merge_rent_into_today_payload(out, rent_tasks)
 
 

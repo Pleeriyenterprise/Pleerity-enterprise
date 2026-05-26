@@ -19,8 +19,10 @@ def unified_tasks_cache_key(
     property_id_filter: Optional[str],
     portal_user_id: Optional[str],
     raw_limit: int,
+    surface_profile: str = "full",
 ) -> str:
-    return f"unified:{client_id}:{property_id_filter or ''}:{portal_user_id or ''}:{int(raw_limit)}"
+    prof = str(surface_profile or "full").strip().lower()
+    return f"unified:{client_id}:{property_id_filter or ''}:{portal_user_id or ''}:{int(raw_limit)}:{prof}"
 
 
 def get_cached_unified_tasks(key: str) -> Optional[Dict[str, Any]]:
@@ -54,3 +56,20 @@ def invalidate_unified_tasks_for_client(client_id: str) -> None:
     for k in list(_store.keys()):
         if k.startswith(prefix):
             _store.pop(k, None)
+
+
+def compliance_score_cache_key(client_id: str) -> str:
+    return f"compliance_score:{client_id}"
+
+
+def get_cached_compliance_score(key: str) -> Optional[Dict[str, Any]]:
+    return get_cached_unified_tasks(key)
+
+
+def set_cached_compliance_score(
+    key: str,
+    payload: Dict[str, Any],
+    *,
+    ttl_seconds: int = _DEFAULT_TTL_SECONDS,
+) -> None:
+    set_cached_unified_tasks(key, payload, ttl_seconds=ttl_seconds)

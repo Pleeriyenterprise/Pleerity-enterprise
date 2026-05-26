@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +32,8 @@ SURFACES = [
     ("P5_Requirements", "/requirements", "requirements-page", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
     ("P6_Documents", "/documents", "documents-page", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
 ]
+
+PROPERTY_DETAIL_PATH = os.environ.get("OPS_PROPERTY_DETAIL_PATH", "")
 
 
 def utc_now() -> str:
@@ -151,6 +154,7 @@ def run_browser_timings() -> dict[str, Any]:
         browser.close()
     out["cold_navigation"] = cold
     out["warm_navigation"] = warm
+    out["surfaces"] = cold + warm
     return out
 
 
