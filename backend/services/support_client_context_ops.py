@@ -11,6 +11,29 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+
+def sanitize_for_json(value: Any) -> Any:
+    """Recursively coerce Mongo/BSON values for FastAPI JSON responses (INV-SU-001)."""
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return {str(k): sanitize_for_json(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [sanitize_for_json(v) for v in value]
+    if isinstance(value, datetime):
+        return value.isoformat()
+    type_name = type(value).__name__
+    if type_name == "ObjectId":
+        return str(value)
+    if type_name == "Decimal128":
+        return str(value)
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except Exception:
+            return str(value)
+    return value
+
 OPEN_ISSUE_STATUSES = (
     "open",
     "new",

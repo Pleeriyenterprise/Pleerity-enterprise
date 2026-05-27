@@ -1321,11 +1321,29 @@ async def get_support_context(
     """
     import logging
 
-    from services.support_client_context_ops import build_ops_summary_v1, _safe_property_ids
+    from services.support_client_context_ops import (
+        build_ops_summary_v1,
+        sanitize_for_json,
+        _safe_property_ids,
+    )
 
     log = logging.getLogger(__name__)
     db = database.get_db()
     degraded_sections: List[Dict[str, Any]] = []
+
+    if db is None:
+        log.error("support.context database unavailable client_id=%s", client_id)
+        return sanitize_for_json({
+            "client_id": client_id,
+            "account_snapshot": {},
+            "portfolio_snapshot": {},
+            "notification_prefs": {},
+            "recent_audit_log": [],
+            "recent_email_delivery": [],
+            "recent_documents": [],
+            "ops_summary_v1": {"available": False, "degraded_sections": [{"section": "database", "error": "unavailable"}]},
+            "context_degraded_sections": [{"section": "database", "error": "database unavailable"}],
+        })
 
     client = await db["clients"].find_one(
         {"client_id": client_id},
@@ -1411,6 +1429,8 @@ async def get_support_context(
         recent_audit_log = await audit_cursor.to_list(length=20)
         for e in recent_audit_log:
             e["timestamp"] = _support_ctx_iso_ts(e.get("timestamp"))
+            if e.get("metadata") is not None:
+                e["metadata"] = sanitize_for_json(e.get("metadata"))
     except Exception as exc:
         degraded_sections.append({"section": "recent_audit_log", "error": str(exc)[:200]})
         log.warning("support.context recent_audit_log degraded client_id=%s: %s", client_id, exc)
@@ -1455,7 +1475,7 @@ async def get_support_context(
             [s.get("section") for s in degraded_sections],
         )
 
-    return {
+    return sanitize_for_json({
         "client_id": client_id,
         "account_snapshot": account_snapshot,
         "portfolio_snapshot": portfolio_snapshot,
@@ -1465,4 +1485,4 @@ async def get_support_context(
         "recent_documents": recent_documents,
         "ops_summary_v1": ops_summary_v1,
         "context_degraded_sections": degraded_sections,
-    }
+    })

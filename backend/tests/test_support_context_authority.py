@@ -89,6 +89,37 @@ def test_support_context_returns_200_with_ops_summary_inv_su_002(support_client)
     assert data["ops_summary_v1"]["available"] is True
 
 
+def test_support_context_serializes_bson_metadata_inv_su_001(support_client):
+    try:
+        from bson import ObjectId
+    except ImportError:
+        pytest.skip("bson not installed")
+
+    mock_db = _mock_support_db()
+    audit_logs = mock_db.__getitem__("audit_logs")
+    audit_logs.find.return_value.sort.return_value.limit.return_value.to_list = AsyncMock(
+        return_value=[
+            {
+                "action": "TEST",
+                "metadata": {"ref": ObjectId("507f1f77bcf86cd799439011")},
+                "timestamp": "2026-05-27T10:00:00+00:00",
+            }
+        ]
+    )
+
+    with patch("routes.support.database.get_db", return_value=mock_db):
+        with patch(
+            "services.support_client_context_ops.build_ops_summary_v1",
+            new_callable=AsyncMock,
+            return_value={"available": True, "degraded_sections": []},
+        ):
+            resp = support_client.get("/api/admin/support/context/c1")
+
+    assert resp.status_code == 200
+    meta = resp.json()["recent_audit_log"][0]["metadata"]
+    assert isinstance(meta["ref"], str)
+
+
 def test_support_context_degrades_audit_failure_inv_su_001(support_client):
     with patch("routes.support.database.get_db", return_value=_mock_support_db(audit_raises=True)):
         with patch(
