@@ -197,6 +197,12 @@ async def _load_urgent_slice_from_priority_stream(
 
     t0 = time.perf_counter()
     actions = await fetch_client_priority_actions_primary(client_id, property_id_filter, 20)
+    try:
+        from services.operational_value_compression_service import attach_consequence_to_priority_action
+
+        actions = [attach_consequence_to_priority_action(a) for a in actions]
+    except Exception as exc:
+        logger.debug("consequence enrich on priority stream skipped: %s", exc)
     _profile_mark(profile, "priority_stream_ms", t0)
     t1 = time.perf_counter()
     prop_ids = [a.get("related_property_id") for a in actions if a.get("related_property_id")]
@@ -403,16 +409,33 @@ async def get_command_center_primary_bundle(
         ),
     )
     _profile_mark(profile, "primary_gather_ms", t0)
+    t_ov = time.perf_counter()
+    operational_value_v1: Dict[str, Any] = {}
+    try:
+        from services.operational_value_compression_service import build_operational_value_bundle_v1
+
+        operational_value_v1 = await build_operational_value_bundle_v1(client_id, property_id_filter)
+    except Exception as exc:
+        logger.warning("operational_value_bundle_v1 failed client_id=%s: %s", client_id, exc)
+        operational_value_v1 = {"available": False, "error": str(exc)[:200]}
+    _profile_mark(profile, "operational_value_ms", t_ov)
     urgent_actions = urgent_block.get("urgent_actions") or []
     urgent_open = int(urgent_block.get("urgent_open_total") or len(urgent_actions))
     freshness = urgent_block.get("freshness") or {}
     freshness = {**freshness, "projection": "primary", "cache_hit": False}
+    pc_block = operational_value_v1.get("pressure_compression_v1") or {}
+    cl = pc_block.get("cognitive_load") or {}
     tasks_digest_summary = {
         "urgent_count": urgent_open,
         "upcoming_count": None,
         "in_progress_count": None,
         "habit": {"urgent_open_total": urgent_open},
         "urgent_continuation": urgent_block.get("urgent_continuation"),
+        "pressure_compression": {
+            "compressed_decision_units": cl.get("compressed_decision_units"),
+            "estimated_raw_pressure_units": cl.get("estimated_raw_units"),
+            "compression_ratio": cl.get("compression_ratio"),
+        },
     }
     freshness_obs = compute_trust_surface_freshness_observability(
         generated_at=gen_at,
