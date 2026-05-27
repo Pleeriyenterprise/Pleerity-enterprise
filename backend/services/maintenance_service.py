@@ -731,6 +731,9 @@ async def update_work_order(
                 ):
                     set_fields["schedule_status"] = SCHEDULE_STATUS_COMPLETED
                     set_fields["last_schedule_update_at"] = now
+            if status == STATUS_VERIFIED:
+                # INV-JO-002: authoritative verification timestamp on terminal transition.
+                set_fields["verified_at"] = now
     if accepted_at is not None:
         set_fields["accepted_at"] = accepted_at
     if scheduled_at is not None:
@@ -1060,11 +1063,25 @@ async def update_work_order(
                     logger.warning("Failed to update contractor performance for completed work order: %s", e)
         if status == STATUS_VERIFIED and result.get("issue_id"):
             try:
-                await db.maintenance_issues.update_one(
-                    {"issue_id": result["issue_id"]},
-                    {"$set": {"status": "closed", "updated_at": now}},
+                from services.maintenance_issues_service import STATUS_CLOSED as ISSUE_STATUS_CLOSED
+                from services.maintenance_issues_service import update_issue
+
+                # INV-JO-010 / INV-IS-002: canonical issue closure (closed_at, audit, attribution).
+                await update_issue(
+                    issue_id=result["issue_id"],
+                    client_id=result["client_id"],
+                    status=ISSUE_STATUS_CLOSED,
+                    resolution_note=(
+                        f"Linked maintenance job {work_order_id} verified."
+                    ),
+                    closed_by=assigned_by or "system:work_order_verified",
+                    updated_by_id=assigned_by or "system:work_order_verified",
                 )
-                logger.info("Closed linked issue %s when work order %s set to VERIFIED", result["issue_id"], work_order_id)
+                logger.info(
+                    "Closed linked issue %s via update_issue when work order %s set to VERIFIED",
+                    result["issue_id"],
+                    work_order_id,
+                )
             except Exception as e:
                 logger.warning("Failed to close linked issue when work order verified: %s", e)
         if status == STATUS_COMPLETED:

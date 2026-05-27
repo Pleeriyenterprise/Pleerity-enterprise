@@ -1295,6 +1295,17 @@ async def get_support_stats(
     }
 
 
+def _support_ctx_iso_ts(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except Exception:
+            return str(value)
+    return str(value)
+
+
 @admin_router.get("/context/{client_id}")
 async def get_support_context(
     client_id: str,
@@ -1304,8 +1315,17 @@ async def get_support_context(
     Get support context for a client: account snapshot, portfolio snapshot,
     notification prefs, recent audit log, recent email delivery events, recent documents.
     Used by Support Dashboard context panel. RBAC: Support and above.
+
+    INV-SU-001: sections degrade independently; endpoint returns 200 unless client missing.
+    INV-SU-002: ops_summary_v1 operational reconstruction slice.
     """
+    import logging
+
+    from services.support_client_context_ops import build_ops_summary_v1, _safe_property_ids
+
+    log = logging.getLogger(__name__)
     db = database.get_db()
+    degraded_sections: List[Dict[str, Any]] = []
 
     client = await db["clients"].find_one(
         {"client_id": client_id},
@@ -1316,84 +1336,124 @@ async def get_support_context(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    # Account snapshot
-    account_snapshot = {
-        "client_id": client.get("client_id"),
-        "name": client.get("full_name") or client.get("name"),
-        "email": client.get("email"),
-        "crn": client.get("customer_reference"),
-        "subscription_status": client.get("subscription_status") or "none",
-        "onboarding_status": client.get("onboarding_status"),
-        "provisioning_status": client.get("provisioning_status"),
-        "activation_email_status": client.get("activation_email_status"),
-        "activation_email_sent_at": client.get("activation_email_sent_at").isoformat() if client.get("activation_email_sent_at") and hasattr(client.get("activation_email_sent_at"), "isoformat") else (str(client.get("activation_email_sent_at")) if client.get("activation_email_sent_at") else None),
-        "billing_plan": client.get("billing_plan"),
-    }
-    # Recent orders
-    orders_cursor = db["orders"].find(
-        {"client_id": client_id},
-        {"_id": 0, "order_ref": 1, "status": 1, "service_name": 1, "created_at": 1}
-    ).sort("created_at", -1).limit(5)
-    account_snapshot["recent_orders"] = await orders_cursor.to_list(length=5)
+    account_snapshot: Dict[str, Any] = {}
+    try:
+        account_snapshot = {
+            "client_id": client.get("client_id"),
+            "name": client.get("full_name") or client.get("name"),
+            "email": client.get("email"),
+            "crn": client.get("customer_reference"),
+            "subscription_status": client.get("subscription_status") or "none",
+            "onboarding_status": client.get("onboarding_status"),
+            "provisioning_status": client.get("provisioning_status"),
+            "activation_email_status": client.get("activation_email_status"),
+            "activation_email_sent_at": _support_ctx_iso_ts(client.get("activation_email_sent_at")),
+            "billing_plan": client.get("billing_plan"),
+        }
+        orders_cursor = db["orders"].find(
+            {"client_id": client_id},
+            {"_id": 0, "order_ref": 1, "status": 1, "service_name": 1, "created_at": 1}
+        ).sort("created_at", -1).limit(5)
+        account_snapshot["recent_orders"] = await orders_cursor.to_list(length=5)
+        for o in account_snapshot.get("recent_orders") or []:
+            o["created_at"] = _support_ctx_iso_ts(o.get("created_at"))
+    except Exception as exc:
+        degraded_sections.append({"section": "account_snapshot", "error": str(exc)[:200]})
+        log.warning("support.context account_snapshot degraded client_id=%s: %s", client_id, exc)
 
-    # Portfolio snapshot
-    properties_count = await db["properties"].count_documents({"client_id": client_id})
-    property_ids = [p["property_id"] async for p in db["properties"].find({"client_id": client_id}, {"property_id": 1})]
-    requirements_count = await db["requirements"].count_documents({"property_id": {"$in": property_ids}}) if property_ids else 0
-    documents_count = await db["documents"].count_documents({"client_id": client_id})
-    cutoff = datetime.now(timezone.utc)
-    overdue_req = await db["requirements"].count_documents({
-        "property_id": {"$in": property_ids},
-        "due_date": {"$lt": cutoff},
-        "status": {"$nin": ["satisfied", "waived", "cancelled"]}
-    }) if property_ids else 0
-    portfolio_snapshot = {
-        "properties_count": properties_count,
-        "requirements_count": requirements_count,
-        "documents_count": documents_count,
-        "overdue_requirements_count": overdue_req,
-    }
+    portfolio_snapshot: Dict[str, Any] = {}
+    try:
+        properties_count = await db["properties"].count_documents({"client_id": client_id})
+        property_ids = await _safe_property_ids(db, client_id)
+        requirements_count = (
+            await db["requirements"].count_documents({"property_id": {"$in": property_ids}})
+            if property_ids
+            else 0
+        )
+        documents_count = await db["documents"].count_documents({"client_id": client_id})
+        overdue_req = 0
+        if property_ids:
+            cutoff_iso = datetime.now(timezone.utc).isoformat()
+            try:
+                overdue_req = await db["requirements"].count_documents({
+                    "property_id": {"$in": property_ids},
+                    "due_date": {"$lt": cutoff_iso},
+                    "status": {"$nin": ["satisfied", "waived", "cancelled"]},
+                })
+            except Exception:
+                overdue_req = await db["requirements"].count_documents({
+                    "property_id": {"$in": property_ids},
+                    "status": "OVERDUE",
+                })
+        portfolio_snapshot = {
+            "properties_count": properties_count,
+            "requirements_count": requirements_count,
+            "documents_count": documents_count,
+            "overdue_requirements_count": overdue_req,
+        }
+    except Exception as exc:
+        degraded_sections.append({"section": "portfolio_snapshot", "error": str(exc)[:200]})
+        log.warning("support.context portfolio_snapshot degraded client_id=%s: %s", client_id, exc)
 
-    # Notification preferences (client-scoped)
-    notif_prefs = await db["notification_preferences"].find_one(
-        {"client_id": client_id},
-        {"_id": 0}
-    )
-    notification_prefs = notif_prefs or {}
+    notification_prefs: Dict[str, Any] = {}
+    try:
+        notif_prefs = await db["notification_preferences"].find_one({"client_id": client_id}, {"_id": 0})
+        notification_prefs = notif_prefs or {}
+    except Exception as exc:
+        degraded_sections.append({"section": "notification_prefs", "error": str(exc)[:200]})
 
-    # Recent audit log (client_id)
-    audit_cursor = db["audit_logs"].find(
-        {"client_id": client_id},
-        {"_id": 0, "action": 1, "actor_id": 1, "resource_type": 1, "resource_id": 1, "timestamp": 1, "metadata": 1}
-    ).sort("timestamp", -1).limit(20)
-    recent_audit_log = await audit_cursor.to_list(length=20)
-    for e in recent_audit_log:
-        ts = e.get("timestamp")
-        if hasattr(ts, "isoformat"):
-            e["timestamp"] = ts.isoformat()
+    recent_audit_log: List[Dict[str, Any]] = []
+    try:
+        audit_cursor = db["audit_logs"].find(
+            {"client_id": client_id},
+            {"_id": 0, "action": 1, "actor_id": 1, "resource_type": 1, "resource_id": 1, "timestamp": 1, "metadata": 1}
+        ).sort("timestamp", -1).limit(20)
+        recent_audit_log = await audit_cursor.to_list(length=20)
+        for e in recent_audit_log:
+            e["timestamp"] = _support_ctx_iso_ts(e.get("timestamp"))
+    except Exception as exc:
+        degraded_sections.append({"section": "recent_audit_log", "error": str(exc)[:200]})
+        log.warning("support.context recent_audit_log degraded client_id=%s: %s", client_id, exc)
 
-    # Recent email delivery (message_logs for this client)
-    since = (datetime.now(timezone.utc) - timedelta(hours=168)).isoformat()  # 7 days
-    msg_cursor = db["message_logs"].find(
-        {"client_id": client_id, "created_at": {"$gte": since}},
-        {"_id": 0, "created_at": 1, "template_alias": 1, "status": 1, "message_id": 1}
-    ).sort("created_at", -1).limit(20)
-    recent_email_delivery = await msg_cursor.to_list(length=20)
-    for e in recent_email_delivery:
-        ts = e.get("created_at")
-        if hasattr(ts, "isoformat"):
-            e["created_at"] = ts.isoformat()
+    recent_email_delivery: List[Dict[str, Any]] = []
+    try:
+        since = (datetime.now(timezone.utc) - timedelta(hours=168)).isoformat()
+        msg_cursor = db["message_logs"].find(
+            {"client_id": client_id, "created_at": {"$gte": since}},
+            {"_id": 0, "created_at": 1, "template_alias": 1, "status": 1, "message_id": 1}
+        ).sort("created_at", -1).limit(20)
+        recent_email_delivery = await msg_cursor.to_list(length=20)
+        for e in recent_email_delivery:
+            e["created_at"] = _support_ctx_iso_ts(e.get("created_at"))
+    except Exception as exc:
+        degraded_sections.append({"section": "recent_email_delivery", "error": str(exc)[:200]})
 
-    # Recent documents with extraction status
-    doc_cursor = db["documents"].find(
-        {"client_id": client_id},
-        {"_id": 0, "document_id": 1, "file_name": 1, "status": 1, "uploaded_at": 1, "property_id": 1}
-    ).sort("uploaded_at", -1).limit(15)
-    recent_documents = await doc_cursor.to_list(length=15)
-    for d in recent_documents:
-        up = d.get("uploaded_at")
-        if hasattr(up, "isoformat"):
-            d["uploaded_at"] = up.isoformat()
+    recent_documents: List[Dict[str, Any]] = []
+    try:
+        doc_cursor = db["documents"].find(
+            {"client_id": client_id},
+            {"_id": 0, "document_id": 1, "file_name": 1, "status": 1, "uploaded_at": 1, "property_id": 1}
+        ).sort("uploaded_at", -1).limit(15)
+        recent_documents = await doc_cursor.to_list(length=15)
+        for d in recent_documents:
+            d["uploaded_at"] = _support_ctx_iso_ts(d.get("uploaded_at"))
+    except Exception as exc:
+        degraded_sections.append({"section": "recent_documents", "error": str(exc)[:200]})
+
+    ops_summary_v1: Dict[str, Any] = {}
+    try:
+        ops_summary_v1 = await build_ops_summary_v1(db, client_id)
+    except Exception as exc:
+        degraded_sections.append({"section": "ops_summary_v1", "error": str(exc)[:200]})
+        log.warning("support.context ops_summary_v1 degraded client_id=%s: %s", client_id, exc)
+        ops_summary_v1 = {"available": False, "degraded_sections": [{"section": "ops_summary_v1", "error": str(exc)[:200]}]}
+
+    if degraded_sections:
+        log.info(
+            "support.context partial_degrade client_id=%s sections=%s",
+            client_id,
+            [s.get("section") for s in degraded_sections],
+        )
 
     return {
         "client_id": client_id,
@@ -1403,4 +1463,6 @@ async def get_support_context(
         "recent_audit_log": recent_audit_log,
         "recent_email_delivery": recent_email_delivery,
         "recent_documents": recent_documents,
+        "ops_summary_v1": ops_summary_v1,
+        "context_degraded_sections": degraded_sections,
     }

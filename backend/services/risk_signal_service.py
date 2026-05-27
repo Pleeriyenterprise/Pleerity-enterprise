@@ -1499,8 +1499,20 @@ async def update_signal_status(
     if new_status not in (STATUS_ACKNOWLEDGED, STATUS_RESOLVED):
         return None
     db = database.get_db()
+    existing = await db.risk_signals.find_one(
+        {"signal_id": signal_id, "client_id": client_id},
+        {"_id": 0, "status": 1, "acknowledged_at": 1, "resolved_at": 1},
+    )
+    if not existing:
+        return None
     now_iso = _iso(_now())
     set_doc: Dict[str, Any] = {"status": new_status, "updated_at": now_iso}
+    # INV-RS-001 / INV-RS-002: authoritative lifecycle timestamps (additive, preserve first write).
+    if new_status == STATUS_ACKNOWLEDGED and not existing.get("acknowledged_at"):
+        set_doc["acknowledged_at"] = now_iso
+    if new_status == STATUS_RESOLVED:
+        if not existing.get("resolved_at"):
+            set_doc["resolved_at"] = now_iso
     if new_status == STATUS_RESOLVED:
         if not await _risk_signal_has_execution_closure(db, signal_id, client_id):
             dr = (dismiss_reason or "").strip().lower()
