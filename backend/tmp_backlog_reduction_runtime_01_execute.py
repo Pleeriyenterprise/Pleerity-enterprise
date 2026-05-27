@@ -212,10 +212,14 @@ def delta(before: Dict[str, Any], after: Dict[str, Any]) -> Dict[str, Any]:
 
 def run_child(script: str) -> Dict[str, Any]:
     proc = subprocess.run([sys.executable, str(ROOT / script)], cwd=str(ROOT), capture_output=True, text=True)
-    try:
-        return json.loads(proc.stdout.strip().split("\n")[-1]) if proc.stdout else {"exit_code": proc.returncode}
-    except Exception:
-        return {"exit_code": proc.returncode, "stdout_tail": (proc.stdout or "")[-400:]}
+    for line in reversed((proc.stdout or "").strip().split("\n")):
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                continue
+    return {"exit_code": proc.returncode, "stdout_tail": (proc.stdout or "")[-400:]}
 
 
 def classify_programme(

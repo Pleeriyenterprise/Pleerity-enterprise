@@ -84,13 +84,14 @@ def classify_closure(
     signals_ok = has_deadlock and has_scores and has_verification and has_kpis
     surfaces_momentum = urgent_has_momentum or len(momentum_actions) > 0
 
-    if signals_ok and surfaces_momentum and conf_score >= 0.5 and fleet_deadlock < 15:
+    fake_chains = scores.get("fake_progress_chain_count") or 0
+    if signals_ok and surfaces_momentum and conf_score >= 0.5 and fleet_deadlock < 15 and fake_chains < 5:
         return "VERIFIED_CLOSURE_CONVERSION", {
             "deadlock_groups": len(groups),
             "momentum_actions": len(momentum_actions),
             "confidence": conf_score,
         }
-    if signals_ok and (surfaces_momentum or len(groups) >= 2):
+    if signals_ok and (surfaces_momentum or len(groups) >= 2) and fake_chains <= 15:
         return "PARTIAL_CLOSURE_CONVERSION", {
             "deadlock_groups": len(groups),
             "fleet_deadlock_units": fleet_deadlock,
