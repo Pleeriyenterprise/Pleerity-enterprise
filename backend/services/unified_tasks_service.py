@@ -92,6 +92,11 @@ ACTION_TO_SOURCE = {
     ACTION_OPEN_WORK_ORDER: "work_order",
     ACTION_PENDING_APPROVAL: "approval",
     ACTION_OPEN_ISSUE: "issue",
+    "closure_contractor_deadlock": "work_order",
+    "closure_verification_backlog": "work_order",
+    "closure_stale_issue": "issue",
+    "closure_start_job": "issue",
+    "closure_evidence_gap": "work_order",
 }
 
 

@@ -191,6 +191,11 @@ async def _load_inventory(client_id: str, property_id_filter: Optional[str] = No
     return {"issues": issues, "work_orders": wos, "risk_signals": risks}
 
 
+async def load_operational_inventory(client_id: str, property_id_filter: Optional[str] = None) -> Dict[str, Any]:
+    """Shared inventory loader for compression + closure conversion programmes."""
+    return await _load_inventory(client_id, property_id_filter)
+
+
 async def build_pressure_compression_v1(
     client_id: str,
     property_id_filter: Optional[str] = None,
@@ -486,10 +491,21 @@ async def build_operational_value_bundle_v1(
 ) -> Dict[str, Any]:
     """Single bundle for Command Centre + Support alignment (Phase 6)."""
     compression, focus, kpis = await asyncio_gather_bundle(client_id, property_id_filter)
+    closure: Dict[str, Any] = {"available": False}
+    try:
+        from services.operational_closure_conversion_service import build_operational_closure_bundle_v1
+
+        closure = await build_operational_closure_bundle_v1(client_id, property_id_filter)
+        closure["available"] = True
+    except Exception as exc:
+        logger.warning("closure_conversion_v1 degraded client_id=%s: %s", client_id, exc)
+        closure = {"available": False, "error": str(exc)[:200], "programme": "OPERATIONAL-CLOSURE-CONVERSION-01"}
+
     return {
         "pressure_compression_v1": compression,
         "operational_focus_v1": focus,
         "landlord_outcome_kpis_v1": kpis,
+        "closure_conversion_v1": closure,
         "programme": "OPERATIONAL-VALUE-COMPRESSION-01",
     }
 

@@ -209,6 +209,16 @@ def pressure_snapshot(ch: dict, admin_h: Optional[dict], client_id: str) -> Dict
         snap["compression_ratio"] = (pc.get("cognitive_load") or {}).get("compression_ratio")
         snap["what_to_do_first"] = focus.get("what_to_do_first")
         snap["fake_progress_warnings"] = len(focus.get("fake_progress_warnings") or [])
+        closure = ov.get("closure_conversion_v1") or {}
+        snap["closure_available"] = closure.get("available", True) and not closure.get("error")
+        snap["closure_deadlock_groups"] = len((closure.get("deadlock_reduction_v1") or {}).get("groups") or [])
+        snap["closure_verification_queue"] = (closure.get("verification_throughput_v1") or {}).get(
+            "verification_queue_count"
+        )
+        snap["closure_likely_to_stall"] = (closure.get("closure_conversion_scores_v1") or {}).get(
+            "likely_to_stall_count"
+        )
+        snap["closure_what_clears_pressure"] = closure.get("what_clears_most_pressure")
     else:
         snap["cc_urgent_open"] = None
 
@@ -689,6 +699,8 @@ def overall_classification(
     elif delivers + partial >= total * 0.5 and cosmetic < total * 0.4:
         overall = "PARTIAL_OPERATIONAL_VALUE"
     elif compression_groups >= 2 and has_focus and (delivers + partial) >= 5:
+        overall = "PARTIAL_OPERATIONAL_VALUE"
+    elif has_closure and has_focus and (delivers + partial) >= 4 and cosmetic < total * 0.5:
         overall = "PARTIAL_OPERATIONAL_VALUE"
     elif cosmetic >= total * 0.4 or illusion_heavy >= total * 0.45:
         overall = "WORKFLOW_WITHOUT_VALUE_RISK"

@@ -158,6 +158,14 @@ def _priority_action_to_slim_urgent(
         meta["consequence_category"] = a.get("consequence_category")
     if a.get("if_ignored"):
         meta["if_ignored"] = a.get("if_ignored")
+    if a.get("closure_likelihood") is not None:
+        meta["closure_likelihood"] = a.get("closure_likelihood")
+    if a.get("operational_momentum_score") is not None:
+        meta["operational_momentum_score"] = a.get("operational_momentum_score")
+    if a.get("why_matters"):
+        meta["why_matters"] = a.get("why_matters")
+    if action_type.startswith("closure_"):
+        meta["closure_momentum_action"] = True
     return {
         "id": task_id,
         "task_id": task_id,
@@ -196,7 +204,18 @@ async def _load_urgent_slice_from_priority_stream(
     from services.unified_tasks_service import _freshness_block, _load_property_labels
 
     t0 = time.perf_counter()
-    actions = await fetch_client_priority_actions_primary(client_id, property_id_filter, 20)
+    compliance_actions = await fetch_client_priority_actions_primary(client_id, property_id_filter, 20)
+    actions = list(compliance_actions)
+    try:
+        from services.operational_closure_conversion_service import (
+            fetch_momentum_closure_priority_actions,
+            merge_momentum_with_compliance_actions,
+        )
+
+        momentum = await fetch_momentum_closure_priority_actions(client_id, property_id_filter, limit=8)
+        actions = merge_momentum_with_compliance_actions(momentum, compliance_actions, cap=20)
+    except Exception as exc:
+        logger.debug("momentum closure merge skipped: %s", exc)
     try:
         from services.operational_value_compression_service import attach_consequence_to_priority_action
 
