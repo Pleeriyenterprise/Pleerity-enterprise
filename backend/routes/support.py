@@ -1334,11 +1334,22 @@ async def _build_support_context_payload(client_id: str) -> Dict[str, Any]:
             "context_degraded_sections": [{"section": "database", "error": "database unavailable"}],
         })
 
+    # Inclusion-only projection (Mongo rejects mixing _id:0 with field:1). INV-SU-001.
     client = await db["clients"].find_one(
         {"client_id": client_id},
-        {"_id": 0, "password_hash": 0, "client_id": 1, "customer_reference": 1, "full_name": 1, "email": 1,
-         "subscription_status": 1, "onboarding_status": 1, "provisioning_status": 1,
-         "activation_email_status": 1, "activation_email_sent_at": 1, "billing_plan": 1}
+        {
+            "client_id": 1,
+            "customer_reference": 1,
+            "full_name": 1,
+            "name": 1,
+            "email": 1,
+            "subscription_status": 1,
+            "onboarding_status": 1,
+            "provisioning_status": 1,
+            "activation_email_status": 1,
+            "activation_email_sent_at": 1,
+            "billing_plan": 1,
+        },
     )
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
