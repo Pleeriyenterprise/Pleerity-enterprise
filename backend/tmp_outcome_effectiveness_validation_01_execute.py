@@ -668,7 +668,10 @@ def validate_support_interactions(admin_h: Optional[dict], client_id: str) -> Li
     return out
 
 
-def overall_classification(verdicts: List[InteractionVerdict]) -> Tuple[str, Dict[str, Any]]:
+def overall_classification(
+    verdicts: List[InteractionVerdict],
+    snap: Optional[Dict[str, Any]] = None,
+) -> Tuple[str, Dict[str, Any]]:
     by_class: Dict[str, int] = {}
     for v in verdicts:
         by_class[v.classification] = by_class.get(v.classification, 0) + 1
