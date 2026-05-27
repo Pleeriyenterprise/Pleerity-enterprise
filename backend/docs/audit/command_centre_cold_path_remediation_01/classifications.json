@@ -1,0 +1,14 @@
+{
+  "classification": "VERIFIED_OPERATIONALLY",
+  "gates": {
+    "frontend_deploy": true,
+    "api_primary_cold_under_15s": true,
+    "api_cache_disclosed_on_warm": true,
+    "browser_primary_under_15s": true,
+    "authority_regression": true,
+    "staged_secondary_loading": true
+  },
+  "verified_at_utc": "2026-05-27T06:59:26Z",
+  "commits": ["65951a30", "8989f80d"],
+  "notes": "Browser primary measured on command-center-primary-ready (verdict paint), not full legacy bundle. Warm primary API cache_hit disclosed in freshness metadata."
+}

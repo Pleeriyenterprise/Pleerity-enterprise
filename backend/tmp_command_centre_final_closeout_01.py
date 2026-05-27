@@ -105,7 +105,10 @@ def authority(headers: Dict[str, str]) -> Dict[str, Any]:
         req_body = req.json() if req.status_code == 200 else {}
     checks = [
         {"name": "urgent_count_truthful_gte_rows", "pass": urgent_count >= urgent_len},
-        {"name": "continuation_when_capped", "pass": cont > 0 or urgent_count <= urgent_len},
+        {
+            "name": "continuation_when_capped",
+            "pass": cont > 0 if urgent_count > urgent_len else True,
+        },
         {"name": "primary_complete", "pass": body.get("primary_complete") is True},
         {"name": "secondary_deferred", "pass": body.get("secondary_sections_deferred") is True},
         {"name": "freshness_present", "pass": bool(body.get("freshness"))},

@@ -226,10 +226,12 @@ async def _load_urgent_slice_from_priority_stream(
         "freshness_scope": "primary_priority_stream",
     }
     _profile_mark(profile, "freshness_ms", t2)
+    capped_rows = slim_rows[:display_cap]
+    continuation_count = max(0, urgent_open_total - len(capped_rows))
     return {
-        "urgent_actions": slim_rows[:display_cap],
+        "urgent_actions": capped_rows,
         "urgent_open_total": urgent_open_total,
-        "urgent_continuation": max(0, urgent_open_total - len(slim_rows)),
+        "urgent_continuation": continuation_count,
         "freshness": freshness,
     }
 
