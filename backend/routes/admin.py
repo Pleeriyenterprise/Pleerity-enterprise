@@ -965,6 +965,49 @@ _REMEDIATION_PROBE_CLIENT_ALLOWLIST = frozenset(
 )
 
 
+class AdminAuthorityBackfillBody(BaseModel):
+    reason: str = Field(..., min_length=10, max_length=2000)
+    client_id: Optional[str] = Field(None, min_length=8, max_length=64)
+    apply: bool = False
+
+
+@router.post("/ops/authority-backfill-p0", dependencies=[Depends(require_owner_or_admin)])
+async def admin_authority_backfill_p0_endpoint(request: Request, body: AdminAuthorityBackfillBody):
+    """
+    P0-D authority backfill (INV-RS-002, INV-IS-002, INV-JO-002). Dry-run unless apply=true.
+    Recoverable timestamps only — never fabricates without source fields.
+    """
+    user = await admin_route_guard(request)
+    action_key = "authority_backfill_p0_apply" if body.apply else "authority_backfill_p0_dry_run"
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        action_key,
+        reason=body.reason,
+        resource_key=body.client_id or "portfolio",
+    )
+    from scripts.authority_backfill_p0 import run_backfill
+
+    report = await run_backfill(body.client_id, body.apply)
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=user.get("portal_user_id"),
+        client_id=body.client_id,
+        resource_type="authority_backfill",
+        resource_id=body.client_id or "all",
+        metadata={
+            "action_type": action_key.upper(),
+            **normalized_admin_action_metadata(action_key, support_reason),
+            "mode": report.get("mode"),
+            "sections": [
+                {k: s.get(k) for k in ("collection", "recoverable", "applied", "non_recoverable", "ambiguous")}
+                for s in report.get("sections") or []
+            ],
+        },
+    )
+    return report
+
+
 @router.post("/ops/remediation-probe-seed", dependencies=[Depends(require_owner_or_admin)])
 async def admin_remediation_probe_seed_endpoint(request: Request, body: AdminRemediationProbeSeedBody):
     """

@@ -445,6 +445,11 @@ async def fetch_momentum_closure_priority_actions(
                 sc = score_work_order_closure(w)
                 act["closure_likelihood"] = sc.get("closure_likelihood")
                 act["operational_momentum_score"] = sc.get("operational_momentum_score")
+                age = _days_old(w.get("updated_at") or w.get("created_at")) or 0
+                if age >= 14:
+                    act["priority"] = min(99, (act.get("priority") or SCORE_CONTRACTOR_DEADLOCK) + 6)
+                elif age >= 7:
+                    act["priority"] = min(98, (act.get("priority") or SCORE_CONTRACTOR_DEADLOCK) + 3)
                 actions.append(act)
         elif dtype == "verification_deadlock":
             candidates = [
@@ -462,6 +467,11 @@ async def fetch_momentum_closure_priority_actions(
                 sc = score_work_order_closure(w)
                 act["closure_likelihood"] = sc.get("closure_likelihood")
                 act["operational_momentum_score"] = sc.get("operational_momentum_score")
+                v_age = _days_old(w.get("completed_at") or w.get("updated_at")) or 0
+                if v_age >= 14:
+                    act["priority"] = min(99, (act.get("priority") or SCORE_VERIFICATION_BACKLOG) + 8)
+                elif v_age >= 7:
+                    act["priority"] = min(98, (act.get("priority") or SCORE_VERIFICATION_BACKLOG) + 4)
                 actions.append(act)
         elif dtype == "review_deadlock":
             candidates = []

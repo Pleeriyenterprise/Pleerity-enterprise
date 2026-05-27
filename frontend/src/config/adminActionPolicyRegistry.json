@@ -158,5 +158,25 @@
     "requires_step_up": false,
     "affects_multiple_customers": false,
     "irreversible": false
+  },
+  "authority_backfill_p0_dry_run": {
+    "action_id": "authority_backfill_p0_dry_run",
+    "risk_class": "high_impact_operational",
+    "operator_level": "owner_or_senior_ops",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": true,
+    "irreversible": false
+  },
+  "authority_backfill_p0_apply": {
+    "action_id": "authority_backfill_p0_apply",
+    "risk_class": "dangerous_global",
+    "operator_level": "owner_or_senior_ops",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": true,
+    "irreversible": false
   }
 }

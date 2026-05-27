@@ -501,11 +501,22 @@ async def build_operational_value_bundle_v1(
         logger.warning("closure_conversion_v1 degraded client_id=%s: %s", client_id, exc)
         closure = {"available": False, "error": str(exc)[:200], "programme": "OPERATIONAL-CLOSURE-CONVERSION-01"}
 
+    backlog: Dict[str, Any] = {"available": False}
+    try:
+        from services.backlog_reduction_runtime_service import build_backlog_reduction_bundle_v1
+
+        backlog = await build_backlog_reduction_bundle_v1(client_id, property_id_filter)
+        backlog["available"] = True
+    except Exception as exc:
+        logger.warning("backlog_reduction_v1 degraded client_id=%s: %s", client_id, exc)
+        backlog = {"available": False, "error": str(exc)[:200], "programme": "BACKLOG-REDUCTION-RUNTIME-01"}
+
     return {
         "pressure_compression_v1": compression,
         "operational_focus_v1": focus,
         "landlord_outcome_kpis_v1": kpis,
         "closure_conversion_v1": closure,
+        "backlog_reduction_v1": backlog,
         "programme": "OPERATIONAL-VALUE-COMPRESSION-01",
     }
 
