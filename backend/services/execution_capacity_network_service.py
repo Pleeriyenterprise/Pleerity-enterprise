@@ -109,7 +109,7 @@ async def build_contractor_network_audit_v1(
 
         prop_id = w.get("property_id")
         pc = None
-        if db and prop_id:
+        if db is not None and prop_id:
             prop = await db.properties.find_one(
                 {"property_id": prop_id, "client_id": client_id},
                 {"_id": 0, "postcode": 1},
