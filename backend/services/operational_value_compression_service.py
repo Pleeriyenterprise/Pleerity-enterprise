@@ -511,12 +511,27 @@ async def build_operational_value_bundle_v1(
         logger.warning("backlog_reduction_v1 degraded client_id=%s: %s", client_id, exc)
         backlog = {"available": False, "error": str(exc)[:200], "programme": "BACKLOG-REDUCTION-RUNTIME-01"}
 
+    execution_capacity: Dict[str, Any] = {"available": False}
+    try:
+        from services.execution_capacity_network_service import build_execution_capacity_bundle_v1
+
+        execution_capacity = await build_execution_capacity_bundle_v1(client_id, property_id_filter)
+        execution_capacity["available"] = True
+    except Exception as exc:
+        logger.warning("execution_capacity_v1 degraded client_id=%s: %s", client_id, exc)
+        execution_capacity = {
+            "available": False,
+            "error": str(exc)[:200],
+            "programme": "EXECUTION-CAPACITY-AND-NETWORK-RELIABILITY-01",
+        }
+
     return {
         "pressure_compression_v1": compression,
         "operational_focus_v1": focus,
         "landlord_outcome_kpis_v1": kpis,
         "closure_conversion_v1": closure,
         "backlog_reduction_v1": backlog,
+        "execution_capacity_v1": execution_capacity,
         "programme": "OPERATIONAL-VALUE-COMPRESSION-01",
     }
 

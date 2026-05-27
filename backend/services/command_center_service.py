@@ -166,6 +166,9 @@ def _priority_action_to_slim_urgent(
         meta["why_matters"] = a.get("why_matters")
     if action_type.startswith("closure_"):
         meta["closure_momentum_action"] = True
+    if action_type.startswith("execution_capacity_"):
+        meta["execution_capacity_action"] = True
+        meta["blockage_class"] = "execution_capacity_blockage"
     return {
         "id": task_id,
         "task_id": task_id,
@@ -214,6 +217,16 @@ async def _load_urgent_slice_from_priority_stream(
 
         momentum = await fetch_momentum_closure_priority_actions(client_id, property_id_filter, limit=8)
         actions = merge_momentum_with_compliance_actions(momentum, compliance_actions, cap=20)
+        try:
+            from services.execution_capacity_network_service import (
+                fetch_execution_capacity_priority_actions,
+                merge_execution_with_momentum_actions,
+            )
+
+            exec_actions = await fetch_execution_capacity_priority_actions(client_id, property_id_filter, limit=5)
+            actions = merge_execution_with_momentum_actions(exec_actions, actions, cap=22)
+        except Exception as exc_exec:
+            logger.debug("execution capacity merge skipped: %s", exc_exec)
     except Exception as exc:
         logger.debug("momentum closure merge skipped: %s", exc)
     try:

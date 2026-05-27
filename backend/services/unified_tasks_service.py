@@ -97,6 +97,7 @@ ACTION_TO_SOURCE = {
     "closure_stale_issue": "issue",
     "closure_start_job": "issue",
     "closure_evidence_gap": "work_order",
+    "execution_capacity_recovery": "work_order",
 }
 
 
