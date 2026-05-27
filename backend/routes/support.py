@@ -1306,19 +1306,8 @@ def _support_ctx_iso_ts(value: Any) -> Optional[str]:
     return str(value)
 
 
-@admin_router.get("/context/{client_id}")
-async def get_support_context(
-    client_id: str,
-    current_user: dict = Depends(require_support_or_above)
-):
-    """
-    Get support context for a client: account snapshot, portfolio snapshot,
-    notification prefs, recent audit log, recent email delivery events, recent documents.
-    Used by Support Dashboard context panel. RBAC: Support and above.
-
-    INV-SU-001: sections degrade independently; endpoint returns 200 unless client missing.
-    INV-SU-002: ops_summary_v1 operational reconstruction slice.
-    """
+async def _build_support_context_payload(client_id: str) -> Dict[str, Any]:
+    """INV-SU-001 / INV-SU-002: assemble support context with per-section degrade."""
     import logging
 
     from services.support_client_context_ops import (
@@ -1416,7 +1405,7 @@ async def get_support_context(
     notification_prefs: Dict[str, Any] = {}
     try:
         notif_prefs = await db["notification_preferences"].find_one({"client_id": client_id}, {"_id": 0})
-        notification_prefs = notif_prefs or {}
+        notification_prefs = sanitize_for_json(notif_prefs or {})
     except Exception as exc:
         degraded_sections.append({"section": "notification_prefs", "error": str(exc)[:200]})
 
@@ -1486,3 +1475,38 @@ async def get_support_context(
         "ops_summary_v1": ops_summary_v1,
         "context_degraded_sections": degraded_sections,
     })
+
+
+@admin_router.get("/context/{client_id}")
+async def get_support_context(
+    client_id: str,
+    current_user: dict = Depends(require_support_or_above),
+):
+    """
+    Get support context for a client. INV-SU-001: never hard-fail except 404 (client missing).
+    """
+    import logging
+
+    from services.support_client_context_ops import sanitize_for_json
+
+    log = logging.getLogger(__name__)
+    try:
+        return await _build_support_context_payload(client_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.exception("support.context fatal degrade client_id=%s: %s", client_id, exc)
+        return sanitize_for_json({
+            "client_id": client_id,
+            "account_snapshot": {},
+            "portfolio_snapshot": {},
+            "notification_prefs": {},
+            "recent_audit_log": [],
+            "recent_email_delivery": [],
+            "recent_documents": [],
+            "ops_summary_v1": {
+                "available": False,
+                "degraded_sections": [{"section": "fatal", "error": str(exc)[:200]}],
+            },
+            "context_degraded_sections": [{"section": "fatal", "error": str(exc)[:200]}],
+        })

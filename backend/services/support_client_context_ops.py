@@ -165,7 +165,7 @@ async def build_ops_summary_v1(db, client_id: str) -> Dict[str, Any]:
                 "resolved_at": 1,
                 "closed_at": 1,
             },
-        ).sort("updated_at", -1).limit(12).to_list(12)
+        ).sort("updated_at", -1).limit(12).to_list(length=12)
         out["recent_issues"] = [
             {
                 "issue_id": r.get("issue_id"),
@@ -198,7 +198,7 @@ async def build_ops_summary_v1(db, client_id: str) -> Dict[str, Any]:
                 "updated_at": 1,
                 "issue_id": 1,
             },
-        ).sort("updated_at", -1).limit(12).to_list(12)
+        ).sort("updated_at", -1).limit(12).to_list(length=12)
         out["recent_work_orders"] = [
             {
                 "work_order_id": r.get("work_order_id"),
@@ -232,7 +232,7 @@ async def build_ops_summary_v1(db, client_id: str) -> Dict[str, Any]:
                 "updated_at": 1,
                 "dismiss_reason": 1,
             },
-        ).sort("updated_at", -1).limit(12).to_list(12)
+        ).sort("updated_at", -1).limit(12).to_list(length=12)
         out["recent_risk_signals"] = [
             {
                 "signal_id": r.get("signal_id"),
