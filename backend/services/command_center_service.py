@@ -154,6 +154,10 @@ def _priority_action_to_slim_urgent(
         meta["linked_property_requirement_id"] = rid
     if a.get("gap_key"):
         meta["gap_key"] = a.get("gap_key")
+    if a.get("consequence_category"):
+        meta["consequence_category"] = a.get("consequence_category")
+    if a.get("if_ignored"):
+        meta["if_ignored"] = a.get("if_ignored")
     return {
         "id": task_id,
         "task_id": task_id,
@@ -459,6 +463,7 @@ async def get_command_center_primary_bundle(
         "primary_complete": True,
         "deferred_sections": ["upcoming_risks", "recent_activity", "hiua_operational_uncertainty"],
         "predictive_enabled": predictive_enabled,
+        "operational_value_v1": operational_value_v1,
     }
     if not bypass_cache:
         set_cached_command_center_primary(ck, out)

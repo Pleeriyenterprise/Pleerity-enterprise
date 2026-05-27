@@ -285,4 +285,13 @@ async def build_ops_summary_v1(db, client_id: str) -> Dict[str, Any]:
             client_id,
             [s.get("section") for s in out["degraded_sections"]],
         )
+
+    try:
+        from services.operational_value_compression_service import build_operational_value_bundle_v1
+
+        out["operational_value_v1"] = await build_operational_value_bundle_v1(client_id)
+    except Exception as exc:
+        logger.warning("support ops operational_value_v1 degraded client_id=%s: %s", client_id, exc)
+        out["operational_value_v1"] = {"available": False, "error": str(exc)[:200]}
+
     return out

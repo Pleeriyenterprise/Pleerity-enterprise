@@ -97,7 +97,14 @@ def explain_risk_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
     lead = desc if desc else client_rt
     explanation_text = f"{lead}. {why_it_matters}".strip() if lead else why_it_matters
 
-    return _out(explanation_text, why_it_matters, recommended_action_text)
+    out = _out(explanation_text, why_it_matters, recommended_action_text)
+    try:
+        from services.operational_value_compression_service import classify_risk_consequence
+
+        out["operational_consequence"] = classify_risk_consequence(signal)
+    except Exception:
+        pass
+    return out
 
 
 # ---------- Compliance alerts (per requirement) ----------

@@ -264,7 +264,10 @@ async def update_issue(
         s = status.strip().lower()
         if s in {st.lower() for st in ALL_ISSUE_STATUSES}:
             if old_status in (STATUS_CLOSED, STATUS_CANCELLED) and s not in (STATUS_CLOSED, STATUS_CANCELLED):
-                pass  # do not reopen
+                raise ValueError(
+                    "Closed or cancelled issues cannot be reopened through this update. "
+                    "Create a new issue if further work is required."
+                )
             else:
                 terminal = s in (STATUS_CLOSED, STATUS_CANCELLED, STATUS_RESOLVED)
                 if terminal:

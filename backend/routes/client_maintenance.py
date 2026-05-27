@@ -1262,6 +1262,21 @@ async def get_portfolio_risk_signals(
         to_date=to_date,
         limit=limit,
     )
+    try:
+        from services.operational_value_compression_service import (
+            build_pressure_compression_v1,
+            enrich_entity_operational_consequence,
+        )
+
+        if isinstance(result, dict) and isinstance(result.get("signals"), list):
+            result["signals"] = [
+                enrich_entity_operational_consequence(s, "risk_signal") for s in result["signals"]
+            ]
+            result["pressure_compression_v1"] = await build_pressure_compression_v1(
+                user["client_id"], property_id
+            )
+    except Exception:
+        pass
     return result
 
 
