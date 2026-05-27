@@ -525,6 +525,20 @@ async def build_operational_value_bundle_v1(
             "programme": "EXECUTION-CAPACITY-AND-NETWORK-RELIABILITY-01",
         }
 
+    assignment_momentum: Dict[str, Any] = {"available": False}
+    try:
+        from services.assignment_execution_momentum_service import build_assignment_execution_momentum_bundle_v1
+
+        assignment_momentum = await build_assignment_execution_momentum_bundle_v1(client_id, property_id_filter)
+        assignment_momentum["available"] = True
+    except Exception as exc:
+        logger.warning("assignment_execution_momentum_v1 degraded client_id=%s: %s", client_id, exc)
+        assignment_momentum = {
+            "available": False,
+            "error": str(exc)[:200],
+            "programme": "ASSIGNMENT-CONVERSION-AND-EXECUTION-MOMENTUM-01",
+        }
+
     return {
         "pressure_compression_v1": compression,
         "operational_focus_v1": focus,
@@ -532,6 +546,7 @@ async def build_operational_value_bundle_v1(
         "closure_conversion_v1": closure,
         "backlog_reduction_v1": backlog,
         "execution_capacity_v1": execution_capacity,
+        "assignment_execution_momentum_v1": assignment_momentum,
         "programme": "OPERATIONAL-VALUE-COMPRESSION-01",
     }
 

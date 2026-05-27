@@ -98,6 +98,7 @@ ACTION_TO_SOURCE = {
     "closure_start_job": "issue",
     "closure_evidence_gap": "work_order",
     "execution_capacity_recovery": "work_order",
+    "coordination_momentum_nudge": "work_order",
 }
 
 
