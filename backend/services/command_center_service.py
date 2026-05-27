@@ -219,7 +219,12 @@ async def _load_urgent_slice_from_priority_stream(
     except Exception as rent_exc:
         logger.warning("command_center primary rent merge failed: %s", rent_exc)
     t2 = time.perf_counter()
-    freshness = await _freshness_block(client_id)
+    now = datetime.now(timezone.utc)
+    freshness = {
+        "tasks_refreshed_at": now.isoformat(),
+        "projection": "primary",
+        "freshness_scope": "primary_priority_stream",
+    }
     _profile_mark(profile, "freshness_ms", t2)
     return {
         "urgent_actions": slim_rows[:display_cap],
@@ -354,8 +359,29 @@ async def get_command_center_primary_bundle(
     portal_user_id: Optional[str] = None,
     correlation_id: Optional[str] = None,
     profile: Optional[Dict[str, Any]] = None,
+    bypass_cache: bool = False,
 ) -> Dict[str, Any]:
     """Fast Command Centre primary contract — urgent slice + headline compliance; secondary deferred."""
+    from services.operational_surface_cache import (
+        command_center_primary_cache_key,
+        get_cached_command_center_primary,
+        set_cached_command_center_primary,
+    )
+
+    ck = command_center_primary_cache_key(client_id, property_id_filter)
+    if not bypass_cache:
+        cached = get_cached_command_center_primary(ck)
+        if cached:
+            out = dict(cached["payload"])
+            fresh = dict(out.get("freshness") or {})
+            fresh["cache_hit"] = True
+            fresh["cached_at"] = cached["cached_at"]
+            fresh["cache_ttl_seconds"] = cached["ttl_seconds"]
+            out["freshness"] = fresh
+            if profile is not None:
+                profile["cache_hit"] = True
+            return out
+
     corr = ensure_trust_surface_correlation_id(SURFACE_COMMAND_CENTER_REFRESH, client_id, correlation_id)
     gen_at = datetime.now(timezone.utc)
     t0 = time.perf_counter()
@@ -418,7 +444,7 @@ async def get_command_center_primary_bundle(
         "non_blocking": True,
         **freshness_obs,
     }
-    return {
+    out = {
         "projection": "primary",
         "urgent_actions": urgent_actions,
         "upcoming_risks": [],
@@ -432,6 +458,9 @@ async def get_command_center_primary_bundle(
         "deferred_sections": ["upcoming_risks", "recent_activity", "hiua_operational_uncertainty"],
         "predictive_enabled": predictive_enabled,
     }
+    if not bypass_cache:
+        set_cached_command_center_primary(ck, out)
+    return out
 
 
 async def get_command_center_secondary_bundle(

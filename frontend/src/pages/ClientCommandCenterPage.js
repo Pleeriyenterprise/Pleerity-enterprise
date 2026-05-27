@@ -586,6 +586,7 @@ export default function ClientCommandCenterPage() {
       <ErrorBanner message={error} />
 
       {/* Portfolio verdict + synthesis */}
+      <div data-testid="command-center-primary-ready">
       <div
         className={`mb-6 rounded-xl border px-4 py-4 sm:px-5 sm:py-5 ${verdictBannerClasses(portfolioVerdict.statusTone)}`}
         data-testid="command-center-verdict"
@@ -648,6 +649,7 @@ export default function ClientCommandCenterPage() {
         </div>
         <p className="text-sm mt-4 pt-3 border-t border-black/5 opacity-90">{verdict.line}</p>
         {verdict.subline ? <p className="text-sm mt-2 opacity-85">{verdict.subline}</p> : null}
+      </div>
       </div>
 
       {allClearEmpty && !error && (

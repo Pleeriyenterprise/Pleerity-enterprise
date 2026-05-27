@@ -26,7 +26,7 @@ FALLBACK_PW = "OpsVerify01!StagingWalk"
 
 SURFACES = [
     ("P1_Today", "/today", "client-tasks-page", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
-    ("P2_CommandCentre", "/command-center", "command-center-root", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
+    ("P2_CommandCentre", "/command-center", "command-center-primary-ready", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
     ("P3_Dashboard", "/dashboard", "client-dashboard", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
     ("P4_Properties", "/properties", "properties-page", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
     ("P5_Requirements", "/requirements", "requirements-page", ["portal-section-skeleton"], "portal-stale-refresh-banner"),
@@ -161,4 +161,7 @@ def run_browser_timings() -> dict[str, Any]:
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     result = run_browser_timings()
-    print(json.dumps(result, indent=2))
+    payload = json.dumps(result, indent=2)
+    (OUT / "browser_navigation_timings.json").write_text(payload, encoding="utf-8")
+    (OUT / "browser_navigation_timings_closeout.json").write_text(payload, encoding="utf-8")
+    print(payload)

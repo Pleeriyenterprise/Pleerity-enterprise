@@ -324,16 +324,12 @@ async def fetch_client_priority_actions_primary(
     db = database.get_db()
     actions: List[Dict[str, Any]] = []
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
-    props_surface = await db.properties.find(
-        {"client_id": client_id},
-        {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "jurisdiction": 1},
-    ).to_list(200)
     from services.requirement_client_runtime_surface import (
         filter_requirement_rows_for_client_runtime_surfaces,
         project_requirement_row_client_runtime,
     )
 
-    cap = min(max(limit * 2, 28), 48)
+    cap = min(max(limit * 2, 20), 24)
     q_gap: Dict[str, Any] = {
         "client_id": client_id,
         "$or": [
@@ -364,7 +360,15 @@ async def fetch_client_priority_actions_primary(
             "evidence_authority_synced_at": 1,
             "client_surface_visible": 1,
         },
-    ).limit(cap).to_list(cap)
+    ).sort([("status", 1), ("due_date", 1)]).limit(cap).to_list(cap)
+    prop_ids_needed = {str(r.get("property_id")) for r in gap_reqs if r.get("property_id")}
+    props_surface: List[Dict[str, Any]] = []
+    if prop_ids_needed:
+        props_surface = await db.properties.find(
+            {"client_id": client_id, "property_id": {"$in": list(prop_ids_needed)}},
+            {"_id": 0, "property_id": 1, "nickname": 1, "address_line_1": 1, "postcode": 1, "jurisdiction": 1},
+        ).to_list(len(prop_ids_needed))
+    props_by_id = {str(p.get("property_id")): p for p in props_surface if p.get("property_id")}
     gap_reqs = await filter_requirement_rows_for_client_runtime_surfaces(
         db,
         client_id=client_id,
@@ -379,7 +383,7 @@ async def fetch_client_priority_actions_primary(
         if rid:
             gap_reqs_by_rid[str(rid)] = r
     for r in gap_reqs_by_rid.values():
-        prop_doc = next((p for p in props_surface if p.get("property_id") == r.get("property_id")), None)
+        prop_doc = props_by_id.get(str(r.get("property_id") or ""))
         raw_gaps = infer_compliance_gaps_for_requirement(r, property_doc=prop_doc)
         for g in raw_gaps:
             kind = _priority_stream_kind_for_gap(g.gap_kind)

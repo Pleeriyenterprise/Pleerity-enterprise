@@ -73,3 +73,27 @@ def set_cached_compliance_score(
     ttl_seconds: int = _DEFAULT_TTL_SECONDS,
 ) -> None:
     set_cached_unified_tasks(key, payload, ttl_seconds=ttl_seconds)
+
+
+def command_center_primary_cache_key(client_id: str, property_id_filter: Optional[str]) -> str:
+    return f"cc_primary:{client_id}:{property_id_filter or ''}"
+
+
+def get_cached_command_center_primary(key: str) -> Optional[Dict[str, Any]]:
+    return get_cached_unified_tasks(key)
+
+
+def set_cached_command_center_primary(
+    key: str,
+    payload: Dict[str, Any],
+    *,
+    ttl_seconds: int = 45,
+) -> None:
+    set_cached_unified_tasks(key, payload, ttl_seconds=ttl_seconds)
+
+
+def invalidate_command_center_primary_for_client(client_id: str) -> None:
+    prefix = f"cc_primary:{client_id}:"
+    for k in list(_store.keys()):
+        if k.startswith(prefix):
+            _store.pop(k, None)
