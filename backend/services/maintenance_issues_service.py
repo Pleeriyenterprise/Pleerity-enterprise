@@ -240,6 +240,10 @@ async def get_issue(issue_id: str, client_id: Optional[str] = None) -> Optional[
     doc = await db.maintenance_issues.find_one(q)
     if doc:
         doc.pop("_id", None)
+    if doc and client_id is not None:
+        from services.operational_continuation_service import enrich_issue_with_continuation
+
+        return await enrich_issue_with_continuation(doc, client_id)
     return doc
 
 

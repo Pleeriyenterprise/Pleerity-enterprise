@@ -845,6 +845,9 @@ async def get_risk_signals_for_property(
     for s in signals:
         s.pop("_id", None)
     enrich_risk_signals(signals)
+    from services.operational_continuation_service import enrich_risk_signals_with_continuation
+
+    await enrich_risk_signals_with_continuation(signals, client_id)
 
     # Last recalculated: max generated_at for this property
     last_rec = None
@@ -1150,6 +1153,11 @@ async def get_risk_signal_by_id(signal_id: str, client_id: str) -> Optional[Dict
     if not doc:
         return None
     doc.pop("_id", None)
+    from presentation.label_service import enrich_risk_signal
+    from services.operational_continuation_service import enrich_risk_signals_with_continuation
+
+    enrich_risk_signal(doc)
+    await enrich_risk_signals_with_continuation([doc], client_id)
     return doc
 
 
@@ -1217,6 +1225,25 @@ async def get_risk_signal_suggested_actions_view(
     doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
     if not doc:
         return None
+    from services.operational_continuation_service import resolve_continuation_for_risk_signal
+
+    continuation = await resolve_continuation_for_risk_signal(doc, client_id)
+    if continuation.get("has_active_lineage"):
+        cta = continuation.get("continuation_cta") or {}
+        return {
+            "signal_id": signal_id,
+            "recommended_action": {
+                "type": "view_workflow",
+                "title": cta.get("label") or "View workflow",
+                "priority": "high",
+                "estimated_cost": None,
+                "recommended_trade": None,
+                "description": continuation.get("user_safe_reason") or "",
+            },
+            "suggested_action_codes": ["view_workflow"],
+            "alternatives": [],
+            "operational_continuation": continuation,
+        }
     cat = doc.get("signal_category") or ""
     rtype = doc.get("risk_type") or ""
     actions = doc.get("suggested_actions")
@@ -1230,6 +1257,7 @@ async def get_risk_signal_suggested_actions_view(
         "recommended_action": recommended,
         "suggested_action_codes": list(actions),
         "alternatives": alternatives,
+        "operational_continuation": continuation,
     }
 
 
@@ -1346,6 +1374,17 @@ async def create_inspection_issue_from_risk_signal(
     doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
     if not doc:
         raise ValueError("Risk signal not found or does not belong to this client")
+    from services.risk_signal_issue_idempotency import replay_open_issue_for_signal
+
+    replay_issue = await replay_open_issue_for_signal(signal_id, client_id)
+    if replay_issue:
+        from services.operational_continuation_service import (
+            merge_continuation_into_payload,
+            resolve_continuation_for_risk_signal,
+        )
+
+        continuation = await resolve_continuation_for_risk_signal(doc, client_id)
+        return merge_continuation_into_payload(replay_issue, continuation)
     property_id = doc.get("property_id")
     if not property_id:
         raise ValueError("Risk signal has no property_id")
@@ -1392,6 +1431,16 @@ async def create_work_order_from_risk_signal(
     doc = await get_risk_signal_by_id(signal_id=signal_id, client_id=client_id)
     if not doc:
         raise ValueError("Risk signal not found or does not belong to this client")
+    from services.operational_continuation_service import (
+        merge_continuation_into_payload,
+        resolve_continuation_for_risk_signal,
+    )
+    from services.risk_signal_wo_idempotency import replay_active_work_order_for_risk_signal
+
+    replay = await replay_active_work_order_for_risk_signal(signal_id, client_id)
+    if replay:
+        continuation = await resolve_continuation_for_risk_signal(doc, client_id)
+        return merge_continuation_into_payload(replay, continuation)
     property_id = doc.get("property_id")
     if not property_id:
         raise ValueError("Risk signal has no property_id")

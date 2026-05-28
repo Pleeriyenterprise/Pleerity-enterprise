@@ -574,7 +574,15 @@ async def create_work_order_from_issue(request: Request, issue_id: str):
 
     existing_wo = await find_existing_work_order_for_issue(issue_id, client_id)
     if existing_wo:
-        return existing_wo
+        from services.operational_continuation_service import (
+            enrich_issue_with_continuation,
+            merge_continuation_into_payload,
+            resolve_continuation_for_issue,
+        )
+
+        issue_enriched = await enrich_issue_with_continuation(issue, client_id)
+        continuation = await resolve_continuation_for_issue(issue_enriched, client_id)
+        return merge_continuation_into_payload(existing_wo, continuation)
 
     property_id = issue["property_id"]
     db = database.get_db()

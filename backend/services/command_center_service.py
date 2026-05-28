@@ -8,7 +8,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from services import risk_signal_service
@@ -258,16 +258,96 @@ def _build_primary_compliance_fallback(reason: str) -> Dict[str, Any]:
     }
 
 
+async def _load_maintenance_debt_urgent_rows(
+    client_id: str,
+    *,
+    property_id_filter: Optional[str] = None,
+    cap: int = 8,
+) -> Tuple[List[Dict[str, Any]], int]:
+    """Lightweight maintenance issues/WOs for degraded Command Centre — never false calm."""
+    from database import database
+
+    db = database.get_db()
+    issue_q: Dict[str, Any] = {
+        "client_id": client_id,
+        "status": {"$nin": ["closed", "cancelled", "resolved"]},
+    }
+    wo_q: Dict[str, Any] = {
+        "client_id": client_id,
+        "status": {"$nin": ["COMPLETED", "VERIFIED", "CLOSED", "CANCELLED"]},
+    }
+    if property_id_filter:
+        issue_q["property_id"] = property_id_filter
+        wo_q["property_id"] = property_id_filter
+    open_issues = await db.maintenance_issues.count_documents(issue_q)
+    open_wos = await db.work_orders.count_documents(wo_q)
+    debt_total = int(open_issues) + int(open_wos)
+    if debt_total <= 0:
+        return [], 0
+    rows: List[Dict[str, Any]] = []
+    async for wo in db.work_orders.find(wo_q, {"_id": 0, "work_order_id": 1, "status": 1, "description": 1}).sort(
+        "updated_at", -1
+    ).limit(cap):
+        wid = wo.get("work_order_id")
+        if not wid:
+            continue
+        st = (wo.get("status") or "OPEN").upper()
+        label = "View active job" if st == "ASSIGNED" else "Continue maintenance workflow"
+        rows.append(
+            {
+                "id": f"maintenance:wo:{wid}",
+                "task_id": f"maintenance:wo:{wid}",
+                "title": (wo.get("description") or "Maintenance job")[:120],
+                "description": f"Active maintenance workflow ({st})",
+                "section": "urgent",
+                "source_type": "maintenance_work_order",
+                "primary_action_type": "open_work_order",
+                "primary_action_label": label,
+                "primary_action_url": f"/operations/jobs/{wid}",
+                "related_work_order_id": wid,
+                "urgency_level": "high",
+                "metadata": {"degraded_maintenance_fallback": True},
+            }
+        )
+    if len(rows) < cap:
+        async for issue in db.maintenance_issues.find(
+            issue_q, {"_id": 0, "issue_id": 1, "description": 1, "status": 1}
+        ).sort("updated_at", -1).limit(max(0, cap - len(rows))):
+            iid = issue.get("issue_id")
+            if not iid:
+                continue
+            rows.append(
+                {
+                    "id": f"maintenance:issue:{iid}",
+                    "task_id": f"maintenance:issue:{iid}",
+                    "title": (issue.get("description") or "Maintenance issue")[:120],
+                    "description": "Open maintenance issue requires coordination",
+                    "section": "urgent",
+                    "source_type": "maintenance_issue",
+                    "primary_action_type": "open_issue",
+                    "primary_action_label": "Review issue",
+                    "primary_action_url": f"/operations/issues/{iid}",
+                    "related_issue_id": iid,
+                    "urgency_level": "medium",
+                    "metadata": {"degraded_maintenance_fallback": True},
+                }
+            )
+    return rows, debt_total
+
+
 def _build_primary_urgent_fallback(
     *,
     reason: str,
     compliance_status_summary: Dict[str, Any],
+    maintenance_debt_total: int = 0,
+    maintenance_urgent_rows: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     overdue = int(compliance_status_summary.get("requirements_overdue") or 0)
     missing = int(compliance_status_summary.get("requirements_missing_evidence") or 0)
-    urgent_open_total = max(0, overdue + missing)
-    actions = []
-    if urgent_open_total > 0:
+    maint_rows = list(maintenance_urgent_rows or [])
+    urgent_open_total = max(0, overdue + missing, maintenance_debt_total, len(maint_rows))
+    actions = list(maint_rows)
+    if urgent_open_total > 0 and not actions:
         actions.append(
             {
                 "id": "degraded:fallback:urgent",
@@ -293,8 +373,25 @@ def _build_primary_urgent_fallback(
                 },
             }
         )
+    elif overdue + missing > 0 and not any(a.get("id") == "degraded:fallback:urgent" for a in actions):
+        actions.insert(
+            0,
+            {
+                "id": "degraded:fallback:compliance",
+                "task_id": "degraded:fallback:compliance",
+                "title": "Compliance items need attention",
+                "description": "Pressure metrics are refreshing; compliance debt remains visible.",
+                "section": "urgent",
+                "source_type": "degraded_fallback",
+                "urgency_level": "high",
+                "primary_action_type": "open_requirements",
+                "primary_action_label": "Review compliance",
+                "primary_action_url": "/requirements",
+                "metadata": {"degraded": True, "fallback_reason": reason},
+            },
+        )
     return {
-        "urgent_actions": actions,
+        "urgent_actions": actions[:12],
         "urgent_open_total": urgent_open_total,
         "urgent_continuation": max(0, urgent_open_total - len(actions)),
         "freshness": {
@@ -573,7 +670,15 @@ async def get_command_center_primary_bundle(
         logger.warning("command_center primary urgent/summary fallback client_id=%s: %s", client_id, exc)
         gather_degraded_reasons.append(reason)
         compliance_status_summary = _build_primary_compliance_fallback(reason)
-        urgent_block = _build_primary_urgent_fallback(reason=reason, compliance_status_summary=compliance_status_summary)
+        maint_rows, maint_debt = await _load_maintenance_debt_urgent_rows(
+            client_id, property_id_filter=property_id_filter
+        )
+        urgent_block = _build_primary_urgent_fallback(
+            reason=reason,
+            compliance_status_summary=compliance_status_summary,
+            maintenance_debt_total=maint_debt,
+            maintenance_urgent_rows=maint_rows,
+        )
     _profile_mark(profile, "primary_gather_ms", t0)
     t_ov = time.perf_counter()
     operational_value_v1: Dict[str, Any] = {}
@@ -612,6 +717,13 @@ async def get_command_center_primary_bundle(
     _profile_mark(profile, "operational_value_ms", t_ov)
     urgent_actions = urgent_block.get("urgent_actions") or []
     urgent_open = int(urgent_block.get("urgent_open_total") or len(urgent_actions))
+    if (ov_degraded_reason or gather_degraded_reasons) and urgent_open == 0:
+        maint_rows, maint_debt = await _load_maintenance_debt_urgent_rows(
+            client_id, property_id_filter=property_id_filter
+        )
+        if maint_debt > 0:
+            urgent_actions = maint_rows
+            urgent_open = max(urgent_open, maint_debt, len(maint_rows))
     freshness = urgent_block.get("freshness") or {}
     freshness = {**freshness, "projection": "primary", "cache_hit": False}
     pc_block = operational_value_v1.get("pressure_compression_v1") or {}

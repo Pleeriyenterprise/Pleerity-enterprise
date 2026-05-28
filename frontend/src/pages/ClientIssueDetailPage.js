@@ -12,6 +12,7 @@ import { toast } from '@/utils/portalNotifications';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
+import { resolveIssuePrimaryAction } from '../utils/primaryActionResolver';
 
 function ClientIssueDetailPageInner() {
   const { issueId } = useParams();
@@ -218,15 +219,30 @@ function ClientIssueDetailPageInner() {
         </CardContent>
       </Card>
 
-      {issue.status !== 'closed' && issue.status !== 'cancelled' && (
+      {issue.status !== 'closed' && issue.status !== 'cancelled' && issuePrimary && (
         <div className="space-y-4">
+          {continuationReason && (
+            <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-md p-3">
+              {continuationReason}
+            </p>
+          )}
           <Button
-            onClick={handleCreateWorkOrder}
+            onClick={() => {
+              if (issuePrimary.continuation && issuePrimary.url) {
+                navigate(issuePrimary.url.startsWith('/') ? issuePrimary.url : `/${issuePrimary.url}`);
+                return;
+              }
+              if (issuePrimary.continuation && issue.linked_work_order_id) {
+                navigate(`/operations/jobs/${issue.linked_work_order_id}`);
+                return;
+              }
+              handleCreateWorkOrder();
+            }}
             disabled={creating}
             className="bg-electric-teal hover:bg-electric-teal/90"
           >
             {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wrench className="w-4 h-4 mr-2" />}
-            Create maintenance job
+            {issuePrimary.label}
           </Button>
           <Card className="border-gray-200">
             <CardHeader className="pb-2">

@@ -363,7 +363,20 @@ function ClientRiskSignalsPageInner() {
     if (!s?.signal_id) return;
     const hasMaint = hasFeature('maintenance_workflows');
     const hasComp = hasFeature('compliance_engine');
-    const { key } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
+    const { key, url, continuation } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
+    if (key === 'view_workflow' || continuation) {
+      const woId =
+        s?.operational_continuation?.existing_work_order_id ||
+        s?.propagation?.work_order_id;
+      if (url) {
+        navigate(url.startsWith('/') ? url : `/${url}`);
+        return;
+      }
+      if (woId) {
+        navigate(`/operations/jobs/${woId}`);
+        return;
+      }
+    }
     if (key === 'compliance_inspection') {
       signalIdForArrangeRef.current = s.signal_id;
       setDrawerSignalId(s.signal_id);
@@ -383,8 +396,15 @@ function ClientRiskSignalsPageInner() {
     if (key === 'maintenance_job') {
       if (hasMaint) {
         try {
-          await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
-          toast.success('Job started');
+          const res = await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
+          const replay = Boolean(res.data?.idempotent_replay || res.data?.operational_continuation?.has_active_lineage);
+          const woId = res.data?.work_order_id || res.data?.existing_work_order_id;
+          if (replay && woId) {
+            toast.success(res.data?.operational_continuation?.user_safe_reason || 'Active workflow already exists — opening it.');
+            navigate(`/operations/jobs/${woId}`);
+          } else {
+            toast.success('Job started');
+          }
           setDrawerSignalId(null);
           load();
         } catch (e) {
@@ -1054,6 +1074,27 @@ function ClientRiskSignalsPageInner() {
                   </div>
                 )}
               </div>
+              {drawerSignal?.operational_continuation?.has_active_lineage && (
+                <div className="mb-4 rounded-md border border-teal-200 bg-teal-50/80 p-3 text-sm text-slate-800">
+                  <p className="font-medium text-midnight-blue">Active workflow in progress</p>
+                  <p className="mt-1">
+                    {drawerSignal.operational_continuation.user_safe_reason ||
+                      'A maintenance workflow is already linked to this signal.'}
+                  </p>
+                  {drawerSignal.operational_continuation.existing_work_order_id && (
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="h-auto p-0 mt-2 text-electric-teal"
+                      onClick={() =>
+                        navigate(`/operations/jobs/${drawerSignal.operational_continuation.existing_work_order_id}`)
+                      }
+                    >
+                      View active job
+                    </Button>
+                  )}
+                </div>
+              )}
               <div className="pt-4 border-t space-y-2">
                 <p className="text-xs text-muted-foreground uppercase">Next step</p>
                 <div className="flex flex-wrap gap-2">
