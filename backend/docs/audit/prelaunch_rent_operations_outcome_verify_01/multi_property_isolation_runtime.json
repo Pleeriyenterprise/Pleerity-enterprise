@@ -1,0 +1,132 @@
+{
+  "verified_at_utc": "2026-05-28T17:29:21.346683+00:00",
+  "external_payer": {
+    "status": 200,
+    "body": {
+      "schedule_id": "rs_5db34b094ad5",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "tenancy_id": "ext_0a6f0874-19b4-4344-b2af-f423585a5b94_02734f52",
+      "rent_type": "residential_rent",
+      "tenant_name": "RENT-OUTCOME-20260528T172559Z Tenant",
+      "is_external_payer": true,
+      "external_payer_name": "RENT-OUTCOME-20260528T172559Z HB",
+      "expected_amount_minor": 125000,
+      "currency": "GBP",
+      "rent_frequency": "monthly",
+      "due_day": 1,
+      "start_date": "2026-05-01",
+      "end_date": null,
+      "notes": null,
+      "is_active": true,
+      "idempotency_key": "ext_RENT-OUTCOME-20260528T172559Z",
+      "created_at": "2026-05-28T17:28:31.221610+00:00",
+      "updated_at": "2026-05-28T17:28:31.221610+00:00",
+      "created_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+      "creation_preview": {
+        "period_count": 7,
+        "period_start": "2026-05-01",
+        "period_end": "2026-11-01",
+        "cadence_label": "monthly",
+        "next_due_date": "2026-06-01",
+        "disclosure": "This will create 7 monthly rent periods from May 2026 to Nov 2026. Next due date: 2026-06-01."
+      },
+      "periods_created": 7,
+      "success": true,
+      "message": "This will create 7 monthly rent periods from May 2026 to Nov 2026. Next due date: 2026-06-01."
+    }
+  },
+  "close_moved_out": {
+    "status": 200,
+    "body": {
+      "tenancy_id": "pty_5f7168c905a0",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "tenant_ids": [],
+      "tenant_display_name": "RENT-OUTCOME-20260528T171857Z Replacement",
+      "status": "moved_out",
+      "rent_tracking_enabled": true,
+      "rent_type": "residential_rent",
+      "lineage_parent_tenancy_id": "pty_53c19720a360",
+      "started_at": "2026-05-28T17:21:53.088511+00:00",
+      "ended_at": "2026-05-28T17:28:44.341727+00:00",
+      "created_at": "2026-05-28T17:21:53.088511+00:00",
+      "updated_at": "2026-05-28T17:26:41.341351+00:00",
+      "created_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+    }
+  },
+  "replacement_tenancy": {
+    "status": 200,
+    "body": {
+      "tenancy_id": "pty_c78b73c78aff",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "tenant_ids": [],
+      "tenant_display_name": "RENT-OUTCOME-20260528T172559Z Replacement",
+      "status": "active",
+      "rent_tracking_enabled": false,
+      "rent_type": "residential_rent",
+      "lineage_parent_tenancy_id": "pty_5f7168c905a0",
+      "started_at": "2026-05-28T17:28:55.484340+00:00",
+      "ended_at": null,
+      "created_at": "2026-05-28T17:28:55.484340+00:00",
+      "updated_at": "2026-05-28T17:28:55.484340+00:00",
+      "created_by": "2dfd42d0-e439-46ef-8071-73600e46088e"
+    }
+  },
+  "new_schedule": {
+    "status": 200,
+    "body": {
+      "schedule_id": "rs_a4ef53941fe6",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "tenancy_id": "pty_c78b73c78aff",
+      "rent_type": "residential_rent",
+      "tenant_name": "RENT-OUTCOME-20260528T172559Z Tenant",
+      "is_external_payer": false,
+      "external_payer_name": null,
+      "expected_amount_minor": 125000,
+      "currency": "GBP",
+      "rent_frequency": "monthly",
+      "due_day": 1,
+      "start_date": "2026-05-01",
+      "end_date": null,
+      "notes": null,
+      "is_active": true,
+      "idempotency_key": "repl_RENT-OUTCOME-20260528T172559Z",
+      "created_at": "2026-05-28T17:29:01.213554+00:00",
+      "updated_at": "2026-05-28T17:29:01.213554+00:00",
+      "created_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+      "creation_preview": {
+        "period_count": 7,
+        "period_start": "2026-05-01",
+        "period_end": "2026-11-01",
+        "cadence_label": "monthly",
+        "next_due_date": "2026-06-01",
+        "disclosure": "This will create 7 monthly rent periods from May 2026 to Nov 2026. Next due date: 2026-06-01."
+      },
+      "periods_created": 7,
+      "success": true,
+      "message": "This will create 7 monthly rent periods from May 2026 to Nov 2026. Next due date: 2026-06-01."
+    }
+  },
+  "historical_preserved": true,
+  "ledgers_after_close_count": 14,
+  "new_lineage_ledger_count": 7,
+  "cross_property_leak_a_b": 0,
+  "cross_property_leak_b_a": 0,
+  "future_upcoming_before_close": 12,
+  "new_future_ledgers_after_close": 0,
+  "historical_payments_on_old_tenancy": true,
+  "replacement_has_lineage_parent": true,
+  "checks": {
+    "external_payer_ok": true,
+    "no_cross_leak": true,
+    "close_ok": true,
+    "replacement_schedule": true,
+    "distinct_lineage": true,
+    "no_new_future_on_moved_out": true,
+    "replacement_lineage_linked": true
+  },
+  "pass": true
+}

@@ -1,0 +1,98 @@
+{
+  "verified_at_utc": "2026-05-28T17:28:25.728802+00:00",
+  "summary": {
+    "rent_collected_this_month_minor": 187500,
+    "currency": "GBP",
+    "upcoming_due_count": 66,
+    "overdue_count": 11,
+    "severely_overdue_count": 8,
+    "partially_paid_count": 3,
+    "partial_overdue_count": 3,
+    "due_today_count": 0,
+    "tenancies_with_arrears_count": 8,
+    "average_payment_delay_days": 0.0,
+    "total_outstanding_minor": 9262500
+  },
+  "kpi_probes": [
+    {
+      "key": "collected",
+      "field": "rent_collected_this_month_minor",
+      "metric_value": 187500,
+      "filter": {
+        "status": "PAID"
+      },
+      "drilldown_rows": 0,
+      "has_drilldown_filter": true,
+      "metric_present": true,
+      "pass": true
+    },
+    {
+      "key": "upcoming",
+      "field": "upcoming_due_count",
+      "metric_value": 66,
+      "filter": {
+        "status": "UPCOMING"
+      },
+      "drilldown_rows": 66,
+      "has_drilldown_filter": true,
+      "metric_present": true,
+      "pass": true
+    },
+    {
+      "key": "overdue",
+      "field": "overdue_count",
+      "metric_value": 11,
+      "filter": {
+        "overdue_only": true
+      },
+      "drilldown_rows": 11,
+      "has_drilldown_filter": true,
+      "metric_present": true,
+      "pass": true
+    },
+    {
+      "key": "partial",
+      "field": "partially_paid_count",
+      "metric_value": 3,
+      "filter": {
+        "status": "PARTIALLY_PAID"
+      },
+      "drilldown_rows": 3,
+      "has_drilldown_filter": true,
+      "metric_present": true,
+      "pass": true
+    },
+    {
+      "key": "arrears",
+      "field": "tenancies_with_arrears_count",
+      "metric_value": 8,
+      "filter": {
+        "attention_only": true
+      },
+      "drilldown_rows": 11,
+      "has_drilldown_filter": true,
+      "metric_present": true,
+      "pass": true
+    },
+    {
+      "key": "delay",
+      "field": "average_payment_delay_days",
+      "metric_value": 0.0,
+      "filter": {},
+      "drilldown_rows": 0,
+      "has_drilldown_filter": true,
+      "metric_present": true,
+      "pass": true
+    }
+  ],
+  "contradictions": [],
+  "checks": {
+    "collected": true,
+    "upcoming": true,
+    "overdue": true,
+    "partial": true,
+    "arrears": true,
+    "delay": true
+  },
+  "pass": true
+}

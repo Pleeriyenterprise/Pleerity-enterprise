@@ -1,0 +1,33 @@
+{
+  "verified_at_utc": "2026-05-28T17:27:11.208368+00:00",
+  "preview": {
+    "status": 200,
+    "body": {
+      "period_count": 7,
+      "period_start": "2026-05-01",
+      "period_end": "2026-11-01",
+      "cadence_label": "monthly",
+      "next_due_date": "2026-06-01",
+      "disclosure": "This will create 7 monthly rent periods from May 2026 to Nov 2026. Next due date: 2026-06-01."
+    }
+  },
+  "preview_period_count": 7,
+  "preview_disclosure": "This will create 7 monthly rent periods from May 2026 to Nov 2026. Next due date: 2026-06-01.",
+  "schedule_periods_created": 7,
+  "ledger_rows_for_schedule": 7,
+  "future_upcoming_count": 6,
+  "overdue_count_on_schedule": 1,
+  "future_labeled_overdue": 0,
+  "legacy_mislabeled_count": 0,
+  "legacy_correct_count": 0,
+  "upcoming_in_attention_panel": 0,
+  "checks": {
+    "preview_states_period_count": true,
+    "disclosure_mentions_periods": true,
+    "future_not_marked_overdue": true,
+    "no_upcoming_in_attention": true,
+    "legacy_only_without_tenancy": true,
+    "multi_period_schedule": true
+  },
+  "pass": true
+}

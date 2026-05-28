@@ -1,0 +1,92 @@
+{
+  "attempted": true,
+  "skipped": false,
+  "captures": [
+    {
+      "surface": "rent_dashboard",
+      "path": "/operations/rent?property_id=0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "screenshot": "screenshots/rent_dashboard.png",
+      "rent_page": true,
+      "kpi_cards": true,
+      "schedule_preview": false,
+      "body_has_arrears": true
+    },
+    {
+      "surface": "rent_setup",
+      "path": "/operations/rent?property_id=0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68&setup=1",
+      "screenshot": "screenshots/rent_setup_modal.png",
+      "rent_page": true,
+      "kpi_cards": true,
+      "schedule_preview": false,
+      "body_has_arrears": true
+    },
+    {
+      "surface": "rent_ledger",
+      "path": "/operations/rent?property_id=0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68&tab=ledger",
+      "screenshot": "screenshots/rent_ledger.png",
+      "rent_page": true,
+      "kpi_cards": true,
+      "schedule_preview": false,
+      "body_has_arrears": true
+    },
+    {
+      "surface": "rent_attention",
+      "path": "/operations/rent?property_id=0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68&tab=attention",
+      "screenshot": "screenshots/rent_attention.png",
+      "rent_page": true,
+      "kpi_cards": true,
+      "schedule_preview": false,
+      "body_has_arrears": true
+    },
+    {
+      "surface": "occupancy",
+      "path": "/properties/0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68?tab=occupancy",
+      "screenshot": "screenshots/occupancy_rent_link.png",
+      "rent_page": false,
+      "kpi_cards": false,
+      "schedule_preview": false,
+      "body_has_arrears": true
+    },
+    {
+      "surface": "rent_property_b",
+      "path": "/operations/rent?property_id=0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "screenshot": "screenshots/rent_property_b.png",
+      "rent_page": true,
+      "kpi_cards": true,
+      "schedule_preview": false,
+      "body_has_arrears": true
+    }
+  ],
+  "timings": [
+    {
+      "step": "login",
+      "elapsed_ms": 8276
+    },
+    {
+      "surface": "rent_dashboard",
+      "elapsed_ms": 6452
+    },
+    {
+      "surface": "rent_setup",
+      "elapsed_ms": 6835
+    },
+    {
+      "surface": "rent_ledger",
+      "elapsed_ms": 7343
+    },
+    {
+      "surface": "rent_attention",
+      "elapsed_ms": 6282
+    },
+    {
+      "surface": "occupancy",
+      "elapsed_ms": 20550
+    },
+    {
+      "surface": "rent_property_b",
+      "elapsed_ms": 6386
+    }
+  ],
+  "finished_at_utc": "2026-05-28T17:30:27.371753+00:00",
+  "pass": true
+}

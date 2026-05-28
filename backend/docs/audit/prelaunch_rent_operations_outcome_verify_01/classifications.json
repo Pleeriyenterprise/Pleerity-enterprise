@@ -1,0 +1,24 @@
+{
+  "classification": "VERIFIED_OPERATIONALLY",
+  "verified_operationally": true,
+  "reason": "Rent outcome flow verified on staging (API + browser)",
+  "defects": [],
+  "gates": {
+    "onboarding": true,
+    "schedule_semantics": true,
+    "payment_authority": true,
+    "arrears": true,
+    "metric_blocks": true,
+    "multi_property": true,
+    "browser": true
+  },
+  "deploy": {
+    "version": {
+      "commit_sha": "a28940df9d88de7f5b1d6a8cdfe61ed8502e48b7",
+      "environment": "production"
+    },
+    "health_status": 200
+  },
+  "run_tag": "20260528T172559Z",
+  "verified_at_utc": "2026-05-28T17:30:27.372754+00:00"
+}
