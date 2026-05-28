@@ -585,7 +585,6 @@ async def get_command_center_primary_bundle(
             build_operational_value_bundle_v1(
                 client_id,
                 property_id_filter,
-                profile=profile,
             ),
             timeout=9.0,
         )
