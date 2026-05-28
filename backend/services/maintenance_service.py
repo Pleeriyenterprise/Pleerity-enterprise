@@ -582,6 +582,7 @@ async def list_work_orders(
     for d in items:
         d.pop("_id", None)
         d["sla_policy"] = client_job_sla_policy(d)
+        d.update(derive_work_order_evidence_semantics(d))
     total = await db.work_orders.count_documents(q)
     return {"work_orders": items, "total": total, "skip": skip, "limit": limit}
 
@@ -595,6 +596,7 @@ async def get_work_order(work_order_id: str) -> Optional[Dict[str, Any]]:
         from services.compliance_workflow_service import client_job_sla_policy
 
         doc["sla_policy"] = client_job_sla_policy(doc)
+        doc.update(derive_work_order_evidence_semantics(doc))
     return doc
 
 
@@ -624,6 +626,7 @@ async def update_work_order(
         {
             "_id": 0,
             "status": 1,
+            "operational_exception": 1,
             "client_id": 1,
             "property_id": 1,
             "requires_client_assignment_confirmation": 1,
@@ -638,6 +641,7 @@ async def update_work_order(
         },
     )
     prev_status = (prev_snapshot or {}).get("status")
+    prev_operational_exception = ((prev_snapshot or {}).get("operational_exception") or "").strip().upper()
     prev_kind = ((prev_snapshot or {}).get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
     merged_evidence = list((prev_snapshot or {}).get("evidence_keys") or [])
     if evidence_keys_append:
@@ -698,6 +702,9 @@ async def update_work_order(
                     from services.work_order_pricing_service import assert_may_transition_to_in_progress
 
                     assert_may_transition_to_in_progress(wm)
+                # Regained access progression clears stale NO_ACCESS hold while preserving timeline/audit history.
+                if prev_operational_exception == OPERATIONAL_EXCEPTION_NO_ACCESS:
+                    set_fields["operational_exception"] = None
             if status == STATUS_COMPLETED and prev_snapshot:
                 try:
                     from services.work_order_schedule_service import assert_completion_schedule_policy
@@ -725,6 +732,8 @@ async def update_work_order(
             set_fields["status"] = status
             if status == STATUS_COMPLETED:
                 set_fields["completed_at"] = now
+                if prev_operational_exception == OPERATIONAL_EXCEPTION_NO_ACCESS:
+                    set_fields["operational_exception"] = None
                 if prev_snapshot and (
                     (prev_snapshot.get("scheduled_at") or "").strip()
                     or (prev_snapshot.get("schedule_status") or "").strip()
@@ -734,6 +743,10 @@ async def update_work_order(
             if status == STATUS_VERIFIED:
                 # INV-JO-002: authoritative verification timestamp on terminal transition.
                 set_fields["verified_at"] = now
+                if prev_operational_exception == OPERATIONAL_EXCEPTION_NO_ACCESS:
+                    set_fields["operational_exception"] = None
+            if status == STATUS_CLOSED and prev_operational_exception == OPERATIONAL_EXCEPTION_NO_ACCESS:
+                set_fields["operational_exception"] = None
     if accepted_at is not None:
         set_fields["accepted_at"] = accepted_at
     if scheduled_at is not None:
@@ -1185,6 +1198,8 @@ async def update_work_order(
                         await _maybe_send_client_proof_uploaded_email(dict(result), proof_event_id=peid)
                 except Exception as cpu_e:
                     logger.warning("Client proof-uploaded email failed: %s", cpu_e)
+    if result:
+        result.update(derive_work_order_evidence_semantics(result))
     return result
 
 
@@ -1245,6 +1260,32 @@ async def contractor_decline_assignment(work_order_id: str, contractor_id: str) 
         except Exception as wh_e:
             logger.warning("Work order status webhook on contractor decline failed (non-fatal): %s", wh_e)
     return result
+
+
+def derive_work_order_evidence_semantics(wo: Dict[str, Any]) -> Dict[str, Any]:
+    """Expose upload/review truth without implying automatic verification/compliance closure."""
+    status = str(wo.get("status") or "").strip().upper()
+    has_uploaded = bool(wo.get("evidence_keys") or [])
+    explicitly_reviewed = status in (STATUS_VERIFIED, STATUS_CLOSED)
+    uploaded_is_verified = bool(has_uploaded and explicitly_reviewed)
+    if not has_uploaded:
+        review_state = "not_uploaded"
+    elif uploaded_is_verified:
+        review_state = "verified"
+    else:
+        review_state = "pending_review"
+    return {
+        "uploaded_is_verified": uploaded_is_verified,
+        "evidence_review_state": review_state,
+        "evidence_requires_review": bool(has_uploaded and not uploaded_is_verified),
+        "evidence_authority_note": (
+            "Uploaded evidence has been received but has not yet been reviewed or verified."
+            if not uploaded_is_verified
+            else "Evidence has been reviewed through an explicit verification path."
+        ),
+        "completed_work_is_compliant": bool(status in (STATUS_VERIFIED, STATUS_CLOSED) and uploaded_is_verified),
+        "evidence_count": len(wo.get("evidence_keys") or []),
+    }
 
 
 async def _update_contractor_performance_on_completion(db, work_order: Dict[str, Any]) -> None:

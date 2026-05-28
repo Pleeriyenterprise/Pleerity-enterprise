@@ -833,6 +833,14 @@ export default function ContractorDashboardPage() {
       .finally(() => setScheduleActionLoading(false));
   };
 
+  const evidenceUploadErrorMessage = (err) => {
+    const detail = err?.response?.data?.detail || '';
+    if (/Unsupported file type/i.test(String(detail))) {
+      return 'Unsupported file type. Upload PDF, JPG/JPEG, PNG, DOC, or DOCX (max 20MB). Upload does not auto-verify evidence.';
+    }
+    return detail || 'Upload failed';
+  };
+
   const onEvidenceSelected = (e) => {
     const file = e.target.files?.[0];
     if (!file || !detail || !api) return;
@@ -840,7 +848,7 @@ export default function ContractorDashboardPage() {
     api
       .uploadWorkOrderEvidence(detail.work_order_id, file)
       .then((res) => {
-        toast.success('Evidence uploaded');
+        toast.success('Evidence uploaded. It still needs landlord/admin review before it counts as verified.');
         setDetail(res.data.work_order);
         fireContractorWorkflowUsage(api.postWorkflowUsage, {
           event_type: 'proof_uploaded',
@@ -849,7 +857,7 @@ export default function ContractorDashboardPage() {
         loadWorkOrders();
         loadDashboardSummary();
       })
-      .catch((err) => toast.error(err.response?.data?.detail || 'Upload failed'))
+      .catch((err) => toast.error(evidenceUploadErrorMessage(err)))
       .finally(() => {
         setEvidenceUploading(false);
         e.target.value = '';
@@ -1753,7 +1761,7 @@ export default function ContractorDashboardPage() {
                         </p>
                       ) : null}
                       <p className="text-xs text-gray-500 mb-2">
-                        PDF, images, Word—max 20MB. Accept the assignment if uploads are disabled.
+                        PDF, images, Word—max 20MB. Uploads are visible for review and do not auto-verify compliance.
                       </p>
                       {(detail.evidence_keys || []).length > 0 && (
                         <ul className="text-sm text-gray-700 mb-2 space-y-2 max-h-40 overflow-y-auto">

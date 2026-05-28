@@ -37,6 +37,14 @@ function formatDate(s) {
   }
 }
 
+function evidenceUploadErrorMessage(err) {
+  const base = parseApiError(err, 'Upload failed');
+  if (/Unsupported file type/i.test(base || '')) {
+    return 'Unsupported file type. Upload PDF, JPG/JPEG, PNG, DOC, or DOCX (max 20MB). Upload does not auto-verify evidence.';
+  }
+  return base;
+}
+
 const STATUS_OPTIONS = [
   { value: 'SCHEDULED', label: 'Scheduled' },
   { value: 'IN_PROGRESS', label: 'In progress' },
@@ -248,11 +256,11 @@ export default function JobPage() {
       api
         .uploadWorkOrderEvidence(file)
         .then(() => {
-          toast.success('Evidence uploaded');
+          toast.success('Evidence uploaded. It still needs landlord/admin review before it counts as verified.');
           fireContractorWorkflowUsage(api.postWorkflowUsage, { event_type: 'proof_uploaded', work_order_id: wid });
           return loadWorkOrder();
         })
-        .catch((err) => toast.error(parseApiError(err, 'Upload failed')))
+        .catch((err) => toast.error(evidenceUploadErrorMessage(err)))
         .finally(() => {
           setEvidenceUploading(false);
           e.target.value = '';
@@ -819,7 +827,9 @@ export default function JobPage() {
 
             <div ref={evidenceSectionRef}>
               <label className="block text-sm font-medium text-gray-700 mb-1">Evidence</label>
-              <p className="text-xs text-gray-500 mb-2">PDF, images, Word—max 20MB. Available after you accept the job.</p>
+              <p className="text-xs text-gray-500 mb-2">
+                PDF, images, Word—max 20MB. Uploads are visible for review and do not auto-verify compliance.
+              </p>
               {(detail.evidence_keys || []).length > 0 && (
                 <ul className="text-sm text-gray-700 mb-2 space-y-2 max-h-40 overflow-y-auto">
                   {(detail.evidence_keys || []).map((k) => {

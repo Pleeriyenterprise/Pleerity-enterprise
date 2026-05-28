@@ -319,14 +319,17 @@ async def update_work_order(request: Request, body: UpdateWorkOrderBody, ctx: di
         ok, policy_err = validate_contractor_status_patch(wo.get("status"), status_val)
         if not ok:
             raise HTTPException(status_code=400, detail=policy_err or "Invalid status transition")
-    updated = await maintenance_service.update_work_order(
-        work_order_id=work_order_id,
-        status=body.status,
-        contractor_notes=body.contractor_notes,
-        completion_notes=body.completion_notes,
-        evidence_keys_append=body.evidence_keys or [],
-        scheduled_at=body.scheduled_at,
-    )
+    try:
+        updated = await maintenance_service.update_work_order(
+            work_order_id=work_order_id,
+            status=body.status,
+            contractor_notes=body.contractor_notes,
+            completion_notes=body.completion_notes,
+            evidence_keys_append=body.evidence_keys or [],
+            scheduled_at=body.scheduled_at,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     if not updated:
         raise HTTPException(status_code=500, detail="Update failed")
     if body.status:
@@ -653,7 +656,19 @@ async def upload_work_order_evidence(request: Request, file: UploadFile = File(.
         resource_id=work_order_id,
         metadata={"storage_key": storage_key, "via": "job_link_multipart"},
     )
-    return {"storage_key": storage_key, "work_order": updated}
+    evidence_semantics = maintenance_service.derive_work_order_evidence_semantics(updated)
+    return {
+        "storage_key": storage_key,
+        "work_order": updated,
+        "message": "Evidence uploaded. It still needs landlord/admin review before it counts as verified.",
+        "verification_status": "PENDING_REVIEW",
+        "uploaded_is_verified": evidence_semantics.get("uploaded_is_verified", False),
+        "evidence_review_state": evidence_semantics.get("evidence_review_state", "pending_review"),
+        "evidence_requires_review": evidence_semantics.get("evidence_requires_review", True),
+        "evidence_authority_note": evidence_semantics.get("evidence_authority_note"),
+        "completed_work_is_compliant": evidence_semantics.get("completed_work_is_compliant", False),
+        "evidence_count": evidence_semantics.get("evidence_count", len(updated.get("evidence_keys") or [])),
+    }
 
 
 @router.post("/work-order/decline")

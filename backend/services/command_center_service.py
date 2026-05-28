@@ -198,6 +198,114 @@ def _profile_mark(profile: Optional[Dict[str, Any]], key: str, started: float) -
     profile[key] = round((time.perf_counter() - started) * 1000, 1)
 
 
+def _build_primary_pressure_fallback(
+    *,
+    urgent_open_total: int,
+    compliance_status_summary: Dict[str, Any],
+    reason: str,
+) -> Dict[str, Any]:
+    overdue = int(compliance_status_summary.get("requirements_overdue") or 0)
+    missing = int(compliance_status_summary.get("requirements_missing_evidence") or 0)
+    pressure_units = max(urgent_open_total, 0) + overdue + missing
+    return {
+        "groups": [
+            {
+                "group_key": "degraded_primary_pressure_fallback",
+                "headline": "Pressure visibility degraded; fallback pressure indicators shown",
+                "detail": "Primary pressure remains non-empty in degraded mode. Investigate full operational value recovery.",
+                "consequence_category": "operationally_dangerous",
+                "count": pressure_units,
+                "affected_properties": compliance_status_summary.get("properties_at_risk_count"),
+                "action_paths_available": 1,
+                "unresolved_dependencies": pressure_units,
+                "sample_ids": [],
+            }
+        ],
+        "compressed_from": {
+            "raw_pressure_items": pressure_units,
+            "raw_active_risk_signals": None,
+            "raw_open_issues": None,
+            "raw_open_jobs": urgent_open_total,
+        },
+        "cognitive_load": {
+            "estimated_raw_units": pressure_units,
+            "compressed_decision_units": 1 if pressure_units > 0 else 0,
+            "compression_ratio": float(pressure_units) if pressure_units > 0 else 1.0,
+        },
+        "snapshot_meta": {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "freshness_seconds": None,
+            "stale": True,
+            "degraded": True,
+            "source": "primary_fallback_pressure",
+            "recompute_reason": reason,
+        },
+    }
+
+
+def _build_primary_compliance_fallback(reason: str) -> Dict[str, Any]:
+    return {
+        "compliance_percent": 0,
+        "score_status": SCORE_STATUS_STALE,
+        "score_updated_at": None,
+        "requirements_overdue": 0,
+        "requirements_expiring_soon": 0,
+        "requirements_pending": 0,
+        "requirements_missing_evidence": 0,
+        "requirements_total": 0,
+        "properties_at_risk_count": 0,
+        "fallback_reason": reason,
+    }
+
+
+def _build_primary_urgent_fallback(
+    *,
+    reason: str,
+    compliance_status_summary: Dict[str, Any],
+) -> Dict[str, Any]:
+    overdue = int(compliance_status_summary.get("requirements_overdue") or 0)
+    missing = int(compliance_status_summary.get("requirements_missing_evidence") or 0)
+    urgent_open_total = max(0, overdue + missing)
+    actions = []
+    if urgent_open_total > 0:
+        actions.append(
+            {
+                "id": "degraded:fallback:urgent",
+                "task_id": "degraded:fallback:urgent",
+                "title": "Urgent items remain active while pressure metrics refresh",
+                "description": "Open the operations workspace to review and action urgent debt.",
+                "section": "urgent",
+                "source_type": "degraded_fallback",
+                "property_id": None,
+                "requirement_id": None,
+                "jurisdiction": None,
+                "property_jurisdiction": None,
+                "property_label": None,
+                "urgency_level": "high",
+                "primary_action_type": "open_operations",
+                "primary_action_label": "Review urgent items",
+                "primary_action_url": "/operations",
+                "metadata": {
+                    "degraded": True,
+                    "fallback_reason": reason,
+                    "derived_overdue": overdue,
+                    "derived_missing_evidence": missing,
+                },
+            }
+        )
+    return {
+        "urgent_actions": actions,
+        "urgent_open_total": urgent_open_total,
+        "urgent_continuation": max(0, urgent_open_total - len(actions)),
+        "freshness": {
+            "tasks_refreshed_at": datetime.now(timezone.utc).isoformat(),
+            "projection": "primary",
+            "freshness_scope": "primary_degraded_fallback",
+            "fallback_reason": reason,
+        },
+    }
+
+
 async def _load_urgent_slice_from_priority_stream(
     client_id: str,
     *,
@@ -444,27 +552,64 @@ async def get_command_center_primary_bundle(
     corr = ensure_trust_surface_correlation_id(SURFACE_COMMAND_CENTER_REFRESH, client_id, correlation_id)
     gen_at = datetime.now(timezone.utc)
     t0 = time.perf_counter()
-    urgent_block, compliance_status_summary = await asyncio.gather(
-        _load_urgent_slice_from_priority_stream(
-            client_id,
-            property_id_filter=property_id_filter,
-            portal_user_id=portal_user_id,
-            profile=profile,
-        ),
-        _primary_compliance_status_summary(
-            client_id, property_id_filter=property_id_filter, profile=profile
-        ),
-    )
+    gather_degraded_reasons: List[str] = []
+    try:
+        urgent_block, compliance_status_summary = await asyncio.wait_for(
+            asyncio.gather(
+                _load_urgent_slice_from_priority_stream(
+                    client_id,
+                    property_id_filter=property_id_filter,
+                    portal_user_id=portal_user_id,
+                    profile=profile,
+                ),
+                _primary_compliance_status_summary(
+                    client_id, property_id_filter=property_id_filter, profile=profile
+                ),
+            ),
+            timeout=8.5,
+        )
+    except Exception as exc:
+        reason = f"primary_urgent_or_summary_timeout_or_failure:{str(exc)[:80]}"
+        logger.warning("command_center primary urgent/summary fallback client_id=%s: %s", client_id, exc)
+        gather_degraded_reasons.append(reason)
+        compliance_status_summary = _build_primary_compliance_fallback(reason)
+        urgent_block = _build_primary_urgent_fallback(reason=reason, compliance_status_summary=compliance_status_summary)
     _profile_mark(profile, "primary_gather_ms", t0)
     t_ov = time.perf_counter()
     operational_value_v1: Dict[str, Any] = {}
+    ov_degraded_reason: Optional[str] = None
     try:
         from services.operational_value_compression_service import build_operational_value_bundle_v1
 
-        operational_value_v1 = await build_operational_value_bundle_v1(client_id, property_id_filter)
+        operational_value_v1 = await asyncio.wait_for(
+            build_operational_value_bundle_v1(
+                client_id,
+                property_id_filter,
+                profile=profile,
+            ),
+            timeout=9.0,
+        )
     except Exception as exc:
         logger.warning("operational_value_bundle_v1 failed client_id=%s: %s", client_id, exc)
-        operational_value_v1 = {"available": False, "error": str(exc)[:200]}
+        ov_degraded_reason = f"primary_timeout_or_failure:{str(exc)[:80]}"
+        pressure_fallback = _build_primary_pressure_fallback(
+            urgent_open_total=int(urgent_block.get("urgent_open_total") or 0),
+            compliance_status_summary=compliance_status_summary,
+            reason=ov_degraded_reason,
+        )
+        operational_value_v1 = {
+            "available": False,
+            "error": str(exc)[:200],
+            "pressure_compression_v1": pressure_fallback,
+            "snapshot_meta": {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "freshness_seconds": None,
+                "stale": True,
+                "degraded": True,
+                "source": "fallback",
+                "recompute_reason": ov_degraded_reason,
+            },
+        }
     _profile_mark(profile, "operational_value_ms", t_ov)
     urgent_actions = urgent_block.get("urgent_actions") or []
     urgent_open = int(urgent_block.get("urgent_open_total") or len(urgent_actions))
@@ -489,11 +634,34 @@ async def get_command_center_primary_bundle(
         freshness=freshness,
         headline_score_status=str(compliance_status_summary.get("score_status") or "") or None,
     )
+    degraded_sections: List[Dict[str, Any]] = []
+    for reason in gather_degraded_reasons:
+        degraded_sections.append(
+            build_trust_surface_section_record(
+                section_name="primary_urgent_and_summary",
+                section_status=SECTION_STATUS_DEGRADED_FALLBACK,
+                correlation_id=corr,
+                degraded_reason=reason,
+                fallback_used=True,
+                downstream_dependency="priority_stream_and_compliance_headline",
+            )
+        )
+    if ov_degraded_reason:
+        degraded_sections.append(
+            build_trust_surface_section_record(
+                section_name="operational_value_v1",
+                section_status=SECTION_STATUS_DEGRADED_FALLBACK,
+                correlation_id=corr,
+                degraded_reason=ov_degraded_reason,
+                fallback_used=True,
+                downstream_dependency="operational_value_compression_service.build_operational_value_bundle_v1",
+            )
+        )
     trust_surface_operational_metadata: Dict[str, Any] = {
         "surface_name": SURFACE_COMMAND_CENTER_REFRESH,
         "client_id": client_id,
         "correlation_id": corr,
-        "degraded_sections": [],
+        "degraded_sections": degraded_sections,
         "stale_sections": [],
         "partial_sections": [
             build_trust_surface_section_record(
@@ -510,7 +678,7 @@ async def get_command_center_primary_bundle(
             {
                 "surface_name": SURFACE_COMMAND_CENTER_REFRESH,
                 "correlation_id": corr,
-                "degraded_sections": [],
+                "degraded_sections": degraded_sections,
                 "stale_sections": [],
                 "partial_sections": [],
                 "failed_sections": [],
@@ -523,6 +691,16 @@ async def get_command_center_primary_bundle(
     out = {
         "projection": "primary",
         "urgent_actions": urgent_actions,
+        "pressure_urgent_count": urgent_open,
+        "pressure_urgent_rows": urgent_actions,
+        "pressure_degraded": bool(ov_degraded_reason or gather_degraded_reasons),
+        "pressure_status": "degraded" if (ov_degraded_reason or gather_degraded_reasons) else "ok",
+        "pressure_fallback_reason": ov_degraded_reason or (gather_degraded_reasons[0] if gather_degraded_reasons else None),
+        "pressure_message": (
+            "Some pressure metrics are still refreshing. Urgent items remain visible below."
+            if (ov_degraded_reason or gather_degraded_reasons)
+            else None
+        ),
         "upcoming_risks": [],
         "recent_activity": [],
         "compliance_status_summary": compliance_status_summary,
