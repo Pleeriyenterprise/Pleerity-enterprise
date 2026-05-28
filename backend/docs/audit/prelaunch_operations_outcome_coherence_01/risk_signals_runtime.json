@@ -1,0 +1,255 @@
+{
+  "captured_at": "2026-05-28T16:27:38Z",
+  "inventory": {
+    "total": 56,
+    "pilot_clusters": 133,
+    "with_active_lineage": 5,
+    "with_property_overlap": 0
+  },
+  "audit_targets": [
+    {
+      "signal_id": "rs_54bed98b3505",
+      "risk_type": "Recurring Repairs Risk",
+      "signal_status": "resolved",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "suggested_actions": [
+        "create_work_order",
+        "create_issue",
+        "schedule_inspection"
+      ],
+      "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+      "propagation": {
+        "work_order_id": "914abf84-33cf-4adb-990f-ef3112fcc30f",
+        "issue_id": "c4ac23f9-39c4-497d-afe8-58e98a8a0a1e"
+      },
+      "linked_issue_ids": [
+        "c4ac23f9-39c4-497d-afe8-58e98a8a0a1e"
+      ],
+      "linked_work_order_ids": [
+        "58bd01be-02ad-4af3-a9b8-00fd97c02887",
+        "914abf84-33cf-4adb-990f-ef3112fcc30f"
+      ],
+      "active_issue_ids": [
+        "c4ac23f9-39c4-497d-afe8-58e98a8a0a1e"
+      ],
+      "active_work_order_ids": [
+        "58bd01be-02ad-4af3-a9b8-00fd97c02887",
+        "914abf84-33cf-4adb-990f-ef3112fcc30f"
+      ],
+      "has_active_lineage": true
+    },
+    {
+      "signal_id": "rs_06c59d096ed6",
+      "risk_type": "Recurring Repairs Risk",
+      "signal_status": "resolved",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "suggested_actions": [
+        "create_work_order",
+        "create_issue",
+        "schedule_inspection"
+      ],
+      "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+      "propagation": {
+        "work_order_id": "65438d6f-eb79-4343-9400-9658b58dd1a1",
+        "issue_id": "3a700c77-e984-4adc-9ffc-91f65f0c47e2"
+      },
+      "linked_issue_ids": [
+        "3a700c77-e984-4adc-9ffc-91f65f0c47e2"
+      ],
+      "linked_work_order_ids": [
+        "4cda20d7-6053-4cc2-b53b-96403f77ece3",
+        "65438d6f-eb79-4343-9400-9658b58dd1a1"
+      ],
+      "active_issue_ids": [
+        "3a700c77-e984-4adc-9ffc-91f65f0c47e2"
+      ],
+      "active_work_order_ids": [
+        "4cda20d7-6053-4cc2-b53b-96403f77ece3"
+      ],
+      "has_active_lineage": true
+    },
+    {
+      "signal_id": "rs_4ba68e38feb3",
+      "risk_type": "Recurring Repairs Risk",
+      "signal_status": "resolved",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "suggested_actions": [
+        "create_work_order",
+        "create_issue",
+        "schedule_inspection"
+      ],
+      "recommended_action": "Investigate the root cause instead of repeat patch repairs.",
+      "propagation": {
+        "work_order_id": "b54782db-5684-4b12-b18a-2a69efd5ef7c",
+        "issue_id": "1af72bcd-890c-44e7-b559-3d9219fb1ad1"
+      },
+      "linked_issue_ids": [
+        "1af72bcd-890c-44e7-b559-3d9219fb1ad1"
+      ],
+      "linked_work_order_ids": [
+        "ca26577e-370b-4cb2-928d-d0f856d04013",
+        "b54782db-5684-4b12-b18a-2a69efd5ef7c"
+      ],
+      "active_issue_ids": [
+        "1af72bcd-890c-44e7-b559-3d9219fb1ad1"
+      ],
+      "active_work_order_ids": [
+        "ca26577e-370b-4cb2-928d-d0f856d04013",
+        "b54782db-5684-4b12-b18a-2a69efd5ef7c"
+      ],
+      "has_active_lineage": true
+    },
+    {
+      "signal_id": "rs_2006b6155ccf",
+      "risk_type": "Electrical Risk",
+      "signal_status": "resolved",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "suggested_actions": [
+        "create_work_order",
+        "create_issue",
+        "schedule_inspection"
+      ],
+      "recommended_action": "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
+      "propagation": {
+        "issue_id": "72a04b1f-e327-4004-b689-5e9e34c1d0e9",
+        "propagated_at": "2026-05-23T16:55:38.332444+00:00"
+      },
+      "linked_issue_ids": [
+        "72a04b1f-e327-4004-b689-5e9e34c1d0e9"
+      ],
+      "linked_work_order_ids": [
+        "6fe40205-2d8a-46c3-9f5a-8344275ea92c",
+        "dda85d04-b7be-4d43-a098-a414ea90fc54"
+      ],
+      "active_issue_ids": [
+        "72a04b1f-e327-4004-b689-5e9e34c1d0e9"
+      ],
+      "active_work_order_ids": [
+        "6fe40205-2d8a-46c3-9f5a-8344275ea92c",
+        "dda85d04-b7be-4d43-a098-a414ea90fc54"
+      ],
+      "has_active_lineage": true
+    },
+    {
+      "signal_id": "rs_2b41ab642665",
+      "risk_type": "Electrical Risk",
+      "signal_status": "resolved",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "suggested_actions": [
+        "create_work_order",
+        "create_issue",
+        "schedule_inspection"
+      ],
+      "recommended_action": "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
+      "propagation": {
+        "work_order_id": "4a6a79ba-62a8-4eba-b0b8-a9314f83bbfd",
+        "issue_id": "7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43"
+      },
+      "linked_issue_ids": [
+        "7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43"
+      ],
+      "linked_work_order_ids": [
+        "827e7ed9-c6eb-41da-bcd5-c35ebfb07708",
+        "4a6a79ba-62a8-4eba-b0b8-a9314f83bbfd"
+      ],
+      "active_issue_ids": [
+        "7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43"
+      ],
+      "active_work_order_ids": [
+        "827e7ed9-c6eb-41da-bcd5-c35ebfb07708"
+      ],
+      "has_active_lineage": true
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "37f96ca5-f4d3-4cab-9efe-b8798e369130",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "37f96ca5-f4d3-4cab-9efe-b8798e369130"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "6626038f-ae60-4b4d-a45b-98236ea128d8",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "6626038f-ae60-4b4d-a45b-98236ea128d8"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "4dd058fb-a4d8-4b5d-ae38-3a58c9285d06",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "4dd058fb-a4d8-4b5d-ae38-3a58c9285d06"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "14ad7143-64d5-4f97-99e8-aacd36dc3dd4",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "14ad7143-64d5-4f97-99e8-aacd36dc3dd4"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "299316e1-5350-4c57-a87b-f1cc0fdb9c7a",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "299316e1-5350-4c57-a87b-f1cc0fdb9c7a"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "9cfcb17f-c032-4aa8-adbe-d896accc1421",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "9cfcb17f-c032-4aa8-adbe-d896accc1421"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "c7d4e482-9fbd-47b2-addc-f270aba8b137",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "c7d4e482-9fbd-47b2-addc-f270aba8b137"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "a650e474-c589-46f4-bc2c-fd324b76d474",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "a650e474-c589-46f4-bc2c-fd324b76d474"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "163c1e30-01f2-4ae3-916d-0e9df66d9e79",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "163c1e30-01f2-4ae3-916d-0e9df66d9e79"
+      ],
+      "active_work_order_ids": []
+    },
+    {
+      "signal_id": null,
+      "orphan_issue_id": "6ccc6259-1730-4f6d-93b5-97fc9168d211",
+      "has_active_lineage": false,
+      "active_issue_ids": [
+        "6ccc6259-1730-4f6d-93b5-97fc9168d211"
+      ],
+      "active_work_order_ids": []
+    }
+  ],
+  "duplicate_invitation_cases": []
+}

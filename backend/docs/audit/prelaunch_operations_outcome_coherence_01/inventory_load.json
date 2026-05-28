@@ -1,0 +1,40 @@
+{
+  "signals": {
+    "total": 56,
+    "loaded": 56,
+    "attempts": [
+      {
+        "attempt": 1,
+        "status": 200,
+        "ok": true,
+        "elapsed_ms": 11132.6
+      }
+    ]
+  },
+  "issues": {
+    "total": 124,
+    "loaded": 124,
+    "attempts": [
+      {
+        "attempt": 1,
+        "status": 200,
+        "ok": true,
+        "elapsed_ms": 2553.6
+      }
+    ]
+  },
+  "work_orders": {
+    "total": 87,
+    "loaded": 87,
+    "attempts": [
+      {
+        "attempt": 1,
+        "status": 200,
+        "ok": true,
+        "elapsed_ms": 3438.5
+      }
+    ]
+  },
+  "pilot_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "inventory_incomplete": false
+}

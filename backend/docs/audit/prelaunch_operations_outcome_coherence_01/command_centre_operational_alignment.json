@@ -1,0 +1,148 @@
+{
+  "primary_status": 200,
+  "elapsed_ms": 19796.0,
+  "pressure_degraded": true,
+  "pressure_status": "degraded",
+  "pressure_fallback_reason": "primary_timeout_or_failure:",
+  "pressure_user_message": null,
+  "urgent_count": 164,
+  "urgent_rows_sample": [
+    {
+      "id": "maintenance:wo:e0d6c4c0-cf9c-4946-957e-33a5db35efa2",
+      "task_id": "maintenance:wo:e0d6c4c0-cf9c-4946-957e-33a5db35efa2",
+      "title": "OPS-COHERENCE-01-20260528T145346Z duplicate governance probe",
+      "description": "Active maintenance workflow (OPEN)",
+      "section": "urgent",
+      "source_type": "maintenance_work_order",
+      "primary_action_type": "open_work_order",
+      "primary_action_label": "Continue maintenance workflow",
+      "primary_action_url": "/operations/jobs/e0d6c4c0-cf9c-4946-957e-33a5db35efa2",
+      "related_work_order_id": "e0d6c4c0-cf9c-4946-957e-33a5db35efa2",
+      "urgency_level": "high",
+      "metadata": {
+        "degraded_maintenance_fallback": true
+      }
+    },
+    {
+      "id": "maintenance:wo:215ab44a-90e6-4dfb-b939-fd841901cc0b",
+      "task_id": "maintenance:wo:215ab44a-90e6-4dfb-b939-fd841901cc0b",
+      "title": "PRELAUNCH-CONTRACTOR-TENANT-RUNTIME-REMEDIATION-01 duplicate leak in kitchen",
+      "description": "Active maintenance workflow (OPEN)",
+      "section": "urgent",
+      "source_type": "maintenance_work_order",
+      "primary_action_type": "open_work_order",
+      "primary_action_label": "Continue maintenance workflow",
+      "primary_action_url": "/operations/jobs/215ab44a-90e6-4dfb-b939-fd841901cc0b",
+      "related_work_order_id": "215ab44a-90e6-4dfb-b939-fd841901cc0b",
+      "urgency_level": "high",
+      "metadata": {
+        "degraded_maintenance_fallback": true
+      }
+    },
+    {
+      "id": "maintenance:wo:21c3ed6a-fc9e-472d-9557-7df7469dbc0f",
+      "task_id": "maintenance:wo:21c3ed6a-fc9e-472d-9557-7df7469dbc0f",
+      "title": "PRELAUNCH-CONTRACTOR-TENANT-RUNTIME-REMEDIATION-01 duplicate leak in kitchen",
+      "description": "Active maintenance workflow (OPEN)",
+      "section": "urgent",
+      "source_type": "maintenance_work_order",
+      "primary_action_type": "open_work_order",
+      "primary_action_label": "Continue maintenance workflow",
+      "primary_action_url": "/operations/jobs/21c3ed6a-fc9e-472d-9557-7df7469dbc0f",
+      "related_work_order_id": "21c3ed6a-fc9e-472d-9557-7df7469dbc0f",
+      "urgency_level": "high",
+      "metadata": {
+        "degraded_maintenance_fallback": true
+      }
+    },
+    {
+      "id": "maintenance:wo:acabd6e4-7b0a-44c9-8e74-3fc926594406",
+      "task_id": "maintenance:wo:acabd6e4-7b0a-44c9-8e74-3fc926594406",
+      "title": "DEPLOY-CONTINUITY-RECHECK duplicate sink leak kitchen",
+      "description": "Active maintenance workflow (OPEN)",
+      "section": "urgent",
+      "source_type": "maintenance_work_order",
+      "primary_action_type": "open_work_order",
+      "primary_action_label": "Continue maintenance workflow",
+      "primary_action_url": "/operations/jobs/acabd6e4-7b0a-44c9-8e74-3fc926594406",
+      "related_work_order_id": "acabd6e4-7b0a-44c9-8e74-3fc926594406",
+      "urgency_level": "high",
+      "metadata": {
+        "degraded_maintenance_fallback": true
+      }
+    },
+    {
+      "id": "maintenance:wo:3f6cb4c1-5961-460a-8d10-71f02ad938a2",
+      "task_id": "maintenance:wo:3f6cb4c1-5961-460a-8d10-71f02ad938a2",
+      "title": "PRELAUNCH-CONTRACTOR-TENANT-RUNTIME-REMEDIATION-01 duplicate leak in kitchen",
+      "description": "Active maintenance workflow (OPEN)",
+      "section": "urgent",
+      "source_type": "maintenance_work_order",
+      "primary_action_type": "open_work_order",
+      "primary_action_label": "Continue maintenance workflow",
+      "primary_action_url": "/operations/jobs/3f6cb4c1-5961-460a-8d10-71f02ad938a2",
+      "related_work_order_id": "3f6cb4c1-5961-460a-8d10-71f02ad938a2",
+      "urgency_level": "high",
+      "metadata": {
+        "degraded_maintenance_fallback": true
+      }
+    },
+    {
+      "id": "maintenance:wo:1c992916-1dfb-4682-b23b-25b7693b22fe",
+      "task_id": "maintenance:wo:1c992916-1dfb-4682-b23b-25b7693b22fe",
+      "title": "DEPLOY-CONTINUITY-RECHECK duplicate sink leak kitchen",
+      "description": "Active maintenance workflow (OPEN)",
+      "section": "urgent",
+      "source_type": "maintenance_work_order",
+      "primary_action_type": "open_work_order",
+      "primary_action_label": "Continue maintenance workflow",
+      "primary_action_url": "/operations/jobs/1c992916-1dfb-4682-b23b-25b7693b22fe",
+      "related_work_order_id": "1c992916-1dfb-4682-b23b-25b7693b22fe",
+      "urgency_level": "high",
+      "metadata": {
+        "degraded_maintenance_fallback": true
+      }
+    },
+    {
+      "id": "maintenance:wo:9662d487-f6a7-4107-a7b8-18f4f6136e35",
+      "task_id": "maintenance:wo:9662d487-f6a7-4107-a7b8-18f4f6136e35",
+      "title": "CC-DEGRADED-FINAL-FIX-20260528T125429Z urgent-seed",
+      "description": "Active maintenance workflow (OPEN)",
+      "section": "urgent",
+      "source_type": "maintenance_work_order",
+      "primary_action_type": "open_work_order",
+      "primary_action_label": "Continue maintenance workflow",
+      "primary_action_url": "/operations/jobs/9662d487-f6a7-4107-a7b8-18f4f6136e35",
+      "related_work_order_id": "9662d487-f6a7-4107-a7b8-18f4f6136e35",
+      "urgency_level": "high",
+      "metadata": {
+        "degraded_maintenance_fallback": true
+      }
+    },
+    {
+      "id": "maintenance:wo:3c15b0e9-536b-40bb-9fb9-9f93b8c10c7b",
+      "task_id": "maintenance:wo:3c15b0e9-536b-40bb-9fb9-9f93b8c10c7b",
+      "title": "PRELAUNCH-CT-RERUN-20260528T095352Z tenant issue damp",
+      "description": "Active maintenance workflow (OPEN)",
+      "section": "urgent",
+      "source_type": "maintenance_work_order",
+      "primary_action_type": "open_work_order",
+      "primary_action_label": "Continue maintenance workflow",
+      "primary_action_url": "/operations/jobs/3c15b0e9-536b-40bb-9fb9-9f93b8c10c7b",
+      "related_work_order_id": "3c15b0e9-536b-40bb-9fb9-9f93b8c10c7b",
+      "urgency_level": "high",
+      "metadata": {
+        "degraded_maintenance_fallback": true
+      }
+    }
+  ],
+  "operational_debt_estimate": 156,
+  "open_issues": 89,
+  "open_work_orders": 62,
+  "calm_looking_degraded": false,
+  "checks": {
+    "primary_returns_200": true,
+    "degraded_disclosed_when_degraded": true,
+    "no_false_calm_when_debt": true
+  }
+}

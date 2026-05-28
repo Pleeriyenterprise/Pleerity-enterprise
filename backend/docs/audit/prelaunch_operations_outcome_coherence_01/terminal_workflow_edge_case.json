@@ -1,0 +1,97 @@
+{
+  "skipped": false,
+  "issue_id": "db52e4b6-9e31-475e-b949-10bb5c97b75b",
+  "work_order_id": "028ea46a-fec6-4618-ac58-4f7195727065",
+  "before_continuation": {
+    "mode": "continuation",
+    "has_active_lineage": true,
+    "existing_work_order_id": "028ea46a-fec6-4618-ac58-4f7195727065",
+    "existing_issue_id": "db52e4b6-9e31-475e-b949-10bb5c97b75b",
+    "continuation_state": "OPEN",
+    "continuation_cta": {
+      "key": "view_workflow",
+      "label": "Assign contractor",
+      "url": "/operations/jobs/028ea46a-fec6-4618-ac58-4f7195727065"
+    },
+    "user_safe_reason": "An active maintenance workflow already exists for this operational objective. Continue the existing workflow instead of starting a new one."
+  },
+  "cancel_probe": {
+    "method": "POST",
+    "path": "/jobs/028ea46a-fec6-4618-ac58-4f7195727065/cancel",
+    "status": 200,
+    "ok": true,
+    "elapsed_ms": 2825.6,
+    "body": {
+      "job_id": "028ea46a-fec6-4618-ac58-4f7195727065",
+      "work_order_id": "028ea46a-fec6-4618-ac58-4f7195727065",
+      "work_order_kind": "MAINTENANCE",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "description": "OPS-COHERENCE-01-20260528T161842Z terminal-edge seed",
+      "status": "CANCELLED",
+      "job_status": "CANCELLED",
+      "operational_exception": null,
+      "contractor_id": null,
+      "scheduled_at": null,
+      "scheduled_timezone": null,
+      "schedule_status": null,
+      "scheduled_by": null,
+      "evidence_keys": [],
+      "severity": "medium",
+      "category": "general",
+      "issue_id": "db52e4b6-9e31-475e-b949-10bb5c97b75b",
+      "asset_id": null,
+      "sla_respond_by": "2026-05-29T16:26:56.432099+00:00",
+      "sla_complete_by": "2026-05-31T16:26:56.432114+00:00",
+      "created_at": "2026-05-28T16:26:56.432149+00:00",
+      "updated_at": "2026-05-28T16:27:01.682848+00:00",
+      "completed_at": null,
+      "jurisdiction": "Wales",
+      "next_actions": [
+        {
+          "id": "none",
+          "label": "Job cancelled",
+          "hint": "",
+          "section": "execution"
+        }
+      ],
+      "timeline_events": [
+        {
+          "label": "Created",
+          "at": "2026-05-28T16:26:56.432149+00:00"
+        },
+        {
+          "label": "Updated",
+          "at": "2026-05-28T16:27:01.682848+00:00"
+        }
+      ],
+      "decision_log": [],
+      "resolution_outcome": null,
+      "sla_policy": null,
+      "pricing": {
+        "pricing_workflow": true,
+        "pricing_mode": "MAINTENANCE_PREQUOTE",
+        "price_status": "AWAITING_QUOTE",
+        "quoted_price": null,
+        "price_currency": "GBP",
+        "quote_notes": null,
+        "quote_submitted_at": null,
+        "quote_approved_at": null,
+        "quote_rejected_at": null,
+        "quote_rejection_reason": null,
+        "inspection_required": false,
+        "inspection_completed_at": null
+      }
+    }
+  },
+  "after_issue_continuation": {
+    "mode": "create",
+    "has_active_lineage": false
+  },
+  "checks": {
+    "had_continuation_before_cancel": true,
+    "cancel_ok": true,
+    "no_stale_continuation": true
+  },
+  "pass": true
+}

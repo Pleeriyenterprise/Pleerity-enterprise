@@ -1,0 +1,93 @@
+{
+  "programme": "PRELAUNCH-OPERATIONS-OUTCOME-COHERENCE-01",
+  "principle": "Every operational CTA must answer the single most operationally correct next step right now.",
+  "invariants": [
+    {
+      "id": "INV-OC-001",
+      "name": "no_duplicate_workflow_invitation",
+      "rule": "If active issue/job/contractor/quote/inspection exists for lineage, suppress start/create CTAs.",
+      "authority": [
+        "risk_signal_service",
+        "primaryActionResolver.js",
+        "ClientIssuesPage",
+        "compliance_workflow_service"
+      ],
+      "contradiction_class": "duplicate_workflow_invitation"
+    },
+    {
+      "id": "INV-OC-002",
+      "name": "continuation_when_active",
+      "rule": "Active workflows must surface continuation CTAs with ownership context, not fresh-start verbs.",
+      "authority": [
+        "compliance_workflow_service.next_job_actions",
+        "ClientJobDetailPage",
+        "ClientRiskSignalsPage"
+      ],
+      "contradiction_class": "continuation_blindness"
+    },
+    {
+      "id": "INV-OC-003",
+      "name": "cross_surface_next_step_parity",
+      "rule": "Risk/Issues/Jobs/CommandCentre/Contractor/Tenant must agree on operational phase for same object.",
+      "authority": [
+        "command_center_service",
+        "client_priority_stream",
+        "unified_tasks_service",
+        "primaryActionResolver.js"
+      ],
+      "contradiction_class": "cross_surface_disagreement"
+    },
+    {
+      "id": "INV-OC-004",
+      "name": "no_backend_rejection_after_encouraged_cta",
+      "rule": "Encouraged UI/API CTAs must not 4xx when lineage already satisfies objective.",
+      "authority": [
+        "risk_signal_issue_idempotency",
+        "maintenance_wo_from_issue_idempotency",
+        "client_maintenance routes"
+      ],
+      "contradiction_class": "backend_rejection_after_encouraged_cta"
+    },
+    {
+      "id": "INV-OC-005",
+      "name": "truthful_degraded_pressure",
+      "rule": "Degraded orchestration must disclose degradation and preserve urgent continuation visibility.",
+      "authority": [
+        "command_center_service.get_command_center_primary_bundle"
+      ],
+      "contradiction_class": "calm_looking_degraded_state"
+    },
+    {
+      "id": "INV-OC-006",
+      "name": "no_orphan_operational_state",
+      "rule": "Open issues/signals must expose owner path (linked job, assign, escalate, or explicit blocked reason).",
+      "authority": [
+        "maintenance_issues_service",
+        "risk_signal_regen_governance"
+      ],
+      "contradiction_class": "orphan_operational_state"
+    },
+    {
+      "id": "INV-OC-007",
+      "name": "no_dead_end_non_terminal",
+      "rule": "Non-terminal jobs/issues must expose at least one meaningful next action or blocked-state explanation.",
+      "authority": [
+        "compliance_workflow_service.next_job_actions"
+      ],
+      "contradiction_class": "dead_end_operational_flow"
+    }
+  ],
+  "remediation_policy": {
+    "forbidden": [
+      "hide_button_without_explanation",
+      "suppress_urgent_debt_for_visual_calm"
+    ],
+    "required_replacement": [
+      "continuation_cta",
+      "blocked_state_explanation",
+      "ownership_context",
+      "current_workflow_status",
+      "escalation_path"
+    ]
+  }
+}

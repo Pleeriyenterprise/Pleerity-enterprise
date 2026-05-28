@@ -1,0 +1,549 @@
+{
+  "cases": [],
+  "backend_probes": [
+    {
+      "probe": "risk_signal_create_work_order",
+      "path": "/client/maintenance/risk-signals/rs_54bed98b3505/create-work-order",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'work_order_id': '58bd01be-02ad-4af3-a9b8-00fd97c02887', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'Recurring Repairs Risk: Investigate the root cause instead of repeat patch repairs.', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', "
+    },
+    {
+      "probe": "risk_signal_create_issue",
+      "path": "/client/maintenance/risk-signals/rs_54bed98b3505/create-issue",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'issue_id': 'c4ac23f9-39c4-497d-afe8-58e98a8a0a1e', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'asset_id': '796b8ab7-ba9a-40ea-b845-6a52b953f6ac', 'source': 'client', 'category': 'general', 'description': 'OPS-RUNTIME-F4-20260523T174844Z G9 duplicate propagation probe', 'photos': [], 'reporter_name': None, 'reporter_contact': None, "
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "c4ac23f9-39c4-497d-afe8-58e98a8a0a1e",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "914abf84-33cf-4adb-990f-ef3112fcc30f",
+      "body_excerpt": "{'work_order_id': '914abf84-33cf-4adb-990f-ef3112fcc30f', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-RUNTIME-F4-20260523T174844Z G9 duplicate propagation probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': N"
+    },
+    {
+      "probe": "risk_signal_create_work_order",
+      "path": "/client/maintenance/risk-signals/rs_06c59d096ed6/create-work-order",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'work_order_id': '4cda20d7-6053-4cc2-b53b-96403f77ece3', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'Recurring Repairs Risk: Investigate the root cause instead of repeat patch repairs.', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', "
+    },
+    {
+      "probe": "risk_signal_create_issue",
+      "path": "/client/maintenance/risk-signals/rs_06c59d096ed6/create-issue",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'issue_id': '3a700c77-e984-4adc-9ffc-91f65f0c47e2', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'asset_id': '796b8ab7-ba9a-40ea-b845-6a52b953f6ac', 'source': 'client', 'category': 'general', 'description': 'OPS-RUNTIME-F4-20260523T174844Z \u2014 signal\u2192issue propagation verify', 'photos': [], 'reporter_name': None, 'reporter_contact': Non"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "3a700c77-e984-4adc-9ffc-91f65f0c47e2",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "65438d6f-eb79-4343-9400-9658b58dd1a1",
+      "body_excerpt": "{'work_order_id': '65438d6f-eb79-4343-9400-9658b58dd1a1', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-RUNTIME-F4-20260523T174844Z \u2014 signal\u2192issue propagation verify', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code'"
+    },
+    {
+      "probe": "risk_signal_create_work_order",
+      "path": "/client/maintenance/risk-signals/rs_4ba68e38feb3/create-work-order",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'work_order_id': 'ca26577e-370b-4cb2-928d-d0f856d04013', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'Recurring Repairs Risk: Investigate the root cause instead of repeat patch repairs.', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', "
+    },
+    {
+      "probe": "risk_signal_create_issue",
+      "path": "/client/maintenance/risk-signals/rs_4ba68e38feb3/create-issue",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'issue_id': '1af72bcd-890c-44e7-b559-3d9219fb1ad1', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'asset_id': '796b8ab7-ba9a-40ea-b845-6a52b953f6ac', 'source': 'client', 'category': 'general', 'description': 'OPS-RUNTIME-F4-20260523T173614Z G9 duplicate propagation probe', 'photos': [], 'reporter_name': None, 'reporter_contact': None, "
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "1af72bcd-890c-44e7-b559-3d9219fb1ad1",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "b54782db-5684-4b12-b18a-2a69efd5ef7c",
+      "body_excerpt": "{'work_order_id': 'b54782db-5684-4b12-b18a-2a69efd5ef7c', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-RUNTIME-F4-20260523T173614Z G9 duplicate propagation probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': N"
+    },
+    {
+      "probe": "risk_signal_create_work_order",
+      "path": "/client/maintenance/risk-signals/rs_2006b6155ccf/create-work-order",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'work_order_id': '6fe40205-2d8a-46c3-9f5a-8344275ea92c', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'F4 regen governance integration probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compliance_purpose'"
+    },
+    {
+      "probe": "risk_signal_create_issue",
+      "path": "/client/maintenance/risk-signals/rs_2006b6155ccf/create-issue",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'issue_id': '72a04b1f-e327-4004-b689-5e9e34c1d0e9', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'asset_id': None, 'source': 'client', 'category': 'general', 'description': 'F4 regen governance integration probe', 'photos': [], 'reporter_name': None, 'reporter_contact': None, 'reported_urgency': None, 'severity': 'medium', 'priority_s"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "72a04b1f-e327-4004-b689-5e9e34c1d0e9",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "6fe40205-2d8a-46c3-9f5a-8344275ea92c",
+      "body_excerpt": "{'work_order_id': '6fe40205-2d8a-46c3-9f5a-8344275ea92c', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'F4 regen governance integration probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compliance_purpose'"
+    },
+    {
+      "probe": "risk_signal_create_work_order",
+      "path": "/client/maintenance/risk-signals/rs_2b41ab642665/create-work-order",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'work_order_id': '827e7ed9-c6eb-41da-bcd5-c35ebfb07708', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'Electrical Risk: Review your electrical certificate and arrange an external inspection if it is due or out of date.', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'w"
+    },
+    {
+      "probe": "risk_signal_create_issue",
+      "path": "/client/maintenance/risk-signals/rs_2b41ab642665/create-issue",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": true,
+      "duplicate_mint": false,
+      "body_excerpt": "{'issue_id': '7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'asset_id': '796b8ab7-ba9a-40ea-b845-6a52b953f6ac', 'source': 'client', 'category': 'general', 'description': 'F4-DEPLOY-SMOKE', 'photos': [], 'reporter_name': None, 'reporter_contact': None, 'reported_urgency': None, 'severity': 'medium',"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "7cf0bf06-c4fb-4a1c-b6f8-d60b59b62c43",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "4a6a79ba-62a8-4eba-b0b8-a9314f83bbfd",
+      "body_excerpt": "{'work_order_id': '4a6a79ba-62a8-4eba-b0b8-a9314f83bbfd', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'F4-DEPLOY-SMOKE', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compliance_purpose': None, 'compliance_du"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "37f96ca5-f4d3-4cab-9efe-b8798e369130",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "df36fff8-b8ea-4399-92f8-279d094fcfe8",
+      "body_excerpt": "{'work_order_id': 'df36fff8-b8ea-4399-92f8-279d094fcfe8', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-COHERENCE-01-20260528T160205Z terminal-edge seed', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'comp"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "6626038f-ae60-4b4d-a45b-98236ea128d8",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "4b3b53b2-94ca-4c0b-9e55-b3b2eb4151ba",
+      "body_excerpt": "{'work_order_id': '4b3b53b2-94ca-4c0b-9e55-b3b2eb4151ba', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-COHERENCE-01-20260528T160205Z duplicate governance probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': Non"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "4dd058fb-a4d8-4b5d-ae38-3a58c9285d06",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "e0d6c4c0-cf9c-4946-957e-33a5db35efa2",
+      "body_excerpt": "{'work_order_id': 'e0d6c4c0-cf9c-4946-957e-33a5db35efa2', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-COHERENCE-01-20260528T145346Z duplicate governance probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': Non"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "14ad7143-64d5-4f97-99e8-aacd36dc3dd4",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "fbe068df-8d7e-4d6b-8985-628416bad9d3",
+      "body_excerpt": "{'work_order_id': 'fbe068df-8d7e-4d6b-8985-628416bad9d3', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-COHERENCE-01-20260528T144939Z duplicate governance probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': Non"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "299316e1-5350-4c57-a87b-f1cc0fdb9c7a",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "9065b4b5-b676-4659-839d-19b1d7cf39eb",
+      "body_excerpt": "{'work_order_id': '9065b4b5-b676-4659-839d-19b1d7cf39eb', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-COHERENCE-01-20260528T144653Z duplicate governance probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': Non"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "9cfcb17f-c032-4aa8-adbe-d896accc1421",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "48ee840d-ec93-4f5f-80bf-cd2879f4ef50",
+      "body_excerpt": "{'work_order_id': '48ee840d-ec93-4f5f-80bf-cd2879f4ef50', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-COHERENCE-01-20260528T143813Z duplicate governance probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': Non"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "c7d4e482-9fbd-47b2-addc-f270aba8b137",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "74024a9d-fa69-4992-b552-f2c40d8c1295",
+      "body_excerpt": "{'work_order_id': '74024a9d-fa69-4992-b552-f2c40d8c1295', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'OPS-COHERENCE-01-20260528T143506Z duplicate governance probe', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': Non"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "a650e474-c589-46f4-bc2c-fd324b76d474",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "9662d487-f6a7-4107-a7b8-18f4f6136e35",
+      "body_excerpt": "{'work_order_id': '9662d487-f6a7-4107-a7b8-18f4f6136e35', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'CC-DEGRADED-FINAL-FIX-20260528T125429Z urgent-seed', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compli"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "163c1e30-01f2-4ae3-916d-0e9df66d9e79",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "4bd8115f-b185-443d-b9f2-8eed1fde6568",
+      "body_excerpt": "{'work_order_id': '4bd8115f-b185-443d-b9f2-8eed1fde6568', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-TRUST-RISK-REMEDIATION-01-20260528T122723Z pressure', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code':"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "6ccc6259-1730-4f6d-93b5-97fc9168d211",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "c1030a76-4843-4e20-a509-af34b4ad6b27",
+      "body_excerpt": "{'work_order_id': 'c1030a76-4843-4e20-a509-af34b4ad6b27', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-TRUST-RISK-REMEDIATION-01-20260528T122723Z no-access', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code'"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "08109492-50d5-439c-aba1-39acd1c4c3d6",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "84bf4ed9-e1c4-481e-b2f8-94b9e28240a5",
+      "body_excerpt": "{'work_order_id': '84bf4ed9-e1c4-481e-b2f8-94b9e28240a5', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-TRUST-RISK-REMEDIATION-01-20260528T122723Z evidence', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code':"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "1a7ac42a-2ec5-4a32-8108-1516bc3448ca",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "c816f964-e607-4739-b3a5-772722f781ba",
+      "body_excerpt": "{'work_order_id': 'c816f964-e607-4739-b3a5-772722f781ba', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-TRUST-RISK-REMEDIATION-01-20260528T121643Z evidence', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code':"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "9f436846-f87c-438a-83fd-8f9850845d8a",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "b8c67867-729e-4c10-93e0-7256427986b5",
+      "body_excerpt": "{'work_order_id': 'b8c67867-729e-4c10-93e0-7256427986b5', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-02-20260528T115205Z pressure', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compli"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "21c25062-3c16-4a82-a99d-f16e7ab36f7e",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "aa1d7d46-1bac-459d-b43e-c62ba3c62279",
+      "body_excerpt": "{'work_order_id': 'aa1d7d46-1bac-459d-b43e-c62ba3c62279', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-02-20260528T115205Z no-access', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compl"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "89df40a9-06fc-4a03-8088-f4e386ca3c96",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "4386c404-e85a-4344-a850-85c4d514539c",
+      "body_excerpt": "{'work_order_id': '4386c404-e85a-4344-a850-85c4d514539c', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-02-20260528T115205Z evidence', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compli"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "fb5f6cf6-ef57-4367-8d17-207d19a9f65b",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "0ff7bdd1-699d-4874-87b3-9a43d1c4ae35",
+      "body_excerpt": "{'work_order_id': '0ff7bdd1-699d-4874-87b3-9a43d1c4ae35', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-20260528T112534Z dup pressure', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compl"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "8e8475ba-c508-4025-a832-53142d6b4cb5",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "ab329c2b-66b2-48cc-8940-4a3f9f08b0c2",
+      "body_excerpt": "{'work_order_id': 'ab329c2b-66b2-48cc-8940-4a3f9f08b0c2', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-20260528T112534Z no-access', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'complian"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "290c00b1-7f4b-47cd-984c-f1c62923894c",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "945533e6-f197-4bc9-972a-782083b961c3",
+      "body_excerpt": "{'work_order_id': '945533e6-f197-4bc9-972a-782083b961c3', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-20260528T112534Z evidence', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'complianc"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "05c1163e-67ef-4677-a206-25ba92763106",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "d815762c-bbac-431e-8d76-b148ca974e16",
+      "body_excerpt": "{'work_order_id': 'd815762c-bbac-431e-8d76-b148ca974e16', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-20260528T105225Z evidence flow seed', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'heating', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, "
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "efb3b42c-bff3-448b-8274-fe15ae9e431d",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "b5ed998a-456f-4a43-b349-2219fed799a0",
+      "body_excerpt": "{'work_order_id': 'b5ed998a-456f-4a43-b349-2219fed799a0', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-20260528T104142Z duplicate pressure', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, "
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "39c57499-04fe-4cb4-956f-0007685781c0",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "5c4f2d5e-f367-4fee-8bc7-34c2899b36a4",
+      "body_excerpt": "{'work_order_id': '5c4f2d5e-f367-4fee-8bc7-34c2899b36a4', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-20260528T104142Z pressure stale assignment', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code':"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "592afba0-f88a-4c89-91a4-26871b846ff7",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "372f5707-4a65-4f7e-b712-5f7200b7d438",
+      "body_excerpt": "{'work_order_id': '372f5707-4a65-4f7e-b712-5f7200b7d438', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-20260528T104142Z no_access semantic seed', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': N"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "41add3b8-28c5-4339-a905-11580426bde9",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "d3fabe29-f58e-4a43-970d-cbdc5ac6eecf",
+      "body_excerpt": "{'work_order_id': 'd3fabe29-f58e-4a43-970d-cbdc5ac6eecf', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-CLOSEOUT-20260528T104142Z evidence flow seed', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'heating', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, "
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "fe01885c-3fd8-45ad-b94d-15513a6800b9",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "e5292c2c-29ab-43aa-9fed-65cad94f60dd",
+      "body_excerpt": "{'work_order_id': 'e5292c2c-29ab-43aa-9fed-65cad94f60dd', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-RERUN reject gate check', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compliance_purpose': No"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "a9b09310-35b4-4af1-8b57-e8c425722a54",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "72ef24ad-f2d1-466c-a252-b6460cab90a5",
+      "body_excerpt": "{'work_order_id': '72ef24ad-f2d1-466c-a252-b6460cab90a5', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-RERUN reject gate check', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compliance_purpose': No"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "0825bd05-cbbd-4e03-a92c-34ce88f9d689",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "ad6f96a8-b820-470e-936e-873a503e4ff4",
+      "body_excerpt": "{'work_order_id': 'ad6f96a8-b820-470e-936e-873a503e4ff4', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-RERUN-20260528T095922Z tenant issue damp', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'com"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "8fd1a5ce-3ec9-459d-8dad-473ade4345d5",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "67397d8e-f892-4746-8ff4-90952aae4b4a",
+      "body_excerpt": "{'work_order_id': '67397d8e-f892-4746-8ff4-90952aae4b4a', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-RERUN-20260528T095922Z tenant issue damp', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'com"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "bdfb3490-86b1-4e87-aabd-b73a768794ba",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "1956697f-f5ad-4cdc-9648-b81a2d2e9b41",
+      "body_excerpt": "{'work_order_id': '1956697f-f5ad-4cdc-9648-b81a2d2e9b41', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-RERUN-20260528T095922Z contractor full flow seed', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'heating', 'work_order_kind': 'MAINTENANCE', 'requirement_code': No"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "d4da1e2d-161f-44a7-a647-741814e13fcd",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "cd73994d-af06-46c6-9738-c0111fdc10e2",
+      "body_excerpt": "{'work_order_id': 'cd73994d-af06-46c6-9738-c0111fdc10e2', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-RERUN-20260528T095352Z tenant issue damp', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'com"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "9eee86e1-5401-4bdc-bb94-36e4e61415c5",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "3c15b0e9-536b-40bb-9fb9-9f93b8c10c7b",
+      "body_excerpt": "{'work_order_id': '3c15b0e9-536b-40bb-9fb9-9f93b8c10c7b', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-RERUN-20260528T095352Z tenant issue damp', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'com"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "9fe067b2-a5d7-4674-b709-4e51e29b2afd",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "edd20a60-3cd9-4dca-9631-3fc6f25ae06e",
+      "body_excerpt": "{'work_order_id': 'edd20a60-3cd9-4dca-9631-3fc6f25ae06e', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-RERUN-20260528T095352Z contractor reject seed', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None,"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "e42c64c3-8e7c-4fdd-b37c-1894a7bc8656",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "fd0ddace-c955-486d-a532-3b71997bd9f1",
+      "body_excerpt": "{'work_order_id': 'fd0ddace-c955-486d-a532-3b71997bd9f1', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'PRELAUNCH-CT-RERUN-20260528T095352Z contractor full flow seed', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'heating', 'work_order_kind': 'MAINTENANCE', 'requirement_code': No"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "c279d960-6f31-4c2a-8a5f-9ed88ef7c023",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "1c992916-1dfb-4682-b23b-25b7693b22fe",
+      "body_excerpt": "{'work_order_id': '1c992916-1dfb-4682-b23b-25b7693b22fe', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'DEPLOY-CONTINUITY-RECHECK duplicate sink leak kitchen', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'com"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "afe7f1ff-8146-4247-89b1-c6e1b5b3d9cb",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "acabd6e4-7b0a-44c9-8e74-3fc926594406",
+      "body_excerpt": "{'work_order_id': 'acabd6e4-7b0a-44c9-8e74-3fc926594406', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'DEPLOY-CONTINUITY-RECHECK duplicate sink leak kitchen', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'com"
+    },
+    {
+      "probe": "issue_create_work_order",
+      "issue_id": "1363ea63-36ed-4754-b1a3-a33a11f76e90",
+      "status": 200,
+      "rejected": false,
+      "idempotent_replay": "14fd8032-bcfc-43e7-bb2e-ea4349d619fe",
+      "body_excerpt": "{'work_order_id': '14fd8032-bcfc-43e7-bb2e-ea4349d619fe', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'description': 'DEPLOY-CONTINUITY-RECHECK-contractor-reject', 'source': 'client', 'reporter_id': '2dfd42d0-e439-46ef-8071-73600e46088e', 'category': 'general', 'work_order_kind': 'MAINTENANCE', 'requirement_code': None, 'compliance_pu"
+    }
+  ],
+  "gate": {
+    "found_target": true,
+    "checks": {
+      "continuation_primary_not_start": true,
+      "idempotent_or_replay": true,
+      "no_duplicate_mint": true,
+      "user_safe_reason_present": true,
+      "existing_work_order_id_present": true
+    },
+    "signal_id": "rs_54bed98b3505",
+    "risk_type": "Recurring Repairs Risk",
+    "primary_cta": {
+      "key": "view_workflow",
+      "label": "Schedule visit",
+      "continuation": true
+    },
+    "operational_continuation": {
+      "mode": "continuation",
+      "has_active_lineage": true,
+      "existing_work_order_id": "914abf84-33cf-4adb-990f-ef3112fcc30f",
+      "existing_issue_id": "c4ac23f9-39c4-497d-afe8-58e98a8a0a1e",
+      "continuation_state": "ASSIGNED",
+      "continuation_cta": {
+        "key": "view_workflow",
+        "label": "Schedule visit",
+        "url": "/operations/jobs/914abf84-33cf-4adb-990f-ef3112fcc30f"
+      },
+      "user_safe_reason": "An active maintenance workflow already exists for this operational objective. Continue the existing workflow instead of starting a new one."
+    },
+    "create_work_order_probe": {
+      "method": "POST",
+      "path": "/client/maintenance/risk-signals/rs_54bed98b3505/create-work-order",
+      "status": 200,
+      "ok": true,
+      "elapsed_ms": 3835.9,
+      "body": {
+        "work_order_id": "58bd01be-02ad-4af3-a9b8-00fd97c02887",
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "description": "Recurring Repairs Risk: Investigate the root cause instead of repeat patch repairs.",
+        "source": "client",
+        "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+        "category": "general",
+        "work_order_kind": "MAINTENANCE",
+        "requirement_code": null,
+        "compliance_purpose": null,
+        "compliance_due_at": null,
+        "compliance_generated_from": null,
+        "expected_output_document_type": null,
+        "linked_property_requirement_id": null,
+        "severity": "medium",
+        "status": "OPEN",
+        "contractor_id": null,
+        "created_at": "2026-05-28T14:54:58.534466+00:00",
+        "updated_at": "2026-05-28T14:54:58.534466+00:00",
+        "sla_respond_by": "2026-05-29T14:54:59.576597+00:00",
+        "sla_complete_by": "2026-05-31T14:54:59.576605+00:00",
+        "completed_at": null,
+        "asset_id": "796b8ab7-ba9a-40ea-b845-6a52b953f6ac",
+        "issue_id": null,
+        "risk_signal_id": "rs_54bed98b3505",
+        "cost_estimate_min": null,
+        "cost_estimate_max": null,
+        "resolution_outcome": null,
+        "sla_breach_risk_at": null,
+        "sla_breached_at": null,
+        "triage_reasoning": [
+          "Recurrence: 45 related work order(s) in last 90 days; priority boosted."
+        ],
+        "recommended_contractor_type": "general",
+        "contractor_notes": null,
+        "completion_notes": null,
+        "evidence_keys": [],
+        "requires_client_assignment_confirmation": true,
+        "assignment_routing_state": "UNASSIGNED",
+        "recommended_contractor_id": null,
+        "recommendation_reason_summary": null,
+        "recommended_at": null,
+        "recommendation_id": null,
+        "client_confirmation_deadline_at": null,
+        "confirmation_reminder_sent_at": null,
+        "confirmation_escalated_at": null,
+        "routing_decline_note": null,
+        "routing_pending_admin": false,
+        "routing_invalidation_reason": null,
+        "scheduled_at": null,
+        "scheduled_timezone": null,
+        "schedule_status": null,
+        "scheduled_by": null,
+        "schedule_notes": null,
+        "schedule_reschedule_reason": null,
+        "last_schedule_update_at": null,
+        "reminder_sent": false,
+        "created_from": "risk_signal",
+        "triggering_rule": "user_confirmed_risk_signal_work_order",
+        "operational_root_key": "risk:Recurring Repairs Risk:796b8ab7-ba9a-40ea-b845-6a52b953f6ac",
+        "jurisdiction": "Wales",
+        "pricing_mode": "MAINTENANCE_PREQUOTE",
+        "price_status": "AWAITING_QUOTE",
+        "quoted_price": null,
+        "price_currency": "GBP",
+        "quote_notes": null,
+        "quote_submitted_at": null,
+        "quote_approved_at": null,
+        "quote_rejected_at": null,
+        "quote_rejection_reason": null,
+        "inspection_required": false,
+        "inspection_completed_at": null,
+        "sla_policy": null,
+        "uploaded_is_verified": false,
+        "evidence_review_state": "not_uploaded",
+        "evidence_requires_review": false,
+        "evidence_authority_note": "Uploaded evidence has been received but has not yet been reviewed or verified.",
+        "completed_work_is_compliant": false,
+        "evidence_count": 0,
+        "idempotent_replay": true,
+        "operational_continuation": {
+          "mode": "continuation",
+          "has_active_lineage": true,
+          "existing_work_order_id": "914abf84-33cf-4adb-990f-ef3112fcc30f",
+          "existing_issue_id": "c4ac23f9-39c4-497d-afe8-58e98a8a0a1e",
+          "continuation_state": "ASSIGNED",
+          "continuation_cta": {
+            "key": "view_workflow",
+            "label": "Schedule visit",
+            "url": "/operations/jobs/914abf84-33cf-4adb-990f-ef3112fcc30f"
+          },
+          "user_safe_reason": "An active maintenance workflow already exists for this operational objective. Continue the existing workflow instead of starting a new one."
+        },
+        "existing_work_order_id": "914abf84-33cf-4adb-990f-ef3112fcc30f"
+      }
+    },
+    "pass": true
+  }
+}

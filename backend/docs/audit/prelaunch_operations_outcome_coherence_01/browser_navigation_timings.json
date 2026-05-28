@@ -1,0 +1,74 @@
+{
+  "captures": [
+    {
+      "surface": "risk_signals",
+      "screenshot": "docs/audit/prelaunch_operations_outcome_coherence_01/screenshots/risk_signals.png",
+      "start_cta_text_hits": 0,
+      "continuation_text_hits": 1
+    },
+    {
+      "surface": "issues",
+      "screenshot": "docs/audit/prelaunch_operations_outcome_coherence_01/screenshots/issues.png",
+      "start_cta_text_hits": 1,
+      "continuation_text_hits": 3
+    },
+    {
+      "surface": "jobs_list",
+      "screenshot": "docs/audit/prelaunch_operations_outcome_coherence_01/screenshots/jobs_list.png",
+      "start_cta_text_hits": 0,
+      "continuation_text_hits": 9
+    },
+    {
+      "surface": "command_centre",
+      "screenshot": "docs/audit/prelaunch_operations_outcome_coherence_01/screenshots/command_centre.png",
+      "start_cta_text_hits": 0,
+      "continuation_text_hits": 0
+    },
+    {
+      "surface": "contractors",
+      "screenshot": "docs/audit/prelaunch_operations_outcome_coherence_01/screenshots/contractors.png",
+      "start_cta_text_hits": 0,
+      "continuation_text_hits": 2
+    },
+    {
+      "surface": "contractor_portal",
+      "screenshot": "docs/audit/prelaunch_operations_outcome_coherence_01/screenshots/contractor_portal.png"
+    },
+    {
+      "surface": "tenant_property",
+      "screenshot": "docs/audit/prelaunch_operations_outcome_coherence_01/screenshots/tenant_property.png"
+    }
+  ],
+  "timings": [
+    {
+      "step": "login",
+      "elapsed_ms": 7726.7
+    },
+    {
+      "surface": "risk_signals",
+      "path": "/operations/risk-signals",
+      "elapsed_ms": 3598.8
+    },
+    {
+      "surface": "issues",
+      "path": "/operations/issues",
+      "elapsed_ms": 3502.1
+    },
+    {
+      "surface": "jobs_list",
+      "path": "/operations/work-orders",
+      "elapsed_ms": 3432.4
+    },
+    {
+      "surface": "command_centre",
+      "path": "/command-center",
+      "elapsed_ms": 3402.0
+    },
+    {
+      "surface": "contractors",
+      "path": "/operations/contractors",
+      "elapsed_ms": 3353.2
+    }
+  ],
+  "skipped": false
+}

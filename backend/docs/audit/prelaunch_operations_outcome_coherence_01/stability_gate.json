@@ -1,0 +1,68 @@
+{
+  "captured_at": "2026-05-28T16:18:42Z",
+  "checks": [
+    {
+      "name": "health_200_x3",
+      "pass": true
+    },
+    {
+      "name": "version_200",
+      "pass": true
+    },
+    {
+      "name": "deploy_commit_fca89387",
+      "pass": true
+    },
+    {
+      "name": "auth_reachable",
+      "pass": true
+    },
+    {
+      "name": "client_login",
+      "pass": true
+    },
+    {
+      "name": "frontend_reachable",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "deploy_continuity": {
+    "expected_commit": "ef84b606",
+    "observed_commit": "ef84b606dfd1a56dbc18458f627f30587c8bafc2",
+    "deploy_ok": true
+  },
+  "health_runs": [
+    {
+      "attempt": 1,
+      "status": 200,
+      "elapsed_ms": 1400.1
+    },
+    {
+      "attempt": 2,
+      "status": 200,
+      "elapsed_ms": 1081.9
+    },
+    {
+      "attempt": 3,
+      "status": 200,
+      "elapsed_ms": 814.6
+    }
+  ],
+  "version": {
+    "status": 200,
+    "commit": "ef84b606dfd1a56dbc18458f627f30587c8bafc2",
+    "body": {
+      "commit_sha": "ef84b606dfd1a56dbc18458f627f30587c8bafc2",
+      "environment": "production"
+    }
+  },
+  "auth_endpoint": {
+    "status": 422,
+    "reachable_without_502_503": true
+  },
+  "client_login": {
+    "ok": true,
+    "error": null
+  }
+}
