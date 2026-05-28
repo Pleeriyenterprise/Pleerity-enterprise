@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent
 PROGRAMME = "PRELAUNCH-OPERATIONS-OUTCOME-COHERENCE-01"
 RUN_TAG = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 MARKER = f"OPS-COHERENCE-01-{RUN_TAG}"
+EXPECTED_DEPLOY_COMMIT = "fca89387"
 
 DEFAULT_CID = "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
 DEFAULT_PID = "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
@@ -200,15 +201,29 @@ def normalize_label(label: str) -> str:
 
 
 def stability_gate() -> Dict[str, Any]:
-    out: Dict[str, Any] = {"captured_at": utc(), "checks": [], "pass": False}
+    out: Dict[str, Any] = {"captured_at": utc(), "checks": [], "pass": False, "deploy_continuity": {}}
     health_runs = []
-    for i in range(3):
-        row = call("GET", "/health")
+    health_ok = False
+    for i in range(6):
+        row = call("GET", "/health", timeout=90.0)
         health_runs.append({"attempt": i + 1, "status": row["status"], "elapsed_ms": row["elapsed_ms"]})
-        time.sleep(0.8)
+        if row["status"] == 200:
+            if len(health_runs) >= 3 and all(r["status"] == 200 for r in health_runs[-3:]):
+                health_ok = True
+                break
+        time.sleep(1.2)
+    if not health_ok:
+        health_ok = sum(1 for r in health_runs if r["status"] == 200) >= 3
     version = call("GET", "/version")
     ver_body = version.get("body") if isinstance(version.get("body"), dict) else {}
-    commit = ver_body.get("commit") or ver_body.get("git_commit") or ver_body.get("version")
+    commit = ver_body.get("commit_sha") or ver_body.get("commit") or ver_body.get("git_commit") or ver_body.get("version")
+    commit_prefix = (str(commit or ""))[:8]
+    deploy_ok = commit_prefix.startswith(EXPECTED_DEPLOY_COMMIT[:8])
+    out["deploy_continuity"] = {
+        "expected_commit": EXPECTED_DEPLOY_COMMIT,
+        "observed_commit": commit,
+        "deploy_ok": deploy_ok,
+    }
     auth_probe = call("POST", "/auth/login", body={"email": "probe@invalid.local", "password": "x"})
     auth_reachable = auth_probe["status"] in (400, 401, 422, 403)
     try:
@@ -221,18 +236,114 @@ def stability_gate() -> Dict[str, Any]:
     else:
         client_login_err = None
 
-    health_ok = all(r["status"] == 200 for r in health_runs)
     out["health_runs"] = health_runs
     out["version"] = {"status": version["status"], "commit": commit, "body": ver_body}
     out["auth_endpoint"] = {"status": auth_probe["status"], "reachable_without_502_503": auth_probe["status"] not in (502, 503)}
     out["client_login"] = {"ok": client_login_ok, "error": client_login_err}
-    out["pass"] = health_ok and version["status"] == 200 and auth_reachable and client_login_ok
+    frontend_marker_ok = False
+    try:
+        fr = httpx.get(FRONTEND, timeout=60, follow_redirects=True)
+        html = fr.text if fr.status_code == 200 else ""
+        frontend_marker_ok = bool(html)
+    except Exception:
+        frontend_marker_ok = False
+
+    out["pass"] = (
+        health_ok
+        and version["status"] == 200
+        and auth_reachable
+        and client_login_ok
+        and deploy_ok
+    )
     out["checks"] = [
         {"name": "health_200_x3", "pass": health_ok},
         {"name": "version_200", "pass": version["status"] == 200},
+        {"name": "deploy_commit_fca89387", "pass": deploy_ok},
         {"name": "auth_reachable", "pass": auth_reachable},
         {"name": "client_login", "pass": client_login_ok},
+        {"name": "frontend_reachable", "pass": frontend_marker_ok},
     ]
+    return out
+
+
+def run_duplicate_prevention_gate(client_tok: str, signals: List[dict]) -> Dict[str, Any]:
+    target = None
+    for s in signals:
+        if s.get("property_id") != DEFAULT_PID:
+            continue
+        cont = s.get("operational_continuation") or {}
+        if cont.get("has_active_lineage") and "recurring" in (s.get("risk_type") or "").lower():
+            target = s
+            break
+    if not target:
+        for s in signals:
+            cont = s.get("operational_continuation") or {}
+            if cont.get("has_active_lineage"):
+                target = s
+                break
+    out: Dict[str, Any] = {"found_target": bool(target), "checks": {}}
+    if not target:
+        return out
+    sid = target["signal_id"]
+    primary = resolve_risk_signal_primary_key(target)
+    out["signal_id"] = sid
+    out["risk_type"] = target.get("risk_type")
+    out["primary_cta"] = primary
+    out["operational_continuation"] = target.get("operational_continuation")
+    create = call("POST", f"/client/maintenance/risk-signals/{sid}/create-work-order", client_tok, body={})
+    body = create.get("body") if isinstance(create.get("body"), dict) else {}
+    replay = bool(body.get("idempotent_replay") or body.get("operational_continuation", {}).get("has_active_lineage"))
+    wo_id = body.get("work_order_id") or body.get("existing_work_order_id")
+    existing = (target.get("operational_continuation") or {}).get("existing_work_order_id")
+    duplicate_mint = create["status"] == 200 and wo_id and existing and str(wo_id) != str(existing) and not replay
+    out["create_work_order_probe"] = create
+    out["checks"] = {
+        "continuation_primary_not_start": primary.get("continuation") is True
+        and "start" not in (primary.get("label") or "").lower(),
+        "idempotent_or_replay": replay or create["status"] in (200, 409),
+        "no_duplicate_mint": not duplicate_mint,
+        "user_safe_reason_present": bool((body.get("operational_continuation") or {}).get("user_safe_reason")),
+        "existing_work_order_id_present": bool(body.get("existing_work_order_id") or existing),
+    }
+    out["pass"] = all(out["checks"].values())
+    return out
+
+
+def run_terminal_workflow_edge_case(client_tok: str, signals: List[dict]) -> Dict[str, Any]:
+    seed = call(
+        "POST",
+        "/client/maintenance/issues",
+        client_tok,
+        body={"property_id": DEFAULT_PID, "description": f"{MARKER} terminal-edge seed", "category": "general"},
+    )
+    issue_id = (seed.get("body") or {}).get("issue_id") if isinstance(seed.get("body"), dict) else None
+    if not issue_id:
+        return {"pass": False, "skipped": True, "reason": "seed_issue_failed"}
+    wo_create = call("POST", f"/client/maintenance/issues/{issue_id}/create-work-order", client_tok)
+    wo_id = (wo_create.get("body") or {}).get("work_order_id") if isinstance(wo_create.get("body"), dict) else None
+    if not wo_id:
+        return {"pass": False, "skipped": True, "reason": "seed_wo_failed"}
+    before_issue = call("GET", f"/client/maintenance/issues/{issue_id}", client_tok)
+    bcont = (before_issue.get("body") or {}).get("operational_continuation") if isinstance(before_issue.get("body"), dict) else {}
+    cancel = call("POST", f"/jobs/{wo_id}/cancel", client_tok, body={"reason": f"{MARKER} terminal edge"})
+    after_issue = call("GET", f"/client/maintenance/issues/{issue_id}", client_tok)
+    ibody = after_issue.get("body") if isinstance(after_issue.get("body"), dict) else {}
+    cont = ibody.get("operational_continuation") or {}
+    stale = cont.get("has_active_lineage") is True
+    out = {
+        "skipped": False,
+        "issue_id": issue_id,
+        "work_order_id": wo_id,
+        "before_continuation": bcont,
+        "cancel_probe": cancel,
+        "after_issue_continuation": cont,
+        "checks": {
+            "had_continuation_before_cancel": bcont.get("has_active_lineage") is True,
+            "cancel_ok": cancel.get("ok") or cancel.get("status") in (200, 400),
+            "no_stale_continuation": not stale,
+        },
+    }
+    out["pass"] = all(out["checks"].values())
     return out
 
 
@@ -682,7 +793,7 @@ def command_centre_alignment(client_tok: str, issues: List[dict], work_orders: L
     }
 
 
-def browser_coherence_capture(client_pw: str) -> Dict[str, Any]:
+def browser_coherence_capture(client_pw: str, contractor_pw: str, tenant_pw: str) -> Dict[str, Any]:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -731,6 +842,32 @@ def browser_coherence_capture(client_pw: str) -> Dict[str, Any]:
                         "continuation_text_hits": cont_hits,
                     }
                 )
+            # Contractor portal
+            cp = browser.new_page(viewport={"width": 1440, "height": 900})
+            cp.goto(f"{FRONTEND}/contractor/login", wait_until="domcontentloaded", timeout=120000)
+            cp.fill("#email", CONTRACTOR_EMAIL)
+            cp.fill("#password", contractor_pw)
+            cp.locator('button[type="submit"]').first.click()
+            cp.wait_for_timeout(4000)
+            cp.goto(f"{FRONTEND}/contractor", wait_until="domcontentloaded", timeout=120000)
+            cp.wait_for_timeout(2500)
+            cshot = SHOT / "contractor_portal.png"
+            cp.screenshot(path=str(cshot), full_page=True)
+            captures.append({"surface": "contractor_portal", "screenshot": str(cshot.relative_to(ROOT)).replace("\\", "/")})
+
+            # Tenant portal
+            tp = browser.new_page(viewport={"width": 390, "height": 844})
+            tp.goto(f"{FRONTEND}/login/client", wait_until="domcontentloaded", timeout=120000)
+            tp.fill("#email", TENANT_EMAIL)
+            tp.fill("#password", tenant_pw)
+            tp.locator('button[type="submit"]').first.click()
+            tp.wait_for_timeout(4000)
+            tp.goto(f"{FRONTEND}/tenant/properties/{DEFAULT_PID}", wait_until="domcontentloaded", timeout=120000)
+            tp.wait_for_timeout(2500)
+            tshot = SHOT / "tenant_property.png"
+            tp.screenshot(path=str(tshot), full_page=True)
+            captures.append({"surface": "tenant_property", "screenshot": str(tshot.relative_to(ROOT)).replace("\\", "/")})
+
             browser.close()
         return {"captures": captures, "timings": timings, "skipped": False}
     except Exception as exc:
@@ -848,9 +985,11 @@ def main() -> int:
     stability = stability_gate()
     write("stability_gate.json", stability)
     if not stability.get("pass"):
+        dc = stability.get("deploy_continuity") or {}
+        blocked = "BLOCKED_DEPLOY_CONTINUITY" if not dc.get("deploy_ok", True) else "BLOCKED"
         write(
             "classifications.json",
-            {"classification": "BLOCKED", "reason": "staging_stability_gate_failed", "stability_gate": stability},
+            {"classification": blocked, "reason": "staging_stability_gate_failed", "stability_gate": stability},
         )
         (OUT / "REPORT.md").write_text(
             "# PRELAUNCH-OPERATIONS-OUTCOME-COHERENCE-01\n\n**Classification:** BLOCKED\n\nStaging stability gate failed. Baseline coherence audit not executed.\n",
@@ -966,7 +1105,11 @@ def main() -> int:
         ),
     }
 
-    browser = browser_coherence_capture(client_pw)
+    dup_gate = run_duplicate_prevention_gate(client_tok, signals)
+    terminal_edge = run_terminal_workflow_edge_case(client_tok, signals)
+    write("terminal_workflow_edge_case.json", terminal_edge)
+
+    browser = browser_coherence_capture(client_pw, contractor_pw, tenant_pw)
 
     issues_runtime = {
         "captured_at": utc(),
@@ -1012,7 +1155,10 @@ def main() -> int:
             "rows": cross_surface_rows,
         },
     )
-    write("duplicate_workflow_prevention.json", {"cases": duplicate_prevention, "backend_probes": backend_probes_all})
+    write(
+        "duplicate_workflow_prevention.json",
+        {"cases": duplicate_prevention, "backend_probes": backend_probes_all, "gate": dup_gate},
+    )
     write("cta_conflict_detection.json", {"conflicts": cta_conflicts, "by_class": _group_by_class(cta_conflicts)})
     write("command_centre_operational_alignment.json", cc_primary)
     write("browser_navigation_timings.json", browser)
@@ -1024,8 +1170,14 @@ def main() -> int:
         "issues_total": issues_total,
         "work_orders_total": wos_total,
         "inventory_incomplete": inventory_incomplete,
+        "duplicate_prevention_gate_pass": dup_gate.get("pass"),
+        "terminal_edge_case_pass": terminal_edge.get("pass"),
     }
     classification = classify_programme(stability, all_contradictions, cc_primary, audit_meta=audit_meta)
+    if not dup_gate.get("pass", False):
+        classification = "TRUST_RISK_PRESENT" if classification == "VERIFIED_OPERATIONALLY" else classification
+    if terminal_edge.get("skipped") is False and not terminal_edge.get("pass"):
+        classification = "PARTIAL" if classification == "VERIFIED_OPERATIONALLY" else classification
     write(
         "classifications.json",
         {

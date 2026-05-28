@@ -924,6 +924,9 @@ async def get_risk_signals_for_client(
     for s in signals:
         s.pop("_id", None)
     enrich_risk_signals(signals)
+    from services.operational_continuation_service import enrich_risk_signals_with_continuation
+
+    await enrich_risk_signals_with_continuation(signals, client_id)
 
     last_rec = None
     if signals:
