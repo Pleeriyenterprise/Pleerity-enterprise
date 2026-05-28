@@ -1,0 +1,14 @@
+{
+  "classification": "VERIFIED_OPERATIONALLY",
+  "programme": "OPERATIONAL-COGNITION-ENVELOPE-V1-CLOSEOUT-01",
+  "run_tag": "20260528T203804Z",
+  "gates": {
+    "deploy_continuity": true,
+    "live_envelope": true,
+    "list_parity": true,
+    "browser_hero": true,
+    "false_progression": true,
+    "cross_role": true,
+    "degraded_truthfulness": true
+  }
+}

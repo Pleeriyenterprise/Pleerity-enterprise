@@ -1,0 +1,9 @@
+{
+  "captured_at": "2026-05-28T20:39:57.079782+00:00",
+  "pressure_status": "degraded",
+  "pressure_degraded": true,
+  "pressure_message": "Some pressure metrics are still refreshing. Urgent items remain visible below.",
+  "urgent_actions_count": 10,
+  "gate_pass": true,
+  "note": "Degraded disclosure or urgent rows remain visible (no false calm)"
+}

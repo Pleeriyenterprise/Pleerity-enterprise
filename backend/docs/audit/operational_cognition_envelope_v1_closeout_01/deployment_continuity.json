@@ -1,0 +1,51 @@
+{
+  "captured_at": "2026-05-28T20:38:04.224410+00:00",
+  "classification": "PASS",
+  "checks": [
+    {
+      "name": "health_200",
+      "pass": true
+    },
+    {
+      "name": "version_200",
+      "pass": true
+    },
+    {
+      "name": "deploy_commit_successor",
+      "pass": true
+    },
+    {
+      "name": "frontend_reachable",
+      "pass": true
+    },
+    {
+      "name": "frontend_bundle_hero_marker",
+      "pass": true
+    },
+    {
+      "name": "frontend_bundle_chip_marker",
+      "pass": true
+    }
+  ],
+  "health_ok": true,
+  "version": {
+    "status": 200,
+    "commit_sha": "82acc7f9a2b756f623c7f06722cecac4235707bd",
+    "body": {
+      "commit_sha": "82acc7f9a2b756f623c7f06722cecac4235707bd",
+      "environment": "production"
+    }
+  },
+  "deploy_ok": true,
+  "expected_commits": [
+    "45ca2bb4",
+    "c3220725",
+    "82acc7f9"
+  ],
+  "frontend_markers": {
+    "reachable": true,
+    "bundle_has_hero_marker": true,
+    "bundle_has_chip_marker": true,
+    "main_js": "/static/js/main.09e8dd79.js"
+  }
+}

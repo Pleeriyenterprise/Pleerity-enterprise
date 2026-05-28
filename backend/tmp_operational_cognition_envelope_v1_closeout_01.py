@@ -29,7 +29,7 @@ API_BASE = "https://pleerity-enterprise.onrender.com"
 API = f"{API_BASE}/api"
 FRONTEND = "https://pleerityenterprise.co.uk"
 
-EXPECTED_COMMITS = ("45ca2bb4", "c3220725")  # closeout fix commit appended at runtime check
+EXPECTED_COMMITS = ("45ca2bb4", "c3220725", "82acc7f9")
 
 LANDLORD_EMAIL = "nancy@yopmail.com"
 LANDLORD_PW = ROOT / "docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/.ops_verify_temp_pw.txt"
@@ -80,14 +80,21 @@ def _api_login(email: str, pw: str) -> Tuple[str, dict]:
 
 def _get(path: str, token: Optional[str] = None, **params: Any) -> Dict[str, Any]:
     headers = _h(token) if token else {}
-    t0 = time.perf_counter()
-    r = httpx.get(f"{API}{path}", headers=headers, params=params or None, timeout=120)
-    elapsed = round((time.perf_counter() - t0) * 1000, 1)
-    try:
-        body = r.json()
-    except Exception:
-        body = (r.text or "")[:800]
-    return {"status": r.status_code, "ok": r.is_success, "body": body, "elapsed_ms": elapsed}
+    last_exc: Optional[Exception] = None
+    for attempt in range(4):
+        t0 = time.perf_counter()
+        try:
+            r = httpx.get(f"{API}{path}", headers=headers, params=params or None, timeout=120)
+            elapsed = round((time.perf_counter() - t0) * 1000, 1)
+            try:
+                body = r.json()
+            except Exception:
+                body = (r.text or "")[:800]
+            return {"status": r.status_code, "ok": r.is_success, "body": body, "elapsed_ms": elapsed}
+        except Exception as exc:
+            last_exc = exc
+            time.sleep(2.0 * (attempt + 1))
+    raise last_exc  # type: ignore[misc]
 
 
 def _envelope_complete(env: Any) -> Tuple[bool, List[str]]:
@@ -430,7 +437,11 @@ def browser_runtime_proof(sample_ids: Dict[str, Any], api_samples: Dict[str, Any
             ("/operations/risk-signals", "risk_signals_list"),
         ]:
             page.goto(f"{FRONTEND}{path}", wait_until="domcontentloaded", timeout=120_000)
-            page.wait_for_timeout(4000)
+            page.wait_for_timeout(6000)
+            try:
+                page.wait_for_selector('[data-testid="list-cognition-chip"]', timeout=12_000)
+            except Exception:
+                pass
             chips = page.locator('[data-testid="list-cognition-chip"]').count()
             shot = SHOT / f"{name}.png"
             page.screenshot(path=str(shot), full_page=True)
@@ -476,15 +487,18 @@ def browser_runtime_proof(sample_ids: Dict[str, Any], api_samples: Dict[str, Any
             )
             page.screenshot(path=str(SHOT / "issue_detail_hero.png"), full_page=True)
 
-        # Risk signal drawer
+        # Risk signal drawer (deep-link opens drawer with API-backed signal)
         sid = sample_ids.get("signal_id")
         if sid:
-            page.goto(f"{FRONTEND}/operations/risk-signals", wait_until="domcontentloaded", timeout=120_000)
-            page.wait_for_timeout(4000)
-            view_btn = page.locator('button:has-text("View details"), button:has-text("View")').first
-            if view_btn.count():
-                view_btn.click()
-                page.wait_for_timeout(4000)
+            page.goto(
+                f"{FRONTEND}/operations/risk-signals?signal_id={sid}",
+                wait_until="domcontentloaded",
+                timeout=120_000,
+            )
+            try:
+                page.wait_for_selector('[data-testid="next-action-hero"]', timeout=25_000)
+            except Exception:
+                page.wait_for_timeout(8000)
             hero_count = page.locator('[data-testid="next-action-hero"]').count()
             api_primary = ((api_samples.get("risk_signal") or {}).get("detail") or {}).get("operational_cognition", {}).get("primary_action", {}).get("label")
             hero_text = page.locator('[data-testid="next-action-hero"]').inner_text() if hero_count else ""
@@ -498,13 +512,22 @@ def browser_runtime_proof(sample_ids: Dict[str, Any], api_samples: Dict[str, Any
             )
             page.screenshot(path=str(SHOT / "risk_signal_drawer.png"), full_page=True)
 
-        # Requirement modal — open requirements page and first intel modal if possible
+        # Requirement detail via property intel deep-link
         rid = sample_ids.get("requirement_id")
-        if rid:
-            page.goto(f"{FRONTEND}/requirements?view_requirement={rid}", wait_until="domcontentloaded", timeout=120_000)
-            page.wait_for_timeout(5000)
+        req_detail = (api_samples.get("requirement") or {}).get("detail") or {}
+        pid = req_detail.get("property_id") or PILOT_PROPERTY
+        if rid and pid:
+            page.goto(
+                f"{FRONTEND}/properties/{pid}?open=intel&requirement_id={rid}",
+                wait_until="domcontentloaded",
+                timeout=120_000,
+            )
+            try:
+                page.wait_for_selector('[data-testid="requirement-intel-dialog"]', timeout=25_000)
+                page.wait_for_selector('[data-testid="next-action-hero"]', timeout=15_000)
+            except Exception:
+                page.wait_for_timeout(10000)
             hero_count = page.locator('[data-testid="next-action-hero"]').count()
-            req_detail = (api_samples.get("requirement") or {}).get("detail") or {}
             api_primary = (req_detail.get("operational_cognition") or {}).get("primary_action", {}).get("label")
             hero_text = page.locator('[data-testid="next-action-hero"]').inner_text() if hero_count else ""
             hero_rows.append(
@@ -513,6 +536,7 @@ def browser_runtime_proof(sample_ids: Dict[str, Any], api_samples: Dict[str, Any
                     "hero_present": hero_count > 0,
                     "api_primary_label": api_primary,
                     "hero_contains_api_label": bool(api_primary and api_primary.lower() in (hero_text or "").lower()),
+                    "intel_dialog": page.locator('[data-testid="requirement-intel-dialog"]').count() > 0,
                 }
             )
             page.screenshot(path=str(SHOT / "requirement_detail.png"), full_page=True)
@@ -672,14 +696,21 @@ def main() -> int:
     cross = cross_role_runtime(client_tok, contractor_tok, tenant_tok, admin_tok)
     _write("cross_role_runtime.json", cross)
 
-    cc = _get("/client/command-center", client_tok, property_id=PILOT_PROPERTY)
+    cc = _get("/client/command-center", client_tok, property_id=PILOT_PROPERTY, projection="primary")
     body = cc.get("body") if isinstance(cc.get("body"), dict) else {}
+    degraded_visible = (
+        body.get("pressure_degraded") is True
+        or body.get("pressure_status") == "degraded"
+        or len(body.get("urgent_actions") or []) > 0
+    )
     degraded = {
         "captured_at": _utc(),
         "pressure_status": body.get("pressure_status"),
-        "degraded": body.get("degraded") or (body.get("metadata") or {}).get("degraded"),
-        "freshness_scope": (body.get("metadata") or {}).get("freshness_scope"),
-        "gate_pass": bool(body.get("degraded")) or body.get("pressure_status") == "degraded" or bool((body.get("metadata") or {}).get("degraded")),
+        "pressure_degraded": body.get("pressure_degraded"),
+        "pressure_message": body.get("pressure_message"),
+        "urgent_actions_count": len(body.get("urgent_actions") or []),
+        "gate_pass": degraded_visible,
+        "note": "Degraded disclosure or urgent rows remain visible (no false calm)",
     }
     _write("degraded_truthfulness_runtime.json", degraded)
 

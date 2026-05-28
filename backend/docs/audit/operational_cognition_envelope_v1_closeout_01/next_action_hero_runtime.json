@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-05-28T20:41:37.871162+00:00",
+  "rows": [
+    {
+      "surface": "job_detail",
+      "hero_present": true,
+      "api_primary_label": "Assign contractor",
+      "hero_contains_api_label": true,
+      "blocker_visible": true
+    },
+    {
+      "surface": "issue_detail",
+      "hero_present": true,
+      "api_primary_label": "Create maintenance job",
+      "hero_contains_api_label": true
+    },
+    {
+      "surface": "risk_signal_drawer",
+      "hero_present": true,
+      "api_primary_label": "Assign contractor",
+      "hero_contains_api_label": true
+    },
+    {
+      "surface": "requirement_detail",
+      "hero_present": true,
+      "api_primary_label": "Upload valid gas safety certificate",
+      "hero_contains_api_label": true,
+      "intel_dialog": true
+    }
+  ],
+  "gate_pass": true
+}

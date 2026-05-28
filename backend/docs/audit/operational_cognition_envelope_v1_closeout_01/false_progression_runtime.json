@@ -1,0 +1,48 @@
+{
+  "captured_at": "2026-05-28T20:39:50.480312+00:00",
+  "checks": [
+    {
+      "entity": "job",
+      "truth_flags": {
+        "assigned_not_fixed": false,
+        "completed_not_compliant": false,
+        "acknowledged_not_resolved": false,
+        "uploaded_not_verified": false,
+        "submitted_not_compliant": false
+      },
+      "forbidden_includes_mark_compliant": true,
+      "read_only": true
+    },
+    {
+      "entity": "issue",
+      "truth_flags": {
+        "acknowledged_not_resolved": false,
+        "uploaded_not_verified": false,
+        "submitted_not_compliant": false,
+        "assigned_not_fixed": false,
+        "completed_not_compliant": false
+      },
+      "forbidden_includes_mark_compliant": true,
+      "read_only": true
+    },
+    {
+      "entity": "requirement",
+      "truth_flags": {
+        "uploaded_not_verified": true,
+        "submitted_not_compliant": true,
+        "assigned_not_fixed": false,
+        "completed_not_compliant": false,
+        "acknowledged_not_resolved": false
+      },
+      "forbidden_includes_mark_compliant": true,
+      "read_only": true
+    },
+    {
+      "entity": "command_center",
+      "degraded_visible": true,
+      "pressure_status": "degraded",
+      "pressure_degraded": true
+    }
+  ],
+  "gate_pass": true
+}

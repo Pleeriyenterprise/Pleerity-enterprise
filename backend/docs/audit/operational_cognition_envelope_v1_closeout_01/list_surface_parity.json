@@ -1,0 +1,39 @@
+{
+  "captured_at": "2026-05-28T20:39:35.232388+00:00",
+  "rows": [
+    {
+      "surface": "jobs",
+      "list_label": "Assign contractor",
+      "detail_label": "Assign contractor",
+      "parity": true,
+      "list_has_cognition": true,
+      "detail_has_cognition": true
+    },
+    {
+      "surface": "issues",
+      "list_label": "Create maintenance job",
+      "detail_label": "Create maintenance job",
+      "parity": true,
+      "list_has_cognition": true,
+      "detail_has_cognition": true
+    },
+    {
+      "surface": "risk_signals",
+      "list_label": "Assign contractor",
+      "detail_label": "Assign contractor",
+      "parity": true,
+      "list_has_cognition": true,
+      "detail_has_cognition": true
+    },
+    {
+      "surface": "rent",
+      "list_label": "Record payment",
+      "detail_label": "Record payment",
+      "parity": true,
+      "list_has_cognition": true,
+      "detail_has_cognition": true
+    }
+  ],
+  "parity_ok": true,
+  "gate_pass": true
+}

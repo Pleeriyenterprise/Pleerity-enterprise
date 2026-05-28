@@ -1,0 +1,76 @@
+{
+  "captured_at": "2026-05-28T20:39:02.538683+00:00",
+  "surfaces": [
+    {
+      "surface": "jobs_list",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "job_detail",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "issues_list",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "issue_detail",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "risk_signals_list",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "risk_signal_detail",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "rent_attention_list",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "rent_ledger_detail",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "requirement_detail",
+      "present": true,
+      "complete": true,
+      "missing": []
+    },
+    {
+      "surface": "admin_unresolved",
+      "present": false,
+      "skipped": "admin_login_failed"
+    }
+  ],
+  "all_required_present": true,
+  "all_complete": true,
+  "rent_optional_empty": false,
+  "admin_optional_empty": true,
+  "gate_pass": true,
+  "sample_ids": {
+    "job_id": "f31ba8b8-66cc-46ee-95b3-305eadc54c79",
+    "issue_id": "db52e4b6-9e31-475e-b949-10bb5c97b75b",
+    "signal_id": "rs_2f635d16affa",
+    "ledger_id": "rlp_a82bc9977da7",
+    "requirement_id": "e76b95d8-d652-470e-ab0b-fcd25e6fb3e9"
+  }
+}

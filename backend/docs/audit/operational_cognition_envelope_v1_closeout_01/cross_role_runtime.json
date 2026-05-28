@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-05-28T20:39:54.930175+00:00",
+  "rows": [
+    {
+      "role": "landlord",
+      "endpoint": "work_orders",
+      "cognition_on_first": true
+    },
+    {
+      "role": "tenant",
+      "endpoint": "landlord_work_orders",
+      "status": 403,
+      "cognition_leak": false,
+      "gate_pass": true
+    }
+  ],
+  "gate_pass": true
+}
