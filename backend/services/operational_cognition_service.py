@@ -6,7 +6,8 @@ MUST NOT mutate workflow, evidence, compliance, or financial authority.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 COGNITION_VERSION = "operational_cognition_v1"
 
@@ -325,12 +326,371 @@ def build_envelope_for_risk_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
     return envelope
 
 
+GUIDANCE_VERSION = "requirement_guidance_v1"
+
+_EVIDENCE_MODE_STRENGTH: Dict[str, int] = {
+    "DOCUMENT_UPLOAD": 4,
+    "CONTRACTOR_CONFIRMATION": 3,
+    "INSPECTION_CHECKLIST": 2,
+    "STRUCTURED_DECLARATION": 1,
+}
+
+_EVIDENCE_MODE_CONFIDENCE: Dict[str, str] = {
+    "DOCUMENT_UPLOAD": "high",
+    "CONTRACTOR_CONFIRMATION": "medium_high",
+    "INSPECTION_CHECKLIST": "medium",
+    "STRUCTURED_DECLARATION": "medium_low",
+}
+
+_MODE_LABELS: Dict[str, str] = {
+    "DOCUMENT_UPLOAD": "Upload valid evidence document",
+    "STRUCTURED_DECLARATION": "Complete compliance declaration",
+    "CONTRACTOR_CONFIRMATION": "Submit contractor confirmation",
+    "INSPECTION_CHECKLIST": "Complete inspection checklist",
+}
+
+
+def _parse_utc_dt(val: Any) -> Optional[datetime]:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.replace(tzinfo=timezone.utc) if val.tzinfo is None else val.astimezone(timezone.utc)
+    try:
+        s = (val.replace("Z", "+00:00") if isinstance(val, str) else str(val)).strip()
+        d = datetime.fromisoformat(s)
+        if d.tzinfo is None:
+            return d.replace(tzinfo=timezone.utc)
+        return d.astimezone(timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def _requirement_policy(req: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        from services.compliance_evidence_record_service import effective_evidence_resolution
+
+        return effective_evidence_resolution(req)
+    except Exception:
+        return {}
+
+
+def _allowed_guided_modes(policy: Dict[str, Any]) -> List[str]:
+    modes = []
+    for m in policy.get("allowed_evidence_modes") or []:
+        tok = str(m or "").strip().upper()
+        if tok and tok != "DOCUMENT_UPLOAD":
+            modes.append(tok)
+    return modes
+
+
+def _strongest_evidence_method(modes: Sequence[str], policy: Dict[str, Any]) -> Optional[str]:
+    if not modes:
+        return None
+    workflow = str(policy.get("primary_resolution_workflow") or "").strip().upper()
+    if workflow == "GUIDED_DECLARATION" and "STRUCTURED_DECLARATION" in modes:
+        return "STRUCTURED_DECLARATION"
+    if workflow in ("LEGACY_DOCUMENT_UPLOAD", "DOCUMENT_UPLOAD") and "DOCUMENT_UPLOAD" in (
+        policy.get("allowed_evidence_modes") or []
+    ):
+        return "DOCUMENT_UPLOAD"
+    ranked = sorted(modes, key=lambda m: _EVIDENCE_MODE_STRENGTH.get(m, 0), reverse=True)
+    return ranked[0] if ranked else None
+
+
+def _has_persisted_submission(req: Dict[str, Any]) -> bool:
+    ea = req.get("evidence_authority") if isinstance(req.get("evidence_authority"), dict) else {}
+    return bool(str(ea.get("primary_evidence_record_id") or "").strip())
+
+
+def _workflow_stage(req: Dict[str, Any]) -> str:
+    lifecycle = (req.get("client_lifecycle_state") or "").upper()
+    ea = req.get("evidence_authority") if isinstance(req.get("evidence_authority"), dict) else {}
+    ea_state = (ea.get("state") or "").upper()
+    comp = req.get("evidence_completeness") if isinstance(req.get("evidence_completeness"), dict) else {}
+    missing = int(comp.get("required_missing_count") or 0)
+
+    if lifecycle == "VERIFIED" or ea_state in ("VERIFIED_CURRENT", "EA_VERIFIED_CURRENT"):
+        return "verified"
+    if ea_state in ("REJECTED", "EA_REJECTED"):
+        return "rejected"
+    if ea_state in ("MISMATCH_FLAGGED", "EA_MISMATCH_FLAGGED"):
+        return "reviewer_feedback"
+    if lifecycle == "PENDING_REVIEW" or ea_state in ("PENDING_ADMIN_REVIEW", "EA_PENDING_ADMIN_REVIEW"):
+        return "awaiting_review"
+    if missing > 0:
+        return "declaration_incomplete"
+    if _has_persisted_submission(req):
+        return "submitted_pending_review"
+    if ea_state in ("UPLOADED_UNCONFIRMED", "EA_UPLOADED_UNCONFIRMED", "UPLOADED"):
+        return "supporting_uploaded"
+    if lifecycle == "ACTION_REQUIRED" or ea_state in ("MISSING", "EA_MISSING", ""):
+        return "no_evidence"
+    return "collect_evidence"
+
+
+def _stale_review_active(req: Dict[str, Any]) -> bool:
+    stage = _workflow_stage(req)
+    if stage not in ("awaiting_review", "submitted_pending_review"):
+        return False
+    for key in ("updated_at", "submitted_at", "last_review_at"):
+        ea = req.get("evidence_authority") if isinstance(req.get("evidence_authority"), dict) else {}
+        dt = _parse_utc_dt(ea.get(key)) or _parse_utc_dt(req.get(key))
+        if dt is None:
+            continue
+        age_days = (datetime.now(timezone.utc) - dt).total_seconds() / 86400.0
+        if age_days >= 7:
+            return True
+    return False
+
+
+def _progression_steps(req: Dict[str, Any], stage: str, strongest: Optional[str]) -> List[Dict[str, Any]]:
+    has_submission = _has_persisted_submission(req)
+    uploaded = stage == "supporting_uploaded"
+    steps: List[Tuple[str, str]] = [
+        ("choose_method", "Choose evidence method"),
+        ("complete_form", "Complete structured record"),
+        ("optional_supporting", "Attach supporting files (optional)"),
+        ("submit", "Submit evidence for review"),
+        ("review", "Await verification"),
+        ("compliant", "Requirement verified"),
+    ]
+    status_for = {
+        "no_evidence": 0,
+        "supporting_uploaded": 1,
+        "declaration_incomplete": 1,
+        "collect_evidence": 0,
+        "rejected": 1,
+        "reviewer_feedback": 3,
+        "submitted_pending_review": 3,
+        "awaiting_review": 4,
+        "verified": 5,
+    }
+    cursor = status_for.get(stage, 0)
+    if stage == "verified":
+        cursor = 5
+    elif stage in ("awaiting_review", "submitted_pending_review"):
+        cursor = 4
+    elif has_submission and stage not in ("rejected", "reviewer_feedback"):
+        cursor = max(cursor, 3)
+    elif uploaded:
+        cursor = max(cursor, 1)
+    if not strongest:
+        cursor = min(cursor, 0)
+
+    out: List[Dict[str, Any]] = []
+    for idx, (sid, label) in enumerate(steps):
+        if idx < cursor:
+            st = "complete"
+        elif idx == cursor:
+            st = "current"
+        elif stage in ("rejected", "reviewer_feedback") and sid == "review":
+            st = "blocked"
+        else:
+            st = "pending"
+        out.append({"id": sid, "label": label, "status": st})
+    return out
+
+
+def build_requirement_guidance_v1(
+    req: Dict[str, Any],
+    *,
+    policy: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Deterministic requirement/evidence guidance — read-only, server-authoritative."""
+    pol = policy if isinstance(policy, dict) else _requirement_policy(req)
+    modes = _allowed_guided_modes(pol)
+    strongest = _strongest_evidence_method(modes, pol)
+    weaker = [m for m in modes if m != strongest]
+    stage = _workflow_stage(req)
+    lifecycle = (req.get("client_lifecycle_state") or "").upper()
+    ea = req.get("evidence_authority") if isinstance(req.get("evidence_authority"), dict) else {}
+    ea_state = (ea.get("state") or "").upper()
+    comp = req.get("evidence_completeness") if isinstance(req.get("evidence_completeness"), dict) else {}
+    missing = int(comp.get("required_missing_count") or 0)
+    stale = _stale_review_active(req)
+    uploaded_not_submitted = stage == "supporting_uploaded" or (
+        ea_state in ("UPLOADED_UNCONFIRMED", "EA_UPLOADED_UNCONFIRMED", "UPLOADED") and not _has_persisted_submission(req)
+    )
+    submitted_not_verified = lifecycle in ("PENDING_REVIEW", "SATISFIED_UNVERIFIED") or stage in (
+        "awaiting_review",
+        "submitted_pending_review",
+    )
+    rejected_requires_action = stage == "rejected"
+    reviewer_requested_changes = stage == "reviewer_feedback"
+    weak_submission_risk = strongest == "STRUCTURED_DECLARATION" and len(modes) > 1
+
+    missing_actions: List[str] = []
+    if missing > 0:
+        missing_actions.append(f"Complete {missing} required field(s)")
+    if stage == "no_evidence" and strongest:
+        missing_actions.append(_MODE_LABELS.get(strongest, "Choose evidence method"))
+    if uploaded_not_submitted and strongest:
+        missing_actions.append("Submit structured evidence — supporting files alone do not satisfy the obligation")
+    if rejected_requires_action:
+        missing_actions.append("Review rejection reason and resubmit evidence")
+    if reviewer_requested_changes:
+        missing_actions.append("Address reviewer feedback and resubmit")
+
+    blocked_paths: List[str] = []
+    if submitted_not_verified and not rejected_requires_action:
+        blocked_paths.extend(modes)
+    if stage == "verified":
+        blocked_paths.extend(modes)
+
+    recommended_mode = strongest
+    recommended_next_step = "Review requirement status"
+    recommended_reason = "Follow the strongest available evidence path for this obligation."
+    recommended_outcome = "Verified evidence can satisfy the compliance obligation after review."
+    remaining_steps: List[str] = []
+    likely_intent = "satisfy_obligation"
+    authority_path = strongest or "document_upload"
+
+    if stage == "verified":
+        recommended_next_step = "No further evidence required"
+        recommended_reason = "Evidence is verified — obligation is satisfied unless other blockers exist."
+        recommended_mode = None
+        likely_intent = "monitor_renewal"
+    elif rejected_requires_action:
+        recommended_next_step = "Review rejected evidence and resubmit"
+        recommended_reason = "Rejected evidence does not satisfy the obligation until corrected and resubmitted."
+        recommended_mode = strongest
+        remaining_steps = ["Review rejection details", "Correct evidence", "Submit for review"]
+        likely_intent = "recover_from_rejection"
+    elif reviewer_requested_changes:
+        recommended_next_step = "Address reviewer feedback"
+        recommended_reason = "Reviewer requested changes — submitted evidence is not verified yet."
+        recommended_mode = strongest
+        remaining_steps = ["Read reviewer feedback", "Update submission", "Resubmit for review"]
+        likely_intent = "respond_to_review"
+    elif submitted_not_verified or stage == "awaiting_review":
+        recommended_next_step = "Awaiting review — submission not yet verified"
+        recommended_reason = "Submitted evidence is under review. Supporting uploads alone cannot advance verification."
+        recommended_mode = None
+        remaining_steps = ["Wait for reviewer decision", "Respond if reviewer requests changes"]
+        likely_intent = "await_review"
+    elif stage == "declaration_incomplete":
+        recommended_next_step = "Complete missing checklist fields"
+        recommended_reason = f"{missing} required field(s) must be completed before submission."
+        recommended_mode = strongest or "STRUCTURED_DECLARATION"
+        remaining_steps = ["Complete required fields", "Submit evidence for review"]
+        likely_intent = "complete_declaration"
+    elif uploaded_not_submitted:
+        recommended_next_step = _MODE_LABELS.get(strongest or "", "Complete structured form and submit evidence")
+        recommended_reason = "Supporting files are saved to your vault only — complete the structured record and submit."
+        recommended_mode = strongest
+        remaining_steps = ["Complete structured record", "Submit evidence for review"]
+        likely_intent = "submit_authoritative_evidence"
+    elif strongest:
+        recommended_next_step = _MODE_LABELS.get(strongest, "Add compliance evidence")
+        recommended_reason = (
+            "This is the strongest evidence path configured for this requirement."
+            if _EVIDENCE_MODE_CONFIDENCE.get(strongest) in ("high", "medium_high")
+            else "Declaration-only or weaker paths may require additional review before satisfying compliance."
+        )
+        remaining_steps = ["Complete structured record", "Optionally attach supporting files", "Submit evidence for review"]
+        likely_intent = "provide_evidence"
+    elif str(pol.get("primary_resolution_workflow") or "").upper() == "LEGACY_DOCUMENT_UPLOAD":
+        recommended_next_step = "Upload valid evidence document"
+        recommended_reason = "This requirement is satisfied by an authoritative document upload on the Documents page."
+        authority_path = "DOCUMENT_UPLOAD"
+        likely_intent = "upload_document"
+
+    operational_risk_flags: List[str] = []
+    if uploaded_not_submitted:
+        operational_risk_flags.append("UPLOADED_NOT_SUBMITTED")
+    if submitted_not_verified:
+        operational_risk_flags.append("SUBMITTED_NOT_VERIFIED")
+    if weak_submission_risk:
+        operational_risk_flags.append("WEAK_EVIDENCE_PATH_AVAILABLE")
+    if stale:
+        operational_risk_flags.append("STALE_REVIEW")
+    if (req.get("lifecycle_tier") or "").lower() in ("overdue", "critical"):
+        operational_risk_flags.append("OVERDUE_REQUIREMENT")
+
+    return {
+        "guidance_version": GUIDANCE_VERSION,
+        "read_only": True,
+        "likely_intent": likely_intent,
+        "recommended_authority_path": authority_path,
+        "strongest_evidence_method": strongest,
+        "weaker_alternative_methods": weaker,
+        "recommended_next_step": recommended_next_step,
+        "recommended_next_step_reason": recommended_reason,
+        "recommended_evidence_mode": recommended_mode,
+        "recommended_outcome": recommended_outcome,
+        "remaining_steps": remaining_steps,
+        "current_progress_state": stage,
+        "workflow_stage": stage,
+        "missing_actions": missing_actions,
+        "uploaded_not_submitted": uploaded_not_submitted,
+        "submitted_not_verified": submitted_not_verified,
+        "rejected_requires_action": rejected_requires_action,
+        "reviewer_requested_changes": reviewer_requested_changes,
+        "authority_confidence_level": _EVIDENCE_MODE_CONFIDENCE.get(strongest or "", "unknown"),
+        "progression_steps": _progression_steps(req, stage, strongest),
+        "operational_risk_flags": operational_risk_flags,
+        "blocked_paths": blocked_paths,
+        "weak_submission_risk": weak_submission_risk,
+        "missing_required_step": missing_actions[0] if missing_actions else None,
+        "review_state": {
+            "client_lifecycle": lifecycle,
+            "evidence_authority_state": ea_state or None,
+            "stale_review": stale,
+        },
+        "progression_state": stage,
+    }
+
+
 def build_envelope_for_requirement(req: Dict[str, Any]) -> Dict[str, Any]:
     take_action = req.get("take_action") if isinstance(req.get("take_action"), dict) else {}
     primary = _primary_from_take_action(take_action)
     blockers = _blockers_from_requirement(req)
     truth = _truth_flags_for_requirement(req)
     lifecycle = req.get("client_lifecycle_state") or req.get("lifecycle_tier") or ""
+    guidance = build_requirement_guidance_v1(req)
+    stale = bool((guidance.get("review_state") or {}).get("stale_review"))
+
+    if guidance.get("recommended_next_step") and not primary:
+        primary = {
+            "key": guidance.get("recommended_evidence_mode") or "requirement_guidance",
+            "label": guidance.get("recommended_next_step"),
+            "hint": guidance.get("recommended_next_step_reason") or "",
+            "source": "requirement_guidance_v1",
+        }
+    elif guidance.get("recommended_next_step") and guidance.get("current_progress_state") in (
+        "no_evidence",
+        "supporting_uploaded",
+        "declaration_incomplete",
+        "rejected",
+        "reviewer_feedback",
+    ):
+        primary = {
+            "key": guidance.get("recommended_evidence_mode") or primary.get("key") if primary else "requirement_guidance",
+            "label": guidance.get("recommended_next_step"),
+            "hint": guidance.get("recommended_next_step_reason") or (primary.get("hint") if primary else ""),
+            "url": primary.get("url") if primary else None,
+            "source": "requirement_guidance_v1",
+        }
+
+    if guidance.get("rejected_requires_action") and not any(b.get("code") == "EVIDENCE_REJECTED" for b in blockers):
+        blockers.insert(
+            0,
+            {
+                "code": "EVIDENCE_REJECTED",
+                "message": guidance.get("recommended_next_step") or "Evidence rejected — action required.",
+                "truth_note": TRUTH_DISTINCTIONS["uploaded_not_verified"],
+            },
+        )
+    if stale:
+        blockers.append(
+            {
+                "code": "STALE_REVIEW",
+                "message": "Review has been pending for an extended period — follow up may be required.",
+                "truth_note": TRUTH_DISTINCTIONS["submitted_not_compliant"],
+            }
+        )
+    if guidance.get("uploaded_not_submitted"):
+        truth = {**truth, "uploaded_not_verified": True}
 
     envelope = {
         "cognition_version": COGNITION_VERSION,
@@ -339,24 +699,26 @@ def build_envelope_for_requirement(req: Dict[str, Any]) -> Dict[str, Any]:
         "forbidden_mutations": sorted(FORBIDDEN_MUTATIONS),
         "primary_action": primary,
         "continuation_state": {"mode": "compliance", "summary": lifecycle},
-        "workflow_state": {"lifecycle": lifecycle, "status": req.get("status")},
-        "progression_state": {"evidence_badge": req.get("evidence_badge_label")},
+        "workflow_state": {"lifecycle": lifecycle, "status": req.get("status"), "workflow_stage": guidance.get("workflow_stage")},
+        "progression_state": {
+            "evidence_badge": req.get("evidence_badge_label"),
+            "step": guidance.get("progression_state"),
+            "steps": guidance.get("progression_steps"),
+        },
         "blockers": blockers,
         "warnings": [],
-        "review_state": {
-            "client_lifecycle": lifecycle,
-            "evidence_authority": (req.get("evidence_authority") or {}).get("state") if isinstance(req.get("evidence_authority"), dict) else None,
-        },
+        "review_state": guidance.get("review_state") or {},
         "escalation_state": {
             "active": (req.get("lifecycle_tier") or "").lower() in ("overdue", "critical"),
             "level": req.get("lifecycle_tier"),
             "label": req.get("lifecycle_tier"),
         },
         "degraded_state": {"active": False},
-        "stale_state": {"active": False},
+        "stale_state": {"active": stale, "label": "Stale review" if stale else None},
         "operational_truth_flags": truth,
         "recommended_priority": "urgent" if (req.get("lifecycle_tier") or "").lower() == "overdue" else "normal",
-        "user_safe_summary": primary.get("label") if primary else lifecycle,
+        "user_safe_summary": guidance.get("recommended_next_step") or (primary.get("label") if primary else lifecycle),
+        "requirement_guidance_v1": guidance,
     }
     envelope["list_guidance"] = build_list_guidance(envelope)
     return envelope

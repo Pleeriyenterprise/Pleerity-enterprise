@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { clientAPI } from '../api/client';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
@@ -22,6 +22,8 @@ import {
   resolveStaticSupportingUploadDisclaimer,
 } from '../utils/clientPersistedSubmissionPresentation';
 import { supportingUploadSuccessToast } from '../utils/supportingUploadToastCopy';
+import RequirementEvidenceGuidancePanel from './operational/RequirementEvidenceGuidancePanel';
+import { getRequirementGuidance, sortEvidenceModesByGuidance } from '../utils/operationalCognition';
 
 /** YYYY-MM-DD for native date input; tolerates other stored strings without coercing. */
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -123,7 +125,29 @@ export default function ComplianceEvidenceResolveModal({
     if (list.includes(im)) setSelectedMode(im);
   }, [open, loading, initialEvidenceMode, info]);
 
-  const modes = (info?.allowed_evidence_modes || []).filter((m) => m && m !== 'DOCUMENT_UPLOAD');
+  const guidance = useMemo(
+    () => getRequirementGuidance(info || requirement),
+    [info, requirement],
+  );
+
+  useEffect(() => {
+    if (!open || loading || !info || selectedMode || initialEvidenceMode) return;
+    const recommended = guidance?.recommended_evidence_mode;
+    const list = (info.allowed_evidence_modes || []).filter((m) => m && m !== 'DOCUMENT_UPLOAD');
+    if (recommended && list.includes(recommended)) {
+      setSelectedMode(recommended);
+    }
+  }, [open, loading, info, guidance, selectedMode, initialEvidenceMode]);
+
+  const modes = useMemo(() => {
+    const raw = (info?.allowed_evidence_modes || []).filter((m) => m && m !== 'DOCUMENT_UPLOAD');
+    return sortEvidenceModesByGuidance(raw, guidance);
+  }, [info, guidance]);
+  const primaryMode = guidance?.strongest_evidence_method && modes.includes(guidance.strongest_evidence_method)
+    ? guidance.strongest_evidence_method
+    : modes[0] || null;
+  const secondaryModes = modes.filter((m) => m !== primaryMode);
+  const cognitionEntity = info?.operational_cognition ? info : requirement;
   const cta = info?.primary_client_cta || 'Add compliance evidence';
   const modalTitle = String(info?.modal_title || 'Add compliance evidence').trim() || 'Add compliance evidence';
   const clientEvidenceDisclosure = String(info?.client_evidence_disclosure || '').trim();
@@ -153,6 +177,18 @@ export default function ComplianceEvidenceResolveModal({
   const selectedChecklistSchema = Array.isArray(selectedMethod?.checklist_schema) ? selectedMethod.checklist_schema : [];
   const hasExistingAuthoritativeSubmission = requirementHasPersistedClientSubmission(requirement);
   const staticSupportingDisclaimer = resolveStaticSupportingUploadDisclaimer(requirement);
+  const reviewBlocked = Boolean(
+    guidance?.submitted_not_verified && !guidance?.rejected_requires_action && !guidance?.reviewer_requested_changes,
+  );
+
+  const handleGuidancePrimary = useCallback(() => {
+    const recommended = guidance?.recommended_evidence_mode;
+    if (recommended && modes.includes(recommended)) {
+      setSelectedMode(recommended);
+      return;
+    }
+    if (primaryMode) setSelectedMode(primaryMode);
+  }, [guidance, modes, primaryMode]);
 
   const setChecklistAnswer = (mode, id, patch) => {
     if (mode === 'STRUCTURED_DECLARATION') setStructuredValidationError('');
@@ -341,6 +377,41 @@ export default function ComplianceEvidenceResolveModal({
     }
   };
 
+  const renderEvidenceModeButton = (m, { primary = false } = {}) => {
+    const row = (info?.guided_methods || []).find((x) => x.evidence_mode === m) || {};
+    const label = row.label || m;
+    const desc = row.description || '';
+    const conf = row.typical_confidence || '';
+    const ver = row.verification_note || '';
+    const isPrimaryRecommended = primary || m === primaryMode;
+    return (
+      <button
+        key={m}
+        type="button"
+        data-testid={`guided-evidence-mode-${m}`}
+        data-guided-evidence-tier={isPrimaryRecommended ? 'primary' : 'secondary'}
+        onClick={() => setSelectedMode(m)}
+        className={`text-left rounded-lg border p-3 transition-colors ${
+          selectedMode === m
+            ? 'border-electric-teal bg-teal-50/40 ring-1 ring-electric-teal/30'
+            : isPrimaryRecommended
+              ? 'border-teal-200 bg-teal-50/20 hover:border-teal-300'
+              : 'border-gray-200 hover:border-gray-300 opacity-90'
+        }`}
+      >
+        {isPrimaryRecommended ? (
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-800 mb-1">Recommended path</p>
+        ) : (
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1">Alternative — lower confidence</p>
+        )}
+        <p className="font-semibold text-midnight-blue text-sm">{label}</p>
+        {desc ? <p className="text-xs text-gray-600 mt-1">{desc}</p> : null}
+        {conf ? <p className="text-xs text-gray-500 mt-1">Typical confidence: {conf}</p> : null}
+        {ver ? <p className="text-xs text-gray-500 mt-1">{ver}</p> : null}
+      </button>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="compliance-evidence-resolve-modal">
@@ -386,17 +457,26 @@ export default function ComplianceEvidenceResolveModal({
             )}
           </DialogDescription>
         </DialogHeader>
-        <div
-          className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1.5 -mt-1"
-          data-testid="supporting-upload-truth-banner"
-        >
-          <p className="text-xs font-semibold text-midnight-blue">Supporting files vs authoritative submission</p>
-          {staticSupportingDisclaimer.map((line) => (
-            <p key={line} className="text-xs text-slate-700">
-              {line}
-            </p>
-          ))}
-        </div>
+        {!submitSummaryRecord && !loading && info ? (
+          <RequirementEvidenceGuidancePanel
+            cognitionEntity={cognitionEntity}
+            onPrimaryClick={reviewBlocked ? undefined : handleGuidancePrimary}
+            primaryDisabled={reviewBlocked || modes.length === 0}
+            truthLines={staticSupportingDisclaimer}
+          />
+        ) : !submitSummaryRecord && !loading ? (
+          <div
+            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1.5 -mt-1"
+            data-testid="supporting-upload-truth-banner"
+          >
+            <p className="text-xs font-semibold text-midnight-blue">Supporting files vs authoritative submission</p>
+            {staticSupportingDisclaimer.map((line) => (
+              <p key={line} className="text-xs text-slate-700">
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : null}
         {hasExistingAuthoritativeSubmission ? (
           <p
             className="text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
@@ -443,30 +523,18 @@ export default function ComplianceEvidenceResolveModal({
           </p>
         ) : !submitSummaryRecord ? (
           <div className="space-y-4">
-            <div className="flex flex-col gap-3">
-              {modes.map((m) => {
-                const row = (info?.guided_methods || []).find((x) => x.evidence_mode === m) || {};
-                const label = row.label || m;
-                const desc = row.description || '';
-                const conf = row.typical_confidence || '';
-                const ver = row.verification_note || '';
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    data-testid={`guided-evidence-mode-${m}`}
-                    onClick={() => setSelectedMode(m)}
-                    className={`text-left rounded-lg border p-3 transition-colors ${
-                      selectedMode === m ? 'border-electric-teal bg-teal-50/40 ring-1 ring-electric-teal/30' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <p className="font-semibold text-midnight-blue text-sm">{label}</p>
-                    {desc ? <p className="text-xs text-gray-600 mt-1">{desc}</p> : null}
-                    {conf ? <p className="text-xs text-gray-500 mt-1">Typical confidence: {conf}</p> : null}
-                    {ver ? <p className="text-xs text-gray-500 mt-1">{ver}</p> : null}
-                  </button>
-                );
-              })}
+            <div className="flex flex-col gap-3" data-testid="guided-evidence-mode-list">
+              {primaryMode ? renderEvidenceModeButton(primaryMode, { primary: true }) : null}
+              {secondaryModes.length > 0 ? (
+                <details className="rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 group">
+                  <summary className="text-xs font-semibold text-slate-700 cursor-pointer list-none">
+                    Other evidence methods ({secondaryModes.length})
+                  </summary>
+                  <div className="mt-3 flex flex-col gap-3">
+                    {secondaryModes.map((m) => renderEvidenceModeButton(m))}
+                  </div>
+                </details>
+              ) : null}
             </div>
             {selectedMode === 'STRUCTURED_DECLARATION' ? (
               <div className="space-y-2">
@@ -581,7 +649,7 @@ export default function ComplianceEvidenceResolveModal({
               <Button
                 type="button"
                 className="bg-electric-teal text-white"
-                disabled={saving || !selectedMode || modes.length === 0}
+                disabled={saving || !selectedMode || modes.length === 0 || reviewBlocked}
                 onClick={submit}
               >
                 {saving ? 'Saving…' : 'Submit evidence'}

@@ -29,6 +29,26 @@ describe('ComplianceEvidenceResolveModal TRUST-01', () => {
         allowed_evidence_modes: ['STRUCTURED_DECLARATION'],
         guided_methods: [{ evidence_mode: 'STRUCTURED_DECLARATION', label: 'Declaration' }],
         policy: { structured_declaration_checklist_schema: [] },
+        operational_cognition: {
+          read_only: true,
+          cognition_version: 'operational_cognition_v1',
+          forbidden_mutations: ['mark_compliant'],
+          primary_action: {
+            key: 'STRUCTURED_DECLARATION',
+            label: 'Complete compliance declaration',
+            hint: 'Strongest path',
+            source: 'requirement_guidance_v1',
+          },
+          blockers: [],
+          progression_state: { steps: [{ id: 'choose_method', label: 'Choose evidence method', status: 'current' }] },
+          operational_truth_flags: {},
+          requirement_guidance_v1: {
+            strongest_evidence_method: 'STRUCTURED_DECLARATION',
+            recommended_evidence_mode: 'STRUCTURED_DECLARATION',
+            recommended_next_step: 'Complete compliance declaration',
+            weaker_alternative_methods: [],
+          },
+        },
       },
     });
   });
@@ -45,7 +65,7 @@ describe('ComplianceEvidenceResolveModal TRUST-01', () => {
         requirement={baseRequirement}
       />,
     );
-    expect(screen.getByTestId('supporting-upload-truth-banner')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('supporting-upload-truth-banner')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText('Declaration')).toBeInTheDocument());
     const input = document.querySelector('input[type="file"]');
     const file = new File(['x'], 'proof.pdf', { type: 'application/pdf' });

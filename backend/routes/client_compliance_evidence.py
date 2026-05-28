@@ -144,12 +144,24 @@ async def get_evidence_resolution(
     )
     if not req:
         raise HTTPException(status_code=404, detail="Requirement not found")
-    policy = effective_evidence_resolution(req)
+
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+    from services.requirement_truth import enrich_requirements_for_client
+
+    filtered = await filter_requirement_rows_for_client_runtime_surfaces(
+        db, client_id=client_id, requirements=[req]
+    )
+    if not filtered:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    enriched_rows, _presentation = await enrich_requirements_for_client(db, client_id, filtered)
+    enriched = enriched_rows[0] if enriched_rows else filtered[0]
+
+    policy = effective_evidence_resolution(enriched)
     modes = list(policy.get("allowed_evidence_modes") or [])
     methods = guided_method_ui_rows_for_modes(modes)
     for row in methods:
         mode = str(row.get("evidence_mode") or "")
-        schema = checklist_schema_for_mode(req, mode)
+        schema = checklist_schema_for_mode(enriched, mode)
         row["checklist_schema"] = schema.get("items") or []
         row["checklist_schema_fallback_used"] = bool(schema.get("fallback_used"))
     guided_label = str(policy.get("guided_primary_cta_label") or "").strip() or "Add compliance evidence"
@@ -157,6 +169,11 @@ async def get_evidence_resolution(
     if not modal_title:
         modal_title = "Add compliance evidence"
     ced = str(policy.get("client_evidence_disclosure") or "").strip() or None
+
+    from services.operational_cognition_service import build_envelope_for_requirement
+
+    cognition = build_envelope_for_requirement(enriched)
+    guidance = cognition.get("requirement_guidance_v1") if isinstance(cognition, dict) else None
     return {
         "requirement_id": requirement_id,
         "property_id": property_id,
@@ -170,6 +187,14 @@ async def get_evidence_resolution(
         "supporting_upload_recommended": bool(policy.get("supporting_upload_recommended")),
         "allowed_upload_types": list(policy.get("allowed_upload_types") or []),
         "policy": policy,
+        "operational_cognition": cognition,
+        "requirement_guidance_v1": guidance,
+        "requirement": {
+            "requirement_id": enriched.get("requirement_id"),
+            "client_lifecycle_state": enriched.get("client_lifecycle_state"),
+            "evidence_authority": enriched.get("evidence_authority"),
+            "take_action": enriched.get("take_action"),
+        },
     }
 
 

@@ -6,6 +6,7 @@ import pytest
 from services.operational_cognition_service import (
     COGNITION_VERSION,
     FORBIDDEN_MUTATIONS,
+    GUIDANCE_VERSION,
     TRUTH_DISTINCTIONS,
     assert_cognition_read_only,
     build_envelope_for_issue,
@@ -15,6 +16,7 @@ from services.operational_cognition_service import (
     build_envelope_for_risk_signal,
     build_envelope_for_unresolved_evidence,
     build_list_guidance,
+    build_requirement_guidance_v1,
 )
 
 
@@ -79,6 +81,52 @@ def test_requirement_envelope_false_progression():
     assert env["operational_truth_flags"]["submitted_not_compliant"] is True
     assert any(b["code"] == "DECLARATION_INCOMPLETE" for b in env["blockers"])
     assert env["escalation_state"]["active"] is True
+    guidance = env.get("requirement_guidance_v1") or {}
+    assert guidance.get("guidance_version") == GUIDANCE_VERSION
+    assert guidance.get("submitted_not_verified") is True
+    assert isinstance(guidance.get("progression_steps"), list)
+
+
+def test_requirement_guidance_rejected_requires_resubmit():
+    req = {
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "evidence_authority": {"state": "REJECTED"},
+        "registry_metadata": {
+            "evidence_resolution": {
+                "allowed_evidence_modes": ["STRUCTURED_DECLARATION", "CONTRACTOR_CONFIRMATION"],
+                "primary_resolution_workflow": "GUIDED_DECLARATION",
+            }
+        },
+    }
+    guidance = build_requirement_guidance_v1(req)
+    assert guidance["rejected_requires_action"] is True
+    assert guidance["strongest_evidence_method"] == "STRUCTURED_DECLARATION"
+    assert "CONTRACTOR_CONFIRMATION" in guidance["weaker_alternative_methods"]
+    assert "resubmit" in guidance["recommended_next_step"].lower()
+
+
+def test_requirement_guidance_uploaded_not_submitted():
+    req = {
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "evidence_authority": {"state": "UPLOADED_UNCONFIRMED"},
+        "registry_metadata": {
+            "evidence_resolution": {
+                "allowed_evidence_modes": ["STRUCTURED_DECLARATION"],
+                "primary_resolution_workflow": "GUIDED_DECLARATION",
+            }
+        },
+    }
+    guidance = build_requirement_guidance_v1(req)
+    assert guidance["uploaded_not_submitted"] is True
+    assert guidance["current_progress_state"] == "supporting_uploaded"
+    assert "vault" in guidance["recommended_next_step_reason"].lower() or "structured" in guidance["recommended_next_step"].lower()
+
+
+def test_requirement_guidance_read_only():
+    req = {"client_lifecycle_state": "ACTION_REQUIRED", "evidence_authority": {"state": "MISSING"}}
+    guidance = build_requirement_guidance_v1(req)
+    assert guidance["read_only"] is True
+    assert guidance["guidance_version"] == GUIDANCE_VERSION
 
 
 def test_rent_ledger_overdue_primary():

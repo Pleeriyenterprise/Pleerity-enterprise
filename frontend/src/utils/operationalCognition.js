@@ -52,5 +52,33 @@ export function progressionLabel(cognition) {
   if (!cognition) return null;
   const cont = cognition.continuation_state || {};
   const prog = cognition.progression_state || {};
+  const guidance = cognition.requirement_guidance_v1;
+  if (guidance?.recommended_next_step_reason) {
+    return guidance.recommended_next_step_reason;
+  }
   return cont.summary || prog.step || prog.recommended_action || null;
+}
+
+export function getRequirementGuidance(entity) {
+  const env = getOperationalCognition(entity);
+  return env?.requirement_guidance_v1 || entity?.requirement_guidance_v1 || null;
+}
+
+export function progressionStepsFromCognition(entity) {
+  const env = getOperationalCognition(entity);
+  const steps = env?.progression_state?.steps || env?.requirement_guidance_v1?.progression_steps;
+  return Array.isArray(steps) ? steps : [];
+}
+
+export function sortEvidenceModesByGuidance(modes, guidance) {
+  if (!Array.isArray(modes) || modes.length <= 1) return modes || [];
+  const strongest = guidance?.strongest_evidence_method;
+  const weaker = new Set(guidance?.weaker_alternative_methods || []);
+  return [...modes].sort((a, b) => {
+    if (a === strongest) return -1;
+    if (b === strongest) return 1;
+    if (weaker.has(a) && !weaker.has(b)) return 1;
+    if (weaker.has(b) && !weaker.has(a)) return -1;
+    return 0;
+  });
 }
