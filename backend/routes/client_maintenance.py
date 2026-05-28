@@ -537,7 +537,9 @@ async def get_issue(request: Request, issue_id: str):
     doc = await maintenance_issues_service.get_issue(issue_id, client_id=user["client_id"])
     if not doc:
         raise HTTPException(status_code=404, detail="Issue not found")
-    return doc
+    from services.operational_cognition_service import attach_cognition_to_issue
+
+    return await attach_cognition_to_issue(doc)
 
 
 class UpdateIssueBody(BaseModel):
@@ -566,7 +568,9 @@ async def update_issue(request: Request, issue_id: str, body: UpdateIssueBody):
         raise HTTPException(status_code=400, detail=str(e)) from e
     if not doc:
         raise HTTPException(status_code=404, detail="Issue not found")
-    return doc
+    from services.operational_cognition_service import attach_cognition_to_issue
+
+    return await attach_cognition_to_issue(doc)
 
 
 @router.post("/maintenance/issues/{issue_id}/create-work-order")
