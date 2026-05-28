@@ -1,0 +1,15 @@
+{
+  "captured_at": "2026-05-28T22:28:06.707346+00:00",
+  "playwright_available": true,
+  "modal_hero_present": true,
+  "progression_visible": true,
+  "supporting_truth_collapsed": true,
+  "secondary_methods_collapsed": false,
+  "primary_tier_markers": 1,
+  "gate_pass": true,
+  "notes": [],
+  "target_requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+  "target_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "modal_open": true,
+  "intel_hero_present": false
+}

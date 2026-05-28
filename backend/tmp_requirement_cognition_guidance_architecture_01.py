@@ -102,13 +102,18 @@ def _guidance_complete(g: Any) -> Tuple[bool, List[str]]:
     return len(missing) == 0, missing
 
 
+def _body_dict(resp: Dict[str, Any]) -> Dict[str, Any]:
+    body = resp.get("body")
+    return body if isinstance(body, dict) else {}
+
+
 def audit_requirement_flows(token: str) -> Dict[str, Any]:
     """Part 1 — probe requirement surfaces and detect flat/conflicting patterns."""
     findings: List[Dict[str, Any]] = []
     contradictions: List[Dict[str, Any]] = []
 
     reqs = _get("/client/requirements", token, projection="list")
-    rows = (reqs.get("body") or {}).get("requirements") or []
+    rows = _body_dict(reqs).get("requirements") or []
     if not isinstance(rows, list):
         rows = []
 
@@ -190,14 +195,15 @@ def audit_requirement_flows(token: str) -> Dict[str, Any]:
 
 
 def cognition_runtime(token: str) -> Dict[str, Any]:
-    rows = (_get("/client/requirements", token, projection="list").get("body") or {}).get("requirements") or []
+    rows = _body_dict(_get("/client/requirements", token, projection="list")).get("requirements") or []
     intents: List[Dict[str, Any]] = []
     for r in (rows or [])[:15]:
         rid = r.get("requirement_id")
         if not rid:
             continue
         detail = _get(f"/requirements/{rid}", token)
-        req = (detail.get("body") or {}).get("requirement") or {}
+        body = detail.get("body") if isinstance(detail.get("body"), dict) else {}
+        req = body.get("requirement") if isinstance(body.get("requirement"), dict) else {}
         g = ((req.get("operational_cognition") or {}).get("requirement_guidance_v1")) or {}
         if not g:
             continue
@@ -219,7 +225,7 @@ def cognition_runtime(token: str) -> Dict[str, Any]:
 
 def next_action_dominance(token: str) -> Dict[str, Any]:
     checks: List[Dict[str, Any]] = []
-    rows = (_get("/client/requirements", token, projection="list").get("body") or {}).get("requirements") or []
+    rows = _body_dict(_get("/client/requirements", token, projection="list")).get("requirements") or []
     for r in (rows or [])[:15]:
         rid = r.get("requirement_id")
         pid = r.get("property_id") or PILOT_PROPERTY
@@ -250,13 +256,14 @@ def next_action_dominance(token: str) -> Dict[str, Any]:
 
 def operational_truthfulness(token: str) -> Dict[str, Any]:
     flags: List[Dict[str, Any]] = []
-    rows = (_get("/client/requirements", token, projection="list").get("body") or {}).get("requirements") or []
+    rows = _body_dict(_get("/client/requirements", token, projection="list")).get("requirements") or []
     for r in (rows or [])[:20]:
         rid = r.get("requirement_id")
         if not rid:
             continue
         detail = _get(f"/requirements/{rid}", token)
-        req = (detail.get("body") or {}).get("requirement") or {}
+        body = detail.get("body") if isinstance(detail.get("body"), dict) else {}
+        req = body.get("requirement") if isinstance(body.get("requirement"), dict) else {}
         cog = req.get("operational_cognition") or {}
         truth = cog.get("operational_truth_flags") or {}
         g = cog.get("requirement_guidance_v1") or {}
@@ -274,13 +281,14 @@ def operational_truthfulness(token: str) -> Dict[str, Any]:
 
 def progression_runtime(token: str) -> Dict[str, Any]:
     out: List[Dict[str, Any]] = []
-    rows = (_get("/client/requirements", token, projection="list").get("body") or {}).get("requirements") or []
+    rows = _body_dict(_get("/client/requirements", token, projection="list")).get("requirements") or []
     for r in (rows or [])[:15]:
         rid = r.get("requirement_id")
         if not rid:
             continue
         detail = _get(f"/requirements/{rid}", token)
-        req = (detail.get("body") or {}).get("requirement") or {}
+        body = detail.get("body") if isinstance(detail.get("body"), dict) else {}
+        req = body.get("requirement") if isinstance(body.get("requirement"), dict) else {}
         g = ((req.get("operational_cognition") or {}).get("requirement_guidance_v1")) or {}
         steps = g.get("progression_steps") or []
         out.append(
@@ -325,7 +333,7 @@ def _login_page(page: Page, email: str, password: str) -> bool:
     return "login" not in page.url.lower()
 
 
-def browser_runtime(token: str, sample_requirement_id: Optional[str]) -> Dict[str, Any]:
+def browser_runtime(token: str, audit: Dict[str, Any]) -> Dict[str, Any]:
     out: Dict[str, Any] = {
         "captured_at": _utc(),
         "playwright_available": sync_playwright is not None,
@@ -336,14 +344,48 @@ def browser_runtime(token: str, sample_requirement_id: Optional[str]) -> Dict[st
         "primary_tier_markers": 0,
         "gate_pass": False,
         "notes": [],
+        "target_requirement_id": None,
+        "target_property_id": None,
     }
+    findings = audit.get("findings") or []
+    target = None
+    priority_types = (
+        "occupation_contract",
+        "wales_occupation_contract",
+        "deposit_pi",
+        "legionella",
+    )
+    for req_type in priority_types:
+        for f in findings:
+            if (
+                f.get("requirement_type") == req_type
+                and f.get("client_lifecycle_state") == "ACTION_REQUIRED"
+                and f.get("evidence_resolution_guidance_complete")
+            ):
+                target = f
+                break
+        if target:
+            break
+    if not target:
+        for f in findings:
+            if f.get("client_lifecycle_state") == "ACTION_REQUIRED" and f.get("evidence_resolution_guidance_complete"):
+                target = f
+                break
+    if not target and findings:
+        target = findings[0]
+    sample_requirement_id = str((target or {}).get("requirement_id") or "")
+    sample_property_id = str((target or {}).get("property_id") or PILOT_PROPERTY)
+    out["target_requirement_id"] = sample_requirement_id or None
+    out["target_property_id"] = sample_property_id
+
     if sync_playwright is None or not sample_requirement_id:
         out["notes"].append("browser_skipped")
         return out
 
     SHOT.mkdir(parents=True, exist_ok=True)
     pw = _read_pw(LANDLORD_PW)
-    url = f"{FRONTEND}/properties/{PILOT_PROPERTY}?open=intel&requirement_id={sample_requirement_id}"
+    resolve_url = f"{FRONTEND}/properties/{sample_property_id}?open=resolve&requirement_id={sample_requirement_id}"
+    intel_url = f"{FRONTEND}/properties/{sample_property_id}?open=intel&requirement_id={sample_requirement_id}"
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 900})
@@ -351,30 +393,60 @@ def browser_runtime(token: str, sample_requirement_id: Optional[str]) -> Dict[st
             out["notes"].append("login_failed")
             browser.close()
             return out
-        page.goto(url, wait_until="domcontentloaded", timeout=120_000)
-        page.wait_for_timeout(4000)
-        # Open guided evidence from intel modal if CTA exists
-        for sel in [
-            'button:has-text("Add compliance evidence")',
-            'button:has-text("Record")',
-            'button:has-text("Submit")',
-            '[data-testid="requirement-intel-primary-action"]',
-        ]:
-            loc = page.locator(sel)
-            if loc.count():
-                loc.first.click()
+
+        # Primary path: deep-link directly opens guided evidence modal
+        page.goto(resolve_url, wait_until="networkidle", timeout=120_000)
+        page.wait_for_timeout(8000)
+        try:
+            page.wait_for_selector('[data-testid="compliance-evidence-resolve-modal"]', timeout=45_000)
+        except Exception:
+            out["notes"].append("resolve_deeplink_modal_timeout")
+
+        modal = page.locator('[data-testid="compliance-evidence-resolve-modal"]')
+        out["modal_open"] = modal.count() > 0
+
+        # Fallback: intel modal → primary CTA → guided evidence
+        if not out["modal_open"]:
+            page.goto(intel_url, wait_until="networkidle", timeout=120_000)
+            try:
+                page.wait_for_selector('[data-testid="requirement-intel-dialog"]', timeout=30_000)
+            except Exception:
+                out["notes"].append("intel_modal_not_open")
+            hero = page.locator('[data-testid="next-action-hero-primary"]')
+            primary = page.locator('[data-testid="requirement-intel-primary-cta"]')
+            if hero.count():
+                hero.first.click()
                 page.wait_for_timeout(2500)
-                break
+            elif primary.count():
+                primary.first.click()
+                page.wait_for_timeout(2500)
+            try:
+                page.wait_for_selector('[data-testid="compliance-evidence-resolve-modal"]', timeout=20_000)
+            except Exception:
+                out["notes"].append("intel_cta_modal_timeout")
+            out["modal_open"] = page.locator('[data-testid="compliance-evidence-resolve-modal"]').count() > 0
+
+        try:
+            page.wait_for_selector('[data-testid="next-action-hero"]', timeout=15_000)
+        except Exception:
+            pass
+        try:
+            page.wait_for_selector('[data-guided-evidence-tier="primary"]', timeout=15_000)
+        except Exception:
+            pass
+
         out["modal_hero_present"] = page.locator('[data-testid="next-action-hero"]').count() > 0
         out["progression_visible"] = page.locator('[data-testid="requirement-progression-steps"]').count() > 0
         out["supporting_truth_collapsed"] = page.locator('[data-testid="supporting-upload-truth-banner"]').count() > 0
         out["secondary_methods_collapsed"] = page.locator("details summary:has-text('Other evidence methods')").count() > 0
         out["primary_tier_markers"] = page.locator('[data-guided-evidence-tier="primary"]').count()
+        out["intel_hero_present"] = page.locator('[data-testid="requirement-intel-dialog"] [data-testid="next-action-hero"]').count() > 0
         page.screenshot(path=str(SHOT / f"evidence_modal_{RUN_TAG}.png"), full_page=True)
         browser.close()
 
     out["gate_pass"] = (
-        out["modal_hero_present"]
+        out.get("modal_open")
+        and out["modal_hero_present"]
         and out["progression_visible"]
         and out["primary_tier_markers"] >= 1
     )
@@ -492,11 +564,7 @@ def main() -> int:
     progression = progression_runtime(token)
     _write("progression_runtime.json", progression)
 
-    sample_rid = None
-    if audit.get("findings"):
-        sample_rid = audit["findings"][0].get("requirement_id")
-
-    browser = browser_runtime(token, str(sample_rid) if sample_rid else None)
+    browser = browser_runtime(token, audit)
     _write("browser_runtime.json", browser)
 
     cross = cross_surface_consistency(audit)

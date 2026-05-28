@@ -1,0 +1,156 @@
+{
+  "captured_at": "2026-05-28T22:26:07.999071+00:00",
+  "checks": [
+    {
+      "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+      "dominant_next_step": "No further evidence required",
+      "dominant_reason": "Evidence is verified \u2014 obligation is satisfied unless other blockers exist.",
+      "primary_action_label": "Upload valid EICR certificate",
+      "strongest_evidence_method": null,
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "dominant_next_step": "Awaiting review \u2014 submission not yet verified",
+      "dominant_reason": "Submitted evidence is under review. Supporting uploads alone cannot advance verification.",
+      "primary_action_label": "Record Legionella risk assessment",
+      "strongest_evidence_method": "STRUCTURED_DECLARATION",
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "71e89158-5de0-422a-970c-5a2163fcc823",
+      "dominant_next_step": "No further evidence required",
+      "dominant_reason": "Evidence is verified \u2014 obligation is satisfied unless other blockers exist.",
+      "primary_action_label": "Upload valid HMO licence",
+      "strongest_evidence_method": null,
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+      "dominant_next_step": "No further evidence required",
+      "dominant_reason": "Evidence is verified \u2014 obligation is satisfied unless other blockers exist.",
+      "primary_action_label": "Upload valid EPC document",
+      "strongest_evidence_method": null,
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+      "dominant_next_step": "No further evidence required",
+      "dominant_reason": "Evidence is verified \u2014 obligation is satisfied unless other blockers exist.",
+      "primary_action_label": "Upload valid gas safety certificate",
+      "strongest_evidence_method": null,
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "dominant_next_step": "Awaiting review \u2014 submission not yet verified",
+      "dominant_reason": "Submitted evidence is under review. Supporting uploads alone cannot advance verification.",
+      "primary_action_label": "Record Wales occupation contract",
+      "strongest_evidence_method": "STRUCTURED_DECLARATION",
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "dominant_next_step": "No further evidence required",
+      "dominant_reason": "Evidence is verified \u2014 obligation is satisfied unless other blockers exist.",
+      "primary_action_label": "Add compliance evidence",
+      "strongest_evidence_method": "CONTRACTOR_CONFIRMATION",
+      "weaker_alternatives_count": 2,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "dominant_next_step": "No further evidence required",
+      "dominant_reason": "Evidence is verified \u2014 obligation is satisfied unless other blockers exist.",
+      "primary_action_label": "Add compliance evidence",
+      "strongest_evidence_method": "CONTRACTOR_CONFIRMATION",
+      "weaker_alternatives_count": 1,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "6c819fb6-a069-4979-9953-353c4b74abb3",
+      "dominant_next_step": "Upload valid evidence document",
+      "dominant_reason": "This requirement is satisfied by an authoritative document upload on the Documents page.",
+      "primary_action_label": "Upload valid evidence document",
+      "strongest_evidence_method": null,
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "ea22a50c-1421-4516-bcbe-e65f54cf7b25",
+      "dominant_next_step": "Upload valid evidence document",
+      "dominant_reason": "This requirement is satisfied by an authoritative document upload on the Documents page.",
+      "primary_action_label": "Upload valid evidence document",
+      "strongest_evidence_method": null,
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "e3f6459c-cf42-40d9-bfc8-37507affeffb",
+      "dominant_next_step": "Upload valid evidence document",
+      "dominant_reason": "This requirement is satisfied by an authoritative document upload on the Documents page.",
+      "primary_action_label": "Upload valid evidence document",
+      "strongest_evidence_method": null,
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "43375303-fdfc-46f4-b153-2bc8e8ad53ee",
+      "dominant_next_step": "Complete compliance declaration",
+      "dominant_reason": "Declaration-only or weaker paths may require additional review before satisfying compliance.",
+      "primary_action_label": "Complete compliance declaration",
+      "strongest_evidence_method": "STRUCTURED_DECLARATION",
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+      "dominant_next_step": "Complete compliance declaration",
+      "dominant_reason": "Declaration-only or weaker paths may require additional review before satisfying compliance.",
+      "primary_action_label": "Complete compliance declaration",
+      "strongest_evidence_method": "STRUCTURED_DECLARATION",
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
+      "dominant_next_step": "Submit contractor confirmation",
+      "dominant_reason": "This is the strongest evidence path configured for this requirement.",
+      "primary_action_label": "Submit contractor confirmation",
+      "strongest_evidence_method": "CONTRACTOR_CONFIRMATION",
+      "weaker_alternatives_count": 2,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    },
+    {
+      "requirement_id": "abf48f3d-a3df-4205-8666-1df11687cf30",
+      "dominant_next_step": "Upload valid evidence document",
+      "dominant_reason": "This requirement is satisfied by an authoritative document upload on the Documents page.",
+      "primary_action_label": "Upload valid evidence document",
+      "strongest_evidence_method": null,
+      "weaker_alternatives_count": 0,
+      "dominance_ok": true,
+      "weak_paths_downgraded": true
+    }
+  ],
+  "gate_pass": true
+}
