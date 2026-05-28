@@ -56,6 +56,7 @@ import {
   clientJobProgressFromJob,
   prioritizedClientJobNextAction,
 } from '../utils/jobWorkflowUi';
+import NextActionHero from '../components/operational/NextActionHero';
 
 function formatWhen(iso) {
   if (!iso) return '—';
@@ -674,6 +675,11 @@ function ClientJobDetailInner() {
           {job.issue_resolution_hint ? <p className="sm:col-span-2 text-gray-600">{job.issue_resolution_hint}</p> : null}
         </div>
       </header>
+
+      <NextActionHero
+        entity={job}
+        onPrimaryClick={() => visitSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      />
 
       {(() => {
         const banner = exceptionStateBanner(job);

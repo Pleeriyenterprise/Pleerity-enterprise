@@ -569,6 +569,9 @@ async def list_unresolved_evidence_documents(
         r.setdefault("external_verification_method", None)
         r.setdefault("external_verification_reference", None)
         r.setdefault("ai_assistance", None)
+    from services.operational_cognition_service import attach_cognition_to_unresolved_evidence
+
+    rows = [attach_cognition_to_unresolved_evidence(r) for r in rows]
     return {
         "documents": rows,
         "total": total,

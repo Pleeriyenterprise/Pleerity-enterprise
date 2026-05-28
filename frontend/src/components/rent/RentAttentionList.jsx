@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { RentStatusBadge } from './RentStatusBadge';
 import { formatMinorUnits } from '../../utils/rentMoney';
 import { cn } from '@/lib/utils';
+import ListCognitionChip from '../operational/ListCognitionChip';
 
 export function RentAttentionList({ ledgers, onSelect, onRecordPayment }) {
   if (!ledgers.length) {
@@ -34,6 +35,7 @@ export function RentAttentionList({ ledgers, onSelect, onRecordPayment }) {
                 <p className="text-sm text-gray-500">
                   {row.period_key} · Due {row.due_date}
                 </p>
+                <ListCognitionChip entity={row} className="mt-1" />
               </div>
               <div className="text-right flex flex-col items-end gap-1">
                 <RentStatusBadge status={row.status} />

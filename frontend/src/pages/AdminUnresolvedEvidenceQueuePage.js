@@ -9,6 +9,7 @@ import {
   getGovernanceConfirmationWording,
   getGovernanceWarning,
 } from '../utils/adminActionGovernance';
+import ListCognitionChip from '../components/operational/ListCognitionChip';
 
 function GovernedActionModal({ open, title, onClose, onConfirm, confirming, children }) {
   if (!open) return null;
@@ -204,6 +205,7 @@ export default function AdminUnresolvedEvidenceQueuePage() {
                         <td className="px-4 py-3">
                           <div className="font-mono text-xs">{r.document_id}</div>
                           <div>{r.file_name || '—'}</div>
+                          <ListCognitionChip entity={r} className="mt-2" />
                         </td>
                         <td className="px-4 py-3 text-xs">
                           <div>

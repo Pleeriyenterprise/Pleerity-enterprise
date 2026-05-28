@@ -7,12 +7,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { AlertCircle, Loader2, Wrench, ArrowLeft, History } from 'lucide-react';
+import { AlertCircle, Loader2, ArrowLeft, History } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { resolveIssuePrimaryAction } from '../utils/primaryActionResolver';
+import NextActionHero from '../components/operational/NextActionHero';
+import { heroPrimaryFromCognition } from '../utils/operationalCognition';
 
 function ClientIssueDetailPageInner() {
   const { issueId } = useParams();
@@ -134,6 +136,20 @@ function ClientIssueDetailPageInner() {
 
   const triage = issue.triage || {};
   const reasoning = triage.reasoning || [];
+  const issuePrimary = heroPrimaryFromCognition(issue.operational_cognition) || resolveIssuePrimaryAction(issue);
+  const continuationReason = issue?.operational_continuation?.user_safe_reason;
+
+  const handleIssuePrimary = () => {
+    if (issuePrimary?.continuation && issuePrimary.url) {
+      navigate(issuePrimary.url.startsWith('/') ? issuePrimary.url : `/${issuePrimary.url}`);
+      return;
+    }
+    if (issuePrimary?.continuation && issue.linked_work_order_id) {
+      navigate(`/operations/jobs/${issue.linked_work_order_id}`);
+      return;
+    }
+    handleCreateWorkOrder();
+  };
 
   return (
     <div className="p-6 max-w-2xl">
@@ -146,6 +162,13 @@ function ClientIssueDetailPageInner() {
         Maintenance issue
       </h1>
       <p className="text-sm text-gray-500 mb-6">Created {formatDate(issue.created_at)} · {issue.status}</p>
+
+      <NextActionHero
+        entity={issue}
+        onPrimaryClick={issue.status !== 'closed' && issue.status !== 'cancelled' && issuePrimary ? handleIssuePrimary : undefined}
+        primaryBusy={creating}
+        primaryDisabled={!issuePrimary}
+      />
 
       <Card className="mb-6">
         <CardHeader>
@@ -220,31 +243,13 @@ function ClientIssueDetailPageInner() {
       </Card>
 
       {issue.status !== 'closed' && issue.status !== 'cancelled' && issuePrimary && (
-        <div className="space-y-4">
+        <div className="space-y-4 mb-6">
           {continuationReason && (
             <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-md p-3">
               {continuationReason}
             </p>
           )}
-          <Button
-            onClick={() => {
-              if (issuePrimary.continuation && issuePrimary.url) {
-                navigate(issuePrimary.url.startsWith('/') ? issuePrimary.url : `/${issuePrimary.url}`);
-                return;
-              }
-              if (issuePrimary.continuation && issue.linked_work_order_id) {
-                navigate(`/operations/jobs/${issue.linked_work_order_id}`);
-                return;
-              }
-              handleCreateWorkOrder();
-            }}
-            disabled={creating}
-            className="bg-electric-teal hover:bg-electric-teal/90"
-          >
-            {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wrench className="w-4 h-4 mr-2" />}
-            {issuePrimary.label}
-          </Button>
-          <Card className="border-gray-200">
+          <Card className="border-gray-200 opacity-90">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Close maintenance issue</CardTitle>
             </CardHeader>

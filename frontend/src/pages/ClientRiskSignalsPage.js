@@ -69,6 +69,8 @@ import {
 import { assetIdParts } from '../utils/assetDisplay';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { resolveRiskSignalPrimaryKey } from '../utils/primaryActionResolver';
+import NextActionHero from '../components/operational/NextActionHero';
+import ListCognitionChip from '../components/operational/ListCognitionChip';
 import { getTrackedRequirementsForProperty } from '../utils/portalRequirementAttention';
 
 /** Rent Operations / financial_operational signals do not affect compliance score. */
@@ -759,6 +761,7 @@ function ClientRiskSignalsPageInner() {
                     </div>
                     <div>
                       <p className="font-semibold text-midnight-blue break-words">{humanRiskType(s)}</p>
+                      <ListCognitionChip entity={s} className="mt-2" />
                       <p className="text-sm text-gray-600 mt-1 break-words">{propertyLabel(s.property_id)}</p>
                       {s.asset_id &&
                         (() => {
@@ -847,6 +850,7 @@ function ClientRiskSignalsPageInner() {
                         <TableCell className="font-medium max-w-[14rem] break-words">
                           <div className="space-y-1">
                             <span>{humanRiskType(s)}</span>
+                            <ListCognitionChip entity={s} />
                             {isOperationalAdvisorySignal(s) && (
                               <Badge variant="outline" className="text-xs border-amber-200 bg-amber-50 text-amber-900 block w-fit">
                                 Operational advisory only
@@ -927,6 +931,18 @@ function ClientRiskSignalsPageInner() {
             </div>
           ) : drawerSignal ? (
             <div className="space-y-4 py-4">
+              <NextActionHero
+                entity={drawerSignal}
+                onPrimaryClick={async () => {
+                  setDrawerPrimaryBusy(true);
+                  try {
+                    await runRiskSignalPrimaryAction(drawerSignal);
+                  } finally {
+                    setDrawerPrimaryBusy(false);
+                  }
+                }}
+                primaryBusy={drawerPrimaryBusy}
+              />
               <div>
                 <p className="text-xs text-muted-foreground uppercase">Risk type</p>
                 <p className="font-medium">{humanRiskType(drawerSignal)}</p>

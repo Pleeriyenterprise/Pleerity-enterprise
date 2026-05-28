@@ -819,6 +819,13 @@ def enrich_requirement_dict(
         if not str(out.get("document_id") or "").strip() and str(out.get("evidence_doc_id") or "").strip():
             out["document_id"] = str(out.get("evidence_doc_id")).strip()
 
+    try:
+        from services.operational_cognition_service import build_envelope_for_requirement
+
+        out["operational_cognition"] = build_envelope_for_requirement(out)
+    except Exception:
+        pass
+
     return out
 
 

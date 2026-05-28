@@ -17,6 +17,7 @@ import { resolveIssueDetailPath, resolvePropertyPath } from '../utils/clientPort
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
+import ListCognitionChip from '../components/operational/ListCognitionChip';
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
@@ -433,6 +434,7 @@ function ClientIssuesPageInner() {
                     <p className="text-sm text-gray-600 break-words">{propertyLabel(iss.property_id)}</p>
                     <div className="flex flex-wrap gap-2 text-xs">
                       <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-800">{issueStatusLabel(iss.status)}</span>
+                      <ListCognitionChip entity={iss} />
                       <span className={`px-2 py-1 rounded-md ${(iss.severity || '').toLowerCase() === 'urgent' ? 'bg-red-100 text-red-800' : (iss.severity || '').toLowerCase() === 'high' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>
                         {issueSeverityLabel(iss.severity)}
                       </span>
@@ -466,6 +468,7 @@ function ClientIssuesPageInner() {
                     <th className="p-2">Asset</th>
                     <th className="p-2">Source</th>
                     <th className="p-2">Status</th>
+                    <th className="p-2">Guidance</th>
                     <th className="p-2">Created</th>
                     <th className="p-2">SLA</th>
                     <th className="p-2 text-right">Actions</th>
@@ -489,6 +492,7 @@ function ClientIssuesPageInner() {
                       <td className="p-2 text-gray-600">{iss.asset_id ? (iss.asset_id.slice(0, 8) + '…') : 'Unlinked'}</td>
                       <td className="p-2 text-gray-600">{(iss.source || '—').toLowerCase()}</td>
                       <td className="p-2">{issueStatusLabel(iss.status)}</td>
+                      <td className="p-2"><ListCognitionChip entity={iss} /></td>
                       <td className="p-2 text-gray-600">{formatDate(iss.created_at)}</td>
                       <td className="p-2 text-gray-600">{iss.triage?.sla_hours != null ? `${iss.triage.sla_hours}h` : '—'}</td>
                       <td className="p-2 text-right">

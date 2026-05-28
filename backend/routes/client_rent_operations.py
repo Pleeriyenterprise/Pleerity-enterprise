@@ -227,7 +227,7 @@ async def list_rent_ledgers(
 ):
     user = await _require_rent_operations_enabled(request)
     try:
-        return await rent_ledger_service.list_ledgers(
+        result = await rent_ledger_service.list_ledgers(
             user["client_id"],
             property_id=property_id,
             tenancy_id=tenancy_id,
@@ -240,6 +240,14 @@ async def list_rent_ledgers(
             skip=skip,
             limit=limit,
         )
+        from services.operational_cognition_service import attach_cognition_to_rent_ledger
+
+        if isinstance(result.get("ledgers"), list):
+            enriched = []
+            for row in result["ledgers"]:
+                enriched.append(await attach_cognition_to_rent_ledger(row))
+            result["ledgers"] = enriched
+        return result
     except ValueError as e:
         if str(e) == "PROPERTY_NOT_FOUND":
             raise HTTPException(status_code=404, detail="Property not found")
@@ -252,7 +260,9 @@ async def get_rent_ledger(request: Request, ledger_id: str):
     doc = await rent_ledger_service.get_ledger(ledger_id, user["client_id"])
     if not doc:
         raise HTTPException(status_code=404, detail="Rent ledger not found")
-    return doc
+    from services.operational_cognition_service import attach_cognition_to_rent_ledger
+
+    return await attach_cognition_to_rent_ledger(doc)
 
 
 @router.patch("/operations/rent/ledgers/{ledger_id}", dependencies=[Depends(_require_rent_operations_enabled)])

@@ -28,6 +28,7 @@ import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { JOBS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
 import { workOrderKindBadgeClassName, workOrderKindClientLabel } from '../utils/jobWorkflowUi';
+import ListCognitionChip from '../components/operational/ListCognitionChip';
 import { cn } from '../lib/utils';
 
 const WO_STATUS_OPTIONS = [
@@ -649,6 +650,7 @@ function ClientMaintenancePageInner() {
                       <div>
                         <p className="text-xs font-mono text-gray-500 break-all">{wo.work_order_id}</p>
                         <p className="font-semibold text-midnight-blue mt-1 break-words">{wo.description || 'Job'}</p>
+                        <ListCognitionChip entity={wo} className="mt-2" />
                         <button
                           type="button"
                           onClick={() => {
@@ -742,6 +744,7 @@ function ClientMaintenancePageInner() {
                           <td className="p-2 max-w-[200px]">
                             <span className="font-mono text-xs text-gray-500 block truncate">{wo.work_order_id?.slice(0, 8)}…</span>
                             <span className="font-medium truncate block" title={wo.description}>{wo.description || '—'}</span>
+                            <ListCognitionChip entity={wo} className="mt-1" />
                           </td>
                           <td className="p-2 whitespace-nowrap">
                             <span className={cn('inline-flex px-1.5 py-0.5 rounded text-xs font-medium border', workOrderKindBadgeClassName(wo))}>{workOrderKindClientLabel(wo)}</span>

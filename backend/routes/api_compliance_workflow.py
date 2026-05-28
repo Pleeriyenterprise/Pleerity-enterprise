@@ -499,7 +499,10 @@ async def get_job_detail(request: Request, job_id: str, user: Dict[str, Any] = D
     wo = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
     if not wo:
         raise HTTPException(status_code=404, detail="Job not found")
-    return serialize_client_job(wo)
+    from services.operational_cognition_service import attach_cognition_to_job_payload
+
+    payload = serialize_client_job(wo)
+    return await attach_cognition_to_job_payload(payload)
 
 
 class DecisionLogAppendBody(BaseModel):

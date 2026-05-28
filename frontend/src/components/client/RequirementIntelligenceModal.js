@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Loader2, ExternalLink } from 'lucide-react';
 import { clientAPI } from '../../api/client';
 import RequirementSubmissionInspectPanel from './RequirementSubmissionInspectPanel';
+import ConditionStandardOperationalInspectPanel from './ConditionStandardOperationalInspectPanel';
+import { isConditionStandardWorkflowHint } from '../../utils/workflowSemantics';
 import {
   isViewExistingSubmissionCta,
   pickLatestComplianceEvidenceRecord,
@@ -26,6 +28,7 @@ import {
   guidedMixedEvidenceInitialMode,
   shouldPreferGuidedEvidenceOverIntelView,
 } from '../../utils/rightToRentTrustPresentation';
+import NextActionHero from '../operational/NextActionHero';
 
 function formatIntelDate(value) {
   if (value == null || value === '') return null;
@@ -312,6 +315,7 @@ export default function RequirementIntelligenceModal({
 
           {!loading && !error && merged ? (
             <>
+              <NextActionHero entity={merged} onPrimaryClick={primaryHandler} />
               <section data-testid="requirement-intel-section-status">
                 <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Status summary</h3>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -438,7 +442,9 @@ export default function RequirementIntelligenceModal({
                 ) : null}
               </section>
 
-              {pid && rid && hasSubmission ? (
+              <ConditionStandardOperationalInspectPanel requirement={merged} />
+
+              {pid && rid && hasSubmission && !isConditionStandardWorkflowHint(merged?.workflow_class, merged) ? (
                 <RequirementSubmissionInspectPanel
                   ref={submissionPanelRef}
                   propertyId={pid}

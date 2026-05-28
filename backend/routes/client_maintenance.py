@@ -188,6 +188,10 @@ async def list_my_work_orders(
         skip=skip,
         limit=limit,
     )
+    from services.operational_cognition_service import attach_cognition_to_work_order
+
+    if isinstance(result.get("work_orders"), list):
+        result["work_orders"] = [attach_cognition_to_work_order(wo) for wo in result["work_orders"]]
     return result
 
 
@@ -403,6 +407,14 @@ async def list_my_issues(
         skip=skip,
         limit=limit,
     )
+    from services.operational_continuation_service import enrich_issue_with_continuation
+    from services.operational_cognition_service import attach_cognition_to_issue_sync
+
+    enriched_issues = []
+    for issue in result.get("issues") or []:
+        with_cont = await enrich_issue_with_continuation(dict(issue), client_id)
+        enriched_issues.append(attach_cognition_to_issue_sync(with_cont))
+    result["issues"] = enriched_issues
     return result
 
 
@@ -1240,6 +1252,10 @@ async def get_property_risk_signals(request: Request, property_id: str, status: 
     result = await risk_signal_service.get_risk_signals_for_property(
         property_id=property_id, client_id=client_id, status_filter=status
     )
+    from services.operational_cognition_service import attach_cognition_to_risk_signal_sync
+
+    if isinstance(result, dict) and isinstance(result.get("signals"), list):
+        result["signals"] = [attach_cognition_to_risk_signal_sync(s) for s in result["signals"]]
     return result
 
 
@@ -1285,6 +1301,10 @@ async def get_portfolio_risk_signals(
             )
     except Exception:
         pass
+    from services.operational_cognition_service import attach_cognition_to_risk_signal_sync
+
+    if isinstance(result, dict) and isinstance(result.get("signals"), list):
+        result["signals"] = [attach_cognition_to_risk_signal_sync(s) for s in result["signals"]]
     return result
 
 
@@ -1295,7 +1315,9 @@ async def get_risk_signal_by_id_route(request: Request, signal_id: str):
     doc = await risk_signal_service.get_risk_signal_by_id(signal_id=signal_id, client_id=user["client_id"])
     if not doc:
         raise HTTPException(status_code=404, detail="Risk signal not found")
-    return doc
+    from services.operational_cognition_service import attach_cognition_to_risk_signal
+
+    return await attach_cognition_to_risk_signal(doc)
 
 
 @router.get("/maintenance/risk-signals/{signal_id}/suggested-actions")
