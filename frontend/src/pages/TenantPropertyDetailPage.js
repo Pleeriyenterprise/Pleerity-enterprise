@@ -73,7 +73,34 @@ const TenantPropertyDetailPage = () => {
       setReportCategory('general');
       setReportSeverity('Routine');
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Failed to report issue');
+      const detail = err?.response?.data?.detail;
+      const code = detail && typeof detail === 'object' ? detail.error_code : null;
+      if (err?.response?.status === 409 && code === 'TENANT_DUPLICATE_ISSUE_CONFIRM_REQUIRED') {
+        const proceed = window.confirm(
+          'A similar open issue already exists. Press OK to create a separate issue, or Cancel to keep tracking the existing issue.',
+        );
+        if (proceed) {
+          try {
+            await api.post('/tenant/report-issue', {
+              property_id: propertyId,
+              description: descriptionWithSeverity,
+              category: reportCategory || undefined,
+              confirm_new_issue: true,
+            });
+            toast.success('New issue created and linked to existing open issue.');
+            setReportDescription('');
+            setReportCategory('general');
+            setReportSeverity('Routine');
+            return;
+          } catch (retryErr) {
+            toast.error(retryErr?.response?.data?.detail?.message || retryErr?.response?.data?.detail || 'Failed to report issue');
+            return;
+          }
+        }
+        toast.message('Existing issue kept. No duplicate issue created.');
+        return;
+      }
+      toast.error(detail?.message || detail || 'Failed to report issue');
     } finally {
       setReportSubmitting(false);
     }

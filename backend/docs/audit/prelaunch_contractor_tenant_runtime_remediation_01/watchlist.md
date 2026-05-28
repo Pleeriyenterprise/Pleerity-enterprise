@@ -1,0 +1,3 @@
+- Implement contractor clarification/contact endpoint or hide action in all contractor surfaces.
+- Add explicit landlord/admin duplicate marker surfacing in operations list rows.
+- Expand browser probe to include in-flow action clicks (not just page capture).

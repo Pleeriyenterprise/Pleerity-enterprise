@@ -35,7 +35,8 @@ class ContactLandlordBody(BaseModel):
 
 class RequestCertificateBody(BaseModel):
     property_id: str
-    certificate_type: str
+    certificate_type: Optional[str] = None
+    request_type: Optional[str] = None
     message: Optional[str] = None
 
 
@@ -50,6 +51,7 @@ class ReportIssueBody(BaseModel):
     description: str
     category: Optional[str] = None
     photos: Optional[list] = None
+    confirm_new_issue: Optional[bool] = False
 
 
 async def _ensure_tenant_property_access(request: Request, property_id: str):
@@ -435,11 +437,21 @@ async def request_certificate_update(request: Request):
         data = RequestCertificateBody(
             property_id=body.get("property_id", ""),
             certificate_type=body.get("certificate_type", ""),
+            request_type=body.get("request_type"),
             message=body.get("message"),
         )
     except Exception:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid body: property_id and certificate_type required")
-    if not data.property_id or not data.certificate_type:
+    cert_type = (data.certificate_type or "").strip()
+    req_type = (data.request_type or "").strip().lower()
+    if not cert_type and req_type in ("certificate", "certificate_request"):
+        cert_type = "other"
+    if req_type in ("compliance_pack", "compliance-pack"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Compliance-pack request action is not supported. Use Download safety pack.",
+        )
+    if not data.property_id or not cert_type:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id and certificate_type are required")
 
     db, user, client_id, property_doc = await _ensure_tenant_property_access(request, data.property_id)
@@ -450,11 +462,11 @@ async def request_certificate_update(request: Request):
     if not landlord_email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Landlord has no email on file")
 
-    canon_code, err = normalize_requirement_code_strict(data.certificate_type)
+    canon_code, err = normalize_requirement_code_strict(cert_type)
     if err or not canon_code:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported certificate_type {data.certificate_type!r}; use a supported requirement code",
+            detail=f"Unsupported certificate_type {cert_type!r}; use a supported requirement code",
         )
 
     now = datetime.now(timezone.utc)
@@ -500,7 +512,7 @@ async def request_certificate_update(request: Request):
         "tenant_name": tenant_name,
         "property_id": data.property_id,
         "property_address": address,
-        "certificate_type": data.certificate_type,
+        "certificate_type": cert_type,
         "requirement_code": canon_code,
         "requirement_id": requirement_id,
         "message": (data.message or "").strip(),
@@ -513,7 +525,7 @@ async def request_certificate_update(request: Request):
         f"A tenant has requested a certificate update via the tenant portal.<br><br>"
         f"<strong>Tenant:</strong> {tenant_name}<br>"
         f"<strong>Property:</strong> {address}<br>"
-        f"<strong>Certificate type:</strong> {data.certificate_type}<br>"
+        f"<strong>Certificate type:</strong> {cert_type}<br>"
     )
     if data.message:
         email_body += f"<br><strong>Message:</strong><br>{data.message.replace(chr(10), '<br>')}"
@@ -544,7 +556,7 @@ async def request_certificate_update(request: Request):
         resource_id=request_id,
         metadata={
             "property_id": data.property_id,
-            "certificate_type": data.certificate_type,
+            "certificate_type": cert_type,
             "requirement_code": canon_code,
             "requirement_id": requirement_id,
             "tenant_email": user.get("email"),
@@ -564,6 +576,7 @@ async def report_issue(request: Request):
             description=(body.get("description") or "").strip(),
             category=body.get("category"),
             photos=body.get("photos"),
+            confirm_new_issue=bool(body.get("confirm_new_issue")),
         )
     except Exception:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id and description are required")
@@ -580,6 +593,27 @@ async def report_issue(request: Request):
         )
     from services import maintenance_issues_service
     tenant_name = user.get("full_name") or user.get("email") or "Tenant"
+    similar = await db.maintenance_issues.find_one(
+        {
+            "client_id": client_id,
+            "property_id": data.property_id,
+            "source": {"$in": [maintenance_issues_service.SOURCE_TENANT_REQUEST, "tenant"]},
+            "status": {"$nin": ["closed", "cancelled", "resolved"]},
+            "description": {"$regex": (data.description[:40] or "").strip(), "$options": "i"},
+        },
+        {"_id": 0, "issue_id": 1, "description": 1, "status": 1},
+    )
+    if similar and not data.confirm_new_issue:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "A similar open issue exists. Confirm to create a new issue, or track the existing issue.",
+                "error_code": "TENANT_DUPLICATE_ISSUE_CONFIRM_REQUIRED",
+                "existing_issue_id": similar.get("issue_id"),
+                "existing_status": similar.get("status"),
+            },
+        )
+
     doc = await maintenance_issues_service.create_issue(
         client_id=client_id,
         property_id=data.property_id,
@@ -592,15 +626,38 @@ async def report_issue(request: Request):
         reported_urgency=None,
         photos=data.photos or [],
     )
+    if similar:
+        await db.maintenance_issues.update_one(
+            {"issue_id": doc.get("issue_id"), "client_id": client_id},
+            {
+                "$set": {
+                    "related_issue_id": similar.get("issue_id"),
+                    "duplicate_report_confirmed": True,
+                    "duplicate_report_created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        )
     await create_audit_log(
         action=AuditAction.TENANT_ISSUE_REPORTED,
         client_id=client_id,
         actor_id=user.get("portal_user_id"),
         resource_type="maintenance_issue",
         resource_id=doc.get("issue_id"),
-        metadata={"property_id": data.property_id, "source": "tenant_request", "tenant_email": user.get("email")},
+        metadata={
+            "property_id": data.property_id,
+            "source": "tenant_request",
+            "tenant_email": user.get("email"),
+            "duplicate_of_issue_id": (similar or {}).get("issue_id"),
+            "duplicate_confirmed": bool(similar),
+        },
     )
-    return {"issue_id": doc["issue_id"], "status": doc["status"], "message": "Issue reported. Your landlord will be notified."}
+    return {
+        "issue_id": doc["issue_id"],
+        "status": doc["status"],
+        "message": "Issue reported. Your landlord will be notified.",
+        "duplicate_related_issue_id": (similar or {}).get("issue_id"),
+        "duplicate_report_confirmed": bool(similar),
+    }
 
 
 @router.get("/requests")
@@ -730,13 +787,13 @@ async def contact_landlord(request: Request):
     try:
         data = ContactLandlordBody(
             property_id=body.get("property_id", ""),
-            subject=(body.get("subject") or "").strip(),
+            subject=(body.get("subject") or "").strip() or "Tenant message",
             message=(body.get("message") or "").strip(),
         )
     except Exception:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid body: property_id, subject and message required")
-    if not data.property_id or not data.subject or not data.message:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id, subject and message are required")
+    if not data.property_id or not data.message:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id and message are required")
 
     db, user, client_id, property_doc = await _ensure_tenant_property_access(request, data.property_id)
     client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "email": 1, "full_name": 1, "contact_email": 1})

@@ -680,6 +680,12 @@ async def decline_assignment(request: Request, ctx: dict = Depends(job_context_d
     return result
 
 
+@router.post("/work-order/reject")
+async def reject_assignment_alias(request: Request, ctx: dict = Depends(job_context_dep)):
+    """Alias for decline assignment to preserve contractor action semantics."""
+    return await decline_assignment(request, ctx)
+
+
 class SubmitInvoiceBody(BaseModel):
     reference: Optional[str] = Field(None, max_length=500)
     contractor_reference: Optional[str] = Field(None, max_length=500)

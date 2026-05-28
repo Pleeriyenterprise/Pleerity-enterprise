@@ -1,0 +1,71 @@
+{
+  "seed": {
+    "issue_status": 200,
+    "issue_id": "b837c371-454f-4b91-80e3-0c7681e50e75",
+    "wo_status": 200,
+    "work_order_id": "37957387-57af-47aa-83e9-281caff13a4c",
+    "assign_status": 200
+  },
+  "checks": [
+    {
+      "action": "reject_assignment",
+      "path": "/contractor/work-orders/37957387-57af-47aa-83e9-281caff13a4c/reject",
+      "method": "POST",
+      "status": 404,
+      "support": "NOT_SUPPORTED",
+      "detail": {
+        "detail": "Not Found"
+      }
+    },
+    {
+      "action": "request_reschedule",
+      "path": "/contractor/work-orders/37957387-57af-47aa-83e9-281caff13a4c/schedule/reschedule-request",
+      "method": "POST",
+      "status": 400,
+      "support": "FAILED",
+      "detail": {
+        "detail": "There is no visit scheduled to reschedule"
+      }
+    },
+    {
+      "action": "mark_no_access",
+      "path": "/contractor/work-orders/37957387-57af-47aa-83e9-281caff13a4c/mark-no-access",
+      "method": "POST",
+      "status": 400,
+      "support": "FAILED",
+      "detail": {
+        "detail": "Accept the assignment before reporting access issues"
+      }
+    },
+    {
+      "action": "mark_awaiting_parts",
+      "path": "/contractor/work-orders/37957387-57af-47aa-83e9-281caff13a4c",
+      "method": "PATCH",
+      "status": 400,
+      "support": "FAILED",
+      "detail": {
+        "detail": "Cannot change status from ASSIGNED here. If the job is still assigned to you and shows OPEN or ASSIGNED, use Accept or Decline first."
+      }
+    },
+    {
+      "action": "complete_job",
+      "path": "/contractor/work-orders/37957387-57af-47aa-83e9-281caff13a4c",
+      "method": "PATCH",
+      "status": 400,
+      "support": "FAILED",
+      "detail": {
+        "detail": "Cannot change status from ASSIGNED here. If the job is still assigned to you and shows OPEN or ASSIGNED, use Accept or Decline first."
+      }
+    },
+    {
+      "action": "contact_landlord_admin",
+      "path": "/contractor/work-orders/37957387-57af-47aa-83e9-281caff13a4c/contact",
+      "method": "POST",
+      "status": 404,
+      "support": "NOT_SUPPORTED",
+      "detail": {
+        "detail": "Not Found"
+      }
+    }
+  ]
+}

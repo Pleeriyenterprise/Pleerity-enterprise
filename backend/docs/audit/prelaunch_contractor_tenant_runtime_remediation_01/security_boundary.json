@@ -1,0 +1,12 @@
+{
+  "checks": [
+    {
+      "name": "contractor_scope_guard",
+      "pass": true
+    },
+    {
+      "name": "tenant_role_boundary",
+      "pass": true
+    }
+  ]
+}

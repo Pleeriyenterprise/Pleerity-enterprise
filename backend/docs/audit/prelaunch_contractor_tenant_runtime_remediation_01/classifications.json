@@ -1,0 +1,10 @@
+{
+  "classification": "PARTIAL",
+  "browser_probe": {
+    "ok": true,
+    "exit_code": 0,
+    "stdout_tail": "{\n  \"captured_at\": \"2026-05-28T09:08:13.616522+00:00\",\n  \"steps\": [\n    {\n      \"name\": \"landlord_browser_work_orders\",\n      \"ok\": true,\n      \"detail\": \"captured\",\n      \"at\": \"2026-05-28T09:08:21.683915+00:00\"\n    },\n    {\n      \"name\": \"contractor_browser_dashboard\",\n      \"ok\": true,\n      \"detail\": \"captured\",\n      \"at\": \"2026-05-28T09:08:25.978202+00:00\"\n    },\n    {\n      \"name\": \"tenant_browser_property\",\n      \"ok\": true,\n      \"detail\": \"captured\",\n      \"at\": \"2026-05-28T09:08:30.751133+00:00\"\n    }\n  ]\n}\n",
+    "stderr_tail": ""
+  },
+  "timestamp": "2026-05-28T09:08:30.926705+00:00"
+}

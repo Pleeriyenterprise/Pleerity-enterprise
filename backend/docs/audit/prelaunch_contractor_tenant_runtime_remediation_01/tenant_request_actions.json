@@ -1,0 +1,45 @@
+{
+  "checks": [
+    {
+      "path": "/tenant/contact-landlord",
+      "method": "POST",
+      "status": 400,
+      "support": "FAILED",
+      "detail": {
+        "detail": "property_id, subject and message are required"
+      }
+    },
+    {
+      "path": "/tenant/request-certificate",
+      "method": "POST",
+      "status": 200,
+      "support": "SUPPORTED",
+      "detail": {
+        "request_id": "f65c9198-f51d-4080-b591-1387b4dab091",
+        "status": "PENDING",
+        "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+        "requirement_code": "gas_safety"
+      }
+    },
+    {
+      "path": "/tenant/request-certificate",
+      "method": "POST",
+      "status": 400,
+      "support": "FAILED",
+      "detail": {
+        "detail": "property_id and certificate_type are required"
+      }
+    },
+    {
+      "path": "/tenant/report-issue",
+      "method": "POST",
+      "status": 200,
+      "support": "SUPPORTED",
+      "detail": {
+        "issue_id": "c9b15e19-c81f-44aa-b098-35efc772b392",
+        "status": "triaged",
+        "message": "Issue reported. Your landlord will be notified."
+      }
+    }
+  ]
+}

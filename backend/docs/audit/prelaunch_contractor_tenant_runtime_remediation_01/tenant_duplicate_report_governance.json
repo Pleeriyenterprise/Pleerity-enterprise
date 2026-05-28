@@ -1,0 +1,35 @@
+{
+  "first": {
+    "path": "/tenant/report-issue",
+    "method": "POST",
+    "status": 200,
+    "support": "SUPPORTED",
+    "detail": {
+      "issue_id": "2260f8c7-b8ed-4cbf-b6bb-d23dcd6073f6",
+      "status": "triaged",
+      "message": "Issue reported. Your landlord will be notified."
+    }
+  },
+  "second": {
+    "path": "/tenant/report-issue",
+    "method": "POST",
+    "status": 200,
+    "support": "SUPPORTED",
+    "detail": {
+      "issue_id": "cb1a6f5e-968b-48d0-98b4-4172cabfeef2",
+      "status": "triaged",
+      "message": "Issue reported. Your landlord will be notified."
+    }
+  },
+  "confirm": {
+    "path": "/tenant/report-issue",
+    "method": "POST",
+    "status": 200,
+    "support": "SUPPORTED",
+    "detail": {
+      "issue_id": "2ca42377-de07-4a96-a50e-73cd2df52fce",
+      "status": "triaged",
+      "message": "Issue reported. Your landlord will be notified."
+    }
+  }
+}
