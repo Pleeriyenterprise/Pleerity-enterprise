@@ -1,0 +1,51 @@
+{
+  "programme": "PRELAUNCH-SCORING-TRUST-CONSISTENCY-PDF-KB-01",
+  "classification": "ENGINEERING_LANGUAGE_LEAK",
+  "blockers": [
+    "browser_forbidden"
+  ],
+  "static_scan": {
+    "scanned": 10,
+    "forbidden_hits": [],
+    "required_missing": []
+  },
+  "pdf_local": {
+    "pdf_bytes": 9283,
+    "forbidden_hits": [],
+    "has_trust_markers": true,
+    "pass": true
+  },
+  "copy_module": {
+    "issues": [],
+    "pass": true
+  },
+  "browser": {
+    "captured_at": "2026-05-29T23:11:08.548857+00:00",
+    "pages": {
+      "dashboard": {
+        "path": "/dashboard",
+        "chars": 6446
+      },
+      "compliance_score": {
+        "path": "/compliance-score",
+        "chars": 9412
+      },
+      "requirements": {
+        "path": "/requirements",
+        "chars": 1497
+      }
+    },
+    "forbidden_hits": [
+      {
+        "page": "requirements",
+        "pattern": "scoring engine"
+      },
+      {
+        "page": "requirements",
+        "pattern": "scoring engine (requirements confidence line)"
+      }
+    ],
+    "required_missing": []
+  },
+  "captured_at": "2026-05-29T23:12:51.671082+00:00"
+}

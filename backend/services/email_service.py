@@ -21,6 +21,7 @@ from presentation.label_service import (
     requirement_label,
 )
 from services.scoring_semantics_v1 import headline_score_display_for_export
+from services.scoring_explanation_copy import email_score_delta_line
 
 logger = logging.getLogger(__name__)
 
@@ -577,11 +578,7 @@ class EmailService:
             delta_block = '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">What changed since your last report</p><ul style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.5;">'
             sd = d.get("score_delta")
             if sd is not None:
-                try:
-                    sdi = int(sd)
-                    delta_block += f"<li>Compliance score moved by {sdi:+d} point(s).</li>"
-                except (TypeError, ValueError):
-                    delta_block += f"<li>Compliance score movement recorded.</li>"
+                delta_block += f"<li>{html_module.escape(email_score_delta_line(sd))}</li>"
             if d.get("newly_overdue_labels"):
                 for x in d["newly_overdue_labels"][:5]:
                     delta_block += f"<li>Newly overdue: {html_module.escape(str(x))}</li>"

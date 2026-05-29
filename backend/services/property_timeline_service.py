@@ -10,6 +10,8 @@ from typing import Dict, Any, Optional, List
 import logging
 import re
 
+from services.scoring_explanation_copy import score_change_narrative
+
 logger = logging.getLogger(__name__)
 
 # Ledger trigger_type -> timeline category
@@ -196,12 +198,12 @@ def _ledger_narrative_from_trigger(trigger_type: Optional[str], delta: Any) -> s
         return "An obligation’s status or dates changed; your compliance picture was refreshed."
     if t in ("CERT_DETAILS_CONFIRMED", "DOCUMENT_UPLOADED", "DOCUMENT_STATUS_CHANGED", "DOCUMENT_REMOVED"):
         if delta is not None and delta != 0:
-            return f"Evidence changed and your score moved by {int(delta)} points."
+            return score_change_narrative(delta)
         return "Evidence or certificate details were updated on file."
     if t in ("PROPERTY_ADDED", "PROPERTY_UPDATED"):
         return "Property information was updated."
     if delta is not None and delta != 0:
-        return f"Your compliance score changed by {int(delta)} points."
+        return score_change_narrative(delta)
     return "Activity was recorded for this property."
 
 
@@ -210,7 +212,7 @@ def _ledger_description(e: Dict[str, Any]) -> str:
     if trigger_type in ("CERT_DETAILS_CONFIRMED", "DOCUMENT_UPLOADED", "DOCUMENT_REMOVED", "DOCUMENT_STATUS_CHANGED"):
         delta = e.get("delta")
         if delta is not None and delta != 0:
-            return f"Score {'+' if delta > 0 else ''}{int(delta)}."
+            return score_change_narrative(delta)
         return e.get("trigger_label") or "Evidence or certificate updated."
     if trigger_type in ("REQUIREMENT_STATUS_CHANGED", "SCHEDULED_RECALC"):
         return e.get("trigger_label") or "Compliance status or expiry updated."
@@ -218,8 +220,8 @@ def _ledger_description(e: Dict[str, Any]) -> str:
         return e.get("trigger_label") or "Property updated."
     delta = e.get("delta")
     if delta is not None and delta != 0:
-        return f"Score {'+' if delta > 0 else ''}{int(delta)}."
-    return e.get("trigger_label") or "Score recalculated."
+        return score_change_narrative(delta)
+    return e.get("trigger_label") or "Compliance records were refreshed."
 
 
 def _actor_label(actor_type: str) -> str:
@@ -246,9 +248,6 @@ def _score_change_to_item(e: Dict[str, Any], index: int) -> Dict[str, Any]:
     delta = e.get("delta")
     presented = present_score_change_reason(reason_raw)
     title = presented["title"]
-    desc_parts = []
-    if delta is not None and delta != 0:
-        desc_parts.append(f"Score {'+' if delta > 0 else ''}{int(delta)}.")
     r_up = (reason_raw or "").strip().upper()
     m_ao = re.match(r"^ACTION_OUTCOME:\s*([A-Za-z0-9_]+)\s*$", reason_raw or "", re.IGNORECASE)
     if m_ao:
@@ -257,7 +256,9 @@ def _score_change_to_item(e: Dict[str, Any], index: int) -> Dict[str, Any]:
         event_type = r_up or "SCORE_RECALCULATED"
     else:
         event_type = re.sub(r"\s+", "_", r_up) or "SCORE_RECALCULATED"
-    body = " ".join(desc_parts).strip()
+    body = presented.get("description") or ""
+    if delta is not None and delta != 0 and not body:
+        body = score_change_narrative(delta)
     if not body:
         narr_key = (
             event_type.split(":", 1)[1]

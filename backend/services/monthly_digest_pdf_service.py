@@ -17,6 +17,7 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from services.monthly_digest_limits import DIGEST_PDF_MAX_REQUIREMENT_ROWS
+from services.scoring_explanation_copy import email_score_delta_line
 from services.scoring_semantics_v1 import headline_score_display_for_export
 from utils.storage_paths import resolve_data_dir
 
@@ -274,11 +275,7 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         lines: List[str] = []
         sd = d.get("score_delta")
         if sd is not None:
-            try:
-                sdi = int(sd)
-                lines.append(f"Compliance score movement: {sdi:+d} point(s) since the last report.")
-            except (TypeError, ValueError):
-                lines.append(f"Compliance score movement: {sd}")
+            lines.append(email_score_delta_line(sd))
         if d.get("newly_overdue_labels"):
             lines.append("Newly overdue: " + "; ".join(html.escape(x) for x in d["newly_overdue_labels"][:6]))
         if d.get("resolved_improved_labels"):

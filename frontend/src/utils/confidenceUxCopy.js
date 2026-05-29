@@ -17,7 +17,7 @@ export const JOBS_PAGE_CONFIDENCE_LINE =
 
 /** Requirements hub — how this page relates to scoring (non-duplicative with workspace orientation lead). */
 export const REQUIREMENTS_PAGE_CONFIDENCE_LINE =
-  'Row statuses are the same inputs the scoring engine reads; “pending” here means the obligation or evidence pipeline is not yet settled.';
+  'Row statuses reflect what the portal knows about each obligation — uploads may not count until evidence is accepted.';
 
 /** Job detail — why lifecycle actions matter. */
 export const JOB_DETAIL_CONFIDENCE_LINE =

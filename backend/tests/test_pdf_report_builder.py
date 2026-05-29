@@ -124,4 +124,41 @@ def test_build_score_explanation_report_no_live_calculator_when_bucket_breakdown
     }
     pdf = build_score_explanation_report("c1", payload, {"company_name": "Co", "customer_reference": "CRN"}, {})
     assert b"live calculator" not in pdf.lower()
-    assert b"headline refresh" in pdf.lower() or b"persisted" in pdf.lower()
+    assert b"headline refresh" in pdf.lower() or b"persisted" in pdf.lower() or b"Area-by-area" in pdf
+
+
+def test_build_score_explanation_report_trust_safe_copy(monkeypatch):
+    """Score summary PDF must not leak engineering scoring language."""
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
+    payload = {
+        "score": 72,
+        "score_status": "ok",
+        "grade": "B",
+        "score_authority": "persisted",
+        "last_calculated_at": "2026-03-15T10:30:00+00:00",
+        "stats": {"compliant": 2, "expiring_soon": 1, "overdue": 0},
+        "properties_count": 1,
+        "data_completeness_percent": 100,
+        "score_model_version": "2",
+        "drivers": [],
+        "property_breakdown": [],
+        "bucket_breakdown": {
+            "legal_core": {"percent": 80},
+            "documentation_completeness": {"percent": 70},
+            "operational_responsiveness": {"percent": 90},
+            "recency_maintenance_confidence": {"percent": 85},
+        },
+    }
+    pdf = build_score_explanation_report("c1", payload, {"company_name": "Co", "customer_reference": "CRN"}, {})
+    low = pdf.lower()
+    for forbidden in (
+        b"cvp score",
+        b"credit in bucket",
+        b"credit earned",
+        b"bucket emphasis",
+        b"weighted",
+        b"model:",
+    ):
+        assert forbidden not in low, f"forbidden phrase in PDF: {forbidden!r}"
+    assert b"Core legal requirements" in pdf or b"How you're doing in each area" in pdf
+    assert b"Not legal advice" in pdf or b"not legal advice" in low

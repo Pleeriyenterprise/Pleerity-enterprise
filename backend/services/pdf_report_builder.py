@@ -27,6 +27,22 @@ from services.scoring_semantics_v1 import (
     headline_score_display_for_export,
     resolve_property_score_status,
 )
+from services.scoring_explanation_copy import (
+    SCORE_AREA_DESCRIPTIONS,
+    SCORE_AREA_LABELS,
+    SCORE_COMPONENTS_FALLBACK,
+    SCORE_COMPONENTS_SECTION_INTRO,
+    SCORE_COMPONENTS_SECTION_TITLE,
+    SCORE_DEFINITIONS_EXPIRING,
+    SCORE_DEFINITIONS_OVERDUE,
+    SCORE_DEFINITIONS_UPDATES,
+    SCORE_DEFINITIONS_VALID,
+    SCORE_FRAMEWORK_DISCLAIMER,
+    SCORE_PDF_METHODOLOGY_SUMMARY,
+    SCORE_SCOPE_EXCLUDED,
+    SCORE_SCOPE_INCLUDED,
+    score_change_narrative,
+)
 
 PDF_FOOTER_DISCLAIMER = "This report does not constitute legal advice."
 
@@ -393,12 +409,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
 
     # Methodology
     elements.append(Paragraph("Scoring methodology summary", styles["heading"]))
-    elements.append(Paragraph(
-        "Scores are evidence-based: each applicable requirement contributes a weight; status (Evidence in place, Expiring soon, Expired/overdue, Missing evidence) maps to a factor. "
-        "Expiring-soon uses the same jurisdiction- and requirement-aware rule window as configured for scoring (not a fixed calendar constant). "
-        "Risk level is derived from overall score and critical requirement status. This is not a legal compliance opinion.",
-        styles["body"],
-    ))
+    elements.append(Paragraph(SCORE_PDF_METHODOLOGY_SUMMARY, styles["body"]))
     elements.append(Spacer(1, 20))
 
     # Audit snapshot
@@ -444,7 +455,7 @@ def build_score_explanation_report(
 ) -> bytes:
     """
     Build Compliance Score Summary (Informational) PDF. Audit-style, branded.
-    Sections: cover, portfolio snapshot, what score means, weighting model,
+    Sections: cover, portfolio snapshot, what score means, area breakdown,
     top drivers, property breakdown, appendix (full drivers). Footer: disclaimer + Pleerity line.
 
     Headline timing: **Snapshot as of** uses the same persisted-batch timestamps as the cover
@@ -533,7 +544,6 @@ def build_score_explanation_report(
     props_count = score_payload.get("properties_count", 0)
     completeness = score_payload.get("data_completeness_percent")
     completeness_str = f"{completeness}%" if completeness is not None else "—"
-    model_ver = score_payload.get("score_model_version") or "—"
     cov = score_payload.get("score_coverage") or {}
     cov_note = ""
     if isinstance(cov, dict) and int(cov.get("properties_missing_score") or 0) > 0:
@@ -552,7 +562,7 @@ def build_score_explanation_report(
     <br/><br/>
     <b>Valid:</b> {valid} &nbsp;|&nbsp; <b>Expiring soon:</b> {expiring} &nbsp;|&nbsp; <b>Overdue:</b> {overdue}
     <br/>
-    <b>Properties monitored:</b> {props_count} &nbsp;|&nbsp; <b>Data completeness:</b> {completeness_str} &nbsp;|&nbsp; <b>Model:</b> CVP Score v{model_ver}
+    <b>Properties monitored:</b> {props_count} &nbsp;|&nbsp; <b>Data completeness:</b> {completeness_str}
     """
     elements.append(Paragraph(snapshot_text, styles["body"]))
     elements.append(Spacer(1, 16))
@@ -574,66 +584,61 @@ def build_score_explanation_report(
 
     # —— 3. What the score means ——
     elements.append(Paragraph("What the score means", styles["heading"]))
-    elements.append(Paragraph(
-        "<b>Scope (included):</b> Applicable tracked items for each property (e.g. Gas Safety, EICR, EPC, Licence if configured).",
-        styles["body"],
-    ))
-    elements.append(Paragraph(
-        "<b>Excluded:</b> Council-specific rules unless configured; optional uploads not tracked; evidence not uploaded/confirmed.",
-        styles["body"],
-    ))
-    elements.append(Paragraph(
-        "<b>Definitions:</b> Valid = current and in date; Expiring soon = due within the portal rule window "
-        "(accounting for jurisdiction and requirement type where configured); Overdue = due date passed; "
-        "Missing evidence = no upload; Not applicable = excluded from score.",
-        styles["body"],
-    ))
-    elements.append(Paragraph(
-        "<b>Updates:</b> The headline uses persisted portfolio scores (as of the snapshot above). "
-        "Background recalculation runs after material changes; the headline can lag until that work completes. "
-        "Counts in this section use portal-visible requirement data at PDF generation time and may change before the headline updates.",
-        styles["body"],
-    ))
+    elements.append(Paragraph(f"<b>Scope (included):</b> {SCORE_SCOPE_INCLUDED}", styles["body"]))
+    elements.append(Paragraph(f"<b>Excluded:</b> {SCORE_SCOPE_EXCLUDED}", styles["body"]))
+    elements.append(
+        Paragraph(
+            f"<b>Definitions:</b> Valid = {SCORE_DEFINITIONS_VALID} "
+            f"Expiring soon = {SCORE_DEFINITIONS_EXPIRING} "
+            f"Overdue = {SCORE_DEFINITIONS_OVERDUE} "
+            f"Missing evidence = no accepted upload on file.",
+            styles["body"],
+        )
+    )
+    elements.append(Paragraph(f"<b>Updates:</b> {SCORE_DEFINITIONS_UPDATES}", styles["body"]))
+    elements.append(Paragraph(SCORE_FRAMEWORK_DISCLAIMER, styles["small"]))
     elements.append(Spacer(1, 24))
 
-    # —— 4. Score components (v2 buckets only; omit legacy fixed weight table) ——
-    elements.append(Paragraph("Score components", styles["heading"]))
+    # —— 4. Score components (area breakdown when available) ——
+    elements.append(Paragraph(SCORE_COMPONENTS_SECTION_TITLE, styles["heading"]))
     bb = score_payload.get("bucket_breakdown") or {}
     if _portfolio_has_v2_bucket_breakdown(bb):
-        elements.append(
-            Paragraph(
-                "Figures are credit earned within each bucket (0–100%), averaged across properties that have a current stored "
-                "breakdown. Approximate emphasis between buckets is described in the portal; exact points depend on your records.",
-                styles["small"],
-            )
-        )
+        elements.append(Paragraph(SCORE_COMPONENTS_SECTION_INTRO, styles["small"]))
         elements.append(Spacer(1, 8))
-        weight_rows = [["Component", "Credit in bucket (%)"]]
-        bucket_rows = [
-            ("legal_core", "Legal core"),
-            ("documentation_completeness", "Verified documentation"),
-            ("operational_responsiveness", "Operational responsiveness"),
-            ("recency_maintenance_confidence", "Recency & maintenance confidence"),
-        ]
-        for key, label in bucket_rows:
+        area_rows = [["Area", "How you're doing (%)"]]
+        for key in (
+            "legal_core",
+            "documentation_completeness",
+            "operational_responsiveness",
+            "recency_maintenance_confidence",
+        ):
+            label = SCORE_AREA_LABELS.get(key, key)
             pct = bb.get(key, {}).get("percent")
             try:
                 pct_str = f"{round(float(pct))}%" if pct is not None else "—"
             except (TypeError, ValueError):
                 pct_str = "—"
-            weight_rows.append([label, pct_str])
-        wt = Table(weight_rows, colWidths=[260, 120])
+            area_rows.append([label, pct_str])
+        wt = Table(area_rows, colWidths=[260, 120])
         wt.setStyle(table_style)
         elements.append(wt)
+        elements.append(Spacer(1, 8))
+        for key in (
+            "legal_core",
+            "documentation_completeness",
+            "operational_responsiveness",
+            "recency_maintenance_confidence",
+        ):
+            desc = SCORE_AREA_DESCRIPTIONS.get(key)
+            if desc:
+                elements.append(
+                    Paragraph(
+                        f"<b>{SCORE_AREA_LABELS.get(key, key)}:</b> {desc}",
+                        styles["small"],
+                    )
+                )
     else:
-        elements.append(
-            Paragraph(
-                "A per-bucket breakdown is not included in this PDF until each property has a current stored breakdown on the "
-                "current model. The headline above reflects persisted scores as of the snapshot time; driver rows use requirement "
-                "states from when this PDF was generated and may appear ahead of the next headline refresh.",
-                styles["body"],
-            )
-        )
+        elements.append(Paragraph(SCORE_COMPONENTS_FALLBACK, styles["body"]))
     elements.append(Spacer(1, 24))
 
     # —— 5. Top drivers ——
@@ -792,7 +797,8 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     if prop_score_msg and prop_score_msg != agg_score_msg:
         score_line += f"<br/><b>Headline note:</b> {_xml_escape(prop_score_msg)}"
     if score_delta is not None or score_change_summary:
-        score_line += "<br/><b>Score change:</b> " + (score_change_summary or (f"Delta {score_delta:+d}" if score_delta is not None else "—"))
+        change_text = score_change_summary or score_change_narrative(score_delta)
+        score_line += f"<br/><b>Score change:</b> {_xml_escape(change_text)}"
     summary_text = f"""
     {score_line}
     <br/><br/>

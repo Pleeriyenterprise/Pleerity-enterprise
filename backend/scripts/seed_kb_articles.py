@@ -17,9 +17,13 @@ if str(_backend_root) not in sys.path:
     sys.path.insert(0, str(_backend_root))
 
 from database import database
+from services.scoring_explanation_copy import KB_COMPLIANCE_SCORE_EXPLAINED
 
 ARTICLES_COLLECTION = "kb_articles"
 CATEGORIES_COLLECTION = "kb_categories"
+
+# Published Help Centre articles whose scoring copy must stay aligned with the portal (refreshed on seed).
+SCORING_COPY_REFRESH_SLUGS = frozenset({"compliance-score-explained"})
 
 
 def generate_article_id() -> str:
@@ -66,16 +70,8 @@ Properties are the basis for compliance tracking and reminders.""",
         "slug": "compliance-score-explained",
         "title": "Understanding Your Compliance Score",
         "category_id": "compliance-score",
-        "excerpt": "What the compliance score means and how it is calculated.",
-        "content": """## Compliance score explained
-
-Your **compliance score** reflects how up to date your properties are with required evidence and checks.
-
-- Evidence (e.g. gas safety, EICR) that is valid and in date improves your score.
-- Missing or expired evidence lowers your score.
-- The score may be shown as a percentage or level (e.g. Good, Attention needed).
-
-Use the Dashboard and property-level views to see which items need action. Keeping evidence up to date keeps your score healthy.""",
+        "excerpt": "What the compliance score means, what affects it, and practical steps to improve it.",
+        "content": KB_COMPLIANCE_SCORE_EXPLAINED,
         "tags": ["compliance", "score", "dashboard", "evidence"],
     },
     {
@@ -205,10 +201,31 @@ async def seed_kb_articles():
     now = datetime.now(timezone.utc).isoformat()
     created = 0
     skipped = 0
+    refreshed = 0
 
     for item in EXAMPLE_ARTICLES:
         slug = item["slug"]
         existing = await db[ARTICLES_COLLECTION].find_one({"slug": slug})
+        if existing and slug in SCORING_COPY_REFRESH_SLUGS:
+            await db[ARTICLES_COLLECTION].update_one(
+                {"slug": slug},
+                {
+                    "$set": {
+                        "title": item["title"],
+                        "excerpt": item["excerpt"],
+                        "content": item["content"],
+                        "tags": item.get("tags", []),
+                        "summary": item["excerpt"][:500],
+                        "meta_title": item["title"],
+                        "meta_description": item["excerpt"],
+                        "updated_at": now,
+                        "updated_by": "seed_kb_articles",
+                    }
+                },
+            )
+            print(f"  Refreshed scoring copy: {slug}")
+            refreshed += 1
+            continue
         if existing:
             print(f"  Skip (exists): {slug}")
             skipped += 1
@@ -248,7 +265,7 @@ async def seed_kb_articles():
         print(f"  Created: {slug} ({article_id})")
         created += 1
 
-    print(f"\nDone. Created: {created}, Skipped: {skipped}")
+    print(f"\nDone. Created: {created}, Refreshed: {refreshed}, Skipped: {skipped}")
 
 
 if __name__ == "__main__":

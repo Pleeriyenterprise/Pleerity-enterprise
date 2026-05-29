@@ -1,0 +1,28 @@
+{
+  "captured_at": "2026-05-29T23:11:08.548857+00:00",
+  "pages": {
+    "dashboard": {
+      "path": "/dashboard",
+      "chars": 6446
+    },
+    "compliance_score": {
+      "path": "/compliance-score",
+      "chars": 9412
+    },
+    "requirements": {
+      "path": "/requirements",
+      "chars": 1497
+    }
+  },
+  "forbidden_hits": [
+    {
+      "page": "requirements",
+      "pattern": "scoring engine"
+    },
+    {
+      "page": "requirements",
+      "pattern": "scoring engine (requirements confidence line)"
+    }
+  ],
+  "required_missing": []
+}
