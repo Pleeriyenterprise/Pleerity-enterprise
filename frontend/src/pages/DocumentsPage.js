@@ -99,6 +99,8 @@ const DocumentsPage = () => {
   const [documents, setDocuments] = useState([]);
   const [properties, setProperties] = useState([]);
   const [requirements, setRequirements] = useState([]);
+  const [requirementsLoadError, setRequirementsLoadError] = useState(null);
+  const [requirementsLoaded, setRequirementsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [registryLoading, setRegistryLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -320,11 +322,26 @@ const DocumentsPage = () => {
       setProperties(propsData.properties || []);
       setLoading(false);
 
+      setRequirementsLoaded(false);
+      setRequirementsLoadError(null);
       fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
         clientAPI.getRequirements({ projection: 'full' }).then((r) => r.data),
       )
-        .then((reqsData) => setRequirements(reqsData?.requirements || []))
-        .catch(() => {});
+        .then((r) => r.data)
+        .then((reqsData) => {
+          setRequirements(reqsData?.requirements || []);
+          setRequirementsLoaded(true);
+        })
+        .catch((error) => {
+          const detail = error?.response?.data?.detail;
+          const message =
+            (typeof detail === 'string' ? detail : detail?.message) ||
+            error?.message ||
+            'Could not load requirements';
+          console.warn('[DocumentsPage] requirements fetch failed:', message);
+          setRequirementsLoadError({ message });
+          setRequirementsLoaded(true);
+        });
     } catch (error) {
       toast.error('Failed to load documents');
       setLoading(false);
@@ -1188,7 +1205,12 @@ const DocumentsPage = () => {
                         </option>
                       ))}
                     </select>
-                    {uploadForm.property_id && filteredRequirements.length === 0 ? (
+                    {uploadForm.property_id && requirementsLoadError ? (
+                      <p className="text-xs text-red-800 mt-2" data-testid="upload-requirement-load-error">
+                        Requirements could not be loaded. Refresh the page or try again — this does not mean there are
+                        no upload targets for this property.
+                      </p>
+                    ) : uploadForm.property_id && requirementsLoaded && filteredRequirements.length === 0 ? (
                       <p className="text-xs text-amber-800 mt-2" data-testid="upload-requirement-empty-notice">
                         No upload targets for this property right now. Verified evidence is in Property → Documents (Evidence Registry).
                       </p>
