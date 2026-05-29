@@ -72,6 +72,21 @@ import {
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
 import {
+  SCORE_AREA_DESCRIPTIONS,
+  SCORE_AREA_LABELS,
+  SCORE_COMPONENTS_FALLBACK,
+  SCORE_COMPONENTS_SECTION_TITLE,
+  SCORE_EXPLANATION_DASHBOARD_KPI,
+  SCORE_EXPLANATION_TOGGLE_LABEL,
+  SCORE_FRAMEWORK_AREA_BULLETS,
+  SCORE_FRAMEWORK_AREAS_INTRO,
+  SCORE_FRAMEWORK_DISCLAIMER,
+  SCORE_FRAMEWORK_INTRO,
+  SCORE_FRAMEWORK_PORTFOLIO,
+  SCORE_FRAMEWORK_RISK_BANDS,
+  SCORE_FRAMEWORK_TITLE,
+} from '../utils/scoringExplanationCopy';
+import {
   headlineScoreDisplayForDashboard,
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
@@ -2640,9 +2655,7 @@ const ClientDashboard = () => {
                     <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide flex items-center">
                       Compliance score
                       <DashboardKpiHint label="Compliance score">
-                        Built from the same scoring engine as Compliance score: weighted requirements, verified evidence, operational
-                        items, and recency — not a separate manual model. Excludes legal advice. Updates when you upload, confirm dates, or
-                        resolve linked work.
+                        {SCORE_EXPLANATION_DASHBOARD_KPI}
                       </DashboardKpiHint>
                     </h3>
                     <ExternalLink className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -2694,43 +2707,32 @@ const ClientDashboard = () => {
               <div className="mt-4 pt-4 border-t border-white/50 space-y-2">
                 {portfolioHasV2BucketBreakdown(complianceScore?.bucket_breakdown) ? (
                   <>
-                    <p className="text-xs text-gray-500 mb-1">Score components (credit within each bucket, 0–100%)</p>
+                    <p className="text-xs text-gray-500 mb-1">{SCORE_COMPONENTS_SECTION_TITLE}</p>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Legal core</span>
+                      <span className="text-gray-600">{SCORE_AREA_LABELS.legal_core}</span>
                       <span className="font-medium">{Number(complianceScore.bucket_breakdown.legal_core.percent).toFixed(0)}%</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Verified documentation</span>
+                      <span className="text-gray-600">{SCORE_AREA_LABELS.documentation_completeness}</span>
                       <span className="font-medium">
                         {Number(complianceScore.bucket_breakdown.documentation_completeness.percent).toFixed(0)}%
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Operational responsiveness</span>
+                      <span className="text-gray-600">{SCORE_AREA_LABELS.operational_responsiveness}</span>
                       <span className="font-medium">
                         {Number(complianceScore.bucket_breakdown.operational_responsiveness.percent).toFixed(0)}%
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-600">Recency &amp; maintenance confidence</span>
+                      <span className="text-gray-600">{SCORE_AREA_LABELS.recency_maintenance_confidence}</span>
                       <span className="font-medium">
                         {Number(complianceScore.bucket_breakdown.recency_maintenance_confidence.percent).toFixed(0)}%
                       </span>
                     </div>
                   </>
                 ) : (
-                  <p className="text-xs text-gray-600">
-                    Per-bucket component scores appear here after each property has a current stored breakdown. Your headline score and
-                    drivers already use the current model.
-                  </p>
-                )}
-                {(complianceScore?.earned_points != null && complianceScore?.applicable_points != null) && (
-                  <div className="flex justify-between text-xs pt-1 border-t border-gray-200">
-                    <span className="text-gray-600">Points earned</span>
-                    <span className="font-medium">
-                      {Number(complianceScore?.earned_points || 0).toFixed(1)} / {Number(complianceScore?.applicable_points || 0).toFixed(1)}
-                    </span>
-                  </div>
+                  <p className="text-xs text-gray-600">{SCORE_COMPONENTS_FALLBACK}</p>
                 )}
               </div>
               
@@ -2744,41 +2746,27 @@ const ClientDashboard = () => {
                 data-testid="toggle-score-explanation"
               >
                 <Info className="w-3 h-3" />
-                How is this calculated?
+                {SCORE_EXPLANATION_TOGGLE_LABEL}
                 {showScoreExplanation ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </button>
               
               {/* Inline Explanation */}
               {showScoreExplanation && (
                 <div className="mt-3 pt-3 border-t border-white/50 text-xs space-y-2" onClick={(e) => e.stopPropagation()}>
-                  <p className="font-medium text-gray-700">Score components</p>
+                  <p className="font-medium text-gray-700">{SCORE_COMPONENTS_SECTION_TITLE}</p>
                   <ul className="space-y-1 text-gray-600">
                     {portfolioHasV2BucketBreakdown(complianceScore?.bucket_breakdown) ? (
-                      <>
-                        <li>
-                          • <strong>Legal core:</strong> weighted by requirement type and jurisdiction; credit from evidence validity,
-                          expiry, and coverage — not fixed per-status point numbers.
+                      Object.entries(SCORE_AREA_LABELS).map(([key, label]) => (
+                        <li key={key}>
+                          • <strong>{label}:</strong> {SCORE_AREA_DESCRIPTIONS[key]}
                         </li>
-                        <li>
-                          • <strong>Verified documentation:</strong> applicable obligations with <strong>verified</strong> evidence only.
-                        </li>
-                        <li>
-                          • <strong>Operational responsiveness:</strong> open maintenance issues and overdue jobs reduce this bucket.
-                        </li>
-                        <li>
-                          • <strong>Recency / maintenance confidence:</strong> open predictive issues and expiring-soon items reduce this
-                          bucket.
-                        </li>
-                      </>
+                      ))
                     ) : (
-                      <>
-                        <li>
-                          • The headline score uses the current engine. Bucket-level lines above fill in once each property has a stored
-                          breakdown. Counts today: {complianceScore?.stats?.compliant || 0}/
-                          {complianceScore?.stats?.total_requirements || 0} valid, {complianceScore?.stats?.expiring_soon || 0} expiring
-                          soon, {complianceScore?.stats?.overdue || 0} overdue.
-                        </li>
-                      </>
+                      <li>
+                        • {SCORE_COMPONENTS_FALLBACK} Today: {complianceScore?.stats?.compliant || 0}/
+                        {complianceScore?.stats?.total_requirements || 0} valid, {complianceScore?.stats?.expiring_soon || 0} expiring
+                        soon, {complianceScore?.stats?.overdue || 0} overdue.
+                      </li>
                     )}
                   </ul>
                   <p className="text-electric-teal pt-1">Click card for full breakdown →</p>
@@ -2848,7 +2836,7 @@ const ClientDashboard = () => {
                       }`} />
                         <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800">{actionDisplay}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Potential impact: {rec.impact}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Completing this can help improve your score.</p>
                       </div>
                         <Button
                           variant="outline"
@@ -3100,52 +3088,27 @@ const ClientDashboard = () => {
           >
             <span className="flex items-center gap-2">
               <Info className="w-4 h-4 text-electric-teal" />
-              Compliance Framework – how scoring works
+              {SCORE_FRAMEWORK_TITLE}
             </span>
             {showComplianceFramework ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {showComplianceFramework && (
             <div className="px-4 pb-4 pt-0 text-sm text-gray-600 border-t border-gray-100 space-y-3">
-              <p className="text-gray-800">
-                Scores are based on <strong>document validity</strong>, <strong>expiry</strong>, <strong>evidence coverage</strong>, and{' '}
-                <strong>risk-style weighting</strong> across requirements — not on a single fixed points table. Each applicable
-                requirement contributes according to its weight; those contributions combine into the property score. The engine runs on
-                our servers; exact fractions depend on requirement status, which document is chosen as evidence, verification, and
-                jurisdiction rules (including different &quot;expiring soon&quot; windows per requirement where configured).
-              </p>
+              <p className="text-gray-800">{SCORE_FRAMEWORK_INTRO}</p>
               <p className="font-medium text-midnight-blue">Property score (0–100)</p>
-              <p>Each property score combines four buckets (current model):</p>
+              <p>{SCORE_FRAMEWORK_AREAS_INTRO}</p>
               <ul className="list-disc pl-5 space-y-1.5">
-                <li>
-                  <strong>Legal core (~60%)</strong> — Applicable legal obligations for the property&apos;s jurisdiction, each with its
-                  own weight (e.g. gas safety and electrical checks typically count more than lower-weight items). Credit is a{' '}
-                  <em>fraction</em> of that weight from validity, missing evidence, expiry, and related signals — not a universal
-                  &quot;100 / 70 / 30 / 0&quot; schedule. System-estimated dates can slightly reduce credit versus confirmed evidence.
-                </li>
-                <li>
-                  <strong>Documentation completeness (~20%)</strong> — Share of applicable obligations that have{' '}
-                  <strong>verified</strong> evidence, not merely an upload.
-                </li>
-                <li>
-                  <strong>Operational responsiveness (~10%)</strong> — Open maintenance issues and overdue maintenance jobs reduce this
-                  portion.
-                </li>
-                <li>
-                  <strong>Recency / maintenance confidence (~10%)</strong> — Open predictive issues and items in an expiring-soon state
-                  reduce this portion.
-                </li>
+                {SCORE_FRAMEWORK_AREA_BULLETS.map(({ title, body }) => (
+                  <li key={title}>
+                    <strong>{title}</strong> — {body}
+                  </li>
+                ))}
               </ul>
               <p className="font-medium text-midnight-blue">Portfolio score</p>
-              <p>
-                The portfolio figure is the <strong>simple average</strong> of stored property scores (each already 0–100). It is not a
-                separate weighted re-aggregation by requirement count at portfolio level.
-              </p>
-              <p className="font-medium text-midnight-blue">Risk labels (document-backed, not legal advice)</p>
-              <p>Band colours and grades follow the same bands you see elsewhere: 80–100 low; 60–79 moderate; 40–59 high; 0–39 critical.</p>
-              <p className="text-gray-500 italic">
-                This is a document-backed operational summary. It is not legal advice and does not constitute legal certification. For
-                detail on your account, open Compliance score.
-              </p>
+              <p>{SCORE_FRAMEWORK_PORTFOLIO}</p>
+              <p className="font-medium text-midnight-blue">Risk bands</p>
+              <p>{SCORE_FRAMEWORK_RISK_BANDS}</p>
+              <p className="text-gray-500 italic">{SCORE_FRAMEWORK_DISCLAIMER}</p>
             </div>
           )}
         </div>

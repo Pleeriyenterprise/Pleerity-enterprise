@@ -150,6 +150,7 @@ import {
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
 import { PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE } from '../utils/scoreFreshnessUi';
+import { SCORE_AREA_SHORT_LABELS } from '../utils/scoringExplanationCopy';
 import { WORKSPACE_PROPERTY_SCORE_STRIP_FOOTNOTE } from '../utils/workspaceOrientationCopy';
 import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
 
@@ -2021,24 +2022,20 @@ export default function PropertyDetailPage() {
                       </strong>
                     </span>
                     <span className="px-2 py-1 rounded border border-gray-200 bg-gray-50">
-                      Points:{' '}
-                      <strong>
-                        {Number((complianceExplainability?.authoritative || complianceExplainability)?.earned_points || 0).toFixed(1)} /{' '}
-                        {Number((complianceExplainability?.authoritative || complianceExplainability)?.applicable_points || 0).toFixed(1)}
-                      </strong>
+                      Based on current records for this property
                     </span>
                   </div>
 
                   {(complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-sm">
                       {[
-                        ['Legal core', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.legal_core?.percent],
-                        ['Documentation', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.documentation_completeness?.percent],
-                        ['Operational', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.operational_responsiveness?.percent],
-                        ['Recency', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.recency_maintenance_confidence?.percent],
-                      ].map(([label, pct]) => (
-                        <div key={label} className="rounded border border-gray-200 p-2 bg-white">
-                          <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+                        ['legal_core', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.legal_core?.percent],
+                        ['documentation_completeness', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.documentation_completeness?.percent],
+                        ['operational_responsiveness', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.operational_responsiveness?.percent],
+                        ['recency_maintenance_confidence', (complianceExplainability?.authoritative || complianceExplainability)?.bucket_breakdown?.recency_maintenance_confidence?.percent],
+                      ].map(([key, pct]) => (
+                        <div key={key} className="rounded border border-gray-200 p-2 bg-white">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">{SCORE_AREA_SHORT_LABELS[key] || key}</p>
                           <p className="font-semibold text-midnight-blue">{Number(pct || 0).toFixed(0)}%</p>
                         </div>
                       ))}
@@ -2048,13 +2045,10 @@ export default function PropertyDetailPage() {
                   {Array.isArray((complianceExplainability?.authoritative || complianceExplainability)?.top_next_actions) &&
                     (complianceExplainability?.authoritative || complianceExplainability).top_next_actions.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-midnight-blue mb-1">Suggested score impact (reference)</p>
+                      <p className="text-sm font-medium text-midnight-blue mb-1">Suggested next steps</p>
                       <ul className="space-y-1 text-sm text-gray-700">
                         {(complianceExplainability?.authoritative || complianceExplainability).top_next_actions.slice(0, 5).map((a, idx) => (
-                          <li key={`${a.requirement_code || 'req'}-${idx}`} className="flex items-center justify-between gap-2">
-                            <span>• {a.action}</span>
-                            <span className="text-xs text-gray-500">+{Number(a.impact_points || 0).toFixed(1)} pts</span>
-                          </li>
+                          <li key={`${a.requirement_code || 'req'}-${idx}`}>• {a.action}</li>
                         ))}
                       </ul>
                     </div>

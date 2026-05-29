@@ -86,7 +86,7 @@ export function formatScoreLastCalculatedForUi(isoOrString) {
 
 /** Short note for score drivers vs headline (Compliance score page). */
 export const COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE =
-  'Driver rows reflect current requirement state. The headline score uses the latest stored property scores until recalculation completes.';
+  'These rows reflect your requirements right now. The headline score may update shortly after you make changes.';
 
 /**
  * Server-backed note when one or more properties have `compliance_score_pending` (recalc queued).
@@ -100,9 +100,9 @@ export function portfolioScoreRecalcPendingNote(payload) {
   return String(raw).trim();
 }
 
-/** Clarifies document KPIs on the compliance score page (upload vs accepted / externally verified). */
+/** Clarifies document KPIs on the compliance score page (upload vs accepted). */
 export const COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE =
-  'Uploaded counts include any file on record for tracked items. Verified coverage reflects documents accepted under review policy (human acceptance or external verification), not uploads alone.';
+  'Upload counts include any file on record. Accepted coverage counts documents that have passed review or verification — uploads alone may not count until accepted.';
 
 /** Command Centre when `compliance_status_summary` is missing from the bundle (partial load). */
 export const COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE =
