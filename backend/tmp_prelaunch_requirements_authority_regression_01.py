@@ -151,7 +151,7 @@ def main() -> int:
     token = _login()
     audit = audit_projection_divergence(token)
     _write("authority_divergence.json", audit)
-    _write("root_cause.json", {"programme": PROGRAMME, **audit.get("root_cause", {})})
+    _write("root_cause.json", {"programme": PROGRAMME, "summary": audit.get("root_cause")})
     browser = browser_requirements_page(token)
     _write("browser_runtime.json", browser)
     cls = classify(audit, browser)

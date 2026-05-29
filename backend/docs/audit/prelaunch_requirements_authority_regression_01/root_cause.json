@@ -1,0 +1,4 @@
+{
+  "programme": "PRELAUNCH-REQUIREMENTS-AUTHORITY-REGRESSION-01",
+  "summary": "list projection omits take_action and registry copy; UI must use projection=full"
+}

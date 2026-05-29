@@ -1,0 +1,8 @@
+{
+  "classification": "PARTIAL",
+  "blockers": [
+    "generic_upload_document_drift"
+  ],
+  "push_audit_artifacts_allowed": false,
+  "evaluated_at": "2026-05-29T07:50:29.174012+00:00"
+}
