@@ -353,10 +353,16 @@ function TaskCard({
   showComplianceBooking,
   enableTriage,
   inboxRequirementById,
+  propertyById,
 }) {
   const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [visibilityOpen, setVisibilityOpen] = useState(false);
+  const cognitionEntity = useMemo(
+    () => enrichTaskForExecution(task, inboxRequirementById, propertyById),
+    [task, inboxRequirementById, propertyById],
+  );
+  const propertyLine = cognitionEntity?.property_display_name || null;
   const meta = task.metadata || {};
   const sid = meta.related_risk_signal_id;
   const busy = overrideBusy === task.id;
