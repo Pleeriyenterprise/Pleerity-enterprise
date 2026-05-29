@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-05-29T12:17:27.118333+00:00",
+  "urgent_count": 24,
+  "in_progress_count": 8,
+  "sample_has_take_action": false,
+  "findings_before_deploy": [
+    "passive_summary_card",
+    "top_priorities_not_dominant_hero",
+    "urgent_upcoming_flat_sections"
+  ],
+  "remediation": [
+    "TodayExecutionHero dominant card",
+    "operational section buckets",
+    "compact execution stats row",
+    "false calm disclosure",
+    "requirementsOperational for cognition merge"
+  ]
+}

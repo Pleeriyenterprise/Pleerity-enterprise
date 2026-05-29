@@ -76,7 +76,6 @@ import {
   JURISDICTION_FALLBACK_CTA,
   JURISDICTION_PORTFOLIO_REMINDER_COMPACT,
 } from '../utils/jurisdictionComplianceCopy';
-import { compareTopPriority } from '../utils/clientTopPriorityRanking';
 import {
   TODAY_PAGE_CONFIDENCE_LINE,
   todayTaskConfidenceLine,
@@ -102,8 +101,16 @@ import {
   combineEvidenceSummaryWithResolvedSubline,
   projectResolvedRequirementSemantics,
 } from '../utils/resolvedRequirementViewModel';
-import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
-import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
+import TodayExecutionHero from '../components/client/TodayExecutionHero';
+import ListCognitionChip from '../components/operational/ListCognitionChip';
+import {
+  buildOperationalSections,
+  buildPropertyByIdMap,
+  buildFalseEmptyStateDisclosure,
+  enrichTaskForExecution,
+  pickPrimaryExecutionTask,
+  visibleOpenCount,
+} from '../utils/todayExecutionWorkspace';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -473,9 +480,10 @@ function TaskCard({
               <TodayUrgencyRow urgency={task.urgency} urgencyLevel={task.urgency_level} timingLabel={meta.timing_label} />
             </div>
             <h3 className="font-semibold text-midnight-blue text-base leading-snug break-words">{displayTitle}</h3>
-            {task.property_label && (
-              <p className="text-sm text-gray-600 break-words">{task.property_label}</p>
-            )}
+            {propertyLine ? (
+              <p className="text-sm text-gray-600 break-words">{propertyLine}</p>
+            ) : null}
+            <ListCognitionChip entity={cognitionEntity || task} className="mt-1" />
             {showDescription && (
               <p className="text-sm text-gray-700 line-clamp-3 break-words">{task.description}</p>
             )}
@@ -809,6 +817,7 @@ function SectionBlock({
   emptyHint,
   enableTriage,
   inboxRequirementById,
+  propertyById,
   defaultCollapsed = false,
   urgentShowMoreLimit = null,
 }) {
@@ -871,6 +880,7 @@ function SectionBlock({
                 showComplianceBooking={showComplianceBooking}
                 enableTriage={enableTriage}
                 inboxRequirementById={inboxRequirementById}
+                propertyById={propertyById}
               />
             ))}
           </div>
@@ -913,7 +923,7 @@ export default function ClientTasksPage() {
   const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
   /** From GET /client/command-center (same scoping as Dashboard when property_id is set). */
   const [jurisdictionComplianceNotice, setJurisdictionComplianceNotice] = useState(null);
-  const [commandCenterFallbackAcknowledged, setCommandCenterFallbackAcknowledged] = useState(null);
+  const [commandCenterDepth, setCommandCenterDepth] = useState(null);
 
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
 
@@ -942,17 +952,29 @@ export default function ClientTasksPage() {
     setJurisdictionComplianceNotice(null);
     setCommandCenterFallbackAcknowledged(null);
     const todayKey = `${OPERATIONAL_CACHE_KEYS.todayItems}:${propertyFilter || 'all'}`;
-    const reqKey = OPERATIONAL_CACHE_KEYS.requirements;
+    const reqKey = OPERATIONAL_CACHE_KEYS.requirementsOperational;
     Promise.all([
       fetchOperational(todayKey, () => clientAPI.getTodayItems(params).then((r) => r.data)),
       fetchOperational(reqKey, () =>
-        clientAPI.getRequirements().then((r) => r.data).catch(() => ({ requirements: [] })),
+        clientAPI.getRequirements({ projection: 'full' }).then((r) => r.data).catch(() => ({ requirements: [] })),
+      ),
+      fetchOperational(`${OPERATIONAL_CACHE_KEYS.commandCenter}:all`, () =>
+        clientAPI.getCommandCenter(params).then((r) => r.data).catch(() => null),
       ),
     ])
-      .then(([todayHit, reqHit]) => {
+      .then(([todayHit, reqHit, ccHit]) => {
         setPayload(todayHit?.data ?? null);
         const reqs = reqHit?.data?.requirements;
         setPortalRequirementsForInbox(Array.isArray(reqs) ? reqs : []);
+        const cc = ccHit?.data;
+        setCommandCenterDepth(
+          cc
+            ? {
+                urgent: cc.tasks_digest_summary?.urgent_count ?? cc.urgent_actions?.length ?? 0,
+                primary: cc.primary_actions?.length ?? cc.urgent_actions?.length ?? 0,
+              }
+            : null,
+        );
       })
       .catch((err) => {
         setError(err?.response?.data?.detail || 'Failed to load tasks');
@@ -1024,6 +1046,8 @@ export default function ClientTasksPage() {
     [portalRequirementsForInbox],
   );
 
+  const propertyById = useMemo(() => buildPropertyByIdMap(propertyOptions), [propertyOptions]);
+
   const [requirementIntelModal, setRequirementIntelModal] = useState(null);
 
   const openRequirementIntelFromTodayTask = useCallback(
@@ -1056,29 +1080,45 @@ export default function ClientTasksPage() {
     [payload, inboxRequirementById],
   );
 
-  const urgent = applyFilter(sections.urgent);
+  const operationalSections = useMemo(
+    () => buildOperationalSections(sections, applyFilter, inboxRequirementById),
+    [sections, applyFilter, inboxRequirementById],
+  );
 
-  const topPriorityTasks = useMemo(() => {
-    if (!urgent.length) return [];
-    const sorted = [...urgent].sort(compareTopPriority);
-    const out = [];
-    const seen = new Set();
-    for (const t of sorted) {
-      if (out.length >= 3) break;
-      if (!t?.id || seen.has(t.id)) continue;
-      seen.add(t.id);
-      out.push(t);
-    }
-    return out;
-  }, [urgent]);
+  const allOpenTasks = useMemo(
+    () => [...(sections.urgent || []), ...(sections.upcoming || []), ...(sections.in_progress || [])],
+    [sections],
+  );
 
-  const topPriorityIds = useMemo(() => new Set(topPriorityTasks.map((t) => t.id)), [topPriorityTasks]);
-  const urgentRemaining = useMemo(() => urgent.filter((t) => !topPriorityIds.has(t.id)), [urgent, topPriorityIds]);
+  const primaryExecutionTask = useMemo(
+    () => pickPrimaryExecutionTask(applyFilter(allOpenTasks), inboxRequirementById, propertyById),
+    [allOpenTasks, applyFilter, inboxRequirementById, propertyById],
+  );
 
-  const upcoming = applyFilter(sections.upcoming);
-  const inProgress = applyFilter(sections.in_progress);
-  const recent = applyFilter(sections.recently_completed);
+  const primaryExecutionId = primaryExecutionTask?.id;
+
+  const needsActionNow = useMemo(
+    () => operationalSections.needsActionNow.filter((t) => t.id !== primaryExecutionId),
+    [operationalSections.needsActionNow, primaryExecutionId],
+  );
+
+  const falseEmptyDisclosure = useMemo(
+    () =>
+      buildFalseEmptyStateDisclosure({
+        visibleOpenCount:
+          visibleOpenCount(operationalSections) + (primaryExecutionTask ? 1 : 0),
+        bucketContinuation: payload?.bucket_continuation,
+        commandCenterUrgentCount: commandCenterDepth?.urgent,
+        commandCenterPrimaryCount: commandCenterDepth?.primary,
+        propertyFilter,
+      }),
+    [operationalSections, primaryExecutionTask, payload, commandCenterDepth, propertyFilter],
+  );
+
   const snoozed = applyFilter(sections.snoozed || []);
+  const recent = applyFilter(sections.recently_completed);
+  const waitingOnOthers = operationalSections.waitingOnOthers;
+  const inProgress = operationalSections.inProgress;
   const hidden = sections.hidden || [];
 
   const summary = payload?.summary;
@@ -1261,6 +1301,18 @@ export default function ClientTasksPage() {
       /* non-blocking */
     }
     navigate(resolveClientPortalPath(url, which === 'secondary' ? '/today' : '/dashboard'));
+  };
+
+  const onPrimaryExecutionClick = () => {
+    const task = primaryExecutionTask;
+    if (!task) return;
+    const shaped = shapeTodayBusinessActions(task, task.business_actions, showComplianceBooking);
+    const primaryAct = dedupeActionsByPrimaryPath(shaped.ordered)[0];
+    if (primaryAct) {
+      runBusinessAction(primaryAct, task);
+      return;
+    }
+    onPrimaryNavigate(task);
   };
 
   const restoreTodayItem = async (taskOrItem) => {
@@ -1457,54 +1509,45 @@ export default function ClientTasksPage() {
         </Alert>
       )}
 
-      <Card className="mb-6 border-gray-200">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Summary</CardTitle>
-          <p className="text-xs text-gray-500 font-normal mt-1 leading-snug">
-            Section counts show volume in each stage before you open a block.
-          </p>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-4 text-sm">
-          <div>
-            <span className="text-gray-500">Urgent</span>
-            <p className="text-xl font-semibold text-midnight-blue">{sections.urgent.length}</p>
+      <Card className="mb-4 border-gray-200 bg-gray-50/50">
+        <CardContent className="p-3 flex flex-wrap gap-3 text-sm">
+          <div className="min-w-[5rem]">
+            <span className="text-gray-500 text-xs">Needs action</span>
+            <p className="text-lg font-bold text-midnight-blue tabular-nums">
+              {(primaryExecutionTask ? 1 : 0) + needsActionNow.length}
+            </p>
           </div>
-          <div>
-            <span className="text-gray-500">Upcoming</span>
-            <p className="text-xl font-semibold text-midnight-blue">{sections.upcoming.length}</p>
+          <div className="min-w-[5rem]">
+            <span className="text-gray-500 text-xs">Waiting</span>
+            <p className="text-lg font-bold text-midnight-blue tabular-nums">{waitingOnOthers.length}</p>
           </div>
-          <div>
-            <span className="text-gray-500">In progress</span>
-            <p className="text-xl font-semibold text-midnight-blue">{sections.in_progress.length}</p>
+          <div className="min-w-[5rem]">
+            <span className="text-gray-500 text-xs">In progress</span>
+            <p className="text-lg font-bold text-midnight-blue tabular-nums">{inProgress.length}</p>
           </div>
-          <div title="Cards hidden from Today for a set time; due dates and records do not change">
-            <span className="text-gray-500">Snoozed</span>
-            <p className="text-xl font-semibold text-midnight-blue">{sections.snoozed.length}</p>
+          <div className="min-w-[5rem]">
+            <span className="text-gray-500 text-xs">Snoozed</span>
+            <p className="text-lg font-bold text-midnight-blue tabular-nums">{snoozed.length}</p>
           </div>
-          {spendDisplay && (
-            <div className="min-w-[10rem]" title={spendDisplay.hint}>
-              <span className="text-gray-500">This month&apos;s spend (paid invoices)</span>
-              <p className="text-xl font-semibold text-midnight-blue">{spendDisplay.amount}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{spend.invoice_count ?? 0} paid invoice(s) this month · UTC month</p>
-            </div>
-          )}
-          <div className="w-full text-xs text-gray-500 space-y-1 mt-2 border-t border-gray-100 pt-3">
-            {freshness?.score_updated_at && (
-              <p>Compliance score updated: {formatWhen(freshness.score_updated_at)}</p>
-            )}
-            {freshness?.risk_signals_updated_at && (
-              <p>Risk signals updated: {formatWhen(freshness.risk_signals_updated_at)}</p>
-            )}
-            {freshness?.last_automation_score_recalc_at && (
-              <p>Last automated score recalc: {formatWhen(freshness.last_automation_score_recalc_at)}</p>
-            )}
-            {freshness?.last_automation_risk_refresh_at && (
-              <p>Last automated issue refresh: {formatWhen(freshness.last_automation_risk_refresh_at)}</p>
-            )}
-            {freshness?.tasks_refreshed_at && <p>Tasks refreshed: {formatWhen(freshness.tasks_refreshed_at)}</p>}
-          </div>
+          {falseEmptyDisclosure.continuationOverflow ? (
+            <p className="text-xs text-gray-600 w-full border-t border-gray-200 pt-2">
+              {falseEmptyDisclosure.continuationOverflow} more items prioritised in Command Centre — open there for the full queue.
+            </p>
+          ) : null}
         </CardContent>
       </Card>
+
+      {falseEmptyDisclosure.isFalseCalm ? (
+        <Alert className="mb-4 border-amber-300 bg-amber-50" data-testid="today-false-calm-notice">
+          <AlertCircle className="h-4 w-4 text-amber-800" />
+          <AlertDescription className="text-sm text-amber-950">
+            {falseEmptyDisclosure.message}{' '}
+            <Link to="/command-center" className="font-medium text-electric-teal hover:underline">
+              Open Command Centre
+            </Link>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {filter !== 'all' && (
         <Alert className="mb-4 border-sky-200 bg-sky-50" data-testid="today-category-filter-notice">
@@ -1627,39 +1670,22 @@ export default function ClientTasksPage() {
 
       {!loading && !error && (
         <>
-          {topPriorityTasks.length > 0 && (
-            <div className="mb-8" data-testid="today-top-priority">
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Top priorities</h2>
-              <p className="text-sm text-gray-500 mb-3">
-                Up to three urgent items, same order as &quot;Where to focus first&quot; on Command center—overdue requirements,
-                missing documents, then open issues.
-              </p>
-              <div className="space-y-3">
-                {topPriorityTasks.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onRiskAction={onRiskAction}
-                    riskLoading={riskLoading}
-                    showRiskInline={showRiskInline}
-                    onOpenDismissModal={openDismissModal}
-                    onPrimaryNavigate={onPrimaryNavigate}
-                    onRunBusinessAction={runBusinessAction}
-                    onVisibilityTap={runVisibilityTap}
-                    onOpenRequirementIntel={openRequirementIntelFromTodayTask}
-                    overrideBusy={overrideBusyId}
-                    complianceBookingBusyId={complianceBookingBusyId}
-                    showComplianceBooking={showComplianceBooking}
-                    enableTriage
-                    inboxRequirementById={inboxRequirementById}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          {primaryExecutionTask ? (
+            <TodayExecutionHero
+              entity={primaryExecutionTask}
+              task={primaryExecutionTask}
+              onPrimaryClick={onPrimaryExecutionClick}
+              primaryBusy={overrideBusyId === primaryExecutionTask.id || complianceBookingBusyId === primaryExecutionTask.id}
+            />
+          ) : falseEmptyDisclosure.genuinelyEmpty ? (
+            <Alert className="mb-6 border-gray-200 bg-gray-50" data-testid="today-genuinely-empty">
+              <AlertDescription className="text-sm text-gray-700">{falseEmptyDisclosure.message}</AlertDescription>
+            </Alert>
+          ) : null}
+
           <SectionBlock
-            title="Urgent"
-            tasks={urgentRemaining}
+            title="Needs action now"
+            tasks={needsActionNow}
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}
@@ -1673,16 +1699,19 @@ export default function ClientTasksPage() {
             showComplianceBooking={showComplianceBooking}
             enableTriage
             inboxRequirementById={inboxRequirementById}
-            urgentShowMoreLimit={5}
+            propertyById={propertyById}
+            urgentShowMoreLimit={8}
             emptyHint={
-              topPriorityTasks.length > 0
-                ? 'No other urgent items — everything urgent is in Top priorities above.'
-                : 'No urgent items in this view. Dashboard still shows portfolio-wide counts; Command Center ranks what to do next.'
+              primaryExecutionTask
+                ? 'No other immediate actions — your top next step is above.'
+                : falseEmptyDisclosure.isFalseCalm
+                  ? falseEmptyDisclosure.message
+                  : 'No items need your action in this view right now.'
             }
           />
           <SectionBlock
-            title="Upcoming"
-            tasks={upcoming}
+            title="Waiting on others"
+            tasks={waitingOnOthers}
             onRiskAction={onRiskAction}
             riskLoading={riskLoading}
             showRiskInline={showRiskInline}
@@ -1696,8 +1725,9 @@ export default function ClientTasksPage() {
             showComplianceBooking={showComplianceBooking}
             enableTriage
             inboxRequirementById={inboxRequirementById}
-            defaultCollapsed
-            emptyHint="No upcoming dated items here. Requirements and Calendar carry full renewal context."
+            propertyById={propertyById}
+            defaultCollapsed={waitingOnOthers.length > 4}
+            emptyHint="Nothing awaiting review, approval, or external follow-up."
           />
           <SectionBlock
             title="In progress"
@@ -1715,12 +1745,13 @@ export default function ClientTasksPage() {
             showComplianceBooking={showComplianceBooking}
             enableTriage
             inboxRequirementById={inboxRequirementById}
+            propertyById={propertyById}
             defaultCollapsed
-            emptyHint="No in-progress items—approvals and issues surface here when active."
+            emptyHint="No active jobs or workflows in progress."
           />
           {snoozed.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Snoozed</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Snoozed / deferred</h2>
               <p className="text-sm text-gray-500 mb-3">
                 Hidden from Today until the date shown—portfolio records and due dates are unchanged. Use Show in Today again when
                 you want the card back.
@@ -1772,6 +1803,7 @@ export default function ClientTasksPage() {
             showComplianceBooking={showComplianceBooking}
             enableTriage={false}
             inboxRequirementById={inboxRequirementById}
+            propertyById={propertyById}
             emptyHint="Recent requirement and invoice milestones will show here."
           />
           {payload?.activity_feed?.length > 0 && (

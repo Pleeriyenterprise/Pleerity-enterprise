@@ -1,0 +1,6 @@
+{
+  "classification": "PARTIAL",
+  "blockers": ["frontend_deploy_pending_execution_workspace"],
+  "implementation_complete": true,
+  "evaluated_at": "2026-05-29T12:18:00+00:00"
+}

@@ -1,0 +1,16 @@
+{
+  "captured_at": "2026-05-29T12:17:27.146547+00:00",
+  "login_ok": true,
+  "execution_hero_present": false,
+  "needs_action_section": false,
+  "waiting_section": false,
+  "false_calm_notice": false,
+  "cognition_chips": 0,
+  "gate_pass": false,
+  "notes": [],
+  "bundle_markers": {
+    "TodayExecutionHero": false,
+    "todayExecutionWorkspace": false
+  },
+  "screenshot": "screenshots/today_execution_workspace_20260529T121754Z.png"
+}
