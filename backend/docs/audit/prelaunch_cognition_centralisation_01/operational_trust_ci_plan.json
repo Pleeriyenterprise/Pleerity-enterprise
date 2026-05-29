@@ -1,0 +1,55 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-01",
+  "ci_additions_this_programme": [
+    {
+      "id": "CI-CC-001",
+      "name": "operationalAuthorityContract.test.js",
+      "status": "IMPLEMENTED",
+      "invariants": ["no-authority-invention", "cognition precedence"]
+    },
+    {
+      "id": "CI-CC-002",
+      "name": "operationalProjectionGuard — CC/Dashboard full projection",
+      "status": "IMPLEMENTED",
+      "invariants": ["projection misuse"]
+    },
+    {
+      "id": "CI-CC-003",
+      "name": "test_operational_cognition_contract.py",
+      "status": "IMPLEMENTED",
+      "invariants": ["backend contract dispatcher"]
+    }
+  ],
+  "proposed_ci_bundle": [
+    "pytest backend/tests/test_operational_cognition_contract.py",
+    "pytest backend/tests/test_operational_cognition_service.py",
+    "pytest backend/tests/test_client_requirements_projection.py",
+    "npm test -- --testPathPattern=operationalAuthorityContract|operationalProjectionGuard|operationalCognition"
+  ],
+  "proposed_staging": [
+    "python backend/tmp_prelaunch_cognition_centralisation_01.py",
+    "python backend/tmp_prelaunch_today_execution_workspace_01.py",
+    "python backend/tmp_prelaunch_operational_trust_guardrails_01.py"
+  ],
+  "future_ci": [
+    {
+      "id": "CI-CC-004",
+      "name": "Cross-surface CTA parity staging gate",
+      "type": "staging_harness",
+      "priority": "P1"
+    },
+    {
+      "id": "CI-CC-005",
+      "name": "no-authority-invention static scan",
+      "type": "eslint/custom rule for resolveRequirementAction fallback in production paths",
+      "priority": "P1"
+    },
+    {
+      "id": "CI-CC-006",
+      "name": "risk-signal WO HTTP idempotency",
+      "type": "pytest",
+      "priority": "P0"
+    }
+  ],
+  "avoid": ["Brittle full-page snapshots", "Mock-only cognition guarantees", "Duplicating existing closeout harnesses"]
+}

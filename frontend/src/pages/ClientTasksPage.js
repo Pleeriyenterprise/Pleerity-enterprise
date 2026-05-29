@@ -933,6 +933,7 @@ export default function ClientTasksPage() {
   const [jurisdictionComplianceNotice, setJurisdictionComplianceNotice] = useState(null);
   const [commandCenterFallbackAcknowledged, setCommandCenterFallbackAcknowledged] = useState(null);
   const [commandCenterDepth, setCommandCenterDepth] = useState(null);
+  const [requirementsEnrichmentFailed, setRequirementsEnrichmentFailed] = useState(false);
 
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
 
@@ -960,12 +961,13 @@ export default function ClientTasksPage() {
     const params = propertyFilter ? { property_id: propertyFilter } : {};
     setJurisdictionComplianceNotice(null);
     setCommandCenterFallbackAcknowledged(null);
+    setRequirementsEnrichmentFailed(false);
     const todayKey = `${OPERATIONAL_CACHE_KEYS.todayItems}:${propertyFilter || 'all'}`;
     const reqKey = OPERATIONAL_CACHE_KEYS.requirementsOperational;
     Promise.all([
       fetchOperational(todayKey, () => clientAPI.getTodayItems(params).then((r) => r.data)),
       fetchOperational(reqKey, () =>
-        clientAPI.getRequirements({ projection: 'full' }).then((r) => r.data).catch(() => ({ requirements: [] })),
+        clientAPI.getRequirements({ projection: 'full' }).then((r) => r.data),
       ),
       fetchOperational(`${OPERATIONAL_CACHE_KEYS.commandCenter}:all`, () =>
         clientAPI.getCommandCenter(params).then((r) => r.data).catch(() => null),
@@ -975,6 +977,7 @@ export default function ClientTasksPage() {
         setPayload(todayHit?.data ?? null);
         const reqs = reqHit?.data?.requirements;
         setPortalRequirementsForInbox(Array.isArray(reqs) ? reqs : []);
+        setRequirementsEnrichmentFailed(!Array.isArray(reqs));
         const cc = ccHit?.data;
         setCommandCenterDepth(
           cc
@@ -1548,6 +1551,16 @@ export default function ClientTasksPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      {requirementsEnrichmentFailed ? (
+        <Alert className="mb-4 border-amber-300 bg-amber-50" data-testid="today-requirements-enrichment-notice">
+          <AlertCircle className="h-4 w-4 text-amber-800" />
+          <AlertDescription className="text-sm text-amber-950">
+            Requirement guidance could not be loaded — task actions may be incomplete until you refresh. Cognition chips
+            and hero merge depend on operational requirement data (<code>projection=full</code>).
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {falseEmptyDisclosure.isFalseCalm ? (
         <Alert className="mb-4 border-amber-300 bg-amber-50" data-testid="today-false-calm-notice">

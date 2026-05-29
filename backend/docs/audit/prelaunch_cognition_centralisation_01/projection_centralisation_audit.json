@@ -1,0 +1,67 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-01",
+  "surfaces": [
+    {
+      "surface": "Today",
+      "previous": "requirementsOperational projection=full",
+      "classification": "OPERATIONALLY_SAFE",
+      "cognition_required": true,
+      "action": "NONE — already correct"
+    },
+    {
+      "surface": "Requirements",
+      "previous": "requirementsOperational projection=full",
+      "classification": "OPERATIONALLY_SAFE",
+      "cognition_required": true,
+      "action": "NONE"
+    },
+    {
+      "surface": "Command Centre",
+      "previous": "OPERATIONAL_CACHE_KEYS.requirements → projection=list",
+      "classification": "OPERATIONALLY_UNSAFE",
+      "cognition_required": true,
+      "action": "REMEDIATED — requirementsOperational projection=full for portalRequirementsForInbox"
+    },
+    {
+      "surface": "Dashboard portalRequirementsForInbox",
+      "previous": "projection=list",
+      "classification": "OPERATIONALLY_UNSAFE",
+      "cognition_required": true,
+      "action": "REMEDIATED — requirementsOperational projection=full"
+    },
+    {
+      "surface": "Dashboard requirementsList widgets",
+      "previous": "getRequirements() list default",
+      "classification": "SAFE_LIGHTWEIGHT",
+      "cognition_required": false,
+      "action": "KEEP list — expiry/applicability display only, no authority CTAs"
+    },
+    {
+      "surface": "DocumentsPage requirements preload",
+      "previous": "projection=list",
+      "classification": "SAFE_LIGHTWEIGHT",
+      "cognition_required": false,
+      "action": "KEEP — document linkage context only"
+    },
+    {
+      "surface": "Property Operating Hub",
+      "previous": "Parent requirements map often list",
+      "classification": "OPERATIONALLY_UNSAFE",
+      "cognition_required": true,
+      "action": "P1 — inject requirementsOperational from PropertyDetailPage"
+    },
+    {
+      "surface": "Jobs/Issues/Risk API routes",
+      "previous": "operational_cognition attached server-side",
+      "classification": "OPERATIONALLY_SAFE",
+      "cognition_required": true,
+      "action": "NONE on projection — entity attach routes"
+    }
+  ],
+  "proposed_projection_operational": {
+    "status": "NOT_REQUIRED",
+    "rationale": "projection=full with enrichment_deferred=false satisfies cognition needs; separate operational mode would duplicate full enrichment unless payload slimming is measured necessary",
+    "alternative": "Add projection=operational only if full payload proven too heavy for CC/Dashboard preload"
+  },
+  "invariant": "Never revert operational authority surfaces to projection=list for speed"
+}

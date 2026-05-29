@@ -1,0 +1,72 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-01",
+  "P0": [
+    {
+      "id": "CC-P0-001",
+      "title": "Migrate CC/Dashboard to requirementsOperational",
+      "status": "DONE"
+    },
+    {
+      "id": "CC-P0-002",
+      "title": "Canonical frontend operationalAuthorityContract module",
+      "status": "DONE"
+    },
+    {
+      "id": "CC-P0-003",
+      "title": "Backend operational_cognition_contract dispatcher",
+      "status": "DONE"
+    },
+    {
+      "id": "CC-P0-004",
+      "title": "primaryActionResolver cognition precedence",
+      "status": "DONE"
+    },
+    {
+      "id": "CC-P0-005",
+      "title": "Today silent requirements enrichment failure",
+      "status": "DONE — enrichment notice + no silent catch"
+    },
+    {
+      "id": "CC-P0-006",
+      "title": "Remove requirementTakeActionResolver client fallback",
+      "status": "PENDING"
+    },
+    {
+      "id": "CC-P0-007",
+      "title": "CC degraded all-clear block",
+      "status": "PENDING"
+    }
+  ],
+  "P1": [
+    {
+      "id": "CC-P1-001",
+      "title": "Property Operating hub requirementsOperational injection"
+    },
+    {
+      "id": "CC-P1-002",
+      "title": "Shared operationalDebtDisclosure module for Dashboard/CC"
+    },
+    {
+      "id": "CC-P1-003",
+      "title": "Re-attach cognition on job mutation responses"
+    },
+    {
+      "id": "CC-P1-004",
+      "title": "Migrate hero/resolvers to resolveCanonicalPrimaryAction"
+    },
+    {
+      "id": "CC-P1-005",
+      "title": "Contractor/tenant cognition boundary documentation"
+    }
+  ],
+  "P2": [
+    {
+      "id": "CC-P2-001",
+      "title": "projection=operational slim payload if measured necessary"
+    },
+    {
+      "id": "CC-P2-002",
+      "title": "Predictive operational ranking enhancements"
+    }
+  ]
+}

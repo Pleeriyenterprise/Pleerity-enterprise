@@ -1,0 +1,52 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-01",
+  "goal": "Single authoritative backend cognition contract with thin frontend presentation layer",
+  "backend": {
+    "canonical_module": "backend/services/operational_cognition_contract.py",
+    "status": "IMPLEMENTED",
+    "entity_dispatch": {
+      "requirement": "build_envelope_for_requirement",
+      "work_order": "attach_cognition_to_work_order",
+      "issue": "attach_cognition_to_issue_sync",
+      "risk_signal": "attach_cognition_to_risk_signal_sync",
+      "rent_ledger": "build_envelope_for_rent_ledger",
+      "unresolved_evidence": "attach_cognition_to_unresolved_evidence"
+    },
+    "validation": "assert_cognition_read_only on envelope",
+    "next_steps": [
+      "Route new attach call sites through attach_operational_cognition dispatcher",
+      "Re-attach cognition on job mutation responses",
+      "Prefetch continuation before single-GET issue/risk cognition build"
+    ]
+  },
+  "frontend": {
+    "canonical_module": "frontend/src/utils/operationalAuthorityContract.js",
+    "status": "IMPLEMENTED",
+    "exports": [
+      "resolveCanonicalPrimaryAction",
+      "hasServerOperationalAuthority",
+      "isDegradedOperationalEntity",
+      "getListGuidance (re-export)"
+    ],
+    "next_steps": [
+      "Migrate TodayExecutionHero and primaryActionResolver to use resolveCanonicalPrimaryAction",
+      "Deprecate requirementTakeActionResolver client fallback — server-only with error state",
+      "Wire ListCognitionChip through operationalAuthorityContract only"
+    ]
+  },
+  "entity_coverage": {
+    "requirements": "FULL — projection=full + contract dispatcher",
+    "jobs": "FULL — attach on list/detail",
+    "issues": "FULL — attach + continuation (list prefetch gap on detail)",
+    "risk_signals": "FULL",
+    "rent_operations": "FULL on list API",
+    "contractor": "SEPARATE — next_actions contract; P1 parity documentation",
+    "tenant": "SEPARATE — tenantPortalTrust; P1 boundary doc",
+    "admin_unresolved": "FULL"
+  },
+  "non_goals": [
+    "Huge rewrite of all pages",
+    "New parallel cognition system on frontend",
+    "projection=operational without measured payload need"
+  ]
+}

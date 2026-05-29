@@ -118,12 +118,13 @@ export default function ClientCommandCenterPage() {
 
   const loadPortalRequirements = useCallback(() => {
     if (!isClientUser) return;
-    fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
-      clientAPI.getRequirements().then((r) => r.data),
+    fetchOperational(OPERATIONAL_CACHE_KEYS.requirementsOperational, () =>
+      clientAPI.getRequirements({ projection: 'full' }).then((r) => r.data),
     )
-      .then((data) =>
-        setPortalRequirementsForInbox(Array.isArray(data?.requirements) ? data.requirements : []),
-      )
+      .then((hit) => {
+        const payload = hit?.data;
+        setPortalRequirementsForInbox(Array.isArray(payload?.requirements) ? payload.requirements : []);
+      })
       .catch(() => setPortalRequirementsForInbox([]));
   }, [isClientUser]);
 

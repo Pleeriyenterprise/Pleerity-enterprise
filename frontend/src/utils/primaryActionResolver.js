@@ -1,7 +1,8 @@
 /**
  * Outcome-based primary actions for client portal.
- * When backend supplies operational_continuation, that is authoritative over create/start verbs.
+ * When backend supplies operational_cognition or operational_continuation, those are authoritative.
  */
+import { getOperationalCognition, heroPrimaryFromCognition } from './operationalCognition';
 
 export const OUTCOME_PRIMARY = {
   startInspectionJob: 'Start inspection job',
@@ -30,6 +31,15 @@ export function classifyFlaggedSignal(signal) {
  * @returns {{ key: string, label: string, url?: string, continuation?: boolean }}
  */
 export function resolveRiskSignalPrimaryKey(signal, hasMaintenanceWorkflows, hasComplianceEngine) {
+  const fromCognition = heroPrimaryFromCognition(getOperationalCognition(signal));
+  if (fromCognition?.label) {
+    return {
+      key: fromCognition.key || 'next_action',
+      label: fromCognition.label,
+      url: fromCognition.url,
+      continuation: fromCognition.continuation,
+    };
+  }
   const cont = signal?.operational_continuation;
   if (cont?.has_active_lineage && cont?.continuation_cta) {
     const cta = cont.continuation_cta;
@@ -64,6 +74,15 @@ export function resolveRiskSignalPrimaryKey(signal, hasMaintenanceWorkflows, has
  * @returns {{ key: string, label: string, url?: string, continuation?: boolean }|null}
  */
 export function resolveIssuePrimaryAction(issue) {
+  const fromCognition = heroPrimaryFromCognition(getOperationalCognition(issue));
+  if (fromCognition?.label) {
+    return {
+      key: fromCognition.key || 'next_action',
+      label: fromCognition.label,
+      url: fromCognition.url,
+      continuation: fromCognition.continuation,
+    };
+  }
   const cont = issue?.operational_continuation;
   if (cont?.has_active_lineage && cont?.continuation_cta) {
     const cta = cont.continuation_cta;

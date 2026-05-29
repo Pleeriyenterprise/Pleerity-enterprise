@@ -1,0 +1,90 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-01",
+  "cognition_version": "operational_cognition_v1",
+  "guidance_version": "requirement_guidance_v1",
+  "take_action_contract": "requirement_take_action_v1",
+  "schema_ref": "backend/docs/audit/operational_cognition_envelope_v1/cognition_envelope_schema.json",
+  "contracts": [
+    {
+      "contract_id": "operational_cognition_v1",
+      "authoritative_source": "backend/services/operational_cognition_service.py",
+      "fields": ["primary_action", "list_guidance", "continuation_state", "degraded_state", "stale_state", "operational_truth_flags", "requirement_guidance_v1"],
+      "consumers": ["ListCognitionChip", "NextActionHero", "TodayExecutionHero", "operationalAuthorityContract.js"],
+      "projection_dependency": "Attached on entity routes; requirements via projection=full only",
+      "duplication_risks": ["getListGuidance fallback chain", "primaryActionResolver create verbs"],
+      "frontend_overrides": ["getListGuidance → take_action/business_actions when list_guidance absent"]
+    },
+    {
+      "contract_id": "take_action",
+      "authoritative_source": "backend/services/requirement_action_resolver.py → enrich_requirement_dict",
+      "fields": ["primary", "secondary", "supporting_external_links", "suppressed", "contract"],
+      "consumers": ["requirementTakeActionResolver.js", "ctaRegistry.js", "today business_actions pipeline"],
+      "projection_dependency": "projection=full only",
+      "duplication_risks": ["DUAL_TAKE_ACTION_RESOLVER — requirementTakeActionResolver client fallback"],
+      "frontend_overrides": ["resolveRequirementAction client mirror when take_action missing"]
+    },
+    {
+      "contract_id": "operational_continuation",
+      "authoritative_source": "backend/services/operational_continuation_service.py",
+      "fields": ["has_active_lineage", "continuation_cta", "continuation_state", "user_safe_reason"],
+      "consumers": ["primaryActionResolver.js", "build_envelope_for_issue/risk_signal", "operationalAuthorityContract.js"],
+      "projection_dependency": "Prefetched on issue list; may be stale on single-GET",
+      "duplication_risks": ["primaryActionResolver create_work_order when continuation missing"],
+      "frontend_overrides": ["resolveIssuePrimaryAction create job fallback — LEGACY after cognition centralisation"]
+    },
+    {
+      "contract_id": "business_actions",
+      "authoritative_source": "backend/services/today_projection_service.py → build_business_actions_for_task",
+      "fields": ["label", "route", "intent", "primary"],
+      "consumers": ["ClientTasksPage", "getListGuidance fallback", "operationalAuthorityContract.js"],
+      "projection_dependency": "Today items API; merged with requirementsOperational for cognition",
+      "duplication_risks": ["Parallel to take_action on requirement tasks"],
+      "frontend_overrides": ["None when business_actions present — server-sourced"]
+    },
+    {
+      "contract_id": "next_actions",
+      "authoritative_source": "backend/services/compliance_workflow_service.py → next_job_actions / contractor_next_job_actions",
+      "fields": ["id", "label", "hint", "section"],
+      "consumers": ["build_envelope_for_job", "ClientJobDetailPage", "contractorWorkflow.js"],
+      "projection_dependency": "Job GET routes; not on mutation responses",
+      "duplication_risks": ["Contractor portal uses next_actions without operational_cognition envelope"],
+      "frontend_overrides": ["contractorWorkflow client next-step copy"]
+    },
+    {
+      "contract_id": "requirement_guidance_v1",
+      "authoritative_source": "operational_cognition_service.build_requirement_guidance_v1",
+      "fields": ["recommended_next_step", "progression_steps", "strongest_evidence_method", "operational_risk_flags"],
+      "consumers": ["NextActionHero", "RequirementEvidenceGuidancePanel", "ComplianceEvidenceResolveModal"],
+      "projection_dependency": "Nested in operational_cognition on projection=full",
+      "duplication_risks": ["todayTaskOperationalGuidance client copy when guidance absent"],
+      "frontend_overrides": ["todayTaskOperationalGuidance — SAFE_PRESENTATION only"]
+    },
+    {
+      "contract_id": "operational_truth_flags",
+      "authoritative_source": "operational_cognition_service envelope builders",
+      "fields": ["uploaded_not_verified", "submitted_not_compliant", "assigned_not_fixed", "completed_not_compliant", "acknowledged_not_resolved"],
+      "consumers": ["truthWarningsFromCognition", "NextActionHero"],
+      "projection_dependency": "Inside operational_cognition",
+      "duplication_risks": ["Client resolvedRequirementViewModel semantics must align"],
+      "frontend_overrides": ["None — display only"]
+    },
+    {
+      "contract_id": "property_identity",
+      "authoritative_source": "portfolio property records; getPropertyDisplayName.js",
+      "fields": ["nickname", "name", "address lines"],
+      "consumers": ["All operational surfaces"],
+      "projection_dependency": "Independent of requirements projection",
+      "duplication_risks": ["property_label on tasks vs getPropertyDisplayName drift"],
+      "frontend_overrides": ["getPropertyDisplayName formatting only"]
+    }
+  ],
+  "centralisation_gaps": [
+    "Today items lack operational_cognition until merged with requirementsOperational",
+    "CC/Dashboard were on projection=list — REMEDIATED in this programme for portalRequirementsForInbox",
+    "Job mutations return next_actions without cognition re-attach",
+    "requirementTakeActionResolver still mirrors Python resolver client-side",
+    "Contractor/tenant outside cognition v1 envelope"
+  ],
+  "backend_contract_dispatcher": "backend/services/operational_cognition_contract.py",
+  "frontend_contract_module": "frontend/src/utils/operationalAuthorityContract.js"
+}

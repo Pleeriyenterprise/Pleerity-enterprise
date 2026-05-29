@@ -1,0 +1,20 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-01",
+  "classification": "PARTIAL",
+  "secondary_risks": ["COGNITION_FRAGMENTATION_RISK"],
+  "evaluated_at_utc": "2026-05-29T15:39:56Z",
+  "rationale": {
+    "canonical_contract_layer": "IMPLEMENTED in repo — operational_cognition_contract.py + operationalAuthorityContract.js",
+    "projection_centralisation": "CC/Dashboard migrated in code; staging bundle predates deploy",
+    "runtime_api": "projection=full includes cognition; list correctly defers — jobs/issues/risk attach cognition",
+    "runtime_browser": "Today hero + 10 cognition chips; no error boundary; enrichment notice not triggered",
+    "legacy_fallbacks": "requirementTakeActionResolver client mirror and CC portfolioVerdict remain",
+    "not_trust_hardened": "Dangerous frontend authority paths not fully removed; deploy continuity pending"
+  },
+  "blockers": [
+    "requirementTakeActionResolver LEGACY_FALLBACK must be removed",
+    "CC_DEGRADED_FRONTEND all-clear compression",
+    "staging_bundle_predates_cc_dashboard_operational_projection"
+  ],
+  "push_audit_artifacts_allowed": true
+}

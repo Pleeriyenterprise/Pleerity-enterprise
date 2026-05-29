@@ -1,0 +1,46 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-01",
+  "centralised_helpers": {
+    "operational_debt_disclosure": {
+      "module": "frontend/src/utils/todayExecutionWorkspace.js — buildFalseEmptyStateDisclosure",
+      "status": "EXISTS",
+      "surfaces": ["Today"],
+      "gap": "Not yet shared module for Dashboard/CC"
+    },
+    "degraded_entity_detection": {
+      "module": "frontend/src/utils/operationalAuthorityContract.js — isDegradedOperationalEntity",
+      "status": "IMPLEMENTED",
+      "consumes": ["operational_cognition.degraded_state", "stale_state", "list_guidance warnings"]
+    },
+    "enrichment_failure_disclosure": {
+      "module": "ClientTasksPage — today-requirements-enrichment-notice",
+      "status": "IMPLEMENTED",
+      "trigger": "requirementsOperational fetch missing requirements array"
+    },
+    "continuation_overflow": {
+      "module": "today-bucket-continuation-notice",
+      "status": "EXISTS",
+      "trigger": "bucket_continuation totals"
+    },
+    "cc_pressure_degraded": {
+      "module": "command-center-compliance-degraded strip",
+      "status": "PARTIAL",
+      "gap": "all-clear verdict may still compress degraded pressure"
+    }
+  },
+  "design_targets": {
+    "shared_module_proposal": "frontend/src/utils/operationalDebtDisclosure.js",
+    "exports": [
+      "buildOperationalDebtDisclosure({ visibleCount, bucketContinuation, commandCenterDepth, enrichmentFailed })",
+      "isFalseCalmState(disclosure)",
+      "shouldShowDegradedBanner(entityOrBundle)"
+    ],
+    "status": "PROPOSED_P1"
+  },
+  "verification": {
+    "today_false_calm": "VERIFIED in prelaunch_today_execution_workspace_01",
+    "cc_degraded_calm": "RISK — CC_DEGRADED_FRONTEND",
+    "dashboard_empty_widgets": "UNPROTECTED",
+    "stale_cache_masquerade": "MITIGATED by enrichment failure notice on Today"
+  }
+}

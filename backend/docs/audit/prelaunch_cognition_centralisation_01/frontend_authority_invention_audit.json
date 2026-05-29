@@ -1,0 +1,80 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-01",
+  "principle": "Frontend formats authority; must not invent authority.",
+  "paths": [
+    {
+      "path": "frontend/src/utils/operationalAuthorityContract.js",
+      "classification": "SAFE_PRESENTATION",
+      "notes": "Canonical contract — resolveCanonicalPrimaryAction from server envelopes only"
+    },
+    {
+      "path": "frontend/src/utils/operationalCognition.js — getListGuidance",
+      "classification": "SAFE_PRESENTATION",
+      "notes": "Subordinate fallbacks to take_action/business_actions — server field labels only"
+    },
+    {
+      "path": "frontend/src/utils/requirementTakeActionResolver.js — resolveRequirementAction",
+      "classification": "LEGACY_FALLBACK",
+      "notes": "Client mirror of Python resolver when take_action missing — MUST_REMOVE long-term",
+      "severity": "HIGH"
+    },
+    {
+      "path": "frontend/src/utils/primaryActionResolver.js — resolveIssuePrimaryAction create verb",
+      "classification": "LEGACY_FALLBACK",
+      "notes": "Create maintenance job when no continuation — now preceded by operational_cognition check",
+      "severity": "MEDIUM",
+      "remediation_status": "PARTIAL — cognition precedence added"
+    },
+    {
+      "path": "frontend/src/utils/primaryActionResolver.js — resolveRiskSignalPrimaryKey suggested_actions",
+      "classification": "LEGACY_FALLBACK",
+      "notes": "Derives keys from suggested_actions — now preceded by operational_cognition check",
+      "severity": "MEDIUM",
+      "remediation_status": "PARTIAL"
+    },
+    {
+      "path": "frontend/src/utils/ctaRegistry.js — resolveTaskCta",
+      "classification": "SAFE_PRESENTATION",
+      "notes": "Routes from metadata.take_action and CTA_REGISTRY — no label invention"
+    },
+    {
+      "path": "frontend/src/utils/clientCommandCenter.js — portfolioVerdict",
+      "classification": "DANGEROUS_AUTHORITY_INVENTION",
+      "notes": "Compresses CC verdict; may hide pressure_degraded",
+      "severity": "BREAK"
+    },
+    {
+      "path": "frontend/src/utils/todayTaskOperationalGuidance.js",
+      "classification": "SAFE_FORMATTING",
+      "notes": "Why/what copy when server fields absent — not CTA authority"
+    },
+    {
+      "path": "frontend/src/pages/ClientTasksPage.js — sanitizeTodayCtaLabel",
+      "classification": "SAFE_FORMATTING",
+      "notes": "Display label cleanup only"
+    },
+    {
+      "path": "frontend/src/utils/resolvedRequirementViewModel.js",
+      "classification": "SAFE_PRESENTATION",
+      "notes": "Lifecycle semantic projection aligned with server states"
+    },
+    {
+      "path": "frontend/src/utils/contractorWorkflow.js",
+      "classification": "SAFE_PRESENTATION",
+      "notes": "Separate trust boundary — next_actions from contractor API"
+    },
+    {
+      "path": "frontend/src/api/client.js — getRequirements default projection=list",
+      "classification": "DANGEROUS_AUTHORITY_INVENTION",
+      "notes": "Footgun for new surfaces — authority pages must override to full",
+      "severity": "HIGH",
+      "remediation_status": "MITIGATED on Today/Requirements/CC/Dashboard portalRequirements paths"
+    }
+  ],
+  "summary": {
+    "must_remove": ["requirementTakeActionResolver client fallback path"],
+    "legacy_fallback_remaining": 2,
+    "dangerous_remaining": 1,
+    "safe_formatting": 5
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "captured_at": "2026-05-29T15:39:56.446025+00:00",
+  "api_projection_parity": {
+    "captured_at": "2026-05-29T15:38:28.893732+00:00",
+    "list_count": 47,
+    "full_count": 49,
+    "list_has_cognition": false,
+    "full_has_cognition": true,
+    "list_enrichment_deferred": null,
+    "full_list_guidance_label": "Upload valid evidence document",
+    "projection_drift_risk": true
+  },
+  "api_entity_cognition": {
+    "captured_at": "2026-05-29T15:38:28.893732+00:00",
+    "surfaces": [
+      {
+        "surface": "jobs",
+        "has_operational_cognition": true,
+        "list_guidance": true
+      },
+      {
+        "surface": "issues",
+        "has_operational_cognition": true,
+        "has_continuation": true
+      },
+      {
+        "surface": "risk_signals",
+        "has_operational_cognition": true
+      }
+    ]
+  },
+  "browser": {
+    "captured_at": "2026-05-29T15:38:40.055856+00:00",
+    "login_ok": true,
+    "bundle_has_authority_contract": false,
+    "today_hero": true,
+    "today_cognition_chips": 10,
+    "today_enrichment_notice": false,
+    "requirements_operational_in_bundle": false,
+    "false_calm_notice": false,
+    "error_boundary": false
+  },
+  "contradictions": [],
+  "notes": [
+    "CC/Dashboard migrated to requirementsOperational in this programme",
+    "primaryActionResolver now prefers operational_cognition before continuation/create fallbacks"
+  ]
+}
