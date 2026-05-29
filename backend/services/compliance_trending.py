@@ -439,22 +439,14 @@ async def get_score_change_explanation(
             })
             explanations.append(f"{abs(expiring_change)} item(s) no longer expiring soon")
         
-        # Generate explanation text
-        if score_change > 0:
-            direction = "improved"
-            emoji = "📈"
-        elif score_change < 0:
-            direction = "decreased"
-            emoji = "📉"
-        else:
-            direction = "remained stable"
-            emoji = "➡️"
-        
-        if explanations:
-            explanation_text = f"{emoji} Your score {direction} by {abs(score_change)} points in the last {compare_days} days. "
-            explanation_text += "Key changes: " + "; ".join(explanations) + "."
-        else:
-            explanation_text = f"{emoji} Your score {direction} by {abs(score_change)} points in the last {compare_days} days."
+        # Generate explanation text (trust-language governed — causal, no point arithmetic)
+        from services.trust_language_governance import build_score_trend_explanation
+
+        explanation_text = build_score_trend_explanation(
+            compare_days=compare_days,
+            score_change=score_change,
+            change_summaries=explanations,
+        )
         
         return {
             "has_comparison": True,

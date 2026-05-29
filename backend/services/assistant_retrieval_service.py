@@ -311,28 +311,24 @@ async def get_portal_facts(
     }
 
     # score_explanation: per-property key reasons + trend (for "why did my score drop/increase")
+    from services.trust_language_governance import (
+        filter_assistant_score_context,
+        operational_score_key_reasons,
+    )
+
     by_property: List[Dict[str, Any]] = []
     for p in properties:
         pid = p.get("property_id")
         breakdown = p.get("compliance_breakdown") or {}
         score = p.get("compliance_score")
-        reasons: List[str] = []
-        if isinstance(breakdown, dict):
-            if breakdown.get("status_score") is not None and breakdown.get("status_score") < 100:
-                reasons.append("Some requirements are not yet compliant (status score {:.0f}%)".format(breakdown["status_score"]))
-            if breakdown.get("expiry_score") is not None and breakdown.get("expiry_score") < 100:
-                reasons.append("Upcoming or past expiries affecting score (expiry score {:.0f}%)".format(breakdown["expiry_score"]))
-            if breakdown.get("document_score") is not None and breakdown.get("document_score") < 100:
-                reasons.append("Document coverage below 100% (document score {:.0f}%)".format(breakdown["document_score"]))
-            if breakdown.get("overdue_penalty_score") is not None and breakdown.get("overdue_penalty_score") < 100:
-                reasons.append("Overdue items are reducing the score")
+        reasons = operational_score_key_reasons(breakdown)
         if not reasons and score is not None:
-            reasons.append("Score is based on stored compliance breakdown for this property.")
+            reasons.append("Your score reflects current requirements and evidence on file for this property.")
         by_property.append({
             "property_id": pid,
             "nickname": p.get("nickname") or pid,
             "score": score,
-            "key_reasons": reasons if reasons else [],
+            "key_reasons": reasons,
         })
     trend_text: Optional[str] = None
     try:
@@ -342,10 +338,10 @@ async def get_portal_facts(
             trend_text = trend_data.get("explanation", "").strip()
     except Exception as e:
         logger.debug("Score trend explanation not available for assistant context: %s", e)
-    score_explanation: Dict[str, Any] = {
+    score_explanation: Dict[str, Any] = filter_assistant_score_context({
         "by_property": by_property,
         "trend": trend_text,
-    }
+    })
 
     return {
         "client_summary": summary,

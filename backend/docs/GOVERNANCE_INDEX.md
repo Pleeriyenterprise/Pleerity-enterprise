@@ -54,6 +54,7 @@ Runtime Authority Areas: routing, inventory, remediation-map
 | **Launch / pilot constraints** | `launch/PILOT_LAUNCH_GOVERNANCE.md` (TIER_1 acceptance) + `launch/LAUNCH_AUTHORITY_TRACKER.md` (TIER_1 status) | Feature flags, activation registry |
 | **Closed-loop programme (streams A–F)** | `CLOSED_LOOP_COMPLIANCE_ARCHITECTURE_TRACKER.md` (TIER_1 tracker) + `CLOSED_LOOP_ARCHITECTURAL_GAP_ANALYSIS.md` (TIER_3 audit) | Per-stream named authorities in tracker |
 | **Presentation / copy** | `docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md` (TIER_1 UX semantics) | `presentationLanguage.js`, workspace copy modules |
+| **Trust-language / operational explanations** | `docs/governance/TRUST_LANGUAGE_GOVERNANCE.md` (TIER_1) | `trust_language_governance.py`, `trustLanguageGovernance.js`, `scoring_explanation_copy.py`, `scoringExplanationCopy.js` |
 | **Plan / entitlements** | `plan_registry.py` + `docs/governance/PLAN_GATING_UX_GOVERNANCE.md` (TIER_1 commercial) | `enforce_feature`, `FEATURE_MATRIX` |
 
 ---
@@ -226,6 +227,7 @@ Runtime Authority Areas: routing, inventory, remediation-map
 
 | Path | Tier | Notes |
 |------|------|-------|
+| `docs/governance/TRUST_LANGUAGE_GOVERNANCE.md` | TIER_1 | Scoring/operational explanation copy, causal language, AI constraints, drift prevention |
 | `docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md` | TIER_1 | Copy/CTA semantics |
 | `docs/governance/PLAN_GATING_UX_GOVERNANCE.md` | TIER_1 | Entitlement UX |
 | `docs/governance/DESIGN_SYSTEM_GOVERNANCE.md` | TIER_2 | Visual system |

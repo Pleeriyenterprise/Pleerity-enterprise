@@ -5,15 +5,9 @@ from services.scoring_explanation_copy import (
     KB_COMPLIANCE_SCORE_EXPLAINED,
     ASSISTANT_HOW_SCORING_WORKS,
 )
-
-FORBIDDEN = (
-    "scoring engine",
-    "weighted contributions",
-    "bucket emphasis",
-    "credit in bucket",
-    "CVP Score",
-    "35%",
-    "point(s)",
+from services.trust_language_governance import (
+    FORBIDDEN_ENGINEERING_TERMS,
+    validate_customer_copy,
 )
 
 
@@ -31,6 +25,5 @@ def test_email_score_delta_line_directional():
 
 def test_kb_and_assistant_copy_no_engineering_leaks():
     for blob in (KB_COMPLIANCE_SCORE_EXPLAINED, ASSISTANT_HOW_SCORING_WORKS):
-        low = blob.lower()
-        for phrase in FORBIDDEN:
-            assert phrase.lower() not in low, phrase
+        violations = validate_customer_copy(blob, allow_vague=True)
+        assert not violations, violations

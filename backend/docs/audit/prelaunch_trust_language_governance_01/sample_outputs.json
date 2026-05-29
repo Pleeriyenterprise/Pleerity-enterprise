@@ -1,0 +1,9 @@
+{
+  "trend_sample": "Your compliance score decreased over the last 7 days. Main changes: 1 new overdue item(s).",
+  "reasons_sample": [
+    "Some requirements still need accepted evidence or are not yet in date.",
+    "Some required items still need accepted evidence."
+  ],
+  "violations": [],
+  "pass": true
+}

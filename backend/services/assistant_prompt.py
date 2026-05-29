@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any
 
 from utils.public_app_url import get_public_app_url
+from services.trust_language_governance import ASSISTANT_TRUST_LANGUAGE_RULES
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +42,10 @@ You will be given:
 - account_state: {payment_state, provisioning_status, portal_user_exists, activation_email_status, password_set}
 - portfolio_summary: {property_count, requirement_count, document_count, overdue_requirements_count, expiring_soon_count, compliant_count, score_portfolio, scores_by_property}
 - notification_prefs: {email_enabled, sms_enabled, reminder_timing_days, recipients}
-- score_explanation: {by_property: [{property_id, nickname, score, key_reasons}], trend: optional text}. Use this to explain how scoring works and why a score dropped or increased for this user.
+- score_explanation: {by_property: [{property_id, nickname, score, key_reasons}], trend: optional text}. Use key_reasons as operational hints (accepted evidence, overdue, expiring, maintenance). Do not repeat internal component names or point deltas.
 - kb_snippets: curated markdown excerpts
+
+""" + ASSISTANT_TRUST_LANGUAGE_RULES + """
 
 CORE BEHAVIOUR
 A) Always anchor answers to portal truth:

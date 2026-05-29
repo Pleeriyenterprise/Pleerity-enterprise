@@ -154,21 +154,4 @@ export function scoreAreaDescription(key) {
 }
 
 /** Terms that must not appear in customer-facing scoring explanation copy. */
-export const SCORING_EXPLANATION_FORBIDDEN_TERMS = [
-  'weighted contributions',
-  're-aggregation',
-  'scoring engine',
-  'bucket emphasis',
-  'credit within each bucket',
-  'maintenance confidence',
-  'operational responsiveness',
-  '100 / 70 / 30 / 0',
-  'document-backed operational summary',
-  'risk-style weighting',
-  'hand-tuned percentage',
-  'design guide',
-  'rigid formula',
-  'approximate emphasis',
-  '~60%',
-  'points earned',
-];
+export { SCORING_EXPLANATION_FORBIDDEN_TERMS } from './trustLanguageGovernance';

@@ -1,0 +1,28 @@
+{
+  "programme": "PRELAUNCH-TRUST-LANGUAGE-GOVERNANCE-01",
+  "classification": "TRUST_GOVERNED",
+  "authority_audit": {
+    "registry_entries": 14,
+    "explainability_tiers": [
+      "tier_1_casual",
+      "tier_2_active",
+      "tier_3_professional"
+    ],
+    "missing_targets": [],
+    "pass": true
+  },
+  "governance_tests": {
+    "pytest_exit_code": 0,
+    "pass": true
+  },
+  "sample_outputs": {
+    "trend_sample": "Your compliance score decreased over the last 7 days. Main changes: 1 new overdue item(s).",
+    "reasons_sample": [
+      "Some requirements still need accepted evidence or are not yet in date.",
+      "Some required items still need accepted evidence."
+    ],
+    "violations": [],
+    "pass": true
+  },
+  "captured_at": "2026-05-29T23:42:53.788094+00:00"
+}

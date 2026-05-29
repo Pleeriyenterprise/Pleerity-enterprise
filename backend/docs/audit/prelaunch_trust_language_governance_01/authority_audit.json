@@ -1,0 +1,10 @@
+{
+  "registry_entries": 14,
+  "explainability_tiers": [
+    "tier_1_casual",
+    "tier_2_active",
+    "tier_3_professional"
+  ],
+  "missing_targets": [],
+  "pass": true
+}

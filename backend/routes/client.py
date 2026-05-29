@@ -455,21 +455,17 @@ async def get_compliance_score_explanation(
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
             score = prop.get("compliance_score")
             breakdown = prop.get("compliance_breakdown") or {}
-            reasons = []
-            if breakdown.get("status_score") is not None and breakdown.get("status_score") < 100:
-                reasons.append("Some requirements are not yet compliant (status score {:.0f}%)".format(breakdown["status_score"]))
-            if breakdown.get("expiry_score") is not None and breakdown.get("expiry_score") < 100:
-                reasons.append("Upcoming or past expiries affecting score (expiry score {:.0f}%)".format(breakdown["expiry_score"]))
-            if breakdown.get("document_score") is not None and breakdown.get("document_score") < 100:
-                reasons.append("Document coverage below 100% (document score {:.0f}%)".format(breakdown["document_score"]))
-            if breakdown.get("overdue_penalty_score") is not None and breakdown.get("overdue_penalty_score") < 100:
-                reasons.append("Overdue items are reducing the score")
+            from services.trust_language_governance import operational_score_key_reasons
+
+            reasons = operational_score_key_reasons(breakdown)
             return {
                 "property_id": property_id,
                 "score": score,
                 "breakdown_summary": breakdown,
                 "compliance_last_calculated_at": prop.get("compliance_last_calculated_at"),
-                "key_reasons": reasons if reasons else ["Score is based on stored compliance breakdown for this property."],
+                "key_reasons": reasons if reasons else [
+                    "Your score reflects current requirements and evidence on file for this property."
+                ],
             }
         from services.compliance_trending import get_score_change_explanation
         compare_days = min(compare_days, 30)
