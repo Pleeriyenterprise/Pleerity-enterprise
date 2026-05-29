@@ -38,12 +38,20 @@ FORBIDDEN = [
     r"CVP Score v",
 ]
 
-REQUIRED = [
-    r"Understanding your compliance score",
-    r"How you.?re doing in each area|What affects this score",
-    r"Accepted evidence",
-    r"Not legal advice",
-]
+REQUIRED_BY_PAGE = {
+    "dashboard": [
+        r"Understanding your compliance score",
+        r"What affects this score\?|How you.?re doing in each area",
+        r"Accepted evidence",
+        r"Not legal advice",
+    ],
+    "compliance_score": [
+        r"How This Score is Calculated",
+        r"Guidance based on your records",
+        r"Not legal advice",
+        r"Core legal requirements|Accepted evidence",
+    ],
+}
 
 
 def _utc() -> str:
@@ -64,39 +72,55 @@ def browser_checks() -> dict:
         page = p.chromium.launch(headless=True).new_context(viewport={"width": 1440, "height": 900}).new_page()
         page.goto(f"{FE}/login/client", timeout=120000)
         page.locator("#email").fill(EMAIL)
-        page.locator("#password").fill(PW)
+        page.locator("#password").fill(pw)
         page.locator('button[type="submit"]').click()
-        page.wait_for_timeout(5000)
+        try:
+            page.wait_for_url(re.compile(r"/dashboard|/command-centre|/today|/compliance-score"), timeout=45000)
+        except Exception:
+            pass
+        page.wait_for_timeout(3000)
 
         for path, key in [("/dashboard", "dashboard"), ("/compliance-score", "compliance_score")]:
             page.goto(f"{FE}{path}", wait_until="networkidle", timeout=120000)
-            page.wait_for_timeout(4000)
+            if key == "dashboard":
+                page.wait_for_selector('[data-testid="client-dashboard"]', timeout=90000)
+            else:
+                page.wait_for_selector('[data-testid="compliance-score-page"]', timeout=90000)
+            page.wait_for_timeout(5000)
+            if key == "dashboard":
+                toggle = page.locator('[data-testid="toggle-score-explanation"]')
+                if toggle.count():
+                    toggle.click()
+                    page.wait_for_timeout(800)
+                fw_btn = page.get_by_role("button", name="Understanding your compliance score")
+                if fw_btn.count():
+                    fw_btn.click()
+                    page.wait_for_timeout(1000)
+            if key == "compliance_score":
+                meth = page.locator('[data-testid="score-methodology"]')
+                if meth.count():
+                    meth.click()
+                    page.wait_for_timeout(1000)
+                    adv = page.get_by_text("More detail", exact=True)
+                    if adv.count():
+                        adv.first.click()
+                        page.wait_for_timeout(800)
             text = page.locator("body").inner_text()
             out["pages"][key] = {"path": path, "chars": len(text)}
             for pat in FORBIDDEN:
                 if re.search(pat, text, re.I):
                     out["forbidden_hits"].append({"page": key, "pattern": pat})
-            for pat in REQUIRED:
+            for pat in REQUIRED_BY_PAGE.get(key, []):
                 if not re.search(pat, text, re.I):
                     out["required_missing"].append({"page": key, "pattern": pat})
 
-        page.goto(f"{FE}/dashboard", wait_until="networkidle", timeout=120000)
-        fw = page.get_by_text(re.compile(r"Understanding your compliance score", re.I))
-        if fw.count():
-            fw.first.click()
-            page.wait_for_timeout(1000)
-            fw_text = page.locator("body").inner_text()
-            out["pages"]["framework_expanded"] = True
-            for pat in FORBIDDEN:
-                if re.search(pat, fw_text, re.I):
-                    out["forbidden_hits"].append({"page": "framework_expanded", "pattern": pat})
-
         page.goto(f"{FE}/compliance-score", wait_until="networkidle", timeout=120000)
+        page.wait_for_selector('[data-testid="compliance-score-page"]', timeout=90000)
         meth = page.locator('[data-testid="score-methodology"]')
         if meth.count():
             meth.click()
             page.wait_for_timeout(1000)
-            adv = page.get_by_text(re.compile(r"More detail", re.I))
+            adv = page.get_by_text("More detail", exact=True)
             if adv.count():
                 adv.first.click()
                 page.wait_for_timeout(800)
@@ -109,7 +133,8 @@ def browser_checks() -> dict:
                 out["forbidden_hits"].append({"page": "methodology_expanded", "pattern": "approximate weight split"})
 
         page.goto(f"{FE}/compliance-score", wait_until="networkidle", timeout=120000)
-        defs = page.get_by_role("button", name=re.compile(r"View definitions", re.I))
+        page.wait_for_selector('[data-testid="compliance-score-page"]', timeout=90000)
+        defs = page.get_by_role("button", name="View definitions")
         if defs.count():
             defs.first.click()
             page.wait_for_timeout(800)

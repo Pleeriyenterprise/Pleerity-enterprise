@@ -1,0 +1,22 @@
+{
+  "programme": "PRELAUNCH-SCORING-EXPLANATION-TRUST-REWRITE-01",
+  "classification": "TRUST_SAFE",
+  "blockers": [],
+  "browser": {
+    "captured_at": "2026-05-29T22:32:27.086415+00:00",
+    "pages": {
+      "dashboard": {
+        "path": "/dashboard",
+        "chars": 8259
+      },
+      "compliance_score": {
+        "path": "/compliance-score",
+        "chars": 11622
+      },
+      "methodology_expanded": true,
+      "definitions_modal": true
+    },
+    "forbidden_hits": [],
+    "required_missing": []
+  }
+}
