@@ -1,0 +1,19 @@
+{
+  "generic_upload_count": 6,
+  "specific_cta_labels": [
+    "Upload valid gas safety certificate",
+    "Upload EICR Certificate",
+    "Upload document",
+    "Upload valid gas safety certificate",
+    "Upload EICR Certificate",
+    "Upload HMO Licence",
+    "Upload document",
+    "Upload valid gas safety certificate",
+    "Upload EICR Certificate",
+    "Upload HMO Licence",
+    "Upload document",
+    "Upload valid gas safety certificate"
+  ],
+  "specific_cta_count": 9,
+  "gate_pass": true
+}

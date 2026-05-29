@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-05-29T08:13:20.241005+00:00",
+  "backend_commit": "5d71bac1f6d493d5e682592ca01ee84a7335c4d8",
+  "backend_commit_prefix_ok": true,
+  "frontend_markers": {
+    "requirementsOperational_cache_key": true,
+    "list_cognition_chip": true,
+    "pickWhyItMattersForDisplay": true,
+    "projection_full_param": true
+  },
+  "gate_pass": true
+}

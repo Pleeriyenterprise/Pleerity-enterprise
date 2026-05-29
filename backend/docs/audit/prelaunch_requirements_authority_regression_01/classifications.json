@@ -1,8 +1,6 @@
 {
-  "classification": "PARTIAL",
-  "blockers": [
-    "generic_upload_document_drift"
-  ],
-  "push_audit_artifacts_allowed": false,
-  "evaluated_at": "2026-05-29T07:50:29.174012+00:00"
+  "classification": "VERIFIED_OPERATIONALLY",
+  "blockers": [],
+  "push_audit_artifacts_allowed": true,
+  "evaluated_at": "2026-05-29T08:14:08.749459+00:00"
 }

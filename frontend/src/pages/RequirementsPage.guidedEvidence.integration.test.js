@@ -113,6 +113,9 @@ describe('RequirementsPage guided evidence modal', () => {
     renderWithGuided();
 
     await screen.findByText('1', { selector: '.tabular-nums' });
+    expect(clientApiModule.clientAPI.getRequirements).toHaveBeenCalledWith(
+      expect.objectContaining({ projection: 'full' }),
+    );
     fireEvent.click(await screen.findByRole('button', { name: /Test property/i }));
 
     const guidedBtn = await screen.findByTestId('requirements-guided-open-req-guided-1');

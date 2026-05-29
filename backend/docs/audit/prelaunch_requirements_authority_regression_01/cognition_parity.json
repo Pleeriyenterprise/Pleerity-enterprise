@@ -1,0 +1,8 @@
+{
+  "cognition_chip_count": 49,
+  "runtime_api": {
+    "show_compliance_estimates_notice": true,
+    "compliance_estimates_notice_text": "We've created estimated compliance dates based on standard regulatory cycles and your property setup. Upload your documents to confirm dates and improve accuracy."
+  },
+  "gate_pass": true
+}

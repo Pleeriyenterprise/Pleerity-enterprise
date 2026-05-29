@@ -1,9 +1,42 @@
 {
-  "captured_at": "2026-05-29T07:50:00.038676+00:00",
-  "gate_pass": false,
-  "generic_upload_count": 0,
+  "captured_at": "2026-05-29T08:13:22.728221+00:00",
+  "login_ok": true,
+  "page_loaded": true,
+  "generic_upload_count": 6,
   "no_description_count": 0,
-  "specific_cta_count": 0,
+  "specific_cta_labels": [
+    "Upload valid gas safety certificate",
+    "Upload EICR Certificate",
+    "Upload document",
+    "Upload valid gas safety certificate",
+    "Upload EICR Certificate",
+    "Upload HMO Licence",
+    "Upload document",
+    "Upload valid gas safety certificate",
+    "Upload EICR Certificate",
+    "Upload HMO Licence",
+    "Upload document",
+    "Upload valid gas safety certificate"
+  ],
+  "cognition_chip_count": 49,
+  "requirement_row_count": 49,
+  "network_capture": {
+    "presentation": {
+      "show_compliance_estimates_notice": true,
+      "compliance_estimates_notice_text": "We've created estimated compliance dates based on standard regulatory cycles and your property setup. Upload your documents to confirm dates and improve accuracy."
+    },
+    "row_count": 49,
+    "sample_has_take_action": true,
+    "sample_has_cognition": true,
+    "sample_has_why": true
+  },
+  "gate_pass": true,
   "notes": [],
-  "cognition_chip_count": 0
+  "accordion_expanded": 7,
+  "runtime_api_presentation": {
+    "show_compliance_estimates_notice": true,
+    "compliance_estimates_notice_text": "We've created estimated compliance dates based on standard regulatory cycles and your property setup. Upload your documents to confirm dates and improve accuracy."
+  },
+  "runtime_api_projection_full": true,
+  "specific_cta_count": 9
 }

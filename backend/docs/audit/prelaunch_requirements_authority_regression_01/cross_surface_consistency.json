@@ -1,0 +1,26 @@
+{
+  "captured_at": "2026-05-29T08:14:08.749459+00:00",
+  "samples": [
+    {
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "requirement_type": "legionella",
+      "list_take_action": "Record Legionella risk assessment",
+      "detail_take_action": "Record Legionella risk assessment",
+      "evidence_resolution_guidance": "Awaiting review \u2014 submission not yet verified",
+      "list_cognition_chip_label": "Record Legionella risk assessment",
+      "has_why_it_matters": true
+    },
+    {
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "requirement_type": "occupation_contract",
+      "list_take_action": "Record Wales occupation contract",
+      "detail_take_action": "Record Wales occupation contract",
+      "evidence_resolution_guidance": "Awaiting review \u2014 submission not yet verified",
+      "list_cognition_chip_label": "Record Wales occupation contract",
+      "has_why_it_matters": true
+    }
+  ],
+  "contradiction_count": 0,
+  "contradictions": [],
+  "gate_pass": true
+}
