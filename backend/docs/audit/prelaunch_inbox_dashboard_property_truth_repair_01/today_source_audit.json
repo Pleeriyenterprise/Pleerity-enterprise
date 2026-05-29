@@ -1,0 +1,39 @@
+{
+  "captured_at": "2026-05-29T11:41:15.568367+00:00",
+  "client_email": "nancy@yopmail.com",
+  "today_buckets_api": {
+    "urgent": 24,
+    "upcoming": 8,
+    "in_progress": 8,
+    "snoozed": 0,
+    "hidden": 0
+  },
+  "today_inbox_sum": 40,
+  "today_summary": {
+    "urgent_count": 71,
+    "upcoming_count": 75,
+    "in_progress_count": 86,
+    "snoozed_count": 0
+  },
+  "command_center": {
+    "tasks_digest_summary": {},
+    "urgent_actions_count": 0
+  },
+  "tasks_digest": {
+    "detail": "Request blocked due to suspicious activity."
+  },
+  "dashboard_value_insights": null,
+  "requirements_count": 0,
+  "properties_count": 0,
+  "bucket_continuation": {
+    "urgent": 59,
+    "upcoming": 67,
+    "in_progress": 78
+  },
+  "rent_attention_count": 12,
+  "findings": [
+    "today_has_items_but_cc_urgent_empty_possible_scope",
+    "summary_urgent_count_mismatch_tasks_len"
+  ],
+  "root_cause_note": "ClientTasksPage setPayload(fetchOperationalHit) without unwrapping .data \u2014 payload.tasks undefined \u2192 Today UI showed 0 while Dashboard used hit.data correctly."
+}

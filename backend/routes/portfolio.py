@@ -388,7 +388,11 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             "_id": 0,
             "property_id": 1,
             "nickname": 1,
+            "name": 1,
             "address_line_1": 1,
+            "address_line_2": 1,
+            "city": 1,
+            "postcode": 1,
             "compliance_score": 1,
             "risk_level": 1,
             "compliance_last_calculated_at": 1,
@@ -556,6 +560,15 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
     response["effective_jurisdiction_label"] = _att["effective_jurisdiction_label"]
     response["jurisdiction_source"] = _att["jurisdiction_source"]
     response["client_default_jurisdiction"] = client_doc.get("default_jurisdiction")
+    from presentation.property_display_name import get_property_display_name
+
+    response["nickname"] = prop.get("nickname")
+    response["name"] = prop.get("name")
+    response["address_line_1"] = prop.get("address_line_1")
+    response["address_line_2"] = prop.get("address_line_2")
+    response["city"] = prop.get("city")
+    response["postcode"] = prop.get("postcode")
+    response["property_name"] = get_property_display_name(prop)
     return attach_semantics_contract(response)
 
 

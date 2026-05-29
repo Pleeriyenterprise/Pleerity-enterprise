@@ -949,9 +949,9 @@ export default function ClientTasksPage() {
         clientAPI.getRequirements().then((r) => r.data).catch(() => ({ requirements: [] })),
       ),
     ])
-      .then(([todayData, reqData]) => {
-        setPayload(todayData);
-        const reqs = reqData?.requirements;
+      .then(([todayHit, reqHit]) => {
+        setPayload(todayHit?.data ?? null);
+        const reqs = reqHit?.data?.requirements;
         setPortalRequirementsForInbox(Array.isArray(reqs) ? reqs : []);
       })
       .catch((err) => {
@@ -966,7 +966,8 @@ export default function ClientTasksPage() {
     fetchOperational(OPERATIONAL_CACHE_KEYS.complianceSummary, () =>
       clientAPI.getComplianceSummary().then((r) => r.data),
     )
-      .then((data) => {
+      .then((hit) => {
+        const data = hit?.data;
         const notice = data?.jurisdiction_compliance_notice;
         setJurisdictionComplianceNotice(notice && typeof notice === 'object' ? notice : null);
         setCommandCenterFallbackAcknowledged(
@@ -1504,6 +1505,23 @@ export default function ClientTasksPage() {
           </div>
         </CardContent>
       </Card>
+
+      {filter !== 'all' && (
+        <Alert className="mb-4 border-sky-200 bg-sky-50" data-testid="today-category-filter-notice">
+          <AlertDescription className="text-sm text-sky-950">
+            Category filter active — summary counts include all categories; section lists below show only{' '}
+            <strong>{FILTER_CHIPS.find((c) => c.id === filter)?.label || filter}</strong> items.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {payload?.bucket_continuation && Object.keys(payload.bucket_continuation).length > 0 && (
+        <Alert className="mb-4 border-gray-200 bg-gray-50" data-testid="today-bucket-continuation-notice">
+          <AlertDescription className="text-sm text-gray-700">
+            Some inbox rows are capped in this view. Open Command Center for the full prioritised queue.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-6">
         <div className="flex flex-wrap gap-2">

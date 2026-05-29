@@ -1,0 +1,42 @@
+{
+  "captured_at": "2026-05-29T11:41:54.308023+00:00",
+  "cards": {
+    "today_inbox": {
+      "source": "GET /today/items tasks buckets",
+      "count": 0,
+      "drilldown": "/today",
+      "verified": true
+    },
+    "portfolio_compliance": {
+      "source": "GET /client/dashboard portfolio_score",
+      "count": null,
+      "drilldown": "/compliance-score",
+      "verified": false
+    },
+    "open_issues": {
+      "source": "GET /client/issues open/in_progress",
+      "count": 0,
+      "drilldown": "/operations/issues",
+      "verified": true
+    },
+    "jobs_sla_breached": {
+      "source": "GET /client/work-orders sla_state=breached",
+      "count": 0,
+      "drilldown": "/operations/work-orders?sla_state=breached",
+      "verified": true
+    },
+    "risk_signals": {
+      "source": "GET /client/risk-signals status=active",
+      "count": 0,
+      "drilldown": "/operations/risk-signals",
+      "verified": true
+    },
+    "command_centre_urgent_digest": {
+      "source": "GET /client/command-center tasks_digest_summary.urgent_count",
+      "count": 67,
+      "note": "Urgent-only pressure metric \u2014 not same as Today inbox sum",
+      "verified": true
+    }
+  },
+  "gate_pass": false
+}

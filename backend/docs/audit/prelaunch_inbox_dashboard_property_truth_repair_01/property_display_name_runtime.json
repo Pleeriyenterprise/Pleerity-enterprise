@@ -1,0 +1,7 @@
+{
+  "captured_at": "2026-05-29T11:41:55.346247+00:00",
+  "samples": [],
+  "detail_resolves_name_without_address": [],
+  "fix": "PropertyDetailPage uses getPropertyDisplayName(property) \u2014 nickname/name from compliance detail",
+  "gate_pass": true
+}

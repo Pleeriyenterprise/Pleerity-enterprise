@@ -53,11 +53,19 @@ async def test_list_rent_attention_tasks_when_flag_on():
 
 
 def test_merge_rent_into_today_payload_dedupes():
-    payload = {"tasks": {"urgent": []}, "items": []}
+    payload = {
+        "tasks": {"urgent": []},
+        "items": [],
+        "flat_items_included": True,
+        "summary": {"urgent_count": 0, "habit": {"urgent_open_total": 0}},
+    }
     rent_tasks = [{"id": "rent_ledger_x", "title": "Rent overdue", "business_actions": []}]
     out = merge_rent_into_today_payload(payload, rent_tasks)
     assert out["rent_attention_count"] == 1
     assert any(i["id"] == "rent_ledger_x" for i in out["items"])
+    assert out["summary"]["urgent_count"] == 1
+    assert out["summary"]["habit"]["urgent_open_total"] == 1
+    assert len(out["tasks"]["urgent"]) == 1
 
 
 def test_append_rent_command_center_dedupes():

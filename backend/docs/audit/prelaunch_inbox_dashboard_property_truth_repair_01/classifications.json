@@ -1,0 +1,12 @@
+{
+  "classification": "PARTIAL",
+  "blockers": [
+    "frontend_deploy_pending_today_fetchOperational_unwrap",
+    "frontend_deploy_pending_property_display_name"
+  ],
+  "root_cause_proven": true,
+  "api_today_inbox_sum": 40,
+  "browser_today_summary_zero_pre_deploy": true,
+  "push_audit_artifacts_allowed": true,
+  "evaluated_at": "2026-05-29T11:45:00+00:00"
+}

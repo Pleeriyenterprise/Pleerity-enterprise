@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 import { getFeatureDisplayInfo } from '../components/UpgradePrompt';
 import { DiscoverabilityHint } from '../components/client/PlanGatingDiscoverability';
-import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
+import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { formatRiskLabel } from '../utils/riskLabel';
 import { humanRiskType, humanSeverity, humanAction, humanizeRiskReasonBullet } from '../utils/riskPresentation';
 import { presentPropertyTimelineItem, presentScoreChangeReason } from '../utils/timelinePresent';
@@ -473,7 +473,12 @@ export default function PropertyDetailPage() {
           setProperty({
             property_id: propertyId,
             nickname: detail.property_name || detail.nickname,
+            name: detail.property_name || detail.nickname,
+            property_name: detail.property_name || detail.nickname,
             address_line_1: detail.address_line_1,
+            address_line_2: detail.address_line_2,
+            city: detail.city,
+            postcode: detail.postcode,
             compliance_score: detail.property_score?.score ?? detail.compliance_score,
             risk_level: detail.risk_level,
             jurisdiction: detail.jurisdiction,
@@ -1415,9 +1420,10 @@ export default function PropertyDetailPage() {
     );
   }
 
+  const propertyDisplayName = property ? getPropertyDisplayName(property) : 'Property';
   const address = property
-    ? [property.address_line_1, property.address_line_2, property.postcode].filter(Boolean).join(', ') || 'Unnamed property'
-    : 'Property';
+    ? [property.address_line_1, property.address_line_2, property.postcode].filter(Boolean).join(', ')
+    : '';
 
   // compliance_basis is authoritative: property_explicit | client_default | default_fallback (from portfolio + properties APIs).
   const effectiveComplianceBasis =
@@ -1589,7 +1595,12 @@ export default function PropertyDetailPage() {
       <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 mb-4 min-w-0">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between min-w-0">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue leading-snug">{address}</h1>
+            <h1
+              className="text-xl sm:text-2xl font-bold text-midnight-blue leading-snug"
+              data-testid="property-detail-title"
+            >
+              {propertyDisplayName}
+            </h1>
             {complianceDetail ? (
               <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
                 <p className="text-sm text-midnight-blue">
@@ -4268,7 +4279,7 @@ export default function PropertyDetailPage() {
         requirementId={requirementIntelRow ? String(rowReqId(requirementIntelRow)) : null}
         seedRequirement={requirementIntelRow}
         initialFocusSubmission={requirementIntelFocusSubmission}
-        propertyLabel={property?.nickname || property?.address_line_1 || null}
+        propertyLabel={property ? getPropertyDisplayName(property) : null}
         onClose={() => {
           setRequirementIntelRow(null);
           setRequirementIntelFocusSubmission(false);
@@ -4277,7 +4288,7 @@ export default function PropertyDetailPage() {
           setRequirementIntelRow(null);
           navigate(path);
         }}
-        addressForMailto={address}
+        addressForMailto={address || propertyDisplayName}
         onMarkNotApplicable={(m) => {
           setRequirementIntelRow(null);
           setNotApplicableModal({

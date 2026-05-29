@@ -152,6 +152,12 @@ def merge_rent_into_today_payload(
     else:
         payload.setdefault("items", [])
     payload["rent_attention_count"] = len(rent_tasks)
+    summary = dict(payload.get("summary") or {})
+    summary["urgent_count"] = len(urgent)
+    habit = dict(summary.get("habit") or {})
+    habit["urgent_open_total"] = len(urgent)
+    summary["habit"] = habit
+    payload["summary"] = summary
     return payload
 
 

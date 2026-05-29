@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-05-29T11:42:04.570577+00:00",
+  "today_inbox_sum": 0,
+  "today_buckets": {
+    "urgent": 0,
+    "upcoming": 0,
+    "in_progress": 0,
+    "snoozed": 0,
+    "hidden": 0
+  },
+  "command_center_urgent_actions": 22,
+  "contradictions": [
+    {
+      "type": "today_empty_cc_urgent",
+      "today_sum": 0,
+      "cc_urgent": 22
+    }
+  ],
+  "gate_pass": false
+}
