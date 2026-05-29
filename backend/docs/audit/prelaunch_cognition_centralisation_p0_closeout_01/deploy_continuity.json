@@ -1,0 +1,25 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-P0-CLOSEOUT-01",
+  "captured_at": "2026-05-29T18:38:24.196911+00:00",
+  "api_version": {
+    "commit_sha": "a839fa7f5fedc03b0e535b41ef6f65c49474f9cf",
+    "environment": "production"
+  },
+  "frontend_bundle": {
+    "captured_at": "2026-05-29T18:37:39.949638+00:00",
+    "bundle_path": "/static/js/main.705cc225.js",
+    "bundle_bytes": 5361472,
+    "has_operationalAuthorityContract": true,
+    "has_resolveCanonicalPrimaryAction": false,
+    "has_pressure_degraded_marker": false,
+    "has_legacy_upload_fallback": true,
+    "has_authority_missing": false
+  },
+  "backend_pressure_degraded": null,
+  "classification": "BLOCKED_DEPLOY_CONTINUITY",
+  "stale_indicators": {
+    "missing_operationalAuthorityContract": false,
+    "missing_resolveCanonicalPrimaryAction": true,
+    "missing_cc_degraded_marker": true
+  }
+}

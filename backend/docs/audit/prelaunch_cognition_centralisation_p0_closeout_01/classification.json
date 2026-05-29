@@ -1,0 +1,9 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-P0-CLOSEOUT-01",
+  "captured_at": "2026-05-29T18:41:59.110118+00:00",
+  "classification": "BLOCKED_DEPLOY_CONTINUITY",
+  "blockers": [
+    "BLOCKED_DEPLOY_CONTINUITY"
+  ],
+  "trust_ci": "TRUST_CI_HARDENED"
+}

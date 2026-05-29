@@ -1,0 +1,40 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-P0-CLOSEOUT-01",
+  "captured_at": "2026-05-29T18:41:59.110118+00:00",
+  "browser": {
+    "captured_at": "2026-05-29T18:38:24.196911+00:00",
+    "surfaces": {
+      "today": {
+        "url": "https://pleerityenterprise.co.uk/today",
+        "all_clear_visible": false,
+        "pressure_degraded_visible": false,
+        "cognition_chips": 10,
+        "upload_document_cta_count": 0
+      },
+      "command_center": {
+        "url": "https://pleerityenterprise.co.uk/command-center",
+        "all_clear_visible": false,
+        "pressure_degraded_visible": false,
+        "cognition_chips": 0,
+        "upload_document_cta_count": 0
+      },
+      "requirements": {
+        "url": "https://pleerityenterprise.co.uk/requirements",
+        "all_clear_visible": false,
+        "pressure_degraded_visible": false,
+        "cognition_chips": 0,
+        "upload_document_cta_count": 0
+      },
+      "dashboard": {
+        "url": "https://pleerityenterprise.co.uk/dashboard",
+        "all_clear_visible": false,
+        "pressure_degraded_visible": false,
+        "cognition_chips": 0,
+        "upload_document_cta_count": 0
+      }
+    },
+    "login_ok": true
+  },
+  "contradictions": [],
+  "classification": "BLOCKED_DEPLOY_CONTINUITY"
+}

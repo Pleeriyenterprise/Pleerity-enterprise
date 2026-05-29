@@ -3,11 +3,13 @@
  * External reference links come from API (`take_action.supporting_external_links` or `action_links`), not hardcoded here.
  * Keep aligned with backend/services/requirement_action_resolver.py (labels, routes).
  *
- * Phase 1 semantic alignment: prefer API `take_action` + `workflow_class`; client fallback mirrors backend
- * informational vs DOCUMENT/JOB/MAINTENANCE gating and registry `primary_action_mode: hidden`.
+ * Canonical authority: `resolveCanonicalPrimaryAction` from operationalAuthorityContract — no client invention.
  */
 
-import { normalizeRequirementCode, requirementLabel } from '../domain/presentDomain';
+import {
+  hasServerOperationalAuthority,
+  resolveCanonicalPrimaryAction,
+} from './operationalAuthorityContract';
 
 export const REQUIREMENT_ACTION_TYPES = {
   DOCUMENT: 'DOCUMENT',
@@ -68,29 +70,6 @@ export function inferRequirementActionType(requirement) {
   return REQUIREMENT_ACTION_TYPES.DOCUMENT;
 }
 
-function jobPrimaryLabel(requirement) {
-  const code = normalizeRequirementCode(requirement?.requirement_code || requirement?.requirement_type || '');
-  if (code.includes('eicr') || code === 'electrical_safety') {
-    return 'Record external assessment evidence — upload EICR';
-  }
-  if (code.includes('gas') || ['cp12', 'gas_safety', 'gas_safety_certificate'].includes(code)) {
-    return 'Record external assessment evidence — upload Gas Safety certificate';
-  }
-  if (code.includes('epc')) return 'Record external assessment evidence — upload EPC';
-  if (code.includes('fire') && code.includes('risk')) return 'Add fire risk assessment evidence';
-  if (code.includes('pat') || code.includes('portable_appliance')) {
-    return 'Record external assessment evidence — upload PAT evidence';
-  }
-  if (code.includes('legionella')) return 'Upload completed legionella risk assessment';
-  const disp = String(requirement?.display_label || '').trim();
-  if (disp && disp.toLowerCase() !== 'requirement') {
-    return `Record external assessment evidence — ${disp}`;
-  }
-  const rl = requirementLabel(requirement?.requirement_code || requirement?.requirement_type || '');
-  if (rl && rl.toLowerCase() !== 'requirement') return `Record external assessment evidence — ${rl}`;
-  return 'Record external assessment evidence';
-}
-
 /**
  * @param {Record<string, unknown>} requirement enriched row (may include take_action / action_links from API)
  * @param {Record<string, unknown>} _property reserved for future context (jurisdiction is on requirement from API)
@@ -108,12 +87,15 @@ function jobPrimaryLabel(requirement) {
 export function requirementUsesServerTakeActionPrimary(requirement) {
   const ta = requirement?.take_action;
   const p = ta?.primary;
-  return !!(
+  if (
     ta &&
     typeof ta === 'object' &&
     p &&
     (p.route || p.kind === 'guided_evidence_resolution' || p.kind === 'direct_evidence_action')
-  );
+  ) {
+    return true;
+  }
+  return hasServerOperationalAuthority(requirement);
 }
 
 function guidedPrimaryLooksIncomplete(primary) {
@@ -134,16 +116,46 @@ function primaryIntentFromTakeActionPrimary(primary) {
   return 'view_requirement';
 }
 
+function mapCanonicalPrimaryToRequirementAction(requirement, canonical) {
+  const supporting = supportingExternalLinksFromRequirement(requirement);
+  const url = canonical?.url != null ? String(canonical.url).trim() : '';
+  const isExternal = /^https?:\/\//i.test(url);
+  return {
+    actionType: inferRequirementActionType(requirement),
+    primary_action_label: String(canonical.label || '').trim(),
+    primary_action_handler: isExternal ? 'external' : url ? 'navigate' : 'none',
+    primary_route: url || null,
+    primary_intent: canonical.key || canonical.authority_source || null,
+    authority_source: canonical.authority_source,
+    secondary_action: null,
+    supporting_external_links: supporting,
+  };
+}
+
+function authorityMissingRequirementAction(requirement) {
+  return {
+    actionType: inferRequirementActionType(requirement),
+    primary_action_label: 'View requirement',
+    primary_action_handler: 'none',
+    primary_route: null,
+    primary_intent: 'authority_missing',
+    authority_missing: true,
+    secondary_action: null,
+    supporting_external_links: supportingExternalLinksFromRequirement(requirement),
+  };
+}
+
 export function resolveRequirementAction(requirement, _property = {}) {
   if (
     process.env.NODE_ENV !== 'production' &&
     requirement &&
     typeof requirement === 'object' &&
-    !requirement.take_action
+    !requirement.take_action &&
+    !hasServerOperationalAuthority(requirement)
   ) {
     // eslint-disable-next-line no-console
     console.warn(
-      '[requirementTakeActionResolver] requirement missing server take_action envelope — using client fallback (prefer API enrichment).',
+      '[requirementTakeActionResolver] requirement missing server operational authority — no client fallback (prefer API enrichment).',
     );
   }
   if (!requirement || typeof requirement !== 'object') {
@@ -231,125 +243,21 @@ export function resolveRequirementAction(requirement, _property = {}) {
     process.env.NODE_ENV !== 'production' &&
     requirement.take_action &&
     typeof requirement.take_action === 'object' &&
-    !requirement.take_action.primary
+    !requirement.take_action.primary &&
+    !hasServerOperationalAuthority(requirement)
   ) {
     // eslint-disable-next-line no-console
     console.warn(
-      '[requirementTakeActionResolver] take_action without primary — using client fallback; prefer API envelope from requirement_action_resolver.',
+      '[requirementTakeActionResolver] take_action without primary and no canonical authority — authority_missing (prefer API envelope).',
     );
   }
 
-  const pid = requirement.property_id;
-  const rid = requirement.requirement_id;
-  const code = requirement.requirement_code || requirement.requirement_type || '';
-  const hashFrag = code ? `#req=${encodeURIComponent(code)}` : '';
-  const cls = String(requirement.compliance_requirement_class || '').toUpperCase();
-  const ff = String(requirement.engine_fulfillment_mode || requirement.fulfillment_mode || '').toLowerCase();
-  let informational =
-    cls === 'OBLIGATION' ||
-    cls === 'SYSTEM' ||
-    requirement.engine_informational === true ||
-    String(requirement.engine_client_visibility || '').toLowerCase() === 'informational' ||
-    ff === 'obligation';
-
-  // Match backend infer_action_type + informational gate: DOCUMENT/JOB/MAINTENANCE win over obligation posture.
-  const inferredActionType = inferRequirementActionType(requirement);
-  if (
-    inferredActionType === REQUIREMENT_ACTION_TYPES.DOCUMENT ||
-    inferredActionType === REQUIREMENT_ACTION_TYPES.JOB ||
-    inferredActionType === REQUIREMENT_ACTION_TYPES.MAINTENANCE
-  ) {
-    informational = false;
+  const canonical = resolveCanonicalPrimaryAction(requirement);
+  if (canonical?.label) {
+    return mapCanonicalPrimaryToRequirementAction(requirement, canonical);
   }
 
-  const supporting = supportingExternalLinksFromRequirement(requirement);
-
-  const metaRm = requirement.registry_metadata && typeof requirement.registry_metadata === 'object' ? requirement.registry_metadata : {};
-  if (String(metaRm.primary_action_mode || '').trim().toLowerCase() === 'hidden') {
-    return {
-      actionType: REQUIREMENT_ACTION_TYPES.OBLIGATION,
-      primary_action_label: 'View guidance',
-      primary_action_handler: 'navigate',
-      primary_route: pid ? `/properties/${pid}#compliance` : '/requirements',
-      primary_intent: 'view_guidance',
-      secondary_action: null,
-      supporting_external_links: supporting,
-    };
-  }
-
-  if (informational) {
-    return {
-      actionType: REQUIREMENT_ACTION_TYPES.OBLIGATION,
-      primary_action_label: 'View guidance',
-      primary_action_handler: 'navigate',
-      primary_route: pid ? `/properties/${pid}#compliance` : '/requirements',
-      primary_intent: 'view_guidance',
-      secondary_action: null,
-      supporting_external_links: supporting,
-    };
-  }
-
-  const at = inferRequirementActionType(requirement);
-  if (at === REQUIREMENT_ACTION_TYPES.MAINTENANCE) {
-    return {
-      actionType: REQUIREMENT_ACTION_TYPES.MAINTENANCE,
-      primary_action_label: 'Log issue',
-      primary_action_handler: 'navigate',
-      primary_route: pid ? `/operations/issues/new?property_id=${encodeURIComponent(String(pid))}` : '/operations/issues',
-      primary_intent: 'maintenance',
-      secondary_action: null,
-      supporting_external_links: supporting,
-    };
-  }
-
-  const isJob = cls === 'JOB' || ff === 'job';
-  const needsDoc = requirement.engine_requires_document_evidence !== false;
-
-  if (isJob) {
-    const primaryRoute = pid ? `/properties/${pid}${hashFrag}` : '/requirements';
-    let secondary = null;
-    if (needsDoc && pid && rid) {
-      secondary = {
-        label: 'Upload document',
-        handler: 'navigate',
-        route: `/documents?property_id=${encodeURIComponent(String(pid))}&requirement_id=${encodeURIComponent(String(rid))}`,
-        external: false,
-      };
-    }
-    return {
-      actionType: REQUIREMENT_ACTION_TYPES.JOB,
-      primary_action_label: jobPrimaryLabel(requirement),
-      primary_action_handler: 'navigate',
-      primary_route: primaryRoute,
-      primary_intent: 'coordinate_inspection_evidence',
-      secondary_action: secondary,
-      supporting_external_links: supporting,
-    };
-  }
-
-  const docRoute =
-    pid && rid
-      ? `/documents?property_id=${encodeURIComponent(String(pid))}&requirement_id=${encodeURIComponent(String(rid))}`
-      : pid
-        ? `/documents?property_id=${encodeURIComponent(String(pid))}`
-        : '/documents';
-  let docLabel = 'Upload document';
-  if (code.includes('legionella')) docLabel = 'Upload completed legionella risk assessment';
-  else if (code.includes('gas') || ['cp12', 'gas_safety', 'gas_safety_certificate'].includes(code)) {
-    docLabel = 'Upload valid gas safety certificate';
-  } else if (code.includes('eicr') || code === 'electrical_safety') docLabel = 'Upload valid EICR certificate';
-  else if (code.includes('epc')) docLabel = 'Upload current EPC document';
-  else if (code.includes('hmo') && code.includes('licen')) docLabel = 'Upload HMO licence';
-
-  return {
-    actionType: REQUIREMENT_ACTION_TYPES.DOCUMENT,
-    primary_action_label: docLabel,
-    primary_action_handler: 'navigate',
-    primary_route: docRoute,
-    primary_intent: 'upload_evidence',
-    secondary_action: null,
-    supporting_external_links: supporting,
-  };
+  return authorityMissingRequirementAction(requirement);
 }
 
 /**

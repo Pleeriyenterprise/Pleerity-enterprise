@@ -237,7 +237,19 @@ export function buildCommandCenterVerdict({
   breachedJobCount,
   blockedJobCount,
   awaitingProofCount,
+  pressureDegraded = false,
+  pressureMessage = null,
 }) {
+  if (pressureDegraded) {
+    return {
+      line:
+        (pressureMessage && String(pressureMessage).trim()) ||
+        'Some operational metrics are still refreshing — review items below.',
+      subline: null,
+      tone: 'watch',
+    };
+  }
+
   const sublines = [];
 
   if (urgentCount > 0) {
@@ -347,6 +359,24 @@ export function buildCommandCenterVerdict({
   };
 }
 
+export function isCommandCenterPressureDegraded(bundle) {
+  if (!bundle || typeof bundle !== 'object') return false;
+  if (bundle.pressure_degraded === true) return true;
+  return String(bundle.pressure_status || '').toLowerCase() === 'degraded';
+}
+
+export function getCommandCenterPressureMessage(bundle) {
+  const msg = bundle?.pressure_message;
+  return msg && String(msg).trim() ? String(msg).trim() : null;
+}
+
+export function hasCommandCenterContinuationDebt(bundle) {
+  const digest = bundle?.tasks_digest_summary;
+  if (!digest || typeof digest !== 'object') return false;
+  const cont = Number(digest.urgent_continuation ?? digest.continuation_open_total ?? 0);
+  return !Number.isNaN(cont) && cont > 0;
+}
+
 export function isCommandCenterAllClearEmpty({
   urgentCount,
   predictiveEnabled,
@@ -354,7 +384,13 @@ export function isCommandCenterAllClearEmpty({
   activeJobsLength,
   summary,
   propertiesAtRisk,
+  pressureDegraded = false,
+  continuationDebt = false,
+  operationalDebtCount = 0,
 }) {
+  if (pressureDegraded) return false;
+  if (continuationDebt) return false;
+  if (Number(operationalDebtCount) > 0) return false;
   return (
     urgentCount === 0 &&
     (!predictiveEnabled || riskCount === 0) &&

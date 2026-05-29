@@ -1,0 +1,20 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-P0-CLOSEOUT-01",
+  "captured_at": "2026-05-29T18:41:59.110118+00:00",
+  "current_classification": "BLOCKED_DEPLOY_CONTINUITY",
+  "code_fixes_complete": [
+    "requirementTakeActionResolver delegates to resolveCanonicalPrimaryAction; client Upload document / View guidance invention removed",
+    "isCommandCenterAllClearEmpty blocks all-clear when pressure_degraded, continuation debt, or operational debt",
+    "command-center-pressure-degraded disclosure banner added",
+    "buildCommandCenterVerdict avoids calm tone under pressure_degraded",
+    "Trust CI: requirementTakeActionResolver.test.js, clientCommandCenter.falseCalm.test.js, operationalAuthorityContract.test.js"
+  ],
+  "post_deploy_steps": [
+    "Deploy frontend bundle containing P0 closeout commit",
+    "Poll asset-manifest until main.js includes command-center-pressure-degraded and authority_missing markers",
+    "Re-run tmp_prelaunch_cognition_centralisation_p0_closeout_01.py",
+    "Verify CC shows pressure-degraded banner when API pressure_degraded=true and never shows green all-clear",
+    "Verify requirement rows without server authority show View requirement (none handler), not Upload document"
+  ],
+  "target_classification_after_deploy": "TRUST_HARDENED"
+}

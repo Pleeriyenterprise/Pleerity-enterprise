@@ -1,0 +1,13 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-P0-CLOSEOUT-01",
+  "captured_at": "2026-05-29T18:38:18.094606+00:00",
+  "pressure_degraded": false,
+  "pressure_status": null,
+  "pressure_message": null,
+  "urgent_count": 87,
+  "urgent_continuation": 0,
+  "code_fix_verified": true,
+  "frontend_has_degraded_marker": false,
+  "false_calm_risk": false,
+  "classification": "BLOCKED_DEPLOY_CONTINUITY"
+}

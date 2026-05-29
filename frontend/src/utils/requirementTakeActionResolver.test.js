@@ -15,7 +15,7 @@ describe('requirementTakeActionResolver', () => {
     warnSpy.mockRestore();
   });
 
-  it('warns when take_action envelope is missing (drift guard)', () => {
+  it('warns when server operational authority is missing (no client fallback)', () => {
     const req = {
       requirement_id: 'r1',
       property_id: 'p1',
@@ -23,11 +23,14 @@ describe('requirementTakeActionResolver', () => {
       requirement_type: 'gas_safety',
       compliance_requirement_class: 'DOCUMENT',
     };
-    resolveRequirementAction(req, {});
+    const out = resolveRequirementAction(req, {});
     expect(warnSpy).toHaveBeenCalled();
+    expect(out.authority_missing).toBe(true);
+    expect(out.primary_action_label).not.toBe('Upload document');
+    expect(out.primary_action_handler).toBe('none');
   });
 
-  it('job fallback uses evidence-first legionella label without Book', () => {
+  it('does not invent legionella upload label without server authority', () => {
     const req = {
       requirement_id: 'r1',
       property_id: 'p1',
@@ -36,8 +39,9 @@ describe('requirementTakeActionResolver', () => {
       compliance_requirement_class: 'JOB',
     };
     const out = resolveRequirementAction(req, {});
-    expect(out.primary_action_label).toContain('Upload completed legionella');
-    expect(out.primary_action_label).not.toMatch(/Book/i);
+    expect(out.primary_action_label).not.toMatch(/legionella/i);
+    expect(out.primary_action_label).not.toMatch(/upload/i);
+    expect(out.authority_missing).toBe(true);
   });
 
   it('uses API take_action primary when present', () => {
@@ -53,6 +57,19 @@ describe('requirementTakeActionResolver', () => {
     const out = resolveRequirementAction(req, {});
     expect(out.primary_action_label).toBe('Custom upload label');
     expect(out.primary_route).toContain('/documents');
+  });
+
+  it('uses operational_cognition via canonical contract when take_action absent', () => {
+    const req = {
+      operational_cognition: {
+        primary_action: { key: 'upload', label: 'Upload Gas Safety record', url: '/documents?property_id=p1&requirement_id=r1' },
+      },
+      compliance_requirement_class: 'DOCUMENT',
+    };
+    expect(requirementUsesServerTakeActionPrimary(req)).toBe(true);
+    const out = resolveRequirementAction(req, {});
+    expect(out.primary_action_label).toBe('Upload Gas Safety record');
+    expect(out.authority_source).toBe('operational_cognition');
   });
 
   it('detects missing server primary for drift guard', () => {
@@ -141,7 +158,7 @@ describe('requirementTakeActionResolver', () => {
     expect(out.secondary_action?.route).toContain('/documents');
   });
 
-  it('fallback does not treat engine obligation posture as guidance when class is DOCUMENT (external assessment parity)', () => {
+  it('does not invent upload_evidence when obligation posture without server authority', () => {
     const req = {
       requirement_id: 'r1',
       property_id: 'p1',
@@ -152,11 +169,12 @@ describe('requirementTakeActionResolver', () => {
       engine_informational: true,
     };
     const out = resolveRequirementAction(req, {});
-    expect(out.primary_intent).toBe('upload_evidence');
+    expect(out.primary_intent).toBe('authority_missing');
+    expect(out.primary_action_label).not.toMatch(/upload/i);
     expect(out.primary_action_label).not.toMatch(/view guidance/i);
   });
 
-  it('registry primary_action_mode hidden infers obligation and shows no upload primary in fallback', () => {
+  it('registry primary_action_mode hidden returns authority_missing without client guidance route', () => {
     const req = {
       requirement_id: 'r1',
       property_id: 'p1',
@@ -165,8 +183,9 @@ describe('requirementTakeActionResolver', () => {
       registry_metadata: { primary_action_mode: 'hidden' },
     };
     const out = resolveRequirementAction(req, {});
-    expect(out.actionType).toBe('OBLIGATION');
-    expect(out.primary_intent).toBe('view_guidance');
+    expect(out.authority_missing).toBe(true);
+    expect(out.primary_action_handler).toBe('none');
+    expect(out.primary_route).toBeNull();
   });
 
   it('document-only take_action keeps direct upload handler', () => {

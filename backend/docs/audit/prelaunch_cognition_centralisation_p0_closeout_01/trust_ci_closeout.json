@@ -1,0 +1,10 @@
+{
+  "programme": "PRELAUNCH-COGNITION-CENTRALISATION-P0-CLOSEOUT-01",
+  "captured_at": "2026-05-29T18:41:59.110118+00:00",
+  "tests": [
+    "frontend/src/utils/requirementTakeActionResolver.test.js \u2014 no client upload invention",
+    "frontend/src/utils/clientCommandCenter.falseCalm.test.js \u2014 degraded all-clear blocked",
+    "frontend/src/utils/operationalAuthorityContract.test.js \u2014 canonical precedence"
+  ],
+  "classification": "TRUST_CI_HARDENED"
+}

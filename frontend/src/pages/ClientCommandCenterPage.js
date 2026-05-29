@@ -43,11 +43,14 @@ import {
   commandCenterRequirementIntelContext,
   computePortfolioDriverMetrics,
   countPropertiesAtRisk,
+  getCommandCenterPressureMessage,
+  hasCommandCenterContinuationDebt,
   hasTruthyIso,
   isActiveWorkOrder,
   isAwaitingProof,
   isCommandCenterAllClearEmpty,
   isCommandCenterCalmSnapshot,
+  isCommandCenterPressureDegraded,
   isOperationalHold,
   rankWorkOrdersByAttention,
   sanitizeCommandCenterCtaLabel,
@@ -314,6 +317,28 @@ export default function ClientCommandCenterPage() {
     [portfolioSummary, summary]
   );
 
+  const pressureDegraded = isCommandCenterPressureDegraded(bundle);
+  const pressureMessage = getCommandCenterPressureMessage(bundle);
+  const continuationDebt = hasCommandCenterContinuationDebt(bundle);
+  const operationalDebtCount = useMemo(() => {
+    const { overdueDisplay, missingDisplay, jobPressure } = computePortfolioDriverMetrics({
+      summary,
+      portfolioSummary,
+      urgentActions: alignedUrgentActions,
+      breachedJobCount,
+      blockedJobCount,
+      awaitingProofJobCount,
+    });
+    return overdueDisplay + missingDisplay + jobPressure;
+  }, [
+    summary,
+    portfolioSummary,
+    alignedUrgentActions,
+    breachedJobCount,
+    blockedJobCount,
+    awaitingProofJobCount,
+  ]);
+
   const propertyLabelById = useMemo(() => {
     const m = new Map();
     for (const p of portfolioSummary?.properties || []) {
@@ -336,6 +361,8 @@ export default function ClientCommandCenterPage() {
         breachedJobCount,
         blockedJobCount,
         awaitingProofCount: awaitingProofJobCount,
+        pressureDegraded,
+        pressureMessage,
       }),
     [
       urgentCount,
@@ -346,6 +373,8 @@ export default function ClientCommandCenterPage() {
       breachedJobCount,
       blockedJobCount,
       awaitingProofJobCount,
+      pressureDegraded,
+      pressureMessage,
     ]
   );
 
@@ -441,6 +470,9 @@ export default function ClientCommandCenterPage() {
     activeJobsLength: activeJobs.length,
     summary,
     propertiesAtRisk,
+    pressureDegraded,
+    continuationDebt,
+    operationalDebtCount,
   });
 
   const calmSnapshot = isCommandCenterCalmSnapshot({
@@ -652,6 +684,17 @@ export default function ClientCommandCenterPage() {
         {verdict.subline ? <p className="text-sm mt-2 opacity-85">{verdict.subline}</p> : null}
       </div>
       </div>
+
+      {pressureDegraded && !error && (
+        <Alert className="mb-6 border-amber-200 bg-amber-50/80" data-testid="command-center-pressure-degraded">
+          <AlertCircle className="h-4 w-4 text-amber-700" />
+          <AlertDescription className="text-amber-950">
+            {pressureMessage ||
+              'Some pressure metrics are still refreshing. Urgent items and operational debt remain visible below.'}
+            {continuationDebt ? ' Continuation items may still need follow-up.' : ''}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {allClearEmpty && !error && (
         <Card
