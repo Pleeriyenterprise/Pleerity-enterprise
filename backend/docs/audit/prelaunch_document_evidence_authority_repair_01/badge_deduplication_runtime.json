@@ -1,6 +1,7 @@
 {
   "programme": "PRELAUNCH-DOCUMENT-EVIDENCE-AUTHORITY-REPAIR-01",
-  "captured_at": "2026-05-29T20:19:30.936736+00:00",
-  "verified_badge_count_sample": 0,
-  "classification": "BADGE_SEMANTICS_DRIFT"
+  "captured_at": "2026-05-29T21:04:13.190163+00:00",
+  "verified_badge_count_sample": 1,
+  "doc_count_badge_present": true,
+  "classification": "VERIFIED"
 }

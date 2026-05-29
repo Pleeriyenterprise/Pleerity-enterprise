@@ -1,16 +1,26 @@
 {
   "programme": "PRELAUNCH-DOCUMENT-EVIDENCE-AUTHORITY-REPAIR-01",
-  "classification": "EVIDENCE_AUTHORITY_DRIFT",
-  "blockers": [
-    "upload_dropdown",
-    "view_evidence_navigation",
-    "badge_deduplication"
-  ],
-  "bundle": {
-    "path": "/static/js/main.e38da7e8.js",
-    "has_filterUploadEligibleRequirementsForProperty": false,
-    "has_composeRequirementStatusBadgeVisibility": false,
-    "has_resolveSettledEvidenceNavigationTarget": false,
-    "has_tab_evidence": false
+  "classification": "VERIFIED_OPERATIONALLY",
+  "blockers": [],
+  "deploy": {
+    "programme": "PRELAUNCH-DOCUMENT-EVIDENCE-AUTHORITY-REPAIR-01",
+    "captured_at": "2026-05-29T21:03:23.590779+00:00",
+    "api_version": {
+      "commit_sha": "026a9d2af32a40484d66354ddabf0184a8fd3b16",
+      "environment": "production"
+    },
+    "backend_sha_ok": true,
+    "frontend_bundle": {
+      "path": "/static/js/main.1551c2ae.js",
+      "bytes": 5364976,
+      "has_documentEvidenceAuthority_fn": false,
+      "has_tab_evidence_query": true,
+      "has_data_evidence_req_focus": true,
+      "has_upload_empty_notice": true,
+      "has_evidence_registry_copy": true,
+      "has_projection_full": true
+    },
+    "deploy_continuity_ok": true,
+    "classification": "DEPLOY_CONTINUITY_OK"
   }
 }

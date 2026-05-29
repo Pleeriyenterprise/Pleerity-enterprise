@@ -1,8 +1,25 @@
 {
-  "captured_at": "2026-05-29T20:18:55.163371+00:00",
+  "captured_at": "2026-05-29T21:03:27.476892+00:00",
   "checks": {
-    "upload_dropdown_option_count": 0,
-    "verified_badge_duplicates_sample": 0,
-    "operations_queue_clear": true
+    "upload_property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+    "verified_requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+    "verified_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "documents_page_loaded": true,
+    "property_option_count": 7,
+    "upload_dropdown_option_count": 8,
+    "upload_empty_notice": false,
+    "requirements_page_loaded": true,
+    "verified_row_found": true,
+    "verified_tier_badge_visible": false,
+    "verified_evidence_badge_visible": false,
+    "verified_badge_duplicates_sample": 1,
+    "verified_doc_count_badge_present": true,
+    "view_evidence_url": "https://pleerityenterprise.co.uk/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?tab=evidence&requirement_id=216ed196-883b-42a2-9011-39918534d32d",
+    "view_evidence_lands_on_registry": true,
+    "view_evidence_not_documents_queue": true,
+    "registry_visible": true,
+    "view_evidence_button_found": true,
+    "operations_queue_clear": true,
+    "queue_semantics_copy": true
   }
 }

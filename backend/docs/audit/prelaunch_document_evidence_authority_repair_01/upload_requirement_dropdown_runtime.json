@@ -1,13 +1,17 @@
 {
   "programme": "PRELAUNCH-DOCUMENT-EVIDENCE-AUTHORITY-REPAIR-01",
-  "captured_at": "2026-05-29T20:19:30.936736+00:00",
+  "captured_at": "2026-05-29T21:04:13.190163+00:00",
   "bundle": {
-    "path": "/static/js/main.e38da7e8.js",
-    "has_filterUploadEligibleRequirementsForProperty": false,
-    "has_composeRequirementStatusBadgeVisibility": false,
-    "has_resolveSettledEvidenceNavigationTarget": false,
-    "has_tab_evidence": false
+    "path": "/static/js/main.1551c2ae.js",
+    "bytes": 5364976,
+    "has_documentEvidenceAuthority_fn": false,
+    "has_tab_evidence_query": true,
+    "has_data_evidence_req_focus": true,
+    "has_upload_empty_notice": true,
+    "has_evidence_registry_copy": true,
+    "has_projection_full": true
   },
-  "dropdown_options_after_property_select": 0,
-  "classification": "PARTIAL"
+  "dropdown_options_after_property_select": 8,
+  "upload_empty_notice": false,
+  "classification": "VERIFIED"
 }

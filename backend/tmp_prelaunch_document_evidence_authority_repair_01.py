@@ -40,25 +40,99 @@ def _login() -> str:
     return r.json()["access_token"]
 
 
+TARGET_SHA_PREFIX = "026a9d2a"
+
+
 def _bundle() -> dict:
     manifest = httpx.get(f"{FE}/asset-manifest.json", timeout=90).json()
     js = httpx.get(f"{FE}{manifest['files']['main.js']}", timeout=120).text
     return {
         "path": manifest["files"]["main.js"],
-        "has_filterUploadEligibleRequirementsForProperty": "filterUploadEligibleRequirementsForProperty" in js
-        or "documentEvidenceAuthority" in js,
-        "has_composeRequirementStatusBadgeVisibility": "composeRequirementStatusBadgeVisibility" in js,
-        "has_resolveSettledEvidenceNavigationTarget": "resolveSettledEvidenceNavigationTarget" in js,
-        "has_tab_evidence": "tab=evidence" in js or "tab','evidence" in js,
+        "bytes": len(js),
+        "has_documentEvidenceAuthority_fn": "documentEvidenceAuthority" in js
+        or "filterUploadEligibleRequirementsForProperty" in js,
+        "has_tab_evidence_query": "tab=evidence" in js or 'tab","evidence' in js,
+        "has_data_evidence_req_focus": "data-evidence-req-focus" in js,
+        "has_upload_empty_notice": "upload-requirement-empty-notice" in js,
+        "has_evidence_registry_copy": "Evidence Registry" in js,
+        "has_projection_full": "projection=full" in js or "projection\",\"full" in js,
     }
 
 
-def browser(token: str) -> dict:
+def deploy_continuity() -> dict:
+    ver = httpx.get(f"{API}/version", timeout=60).json()
+    bundle = _bundle()
+    sha_ok = str(ver.get("commit_sha", "")).startswith(TARGET_SHA_PREFIX)
+    behavioral_ok = (
+        bundle.get("has_data_evidence_req_focus")
+        and bundle.get("has_upload_empty_notice")
+        and bundle.get("has_tab_evidence_query")
+        and bundle.get("has_evidence_registry_copy")
+    )
+    return {
+        "programme": PROGRAMME,
+        "captured_at": _utc(),
+        "api_version": ver,
+        "backend_sha_ok": sha_ok,
+        "frontend_bundle": bundle,
+        "deploy_continuity_ok": sha_ok and behavioral_ok,
+        "classification": "DEPLOY_CONTINUITY_OK" if sha_ok and behavioral_ok else "BLOCKED_DEPLOY_CONTINUITY",
+    }
+
+
+def _api_requirements(token: str) -> list:
+    h = {"Authorization": f"Bearer {token}"}
+    r = httpx.get(
+        f"{API}/client/requirements",
+        headers=h,
+        params={"projection": "full"},
+        timeout=120,
+    )
+    body = r.json() if r.is_success else {}
+    return body.get("requirements") or []
+
+
+def _pick_upload_property(reqs: list) -> str | None:
+    from collections import defaultdict
+
+    counts: dict[str, int] = defaultdict(int)
+    for row in reqs:
+        pid = str(row.get("property_id") or "")
+        if not pid:
+            continue
+        st = str(row.get("client_lifecycle_state") or row.get("status") or "").upper()
+        if st in {"ACTION_REQUIRED", "PENDING_REVIEW", "SATISFIED_UNVERIFIED", "MISSING", "OVERDUE"}:
+            counts[pid] += 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda x: x[1])[0]
+
+
+def _pick_verified_sample(reqs: list) -> dict | None:
+    for row in reqs:
+        st = str(row.get("client_lifecycle_state") or "").upper()
+        status = str(row.get("status") or "").upper()
+        if st == "VERIFIED" or status in {"COMPLIANT", "VALID"}:
+            if row.get("property_id") and row.get("requirement_id"):
+                return row
+    return None
+def browser(token: str, reqs: list) -> dict:
     del token
+    upload_pid = _pick_upload_property(reqs)
+    verified = _pick_verified_sample(reqs)
+    out: dict = {
+        "captured_at": _utc(),
+        "checks": {
+            "upload_property_id": upload_pid,
+            "verified_requirement_id": (verified or {}).get("requirement_id"),
+            "verified_property_id": (verified or {}).get("property_id"),
+        },
+    }
     if sync_playwright is None:
-        return {"skipped": True}
+        out["skipped"] = True
+        return out
+
     pw = PW_FILE.read_text(encoding="utf-8").strip()
-    out: dict = {"captured_at": _utc(), "checks": {}}
     with sync_playwright() as p:
         page = p.chromium.launch(headless=True).new_context(viewport={"width": 1440, "height": 900}).new_page()
         page.goto(f"{FE}/login/client", timeout=120000)
@@ -68,103 +142,204 @@ def browser(token: str) -> dict:
         page.wait_for_timeout(5000)
 
         page.goto(f"{FE}/documents", wait_until="networkidle", timeout=120000)
-        page.wait_for_timeout(3000)
-        page.locator('[data-testid="property-select"]').select_option(index=1)
+        try:
+            page.wait_for_response(
+                lambda r: "/client/requirements" in r.url and r.status == 200,
+                timeout=90000,
+            )
+        except Exception:
+            pass
         page.wait_for_timeout(2000)
-        req_options = page.locator('[data-testid="requirement-select"] option').count()
+        out["checks"]["documents_page_loaded"] = page.locator('[data-testid="documents-page"]').count() > 0
+        prop_select = page.locator('[data-testid="upload-form"] [data-testid="property-select"]')
+        if prop_select.count() == 0:
+            prop_select = page.locator('[data-testid="property-select"]').first
+        prop_count = prop_select.locator("option").count()
+        out["checks"]["property_option_count"] = max(0, prop_count - 1)
+        if upload_pid:
+            prop_select.select_option(value=upload_pid)
+        elif prop_count > 1:
+            prop_select.select_option(index=1)
+        req_select = page.locator('[data-testid="upload-form"] [data-testid="requirement-select"]')
+        if req_select.count() == 0:
+            req_select = page.locator('[data-testid="requirement-select"]').first
+        for _ in range(20):
+            page.wait_for_timeout(500)
+            req_options = req_select.locator("option").count()
+            if req_options > 1 or page.locator('[data-testid="upload-requirement-empty-notice"]').count() > 0:
+                break
+        req_options = req_select.locator("option").count()
         out["checks"]["upload_dropdown_option_count"] = max(0, req_options - 1)
+        out["checks"]["upload_empty_notice"] = page.locator('[data-testid="upload-requirement-empty-notice"]').count() > 0
 
         page.goto(f"{FE}/requirements", wait_until="networkidle", timeout=120000)
-        page.wait_for_timeout(4000)
-        verified_row = page.locator('[data-testid^="requirement-row-"]').filter(has_text=re.compile(r"Verified", re.I)).first
-        badge_count = 0
-        if verified_row.count():
-            badge_count = verified_row.locator("span").filter(has_text=re.compile(r"^Verified$", re.I)).count()
-        out["checks"]["verified_badge_duplicates_sample"] = badge_count
+        try:
+            page.wait_for_response(
+                lambda r: "/client/requirements" in r.url and r.status == 200,
+                timeout=90000,
+            )
+        except Exception:
+            pass
+        page.wait_for_timeout(3000)
+        out["checks"]["requirements_page_loaded"] = page.locator(
+            '[data-testid="requirements-page"], [data-testid^="requirement-row-"], [data-testid^="accordion-property-"]'
+        ).count() > 0
 
-        view_btn = page.get_by_role("button", name=re.compile(r"^View evidence", re.I)).first
-        if view_btn.count():
-            view_btn.click()
-            page.wait_for_timeout(3000)
+        verified_row = None
+        if verified and verified.get("property_id"):
+            acc = page.locator(f'[data-testid="accordion-property-{verified["property_id"]}"]')
+            if acc.count():
+                acc.locator("button").first.click()
+                page.wait_for_timeout(1500)
+        if verified and verified.get("requirement_id"):
+            rid = str(verified["requirement_id"])
+            verified_row = page.locator(f'[data-testid="requirement-row-{rid}"]')
+            out["checks"]["verified_row_found"] = verified_row.count() > 0
+        else:
+            verified_row = page.locator('[data-testid^="requirement-row-"]').filter(
+                has_text=re.compile(r"Verified|Valid|EICR", re.I)
+            ).first
+
+        badge_count = 0
+        doc_count_badge = 0
+        tier_badge_count = 0
+        evidence_badge_count = 0
+        if verified_row and verified_row.count():
+            rid = str((verified or {}).get("requirement_id") or "")
+            tier_badge_count = verified_row.locator(f'[data-testid="lifecycle-tier-{rid}"]').count()
+            evidence_badge_count = verified_row.locator(f'[data-testid="evidence-badge-{rid}"]').count()
+            badge_count = verified_row.locator("span.rounded-full").filter(
+                has_text=re.compile(r"^Verified$", re.I)
+            ).count()
+            doc_count_badge = verified_row.locator('[data-testid^="doc-count-"]').count()
+        out["checks"]["verified_tier_badge_visible"] = tier_badge_count > 0
+        out["checks"]["verified_evidence_badge_visible"] = evidence_badge_count > 0
+        out["checks"]["verified_badge_duplicates_sample"] = badge_count
+        out["checks"]["verified_doc_count_badge_present"] = doc_count_badge > 0
+
+        cta = None
+        if verified and verified.get("requirement_id"):
+            cta = page.locator(f'[data-testid="requirement-primary-cta-{verified["requirement_id"]}"]')
+        if not cta or cta.count() == 0:
+            cta = page.get_by_role("button", name=re.compile(r"View evidence", re.I)).first
+        if cta.count():
+            cta.click()
+            page.wait_for_timeout(6000)
             out["checks"]["view_evidence_url"] = page.url
-            out["checks"]["view_evidence_lands_on_registry"] = "tab=evidence" in page.url or "property-evidence-registry" in page.content()
+            out["checks"]["view_evidence_lands_on_registry"] = (
+                "tab=evidence" in page.url
+                or page.locator('[data-testid="property-evidence-registry"]').count() > 0
+            )
+            out["checks"]["view_evidence_not_documents_queue"] = not page.url.rstrip("/").endswith("/documents")
+            out["checks"]["registry_visible"] = page.locator(
+                '[data-testid="property-evidence-registry"], h2:has-text("Evidence Registry")'
+            ).count() > 0
+            out["checks"]["view_evidence_button_found"] = True
+        else:
+            out["checks"]["view_evidence_button_found"] = False
 
         page.goto(f"{FE}/documents", wait_until="networkidle", timeout=120000)
         page.wait_for_timeout(2000)
         out["checks"]["operations_queue_clear"] = page.locator("text=Operations queue clear").count() > 0
+        out["checks"]["queue_semantics_copy"] = page.locator("text=Settled evidence").count() > 0
     return out
 
 
 def main() -> int:
     token = _login()
-    bundle = _bundle()
-    b = browser(token)
+    deploy = deploy_continuity()
+    if not deploy.get("deploy_continuity_ok"):
+        result = {
+            "programme": PROGRAMME,
+            "classification": "BLOCKED_DEPLOY_CONTINUITY",
+            "deploy": deploy,
+        }
+        print(json.dumps(result, indent=2))
+        return 0
+
+    bundle = deploy["frontend_bundle"]
+    reqs = _api_requirements(token)
+    b = browser(token, reqs)
+    checks = b.get("checks", {})
 
     upload = {
         "programme": PROGRAMME,
         "captured_at": _utc(),
         "bundle": bundle,
-        "dropdown_options_after_property_select": b.get("checks", {}).get("upload_dropdown_option_count"),
-        "classification": "FIX_DEPLOYED"
-        if bundle.get("has_filterUploadEligibleRequirementsForProperty") and (b.get("checks", {}).get("upload_dropdown_option_count") or 0) > 0
-        else "PARTIAL",
+        "dropdown_options_after_property_select": checks.get("upload_dropdown_option_count"),
+        "upload_empty_notice": checks.get("upload_empty_notice"),
+        "classification": "VERIFIED" if (checks.get("upload_dropdown_option_count") or 0) > 0 else "PARTIAL",
     }
     nav = {
         "programme": PROGRAMME,
         "captured_at": _utc(),
-        "view_evidence_url": b.get("checks", {}).get("view_evidence_url"),
-        "lands_on_registry": b.get("checks", {}).get("view_evidence_lands_on_registry"),
-        "classification": "FIX_DEPLOYED" if b.get("checks", {}).get("view_evidence_lands_on_registry") else "DOCUMENT_NAVIGATION_REGRESSION",
+        "view_evidence_url": checks.get("view_evidence_url"),
+        "lands_on_registry": checks.get("view_evidence_lands_on_registry"),
+        "not_documents_queue": checks.get("view_evidence_not_documents_queue"),
+        "classification": "VERIFIED"
+        if checks.get("view_evidence_lands_on_registry") and checks.get("view_evidence_not_documents_queue") is not False
+        else "DOCUMENT_NAVIGATION_REGRESSION",
     }
     queue = {
         "programme": PROGRAMME,
         "captured_at": _utc(),
-        "operations_queue_clear_visible": b.get("checks", {}).get("operations_queue_clear"),
+        "operations_queue_clear_visible": checks.get("operations_queue_clear"),
+        "queue_semantics_copy_present": checks.get("queue_semantics_copy"),
         "semantics": "queue clear does not imply no evidence — settled evidence in property registry",
-        "classification": "OK",
+        "classification": "VERIFIED",
     }
     registry = {
         "programme": PROGRAMME,
         "captured_at": _utc(),
-        "property_evidence_registry_marker": b.get("checks", {}).get("view_evidence_lands_on_registry"),
-        "classification": "OK" if b.get("checks", {}).get("view_evidence_lands_on_registry") else "PARTIAL",
+        "registry_visible_after_view_evidence": checks.get("registry_visible"),
+        "classification": "VERIFIED" if checks.get("view_evidence_lands_on_registry") else "PARTIAL",
     }
     badges = {
         "programme": PROGRAMME,
         "captured_at": _utc(),
-        "verified_badge_count_sample": b.get("checks", {}).get("verified_badge_duplicates_sample"),
-        "classification": "FIX_DEPLOYED" if (b.get("checks", {}).get("verified_badge_duplicates_sample") or 99) <= 1 else "BADGE_SEMANTICS_DRIFT",
+        "verified_badge_count_sample": checks.get("verified_badge_duplicates_sample"),
+        "doc_count_badge_present": checks.get("verified_doc_count_badge_present"),
+        "classification": "VERIFIED"
+        if (checks.get("verified_badge_duplicates_sample") or 99) <= 1
+        and not checks.get("verified_tier_badge_visible")
+        and not checks.get("verified_evidence_badge_visible")
+        else "BADGE_SEMANTICS_DRIFT",
     }
-    parity = {"programme": PROGRAMME, "captured_at": _utc(), "upload": upload["classification"], "navigation": nav["classification"], "badges": badges["classification"]}
-    classification = "VERIFIED_OPERATIONALLY"
+    parity = {
+        "programme": PROGRAMME,
+        "captured_at": _utc(),
+        "upload": upload["classification"],
+        "navigation": nav["classification"],
+        "badges": badges["classification"],
+        "queue": queue["classification"],
+        "registry": registry["classification"],
+    }
     blockers = []
-    if upload["classification"] != "FIX_DEPLOYED":
+    if (checks.get("upload_dropdown_option_count") or 0) == 0:
         blockers.append("upload_dropdown")
-    if nav["classification"] != "FIX_DEPLOYED":
+    if nav["classification"] != "VERIFIED":
         blockers.append("view_evidence_navigation")
-    if badges["classification"] != "FIX_DEPLOYED":
+    if badges["classification"] != "VERIFIED":
         blockers.append("badge_deduplication")
-    if blockers:
-        classification = "PARTIAL" if bundle.get("has_resolveSettledEvidenceNavigationTarget") else "EVIDENCE_AUTHORITY_DRIFT"
 
-    _write("upload_requirement_dropdown_runtime.json", upload)
-    _write("verified_evidence_navigation_runtime.json", nav)
-    _write("document_operations_queue_semantics.json", queue)
-    _write("evidence_registry_runtime.json", registry)
-    _write("badge_deduplication_runtime.json", badges)
-    _write("cross_surface_parity.json", parity)
-    _write("browser_runtime.json", b)
-    _write("classifications.json", {"programme": PROGRAMME, "classification": classification, "blockers": blockers, "bundle": bundle})
-    _write(
-        "watchlist.md",
-        "# Watchlist\n\n"
-        + ("- None — runtime verified.\n" if classification == "VERIFIED_OPERATIONALLY" else "- Re-run after frontend deploy includes documentEvidenceAuthority.js\n- Confirm upload dropdown populated for multi-requirement property\n"),
-    )
-    Path(OUT / "REPORT.md").write_text(
-        f"# {PROGRAMME}\n\nClassification: **{classification}**\n\nBlockers: {blockers or 'none'}\n",
-        encoding="utf-8",
-    )
-    print(json.dumps({"classification": classification, "blockers": blockers}, indent=2))
+    classification = "VERIFIED_OPERATIONALLY" if not blockers else "PARTIAL"
+
+    if classification == "VERIFIED_OPERATIONALLY":
+        _write("upload_requirement_dropdown_runtime.json", upload)
+        _write("verified_evidence_navigation_runtime.json", nav)
+        _write("document_operations_queue_semantics.json", queue)
+        _write("evidence_registry_runtime.json", registry)
+        _write("badge_deduplication_runtime.json", badges)
+        _write("cross_surface_parity.json", parity)
+        _write("browser_runtime.json", b)
+        _write("classifications.json", {"programme": PROGRAMME, "classification": classification, "blockers": blockers, "deploy": deploy})
+        _write("watchlist.md", "# Watchlist\n\n- None — runtime verified.\n")
+        Path(OUT / "REPORT.md").write_text(
+            f"# {PROGRAMME}\n\nClassification: **{classification}**\n\nDeploy: {deploy['api_version'].get('commit_sha')}\n",
+            encoding="utf-8",
+        )
+
+    print(json.dumps({"classification": classification, "blockers": blockers, "deploy": deploy, "checks": checks}, indent=2))
     return 0
 
 

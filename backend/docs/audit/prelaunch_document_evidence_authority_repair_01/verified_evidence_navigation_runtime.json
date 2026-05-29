@@ -1,7 +1,8 @@
 {
   "programme": "PRELAUNCH-DOCUMENT-EVIDENCE-AUTHORITY-REPAIR-01",
-  "captured_at": "2026-05-29T20:19:30.936736+00:00",
-  "view_evidence_url": null,
-  "lands_on_registry": null,
-  "classification": "DOCUMENT_NAVIGATION_REGRESSION"
+  "captured_at": "2026-05-29T21:04:13.190163+00:00",
+  "view_evidence_url": "https://pleerityenterprise.co.uk/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?tab=evidence&requirement_id=216ed196-883b-42a2-9011-39918534d32d",
+  "lands_on_registry": true,
+  "not_documents_queue": true,
+  "classification": "VERIFIED"
 }
