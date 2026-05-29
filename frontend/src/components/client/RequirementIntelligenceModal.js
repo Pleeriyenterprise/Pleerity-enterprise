@@ -21,6 +21,10 @@ import {
 } from '../../utils/requirementIntelligenceLabels';
 import { formatRiskLabel } from '../../utils/riskLabel';
 import { resolveDocumentsPath } from '../../utils/clientPortalNavigation';
+import {
+  resolvePropertyEvidenceRegistryPath,
+  resolveSettledEvidenceNavigationTarget,
+} from '../../utils/documentEvidenceAuthority';
 import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
 import { projectResolvedRequirementSemantics } from '../../utils/resolvedRequirementViewModel';
 import { NotApplicableGovernedNotice } from '../../utils/notApplicableGovernedCopy';
@@ -267,11 +271,18 @@ export default function RequirementIntelligenceModal({
       });
       return;
     }
-    if (resolved.primary_route) onNavigate(resolved.primary_route);
+    if (resolved.primary_route) {
+      const settled = resolveSettledEvidenceNavigationTarget(merged, resolved, pid);
+      onNavigate(settled || resolved.primary_route);
+      return;
+    }
   };
-  const docsView = pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid }) : pid ? resolveDocumentsPath(pid) : '/documents';
+  const settledEvidencePath = resolveSettledEvidenceNavigationTarget(merged, resolved, pid);
+  const docsView =
+    settledEvidencePath ||
+    (pid && rid ? resolvePropertyEvidenceRegistryPath(pid, rid) : pid ? resolvePropertyEvidenceRegistryPath(pid) : '/documents');
   const docsUpload =
-    pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid, focus: 'upload' }) : docsView;
+    pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid, focus: 'upload' }) : resolveDocumentsPath(pid, { focus: 'upload' });
   const primaryLabel = String(resolved?.primary_action_label || '').trim() || 'Take action';
 
   const showUploadSecondary =

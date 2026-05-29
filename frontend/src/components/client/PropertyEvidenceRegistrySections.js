@@ -70,7 +70,7 @@ export function PropertyEvidenceRegistrySections({
                     const workspaceHref = resolveDocumentsPath(propertyId, { requirement_id: doc.requirement_id });
                     const linkageBadge = getClientDocumentLinkageBadge(doc);
                     return (
-                      <tr key={doc.document_id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr key={doc.document_id} className="border-b border-gray-100 hover:bg-gray-50" data-evidence-req-focus={doc.requirement_id || undefined}>
                         <td className="p-3 font-medium text-midnight-blue">{doc.file_name || doc.original_filename || doc.document_id}</td>
                         <td className="p-3 text-gray-600">{doc.document_type ? documentTypeLabel(doc.document_type) : '—'}</td>
                         <td className="p-3 text-gray-600">{reqLabel}</td>

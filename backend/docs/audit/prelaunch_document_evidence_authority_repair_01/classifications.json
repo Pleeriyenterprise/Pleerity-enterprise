@@ -1,0 +1,16 @@
+{
+  "programme": "PRELAUNCH-DOCUMENT-EVIDENCE-AUTHORITY-REPAIR-01",
+  "classification": "EVIDENCE_AUTHORITY_DRIFT",
+  "blockers": [
+    "upload_dropdown",
+    "view_evidence_navigation",
+    "badge_deduplication"
+  ],
+  "bundle": {
+    "path": "/static/js/main.e38da7e8.js",
+    "has_filterUploadEligibleRequirementsForProperty": false,
+    "has_composeRequirementStatusBadgeVisibility": false,
+    "has_resolveSettledEvidenceNavigationTarget": false,
+    "has_tab_evidence": false
+  }
+}

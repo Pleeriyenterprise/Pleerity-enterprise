@@ -412,6 +412,8 @@ export default function PropertyDetailPage() {
   const complianceResolveConsumedRef = useRef(null);
   /** Deeplink `?open=intel&requirement_id=&focus=submission` for post-submit inspect (GF-CLOSURE-01). */
   const [pendingIntelOpen, setPendingIntelOpen] = useState(null);
+  /** Deeplink `?tab=evidence&requirement_id=` — settled evidence registry (not operations queue). */
+  const [pendingEvidenceFocusReqId, setPendingEvidenceFocusReqId] = useState(null);
   const [operatingFeedItems, setOperatingFeedItems] = useState([]);
   const [operatingFeedLoading, setOperatingFeedLoading] = useState(false);
 
@@ -525,6 +527,24 @@ export default function PropertyDetailPage() {
       focusSubmission: q.get('focus') === 'submission',
     });
   }, [location.search, propertyId]);
+
+  useEffect(() => {
+    const q = new URLSearchParams(location.search || '');
+    if (q.get('tab') !== 'evidence') return;
+    if (!propertyId) return;
+    setActiveTab(TAB_EVIDENCE);
+    const rid = q.get('requirement_id');
+    if (rid) setPendingEvidenceFocusReqId(String(rid));
+  }, [location.search, propertyId]);
+
+  useEffect(() => {
+    if (!pendingEvidenceFocusReqId || evidenceLoading || !evidenceData) return;
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-evidence-req-focus="${pendingEvidenceFocusReqId}"]`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    setPendingEvidenceFocusReqId(null);
+  }, [pendingEvidenceFocusReqId, evidenceLoading, evidenceData]);
 
   useEffect(() => {
     if (!pendingIntelOpen || !propertyId || !requirements.length) return;

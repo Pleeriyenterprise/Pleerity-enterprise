@@ -1,0 +1,36 @@
+{
+  "programme": "PRELAUNCH-DOCUMENT-EVIDENCE-AUTHORITY-REPAIR-01",
+  "captured_at": "2026-05-29T20:00:00Z",
+  "findings": [
+    {
+      "id": "RC-UPLOAD-DROPDOWN",
+      "surface": "DocumentsPage upload requirement select",
+      "root_cause": "filteredRequirements used isRequirementIncludedInAttentionViews(), which is designed for urgent/review queues — not upload eligibility. Verified/settled rows and valid upload targets were excluded; empty dropdown while property has requirements.",
+      "fix": "filterUploadEligibleRequirementsForProperty() in documentEvidenceAuthority.js; fetch requirements with projection=full"
+    },
+    {
+      "id": "RC-VIEW-EVIDENCE-NAV",
+      "surface": "Requirements View evidence CTA",
+      "root_cause": "take_action.primary.route and canonical cognition URLs point to /documents?property_id=&requirement_id= (operations queue). Verified requirements have no queue items → empty Operations queue clear state.",
+      "fix": "resolveSettledEvidenceNavigationTarget() rewrites to /properties/:id?tab=evidence&requirement_id= (Evidence Registry)"
+    },
+    {
+      "id": "RC-BADGE-DUP",
+      "surface": "RequirementsPage row badges",
+      "root_cause": "Independent rendering of status chip (Verified), lifecycle tier badge (Verified), and evidence badge (Document: Verified) with no deduplication composer.",
+      "fix": "composeRequirementStatusBadgeVisibility() suppresses redundant tier/evidence badges when lifecycle is VERIFIED"
+    },
+    {
+      "id": "RC-QUEUE-VS-REGISTRY",
+      "surface": "Documents operations vs Property Documents tab",
+      "root_cause": "Multiple surfaces treated /documents queue as evidence home; queue filter shows attention-only items while settled evidence lives in property evidence registry API.",
+      "fix": "Navigation parity via property evidence registry path; queue empty copy already truthful — routing was wrong"
+    }
+  ],
+  "authority_semantics_preserved": [
+    "uploaded ≠ verified",
+    "queue clear ≠ no evidence exists",
+    "operations queue = review/linkage/action only",
+    "evidence registry = settled verified evidence"
+  ]
+}

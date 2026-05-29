@@ -189,6 +189,26 @@ describe('executeRequirementPrimaryCta condition-standard', () => {
     expect(navigate).toHaveBeenCalledWith('/operations/issues?property_id=prop-1');
     expect(resolvePrimaryCtaNavigatedAway(result)).toBe(true);
   });
+
+  it('routes verified view evidence to property evidence registry instead of documents queue', () => {
+    const navigate = jest.fn();
+    const requirement = {
+      requirement_id: 'r-ver',
+      property_id: 'p-ver',
+      client_lifecycle_state: 'VERIFIED',
+      status: 'COMPLIANT',
+      take_action: {
+        primary: {
+          label: 'View evidence',
+          route: '/documents?property_id=p-ver&requirement_id=r-ver',
+          handler: 'navigate',
+        },
+      },
+    };
+    const result = executeRequirementPrimaryCta({ requirement, navigate });
+    expect(result.handled).toBe(true);
+    expect(navigate).toHaveBeenCalledWith('/properties/p-ver?tab=evidence&requirement_id=r-ver');
+  });
 });
 
 describe('buildPropertyComplianceResolveQueryLink', () => {

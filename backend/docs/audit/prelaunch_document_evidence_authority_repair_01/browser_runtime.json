@@ -1,0 +1,8 @@
+{
+  "captured_at": "2026-05-29T20:18:55.163371+00:00",
+  "checks": {
+    "upload_dropdown_option_count": 0,
+    "verified_badge_duplicates_sample": 0,
+    "operations_queue_clear": true
+  }
+}

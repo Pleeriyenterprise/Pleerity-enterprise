@@ -69,6 +69,7 @@ import {
   getClientDocumentVisibilityBadge,
 } from '../utils/documentVisibilityRegistry';
 import { isRequirementIncludedInAttentionViews } from '../utils/portalRequirementAttention';
+import { filterUploadEligibleRequirementsForProperty } from '../utils/documentEvidenceAuthority';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 import {
@@ -320,7 +321,7 @@ const DocumentsPage = () => {
       setLoading(false);
 
       fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
-        clientAPI.getRequirements().then((r) => r.data),
+        clientAPI.getRequirements({ projection: 'full' }).then((r) => r.data),
       )
         .then((reqsData) => setRequirements(reqsData?.requirements || []))
         .catch(() => {});
@@ -892,12 +893,10 @@ const DocumentsPage = () => {
     return null;
   };
 
-  const filteredRequirements = useMemo(() => {
-    const pid = uploadForm.property_id;
-    return requirements.filter(
-      (r) => r.property_id === pid && isRequirementIncludedInAttentionViews(r),
-    );
-  }, [requirements, uploadForm.property_id]);
+  const filteredRequirements = useMemo(
+    () => filterUploadEligibleRequirementsForProperty(uploadForm.property_id, requirements),
+    [requirements, uploadForm.property_id],
+  );
 
   const requirementsNeedingDocuments = useMemo(
     () =>
@@ -1185,10 +1184,15 @@ const DocumentsPage = () => {
                       <option value="">{uploadForm.document_type === 'Other' ? 'Link later (optional)' : 'Select requirement...'}</option>
                       {filteredRequirements.map(r => (
                         <option key={r.requirement_id} value={r.requirement_id}>
-                          {r.description}
+                          {r.display_label || r.description || r.requirement_type || r.requirement_code || r.requirement_id}
                         </option>
                       ))}
                     </select>
+                    {uploadForm.property_id && filteredRequirements.length === 0 ? (
+                      <p className="text-xs text-amber-800 mt-2" data-testid="upload-requirement-empty-notice">
+                        No upload targets for this property right now. Verified evidence is in Property → Documents (Evidence Registry).
+                      </p>
+                    ) : null}
                     {selectedUploadRequirementLabel ? (
                       <p className="text-xs text-midnight-blue font-medium mt-2" data-testid="upload-requirement-context">
                         Uploading this will update: {selectedUploadRequirementLabel}

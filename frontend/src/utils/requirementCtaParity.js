@@ -10,6 +10,7 @@ import {
   guidedMixedEvidenceInitialMode,
   shouldPreferGuidedEvidenceOverIntelView,
 } from './rightToRentTrustPresentation';
+import { resolveSettledEvidenceNavigationTarget } from './documentEvidenceAuthority';
 
 export const GUIDED_CTA_UNAVAILABLE_TITLE =
   'This obligation is configured for guided resolution but required property or requirement context is missing. Use supporting links or contact support if this persists.';
@@ -130,7 +131,8 @@ export function executeRequirementPrimaryCta(ctx) {
     return { handled: true, ta };
   }
   if (ta.primary_route && navigate) {
-    navigate(ta.primary_route);
+    const settledTarget = resolveSettledEvidenceNavigationTarget(requirement, ta, effectivePid || pagePropertyId);
+    navigate(settledTarget || ta.primary_route);
     return { handled: true, ta };
   }
   return { handled: false, ta };

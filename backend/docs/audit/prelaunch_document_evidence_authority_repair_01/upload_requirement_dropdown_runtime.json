@@ -1,0 +1,13 @@
+{
+  "programme": "PRELAUNCH-DOCUMENT-EVIDENCE-AUTHORITY-REPAIR-01",
+  "captured_at": "2026-05-29T20:19:30.936736+00:00",
+  "bundle": {
+    "path": "/static/js/main.e38da7e8.js",
+    "has_filterUploadEligibleRequirementsForProperty": false,
+    "has_composeRequirementStatusBadgeVisibility": false,
+    "has_resolveSettledEvidenceNavigationTarget": false,
+    "has_tab_evidence": false
+  },
+  "dropdown_options_after_property_select": 0,
+  "classification": "PARTIAL"
+}

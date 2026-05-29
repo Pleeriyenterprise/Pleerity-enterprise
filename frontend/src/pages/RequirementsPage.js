@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
+import { composeRequirementStatusBadgeVisibility } from '../utils/documentEvidenceAuthority';
 import {
   Accordion,
   AccordionContent,
@@ -483,6 +484,17 @@ const RequirementsPage = () => {
       return null;
     })();
     const tierBadge = getLifecycleTierBadge(req);
+    const evidenceBadgeRaw = resolveSubmissionAwareEvidenceBadgeLabel(req.evidence_badge_label, req);
+    const recentSupporting = recentSupportingUploadAttributionSubline(
+      req.requirement_id,
+      recentSupportingUploadAt,
+    );
+    const badgeVisibility = composeRequirementStatusBadgeVisibility(
+      req,
+      statusConfig,
+      tierBadge,
+      evidenceBadgeRaw,
+    );
     const iconTone = getRequirementLifecycleIconTone(req);
     const iconWell =
       iconTone === 'red'
@@ -520,7 +532,7 @@ const RequirementsPage = () => {
                     'Requirement'}
                 </h3>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.className}`}>{statusConfig.text}</span>
-                {tierBadge ? (
+                {badgeVisibility.showTier && tierBadge ? (
                   <span
                     className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${tierBadge.className}`}
                     data-testid={`lifecycle-tier-${req.requirement_id}`}
@@ -536,13 +548,7 @@ const RequirementsPage = () => {
                     {req.evidence_completeness.summary_label}
                   </span>
                 ) : null}
-                {(() => {
-                  const badge = resolveSubmissionAwareEvidenceBadgeLabel(req.evidence_badge_label, req);
-                  const recentSupporting = recentSupportingUploadAttributionSubline(
-                    req.requirement_id,
-                    recentSupportingUploadAt,
-                  );
-                  return badge ? (
+                {badgeVisibility.showEvidence && badgeVisibility.evidenceDisplay ? (
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${
                       recentSupporting
@@ -551,10 +557,9 @@ const RequirementsPage = () => {
                     }`}
                     data-testid={`evidence-badge-${req.requirement_id}`}
                   >
-                    {recentSupporting ? 'Supporting added' : `Document: ${badge}`}
+                    {recentSupporting ? 'Supporting added' : badgeVisibility.evidenceDisplay}
                   </span>
-                  ) : null;
-                })()}
+                ) : null}
                 {docCount > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200" data-testid={`doc-count-${req.requirement_id}`}>
                     <FileText className="w-3.5 h-3.5" />
