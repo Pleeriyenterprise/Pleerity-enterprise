@@ -1,0 +1,162 @@
+{
+  "programme": "PRELAUNCH-OPERATIONAL-TRUST-GUARDRAILS-01",
+  "generated_at_utc": "2026-05-29T15:57:00Z",
+  "strategy": "Runtime-backed operational proof preferred over mock-only guarantees. Extend existing harnesses; add minimal CI guards.",
+  "programme_items": [
+    {
+      "id": "TTP-001",
+      "title": "Operational projection guard (CI)",
+      "type": "unit_static",
+      "status": "IMPLEMENTED",
+      "path": "frontend/src/utils/operationalProjectionGuard.test.js",
+      "invariants": ["OTI-NO-LIST-PROJECTION-ON-OPERATIONAL-ROWS"],
+      "description": "Static assert authority pages use requirementsOperational or projection=full"
+    },
+    {
+      "id": "TTP-002",
+      "title": "getListGuidance authority precedence",
+      "type": "unit",
+      "status": "IMPLEMENTED",
+      "path": "frontend/src/utils/operationalCognition.test.js",
+      "invariants": ["OTI-NO-FE-AUTHORITY-OVERRIDE"],
+      "description": "list_guidance wins over take_action/business_actions fallbacks"
+    },
+    {
+      "id": "TTP-003",
+      "title": "False calm disclosure logic",
+      "type": "unit",
+      "status": "EXISTS",
+      "path": "frontend/src/utils/todayExecutionWorkspace.test.js",
+      "invariants": ["OTI-NO-FALSE-CALM", "OTI-NO-EMPTY-EXEC-WITH-DEBT"]
+    },
+    {
+      "id": "TTP-004",
+      "title": "Requirements projection route contract",
+      "type": "unit",
+      "status": "EXISTS",
+      "path": "backend/tests/test_client_requirements_projection.py",
+      "invariants": ["OTI-NO-LIST-PROJECTION-ON-OPERATIONAL-ROWS", "OTI-NO-COGNITION-DRIFT"]
+    },
+    {
+      "id": "TTP-005",
+      "title": "Cognition envelope read-only contract",
+      "type": "unit",
+      "status": "EXISTS",
+      "path": "backend/tests/test_operational_cognition_service.py",
+      "invariants": ["OTI-NO-UPLOAD-EQUALS-COMPLIANT", "OTI-NO-FE-AUTHORITY-OVERRIDE"]
+    },
+    {
+      "id": "TTP-006",
+      "title": "Continuation idempotent replay",
+      "type": "unit",
+      "status": "EXISTS",
+      "path": "backend/tests/test_operational_continuation_service.py",
+      "invariants": ["OTI-NO-DUPLICATE-ORCHESTRATION", "OTI-NO-STALE-CONTINUATION"]
+    },
+    {
+      "id": "TTP-007",
+      "title": "Duplicate WO from issue HTTP idempotency",
+      "type": "http_integration",
+      "status": "EXISTS",
+      "path": "backend/tests/test_maintenance_wo_from_issue_idempotency.py",
+      "invariants": ["OTI-NO-DUPLICATE-ORCHESTRATION"]
+    },
+    {
+      "id": "TTP-008",
+      "title": "Risk signal create-WO HTTP idempotency",
+      "type": "http_integration",
+      "status": "PROPOSED",
+      "path": "backend/tests/test_risk_signal_create_work_order_idempotency.py",
+      "invariants": ["OTI-NO-DUPLICATE-ORCHESTRATION"],
+      "description": "Mirror maintenance idempotency tests for risk signal path"
+    },
+    {
+      "id": "TTP-009",
+      "title": "CC degraded pressure not false calm",
+      "type": "unit",
+      "status": "EXISTS",
+      "path": "backend/tests/test_command_center_primary_projection.py",
+      "invariants": ["OTI-NO-DEGRADED-MASQUERADE", "OTI-NO-FALSE-CALM"]
+    },
+    {
+      "id": "TTP-010",
+      "title": "Cross-surface CTA parity staging",
+      "type": "staging_harness",
+      "status": "EXISTS",
+      "path": "backend/tmp_operational_cognition_layer_audit_01.py",
+      "invariants": ["OTI-NO-CONTRADICTORY-CTA", "OTI-NO-COGNITION-DRIFT"]
+    },
+    {
+      "id": "TTP-011",
+      "title": "Today execution workspace closeout",
+      "type": "staging_harness",
+      "status": "EXISTS",
+      "path": "backend/tmp_prelaunch_today_execution_workspace_01.py",
+      "invariants": ["OTI-NO-FALSE-CALM", "OTI-NO-EMPTY-EXEC-WITH-DEBT", "OTI-BUNDLE-DEPLOY-CONTINUITY"]
+    },
+    {
+      "id": "TTP-012",
+      "title": "Operations outcome coherence",
+      "type": "staging_harness",
+      "status": "EXISTS",
+      "path": "backend/tmp_prelaunch_operations_outcome_coherence_01.py",
+      "invariants": ["OTI-NO-DUPLICATE-ORCHESTRATION", "OTI-NO-DEGRADED-MASQUERADE"]
+    },
+    {
+      "id": "TTP-013",
+      "title": "Property display identity",
+      "type": "unit",
+      "status": "EXISTS",
+      "path": "frontend/src/utils/propertyDisplayName.test.js",
+      "invariants": ["OTI-NO-PROPERTY-IDENTITY-DRIFT"]
+    },
+    {
+      "id": "TTP-014",
+      "title": "Count reconciliation staging",
+      "type": "staging_harness",
+      "status": "EXISTS",
+      "path": "backend/tmp_prelaunch_today_execution_workspace_01.py — cross_surface_reconciliation.json",
+      "invariants": ["OTI-NO-DECORATIVE-COUNTS"]
+    },
+    {
+      "id": "TTP-015",
+      "title": "Trust guardrails meta-harness",
+      "type": "staging_harness",
+      "status": "IMPLEMENTED",
+      "path": "backend/tmp_prelaunch_operational_trust_guardrails_01.py",
+      "invariants": ["ALL"],
+      "description": "Validates registry, runs projection API check, aggregates classification inputs"
+    },
+    {
+      "id": "TTP-016",
+      "title": "CC requirements operational migration test",
+      "type": "unit_static",
+      "status": "PROPOSED",
+      "path": "frontend/src/pages/ClientCommandCenterPage.js",
+      "invariants": ["OTI-NO-LIST-PROJECTION-ON-OPERATIONAL-ROWS"],
+      "description": "After P0 migration, extend projection guard to assert CC uses requirementsOperational"
+    },
+    {
+      "id": "TTP-017",
+      "title": "Requirement CTA parity",
+      "type": "unit",
+      "status": "EXISTS",
+      "path": "frontend/src/utils/requirementCtaParity.test.js",
+      "invariants": ["OTI-NO-CONTRADICTORY-CTA"]
+    }
+  ],
+  "ci_recommended_bundle": [
+    "pytest backend/tests/test_operational_cognition_service.py",
+    "pytest backend/tests/test_operational_continuation_service.py",
+    "pytest backend/tests/test_client_requirements_projection.py",
+    "pytest backend/tests/test_command_center_primary_projection.py",
+    "pytest backend/tests/test_maintenance_wo_from_issue_idempotency.py",
+    "npm test -- --testPathPattern=operationalCognition|operationalProjectionGuard|todayExecutionWorkspace|propertyDisplayName|requirementCtaParity"
+  ],
+  "pre_release_staging_bundle": [
+    "python backend/tmp_prelaunch_operational_trust_guardrails_01.py",
+    "python backend/tmp_prelaunch_today_execution_workspace_01.py",
+    "python backend/tmp_prelaunch_operations_outcome_coherence_01.py",
+    "python backend/tmp_prelaunch_requirements_authority_regression_01.py"
+  ]
+}

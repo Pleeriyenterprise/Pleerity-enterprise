@@ -1,0 +1,29 @@
+{
+  "programme": "PRELAUNCH-OPERATIONAL-TRUST-GUARDRAILS-01",
+  "classification": "PARTIAL",
+  "secondary_risks": [
+    "COGNITION_FRAGMENTATION_RISK",
+    "AUTHORITY_DRIFT_RISK"
+  ],
+  "evaluated_at_utc": "2026-05-29T15:57:00Z",
+  "rationale": {
+    "runtime_proof_quality": "MODERATE — strong staging harnesses for Today/Requirements/coherence; gaps on CC/Dashboard/Property hub",
+    "cognition_centralisation": "Backend operational_cognition_v1 is canonical but frontend consumption split by projection mode and surface",
+    "cross_surface_parity": "WEAK — CC/Dashboard use projection=list; contradictory CTA risk documented",
+    "degraded_truthfulness": "PARTIAL — CC pressure_degraded server truth vs UI calm compression",
+    "fallback_safety": "WEAK — dual resolvers and primaryActionResolver overrides remain",
+    "regression_protection_maturity": "MODERATE — service/idempotency strong; cross-surface CI weak"
+  },
+  "not_classified_as": {
+    "TRUST_HARDENED": "Projection split, CC degraded UI gap, and frontend authority fallbacks remain",
+    "TRUST_REGRESSION_RISK": "Recent Today closeout VERIFIED_OPERATIONALLY; guardrails now documented",
+    "OPERATIONAL_TRUST_WEAK": "Core cognition service and idempotency tests exist; not platform-wide weak"
+  },
+  "invariant_coverage_summary": {
+    "total_invariants": 18,
+    "protected": 3,
+    "partial": 12,
+    "weak": 3
+  },
+  "push_audit_artifacts_allowed": true
+}

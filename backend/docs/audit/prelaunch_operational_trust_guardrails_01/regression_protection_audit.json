@@ -1,0 +1,134 @@
+{
+  "programme": "PRELAUNCH-OPERATIONAL-TRUST-GUARDRAILS-01",
+  "generated_at_utc": "2026-05-29T15:57:00Z",
+  "protection_layers": {
+    "unit_pytest": {
+      "cognition": ["backend/tests/test_operational_cognition_service.py"],
+      "continuation": ["backend/tests/test_operational_continuation_service.py"],
+      "projection": ["backend/tests/test_client_requirements_projection.py"],
+      "degraded_cc": ["backend/tests/test_command_center_primary_projection.py"],
+      "duplicate_wo_issue": [
+        "backend/tests/test_maintenance_wo_from_issue_idempotency.py",
+        "backend/tests/test_maintenance_issue_create_idempotency.py"
+      ],
+      "authority_invariants": [
+        "backend/tests/test_risk_signal_authority_invariants.py",
+        "backend/tests/test_maintenance_issue_authority_invariants.py",
+        "backend/tests/test_work_order_authority_invariants.py"
+      ],
+      "false_calm_logic": ["frontend/src/utils/todayExecutionWorkspace.test.js"],
+      "property_identity": ["frontend/src/utils/propertyDisplayName.test.js"],
+      "cta_parity": ["frontend/src/utils/requirementCtaParity.test.js", "frontend/src/utils/requirementTakeActionResolver.test.js"],
+      "attention_ranking": ["backend/tests/test_today_attention_ranking.py"],
+      "trust_architecture": ["backend/tests/test_governance_ux_trust_architecture_phase5.py"]
+    },
+    "frontend_integration": {
+      "guided_evidence_full_projection": ["frontend/src/pages/RequirementsPage.guidedEvidence.integration.test.js"],
+      "cc_degraded_copy": ["frontend/src/pages/ClientCommandCenterPage.test.js"],
+      "cognition_modal": ["frontend/src/components/ComplianceEvidenceResolveModal.trust01.test.js"]
+    },
+    "staging_harnesses": {
+      "today_execution": ["backend/tmp_prelaunch_today_execution_workspace_01.py"],
+      "operations_coherence": ["backend/tmp_prelaunch_operations_outcome_coherence_01.py"],
+      "requirements_authority": ["backend/tmp_prelaunch_requirements_authority_regression_01.py"],
+      "property_truth": ["backend/tmp_prelaunch_inbox_dashboard_property_truth_repair_01.py"],
+      "cognition_layer": ["backend/tmp_operational_cognition_layer_audit_01.py"],
+      "cognition_envelope_closeout": ["backend/tmp_operational_cognition_envelope_v1_closeout_01.py"],
+      "contractor_tenant": ["backend/tmp_prelaunch_contractor_tenant_closeout_01.py"],
+      "admin_control": ["backend/tmp_prelaunch_admin_control_closeout_01.py"]
+    },
+    "projection_guards": {
+      "backend_route": "test_client_requirements_projection.py — list defers enrichment; full includes cognition",
+      "frontend_page_level": "MISSING until operationalProjectionGuard.test.js added",
+      "documented_watchlists": [
+        "prelaunch_today_execution_workspace_01/watchlist.md",
+        "prelaunch_requirements_authority_regression_01"
+      ]
+    }
+  },
+  "unprotected_trust_surfaces": [
+    {
+      "surface": "Command Centre",
+      "gap": "requirements projection=list; no cognition parity test; CC_DEGRADED_FRONTEND not CI-gated"
+    },
+    {
+      "surface": "Dashboard",
+      "gap": "No false-calm guard; requirements list; Today KPI reconciliation not automated"
+    },
+    {
+      "surface": "Property Operating",
+      "gap": "No operational_cognition; projection=list typical; no hub trust harness"
+    },
+    {
+      "surface": "Risk signals",
+      "gap": "No HTTP pytest for duplicate create-work-order; frontend fallback resolver"
+    },
+    {
+      "surface": "Rent operations",
+      "gap": "ARREARS_OUTSTANDING_VS_OVERDUE; detail drawer outside cognition"
+    },
+    {
+      "surface": "Contractor / Tenant",
+      "gap": "Outside cognition v1; harness-only, not default CI"
+    },
+    {
+      "surface": "Cross-surface count parity",
+      "gap": "Today ↔ CC ↔ Dashboard counts — harness-only, no pytest"
+    }
+  ],
+  "weakly_protected_cognition_paths": [
+    "getListGuidance business_actions fallback on Today non-requirement tasks",
+    "requirementTakeActionResolver when API omits take_action",
+    "primaryActionResolver resolveIssuePrimaryAction / resolveRiskSignalPrimaryKey",
+    "Command Centre CTA from portfolioVerdict not cognition envelope",
+    "Property intel modal seed without detail load"
+  ],
+  "frontend_only_assumptions": [
+    "buildFalseEmptyStateDisclosure (Today only)",
+    "sanitizeCommandCenterCtaLabel / portfolioVerdict compression",
+    "todayTaskOperationalGuidance why/outcome copy",
+    "contractorWorkflow next-step messages",
+    "tenantPortalTrust reassurance states"
+  ],
+  "cache_induced_trust_risks": [
+    {
+      "risk": "fetchOperational 45s stale window serves pre-mutation cognition",
+      "surfaces": ["Today", "Requirements", "Command Centre", "Dashboard"],
+      "mitigation_partial": "compliance-outcome reload on Today; PortalStaleRefreshBanner"
+    },
+    {
+      "risk": "requirementsOperational vs requirements cache key split",
+      "surfaces": ["Today vs Dashboard/CC"],
+      "mitigation_partial": "Separate cache keys — can diverge within stale window"
+    },
+    {
+      "risk": "Silent .catch(() => ({ requirements: [] })) on Today requirements fetch",
+      "surfaces": ["Today"],
+      "mitigation_partial": "None — enrichment failure looks like empty requirements"
+    }
+  ],
+  "stale_bundle_risks": [
+    {
+      "risk": "Vercel bundle lag vs backend commit",
+      "mitigation": "deploy_continuity gate in prelaunch harnesses; tmp_poll_today_deploy.py"
+    }
+  ],
+  "runtime_drift_risks": [
+    {
+      "risk": "Render cold start / 503 during closeout",
+      "mitigation": "Retry in harness; not CI"
+    },
+    {
+      "risk": "Playwright timing — domcontentloaded before hero render",
+      "mitigation": "networkidle wait added to today closeout harness"
+    }
+  ],
+  "maturity_score": {
+    "service_layer": "STRONG",
+    "idempotency": "STRONG",
+    "cross_surface_staging": "MODERATE",
+    "frontend_ci_guards": "WEAK",
+    "ci_blocking_gates": "WEAK",
+    "overall": "PARTIAL"
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "programme": "PRELAUNCH-OPERATIONAL-TRUST-GUARDRAILS-01",
+  "generated_at_utc": "2026-05-29T15:57:00Z",
+  "P0": [
+    {
+      "id": "RM-P0-001",
+      "title": "Migrate Command Centre + Dashboard to requirementsOperational",
+      "invariants": ["OTI-NO-LIST-PROJECTION-ON-OPERATIONAL-ROWS", "OTI-NO-COGNITION-DRIFT", "OTI-NO-CONTRADICTORY-CTA"],
+      "surfaces": ["Command Centre", "Dashboard"],
+      "effort": "SMALL"
+    },
+    {
+      "id": "RM-P0-002",
+      "title": "Command Centre degraded truth — block all-clear when pressure_degraded",
+      "invariants": ["OTI-NO-DEGRADED-MASQUERADE", "OTI-NO-FALSE-CALM"],
+      "surfaces": ["Command Centre"],
+      "effort": "SMALL"
+    },
+    {
+      "id": "RM-P0-003",
+      "title": "Remove silent requirements enrichment failure on Today",
+      "invariants": ["OTI-NO-EMPTY-EXEC-WITH-DEBT", "OTI-NO-FE-AUTHORITY-OVERRIDE"],
+      "surfaces": ["Today"],
+      "effort": "TINY"
+    },
+    {
+      "id": "RM-P0-004",
+      "title": "Deprecate dangerous primaryActionResolver paths when API omits continuation",
+      "invariants": ["OTI-NO-HIDE-ACTIVE-WITH-CREATE-CTA", "OTI-NO-DUPLICATE-ORCHESTRATION"],
+      "surfaces": ["Issues", "Risk signals"],
+      "effort": "MEDIUM"
+    },
+    {
+      "id": "RM-P0-005",
+      "title": "Add HTTP idempotency test for risk-signal create-work-order",
+      "invariants": ["OTI-NO-DUPLICATE-ORCHESTRATION"],
+      "surfaces": ["Risk signals"],
+      "effort": "SMALL"
+    },
+    {
+      "id": "RM-P0-006",
+      "title": "Freeze requirementTakeActionResolver — warn-only; remove divergence from Python resolver",
+      "invariants": ["OTI-NO-FE-AUTHORITY-OVERRIDE", "OTI-NO-CONTRADICTORY-CTA"],
+      "surfaces": ["Requirements", "Property Operating", "Today"],
+      "effort": "MEDIUM"
+    }
+  ],
+  "P1": [
+    {
+      "id": "RM-P1-001",
+      "title": "Extend false-calm disclosure pattern to Dashboard empty widgets",
+      "invariants": ["OTI-NO-FALSE-CALM"],
+      "surfaces": ["Dashboard"],
+      "effort": "SMALL"
+    },
+    {
+      "id": "RM-P1-002",
+      "title": "Global compliance-outcome cache invalidation for requirementsOperational",
+      "invariants": ["OTI-CACHE-BOUNDARY-EXPLICIT"],
+      "surfaces": ["All fetchOperational surfaces"],
+      "effort": "SMALL"
+    },
+    {
+      "id": "RM-P1-003",
+      "title": "Cross-surface count reconciliation pytest or CI harness gate",
+      "invariants": ["OTI-NO-DECORATIVE-COUNTS"],
+      "surfaces": ["Today", "Dashboard", "Command Centre"],
+      "effort": "MEDIUM"
+    },
+    {
+      "id": "RM-P1-004",
+      "title": "Property Operating hub — inject requirementsOperational map",
+      "invariants": ["OTI-NO-LIST-PROJECTION-ON-OPERATIONAL-ROWS", "OTI-NO-COGNITION-DRIFT"],
+      "surfaces": ["Property Operating"],
+      "effort": "SMALL"
+    },
+    {
+      "id": "RM-P1-005",
+      "title": "Rent operations — align arrears KPI with is_overdue; cognition on detail drawer",
+      "invariants": ["OTI-NO-FALSE-CALM"],
+      "surfaces": ["Rent operations"],
+      "effort": "MEDIUM"
+    },
+    {
+      "id": "RM-P1-006",
+      "title": "Add operationalProjectionGuard + operationalCognition tests to CI bundle",
+      "invariants": ["OTI-NO-LIST-PROJECTION-ON-OPERATIONAL-ROWS"],
+      "surfaces": ["CI"],
+      "effort": "TINY"
+    }
+  ],
+  "P2": [
+    {
+      "id": "RM-P2-001",
+      "title": "API cache_generation header on operational bundles",
+      "invariants": ["OTI-CACHE-BOUNDARY-EXPLICIT"],
+      "effort": "MEDIUM"
+    },
+    {
+      "id": "RM-P2-002",
+      "title": "Dashboard Today KPI testid reconciliation in closeout harness",
+      "invariants": ["OTI-NO-DECORATIVE-COUNTS"],
+      "effort": "TINY"
+    },
+    {
+      "id": "RM-P2-003",
+      "title": "Contractor/tenant explicit trust boundary docs in invariant registry",
+      "invariants": [],
+      "effort": "TINY"
+    },
+    {
+      "id": "RM-P2-004",
+      "title": "List page total disclosure when pagination caps debt",
+      "invariants": ["OTI-NO-DECORATIVE-COUNTS"],
+      "surfaces": ["Jobs", "Issues"],
+      "effort": "SMALL"
+    }
+  ]
+}

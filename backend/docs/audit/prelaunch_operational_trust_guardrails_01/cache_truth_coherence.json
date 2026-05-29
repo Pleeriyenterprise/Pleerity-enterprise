@@ -1,0 +1,115 @@
+{
+  "programme": "PRELAUNCH-OPERATIONAL-TRUST-GUARDRAILS-01",
+  "generated_at_utc": "2026-05-29T15:57:00Z",
+  "cache_mechanisms": [
+    {
+      "mechanism": "fetchOperational in-memory cache",
+      "path": "frontend/src/utils/clientOperationalFetch.js",
+      "default_stale_ms": 45000,
+      "keys": [
+        "client:dashboard",
+        "client:requirements",
+        "client:requirements:operational",
+        "client:command-center",
+        "client:today-items",
+        "client:compliance-summary"
+      ],
+      "divergence_risk": "HIGH",
+      "notes": "requirements vs requirementsOperational can hold different enrichment generations simultaneously"
+    },
+    {
+      "mechanism": "inflight deduplication",
+      "path": "frontend/src/utils/clientOperationalFetch.js",
+      "divergence_risk": "LOW",
+      "notes": "Prevents duplicate concurrent fetches; does not invalidate on mutation"
+    },
+    {
+      "mechanism": "Vercel static bundle",
+      "path": "https://pleerityenterprise.co.uk/static/js/main.*.js",
+      "divergence_risk": "HIGH",
+      "notes": "Backend /api/version may advance while UI markers absent until deploy completes"
+    },
+    {
+      "mechanism": "operational_surface_cache (backend)",
+      "path": "backend/services/operational_surface_cache.py",
+      "divergence_risk": "MEDIUM",
+      "notes": "Server-side section cache; snapshot fallback marks degraded on build failure"
+    }
+  ],
+  "stale_risks_by_domain": {
+    "cognition_envelopes": {
+      "risk": "Stale take_action / list_guidance after requirement mutation",
+      "severity": "HIGH",
+      "disclosure": "ListCognitionChip stale_warning when envelope includes stale_state",
+      "gap": "Dashboard/CC never fetch full envelope"
+    },
+    "continuation_semantics": {
+      "risk": "Stale has_active_lineage after WO terminal",
+      "severity": "BREAK",
+      "disclosure": "Server should clear; frontend fallback may still show create CTA",
+      "gap": "No cache invalidation on WO status change except page reload"
+    },
+    "operational_urgency": {
+      "risk": "Today/CC urgent counts lag within 45s cache",
+      "severity": "MEDIUM",
+      "disclosure": "bucket_continuation notice on Today",
+      "gap": "Dashboard KPI not tied to same cache generation"
+    },
+    "workflow_lineage": {
+      "risk": "Issue→WO lineage stale in list view",
+      "severity": "HIGH",
+      "disclosure": "Partial — job detail refresh on navigate",
+      "gap": "List pages may show outdated continuation chip"
+    },
+    "degraded_state_truthfulness": {
+      "risk": "CC pressure_degraded not reflected after cache hit",
+      "severity": "BREAK",
+      "disclosure": "command-center-compliance-degraded strip when consumed",
+      "gap": "Cached calm verdict may persist if strip not rendered"
+    },
+    "counts": {
+      "risk": "Widget counts from cached dashboard vs live today items",
+      "severity": "HIGH",
+      "disclosure": "Partial on Today only",
+      "gap": "No cross-cache generation token"
+    },
+    "property_identity": {
+      "risk": "propertyOptions from compliance summary cache vs updated nickname",
+      "severity": "MEDIUM",
+      "disclosure": "None explicit",
+      "gap": "Reload on property settings change not guaranteed on all surfaces"
+    },
+    "operational_debt": {
+      "risk": "Empty requirementsOperational cache after silent catch masks debt",
+      "severity": "BREAK",
+      "disclosure": "false calm possible if CC fetch also fails",
+      "gap": "Today requirements .catch(() => ({ requirements: [] }))"
+    }
+  },
+  "cache_boundaries": {
+    "explicit": [
+      "OPERATIONAL_CACHE_KEYS.requirementsOperational separate from requirements",
+      "clearOperationalCache(key) API exists",
+      "PortalStaleRefreshBanner when refreshing=true"
+    ],
+    "implicit_weak": [
+      "compliance-outcome window event reloads Today only",
+      "No global mutation invalidation bus",
+      "No cache generation header from API"
+    ]
+  },
+  "stale_healthy_state_checks": {
+    "today": "PASS when false-calm/bucket-continuation notices implemented; FAIL if enrichment silently empty",
+    "command_centre": "RISK — all-clear card possible under pressure_degraded",
+    "dashboard": "RISK — no degraded cognition consumption",
+    "requirements": "PASS when stale_warning chip shown",
+    "jobs_issues_lists": "RISK — pagination hides debt without total disclosure on some views"
+  },
+  "recommendations": [
+    "P0: Remove silent requirements fetch catch on Today or surface enrichment failure alert",
+    "P0: Migrate Command Centre + Dashboard requirement preload to requirementsOperational",
+    "P1: Invalidate requirementsOperational on compliance-outcome globally",
+    "P1: Add API cache_generation or fetched_at to operational bundles for cross-surface reconciliation UI",
+    "P2: Document staleMs policy per surface in clientOperationalFetch"
+  ]
+}

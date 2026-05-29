@@ -1,0 +1,125 @@
+{
+  "programme": "PRELAUNCH-OPERATIONAL-TRUST-GUARDRAILS-01",
+  "generated_at_utc": "2026-05-29T15:57:00Z",
+  "principle": "Frontend may format authority; must not invent authority.",
+  "findings": [
+    {
+      "location": "frontend/src/utils/operationalCognition.js — getListGuidance",
+      "behavior": "Falls back to take_action.primary then business_actions[0] when list_guidance absent",
+      "classification": "safe_display_fallback",
+      "notes": "Labels sourced from server fields; must not override when list_guidance present",
+      "severity_if_misused": "MEDIUM"
+    },
+    {
+      "location": "frontend/src/utils/requirementTakeActionResolver.js",
+      "behavior": "Client resolver mirrors Python when API omits take_action; console.warn",
+      "classification": "dangerous_authority_fallback",
+      "notes": "DUAL_TAKE_ACTION_RESOLVER — can diverge from server if resolver logic drifts",
+      "severity_if_misused": "HIGH"
+    },
+    {
+      "location": "frontend/src/utils/primaryActionResolver.js — resolveIssuePrimaryAction",
+      "behavior": "Invents Create maintenance job when operational_continuation missing",
+      "classification": "dangerous_authority_fallback",
+      "notes": "CONTINUATION_FRONTEND_OVERRIDE",
+      "severity_if_misused": "HIGH"
+    },
+    {
+      "location": "frontend/src/utils/primaryActionResolver.js — resolveRiskSignalPrimaryKey",
+      "behavior": "Derives action key from suggested_actions when no continuation",
+      "classification": "dangerous_authority_fallback",
+      "notes": "Must stay subordinate to idempotent API replay",
+      "severity_if_misused": "HIGH"
+    },
+    {
+      "location": "frontend/src/pages/ClientTasksPage.js — sanitizeTodayCtaLabel / TODAY_CTA_LABEL_MAP",
+      "behavior": "Rewrites generic inbox titles and CTA labels for display",
+      "classification": "safe_display_fallback",
+      "notes": "Must not change navigation target or action id",
+      "severity_if_misused": "LOW"
+    },
+    {
+      "location": "frontend/src/utils/todayTaskOperationalGuidance.js",
+      "behavior": "Client-generated whyMatters / whatToDo when server fields absent",
+      "classification": "safe_display_fallback",
+      "notes": "Guidance copy only; not CTA authority",
+      "severity_if_misused": "MEDIUM"
+    },
+    {
+      "location": "frontend/src/pages/ClientTasksPage.js — requirements fetch .catch",
+      "behavior": "Silent empty requirements on enrichment failure",
+      "classification": "dangerous_authority_fallback",
+      "notes": "Masks missing enrichment; cognition merge fails open",
+      "severity_if_misused": "BREAK"
+    },
+    {
+      "location": "frontend/src/pages/ClientTasksPage.js — payload unwrap regression",
+      "behavior": "setPayload(todayHit.data) — fixed from wrapper mismatch",
+      "classification": "dangerous_authority_fallback",
+      "notes": "Historical: setPayload(todayHit) caused 0 items false calm",
+      "severity_if_misused": "BREAK",
+      "status": "REMEDIATED"
+    },
+    {
+      "location": "frontend/src/utils/resolvedRequirementViewModel.js",
+      "behavior": "Projects resolved semantics for display (SATISFIED_UNVERIFIED sublines)",
+      "classification": "safe_display_fallback",
+      "notes": "Must align with server lifecycle states",
+      "severity_if_misused": "MEDIUM"
+    },
+    {
+      "location": "frontend/src/utils/clientCommandCenter.js — portfolioVerdict",
+      "behavior": "Frontend compresses CC primary verdict and CTA labels",
+      "classification": "dangerous_authority_fallback",
+      "notes": "Can compress degraded pressure into all-clear presentation",
+      "severity_if_misused": "BREAK"
+    },
+    {
+      "location": "frontend/src/utils/contractorWorkflow.js",
+      "behavior": "Client next-step messages from WO status",
+      "classification": "safe_display_fallback",
+      "notes": "Contractor portal outside cognition v1; separate trust boundary",
+      "severity_if_misused": "MEDIUM"
+    },
+    {
+      "location": "frontend/src/utils/tenantPortalTrust.js",
+      "behavior": "Reassurance states and recommended actions",
+      "classification": "safe_display_fallback",
+      "notes": "Must not imply landlord-verified compliance",
+      "severity_if_misused": "HIGH"
+    },
+    {
+      "location": "frontend/src/components/client/TodayExecutionHero.jsx",
+      "behavior": "Fallback hero from take_action / primary_action_label / todayTaskOperationalGuidance",
+      "classification": "safe_display_fallback",
+      "notes": "Uses server labels first; guidance copy is secondary",
+      "severity_if_misused": "MEDIUM"
+    },
+    {
+      "location": "frontend/src/api/client.js — getRequirements default projection=list",
+      "behavior": "API default causes enrichment_deferred unless caller overrides",
+      "classification": "dangerous_authority_fallback",
+      "notes": "Footgun for new surfaces; CC/Dashboard hit this default",
+      "severity_if_misused": "BREAK"
+    },
+    {
+      "location": "frontend/src/utils/complianceObligationPresent.js / compliance score drivers",
+      "behavior": "Client-side obligation presence checks for score UX",
+      "classification": "safe_display_fallback",
+      "notes": "Display-only; score authority remains server-side",
+      "severity_if_misused": "LOW"
+    }
+  ],
+  "summary": {
+    "dangerous_count": 7,
+    "safe_count": 8,
+    "remediated_count": 1,
+    "highest_risk": [
+      "requirementTakeActionResolver dual resolver",
+      "primaryActionResolver continuation overrides",
+      "getRequirements projection=list default on CC/Dashboard",
+      "Silent requirements enrichment failure on Today",
+      "CC portfolioVerdict calm compression under degradation"
+    ]
+  }
+}
