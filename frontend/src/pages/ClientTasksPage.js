@@ -103,6 +103,7 @@ import {
   projectResolvedRequirementSemantics,
 } from '../utils/resolvedRequirementViewModel';
 import TodayExecutionHero from '../components/client/TodayExecutionHero';
+import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
 import {
   buildOperationalSections,
