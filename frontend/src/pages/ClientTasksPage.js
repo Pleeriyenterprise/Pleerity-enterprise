@@ -923,6 +923,7 @@ export default function ClientTasksPage() {
   const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
   /** From GET /client/command-center (same scoping as Dashboard when property_id is set). */
   const [jurisdictionComplianceNotice, setJurisdictionComplianceNotice] = useState(null);
+  const [commandCenterFallbackAcknowledged, setCommandCenterFallbackAcknowledged] = useState(null);
   const [commandCenterDepth, setCommandCenterDepth] = useState(null);
 
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
@@ -1039,7 +1040,10 @@ export default function ClientTasksPage() {
     [filter]
   );
 
-  const applyFilter = (list) => (list || []).filter(filterTask);
+  const applyFilter = useCallback(
+    (list) => (list || []).filter(filterTask),
+    [filterTask],
+  );
 
   const inboxRequirementById = useMemo(
     () => requirementMapFromList(portalRequirementsForInbox),
