@@ -1,16 +1,30 @@
 {
-  "captured_at": "2026-05-29T12:17:27.146547+00:00",
+  "captured_at": "2026-05-29T14:26:22.334085+00:00",
   "login_ok": true,
-  "execution_hero_present": false,
-  "needs_action_section": false,
-  "waiting_section": false,
-  "false_calm_notice": false,
-  "cognition_chips": 0,
-  "gate_pass": false,
-  "notes": [],
-  "bundle_markers": {
-    "TodayExecutionHero": false,
-    "todayExecutionWorkspace": false
+  "deploy_markers_live": {
+    "TodayExecutionHero": true,
+    "todayExecutionWorkspace": true,
+    "requirementsOperational": true,
+    "today_false_calm": true
   },
-  "screenshot": "screenshots/today_execution_workspace_20260529T121754Z.png"
+  "execution_hero_present": true,
+  "hero_do_this_next_text": true,
+  "hero_primary_cta_visible": true,
+  "hero_property_visible": true,
+  "hero_why_visible": true,
+  "needs_action_section": true,
+  "waiting_section": true,
+  "in_progress_section": true,
+  "recently_completed_section": true,
+  "snoozed_section_label": true,
+  "cognition_chips": 10,
+  "false_calm_notice": false,
+  "bucket_continuation_notice": true,
+  "genuinely_empty_notice": false,
+  "dashboard_today_kpi": null,
+  "command_centre_visible": true,
+  "hero_deep_link_attempted": true,
+  "gate_pass": true,
+  "notes": [],
+  "hero_destination_url": "https://pleerityenterprise.co.uk/operations/jobs/0e0b6dd7-66aa-4a9c-9fc2-00f261551f69"
 }

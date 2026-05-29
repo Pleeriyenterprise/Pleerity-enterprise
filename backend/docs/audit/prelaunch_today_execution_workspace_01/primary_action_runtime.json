@@ -1,4 +1,10 @@
 {
-  "source": "pickPrimaryExecutionTask + operational_cognition/take_action",
-  "hero": "TodayExecutionHero"
+  "captured_at": "2026-05-29T14:24:59.843725+00:00",
+  "hero_source": "pickPrimaryExecutionTask + operational_cognition/take_action",
+  "sample_task_id": "work_order:afd41933-a06a-4d16-a8cc-697ec6d70649",
+  "sample_take_action_primary": null,
+  "sample_has_metadata_take_action": false,
+  "command_centre_top_title": "Work order \u2014 SLA deadline missed",
+  "command_centre_top_id": "work_order:0e0b6dd7-66aa-4a9c-9fc2-00f261551f69",
+  "contradiction_note": "CC ranks portfolio; Today hero is top open-task execution \u2014 titles may differ by scope"
 }

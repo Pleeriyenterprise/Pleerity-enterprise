@@ -1,18 +1,24 @@
 {
-  "captured_at": "2026-05-29T12:17:27.118333+00:00",
-  "urgent_count": 24,
-  "in_progress_count": 8,
+  "captured_at": "2026-05-29T14:24:51.965450+00:00",
+  "api_buckets": {
+    "urgent": 24,
+    "upcoming": 8,
+    "in_progress": 8,
+    "snoozed": 0
+  },
+  "api_inbox_open_sum": 40,
+  "command_center_urgent_actions": 22,
+  "command_center_digest_urgent": 68,
   "sample_has_take_action": false,
-  "findings_before_deploy": [
-    "passive_summary_card",
-    "top_priorities_not_dominant_hero",
-    "urgent_upcoming_flat_sections"
-  ],
-  "remediation": [
-    "TodayExecutionHero dominant card",
-    "operational section buckets",
-    "compact execution stats row",
-    "false calm disclosure",
-    "requirementsOperational for cognition merge"
+  "bucket_continuation": {
+    "urgent": 61,
+    "upcoming": 66,
+    "in_progress": 75
+  },
+  "post_deploy_expectations": [
+    "dominant Do this next hero",
+    "Needs action now / Waiting on others / In progress sections",
+    "list-cognition-chip on rows",
+    "false-calm disclosure when capped or CC debt"
   ]
 }

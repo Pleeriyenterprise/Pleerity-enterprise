@@ -1,3 +1,17 @@
 {
-  "disclosure": "buildFalseEmptyStateDisclosure + today-false-calm-notice"
+  "captured_at": "2026-05-29T14:26:11.077308+00:00",
+  "api_open_sum": 40,
+  "bucket_continuation": {
+    "urgent": 61,
+    "upcoming": 66,
+    "in_progress": 75
+  },
+  "bucket_continuation_total": 202,
+  "command_center_urgent": 68,
+  "false_calm_risk": false,
+  "disclosure_markers": [
+    "today-false-calm-notice",
+    "today-bucket-continuation-notice",
+    "today-genuinely-empty"
+  ]
 }

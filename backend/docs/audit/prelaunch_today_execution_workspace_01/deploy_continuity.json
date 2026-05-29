@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-05-29T14:23:37.584952+00:00",
+  "backend_commit": "38c022a223520f0d16c2113ff520d6a38b752bec",
+  "backend_commit_ok": true,
+  "frontend_markers": {
+    "TodayExecutionHero": true,
+    "todayExecutionWorkspace": true,
+    "requirementsOperational": true,
+    "today_false_calm": true
+  },
+  "gate_pass": true
+}

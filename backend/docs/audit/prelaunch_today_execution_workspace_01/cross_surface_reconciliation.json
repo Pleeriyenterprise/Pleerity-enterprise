@@ -1,0 +1,15 @@
+{
+  "captured_at": "2026-05-29T14:26:22.329849+00:00",
+  "today_api_open_sum": 40,
+  "today_buckets": {
+    "urgent": 24,
+    "upcoming": 8,
+    "in_progress": 8,
+    "snoozed": 0
+  },
+  "dashboard_today_kpi_expected": 40,
+  "command_centre_urgent_digest": 68,
+  "command_centre_urgent_actions_count": 22,
+  "scope_disclosure": "Dashboard Today KPI = urgent+upcoming+in-progress; CC urgent digest is urgent-only ranked triage",
+  "gate_pass": true
+}
