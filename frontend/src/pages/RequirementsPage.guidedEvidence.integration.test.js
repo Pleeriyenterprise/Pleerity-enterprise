@@ -68,7 +68,7 @@ function renderWithGuided() {
 
 describe('RequirementsPage guided evidence modal', () => {
   beforeEach(() => {
-    jest.spyOn(clientApiModule.clientAPI, 'getDashboard').mockResolvedValue({
+    jest.spyOn(clientApiModule.clientAPI, 'getProperties').mockResolvedValue({
       data: {
         properties: [
           {
@@ -79,12 +79,14 @@ describe('RequirementsPage guided evidence modal', () => {
         ],
       },
     });
-    jest.spyOn(clientApiModule.clientAPI, 'getRequirements').mockResolvedValue({
-      data: {
-        requirements: [guidedRequirement],
-        presentation: null,
-      },
-    });
+    jest.spyOn(clientApiModule.clientAPI, 'getRequirements').mockImplementation((params) =>
+      Promise.resolve({
+        data: {
+          requirements: [guidedRequirement],
+          presentation: { projection: params?.projection || 'full' },
+        },
+      }),
+    );
     jest.spyOn(clientApiModule.clientAPI, 'getDocuments').mockResolvedValue({ data: { documents: [] } });
     jest.spyOn(clientApiModule.clientAPI, 'getRequirementEvidenceResolution').mockResolvedValue({
       data: {

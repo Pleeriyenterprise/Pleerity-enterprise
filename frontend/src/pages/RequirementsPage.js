@@ -72,6 +72,8 @@ import {
   resolveSubmissionAwareEvidenceBadgeLabel,
   submissionAwaitingReviewSubline,
 } from '../utils/clientPersistedSubmissionPresentation';
+import { pickWhyItMattersForDisplay } from '../utils/requirementIntelligenceMerge';
+import ListCognitionChip from '../components/operational/ListCognitionChip';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -146,8 +148,8 @@ const RequirementsPage = () => {
     setLoading(true);
     setRequirementsLoadError(null);
     try {
-      const requirementsRes = await fetchOperational(OPERATIONAL_CACHE_KEYS.requirements, () =>
-        clientAPI.getRequirements().then((r) => r.data),
+      const requirementsRes = await fetchOperational(OPERATIONAL_CACHE_KEYS.requirementsOperational, () =>
+        clientAPI.getRequirements({ projection: 'full' }).then((r) => r.data),
       ).then((r) => r.data);
       setRequirements(requirementsRes?.requirements || []);
       setRequirementsPresentation(requirementsRes?.presentation || null);
@@ -579,13 +581,25 @@ const RequirementsPage = () => {
                   {recentSupportingUploadAttributionSubline(req.requirement_id, recentSupportingUploadAt)}
                 </p>
               ) : null}
-              {req.why_it_matters_long ? (
-                <p className="text-sm text-gray-600 mt-1 line-clamp-3" data-testid={`why-long-${req.requirement_id}`}>
-                  {req.why_it_matters_long}
-                </p>
-              ) : (
-                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{req.description || 'No description available'}</p>
-              )}
+              {(() => {
+                const why = pickWhyItMattersForDisplay(req);
+                const descriptionLine =
+                  String(why?.long || '').trim() ||
+                  String(why?.short || '').trim() ||
+                  String(req.requirement_display?.description || '').trim() ||
+                  String(req.description || '').trim() ||
+                  '';
+                if (!descriptionLine) return null;
+                return (
+                  <p
+                    className="text-sm text-gray-600 mt-1 line-clamp-3"
+                    data-testid={`requirement-description-${req.requirement_id}`}
+                  >
+                    {descriptionLine}
+                  </p>
+                );
+              })()}
+              <ListCognitionChip entity={req} className="mt-1.5" />
               <div className="flex flex-col gap-1 mt-2 text-sm text-gray-500">
                 <div className="flex items-center gap-4 flex-wrap">
                   <span className="flex items-center gap-1 flex-wrap">

@@ -10,6 +10,8 @@ export const OPERATIONAL_CACHE_KEYS = {
   dashboard: 'client:dashboard',
   properties: 'client:properties',
   requirements: 'client:requirements',
+  /** Full enrichment (take_action, cognition, registry copy) — Requirements workspace only. */
+  requirementsOperational: 'client:requirements:operational',
   documents: 'client:documents',
   commandCenter: 'client:command-center',
   commandCenterPrimary: 'client:command-center:primary',
