@@ -45,6 +45,7 @@ import {
 } from '../utils/clientOperationalFetch';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
