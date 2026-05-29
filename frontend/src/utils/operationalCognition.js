@@ -10,7 +10,29 @@ export function getOperationalCognition(entity) {
 
 export function getListGuidance(entity) {
   const env = getOperationalCognition(entity);
-  return env?.list_guidance || null;
+  if (env?.list_guidance) return env.list_guidance;
+
+  const ta = entity?.take_action?.primary || entity?.metadata?.take_action?.primary;
+  if (ta?.label) {
+    return {
+      recommended_action_label: String(ta.label).trim(),
+      continuation_summary: ta.continuation ? 'CONTINUATION' : undefined,
+      cognition_version: 'take_action',
+    };
+  }
+
+  const actions = entity?.business_actions;
+  if (Array.isArray(actions) && actions.length) {
+    const primary = actions.find((a) => a?.primary) || actions[0];
+    if (primary?.label) {
+      return {
+        recommended_action_label: String(primary.label).trim(),
+        cognition_version: 'business_actions',
+      };
+    }
+  }
+
+  return null;
 }
 
 export function heroPrimaryFromCognition(cognition) {
