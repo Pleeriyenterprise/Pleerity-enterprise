@@ -1,0 +1,9 @@
+{
+  "programme": "PRELAUNCH-SCORE-DRIVER-ACTION-TRUST-REPAIR-01",
+  "classification": "OPERATIONALLY_GUIDED",
+  "static_audit": {
+    "forbidden_hits": [],
+    "pass": true
+  },
+  "captured_at": "2026-05-30T00:08:27.324069+00:00"
+}

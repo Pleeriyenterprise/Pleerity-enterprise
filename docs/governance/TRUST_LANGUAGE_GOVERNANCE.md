@@ -110,8 +110,19 @@ All tiers must be served **simultaneously** — same facts, different depth per 
 | Forbidden engineering terms | `trustLanguageGovernance.js` + `trust_language_governance.py` |
 | Scoring copy unit tests | `scoringExplanationCopy.test.js`, `test_scoring_explanation_copy.py` |
 | Governance unit tests | `trustLanguageGovernance.test.js`, `test_trust_language_governance.py` |
+| Score-driver action tiers | `ComplianceScorePage.scoreDriverActions.js` + `ComplianceScorePage.scoreDriverActions.test.js` |
 | Secondary surface audit | `tmp_prelaunch_scoring_trust_consistency_pdf_kb_01.py` |
 | Programme closeout harness | `tmp_prelaunch_trust_language_governance_01.py` |
+
+### Score-driver Action column (Tier A / B / C)
+
+| Tier | When | Render |
+|------|------|--------|
+| **A** | Canonical `take_action.primary` | Server remediation CTA |
+| **B** | Property + requirement ids, no canonical primary | **Open requirement** or **Review property** navigation only |
+| **C** | No safe navigation target | Suppress action text (`—`) |
+
+**Forbidden on score drivers:** implementation diagnostics (`server-confirmed`, `remediation metadata`, summary limitations).
 
 **Adding new customer explanation copy:**
 

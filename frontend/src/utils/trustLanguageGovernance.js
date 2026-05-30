@@ -44,6 +44,9 @@ export const FORBIDDEN_ENGINEERING_TERMS = [
   'expiry score',
   'document score',
   'overdue_penalty_score',
+  'server-confirmed',
+  'remediation step',
+  'remediation metadata',
 ];
 
 /** @type {RegExp[]} */

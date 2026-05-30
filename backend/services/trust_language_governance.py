@@ -52,6 +52,9 @@ FORBIDDEN_ENGINEERING_TERMS: Tuple[str, ...] = (
     "document score",
     "overdue_penalty_score",
     "overdue penalty score",
+    "server-confirmed",
+    "remediation step",
+    "remediation metadata",
 )
 
 FORBIDDEN_FALSE_PRECISION_PATTERNS: Tuple[str, ...] = (

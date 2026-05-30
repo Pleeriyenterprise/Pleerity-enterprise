@@ -66,6 +66,9 @@ import {
 } from '../utils/scoringHeadlineDisplay';
 import { findRequirementRowForScoreDriver, scoreDriverRowReactKey } from './ComplianceScorePage.driverRemediation';
 import {
+  resolveScoreDriverActionPresentation,
+} from './ComplianceScorePage.scoreDriverActions';
+import {
   COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE,
   COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE,
   portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
@@ -103,38 +106,43 @@ function scoreDriverEvidenceLabel(driver, requirements) {
  * Heuristic driver `actions` (UPLOAD/VIEW/CONFIRM) are not used for navigation.
  */
 function ScoreDriverRemediationActions({ driver, requirements, navigate, openGuidedEvidence, onRequirementActionComplete }) {
-  const req = findRequirementRowForScoreDriver(requirements, driver);
-  const hasTakeAction = !!(req && typeof req.take_action === 'object');
-  const sem =
-    req && hasTakeAction ? projectResolvedRequirementSemantics(req, { pagePropertyId: driver?.property_id || null }) : null;
-  const hasCanonical = !!sem?.server_take_action_primary;
+  const presentation = resolveScoreDriverActionPresentation(driver, requirements);
   const propertyId = driver?.property_id != null ? String(driver.property_id).trim() : '';
 
-  if (!hasCanonical) {
+  if (presentation.tier === 'C') {
+    return <span className="text-xs text-gray-400">—</span>;
+  }
+
+  if (presentation.tier === 'B' && presentation.navigation) {
+    const { label, route, testId } = presentation.navigation;
     return (
-      <div
-        className="text-xs text-gray-600 max-w-[240px] leading-snug"
-        data-testid="score-driver-remediation-non-actionable"
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="border-electric-teal text-electric-teal hover:bg-electric-teal/10"
+        data-testid={testId}
         data-canonical-remediation="0"
+        data-score-driver-tier="B"
+        onClick={(e) => {
+          e.stopPropagation();
+          recordClientPortalInteraction('compliance_score_driver_navigation', {
+            property_id: propertyId || undefined,
+            requirement_id: driver?.requirement_id != null ? String(driver.requirement_id) : undefined,
+            tier: 'B',
+          });
+          navigate(resolveClientPortalPath(route, '/properties'));
+        }}
       >
-        <p>No server-confirmed remediation step is available on this summary.</p>
-        {propertyId ? (
-          <button
-            type="button"
-            className="mt-1.5 text-electric-teal hover:underline font-medium text-left"
-            data-testid="score-driver-open-property-structural"
-            onClick={(e) => {
-              e.stopPropagation();
-              const target = resolveClientPortalPath(`/properties/${propertyId}`, '/properties');
-              recordClientPortalInteraction('compliance_score_open_property_structural', { property_id: propertyId });
-              navigate(target);
-            }}
-          >
-            Open property
-          </button>
-        ) : null}
-      </div>
+        {label}
+      </Button>
     );
+  }
+
+  const req = presentation.req;
+  const sem = presentation.sem;
+  if (!req || !sem) {
+    return <span className="text-xs text-gray-400">—</span>;
   }
 
   const ta = sem.cta;
@@ -171,7 +179,12 @@ function ScoreDriverRemediationActions({ driver, requirements, navigate, openGui
   };
 
   return (
-    <div className="flex flex-wrap gap-1" data-canonical-remediation="1" data-testid="score-driver-canonical-remediation">
+    <div
+      className="flex flex-wrap gap-1"
+      data-canonical-remediation="1"
+      data-score-driver-tier="A"
+      data-testid="score-driver-canonical-remediation"
+    >
       {ta.primary_action_handler === 'guided_evidence_error' ? (
         <Button
           type="button"

@@ -67,7 +67,7 @@ describe('ComplianceScorePage score drivers CTA integrity', () => {
     api.get.mockReset();
   });
 
-  it('renders non-actionable remediation when no canonical take_action primary authority', async () => {
+  it('renders open requirement navigation when no canonical take_action primary authority', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/client/compliance-score') {
         return Promise.resolve({
@@ -110,7 +110,9 @@ describe('ComplianceScorePage score drivers CTA integrity', () => {
     render(wrap(<ComplianceScorePage />));
 
     const desktop = await getScoreDriversScope();
-    expect(await desktop.findByTestId('score-driver-remediation-non-actionable')).toBeInTheDocument();
+    expect(await desktop.findByTestId('score-driver-nav-requirement')).toBeInTheDocument();
+    expect(desktop.getByRole('button', { name: /open requirement/i })).toBeInTheDocument();
+    expect(desktop.queryByText(/server-confirmed/i)).not.toBeInTheDocument();
     expect(desktop.queryByRole('button', { name: /upload document/i })).not.toBeInTheDocument();
     expect(desktop.queryByRole('button', { name: /confirm details/i })).not.toBeInTheDocument();
     expect(desktop.queryByRole('button', { name: /view requirement/i })).not.toBeInTheDocument();
@@ -158,7 +160,8 @@ describe('ComplianceScorePage score drivers CTA integrity', () => {
     render(wrap(<ComplianceScorePage />));
 
     const desktop = await getScoreDriversScope();
-    await desktop.findByTestId('score-driver-remediation-non-actionable');
+    await desktop.findByTestId('score-driver-nav-requirement');
+    expect(desktop.queryByText(/server-confirmed/i)).not.toBeInTheDocument();
     const docLinks = desktop.queryAllByRole('link', { name: /document/i });
     expect(docLinks.filter((el) => el.getAttribute('href')?.includes('/documents'))).toHaveLength(0);
   });
