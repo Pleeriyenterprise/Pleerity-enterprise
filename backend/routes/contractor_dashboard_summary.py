@@ -210,6 +210,9 @@ async def build_contractor_dashboard_summary(contractor_id: str) -> Dict[str, An
     submit_invoice_primary_cta = wf_action["invoice_submission"] > 0
 
     recovery_items: List[Dict[str, Any]] = []
+    _CONTRACTOR_RECOVERY_ACTIONS = frozenset(
+        {"submit_quote", "submit_revised_quote", "propose_visit", "open_job", "request_another_date", "upload_clearer_document", "contact_support"}
+    )
     try:
         from services.operational_recovery_service import classify_recovery_state, generate_recovery_guidance
         from services.workflow_timer_service import work_order_stall_context
@@ -239,7 +242,10 @@ async def build_contractor_dashboard_summary(contractor_id: str) -> Dict[str, An
                     "work_order_id": wid,
                     "recovery_type": rtype,
                     "recovery_summary": guidance.get("recovery_summary"),
-                    "recovery_actions": guidance.get("suggested_actions"),
+                    "recovery_actions": [
+                        a for a in (guidance.get("suggested_actions") or [])
+                        if (a.get("action_id") or "") in _CONTRACTOR_RECOVERY_ACTIONS
+                    ],
                     "waiting_on_summary": "contractor",
                 }
             )

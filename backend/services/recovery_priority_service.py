@@ -21,11 +21,12 @@ from services.recovery_constants import (
 logger = logging.getLogger(__name__)
 
 _RECOVERY_PRIORITY = {
-    RECOVERY_WORK_ORDER_ABANDONMENT_RISK: 98,
-    RECOVERY_OPERATIONAL_DEAD_END: 97,
-    RECOVERY_EVIDENCE_REJECTION_LOOP: 94,
-    RECOVERY_QUOTE_NEGOTIATION_LOOP: 93,
-    RECOVERY_VISIT_RESCHEDULE_LOOP: 92,
+    RECOVERY_WORK_ORDER_ABANDONMENT_RISK: 100,
+    RECOVERY_OPERATIONAL_DEAD_END: 99,
+    RECOVERY_EVIDENCE_REJECTION_LOOP: 98,
+    RECOVERY_QUOTE_NEGOTIATION_LOOP: 98,
+    RECOVERY_VISIT_RESCHEDULE_LOOP: 97,
+    RECOVERY_CONTRACTOR_NON_RESPONSE: 97,
 }
 
 
@@ -54,7 +55,7 @@ async def fetch_operational_recovery_priority_actions(
         if rec.get("suppressed"):
             continue
         rtype = rec.get("recovery_type") or ""
-        score = _RECOVERY_PRIORITY.get(rtype, 88 if _is_blocked(rtype) else 82)
+        score = _RECOVERY_PRIORITY.get(rtype, 95 if _is_blocked(rtype) else 93)
         if rec.get("severity") == "high":
             score = min(99, score + 2)
         et = rec.get("entity_type") or ""
