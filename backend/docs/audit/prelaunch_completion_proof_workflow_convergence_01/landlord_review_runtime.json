@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-05-30T23:32:05.731945+00:00",
+  "next_actions": [
+    {
+      "id": "accept_completion",
+      "label": "Accept completion",
+      "hint": "Confirm the work and proof meet your expectations before invoicing.",
+      "section": "execution"
+    },
+    {
+      "id": "request_proof_clarification",
+      "label": "Request clarification",
+      "hint": "Ask the contractor to explain or replace the proof before you accept.",
+      "section": "execution"
+    },
+    {
+      "id": "reject_completion",
+      "label": "Reject completion",
+      "hint": "Send the job back for further work if the proof is not acceptable.",
+      "section": "execution"
+    },
+    {
+      "id": "verify",
+      "label": "Verify and close",
+      "hint": "Verify the job and linked evidence in your compliance workflow.",
+      "section": "execution"
+    }
+  ],
+  "primary": {
+    "id": "accept_completion",
+    "label": "Accept completion",
+    "hint": "Confirm the work and proof meet your expectations before invoicing.",
+    "section": "execution"
+  },
+  "quote_actions_suppressed": true
+}

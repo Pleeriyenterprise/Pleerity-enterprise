@@ -99,14 +99,14 @@ _STEP_LABELS: Dict[str, Dict[str, str]] = {
         "admin": "In progress",
     },
     "proof_uploaded": {
-        "landlord": "Completion proof uploaded",
-        "contractor": "Proof uploaded",
-        "admin": "Proof uploaded",
+        "landlord": "Work completed",
+        "contractor": "Proof submitted",
+        "admin": "Execution recorded",
     },
     "proof_reviewed": {
         "landlord": "Proof reviewed",
-        "contractor": "Proof reviewed",
-        "admin": "Verified",
+        "contractor": "Reviewed",
+        "admin": "Review pending",
     },
     "closed": {
         "landlord": "Closed",
@@ -131,6 +131,11 @@ _STEP_EXPLANATIONS: Dict[str, str] = {
 LANDLORD_NEXT_ACTION_PRIORITY = [
     "clear_operational_exception",
     "resume_after_parts",
+    "accept_completion",
+    "review_completion",
+    "request_proof_clarification",
+    "reject_completion",
+    "verify",
     "propose_schedule",
     "request_booking",
     "reschedule_booking",
@@ -456,6 +461,14 @@ def _resolve_primary_action(
         if approve:
             return dict(approve)
 
+    from services.completion_workflow_transition_service import is_awaiting_completion_review
+
+    if is_awaiting_completion_review(wo):
+        for aid in ("accept_completion", "review_completion", "verify", "request_proof_clarification"):
+            match = next((a for a in na if a.get("id") == aid), None)
+            if match:
+                return dict(match)
+
     priority = LANDLORD_NEXT_ACTION_PRIORITY if audience == "landlord" else CONTRACTOR_NEXT_ACTION_PRIORITY
     if audience == "admin":
         priority = LANDLORD_NEXT_ACTION_PRIORITY
@@ -520,6 +533,13 @@ def _waiting_on(
 
 
 def _headline_for_audience(wo: Dict[str, Any], *, audience: Audience, current_stage_label: str) -> str:
+    from services.completion_workflow_transition_service import is_awaiting_completion_review
+
+    if is_awaiting_completion_review(wo):
+        if audience == "contractor":
+            return "Completion proof submitted — awaiting review."
+        return "Completion proof submitted — awaiting review."
+
     canonical = derive_canonical_job_status(wo)
     st = _norm_status(wo)
     if st == maintenance_service.STATUS_CANCELLED:

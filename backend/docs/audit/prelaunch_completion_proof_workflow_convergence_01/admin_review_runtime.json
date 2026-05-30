@@ -1,0 +1,178 @@
+{
+  "generated_at": "2026-05-30T23:32:05.732944+00:00",
+  "progress": {
+    "version": "progress_contract_v1",
+    "workflow_mode": "QUOTE_FIRST",
+    "canonical_status": "COMPLETED",
+    "persisted_status": "COMPLETED",
+    "price_status": "APPROVED",
+    "schedule_status": "completed",
+    "work_execution_status": "COMPLETED",
+    "proof_status": "UPLOADED",
+    "invoice_status": "NONE",
+    "current_stage": "visit_booked",
+    "current_stage_label": "Booked / scheduled",
+    "headline": "Completion proof submitted \u2014 awaiting review.",
+    "waiting_on": null,
+    "next_primary_action": {
+      "id": "accept_completion",
+      "label": "Accept completion",
+      "hint": "Confirm the work and proof meet your expectations before invoicing.",
+      "section": "execution"
+    },
+    "progress_steps": [
+      {
+        "key": "assigned",
+        "label": "Assigned",
+        "state": "complete",
+        "visible_to_roles": [
+          "admin",
+          "contractor",
+          "landlord"
+        ],
+        "explanation": "A contractor is linked to this job."
+      },
+      {
+        "key": "quote_submitted",
+        "label": "Quote submitted",
+        "state": "complete",
+        "visible_to_roles": [
+          "admin",
+          "contractor",
+          "landlord"
+        ],
+        "explanation": "Contractor has submitted a price for client review."
+      },
+      {
+        "key": "quote_approved",
+        "label": "Quote approved",
+        "state": "complete",
+        "visible_to_roles": [
+          "admin",
+          "contractor",
+          "landlord"
+        ],
+        "explanation": "Client has approved the quote; field work may proceed."
+      },
+      {
+        "key": "visit_booked",
+        "label": "Booked / scheduled",
+        "state": "current",
+        "visible_to_roles": [
+          "admin",
+          "contractor",
+          "landlord"
+        ],
+        "explanation": "A visit time is confirmed on the calendar."
+      },
+      {
+        "key": "work_started",
+        "label": "In progress",
+        "state": "pending",
+        "visible_to_roles": [
+          "admin",
+          "contractor",
+          "landlord"
+        ],
+        "explanation": "On-site work has explicitly started (in progress)."
+      },
+      {
+        "key": "proof_uploaded",
+        "label": "Execution recorded",
+        "state": "pending",
+        "visible_to_roles": [
+          "admin",
+          "contractor",
+          "landlord"
+        ],
+        "explanation": "Completion evidence has been uploaded."
+      },
+      {
+        "key": "proof_reviewed",
+        "label": "Review pending",
+        "state": "pending",
+        "visible_to_roles": [
+          "admin",
+          "contractor",
+          "landlord"
+        ],
+        "explanation": "Client or ops has verified the completion proof."
+      },
+      {
+        "key": "closed",
+        "label": "Closed",
+        "state": "pending",
+        "visible_to_roles": [
+          "admin",
+          "contractor",
+          "landlord"
+        ],
+        "explanation": "Job is closed out."
+      }
+    ],
+    "role_specific_actions": {
+      "landlord": [
+        {
+          "id": "accept_completion",
+          "label": "Accept completion",
+          "hint": "Confirm the work and proof meet your expectations before invoicing.",
+          "section": "execution"
+        },
+        {
+          "id": "request_proof_clarification",
+          "label": "Request clarification",
+          "hint": "Ask the contractor to explain or replace the proof before you accept.",
+          "section": "execution"
+        },
+        {
+          "id": "reject_completion",
+          "label": "Reject completion",
+          "hint": "Send the job back for further work if the proof is not acceptable.",
+          "section": "execution"
+        },
+        {
+          "id": "verify",
+          "label": "Verify and close",
+          "hint": "Verify the job and linked evidence in your compliance workflow.",
+          "section": "execution"
+        }
+      ],
+      "contractor": [
+        {
+          "id": "open_job_detail",
+          "label": "Completion proof submitted",
+          "hint": "Your client will review the proof \u2014 awaiting review before invoicing can proceed.",
+          "section": "navigation"
+        }
+      ],
+      "admin": [
+        {
+          "id": "accept_completion",
+          "label": "Accept completion",
+          "hint": "Confirm the work and proof meet your expectations before invoicing.",
+          "section": "execution"
+        },
+        {
+          "id": "request_proof_clarification",
+          "label": "Request clarification",
+          "hint": "Ask the contractor to explain or replace the proof before you accept.",
+          "section": "execution"
+        },
+        {
+          "id": "reject_completion",
+          "label": "Reject completion",
+          "hint": "Send the job back for further work if the proof is not acceptable.",
+          "section": "execution"
+        },
+        {
+          "id": "verify",
+          "label": "Verify and close",
+          "hint": "Verify the job and linked evidence in your compliance workflow.",
+          "section": "execution"
+        }
+      ]
+    }
+  },
+  "operational_status": "WORK_COMPLETED_PENDING_REVIEW",
+  "persisted_status": "COMPLETED"
+}

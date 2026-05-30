@@ -1160,6 +1160,64 @@ class LinkDocumentBody(BaseModel):
     document_id: str
 
 
+class CompletionReviewNoteBody(BaseModel):
+    note: Optional[str] = Field(None, max_length=4000)
+
+
+async def _completion_review_route(job_id: str, user: Dict[str, Any], decision: str) -> Dict[str, Any]:
+    wo = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
+    if not wo:
+        raise HTTPException(status_code=404, detail="Job not found")
+    from services.completion_workflow_transition_service import apply_completion_review_decision
+
+    try:
+        await apply_completion_review_decision(
+            job_id.strip(),
+            decision,
+            actor_id=_actor_id(user),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
+    return serialize_client_job(fresh) if fresh else {}
+
+
+@router.post("/jobs/{job_id}/accept-completion")
+async def job_accept_completion(
+    request: Request,
+    job_id: str,
+    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+):
+    """Accept contractor completion proof — unlocks invoicing when quote rules pass."""
+    from services.work_order_execution_constants import COMPLETION_REVIEW_ACCEPTED
+
+    return await _completion_review_route(job_id, user, COMPLETION_REVIEW_ACCEPTED)
+
+
+@router.post("/jobs/{job_id}/request-proof-clarification")
+async def job_request_proof_clarification(
+    request: Request,
+    job_id: str,
+    body: CompletionReviewNoteBody,
+    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+):
+    from services.work_order_execution_constants import COMPLETION_REVIEW_CLARIFICATION_REQUESTED
+
+    return await _completion_review_route(job_id, user, COMPLETION_REVIEW_CLARIFICATION_REQUESTED)
+
+
+@router.post("/jobs/{job_id}/reject-completion")
+async def job_reject_completion(
+    request: Request,
+    job_id: str,
+    body: CompletionReviewNoteBody,
+    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+):
+    from services.work_order_execution_constants import COMPLETION_REVIEW_REJECTED
+
+    return await _completion_review_route(job_id, user, COMPLETION_REVIEW_REJECTED)
+
+
 @router.post("/jobs/{job_id}/link-document")
 async def job_link_document(
     request: Request,

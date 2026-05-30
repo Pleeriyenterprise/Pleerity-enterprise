@@ -44,6 +44,11 @@ CONTINUATION_CTA: Dict[str, Dict[str, str]] = {
         "contractor": "Upload completion proof",
         "banner": "Completion proof pending",
     },
+    "awaiting_completion_review": {
+        "landlord": "Review completion proof",
+        "contractor": "Awaiting review",
+        "banner": "Completion proof awaiting review",
+    },
     "invoice_pending": {
         "contractor": "Submit invoice",
         "banner": "Invoice pending",
@@ -69,6 +74,7 @@ def _priority_score(stall_type: str, tier: Optional[str]) -> int:
         "awaiting_contractor_quote_revision": 87,
         "awaiting_visit_reschedule": 85,
         "completion_proof_pending": 84,
+        "awaiting_completion_review": 91,
         "invoice_pending": 82,
     }.get(stall_type, 80)
     if tier == "T72":

@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-05-30T23:32:05.729945+00:00",
+  "before_proof": {
+    "state": "NOT_READY",
+    "label": "Not ready to invoice",
+    "may_submit_invoice": false,
+    "reason": "Complete the job and upload proof before invoicing."
+  },
+  "after_proof_pending_review": {
+    "state": "PENDING_REVIEW",
+    "label": "Awaiting completion review",
+    "may_submit_invoice": false,
+    "reason": "Review completion before approving invoice."
+  },
+  "after_acceptance": {
+    "state": "READY",
+    "label": "Ready to invoice",
+    "may_submit_invoice": true,
+    "reason": "Completion accepted \u2014 you may submit your invoice."
+  }
+}

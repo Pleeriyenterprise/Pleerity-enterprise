@@ -1,0 +1,35 @@
+{
+  "programme": "PRELAUNCH-COMPLETION-PROOF-WORKFLOW-CONVERGENCE-01",
+  "generated_at": "2026-05-30T23:32:05.726945+00:00",
+  "findings": [
+    {
+      "id": "RC-01",
+      "classification": "WORKFLOW_TRUTH_DRIFT",
+      "summary": "Evidence upload only appended evidence_keys and compliance_proof_status without advancing persisted status or operational stage.",
+      "locations": [
+        "services/contractor_evidence_service.py",
+        "services/maintenance_service.py:update_work_order"
+      ]
+    },
+    {
+      "id": "RC-02",
+      "classification": "INVOICE_DEADLOCK_RISK",
+      "summary": "Invoice eligibility required STATUS_COMPLETED but proof upload left jobs on SCHEDULED \u2014 invoice permanently NOT_READY."
+    },
+    {
+      "id": "RC-03",
+      "classification": "VISIT_CONTROL_DRIFT",
+      "summary": "next_job_actions continued to offer mark_no_access/reschedule after proof upload."
+    },
+    {
+      "id": "RC-04",
+      "classification": "PROGRESS_CONVERGENCE_FAILURE",
+      "summary": "Orphan compliance_proof_status=SUBMITTED with SCHEDULED status caused contradictory progress indicators."
+    }
+  ],
+  "remediation": [
+    "services/completion_workflow_transition_service.py",
+    "services/invoice_readiness_service.py",
+    "Wire on evidence_keys_append in maintenance_service.update_work_order"
+  ]
+}

@@ -58,6 +58,7 @@ _STALL_TO_RECOVERY = {
     "awaiting_visit_confirmation": RECOVERY_WAITING_ON_CONTRACTOR_ACTION,
     "awaiting_visit_reschedule": RECOVERY_WAITING_ON_CONTRACTOR_ACTION,
     "completion_proof_pending": RECOVERY_WAITING_ON_CONTRACTOR_ACTION,
+    "awaiting_completion_review": RECOVERY_WAITING_ON_LANDLORD_APPROVAL,
     "invoice_pending": RECOVERY_WAITING_ON_CONTRACTOR_ACTION,
 }
 

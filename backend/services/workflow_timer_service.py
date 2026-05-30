@@ -23,6 +23,7 @@ from services.workflow_timer_constants import (
     WO_AWAITING_QUOTE_SINCE,
     WO_AWAITING_VISIT_CONFIRMATION_SINCE,
     WO_AWAITING_VISIT_RESCHEDULE_SINCE,
+    WO_AWAITING_COMPLETION_REVIEW_SINCE,
     WO_COMPLETION_PROOF_PENDING_SINCE,
     WO_INVOICE_PENDING_SINCE,
     WO_QUOTE_REQUESTED_AT,
@@ -172,6 +173,18 @@ async def on_work_order_visit_cancelled(work_order_id: str, *, actor_id: Optiona
             WO_AWAITING_VISIT_RESCHEDULE_SINCE,
         ],
         reason="visit_cancelled",
+        actor_id=actor_id,
+    )
+
+
+async def on_work_order_awaiting_completion_review(work_order_id: str, *, actor_id: Optional[str] = None) -> None:
+    from services.workflow_timer_constants import WO_AWAITING_COMPLETION_REVIEW_SINCE
+
+    await _patch_work_order_timers(
+        work_order_id,
+        set_fields={WO_AWAITING_COMPLETION_REVIEW_SINCE: _iso(_now())},
+        unset_fields=[WO_COMPLETION_PROOF_PENDING_SINCE],
+        reason="awaiting_completion_review",
         actor_id=actor_id,
     )
 
@@ -441,6 +454,18 @@ def work_order_stall_context(wo: Dict[str, Any], *, now: Optional[datetime] = No
             "waiting_on": waiting,
             "age_hours": _age_hours(
                 wo.get(WO_AWAITING_VISIT_CONFIRMATION_SINCE) or wo.get(WO_VISIT_PROPOSED_SINCE) or wo.get("last_schedule_update_at"),
+                now,
+            ),
+        }
+    if wo.get(WO_AWAITING_COMPLETION_REVIEW_SINCE) or (
+        (wo.get("operational_status") or "").upper() == "WORK_COMPLETED_PENDING_REVIEW"
+    ):
+        return {
+            "stall_type": "awaiting_completion_review",
+            "since": wo.get(WO_AWAITING_COMPLETION_REVIEW_SINCE) or wo.get("completion_proof_submitted_at"),
+            "waiting_on": "landlord",
+            "age_hours": _age_hours(
+                wo.get(WO_AWAITING_COMPLETION_REVIEW_SINCE) or wo.get("completion_proof_submitted_at"),
                 now,
             ),
         }

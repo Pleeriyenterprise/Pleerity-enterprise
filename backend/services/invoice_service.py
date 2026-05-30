@@ -54,22 +54,11 @@ def _invoice_state_rank(inv: Dict[str, Any]) -> int:
 
 def _assert_work_order_eligible_for_invoicing(wo: Dict[str, Any]) -> None:
     """
-    Invoices linked to a work order are only allowed when the job is verified/closed,
-    or completed with completion proof rules satisfied (same as contractor completion gate).
+    Invoices linked to a work order require governed completion + review readiness.
     """
-    from services import compliance_workflow_service as cws
-    from services import maintenance_service as ms
-    from services.work_order_pricing_service import assert_invoice_submission_allowed
+    from services.invoice_readiness_service import assert_may_submit_invoice
 
-    st = (wo.get("status") or "").strip().upper()
-    if st in (ms.STATUS_VERIFIED, ms.STATUS_CLOSED):
-        assert_invoice_submission_allowed(wo)
-        return
-    if st != ms.STATUS_COMPLETED:
-        raise ValueError("Invoices can only be created when the work order is completed with proof or verified.")
-    if cws.contractor_completion_proof_required(wo) and not cws.contractor_has_completion_proof(wo):
-        raise ValueError("Upload completion proof for this job before creating or resubmitting an invoice.")
-    assert_invoice_submission_allowed(wo)
+    assert_may_submit_invoice(wo)
 
 
 def _contractor_job_token_ttl_days() -> int:

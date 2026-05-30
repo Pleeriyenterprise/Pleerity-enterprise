@@ -668,6 +668,7 @@ async def update_work_order(
         )
     now = datetime.now(timezone.utc).isoformat()
     set_fields = {"updated_at": now}
+    proof_transition_applied = False
     if operational_exception is not None:
         raw_oe = (operational_exception or "").strip().upper()
         if raw_oe == "" or raw_oe in ("NONE", "CLEAR", "NULL"):
@@ -765,6 +766,19 @@ async def update_work_order(
             )
     if prev_kind == WORK_ORDER_KIND_COMPLIANCE and evidence_keys_append and any(evidence_keys_append):
         set_fields["compliance_proof_status"] = COMPLIANCE_PROOF_SUBMITTED
+
+    if evidence_keys_append and any(evidence_keys_append):
+        wo_preview = dict(prev_snapshot or {})
+        wo_preview["evidence_keys"] = merged_evidence
+        wo_preview["work_order_id"] = work_order_id
+        if status is not None:
+            wo_preview["status"] = status
+        from services.completion_workflow_transition_service import maybe_apply_proof_upload_transition_fields
+
+        transition_fields = maybe_apply_proof_upload_transition_fields(wo_preview, prev=prev_snapshot)
+        if transition_fields:
+            set_fields.update(transition_fields)
+            proof_transition_applied = True
     if contractor_id is not None:
         set_fields["contractor_id"] = contractor_id
         set_fields["assigned_at"] = now
@@ -1236,6 +1250,19 @@ async def update_work_order(
                         await _maybe_send_client_proof_uploaded_email(dict(result), proof_event_id=peid)
                 except Exception as cpu_e:
                     logger.warning("Client proof-uploaded email failed: %s", cpu_e)
+                if proof_transition_applied:
+                    try:
+                        from services.completion_workflow_transition_service import (
+                            transition_after_completion_proof_upload,
+                        )
+
+                        await transition_after_completion_proof_upload(
+                            dict(result),
+                            actor_id=assigned_by or result.get("contractor_id"),
+                            proof_event_id=peid if peid else None,
+                        )
+                    except Exception as tr_e:
+                        logger.warning("Completion proof workflow transition failed: %s", tr_e)
     if result:
         result.update(derive_work_order_evidence_semantics(result))
     return result

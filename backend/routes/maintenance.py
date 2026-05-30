@@ -190,6 +190,9 @@ async def get_work_order(request: Request, work_order_id: str):
 
     doc = dict(doc)
     doc["job_status"] = derive_canonical_job_status(doc)
+    from services.invoice_readiness_service import serialize_invoice_readiness
+
+    doc["invoice_readiness"] = serialize_invoice_readiness(doc)
     attach_progress_contract(doc, audience="admin")
     return doc
 

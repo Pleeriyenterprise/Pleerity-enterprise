@@ -159,6 +159,14 @@ def _action(
 
 
 def _maintenance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -> List[Dict[str, str]]:
+    from services.completion_workflow_transition_service import (
+        generate_completion_review_actions,
+        is_awaiting_completion_review,
+    )
+
+    if is_awaiting_completion_review(wo):
+        return generate_completion_review_actions(wo)
+
     if st == maintenance_service.STATUS_CANCELLED:
         return [_action("none", "Job cancelled", "")]
     if canonical == "VERIFIED":
@@ -365,6 +373,14 @@ def _maintenance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -
 
 
 def _compliance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -> List[Dict[str, str]]:
+    from services.completion_workflow_transition_service import (
+        generate_completion_review_actions,
+        is_awaiting_completion_review,
+    )
+
+    if is_awaiting_completion_review(wo):
+        return generate_completion_review_actions(wo)
+
     if st == maintenance_service.STATUS_CANCELLED:
         return [_action("none", "Job cancelled", "")]
     if canonical == "VERIFIED":
@@ -527,12 +543,16 @@ def _compliance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) ->
 
 
 def _apply_client_pricing_overrides(wo: Dict[str, Any], actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    from services.completion_workflow_transition_service import is_awaiting_completion_review
     from services.work_order_pricing_service import (
         client_may_offer_start_for_pricing,
         pricing_workflow_applies,
         quote_is_approved_for_api,
     )
     from services.work_order_pricing_constants import PRICE_STATUS_QUOTED
+
+    if is_awaiting_completion_review(wo):
+        return actions
 
     if not pricing_workflow_applies(wo):
         return actions
@@ -576,6 +596,8 @@ def _apply_client_pricing_overrides(wo: Dict[str, Any], actions: List[Dict[str, 
 
 def next_job_actions(wo: Dict[str, Any]) -> List[Dict[str, str]]:
     """Next steps for COMPLIANCE or MAINTENANCE work orders (labels aligned with client job UI)."""
+    from services.completion_workflow_transition_service import suppress_invalid_post_completion_actions
+
     kind = (wo.get("work_order_kind") or "").strip().upper() or WORK_ORDER_KIND_MAINTENANCE
     canonical = derive_canonical_job_status(wo)
     st = (wo.get("status") or "").strip().upper()
@@ -583,7 +605,8 @@ def next_job_actions(wo: Dict[str, Any]) -> List[Dict[str, str]]:
         base = _maintenance_next_job_actions(wo, canonical, st)
     else:
         base = _compliance_next_job_actions(wo, canonical, st)
-    return _apply_client_pricing_overrides(wo, base)
+    merged = _apply_client_pricing_overrides(wo, base)
+    return suppress_invalid_post_completion_actions(merged, wo)
 
 
 def contractor_completion_proof_required(wo: Dict[str, Any]) -> bool:
@@ -696,6 +719,15 @@ def contractor_next_job_actions(
     operational (mark_no_access → POST .../mark-no-access), billing (submit_invoice), and navigation (open_job_detail).
     """
     st = (wo.get("status") or "").strip().upper()
+    from services.completion_workflow_transition_service import (
+        generate_contractor_post_proof_actions,
+        is_awaiting_completion_review,
+        suppress_invalid_post_completion_actions,
+    )
+
+    if is_awaiting_completion_review(wo):
+        return suppress_invalid_post_completion_actions(generate_contractor_post_proof_actions(wo), wo)
+
     if st == maintenance_service.STATUS_CANCELLED:
         return []
 
@@ -997,7 +1029,12 @@ def apply_contractor_job_enrichment(
     wo["job_status"] = derive_canonical_job_status(wo)
     base_actions = contractor_next_job_actions(wo, invoice=invoice)
     merged = _prepend_contractor_pricing_actions(wo) + base_actions
-    wo["next_actions"] = _filter_contractor_actions_for_pricing(wo, merged)
+    from services.completion_workflow_transition_service import suppress_invalid_post_completion_actions
+
+    wo["next_actions"] = suppress_invalid_post_completion_actions(
+        _filter_contractor_actions_for_pricing(wo, merged),
+        wo,
+    )
     wo["completion_proof_required"] = contractor_completion_proof_required(wo)
     wo["completion_proof_satisfied"] = contractor_has_completion_proof(wo)
     wo["timeline_events"] = client_job_timeline_events(wo)
@@ -1012,6 +1049,11 @@ def apply_contractor_job_enrichment(
     from services.work_order_schedule_service import serialize_schedule_snapshot, _enrich_schedule_snapshot_labels
 
     wo["scheduling"] = _enrich_schedule_snapshot_labels(serialize_schedule_snapshot(wo))
+    from services.invoice_readiness_service import serialize_invoice_readiness
+
+    wo["invoice_readiness"] = serialize_invoice_readiness(wo, invoice=invoice)
+    wo["operational_status"] = wo.get("operational_status")
+    wo["completion_review_status"] = wo.get("completion_review_status")
     from services.progress_contract_service import attach_progress_contract
 
     attach_progress_contract(wo, audience="contractor", invoice=invoice)
@@ -1055,6 +1097,7 @@ def client_job_timeline_events(wo: Dict[str, Any]) -> List[Dict[str, str]]:
         ("Visit time recorded", "scheduled_at"),
         ("Schedule last updated", "last_schedule_update_at"),
         ("Work completed", "completed_at"),
+        ("Completion proof submitted", "completion_proof_submitted_at"),
     ):
         v = wo.get(key)
         if v:
@@ -1182,6 +1225,11 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
 
     base["scheduling"] = _enrich_schedule_snapshot_labels(serialize_schedule_snapshot(wo))
     base["workflow_mode"] = base["scheduling"].get("workflow_mode")
+    from services.invoice_readiness_service import serialize_invoice_readiness
+
+    base["invoice_readiness"] = serialize_invoice_readiness(wo)
+    base["operational_status"] = wo.get("operational_status")
+    base["completion_review_status"] = wo.get("completion_review_status")
     from services.progress_contract_service import attach_progress_contract
 
     attach_progress_contract(base, audience="landlord")

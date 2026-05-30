@@ -13,6 +13,7 @@ WO_AWAITING_VISIT_CONFIRMATION_SINCE = "awaiting_visit_confirmation_since"
 WO_AWAITING_VISIT_RESCHEDULE_SINCE = "awaiting_visit_reschedule_since"
 WO_WORK_AUTHORISED_SINCE = "work_authorised_since"
 WO_COMPLETION_PROOF_PENDING_SINCE = "completion_proof_pending_since"
+WO_AWAITING_COMPLETION_REVIEW_SINCE = "awaiting_completion_review_since"
 WO_INVOICE_PENDING_SINCE = "invoice_pending_since"
 
 WORK_ORDER_TIMER_FIELDS: FrozenSet[str] = frozenset(
@@ -26,6 +27,7 @@ WORK_ORDER_TIMER_FIELDS: FrozenSet[str] = frozenset(
         WO_AWAITING_VISIT_RESCHEDULE_SINCE,
         WO_WORK_AUTHORISED_SINCE,
         WO_COMPLETION_PROOF_PENDING_SINCE,
+        WO_AWAITING_COMPLETION_REVIEW_SINCE,
         WO_INVOICE_PENDING_SINCE,
     }
 )

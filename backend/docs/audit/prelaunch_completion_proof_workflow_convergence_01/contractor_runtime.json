@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-05-30T23:32:05.733945+00:00",
+  "next_actions": [
+    {
+      "id": "open_job_detail",
+      "label": "Completion proof submitted",
+      "hint": "Your client will review the proof \u2014 awaiting review before invoicing can proceed.",
+      "section": "navigation"
+    }
+  ],
+  "visit_actions_suppressed": true,
+  "headline": "Completion proof submitted \u2014 awaiting review."
+}
