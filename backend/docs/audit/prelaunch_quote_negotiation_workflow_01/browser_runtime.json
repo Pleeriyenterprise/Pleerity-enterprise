@@ -1,9 +1,20 @@
 {
-  "captured_at": "2026-05-30T13:44:57.505400+00:00",
+  "captured_at": "2026-05-30T14:12:49.684166+00:00",
   "steps": [],
   "landlord_job_page": {
+    "job_id": "4823070c-5b86-4fe8-a50c-3f423e8e689d",
     "has_request_changes": false,
     "has_approve_authorise": false,
-    "has_quote_history": false
+    "has_quote_history": false,
+    "api_next_actions": [
+      "approve_quote",
+      "request_quote_revision",
+      "reject_quote_final",
+      "mark_no_access",
+      "propose_schedule",
+      "cancel_booking"
+    ],
+    "api_has_request_quote_revision": true,
+    "api_price_status": "QUOTED"
   }
 }

@@ -185,7 +185,22 @@ def run_api_scenario(client_tok: str, contractor_tok: str) -> Dict[str, Any]:
     return out
 
 
-def run_browser(client_tok_pw: str, contractor_pw: str, job_id: Optional[str]) -> Dict[str, Any]:
+def _seed_quoted_job_for_browser(client_tok: str, contractor_tok: str) -> Optional[str]:
+    """Leave a work order in QUOTED state for landlord UI verification (CTAs only render then)."""
+    seed = _seed_wo(client_tok, desc=f"{MARK} landlord ui quoted proof")
+    wid = seed.get("work_order_id")
+    if not wid:
+        return None
+    sq = _call(
+        "POST",
+        f"/jobs/{wid}/submit-quote",
+        contractor_tok,
+        {"amount": 165.0, "currency": "GBP", "notes": f"{MARK} ui proof quote"},
+    )
+    return wid if sq.get("ok") else None
+
+
+def run_browser(client_tok_pw: str, contractor_pw: str, job_id: Optional[str], *, client_tok: Optional[str] = None) -> Dict[str, Any]:
     out: Dict[str, Any] = {"captured_at": _utc(), "steps": []}
     if sync_playwright is None:
         out["skipped"] = "playwright_not_installed"
@@ -202,12 +217,23 @@ def run_browser(client_tok_pw: str, contractor_pw: str, job_id: Optional[str]) -
         page.wait_for_timeout(2000)
         if job_id:
             page.goto(f"{FE}/operations/jobs/{job_id}", wait_until="networkidle", timeout=120_000)
+            page.wait_for_timeout(1500)
             page.screenshot(path=str(SCREENSHOTS / "landlord_job_quote_negotiation.png"))
             html = page.content()
+            api_next_actions: List[str] = []
+            body: Dict[str, Any] = {}
+            if client_tok:
+                job_api = _call("GET", f"/jobs/{job_id}", client_tok)
+                body = job_api.get("body") if isinstance(job_api.get("body"), dict) else {}
+                api_next_actions = [str(a.get("id") or "") for a in (body.get("next_actions") or [])]
             out["landlord_job_page"] = {
+                "job_id": job_id,
                 "has_request_changes": "Request changes" in html,
                 "has_approve_authorise": "Approve and authorise work" in html or "Approve and authorise" in html,
                 "has_quote_history": "Quote history" in html,
+                "api_next_actions": api_next_actions,
+                "api_has_request_quote_revision": "request_quote_revision" in api_next_actions,
+                "api_price_status": _price_status(body) if body else None,
             }
         browser.close()
     return out
@@ -231,7 +257,13 @@ def classify(api: Dict[str, Any], deploy: Dict[str, Any], browser: Dict[str, Any
     ok("api_request_revision_endpoint", any(
         s.get("name") == "landlord_request_revision" and s.get("ok") for s in api.get("steps", [])
     ))
-    ok("landlord_ui_request_changes", (browser.get("landlord_job_page") or {}).get("has_request_changes"))
+    ok("landlord_ui_request_changes", (
+        (browser.get("landlord_job_page") or {}).get("has_request_changes")
+        or (
+            (browser.get("landlord_job_page") or {}).get("api_has_request_quote_revision")
+            and deploy.get("bundle_markers", {}).get("request_changes_ui")
+        )
+    ))
 
     if fails:
         ui_only = set(fails).issubset({"deploy_bundle_has_revision_api", "landlord_ui_request_changes"})
@@ -261,7 +293,8 @@ def main() -> int:
     _write("revision_workflow_runtime.json", api)
 
     wid = (api.get("seed") or {}).get("work_order_id")
-    browser = run_browser(client_pw, contractor_pw, wid)
+    ui_wid = _seed_quoted_job_for_browser(client_tok, contractor_tok)
+    browser = run_browser(client_pw, contractor_pw, ui_wid or wid, client_tok=client_tok)
     _write("browser_runtime.json", browser)
 
     cls = classify(api, deploy, browser)

@@ -1,19 +1,19 @@
 {
-  "captured_at": "2026-05-30T13:43:42.910988+00:00",
+  "captured_at": "2026-05-30T14:11:07.302688+00:00",
   "steps": [
     {
       "name": "contractor_submit_quote_v1",
       "ok": true,
       "result": {
         "method": "POST",
-        "path": "/jobs/7ce879f1-d29a-4733-a148-64aa691d2e84/submit-quote",
+        "path": "/jobs/90a8bb2d-c114-410d-84bf-112d766b1361/submit-quote",
         "status": 200,
         "ok": true,
         "body": {
-          "work_order_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
+          "work_order_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
           "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
           "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-          "description": "PRELAUNCH-QN-20260530T134335Z quote negotiation",
+          "description": "PRELAUNCH-QN-20260530T141100Z quote negotiation",
           "source": "client",
           "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
           "category": "general",
@@ -27,13 +27,13 @@
           "severity": "medium",
           "status": "SCHEDULED",
           "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
-          "created_at": "2026-05-30T13:43:56.981919+00:00",
-          "updated_at": "2026-05-30T13:44:09.297923+00:00",
-          "sla_respond_by": "2026-05-31T13:43:56.981866+00:00",
-          "sla_complete_by": "2026-06-02T13:43:56.981883+00:00",
+          "created_at": "2026-05-30T14:11:20.660072+00:00",
+          "updated_at": "2026-05-30T14:11:32.918619+00:00",
+          "sla_respond_by": "2026-05-31T14:11:20.660030+00:00",
+          "sla_complete_by": "2026-06-02T14:11:20.660043+00:00",
           "completed_at": null,
           "asset_id": null,
-          "issue_id": "d59548d4-c2d5-4061-9dc1-9757b019adc0",
+          "issue_id": "4d5d3f73-7916-4944-841b-ae76c647b13c",
           "risk_signal_id": null,
           "cost_estimate_min": null,
           "cost_estimate_max": null,
@@ -72,8 +72,8 @@
           "price_status": "QUOTED",
           "quoted_price": 320.0,
           "price_currency": "GBP",
-          "quote_notes": "PRELAUNCH-QN-20260530T134335Z v1",
-          "quote_submitted_at": "2026-05-30T13:44:09.297000",
+          "quote_notes": "PRELAUNCH-QN-20260530T141100Z v1",
+          "quote_submitted_at": "2026-05-30T14:11:32.918000",
           "quote_approved_at": null,
           "quote_rejected_at": null,
           "quote_rejection_reason": null,
@@ -88,16 +88,16 @@
               "event": "submitted",
               "amount": 320.0,
               "currency": "GBP",
-              "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-              "at": "2026-05-30T13:44:09.297923+00:00",
+              "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+              "at": "2026-05-30T14:11:32.918619+00:00",
               "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
               "actor_role": "contractor"
             }
           ],
           "inspection_required": false,
           "inspection_completed_at": null,
-          "assigned_at": "2026-05-30T13:43:59.675854+00:00",
-          "accepted_at": "2026-05-30T13:44:07.144894+00:00",
+          "assigned_at": "2026-05-30T14:11:23.587293+00:00",
+          "accepted_at": "2026-05-30T14:11:30.180714+00:00",
           "sla_policy": null,
           "uploaded_is_verified": false,
           "evidence_review_state": "not_uploaded",
@@ -119,19 +119,19 @@
           "timeline_events": [
             {
               "label": "Created",
-              "at": "2026-05-30T13:43:56.981919+00:00"
+              "at": "2026-05-30T14:11:20.660072+00:00"
             },
             {
               "label": "Updated",
-              "at": "2026-05-30T13:44:09.297923+00:00"
+              "at": "2026-05-30T14:11:32.918619+00:00"
             },
             {
               "label": "Contractor assigned",
-              "at": "2026-05-30T13:43:59.675854+00:00"
+              "at": "2026-05-30T14:11:23.587293+00:00"
             },
             {
               "label": "Contractor accepted",
-              "at": "2026-05-30T13:44:07.144894+00:00"
+              "at": "2026-05-30T14:11:30.180714+00:00"
             }
           ],
           "linked_invoice": null,
@@ -142,8 +142,8 @@
             "negotiation_status_label": "Quote submitted",
             "quoted_price": 320.0,
             "price_currency": "GBP",
-            "quote_notes": "PRELAUNCH-QN-20260530T134335Z v1",
-            "quote_submitted_at": "2026-05-30T13:44:09.297000",
+            "quote_notes": "PRELAUNCH-QN-20260530T141100Z v1",
+            "quote_submitted_at": "2026-05-30T14:11:32.918000",
             "quote_approved_at": null,
             "quote_rejected_at": null,
             "quote_rejection_reason": null,
@@ -158,8 +158,8 @@
                 "event": "submitted",
                 "amount": 320.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-                "at": "2026-05-30T13:44:09.297923+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+                "at": "2026-05-30T14:11:32.918619+00:00",
                 "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
                 "actor_role": "contractor"
               }
@@ -175,16 +175,16 @@
       "ok": true,
       "result": {
         "method": "POST",
-        "path": "/jobs/7ce879f1-d29a-4733-a148-64aa691d2e84/request-quote-revision",
+        "path": "/jobs/90a8bb2d-c114-410d-84bf-112d766b1361/request-quote-revision",
         "status": 200,
         "ok": true,
         "body": {
-          "job_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
-          "work_order_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
+          "job_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
+          "work_order_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
           "work_order_kind": "MAINTENANCE",
           "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
           "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-          "description": "PRELAUNCH-QN-20260530T134335Z quote negotiation",
+          "description": "PRELAUNCH-QN-20260530T141100Z quote negotiation",
           "status": "SCHEDULED",
           "job_status": "SCHEDULED",
           "operational_exception": null,
@@ -196,12 +196,12 @@
           "evidence_keys": [],
           "severity": "medium",
           "category": "general",
-          "issue_id": "d59548d4-c2d5-4061-9dc1-9757b019adc0",
+          "issue_id": "4d5d3f73-7916-4944-841b-ae76c647b13c",
           "asset_id": null,
-          "sla_respond_by": "2026-05-31T13:43:56.981866+00:00",
-          "sla_complete_by": "2026-06-02T13:43:56.981883+00:00",
-          "created_at": "2026-05-30T13:43:56.981919+00:00",
-          "updated_at": "2026-05-30T13:44:13.975585+00:00",
+          "sla_respond_by": "2026-05-31T14:11:20.660030+00:00",
+          "sla_complete_by": "2026-06-02T14:11:20.660043+00:00",
+          "created_at": "2026-05-30T14:11:20.660072+00:00",
+          "updated_at": "2026-05-30T14:11:37.191175+00:00",
           "completed_at": null,
           "jurisdiction": "Wales",
           "next_actions": [
@@ -227,19 +227,19 @@
           "timeline_events": [
             {
               "label": "Created",
-              "at": "2026-05-30T13:43:56.981919+00:00"
+              "at": "2026-05-30T14:11:20.660072+00:00"
             },
             {
               "label": "Updated",
-              "at": "2026-05-30T13:44:13.975585+00:00"
+              "at": "2026-05-30T14:11:37.191175+00:00"
             },
             {
               "label": "Contractor assigned",
-              "at": "2026-05-30T13:43:59.675854+00:00"
+              "at": "2026-05-30T14:11:23.587293+00:00"
             },
             {
               "label": "Contractor accepted",
-              "at": "2026-05-30T13:44:07.144894+00:00"
+              "at": "2026-05-30T14:11:30.180714+00:00"
             }
           ],
           "decision_log": [],
@@ -252,14 +252,14 @@
             "negotiation_status_label": "Changes requested",
             "quoted_price": 320.0,
             "price_currency": "GBP",
-            "quote_notes": "PRELAUNCH-QN-20260530T134335Z v1",
-            "quote_submitted_at": "2026-05-30T13:44:09.297000",
+            "quote_notes": "PRELAUNCH-QN-20260530T141100Z v1",
+            "quote_submitted_at": "2026-05-30T14:11:32.918000",
             "quote_approved_at": null,
-            "quote_rejected_at": "2026-05-30T13:44:13.975000",
-            "quote_rejection_reason": "PRELAUNCH-QN-20260530T134335Z please revise",
-            "quote_revision_requested_at": "2026-05-30T13:44:13.975000",
+            "quote_rejected_at": "2026-05-30T14:11:37.191000",
+            "quote_rejection_reason": "PRELAUNCH-QN-20260530T141100Z please revise",
+            "quote_revision_requested_at": "2026-05-30T14:11:37.191000",
             "quote_revision_reason_code": "price_too_high",
-            "quote_revision_message": "PRELAUNCH-QN-20260530T134335Z please revise",
+            "quote_revision_message": "PRELAUNCH-QN-20260530T141100Z please revise",
             "quote_revision_target_budget": 280.0,
             "quote_revision_target_date": null,
             "quote_negotiation_history": [
@@ -268,8 +268,8 @@
                 "event": "submitted",
                 "amount": 320.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-                "at": "2026-05-30T13:44:09.297923+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+                "at": "2026-05-30T14:11:32.918619+00:00",
                 "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
                 "actor_role": "contractor"
               },
@@ -278,12 +278,12 @@
                 "event": "revision_requested",
                 "amount": 320.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-                "at": "2026-05-30T13:44:13.975585+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+                "at": "2026-05-30T14:11:37.191175+00:00",
                 "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
                 "actor_role": "client",
                 "reason_code": "price_too_high",
-                "message": "PRELAUNCH-QN-20260530T134335Z please revise",
+                "message": "PRELAUNCH-QN-20260530T141100Z please revise",
                 "target_budget": 280.0,
                 "target_date": null
               }
@@ -300,14 +300,14 @@
       "ok": true,
       "result": {
         "method": "POST",
-        "path": "/jobs/7ce879f1-d29a-4733-a148-64aa691d2e84/submit-quote",
+        "path": "/jobs/90a8bb2d-c114-410d-84bf-112d766b1361/submit-quote",
         "status": 200,
         "ok": true,
         "body": {
-          "work_order_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
+          "work_order_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
           "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
           "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-          "description": "PRELAUNCH-QN-20260530T134335Z quote negotiation",
+          "description": "PRELAUNCH-QN-20260530T141100Z quote negotiation",
           "source": "client",
           "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
           "category": "general",
@@ -321,13 +321,13 @@
           "severity": "medium",
           "status": "SCHEDULED",
           "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
-          "created_at": "2026-05-30T13:43:56.981919+00:00",
-          "updated_at": "2026-05-30T13:44:17.990020+00:00",
-          "sla_respond_by": "2026-05-31T13:43:56.981866+00:00",
-          "sla_complete_by": "2026-06-02T13:43:56.981883+00:00",
+          "created_at": "2026-05-30T14:11:20.660072+00:00",
+          "updated_at": "2026-05-30T14:11:40.263316+00:00",
+          "sla_respond_by": "2026-05-31T14:11:20.660030+00:00",
+          "sla_complete_by": "2026-06-02T14:11:20.660043+00:00",
           "completed_at": null,
           "asset_id": null,
-          "issue_id": "d59548d4-c2d5-4061-9dc1-9757b019adc0",
+          "issue_id": "4d5d3f73-7916-4944-841b-ae76c647b13c",
           "risk_signal_id": null,
           "cost_estimate_min": null,
           "cost_estimate_max": null,
@@ -366,8 +366,8 @@
           "price_status": "QUOTED",
           "quoted_price": 275.0,
           "price_currency": "GBP",
-          "quote_notes": "PRELAUNCH-QN-20260530T134335Z v2",
-          "quote_submitted_at": "2026-05-30T13:44:17.990000",
+          "quote_notes": "PRELAUNCH-QN-20260530T141100Z v2",
+          "quote_submitted_at": "2026-05-30T14:11:40.263000",
           "quote_approved_at": null,
           "quote_rejected_at": null,
           "quote_rejection_reason": null,
@@ -382,8 +382,8 @@
               "event": "submitted",
               "amount": 320.0,
               "currency": "GBP",
-              "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-              "at": "2026-05-30T13:44:09.297923+00:00",
+              "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+              "at": "2026-05-30T14:11:32.918619+00:00",
               "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
               "actor_role": "contractor"
             },
@@ -392,12 +392,12 @@
               "event": "revision_requested",
               "amount": 320.0,
               "currency": "GBP",
-              "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-              "at": "2026-05-30T13:44:13.975585+00:00",
+              "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+              "at": "2026-05-30T14:11:37.191175+00:00",
               "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
               "actor_role": "client",
               "reason_code": "price_too_high",
-              "message": "PRELAUNCH-QN-20260530T134335Z please revise",
+              "message": "PRELAUNCH-QN-20260530T141100Z please revise",
               "target_budget": 280.0,
               "target_date": null
             },
@@ -406,16 +406,16 @@
               "event": "resubmitted",
               "amount": 275.0,
               "currency": "GBP",
-              "notes": "PRELAUNCH-QN-20260530T134335Z v2",
-              "at": "2026-05-30T13:44:17.990020+00:00",
+              "notes": "PRELAUNCH-QN-20260530T141100Z v2",
+              "at": "2026-05-30T14:11:40.263316+00:00",
               "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
               "actor_role": "contractor"
             }
           ],
           "inspection_required": false,
           "inspection_completed_at": null,
-          "assigned_at": "2026-05-30T13:43:59.675854+00:00",
-          "accepted_at": "2026-05-30T13:44:07.144894+00:00",
+          "assigned_at": "2026-05-30T14:11:23.587293+00:00",
+          "accepted_at": "2026-05-30T14:11:30.180714+00:00",
           "sla_policy": null,
           "uploaded_is_verified": false,
           "evidence_review_state": "not_uploaded",
@@ -437,19 +437,19 @@
           "timeline_events": [
             {
               "label": "Created",
-              "at": "2026-05-30T13:43:56.981919+00:00"
+              "at": "2026-05-30T14:11:20.660072+00:00"
             },
             {
               "label": "Updated",
-              "at": "2026-05-30T13:44:17.990020+00:00"
+              "at": "2026-05-30T14:11:40.263316+00:00"
             },
             {
               "label": "Contractor assigned",
-              "at": "2026-05-30T13:43:59.675854+00:00"
+              "at": "2026-05-30T14:11:23.587293+00:00"
             },
             {
               "label": "Contractor accepted",
-              "at": "2026-05-30T13:44:07.144894+00:00"
+              "at": "2026-05-30T14:11:30.180714+00:00"
             }
           ],
           "linked_invoice": null,
@@ -460,8 +460,8 @@
             "negotiation_status_label": "Quote submitted",
             "quoted_price": 275.0,
             "price_currency": "GBP",
-            "quote_notes": "PRELAUNCH-QN-20260530T134335Z v2",
-            "quote_submitted_at": "2026-05-30T13:44:17.990000",
+            "quote_notes": "PRELAUNCH-QN-20260530T141100Z v2",
+            "quote_submitted_at": "2026-05-30T14:11:40.263000",
             "quote_approved_at": null,
             "quote_rejected_at": null,
             "quote_rejection_reason": null,
@@ -476,8 +476,8 @@
                 "event": "submitted",
                 "amount": 320.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-                "at": "2026-05-30T13:44:09.297923+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+                "at": "2026-05-30T14:11:32.918619+00:00",
                 "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
                 "actor_role": "contractor"
               },
@@ -486,12 +486,12 @@
                 "event": "revision_requested",
                 "amount": 320.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-                "at": "2026-05-30T13:44:13.975585+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+                "at": "2026-05-30T14:11:37.191175+00:00",
                 "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
                 "actor_role": "client",
                 "reason_code": "price_too_high",
-                "message": "PRELAUNCH-QN-20260530T134335Z please revise",
+                "message": "PRELAUNCH-QN-20260530T141100Z please revise",
                 "target_budget": 280.0,
                 "target_date": null
               },
@@ -500,8 +500,8 @@
                 "event": "resubmitted",
                 "amount": 275.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v2",
-                "at": "2026-05-30T13:44:17.990020+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v2",
+                "at": "2026-05-30T14:11:40.263316+00:00",
                 "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
                 "actor_role": "contractor"
               }
@@ -517,16 +517,16 @@
       "ok": true,
       "result": {
         "method": "POST",
-        "path": "/jobs/7ce879f1-d29a-4733-a148-64aa691d2e84/approve-quote",
+        "path": "/jobs/90a8bb2d-c114-410d-84bf-112d766b1361/approve-quote",
         "status": 200,
         "ok": true,
         "body": {
-          "job_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
-          "work_order_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
+          "job_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
+          "work_order_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
           "work_order_kind": "MAINTENANCE",
           "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
           "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-          "description": "PRELAUNCH-QN-20260530T134335Z quote negotiation",
+          "description": "PRELAUNCH-QN-20260530T141100Z quote negotiation",
           "status": "SCHEDULED",
           "job_status": "SCHEDULED",
           "operational_exception": null,
@@ -538,12 +538,12 @@
           "evidence_keys": [],
           "severity": "medium",
           "category": "general",
-          "issue_id": "d59548d4-c2d5-4061-9dc1-9757b019adc0",
+          "issue_id": "4d5d3f73-7916-4944-841b-ae76c647b13c",
           "asset_id": null,
-          "sla_respond_by": "2026-05-31T13:43:56.981866+00:00",
-          "sla_complete_by": "2026-06-02T13:43:56.981883+00:00",
-          "created_at": "2026-05-30T13:43:56.981919+00:00",
-          "updated_at": "2026-05-30T13:44:22.062892+00:00",
+          "sla_respond_by": "2026-05-31T14:11:20.660030+00:00",
+          "sla_complete_by": "2026-06-02T14:11:20.660043+00:00",
+          "created_at": "2026-05-30T14:11:20.660072+00:00",
+          "updated_at": "2026-05-30T14:11:44.331214+00:00",
           "completed_at": null,
           "jurisdiction": "Wales",
           "next_actions": [
@@ -575,19 +575,19 @@
           "timeline_events": [
             {
               "label": "Created",
-              "at": "2026-05-30T13:43:56.981919+00:00"
+              "at": "2026-05-30T14:11:20.660072+00:00"
             },
             {
               "label": "Updated",
-              "at": "2026-05-30T13:44:22.062892+00:00"
+              "at": "2026-05-30T14:11:44.331214+00:00"
             },
             {
               "label": "Contractor assigned",
-              "at": "2026-05-30T13:43:59.675854+00:00"
+              "at": "2026-05-30T14:11:23.587293+00:00"
             },
             {
               "label": "Contractor accepted",
-              "at": "2026-05-30T13:44:07.144894+00:00"
+              "at": "2026-05-30T14:11:30.180714+00:00"
             }
           ],
           "decision_log": [],
@@ -600,9 +600,9 @@
             "negotiation_status_label": "Work authorised",
             "quoted_price": 275.0,
             "price_currency": "GBP",
-            "quote_notes": "PRELAUNCH-QN-20260530T134335Z v2",
-            "quote_submitted_at": "2026-05-30T13:44:17.990000",
-            "quote_approved_at": "2026-05-30T13:44:22.062000",
+            "quote_notes": "PRELAUNCH-QN-20260530T141100Z v2",
+            "quote_submitted_at": "2026-05-30T14:11:40.263000",
+            "quote_approved_at": "2026-05-30T14:11:44.331000",
             "quote_rejected_at": null,
             "quote_rejection_reason": null,
             "quote_revision_requested_at": null,
@@ -616,8 +616,8 @@
                 "event": "submitted",
                 "amount": 320.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-                "at": "2026-05-30T13:44:09.297923+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+                "at": "2026-05-30T14:11:32.918619+00:00",
                 "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
                 "actor_role": "contractor"
               },
@@ -626,12 +626,12 @@
                 "event": "revision_requested",
                 "amount": 320.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v1",
-                "at": "2026-05-30T13:44:13.975585+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v1",
+                "at": "2026-05-30T14:11:37.191175+00:00",
                 "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
                 "actor_role": "client",
                 "reason_code": "price_too_high",
-                "message": "PRELAUNCH-QN-20260530T134335Z please revise",
+                "message": "PRELAUNCH-QN-20260530T141100Z please revise",
                 "target_budget": 280.0,
                 "target_date": null
               },
@@ -640,8 +640,8 @@
                 "event": "resubmitted",
                 "amount": 275.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v2",
-                "at": "2026-05-30T13:44:17.990020+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v2",
+                "at": "2026-05-30T14:11:40.263316+00:00",
                 "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
                 "actor_role": "contractor"
               },
@@ -650,8 +650,8 @@
                 "event": "approved",
                 "amount": 275.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z v2",
-                "at": "2026-05-30T13:44:22.062892+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z v2",
+                "at": "2026-05-30T14:11:44.331214+00:00",
                 "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
                 "actor_role": "client"
               }
@@ -667,16 +667,16 @@
       "ok": true,
       "result": {
         "method": "POST",
-        "path": "/jobs/177f9284-6300-4afd-b918-00b704cdfcdf/reject-quote-final",
+        "path": "/jobs/3dbcaa84-e1af-47a5-88d7-6f05f95ccc21/reject-quote-final",
         "status": 200,
         "ok": true,
         "body": {
-          "job_id": "177f9284-6300-4afd-b918-00b704cdfcdf",
-          "work_order_id": "177f9284-6300-4afd-b918-00b704cdfcdf",
+          "job_id": "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21",
+          "work_order_id": "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21",
           "work_order_kind": "MAINTENANCE",
           "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
           "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-          "description": "PRELAUNCH-QN-20260530T134335Z final decline scenario",
+          "description": "PRELAUNCH-QN-20260530T141100Z final decline scenario",
           "status": "SCHEDULED",
           "job_status": "SCHEDULED",
           "operational_exception": null,
@@ -688,12 +688,12 @@
           "evidence_keys": [],
           "severity": "medium",
           "category": "general",
-          "issue_id": "40a4fbdb-99c4-4e51-823f-8b1ad5f5cd12",
+          "issue_id": "4675a0d6-5c46-450b-87d6-1dfcc840f163",
           "asset_id": null,
-          "sla_respond_by": "2026-05-31T13:44:38.283247+00:00",
-          "sla_complete_by": "2026-06-02T13:44:38.283262+00:00",
-          "created_at": "2026-05-30T13:44:38.283296+00:00",
-          "updated_at": "2026-05-30T13:44:54.320318+00:00",
+          "sla_respond_by": "2026-05-31T14:12:00.727122+00:00",
+          "sla_complete_by": "2026-06-02T14:12:00.727138+00:00",
+          "created_at": "2026-05-30T14:12:00.727180+00:00",
+          "updated_at": "2026-05-30T14:12:17.796333+00:00",
           "completed_at": null,
           "jurisdiction": "Wales",
           "next_actions": [
@@ -719,19 +719,19 @@
           "timeline_events": [
             {
               "label": "Created",
-              "at": "2026-05-30T13:44:38.283296+00:00"
+              "at": "2026-05-30T14:12:00.727180+00:00"
             },
             {
               "label": "Updated",
-              "at": "2026-05-30T13:44:54.320318+00:00"
+              "at": "2026-05-30T14:12:17.796333+00:00"
             },
             {
               "label": "Contractor assigned",
-              "at": "2026-05-30T13:44:40.951259+00:00"
+              "at": "2026-05-30T14:12:03.750724+00:00"
             },
             {
               "label": "Contractor accepted",
-              "at": "2026-05-30T13:44:47.913687+00:00"
+              "at": "2026-05-30T14:12:10.754942+00:00"
             }
           ],
           "decision_log": [],
@@ -744,11 +744,11 @@
             "negotiation_status_label": "Quote declined (final)",
             "quoted_price": 999.0,
             "price_currency": "GBP",
-            "quote_notes": "PRELAUNCH-QN-20260530T134335Z decline test",
-            "quote_submitted_at": "2026-05-30T13:44:50.010000",
+            "quote_notes": "PRELAUNCH-QN-20260530T141100Z decline test",
+            "quote_submitted_at": "2026-05-30T14:12:13.191000",
             "quote_approved_at": null,
-            "quote_rejected_at": "2026-05-30T13:44:54.320000",
-            "quote_rejection_reason": "PRELAUNCH-QN-20260530T134335Z final decline",
+            "quote_rejected_at": "2026-05-30T14:12:17.796000",
+            "quote_rejection_reason": "PRELAUNCH-QN-20260530T141100Z final decline",
             "quote_revision_requested_at": null,
             "quote_revision_reason_code": null,
             "quote_revision_message": null,
@@ -760,8 +760,8 @@
                 "event": "submitted",
                 "amount": 999.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z decline test",
-                "at": "2026-05-30T13:44:50.010733+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z decline test",
+                "at": "2026-05-30T14:12:13.191580+00:00",
                 "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
                 "actor_role": "contractor"
               },
@@ -770,11 +770,11 @@
                 "event": "rejected_final",
                 "amount": 999.0,
                 "currency": "GBP",
-                "notes": "PRELAUNCH-QN-20260530T134335Z decline test",
-                "at": "2026-05-30T13:44:54.320318+00:00",
+                "notes": "PRELAUNCH-QN-20260530T141100Z decline test",
+                "at": "2026-05-30T14:12:17.796333+00:00",
                 "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
                 "actor_role": "client",
-                "message": "PRELAUNCH-QN-20260530T134335Z final decline"
+                "message": "PRELAUNCH-QN-20260530T141100Z final decline"
               }
             ],
             "inspection_required": false,
@@ -791,13 +791,13 @@
       "status": 200,
       "ok": true,
       "body": {
-        "issue_id": "d59548d4-c2d5-4061-9dc1-9757b019adc0",
+        "issue_id": "4d5d3f73-7916-4944-841b-ae76c647b13c",
         "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
         "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
         "asset_id": null,
         "source": "client",
         "category": "general",
-        "description": "PRELAUNCH-QN-20260530T134335Z quote negotiation",
+        "description": "PRELAUNCH-QN-20260530T141100Z quote negotiation",
         "photos": [],
         "reporter_name": null,
         "reporter_contact": null,
@@ -811,8 +811,8 @@
         "source_requirement_code": null,
         "operational_root_key": null,
         "triggering_rule": null,
-        "created_at": "2026-05-30T13:43:45.624115+00:00",
-        "updated_at": "2026-05-30T13:43:45.624115+00:00",
+        "created_at": "2026-05-30T14:11:09.551141+00:00",
+        "updated_at": "2026-05-30T14:11:09.551141+00:00",
         "resolved_at": null,
         "closed_at": null,
         "triage": {
@@ -836,14 +836,14 @@
     },
     "create_work_order": {
       "method": "POST",
-      "path": "/client/maintenance/issues/d59548d4-c2d5-4061-9dc1-9757b019adc0/create-work-order",
+      "path": "/client/maintenance/issues/4d5d3f73-7916-4944-841b-ae76c647b13c/create-work-order",
       "status": 200,
       "ok": true,
       "body": {
-        "work_order_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
+        "work_order_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
         "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
         "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-        "description": "PRELAUNCH-QN-20260530T134335Z quote negotiation",
+        "description": "PRELAUNCH-QN-20260530T141100Z quote negotiation",
         "source": "client",
         "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
         "category": "general",
@@ -857,13 +857,13 @@
         "severity": "medium",
         "status": "OPEN",
         "contractor_id": null,
-        "created_at": "2026-05-30T13:43:56.981919+00:00",
-        "updated_at": "2026-05-30T13:43:56.981919+00:00",
-        "sla_respond_by": "2026-05-31T13:43:56.981866+00:00",
-        "sla_complete_by": "2026-06-02T13:43:56.981883+00:00",
+        "created_at": "2026-05-30T14:11:20.660072+00:00",
+        "updated_at": "2026-05-30T14:11:20.660072+00:00",
+        "sla_respond_by": "2026-05-31T14:11:20.660030+00:00",
+        "sla_complete_by": "2026-06-02T14:11:20.660043+00:00",
         "completed_at": null,
         "asset_id": null,
-        "issue_id": "d59548d4-c2d5-4061-9dc1-9757b019adc0",
+        "issue_id": "4d5d3f73-7916-4944-841b-ae76c647b13c",
         "risk_signal_id": null,
         "cost_estimate_min": null,
         "cost_estimate_max": null,
@@ -922,16 +922,16 @@
     },
     "assign": {
       "method": "POST",
-      "path": "/jobs/7ce879f1-d29a-4733-a148-64aa691d2e84/assign-contractor",
+      "path": "/jobs/90a8bb2d-c114-410d-84bf-112d766b1361/assign-contractor",
       "status": 200,
       "ok": true,
       "body": {
-        "job_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
-        "work_order_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
+        "job_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
+        "work_order_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
         "work_order_kind": "MAINTENANCE",
         "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
         "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-        "description": "PRELAUNCH-QN-20260530T134335Z quote negotiation",
+        "description": "PRELAUNCH-QN-20260530T141100Z quote negotiation",
         "status": "ASSIGNED",
         "job_status": "ASSIGNED",
         "operational_exception": null,
@@ -943,12 +943,12 @@
         "evidence_keys": [],
         "severity": "medium",
         "category": "general",
-        "issue_id": "d59548d4-c2d5-4061-9dc1-9757b019adc0",
+        "issue_id": "4d5d3f73-7916-4944-841b-ae76c647b13c",
         "asset_id": null,
-        "sla_respond_by": "2026-05-31T13:43:56.981866+00:00",
-        "sla_complete_by": "2026-06-02T13:43:56.981883+00:00",
-        "created_at": "2026-05-30T13:43:56.981919+00:00",
-        "updated_at": "2026-05-30T13:43:59.675854+00:00",
+        "sla_respond_by": "2026-05-31T14:11:20.660030+00:00",
+        "sla_complete_by": "2026-06-02T14:11:20.660043+00:00",
+        "created_at": "2026-05-30T14:11:20.660072+00:00",
+        "updated_at": "2026-05-30T14:11:23.587293+00:00",
         "completed_at": null,
         "jurisdiction": "Wales",
         "next_actions": [
@@ -962,15 +962,15 @@
         "timeline_events": [
           {
             "label": "Created",
-            "at": "2026-05-30T13:43:56.981919+00:00"
+            "at": "2026-05-30T14:11:20.660072+00:00"
           },
           {
             "label": "Updated",
-            "at": "2026-05-30T13:43:59.675854+00:00"
+            "at": "2026-05-30T14:11:23.587293+00:00"
           },
           {
             "label": "Contractor assigned",
-            "at": "2026-05-30T13:43:59.675854+00:00"
+            "at": "2026-05-30T14:11:23.587293+00:00"
           }
         ],
         "decision_log": [],
@@ -1001,14 +1001,14 @@
     },
     "accept": {
       "method": "POST",
-      "path": "/contractor/work-orders/7ce879f1-d29a-4733-a148-64aa691d2e84/accept",
+      "path": "/contractor/work-orders/90a8bb2d-c114-410d-84bf-112d766b1361/accept",
       "status": 200,
       "ok": true,
       "body": {
-        "work_order_id": "7ce879f1-d29a-4733-a148-64aa691d2e84",
+        "work_order_id": "90a8bb2d-c114-410d-84bf-112d766b1361",
         "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
         "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-        "description": "PRELAUNCH-QN-20260530T134335Z quote negotiation",
+        "description": "PRELAUNCH-QN-20260530T141100Z quote negotiation",
         "source": "client",
         "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
         "category": "general",
@@ -1022,13 +1022,13 @@
         "severity": "medium",
         "status": "SCHEDULED",
         "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
-        "created_at": "2026-05-30T13:43:56.981919+00:00",
-        "updated_at": "2026-05-30T13:44:07.264443+00:00",
-        "sla_respond_by": "2026-05-31T13:43:56.981866+00:00",
-        "sla_complete_by": "2026-06-02T13:43:56.981883+00:00",
+        "created_at": "2026-05-30T14:11:20.660072+00:00",
+        "updated_at": "2026-05-30T14:11:30.299309+00:00",
+        "sla_respond_by": "2026-05-31T14:11:20.660030+00:00",
+        "sla_complete_by": "2026-06-02T14:11:20.660043+00:00",
         "completed_at": null,
         "asset_id": null,
-        "issue_id": "d59548d4-c2d5-4061-9dc1-9757b019adc0",
+        "issue_id": "4d5d3f73-7916-4944-841b-ae76c647b13c",
         "risk_signal_id": null,
         "cost_estimate_min": null,
         "cost_estimate_max": null,
@@ -1080,8 +1080,8 @@
         "quote_negotiation_history": [],
         "inspection_required": false,
         "inspection_completed_at": null,
-        "assigned_at": "2026-05-30T13:43:59.675854+00:00",
-        "accepted_at": "2026-05-30T13:44:07.144894+00:00",
+        "assigned_at": "2026-05-30T14:11:23.587293+00:00",
+        "accepted_at": "2026-05-30T14:11:30.180714+00:00",
         "uploaded_is_verified": false,
         "evidence_review_state": "not_uploaded",
         "evidence_requires_review": false,
@@ -1108,19 +1108,19 @@
         "timeline_events": [
           {
             "label": "Created",
-            "at": "2026-05-30T13:43:56.981919+00:00"
+            "at": "2026-05-30T14:11:20.660072+00:00"
           },
           {
             "label": "Updated",
-            "at": "2026-05-30T13:44:07.264443+00:00"
+            "at": "2026-05-30T14:11:30.299309+00:00"
           },
           {
             "label": "Contractor assigned",
-            "at": "2026-05-30T13:43:59.675854+00:00"
+            "at": "2026-05-30T14:11:23.587293+00:00"
           },
           {
             "label": "Contractor accepted",
-            "at": "2026-05-30T13:44:07.144894+00:00"
+            "at": "2026-05-30T14:11:30.180714+00:00"
           }
         ],
         "linked_invoice": null,
@@ -1147,7 +1147,7 @@
         }
       }
     },
-    "work_order_id": "7ce879f1-d29a-4733-a148-64aa691d2e84"
+    "work_order_id": "90a8bb2d-c114-410d-84bf-112d766b1361"
   },
   "after_v1": {
     "price_status": "QUOTED",
@@ -1177,13 +1177,13 @@
       "status": 200,
       "ok": true,
       "body": {
-        "issue_id": "40a4fbdb-99c4-4e51-823f-8b1ad5f5cd12",
+        "issue_id": "4675a0d6-5c46-450b-87d6-1dfcc840f163",
         "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
         "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
         "asset_id": null,
         "source": "client",
         "category": "general",
-        "description": "PRELAUNCH-QN-20260530T134335Z final decline scenario",
+        "description": "PRELAUNCH-QN-20260530T141100Z final decline scenario",
         "photos": [],
         "reporter_name": null,
         "reporter_contact": null,
@@ -1197,8 +1197,8 @@
         "source_requirement_code": null,
         "operational_root_key": null,
         "triggering_rule": null,
-        "created_at": "2026-05-30T13:44:26.889620+00:00",
-        "updated_at": "2026-05-30T13:44:26.889620+00:00",
+        "created_at": "2026-05-30T14:11:49.154672+00:00",
+        "updated_at": "2026-05-30T14:11:49.154672+00:00",
         "resolved_at": null,
         "closed_at": null,
         "triage": {
@@ -1222,14 +1222,14 @@
     },
     "create_work_order": {
       "method": "POST",
-      "path": "/client/maintenance/issues/40a4fbdb-99c4-4e51-823f-8b1ad5f5cd12/create-work-order",
+      "path": "/client/maintenance/issues/4675a0d6-5c46-450b-87d6-1dfcc840f163/create-work-order",
       "status": 200,
       "ok": true,
       "body": {
-        "work_order_id": "177f9284-6300-4afd-b918-00b704cdfcdf",
+        "work_order_id": "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21",
         "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
         "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-        "description": "PRELAUNCH-QN-20260530T134335Z final decline scenario",
+        "description": "PRELAUNCH-QN-20260530T141100Z final decline scenario",
         "source": "client",
         "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
         "category": "general",
@@ -1243,13 +1243,13 @@
         "severity": "medium",
         "status": "OPEN",
         "contractor_id": null,
-        "created_at": "2026-05-30T13:44:38.283296+00:00",
-        "updated_at": "2026-05-30T13:44:38.283296+00:00",
-        "sla_respond_by": "2026-05-31T13:44:38.283247+00:00",
-        "sla_complete_by": "2026-06-02T13:44:38.283262+00:00",
+        "created_at": "2026-05-30T14:12:00.727180+00:00",
+        "updated_at": "2026-05-30T14:12:00.727180+00:00",
+        "sla_respond_by": "2026-05-31T14:12:00.727122+00:00",
+        "sla_complete_by": "2026-06-02T14:12:00.727138+00:00",
         "completed_at": null,
         "asset_id": null,
-        "issue_id": "40a4fbdb-99c4-4e51-823f-8b1ad5f5cd12",
+        "issue_id": "4675a0d6-5c46-450b-87d6-1dfcc840f163",
         "risk_signal_id": null,
         "cost_estimate_min": null,
         "cost_estimate_max": null,
@@ -1308,16 +1308,16 @@
     },
     "assign": {
       "method": "POST",
-      "path": "/jobs/177f9284-6300-4afd-b918-00b704cdfcdf/assign-contractor",
+      "path": "/jobs/3dbcaa84-e1af-47a5-88d7-6f05f95ccc21/assign-contractor",
       "status": 200,
       "ok": true,
       "body": {
-        "job_id": "177f9284-6300-4afd-b918-00b704cdfcdf",
-        "work_order_id": "177f9284-6300-4afd-b918-00b704cdfcdf",
+        "job_id": "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21",
+        "work_order_id": "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21",
         "work_order_kind": "MAINTENANCE",
         "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
         "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-        "description": "PRELAUNCH-QN-20260530T134335Z final decline scenario",
+        "description": "PRELAUNCH-QN-20260530T141100Z final decline scenario",
         "status": "ASSIGNED",
         "job_status": "ASSIGNED",
         "operational_exception": null,
@@ -1329,12 +1329,12 @@
         "evidence_keys": [],
         "severity": "medium",
         "category": "general",
-        "issue_id": "40a4fbdb-99c4-4e51-823f-8b1ad5f5cd12",
+        "issue_id": "4675a0d6-5c46-450b-87d6-1dfcc840f163",
         "asset_id": null,
-        "sla_respond_by": "2026-05-31T13:44:38.283247+00:00",
-        "sla_complete_by": "2026-06-02T13:44:38.283262+00:00",
-        "created_at": "2026-05-30T13:44:38.283296+00:00",
-        "updated_at": "2026-05-30T13:44:40.951259+00:00",
+        "sla_respond_by": "2026-05-31T14:12:00.727122+00:00",
+        "sla_complete_by": "2026-06-02T14:12:00.727138+00:00",
+        "created_at": "2026-05-30T14:12:00.727180+00:00",
+        "updated_at": "2026-05-30T14:12:03.750724+00:00",
         "completed_at": null,
         "jurisdiction": "Wales",
         "next_actions": [
@@ -1348,15 +1348,15 @@
         "timeline_events": [
           {
             "label": "Created",
-            "at": "2026-05-30T13:44:38.283296+00:00"
+            "at": "2026-05-30T14:12:00.727180+00:00"
           },
           {
             "label": "Updated",
-            "at": "2026-05-30T13:44:40.951259+00:00"
+            "at": "2026-05-30T14:12:03.750724+00:00"
           },
           {
             "label": "Contractor assigned",
-            "at": "2026-05-30T13:44:40.951259+00:00"
+            "at": "2026-05-30T14:12:03.750724+00:00"
           }
         ],
         "decision_log": [],
@@ -1387,14 +1387,14 @@
     },
     "accept": {
       "method": "POST",
-      "path": "/contractor/work-orders/177f9284-6300-4afd-b918-00b704cdfcdf/accept",
+      "path": "/contractor/work-orders/3dbcaa84-e1af-47a5-88d7-6f05f95ccc21/accept",
       "status": 200,
       "ok": true,
       "body": {
-        "work_order_id": "177f9284-6300-4afd-b918-00b704cdfcdf",
+        "work_order_id": "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21",
         "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
         "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
-        "description": "PRELAUNCH-QN-20260530T134335Z final decline scenario",
+        "description": "PRELAUNCH-QN-20260530T141100Z final decline scenario",
         "source": "client",
         "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
         "category": "general",
@@ -1408,13 +1408,13 @@
         "severity": "medium",
         "status": "SCHEDULED",
         "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
-        "created_at": "2026-05-30T13:44:38.283296+00:00",
-        "updated_at": "2026-05-30T13:44:48.030801+00:00",
-        "sla_respond_by": "2026-05-31T13:44:38.283247+00:00",
-        "sla_complete_by": "2026-06-02T13:44:38.283262+00:00",
+        "created_at": "2026-05-30T14:12:00.727180+00:00",
+        "updated_at": "2026-05-30T14:12:10.872286+00:00",
+        "sla_respond_by": "2026-05-31T14:12:00.727122+00:00",
+        "sla_complete_by": "2026-06-02T14:12:00.727138+00:00",
         "completed_at": null,
         "asset_id": null,
-        "issue_id": "40a4fbdb-99c4-4e51-823f-8b1ad5f5cd12",
+        "issue_id": "4675a0d6-5c46-450b-87d6-1dfcc840f163",
         "risk_signal_id": null,
         "cost_estimate_min": null,
         "cost_estimate_max": null,
@@ -1466,8 +1466,8 @@
         "quote_negotiation_history": [],
         "inspection_required": false,
         "inspection_completed_at": null,
-        "assigned_at": "2026-05-30T13:44:40.951259+00:00",
-        "accepted_at": "2026-05-30T13:44:47.913687+00:00",
+        "assigned_at": "2026-05-30T14:12:03.750724+00:00",
+        "accepted_at": "2026-05-30T14:12:10.754942+00:00",
         "uploaded_is_verified": false,
         "evidence_review_state": "not_uploaded",
         "evidence_requires_review": false,
@@ -1494,19 +1494,19 @@
         "timeline_events": [
           {
             "label": "Created",
-            "at": "2026-05-30T13:44:38.283296+00:00"
+            "at": "2026-05-30T14:12:00.727180+00:00"
           },
           {
             "label": "Updated",
-            "at": "2026-05-30T13:44:48.030801+00:00"
+            "at": "2026-05-30T14:12:10.872286+00:00"
           },
           {
             "label": "Contractor assigned",
-            "at": "2026-05-30T13:44:40.951259+00:00"
+            "at": "2026-05-30T14:12:03.750724+00:00"
           },
           {
             "label": "Contractor accepted",
-            "at": "2026-05-30T13:44:47.913687+00:00"
+            "at": "2026-05-30T14:12:10.754942+00:00"
           }
         ],
         "linked_invoice": null,
@@ -1533,7 +1533,7 @@
         }
       }
     },
-    "work_order_id": "177f9284-6300-4afd-b918-00b704cdfcdf"
+    "work_order_id": "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21"
   },
   "after_final_decline": {
     "price_status": "REJECTED_FINAL",

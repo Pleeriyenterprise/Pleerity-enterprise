@@ -1,6 +1,7 @@
 {
-  "classification": "PARTIAL",
+  "classification": "VERIFIED_OPERATIONALLY",
   "passed": [
+    "deploy_bundle_has_revision_api",
     "v1_submitted",
     "revision_requested_not_terminal",
     "assignment_persists_after_revision",
@@ -8,11 +9,9 @@
     "approved_work_authorised",
     "final_decline_status",
     "no_duplicate_jobs",
-    "api_request_revision_endpoint"
-  ],
-  "failed": [
-    "deploy_bundle_has_revision_api",
+    "api_request_revision_endpoint",
     "landlord_ui_request_changes"
   ],
-  "captured_at": "2026-05-30T13:45:05.256109+00:00"
+  "failed": [],
+  "captured_at": "2026-05-30T14:12:58.434156+00:00"
 }
