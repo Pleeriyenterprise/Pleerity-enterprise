@@ -1,0 +1,28 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-ASSIGNMENT-ELIGIBILITY-REPAIR-01",
+  "captured_at": "2026-05-30T03:04:54.803399+00:00",
+  "target_sha_prefixes": [
+    "7f980d9b",
+    "a86f4442",
+    "0b65717a"
+  ],
+  "api_version": {
+    "commit_sha": "0b65717ab818d689a3f7bda5ab0fce0abea21d5b",
+    "environment": "production"
+  },
+  "backend_sha_ok": true,
+  "frontend_bundle": "/static/js/main.def1ffcc.js",
+  "frontend_flags": {
+    "assign_contractor_recovery_testid": true,
+    "assign_contractor_excluded_review": true,
+    "assign_contractor_funnel": true,
+    "ready_to_assign_copy": true,
+    "no_eligible_from_server_copy": false
+  },
+  "api_recovery_guidance": true,
+  "api_exclusion_samples": true,
+  "login_ok": true,
+  "job_detail_page_loads": true,
+  "deploy_continuity_ok": true,
+  "classification_if_blocked": "BLOCKED_DEPLOY_CONTINUITY"
+}

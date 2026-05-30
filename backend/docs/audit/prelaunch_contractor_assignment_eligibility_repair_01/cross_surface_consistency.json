@@ -1,9 +1,11 @@
 {
-  "captured_at": "2026-05-30T00:53:48.271324+00:00",
+  "captured_at": "2026-05-30T03:07:11.864113+00:00",
   "surfaces": {
-    "job_detail_modal": true,
-    "getJobAssignableContractors": true,
-    "client_job_detail": true
+    "job_detail_recovery_modal": true,
+    "assignable_contractors_api_client": true,
+    "no_frontend_eligibility_engine": true,
+    "today_routes_to_jobs": true
   },
-  "note": "Primary assign modal lives on ClientJobDetailPage; Today/Command Centre route to job detail for assign."
+  "note": "Assign eligibility authority is server-side; Today/Command Centre use job detail modal.",
+  "cross_surface_ok": true
 }

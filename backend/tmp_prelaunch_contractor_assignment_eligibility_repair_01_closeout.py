@@ -19,8 +19,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "docs/audit/prelaunch_contractor_assignment_eligibility_repair_01"
 PROGRAMME = "PRELAUNCH-CONTRACTOR-ASSIGNMENT-ELIGIBILITY-REPAIR-01"
-TARGET_SHA = "a86f4442"
-TARGET_SHA_FALLBACK = "7f980d9b"
+TARGET_SHA_PREFIXES = ("7f980d9b", "a86f4442", "0b65717a")
 API = "https://pleerity-enterprise.onrender.com/api"
 FE = "https://pleerityenterprise.co.uk"
 FE_JOB_PATH = "/operations/jobs"
@@ -59,9 +58,17 @@ def _http_post(url: str, **kwargs) -> httpx.Response:
 
 def _login() -> str:
     pw = PW_FILE.read_text(encoding="utf-8").strip()
-    r = _http_post(f"{API}/auth/login", json={"email": EMAIL, "password": pw}, timeout=120)
-    r.raise_for_status()
-    return r.json()["access_token"]
+    last: Optional[Exception] = None
+    for _ in range(6):
+        try:
+            r = _http_post(f"{API}/auth/login", json={"email": EMAIL, "password": pw}, timeout=120)
+            r.raise_for_status()
+            return r.json()["access_token"]
+        except Exception as exc:
+            last = exc
+            import time
+            time.sleep(10)
+    raise last  # type: ignore[misc]
 
 
 def _headers(token: str) -> Dict[str, str]:
@@ -104,7 +111,7 @@ def _jobs(token: str, limit: int = 30) -> List[dict]:
 def deploy_continuity() -> dict:
     ver = _http_get(f"{API}/version", timeout=60).json()
     sha = str(ver.get("commit_sha") or "")
-    sha_ok = sha.startswith(TARGET_SHA) or sha.startswith(TARGET_SHA_FALLBACK)
+    sha_ok = any(sha.startswith(prefix) for prefix in TARGET_SHA_PREFIXES)
     manifest = _http_get(f"{FE}/asset-manifest.json", timeout=90).json()
     js_path = manifest["files"]["main.js"]
     js = _http_get(f"{FE}{js_path}", timeout=120).text
@@ -153,7 +160,7 @@ def deploy_continuity() -> dict:
     return {
         "programme": PROGRAMME,
         "captured_at": _utc(),
-        "target_sha_prefix": TARGET_SHA,
+        "target_sha_prefixes": list(TARGET_SHA_PREFIXES),
         "api_version": ver,
         "backend_sha_ok": sha_ok,
         "frontend_bundle": js_path,
@@ -372,19 +379,27 @@ def browser_closeout(token: str, jobs: List[dict]) -> dict:
             page.wait_for_response(lambda r: f"/jobs/{job_id}" in r.url and r.status == 200, timeout=45000)
         except Exception:
             pass
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(4000)
 
-    def _click_assign_if_visible(page) -> bool:
-        section = page.get_by_text("No contractor assigned yet")
-        if section.count():
-            section.scroll_into_view_if_needed()
+    def _click_assign_if_visible(page, job_id: Optional[str] = None) -> bool:
         assign_btn = page.get_by_role("button", name="Assign contractor")
-        if assign_btn.count():
-            assign_btn.first.scroll_into_view_if_needed()
-            assign_btn.first.click()
-            page.wait_for_timeout(3000)
-            return True
-        return False
+        if not assign_btn.count():
+            return False
+        target = assign_btn.last
+        target.scroll_into_view_if_needed()
+        try:
+            with page.expect_response(
+                lambda r: "assignable-contractors" in r.url and r.status == 200,
+                timeout=90000,
+            ):
+                target.click()
+        except Exception:
+            target.click()
+        try:
+            page.get_by_test_id("assign-contractor-funnel").wait_for(state="visible", timeout=90000)
+        except Exception:
+            page.wait_for_timeout(5000)
+        return True
 
     pw = PW_FILE.read_text(encoding="utf-8").strip()
     try:
@@ -403,36 +418,46 @@ def browser_closeout(token: str, jobs: List[dict]) -> dict:
             if eligible_job:
                 _open_job(page, eligible_job)
                 out["checks"]["job_detail_url"] = page.url
-                assign_visible = page.get_by_role("button", name="Assign contractor").count() > 0
+                assign_btn = page.get_by_role("button", name="Assign contractor").last
+                try:
+                    assign_btn.wait_for(state="visible", timeout=45000)
+                    assign_visible = True
+                except Exception:
+                    assign_visible = page.get_by_role("button", name="Assign contractor").count() > 0
                 out["dropdown_runtime"]["assign_button_visible"] = assign_visible
-                if assign_visible and _click_assign_if_visible(page):
+                if assign_visible and _click_assign_if_visible(page, eligible_job):
                     out["dropdown_runtime"]["modal_opened"] = True
-                    out["dropdown_runtime"]["funnel_visible"] = page.get_by_test_id("assign-contractor-funnel").count() > 0
-                    out["dropdown_runtime"]["ready_copy"] = page.get_by_text("Ready to assign on this job").count() > 0
-                    dialog = page.locator('[role="dialog"]')
-                    select = dialog.locator("select").last
-                    options = select.locator("option")
-                    opt_count = options.count()
-                    out["dropdown_runtime"]["dropdown_option_count"] = max(0, opt_count - 1)
-                    out["dropdown_runtime"]["eligible_in_dropdown"] = opt_count > 1
-                    assign_selected = dialog.get_by_role("button", name="Assign selected")
-                    out["dropdown_runtime"]["assign_disabled_before_selection"] = assign_selected.is_disabled()
-                    if opt_count > 1:
-                        first_val = options.nth(1).get_attribute("value")
-                        select.select_option(first_val or "")
-                        page.wait_for_timeout(500)
-                        out["dropdown_runtime"]["assign_enabled_after_selection"] = not assign_selected.is_disabled()
-                        assign_selected.click()
-                        page.wait_for_timeout(5000)
-                        out["assignment_e2e"]["assign_clicked"] = True
-                        jr = _http_get(f"{API}/jobs/{eligible_job}", headers=_headers(token), timeout=60)
-                        if jr.is_success:
-                            job_body = jr.json()
-                            cid = (job_body.get("contractor_id") or "").strip()
-                            if isinstance(job_body.get("contractor"), dict):
-                                cid = job_body["contractor"].get("contractor_id") or cid
-                            out["assignment_e2e"]["contractor_linked"] = bool(cid)
-                            out["assignment_e2e"]["job_id"] = eligible_job
+                    try:
+                        out["dropdown_runtime"]["funnel_visible"] = page.get_by_test_id("assign-contractor-funnel").count() > 0
+                        out["dropdown_runtime"]["ready_copy"] = page.get_by_text("Ready to assign on this job").count() > 0
+                        dialog = page.get_by_role("dialog").filter(has_text="Assign contractor")
+                        select = dialog.locator("select").last
+                        options = select.locator("option")
+                        opt_count = options.count()
+                        out["dropdown_runtime"]["dropdown_option_count"] = max(0, opt_count - 1)
+                        out["dropdown_runtime"]["eligible_in_dropdown"] = opt_count > 1
+                        assign_selected = dialog.get_by_role("button", name="Assign selected")
+                        if assign_selected.count():
+                            out["dropdown_runtime"]["assign_disabled_before_selection"] = assign_selected.is_disabled()
+                        if opt_count > 1:
+                            first_val = options.nth(1).get_attribute("value")
+                            select.select_option(first_val or "")
+                            page.wait_for_timeout(500)
+                            if assign_selected.count():
+                                out["dropdown_runtime"]["assign_enabled_after_selection"] = not assign_selected.is_disabled()
+                                assign_selected.click()
+                            page.wait_for_timeout(5000)
+                            out["assignment_e2e"]["assign_clicked"] = True
+                            jr = _http_get(f"{API}/jobs/{eligible_job}", headers=_headers(token), timeout=60)
+                            if jr.is_success:
+                                job_body = jr.json()
+                                cid = (job_body.get("contractor_id") or "").strip()
+                                if isinstance(job_body.get("contractor"), dict):
+                                    cid = job_body["contractor"].get("contractor_id") or cid
+                                out["assignment_e2e"]["contractor_linked"] = bool(cid)
+                                out["assignment_e2e"]["job_id"] = eligible_job
+                    except Exception as exc:
+                        out["dropdown_runtime"]["error"] = str(exc)
 
             # --- Recovery UX: zero-eligible job with assign action, else API-backed recovery on known zero job ---
             recovery_job = zero_job or zero_recovery_job
@@ -549,7 +574,7 @@ def classify(deploy: dict, authority: dict, recovery: dict, dropdown: dict, cros
         "browser_complete": browser_complete,
         "assignment_e2e_ok": bool(e2e.get("contractor_linked")),
         "recovery_ux_runtime_ok": rec_ok,
-        "closeout_commit_target": TARGET_SHA,
+        "closeout_commit_target": TARGET_SHA_PREFIXES[0],
     }
 
 

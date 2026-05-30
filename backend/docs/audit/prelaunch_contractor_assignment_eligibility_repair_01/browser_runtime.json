@@ -1,6 +1,39 @@
 {
-  "captured_at": "2026-05-30T00:53:48.275832+00:00",
+  "captured_at": "2026-05-30T03:07:11.868115+00:00",
   "checks": {
-    "assign_button_missing": true
+    "eligible_job_id": "f31ba8b8-66cc-46ee-95b3-305eadc54c79",
+    "zero_eligible_job_id": "63509f71-abf4-4cb6-84c5-e219d00f180b",
+    "zero_eligible_recovery_job_id": "63509f71-abf4-4cb6-84c5-e219d00f180b",
+    "login_ok": true,
+    "job_detail_url": "https://pleerityenterprise.co.uk/operations/jobs/f31ba8b8-66cc-46ee-95b3-305eadc54c79",
+    "command_centre_loaded": true,
+    "command_centre_open_job_cta": false,
+    "today_page_loaded": true,
+    "today_routes_to_job_detail": false
+  },
+  "assignment_e2e": {
+    "assign_clicked": true,
+    "contractor_linked": true,
+    "job_id": "f31ba8b8-66cc-46ee-95b3-305eadc54c79"
+  },
+  "dropdown_runtime": {
+    "assign_button_visible": true,
+    "modal_opened": true,
+    "funnel_visible": true,
+    "ready_copy": true,
+    "dropdown_option_count": 1,
+    "eligible_in_dropdown": true,
+    "assign_disabled_before_selection": true,
+    "assign_enabled_after_selection": true
+  },
+  "recovery_ux_runtime": {
+    "assign_not_in_next_actions": true,
+    "api_zero_eligible": true,
+    "api_recovery_actions": 4,
+    "api_exclusion_sample_groups": 4,
+    "no_dead_end": true,
+    "excluded_review_present": false,
+    "add_contractor_cta": false,
+    "refresh_list": false
   }
 }
