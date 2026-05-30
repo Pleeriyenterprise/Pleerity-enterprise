@@ -8,10 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { AlertCircle, Wrench } from 'lucide-react';
 
+function safeReturnJobPath(raw) {
+  const v = (raw || '').trim();
+  if (!v.startsWith('/job?token=')) return null;
+  if (v.includes('//') || v.includes('..')) return null;
+  return v;
+}
+
 export default function ContractorSetPasswordPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const returnTo = safeReturnJobPath(searchParams.get('return_to'));
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,7 +49,11 @@ export default function ContractorSetPasswordPage() {
         console.info('[CVP][ContractorPortal] password_set_ok redirect=/contractor');
       }
       setSuccess(true);
-      navigate('/contractor', { replace: true });
+      if (returnTo) {
+        navigate(returnTo, { replace: true });
+      } else {
+        navigate('/contractor', { replace: true });
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to set password');
     } finally {
@@ -79,7 +91,9 @@ export default function ContractorSetPasswordPage() {
         </CardHeader>
         <CardContent>
           {success ? (
-            <p className="text-green-600">Password set. Opening your portal…</p>
+            <p className="text-green-600">
+              {returnTo ? 'Password set. Opening your job…' : 'Password set. Opening your portal…'}
+            </p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (

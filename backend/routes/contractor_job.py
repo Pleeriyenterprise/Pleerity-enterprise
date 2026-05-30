@@ -121,20 +121,21 @@ def _compliance_proof_status_contractor_hint(status: Optional[str]) -> str:
     return "Proof status is being tracked; upload the expected certificate when the work is done."
 
 
-async def get_job_context(
-    token: Optional[str] = None,
-    x_job_token: Optional[str] = None,
+async def _resolve_job_token_doc(
+    raw: Optional[str],
+    *,
+    endpoint_label: str = "GET/POST /api/job/*",
 ) -> dict:
-    """Validate job token and return work_order_id, contractor_id. Raises 401 if invalid."""
-    raw = (token or x_job_token or "").strip()
-    if not raw:
+    """Validate opaque job token and return token document. Does not require contractor active."""
+    token = (raw or "").strip()
+    if not token:
         _job_link_error(
             status.HTTP_401_UNAUTHORIZED,
             "JOB_TOKEN_MISSING",
             "A secure job link token is required. Open the link from your assignment email or paste the full URL.",
             retry_suggested=False,
         )
-    token_hash = hash_token(raw)
+    token_hash = hash_token(token)
     db = database.get_db()
     doc = await db.contractor_job_tokens.find_one({"token_hash": token_hash})
     if not doc:
@@ -169,9 +170,26 @@ async def get_job_context(
                 )
         except (ValueError, TypeError):
             pass
-    contractor = await db.contractors.find_one(
+    doc["_raw_token"] = token
+    return doc
+
+
+async def get_job_context(
+    token: Optional[str] = None,
+    x_job_token: Optional[str] = None,
+) -> dict:
+    """Validate job token and return work_order_id, contractor_id. Raises 401/403 if invalid or inactive."""
+    raw = (token or x_job_token or "").strip()
+    doc = await _resolve_job_token_doc(raw)
+    contractor = await database.get_db().contractors.find_one(
         {"contractor_id": doc["contractor_id"]},
-        {"_id": 0, "status": 1, "portal_access_status": 1},
+        {
+            "_id": 0,
+            "status": 1,
+            "portal_access_status": 1,
+            "portal_invite_sent_at": 1,
+            "job_invite_sent_at": 1,
+        },
     )
     if not contractor:
         _job_link_error(
@@ -180,21 +198,123 @@ async def get_job_context(
             "This link is no longer valid — the contractor record is missing. Contact the client.",
             retry_suggested=False,
         )
-    if (contractor.get("status") or "").lower() != contractor_service.STATUS_ACTIVE:
+    if not contractor_service.contractor_is_job_link_active(contractor):
+        if (contractor.get("portal_access_status") or "").lower() == contractor_service.PORTAL_ACCESS_DISABLED:
+            _job_link_error(
+                status.HTTP_401_UNAUTHORIZED,
+                "CONTRACTOR_PORTAL_DISABLED",
+                "Portal access is disabled for this contractor account. Ask the client to re-enable access.",
+                retry_suggested=False,
+            )
         _job_link_error(
-            status.HTTP_401_UNAUTHORIZED,
-            "CONTRACTOR_NOT_ACTIVE",
-            "Your contractor profile is not active, so this job link cannot be used. Contact the client.",
-            retry_suggested=False,
-        )
-    if (contractor.get("portal_access_status") or "").lower() == contractor_service.PORTAL_ACCESS_DISABLED:
-        _job_link_error(
-            status.HTTP_401_UNAUTHORIZED,
-            "CONTRACTOR_PORTAL_DISABLED",
-            "Portal access is disabled for this contractor account. Ask the client to re-enable access.",
+            status.HTTP_403_FORBIDDEN,
+            "ACTIVATION_REQUIRED",
+            "Activate your contractor portal to view this job and submit your quote.",
             retry_suggested=False,
         )
     return {"work_order_id": doc["work_order_id"], "contractor_id": doc["contractor_id"]}
+
+
+@router.get("/link-context")
+async def get_job_link_context(request: Request, token: Optional[str] = Query(None, alias="token")):
+    """
+    Validate job token and return activation/onboarding context without requiring an active contractor.
+    Used by the job-link UI to route inactive contractors to portal activation instead of a dead-end error.
+    """
+    x_job_token = (request.headers.get("X-Job-Token") or "").strip() or None
+    raw = (token or x_job_token or "").strip()
+    doc = await _resolve_job_token_doc(raw, endpoint_label="GET /api/job/link-context")
+    db = database.get_db()
+    contractor = await db.contractors.find_one(
+        {"contractor_id": doc["contractor_id"]},
+        {
+            "_id": 0,
+            "status": 1,
+            "portal_access_status": 1,
+            "portal_invite_sent_at": 1,
+            "portal_invite_expires_at": 1,
+            "job_invite_sent_at": 1,
+            "email": 1,
+        },
+    )
+    if not contractor:
+        _job_link_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "JOB_TOKEN_CONTRACTOR_MISSING",
+            "This link is no longer valid — the contractor record is missing. Contact the client.",
+            retry_suggested=False,
+        )
+    enriched = contractor_service.enrich_contractor_onboarding_view(contractor)
+    active = contractor_service.contractor_is_job_link_active(contractor)
+    portal = (contractor.get("portal_access_status") or "").strip().lower()
+    activation_required = not active and portal != contractor_service.PORTAL_ACCESS_DISABLED
+    message = (
+        "Activate your contractor portal to view this job and submit your quote."
+        if activation_required
+        else "Your job link is ready."
+    )
+    if portal == contractor_service.PORTAL_ACCESS_DISABLED:
+        message = "Portal access is disabled for this contractor account. Ask the client to re-enable access."
+    return {
+        "work_order_id": doc["work_order_id"],
+        "contractor_id": doc["contractor_id"],
+        "contractor_active": active,
+        "activation_required": activation_required,
+        "onboarding_state": enriched.get("onboarding_state"),
+        "onboarding_state_label": enriched.get("onboarding_state_label"),
+        "portal_access_status": portal or contractor_service.PORTAL_ACCESS_NOT_INVITED,
+        "portal_invite_sent_at": contractor.get("portal_invite_sent_at"),
+        "portal_invite_expires_at": contractor.get("portal_invite_expires_at"),
+        "job_invite_sent_at": contractor.get("job_invite_sent_at"),
+        "message": message,
+        "return_job_path": f"/job?token={raw}",
+    }
+
+
+@router.post("/request-portal-activation")
+async def request_portal_activation(request: Request, token: Optional[str] = Query(None, alias="token")):
+    """Job-token authenticated resend of portal setup email for inactive contractors."""
+    x_job_token = (request.headers.get("X-Job-Token") or "").strip() or None
+    raw = (token or x_job_token or "").strip()
+    doc = await _resolve_job_token_doc(raw, endpoint_label="POST /api/job/request-portal-activation")
+    contractor_id = doc["contractor_id"]
+    contractor = await contractor_service.get_contractor(contractor_id)
+    if not contractor:
+        _job_link_error(
+            status.HTTP_401_UNAUTHORIZED,
+            "JOB_TOKEN_CONTRACTOR_MISSING",
+            "This link is no longer valid — the contractor record is missing. Contact the client.",
+            retry_suggested=False,
+        )
+    if contractor_service.contractor_is_job_link_active(contractor):
+        return {
+            "ok": True,
+            "already_active": True,
+            "message": "Your portal is already active. Refresh this page to open the job.",
+        }
+    try:
+        payload = await contractor_service.ensure_portal_invite_for_job_assignment(
+            contractor_id,
+            work_order_id=doc.get("work_order_id"),
+            return_job_token=raw,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    if not payload:
+        raise HTTPException(
+            status_code=400,
+            detail=structured_error(
+                "PORTAL_INVITE_UNAVAILABLE",
+                "We could not send a portal activation email. Contact the client to resend your invite.",
+            ),
+        )
+    return {
+        "ok": True,
+        "already_active": False,
+        "message": "Check your email for the portal activation link, then return here to open the job.",
+        "portal_access_status": payload.get("portal_access_status"),
+        "expires_at": payload.get("expires_at"),
+    }
 
 
 async def job_context_dep(request: Request, token: Optional[str] = Query(None, alias="token")):

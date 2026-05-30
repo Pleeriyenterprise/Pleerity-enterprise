@@ -364,6 +364,12 @@ export default function AdminOpsContractorsPage() {
     return 'Not invited';
   };
 
+  const humanInviteActivationStatus = (c) => {
+    const label = (c.onboarding_state_label || '').trim();
+    if (label) return label;
+    return humanPortalAccess(c.portal_access_status);
+  };
+
   return (
     <UnifiedAdminLayout>
       <div className="p-6 max-w-7xl">
@@ -659,7 +665,7 @@ export default function AdminOpsContractorsPage() {
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Source</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Landlord network</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
-                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Portal access</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Invite / activation</th>
                   <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Vetted</th>
                   <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Actions</th>
                 </tr>
@@ -696,10 +702,13 @@ export default function AdminOpsContractorsPage() {
                     </td>
                     <td className="px-4 py-2 text-sm text-gray-700">
                       <div className="flex flex-col">
-                        <span>{humanPortalAccess(c.portal_access_status)}</span>
+                        <span>{humanInviteActivationStatus(c)}</span>
+                        {c.job_invite_sent_at && c.onboarding_state === 'job_invite_sent' ? (
+                          <span className="text-xs text-gray-500">Job email sent</span>
+                        ) : null}
                         {c.portal_invite_expires_at && (
                           <span className="text-xs text-gray-500">
-                            Expires {new Date(c.portal_invite_expires_at).toLocaleString()}
+                            Portal invite expires {new Date(c.portal_invite_expires_at).toLocaleString()}
                           </span>
                         )}
                       </div>

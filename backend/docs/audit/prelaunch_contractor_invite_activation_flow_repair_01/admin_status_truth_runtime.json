@@ -1,0 +1,6 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "admin_column": "Invite / activation",
+  "uses_onboarding_state_label": true,
+  "job_invite_sent_visible": true
+}

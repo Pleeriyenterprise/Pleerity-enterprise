@@ -62,8 +62,11 @@ export default function JobPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
   const [workOrder, setWorkOrder] = useState(null);
+  const [linkContext, setLinkContext] = useState(null);
   const [loading, setLoading] = useState(() => !!token);
   const [loadError, setLoadError] = useState(null);
+  const [activationResendMessage, setActivationResendMessage] = useState('');
+  const [activationResending, setActivationResending] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [invoiceModal, setInvoiceModal] = useState(null);
   const [invoiceForm, setInvoiceForm] = useState({ reference: '', description: '', submitted_amount: '' });
@@ -80,6 +83,7 @@ export default function JobPage() {
   const evidenceFileInputRef = useRef(null);
   const nextActionRef = useRef(null);
   const jobLinkOpenUsageWidRef = useRef(null);
+  const loadErrorToastKeyRef = useRef(null);
 
   const api = token ? createJobLinkAPI(token) : null;
 
@@ -92,6 +96,7 @@ export default function JobPage() {
       .then((res) => {
         setWorkOrder(res.data);
         setLoadError(null);
+        loadErrorToastKeyRef.current = null;
         const wid = res.data?.work_order_id;
         if (wid && jobLinkOpenUsageWidRef.current !== wid) {
           jobLinkOpenUsageWidRef.current = wid;
@@ -100,12 +105,82 @@ export default function JobPage() {
       })
       .catch((err) => {
         const parsed = parseJobLinkError(err);
+        if (parsed.errorCode === 'ACTIVATION_REQUIRED') {
+          setLinkContext((prev) =>
+            prev
+              ? { ...prev, activation_required: true, message: parsed.message }
+              : {
+                  activation_required: true,
+                  message: parsed.message,
+                  return_job_path: `/job?token=${token}`,
+                },
+          );
+          setWorkOrder(null);
+          setLoadError(null);
+          return;
+        }
         setLoadError(parsed);
         setWorkOrder(null);
-        toast.error(parsed.message);
+        const toastKey = parsed.errorCode || parsed.message;
+        if (loadErrorToastKeyRef.current !== toastKey) {
+          loadErrorToastKeyRef.current = toastKey;
+          toast.error(parsed.message);
+        }
       })
       .finally(() => setLoading(false));
+  }, [api, token]);
+
+  const loadJobEntry = useCallback(() => {
+    if (!api) return Promise.resolve();
+    setLoading(true);
+    setLoadError(null);
+    setActivationResendMessage('');
+    return api
+      .getLinkContext()
+      .then((res) => {
+        const ctx = res.data || {};
+        setLinkContext(ctx);
+        if (ctx.activation_required) {
+          setWorkOrder(null);
+          setLoadError(null);
+          setLoading(false);
+          return;
+        }
+        return loadWorkOrder();
+      })
+      .catch((err) => {
+        const parsed = parseJobLinkError(err);
+        setLoadError(parsed);
+        setWorkOrder(null);
+        setLoading(false);
+        const toastKey = parsed.errorCode || parsed.message;
+        if (loadErrorToastKeyRef.current !== toastKey) {
+          loadErrorToastKeyRef.current = toastKey;
+          toast.error(parsed.message);
+        }
+      });
+  }, [api, loadWorkOrder]);
+
+  const handleRequestPortalActivation = useCallback(() => {
+    if (!api) return;
+    setActivationResending(true);
+    setActivationResendMessage('');
+    api
+      .requestPortalActivation()
+      .then((res) => {
+        setActivationResendMessage(res.data?.message || 'Check your email for the portal activation link.');
+      })
+      .catch((err) => {
+        setActivationResendMessage(parseApiError(err, 'Could not send activation email. Contact the client.'));
+      })
+      .finally(() => setActivationResending(false));
   }, [api]);
+
+  const handleRetryAfterActivation = useCallback(() => {
+    if (!api) return;
+    setLinkContext(null);
+    loadJobEntry();
+  }, [api, loadJobEntry]);
 
   /**
    * Start the work-order fetch on layout (before paint) so the request begins marginally earlier than useEffect.
@@ -116,8 +191,8 @@ export default function JobPage() {
       setLoading(false);
       return;
     }
-    loadWorkOrder();
-  }, [token, loadWorkOrder]);
+    loadJobEntry();
+  }, [token, loadJobEntry]);
 
   /** Preconnect to API origin when backend URL is absolute (cuts first-request latency). */
   useEffect(() => {
@@ -621,6 +696,53 @@ export default function JobPage() {
             Loading your job…
           </p>
         </main>
+      </div>
+    );
+  }
+
+  if (linkContext?.activation_required && !workOrder) {
+    const returnPath = linkContext.return_job_path || `/job?token=${token}`;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Wrench className="w-6 h-6 text-electric-teal" />
+              <h1 className="text-lg font-semibold text-gray-900">Activate your contractor portal</h1>
+            </div>
+            <p className="text-gray-700">
+              {linkContext.message ||
+                'Activate your contractor portal to view this job and submit your quote.'}
+            </p>
+            <p className="text-sm text-gray-600 mt-3">
+              Open the <strong>portal setup email</strong> we sent when you were assigned, set your password, then return
+              here to open the job.
+            </p>
+            {activationResendMessage ? (
+              <p className="text-sm text-teal-800 mt-3 rounded-md border border-teal-200 bg-teal-50 px-3 py-2">
+                {activationResendMessage}
+              </p>
+            ) : null}
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                className="bg-electric-teal hover:bg-electric-teal/90"
+                disabled={activationResending}
+                onClick={handleRequestPortalActivation}
+              >
+                {activationResending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Resend activation email'}
+              </Button>
+              <Button type="button" variant="outline" onClick={handleRetryAfterActivation}>
+                I&apos;ve activated — open job
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 mt-4">
+              After setting your password you will be returned to this job automatically when you use the link from your
+              activation email with return path{' '}
+              <span className="font-mono break-all">{returnPath}</span>.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

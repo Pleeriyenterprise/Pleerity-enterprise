@@ -1,0 +1,21 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "audited_at": "2026-05-30T10:53:47.239140+00:00",
+  "primary_root_cause": "INVITE_STATE_DRIFT",
+  "summary": "Job assignment email (contractor_job_tokens + /job?token=) was sent without updating portal_access_status or issuing portal invite. Job-link API required status=active while landlord-added contractors remained approved/not_invited. Admin UI showed portal_access only, so job email sent appeared as Not invited.",
+  "split_authority": {
+    "job_email_path": "maintenance_service.update_work_order \u2192 CONTRACTOR_JOB_ASSIGNMENT_*",
+    "portal_invite_path": "issue_contractor_portal_invite \u2192 password_tokens contractor_invite",
+    "job_link_gate": "contractor_job.get_job_context required status active",
+    "admin_label": "portal_access_status only \u2192 Not invited"
+  },
+  "code_audit": {
+    "onboarding_state_model": true,
+    "job_invite_sent_field": true,
+    "auto_portal_invite_on_assign": true,
+    "link_context_endpoint": true,
+    "activation_required_error": true,
+    "job_page_activation_panel": true,
+    "toast_dedup": true
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "set_password_return_to": "ContractorSetPasswordPage return_to=/job?token=\u2026",
+  "portal_invite_includes_return_job_token": true
+}

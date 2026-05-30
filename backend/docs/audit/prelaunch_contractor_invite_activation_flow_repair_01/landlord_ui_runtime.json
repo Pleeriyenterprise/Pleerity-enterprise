@@ -1,0 +1,12 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "file": "frontend/src/pages/ClientJobDetailPage.js",
+  "assign_modal_guidance": true,
+  "inactive_assign_warning": true,
+  "create_and_assign_guidance": true,
+  "browser": {
+    "checked_at": "2026-05-30T10:53:00.530826+00:00",
+    "steps": [],
+    "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"]\")\n"
+  }
+}

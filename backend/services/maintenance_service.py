@@ -878,11 +878,13 @@ async def update_work_order(
                 logger.warning("Failed to record contractor assignment: %s", e)
             job_link = ""
             due_date = ""
+            assignment_job_token = None
             try:
                 from utils.public_app_url import get_frontend_base_url
                 from models import AuditAction
                 from utils.audit import create_audit_log
                 raw_token = generate_secure_token()
+                assignment_job_token = raw_token
                 token_hash = hash_token(raw_token)
                 expires_at = (datetime.now(timezone.utc) + timedelta(days=_contractor_job_token_ttl_days())).isoformat()
                 await db.contractor_job_tokens.insert_one({
@@ -1038,6 +1040,18 @@ async def update_work_order(
                         )
                     except Exception as aud_e:
                         logger.warning("Audit assignment email sent failed: %s", aud_e)
+                    try:
+                        from services import contractor_service as _cs_invite
+
+                        await _cs_invite.record_contractor_job_invite_sent(contractor_id, work_order_id)
+                        await _cs_invite.ensure_portal_invite_for_job_assignment(
+                            contractor_id,
+                            actor_id=assigned_by,
+                            work_order_id=work_order_id,
+                            return_job_token=assignment_job_token,
+                        )
+                    except Exception as inv_e:
+                        logger.warning("Post-assignment portal invite failed (non-fatal): %s", inv_e)
             except Exception as e:
                 logger.warning("Failed to send contractor assignment notification: %s", e)
         if status == STATUS_COMPLETED and result.get("client_id") and result.get("property_id"):

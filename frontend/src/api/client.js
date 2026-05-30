@@ -272,6 +272,7 @@ const JOB_LINK_ERROR_TITLES = {
   JOB_TOKEN_MISSING: 'Invalid link',
   JOB_TOKEN_CONTRACTOR_MISSING: 'This link is no longer valid',
   CONTRACTOR_NOT_ACTIVE: 'Your account is not active',
+  ACTIVATION_REQUIRED: 'Activate your contractor portal',
   CONTRACTOR_PORTAL_DISABLED: 'Portal access is disabled',
   JOB_WORK_ORDER_NOT_FOUND: 'This job is no longer available',
   JOB_NOT_ASSIGNED_TO_YOU: 'This assignment has changed',
@@ -1280,6 +1281,8 @@ export function createJobLinkAPI(jobToken) {
   const params = jobToken ? { token: jobToken } : {};
   const config = (opts = {}) => ({ ...opts, params: { ...params, ...(opts.params || {}) } });
   return {
+    getLinkContext: () => apiClient.get('/job/link-context', config()),
+    requestPortalActivation: () => apiClient.post('/job/request-portal-activation', {}, config()),
     getWorkOrder: () => apiClient.get('/job/work-order', config()),
     updateWorkOrder: (body) => apiClient.patch('/job/work-order', body, config()),
     acceptAssignment: () => apiClient.post('/job/work-order/accept', {}, config()),

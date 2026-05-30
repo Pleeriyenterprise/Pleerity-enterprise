@@ -1,0 +1,17 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "frontend": "https://pleerityenterprise.co.uk",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "browser_smoke": {
+    "checked_at": "2026-05-30T10:53:00.530826+00:00",
+    "steps": [],
+    "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"]\")\n"
+  },
+  "api_probe": {
+    "checked_at": "2026-05-30T10:52:56.577657+00:00",
+    "link_context_invalid_status": 404,
+    "link_context_deployed": false,
+    "landlord_jobs_status": 200
+  },
+  "deploy_note": "Full end-to-end job-link activation path requires backend+frontend deploy of this repair."
+}

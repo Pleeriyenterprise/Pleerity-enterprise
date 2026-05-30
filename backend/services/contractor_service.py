@@ -52,6 +52,25 @@ PORTAL_ACCESS_INVITE_PENDING = "invite_pending"
 PORTAL_ACCESS_ENABLED = "enabled"
 PORTAL_ACCESS_DISABLED = "disabled"
 
+# Derived onboarding / invite truth (admin + landlord UI)
+ONBOARDING_DIRECTORY_CREATED = "directory_created"
+ONBOARDING_JOB_INVITE_SENT = "job_invite_sent"
+ONBOARDING_PORTAL_INVITE_SENT = "portal_invite_sent"
+ONBOARDING_ACTIVATION_PENDING = "portal_activation_pending"
+ONBOARDING_ACTIVE = "active"
+ONBOARDING_UNAVAILABLE = "unavailable"
+ONBOARDING_DISABLED = "disabled"
+
+ONBOARDING_STATE_LABELS = {
+    ONBOARDING_DIRECTORY_CREATED: "Not invited",
+    ONBOARDING_JOB_INVITE_SENT: "Job invite sent",
+    ONBOARDING_PORTAL_INVITE_SENT: "Portal invite sent",
+    ONBOARDING_ACTIVATION_PENDING: "Activation pending",
+    ONBOARDING_ACTIVE: "Active",
+    ONBOARDING_UNAVAILABLE: "Unavailable",
+    ONBOARDING_DISABLED: "Disabled",
+}
+
 # Canonical lifecycle status (contractor.status)
 LC_INVITED = "invited"
 LC_PENDING_APPROVAL = "pending_approval"
@@ -210,6 +229,52 @@ def normalize_lifecycle_status(status: Optional[str]) -> str:
 
 def portal_access_is_activated(contractor: Dict[str, Any]) -> bool:
     return (contractor.get("portal_access_status") or "").strip().lower() == PORTAL_ACCESS_ENABLED
+
+
+def contractor_is_job_link_active(contractor: Dict[str, Any]) -> bool:
+    """Job-link API requires lifecycle active and portal not disabled."""
+    if (contractor.get("portal_access_status") or "").strip().lower() == PORTAL_ACCESS_DISABLED:
+        return False
+    return normalize_lifecycle_status(contractor.get("status")) == LC_ACTIVE
+
+
+def derive_contractor_onboarding_state(contractor: Dict[str, Any]) -> str:
+    """
+    Single invite/activation truth for admin and landlord surfaces.
+    Job assignment email and portal invite are tracked separately; never show directory-only
+    when a job invite was actually sent.
+    """
+    portal = (contractor.get("portal_access_status") or "").strip().lower()
+    lifecycle = normalize_lifecycle_status(contractor.get("status"))
+    if portal == PORTAL_ACCESS_DISABLED:
+        return ONBOARDING_DISABLED
+    if lifecycle in (LC_SUSPENDED, LC_ARCHIVED):
+        return ONBOARDING_UNAVAILABLE
+    if contractor_is_job_link_active(contractor) and portal_access_is_activated(contractor):
+        return ONBOARDING_ACTIVE
+    if portal == PORTAL_ACCESS_INVITE_PENDING:
+        return ONBOARDING_ACTIVATION_PENDING
+    if portal == PORTAL_ACCESS_ENABLED and lifecycle != LC_ACTIVE:
+        return ONBOARDING_ACTIVATION_PENDING
+    if contractor.get("portal_invite_sent_at"):
+        return ONBOARDING_PORTAL_INVITE_SENT
+    if contractor.get("job_invite_sent_at"):
+        return ONBOARDING_JOB_INVITE_SENT
+    return ONBOARDING_DIRECTORY_CREATED
+
+
+def onboarding_state_label(state: str) -> str:
+    return ONBOARDING_STATE_LABELS.get((state or "").strip().lower(), "Not invited")
+
+
+def enrich_contractor_onboarding_view(contractor: Dict[str, Any]) -> Dict[str, Any]:
+    """Attach derived onboarding fields for API responses."""
+    out = dict(contractor)
+    state = derive_contractor_onboarding_state(out)
+    out["onboarding_state"] = state
+    out["onboarding_state_label"] = onboarding_state_label(state)
+    out["portal_activation_required"] = state not in (ONBOARDING_ACTIVE, ONBOARDING_DISABLED, ONBOARDING_UNAVAILABLE)
+    return out
 
 
 def contractor_trade_matches_category(contractor: Dict[str, Any], category: Optional[str]) -> bool:
@@ -618,6 +683,8 @@ async def create_contractor(
         "portal_invite_last_token_id": None,
         "portal_invite_accepted_at": None,
         "activated_at": None,
+        "job_invite_sent_at": None,
+        "job_invite_last_work_order_id": None,
         "available_for_assignment": True,
         "property_scope": property_scope or [],
         "registration_postcode": (registration_postcode or "").strip().upper() or None,
@@ -775,6 +842,10 @@ async def update_contractor(
         update["portal_invite_last_token_id"] = portal_invite_last_token_id
     if portal_invite_accepted_at is not None:
         update["portal_invite_accepted_at"] = portal_invite_accepted_at
+    if job_invite_sent_at is not None:
+        update["job_invite_sent_at"] = job_invite_sent_at
+    if job_invite_last_work_order_id is not None:
+        update["job_invite_last_work_order_id"] = job_invite_last_work_order_id
     if vetting_status is not None:
         update["vetting_status"] = vetting_status
     if coverage_area is not None:
@@ -1193,6 +1264,64 @@ def _contractor_invite_email_html(setup_url: str, portal_login_url: str, include
     return "".join(parts)
 
 
+async def record_contractor_job_invite_sent(contractor_id: str, work_order_id: str) -> None:
+    """Persist landlord/job assignment email truth for admin and landlord UI."""
+    from datetime import datetime, timezone
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await update_contractor(
+        contractor_id,
+        job_invite_sent_at=now_iso,
+        job_invite_last_work_order_id=(work_order_id or "").strip() or None,
+    )
+
+
+async def ensure_portal_invite_for_job_assignment(
+    contractor_id: str,
+    *,
+    actor_id: Optional[str] = None,
+    work_order_id: Optional[str] = None,
+    return_job_token: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    When a contractor is assigned via the client portal, issue a portal setup invite if they
+    are not yet activated. Job assignment email alone does not activate the contractor profile.
+    """
+    doc = await get_contractor(contractor_id)
+    if not doc:
+        return None
+    if contractor_is_job_link_active(doc) and portal_access_is_activated(doc):
+        return None
+    if (doc.get("portal_access_status") or "").strip().lower() == PORTAL_ACCESS_DISABLED:
+        return None
+    if not (doc.get("email") or "").strip():
+        logger.warning(
+            "Skipping portal invite for contractor %s (assignment %s): no email",
+            contractor_id,
+            work_order_id or "-",
+        )
+        return None
+    portal = (doc.get("portal_access_status") or "").strip().lower()
+    resend = portal in (PORTAL_ACCESS_INVITE_PENDING, PORTAL_ACCESS_ENABLED)
+    try:
+        return await issue_contractor_portal_invite(
+            contractor_id,
+            actor_id=actor_id,
+            actor_role="system_assignment",
+            resend=resend,
+            include_next_steps=True,
+            return_job_token=return_job_token,
+        )
+    except ValueError as e:
+        logger.warning(
+            "Portal invite skipped for contractor %s after assignment %s: %s",
+            contractor_id,
+            work_order_id or "-",
+            e,
+        )
+        return None
+
+
 async def issue_contractor_portal_invite(
     contractor_id: str,
     *,
@@ -1200,6 +1329,7 @@ async def issue_contractor_portal_invite(
     actor_role: Optional[str] = None,
     resend: bool = False,
     include_next_steps: bool = False,
+    return_job_token: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Create a single active contractor_invite token (revokes unused siblings), update contractor invite fields, send email.
@@ -1256,6 +1386,11 @@ async def issue_contractor_portal_invite(
     )
     base_url = get_frontend_base_url().rstrip("/")
     setup_url = f"{base_url}/contractor-set-password?token={raw_token}"
+    job_tok = (return_job_token or "").strip()
+    if job_tok:
+        from urllib.parse import quote
+
+        setup_url = f"{setup_url}&return_to={quote(f'/job?token={job_tok}', safe='')}"
     portal_login_url = f"{base_url}/contractor/login"
     body_html = _contractor_invite_email_html(setup_url, portal_login_url, include_next_steps=include_next_steps)
     try:

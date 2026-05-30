@@ -182,6 +182,11 @@ function contractorOptionLabel(c) {
   if (Array.isArray(c.service_regions) && c.service_regions.length > 0) {
     bits.push(`Regions: ${c.service_regions.join(', ')}`);
   }
+  const onboarding = (c.onboarding_state || '').toLowerCase();
+  if (onboarding && !['active'].includes(onboarding)) {
+    const label = c.onboarding_state_label || 'Portal activation required';
+    bits.push(label);
+  }
   return bits.join(' · ');
 }
 
@@ -486,6 +491,11 @@ function ClientJobDetailInner() {
           setAssignModalOpen(false);
           return r.data;
         }),
+      {
+        successToast: assignSelectedNeedsActivation
+          ? 'Contractor assigned. They will receive job and portal activation emails — portal activation is required before they can respond.'
+          : 'Contractor assigned. They will receive an email with a secure link to view the job.',
+      },
     );
   };
 
@@ -556,7 +566,7 @@ function ClientJobDetailInner() {
       },
       {
         successToast:
-          'Contractor saved and assigned. If review is required, operations can approve it later — use Scheduling below to request a booking.',
+          'Contractor saved and assigned. They will receive job and portal activation emails — they must activate their portal before they can view the job, submit a quote, or update progress.',
       }
     );
   };
@@ -586,6 +596,16 @@ function ClientJobDetailInner() {
         (c.contractor_id || '').toLowerCase().includes(q)
     );
   }, [assignableContractors, contractorFilter, tradeTypeFilter]);
+
+  const selectedAssignContractor = useMemo(
+    () => filteredAssignableContractors.find((c) => c.contractor_id === assignContractorId) || null,
+    [filteredAssignableContractors, assignContractorId],
+  );
+
+  const assignSelectedNeedsActivation = useMemo(() => {
+    const st = (selectedAssignContractor?.onboarding_state || '').toLowerCase();
+    return !!st && !['active', 'disabled', 'unavailable'].includes(st);
+  }, [selectedAssignContractor]);
 
   const assignableClientFilterStats = useMemo(() => {
     const total = assignableContractors.length;
@@ -1407,6 +1427,19 @@ function ClientJobDetailInner() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm">
+            <Alert className="border-teal-200 bg-teal-50/80 text-teal-950 py-2">
+              <AlertDescription className="text-xs">
+                When you assign a contractor, they will receive an email. They must activate their contractor portal
+                before they can view the job, submit a quote, or update progress.
+              </AlertDescription>
+            </Alert>
+            {assignSelectedNeedsActivation ? (
+              <Alert className="border-amber-200 bg-amber-50/90 text-amber-950 py-2">
+                <AlertDescription className="text-xs">
+                  Portal activation required before this contractor can respond to the assignment.
+                </AlertDescription>
+              </Alert>
+            ) : null}
             {assignableJobJurisdiction ? (
               <Alert className="border-slate-200 bg-slate-50 text-slate-800 py-2">
                 <AlertDescription className="text-xs">
@@ -1631,6 +1664,10 @@ function ClientJobDetailInner() {
             </div>
             {showAddContractorForm ? (
               <div className="space-y-2 border border-dashed border-gray-200 rounded-lg p-3 bg-gray-50/80">
+                <p className="text-xs text-gray-700 rounded-md border border-teal-100 bg-teal-50/70 px-2.5 py-2">
+                  This contractor will receive an email when assigned. They must activate their portal before they can
+                  view the job, submit a quote, or update progress.
+                </p>
                 <label className="block text-xs font-medium text-gray-700">Name *</label>
                 <input
                   className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
