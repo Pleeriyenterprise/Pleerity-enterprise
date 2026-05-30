@@ -497,12 +497,27 @@ def _apply_client_pricing_overrides(wo: Dict[str, Any], actions: List[Dict[str, 
         extra.append(
             _action(
                 "approve_quote",
-                "Approve quote",
+                "Approve and authorise work",
                 "Confirm the contractor's price before work continues or invoices are submitted.",
                 section="billing",
             )
         )
-        extra.append(_action("reject_quote", "Reject quote", "Decline the quote; the contractor can submit a revised price.", section="billing"))
+        extra.append(
+            _action(
+                "request_quote_revision",
+                "Request changes",
+                "Ask the contractor to revise their quote. Your assignment stays active and they can resubmit.",
+                section="billing",
+            )
+        )
+        extra.append(
+            _action(
+                "reject_quote_final",
+                "Decline quote (final)",
+                "Mark this quote as finally declined without cancelling the job. Reassign or close separately if needed.",
+                section="billing",
+            )
+        )
     filtered: List[Dict[str, Any]] = []
     for a in actions:
         aid = a.get("id")
@@ -852,6 +867,7 @@ def _prepend_contractor_pricing_actions(wo: Dict[str, Any]) -> List[Dict[str, An
     from services.work_order_pricing_constants import (
         PRICE_STATUS_AWAITING_QUOTE,
         PRICE_STATUS_REJECTED,
+        PRICE_STATUS_REVISION_REQUESTED,
         PRICING_MODE_MAINTENANCE_INSPECTION_REQUIRED,
     )
     from services.work_order_pricing_service import pricing_workflow_applies
@@ -877,13 +893,15 @@ def _prepend_contractor_pricing_actions(wo: Dict[str, Any]) -> List[Dict[str, An
                 )
             )
         return extra
-    if ps in (PRICE_STATUS_AWAITING_QUOTE, PRICE_STATUS_REJECTED):
+    if ps in (PRICE_STATUS_AWAITING_QUOTE, PRICE_STATUS_REJECTED, PRICE_STATUS_REVISION_REQUESTED):
+        is_revision = ps in (PRICE_STATUS_REJECTED, PRICE_STATUS_REVISION_REQUESTED)
         hint = (
-            "The client declined the last quote — submit a revised price."
-            if ps == PRICE_STATUS_REJECTED
+            "The client requested changes to your quote — submit a revised price."
+            if is_revision
             else "Propose a fixed price for this job for client approval before further work and invoicing."
         )
-        extra.append(_action("submit_quote", "Submit quote", hint, section="billing"))
+        label = "Submit revised quote" if is_revision else "Submit quote"
+        extra.append(_action("submit_quote", label, hint, section="billing"))
     return extra
 
 
@@ -905,6 +923,9 @@ def apply_contractor_job_enrichment(
         linked = {k: v for k, v in invoice.items() if k != "_id"}
         invoice_service.enrich_invoice_for_contractor_portal(linked)
     wo["linked_invoice"] = linked
+    from services.work_order_pricing_service import serialize_pricing_snapshot
+
+    wo["pricing"] = serialize_pricing_snapshot(wo)
 
 
 _ALLOWED_DECISION_ACTORS = frozenset({"client", "admin", "contractor"})

@@ -748,6 +748,10 @@ export const clientAPI = {
   complianceJobApproveQuote: (jobId) => apiClient.post(`/jobs/${encodeURIComponent(jobId)}/approve-quote`, {}),
   complianceJobRejectQuote: (jobId, body) =>
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/reject-quote`, body ?? {}),
+  complianceJobRequestQuoteRevision: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/request-quote-revision`, body),
+  complianceJobRejectQuoteFinal: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/reject-quote-final`, body ?? {}),
   complianceJobMarkInspectionComplete: (jobId) =>
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/mark-inspection-complete`, {}),
   complianceJobCreatePersonalContractorAndAssign: (jobId, body) =>

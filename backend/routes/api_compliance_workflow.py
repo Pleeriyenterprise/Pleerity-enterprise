@@ -44,7 +44,9 @@ from routes.contractor_job import get_job_context
 from services.work_order_pricing_service import (
     approve_quote_for_work_order,
     mark_inspection_complete_for_work_order,
+    reject_quote_final_for_work_order,
     reject_quote_for_work_order,
+    request_quote_revision_for_work_order,
     submit_quote_for_work_order,
 )
 from services.requirement_evidence_authority import sync_requirement_evidence_authority
@@ -1015,6 +1017,17 @@ class RejectQuoteBody(BaseModel):
     reason: Optional[str] = Field(None, max_length=2000)
 
 
+class RequestQuoteRevisionBody(BaseModel):
+    reason_code: str = Field(..., max_length=64)
+    message: Optional[str] = Field(None, max_length=2000)
+    target_budget: Optional[float] = Field(None, gt=0)
+    target_date: Optional[str] = Field(None, max_length=32)
+
+
+class RejectQuoteFinalBody(BaseModel):
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
 @router.post("/jobs/{job_id}/approve-quote")
 async def job_approve_quote(request: Request, job_id: str, user: Dict[str, Any] = Depends(_require_maintenance_workflows)):
     try:
@@ -1036,8 +1049,52 @@ async def job_reject_quote(
     user: Dict[str, Any] = Depends(_require_maintenance_workflows),
     body: RejectQuoteBody = Body(default_factory=RejectQuoteBody),
 ):
+    """Backward-compatible alias: reject-quote requests changes (revision workflow)."""
     try:
         await reject_quote_for_work_order(
+            job_id.strip(),
+            user["client_id"],
+            reason=body.reason,
+            actor_id=_actor_id(user),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
+    return serialize_client_job(fresh) if fresh else {}
+
+
+@router.post("/jobs/{job_id}/request-quote-revision")
+async def job_request_quote_revision(
+    request: Request,
+    job_id: str,
+    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+    body: RequestQuoteRevisionBody = Body(...),
+):
+    try:
+        await request_quote_revision_for_work_order(
+            job_id.strip(),
+            user["client_id"],
+            reason_code=body.reason_code,
+            message=body.message,
+            target_budget=body.target_budget,
+            target_date=body.target_date,
+            actor_id=_actor_id(user),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
+    return serialize_client_job(fresh) if fresh else {}
+
+
+@router.post("/jobs/{job_id}/reject-quote-final")
+async def job_reject_quote_final(
+    request: Request,
+    job_id: str,
+    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+    body: RejectQuoteFinalBody = Body(default_factory=RejectQuoteFinalBody),
+):
+    try:
+        await reject_quote_final_for_work_order(
             job_id.strip(),
             user["client_id"],
             reason=body.reason,

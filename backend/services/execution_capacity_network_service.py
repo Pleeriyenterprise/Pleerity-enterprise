@@ -63,6 +63,8 @@ def _coverage_class(eligible: int, visible: int) -> str:
 async def build_contractor_network_audit_v1(
     client_id: str,
     property_id_filter: Optional[str] = None,
+    *,
+    audit_cache: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Phase 1 — per-job coverage diagnostics and failure taxonomy."""
     from services import contractor_service
@@ -95,11 +97,27 @@ async def build_contractor_network_audit_v1(
         wid = w.get("work_order_id")
         if not wid:
             continue
-        assignable = await contractor_service.list_assignable_contractors_for_work_order(
-            client_id, wid, limit=5
-        )
+        if audit_cache is not None:
+            assignable = await audit_cache.get_assignable(
+                contractor_service,
+                client_id,
+                wid,
+                limit=5,
+            )
+        else:
+            assignable = await contractor_service.list_assignable_contractors_for_work_order(
+                client_id, wid, limit=5
+            )
         diag = assignable.get("filter_diagnostics") or {}
-        rec = await contractor_service.recommend_contractors_for_work_order(wid, client_id=client_id, limit=3)
+        if audit_cache is not None:
+            rec = await audit_cache.get_recommendation(
+                contractor_service,
+                wid,
+                client_id=client_id,
+                limit=3,
+            )
+        else:
+            rec = await contractor_service.recommend_contractors_for_work_order(wid, client_id=client_id, limit=3)
         routing = rec.get("routing") or {}
 
         reason = _primary_failure_reason(diag, routing)
@@ -278,7 +296,7 @@ async def build_execution_recovery_v1(
         w
         for w in wos
         if w.get("contractor_id")
-        and (w.get("price_status") or "").upper() in ("AWAITING_QUOTE", "QUOTED", "REJECTED")
+        and (w.get("price_status") or "").upper() in ("AWAITING_QUOTE", "QUOTED", "REJECTED", "REVISION_REQUESTED")
         and (w.get("status") or "").upper() in ("ASSIGNED", "SCHEDULED", "OPEN")
     ]
     if quote_blocked:
@@ -388,11 +406,20 @@ async def build_quote_throughput_v1(
 async def build_execution_momentum_kpis_v1(
     client_id: str,
     property_id_filter: Optional[str] = None,
+    *,
+    network_audit: Optional[Dict[str, Any]] = None,
+    assignment: Optional[Dict[str, Any]] = None,
+    quote: Optional[Dict[str, Any]] = None,
+    audit_cache: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Phase 5 — execution-capacity confidence and velocity."""
-    audit = await build_contractor_network_audit_v1(client_id, property_id_filter)
-    assignment = await build_assignment_conversion_v1(client_id, property_id_filter)
-    quote = await build_quote_throughput_v1(client_id, property_id_filter)
+    audit = network_audit or await build_contractor_network_audit_v1(
+        client_id,
+        property_id_filter,
+        audit_cache=audit_cache,
+    )
+    assignment = assignment or await build_assignment_conversion_v1(client_id, property_id_filter)
+    quote = quote or await build_quote_throughput_v1(client_id, property_id_filter)
 
     total_unassigned = audit.get("unassigned_jobs_total") or 0
     no_cov = audit.get("coverage_distribution", {}).get("no_coverage", 0)
@@ -522,11 +549,19 @@ async def fetch_execution_capacity_priority_actions(
     client_id: str,
     property_id_filter: Optional[str] = None,
     limit: int = 6,
+    *,
+    recovery: Optional[Dict[str, Any]] = None,
+    network_audit: Optional[Dict[str, Any]] = None,
+    audit_cache: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     """High-leverage execution-capacity actions for Command Centre."""
     from services.client_priority_stream import _action
 
-    recovery = await build_execution_recovery_v1(client_id, property_id_filter)
+    recovery = recovery or await build_execution_recovery_v1(
+        client_id,
+        property_id_filter,
+        network_audit=network_audit,
+    )
     actions: List[Dict[str, Any]] = []
     for i, r in enumerate(recovery.get("recovery_actions") or []):
         score = 88 - i * 2
@@ -569,18 +604,37 @@ def merge_execution_with_momentum_actions(
 async def build_execution_capacity_bundle_v1(
     client_id: str,
     property_id_filter: Optional[str] = None,
+    *,
+    audit_cache: Optional[Any] = None,
 ) -> Dict[str, Any]:
     import asyncio
 
-    network_audit = await build_contractor_network_audit_v1(client_id, property_id_filter)
+    network_audit = await build_contractor_network_audit_v1(
+        client_id,
+        property_id_filter,
+        audit_cache=audit_cache,
+    )
     assignment, quote, recovery, kpis, entropy = await asyncio.gather(
         build_assignment_conversion_v1(client_id, property_id_filter),
         build_quote_throughput_v1(client_id, property_id_filter),
         build_execution_recovery_v1(client_id, property_id_filter, network_audit=network_audit),
-        build_execution_momentum_kpis_v1(client_id, property_id_filter),
+        build_execution_momentum_kpis_v1(
+            client_id,
+            property_id_filter,
+            network_audit=network_audit,
+            assignment=assignment,
+            quote=quote,
+            audit_cache=audit_cache,
+        ),
         build_execution_entropy_coverage_v1(client_id, property_id_filter),
     )
-    priority_actions = await fetch_execution_capacity_priority_actions(client_id, property_id_filter)
+    priority_actions = await fetch_execution_capacity_priority_actions(
+        client_id,
+        property_id_filter,
+        recovery=recovery,
+        network_audit=network_audit,
+        audit_cache=audit_cache,
+    )
     return {
         "programme": PROGRAMME,
         "contractor_network_audit_v1": network_audit,

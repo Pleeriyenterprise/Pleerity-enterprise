@@ -86,6 +86,14 @@ const OPERATIONAL_LABEL_BY_KEY = {
 
   // Calendar / timeline categories (internal category slugs → UI)
   scheduled_job: 'Maintenance job',
+
+  // Quote negotiation price_status tokens
+  awaiting_quote: 'Quote requested',
+  quoted: 'Quote submitted',
+  approved: 'Work authorised',
+  rejected: 'Changes requested',
+  revision_requested: 'Changes requested',
+  rejected_final: 'Quote declined (final)',
 };
 
 /**

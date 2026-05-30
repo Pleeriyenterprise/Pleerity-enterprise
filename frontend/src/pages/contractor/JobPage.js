@@ -27,6 +27,17 @@ import {
 } from '../../utils/contractorWorkflow';
 import { fireContractorWorkflowUsage } from '../../utils/contractorWorkflowUsage';
 import { invoiceDisplayLabel } from '../../utils/invoiceDisplay';
+import { operationalLabelForToken } from '../../utils/presentationLanguage';
+
+const QUOTE_REVISION_REASON_LABELS = {
+  price_too_high: 'Price too high',
+  scope_unclear: 'Scope unclear',
+  missing_breakdown: 'Missing breakdown',
+  wrong_work_proposed: 'Wrong work proposed',
+  incomplete_quote: 'Incomplete quote',
+  timeline_unsuitable: 'Timeline unsuitable',
+  other: 'Other',
+};
 
 function formatDate(s) {
   if (!s) return '—';
@@ -413,7 +424,11 @@ export default function JobPage() {
           notes: (quoteForm.notes || '').trim() || undefined,
         })
         .then(() => {
-          toast.success('Quote submitted for client approval');
+          toast.success(
+            workOrder?.pricing?.revision_active
+              ? 'Revised quote submitted for client approval'
+              : 'Quote submitted for client approval',
+          );
           setQuoteOpen(false);
           setQuoteForm({ amount: '', notes: '' });
           return loadWorkOrder();
@@ -861,6 +876,49 @@ export default function JobPage() {
           </div>
         ) : null}
 
+        {workOrder?.pricing?.pricing_workflow ? (
+          <div
+            className={`mb-4 rounded-lg border p-3 text-xs ${
+              workOrder.pricing.revision_active
+                ? 'border-amber-300 bg-amber-50/90 text-amber-950'
+                : 'border-gray-200 bg-gray-50/80 text-gray-800'
+            }`}
+            role="status"
+          >
+            <p className="font-semibold">
+              Quote status:{' '}
+              {workOrder.pricing.negotiation_status_label ||
+                operationalLabelForToken(workOrder.pricing.price_status, { emptyLabel: '—' })}
+            </p>
+            {workOrder.pricing.revision_active ? (
+              <p className="mt-1 font-medium">Quote changes requested — your assignment is still active.</p>
+            ) : null}
+            {workOrder.pricing.quote_revision_reason_code ? (
+              <p className="mt-1">
+                Reason:{' '}
+                {QUOTE_REVISION_REASON_LABELS[workOrder.pricing.quote_revision_reason_code] ||
+                  workOrder.pricing.quote_revision_reason_code}
+              </p>
+            ) : null}
+            {workOrder.pricing.quote_revision_message ? (
+              <p className="mt-1 whitespace-pre-wrap break-words">{workOrder.pricing.quote_revision_message}</p>
+            ) : null}
+            {workOrder.pricing.quote_revision_target_budget != null ? (
+              <p className="mt-1">Target budget: £{Number(workOrder.pricing.quote_revision_target_budget).toFixed(2)}</p>
+            ) : null}
+            {(workOrder.pricing.quote_negotiation_history || []).length > 0 ? (
+              <ul className="mt-2 space-y-0.5 border-t border-current/10 pt-2">
+                {(workOrder.pricing.quote_negotiation_history || []).map((row, idx) => (
+                  <li key={`${row.at}-${row.event}-${idx}`}>
+                    v{row.version || '—'} · {String(row.event || '').replace(/_/g, ' ')}
+                    {row.amount != null ? ` · £${Number(row.amount).toFixed(2)}` : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+
         {(detail.status || '').toUpperCase() === 'CANCELLED' ? (
           <div
             className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800"
@@ -1152,9 +1210,13 @@ export default function JobPage() {
             className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold mb-4">Submit quote</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {workOrder?.pricing?.revision_active ? 'Submit revised quote' : 'Submit quote'}
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Propose a fixed price for client approval before further billable repair work.
+              {workOrder?.pricing?.revision_active
+                ? 'Address the client feedback and submit an updated price for approval.'
+                : 'Propose a fixed price for client approval before further billable repair work.'}
             </p>
             {workOrder ? (
               <dl className="text-xs text-gray-600 space-y-1 mb-4 border border-gray-100 rounded-md p-3 bg-gray-50/80">

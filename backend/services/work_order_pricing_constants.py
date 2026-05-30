@@ -15,7 +15,9 @@ ALLOWED_PRICING_MODES = frozenset(
 PRICE_STATUS_AWAITING_QUOTE = "AWAITING_QUOTE"
 PRICE_STATUS_QUOTED = "QUOTED"
 PRICE_STATUS_APPROVED = "APPROVED"
-PRICE_STATUS_REJECTED = "REJECTED"
+PRICE_STATUS_REJECTED = "REJECTED"  # legacy alias; new flows use REVISION_REQUESTED
+PRICE_STATUS_REVISION_REQUESTED = "REVISION_REQUESTED"
+PRICE_STATUS_REJECTED_FINAL = "REJECTED_FINAL"
 PRICE_STATUS_DISPUTED = "DISPUTED"
 
 ALLOWED_PRICE_STATUSES = frozenset(
@@ -24,8 +26,33 @@ ALLOWED_PRICE_STATUSES = frozenset(
         PRICE_STATUS_QUOTED,
         PRICE_STATUS_APPROVED,
         PRICE_STATUS_REJECTED,
+        PRICE_STATUS_REVISION_REQUESTED,
+        PRICE_STATUS_REJECTED_FINAL,
         PRICE_STATUS_DISPUTED,
     }
 )
+
+# Landlord revision-request reason codes (stored on work order + quote history)
+QUOTE_REVISION_REASON_CODES = frozenset(
+    {
+        "price_too_high",
+        "scope_unclear",
+        "missing_breakdown",
+        "wrong_work_proposed",
+        "incomplete_quote",
+        "timeline_unsuitable",
+        "other",
+    }
+)
+
+QUOTE_NEGOTIATION_STATUS_LABELS = {
+    PRICE_STATUS_AWAITING_QUOTE: "Quote requested",
+    PRICE_STATUS_QUOTED: "Quote submitted",
+    PRICE_STATUS_APPROVED: "Work authorised",
+    PRICE_STATUS_REJECTED: "Changes requested",
+    PRICE_STATUS_REVISION_REQUESTED: "Changes requested",
+    PRICE_STATUS_REJECTED_FINAL: "Quote declined (final)",
+    PRICE_STATUS_DISPUTED: "Disputed",
+}
 
 DEFAULT_PRICE_CURRENCY = "GBP"

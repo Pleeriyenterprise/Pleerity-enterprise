@@ -1,0 +1,27 @@
+{
+  "programme": "PRELAUNCH-QUOTE-NEGOTIATION-WORKFLOW-01",
+  "captured_at": "2026-05-28T00:00:00+00:00",
+  "phase": "PART_1_CURRENT_FLOW_AUDIT",
+  "pre_remediation_findings": {
+    "quote_storage": "Flat pricing fields on work_orders (quoted_price, price_status, quote_notes). No quote_negotiation_history array.",
+    "statuses_before": ["AWAITING_QUOTE", "QUOTED", "APPROVED", "REJECTED", "DISPUTED (unused)"],
+    "reject_semantics": "reject_quote_for_work_order set price_status=REJECTED, preserved contractor_id and work order, cleared approval only.",
+    "after_rejection": "Contractor could resubmit (REJECTED -> QUOTED). Work order and assignment persisted. No automatic cancel/reassign.",
+    "workflow_termination_risk": "LOW for assignment — HIGH for UX semantics: landlord 'Reject quote' read as job/contractor rejection; no revision reason codes; no contractor email on rejection.",
+    "quote_lineage": "None — resubmit overwrote quoted_price in place; prior amounts not retained in structured history.",
+    "landlord_rejection_reason": "Optional free-text quote_rejection_reason only; no reason_code enum.",
+    "contractor_notification": "None on quote rejection/revision request (client notified on submit only).",
+    "reassignment": "Not automatic on quote rejection.",
+    "rejected_quotes_visible": "Last quoted_price remained until resubmit; no version history UI.",
+    "admin_audit": "AuditAction.WORK_ORDER_QUOTE_REJECTED_BY_CLIENT with pricing_event quote_rejected; no lineage view."
+  },
+  "gaps_requiring_remediation": [
+    "QUOTE_NEGOTIATION_GAP: binary reject label vs revision-request intent",
+    "QUOTE_LINEAGE_DRIFT: no v1/v2 preservation",
+    "WORKFLOW_TERMINATION_RISK: contractor UX implies decline not negotiation",
+    "Missing governed revision API with reason codes",
+    "Landlord single Reject button overloaded",
+    "Contractor portal lacked revision feedback panel"
+  ],
+  "remediation_applied_in_code": true
+}
