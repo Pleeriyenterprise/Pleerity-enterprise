@@ -417,6 +417,70 @@ def _can_confirm(actor_type: str, scheduled_by: Optional[str]) -> bool:
     return False
 
 
+def _append_visit_history(wo: Dict[str, Any], entry: Dict[str, Any]) -> list:
+    history = list(wo.get("visit_negotiation_history") or [])
+    history.append(entry)
+    return history
+
+
+def _visit_history_entry(
+    event: str,
+    wo: Dict[str, Any],
+    *,
+    actor_type: str,
+    actor_id: Optional[str],
+    scheduled_at: Optional[str] = None,
+    timezone_name: Optional[str] = None,
+    notes: Optional[str] = None,
+    reason: Optional[str] = None,
+) -> Dict[str, Any]:
+    now = datetime.now(timezone.utc)
+    return {
+        "event": event,
+        "scheduled_at": scheduled_at if scheduled_at is not None else wo.get("scheduled_at"),
+        "timezone": timezone_name if timezone_name is not None else wo.get("scheduled_timezone"),
+        "notes": (notes or "").strip() or None,
+        "reason": (reason or "").strip() or None,
+        "at": now.isoformat(),
+        "actor_role": actor_type,
+        "actor_id": actor_id,
+    }
+
+
+def serialize_schedule_snapshot(wo: Dict[str, Any]) -> Dict[str, Any]:
+    from services.work_order_workflow_constants import resolve_workflow_mode, visit_authority_label
+
+    history = list(wo.get("visit_negotiation_history") or [])
+    normalized = []
+    for row in history:
+        item = dict(row)
+        at_val = item.get("at")
+        if at_val and hasattr(at_val, "isoformat"):
+            item["at"] = at_val.isoformat()
+        normalized.append(item)
+    return {
+        "workflow_mode": resolve_workflow_mode(wo),
+        "workflow_mode_label": resolve_workflow_mode(wo),  # replaced below
+        "visit_status_label": visit_authority_label(wo),
+        "scheduled_at": wo.get("scheduled_at"),
+        "scheduled_timezone": wo.get("scheduled_timezone"),
+        "schedule_status": wo.get("schedule_status"),
+        "scheduled_by": wo.get("scheduled_by"),
+        "schedule_notes": wo.get("schedule_notes"),
+        "schedule_reschedule_reason": wo.get("schedule_reschedule_reason"),
+        "last_schedule_update_at": wo.get("last_schedule_update_at"),
+        "visit_negotiation_history": normalized,
+    }
+
+
+def _enrich_schedule_snapshot_labels(snap: Dict[str, Any]) -> Dict[str, Any]:
+    from services.work_order_workflow_constants import WORKFLOW_MODE_LABELS
+
+    mode = snap.get("workflow_mode") or ""
+    snap["workflow_mode_label"] = WORKFLOW_MODE_LABELS.get(mode, mode or "—")
+    return snap
+
+
 def _assert_wo_schedulable(wo: Dict[str, Any]) -> None:
     st = (wo.get("status") or "").strip().upper()
     if st in TERMINAL_WO_STATUSES:
@@ -484,6 +548,18 @@ async def propose_schedule(
         "last_schedule_update_at": now,
         "reminder_sent": False,
         "updated_at": now,
+        "visit_negotiation_history": _append_visit_history(
+            wo,
+            _visit_history_entry(
+                "proposed",
+                wo,
+                actor_type=actor_type,
+                actor_id=actor_id,
+                scheduled_at=utc_iso,
+                timezone_name=tz_canon,
+                notes=notes,
+            ),
+        ),
     }
     if kind == WORK_ORDER_KIND_COMPLIANCE:
         set_doc["compliance_booking_status"] = COMPLIANCE_BOOKING_SCHEDULED
@@ -549,6 +625,20 @@ async def propose_schedule(
                 idempotency_prefix=f"sch_prop_a_{work_order_id}",
                 event_type=AUDIT_EVENT_SCHEDULE_PROPOSED,
             )
+    try:
+        from services.work_order_workflow_notification_service import notify_client_work_order_event
+
+        if actor_type == SCHEDULE_ACTOR_CONTRACTOR and cid:
+            await notify_client_work_order_event(
+                client_id=cid,
+                work_order_id=work_order_id,
+                title="Visit time proposed",
+                message="Your contractor has proposed a visit time for this job.",
+                notification_type="work_order_visit_proposed",
+                cta_label="Review visit",
+            )
+    except Exception as exc:
+        logger.warning("In-app visit propose notify failed (non-fatal): %s", exc)
     return res
 
 
@@ -580,6 +670,10 @@ async def confirm_schedule(
         "last_schedule_update_at": now,
         "reminder_sent": False,
         "updated_at": now,
+        "visit_negotiation_history": _append_visit_history(
+            wo,
+            _visit_history_entry("confirmed", wo, actor_type=actor_type, actor_id=actor_id),
+        ),
     }
     res = await db.work_orders.find_one_and_update(
         {"work_order_id": work_order_id},
@@ -643,6 +737,20 @@ async def confirm_schedule(
             property_label=prop_label,
             attachments=attachments,
         )
+    try:
+        from services.work_order_workflow_notification_service import notify_client_work_order_event
+
+        if actor_type == SCHEDULE_ACTOR_CONTRACTOR and cid:
+            await notify_client_work_order_event(
+                client_id=cid,
+                work_order_id=work_order_id,
+                title="Visit confirmed",
+                message="The visit time for this job has been confirmed.",
+                notification_type="work_order_visit_confirmed",
+                cta_label="View job",
+            )
+    except Exception as exc:
+        logger.warning("In-app visit confirm notify failed (non-fatal): %s", exc)
     return res
 
 
@@ -674,6 +782,16 @@ async def request_reschedule(
         "reminder_sent": False,
         "updated_at": now,
         "schedule_reschedule_reason": (reason or "").strip()[:2000] or None,
+        "visit_negotiation_history": _append_visit_history(
+            wo,
+            _visit_history_entry(
+                "reschedule_requested",
+                wo,
+                actor_type=actor_type,
+                actor_id=actor_id,
+                reason=reason,
+            ),
+        ),
     }
     res = await db.work_orders.find_one_and_update(
         {"work_order_id": work_order_id},
@@ -768,6 +886,18 @@ async def cancel_schedule(
         "last_schedule_update_at": now,
         "reminder_sent": False,
         "updated_at": now,
+        "visit_negotiation_history": _append_visit_history(
+            wo,
+            _visit_history_entry(
+                "cancelled",
+                wo,
+                actor_type=actor_type,
+                actor_id=actor_id,
+                scheduled_at=wo.get("scheduled_at"),
+                timezone_name=wo.get("scheduled_timezone"),
+                notes=wo.get("schedule_notes"),
+            ),
+        ),
     }
     res = await db.work_orders.find_one_and_update(
         {"work_order_id": work_order_id},

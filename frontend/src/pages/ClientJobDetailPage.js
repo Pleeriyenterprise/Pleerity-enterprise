@@ -447,8 +447,11 @@ function ClientJobDetailInner() {
       setQuoteRevisionOpen(true);
       return;
     }
-    if (actionId === 'reject_quote_final') {
-      setQuoteRejectFinalOpen(true);
+    if (actionId === 'request_visit_reschedule') {
+      const reason = window.prompt('Optional note for the contractor (why you need another date)') ?? '';
+      runAction('request_visit_reschedule', () =>
+        clientAPI.complianceJobRequestVisitReschedule(jobId, { reason: reason.trim() || undefined }).then((r) => r.data),
+      );
       return;
     }
     if (
@@ -902,12 +905,32 @@ function ClientJobDetailInner() {
         <SectionCard title="Visit" icon={Calendar}>
         <dl className="grid grid-cols-2 gap-2 text-xs">
           <dt className="text-gray-500">Schedule status</dt>
-          <dd>{job.schedule_status || '—'}</dd>
+          <dd>{job.scheduling?.visit_status_label || job.schedule_status || '—'}</dd>
+          {job.scheduling?.workflow_mode_label ? (
+            <>
+              <dt className="text-gray-500">Workflow mode</dt>
+              <dd>{job.scheduling.workflow_mode_label}</dd>
+            </>
+          ) : null}
           <dt className="text-gray-500">Proposed / confirmed at</dt>
           <dd>{formatWhen(job.scheduled_at)}</dd>
           <dt className="text-gray-500">Timezone</dt>
           <dd>{job.scheduled_timezone || '—'}</dd>
         </dl>
+        {(job.scheduling?.visit_negotiation_history || []).length > 0 ? (
+          <div className="mt-2 border-t border-gray-100 pt-2 text-xs">
+            <p className="font-semibold text-gray-700 mb-1">Visit history</p>
+            <ul className="space-y-1 text-gray-600">
+              {(job.scheduling.visit_negotiation_history || []).map((row, idx) => (
+                <li key={`${row.at}-${row.event}-${idx}`}>
+                  {String(row.event || '').replace(/_/g, ' ')}
+                  {row.scheduled_at ? ` · ${formatWhen(row.scheduled_at)}` : ''}
+                  {row.at ? ` · ${formatWhen(row.at)}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {nextBySection.scheduling.length > 0 ? (
           <div className="space-y-2 border-t border-gray-100 pt-3">
             {na.some((a) => scheduleTimeActions.includes(a.id)) ? (
@@ -969,6 +992,21 @@ function ClientJobDetailInner() {
                   onClick={() => handleLifecycleClick('confirm_visit')}
                 >
                   {actionBusy === 'confirm_visit' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm visit'}
+                </Button>
+              ) : null}
+              {na.some((a) => a.id === 'request_visit_reschedule') ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!!actionBusy}
+                  onClick={() => handleLifecycleClick('request_visit_reschedule')}
+                >
+                  {actionBusy === 'request_visit_reschedule' ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Request another date'
+                  )}
                 </Button>
               ) : null}
               {na.some((a) => a.id === 'cancel_booking') ? (

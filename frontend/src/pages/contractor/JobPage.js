@@ -919,6 +919,30 @@ export default function JobPage() {
           </div>
         ) : null}
 
+        {workOrder?.scheduling ? (
+          <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50/80 p-3 text-xs text-gray-800" role="status">
+            <p className="font-semibold">
+              Visit: {workOrder.scheduling.visit_status_label || workOrder.schedule_status || '—'}
+            </p>
+            {workOrder.scheduling.scheduled_at ? (
+              <p className="mt-1">Scheduled: {formatDate(workOrder.scheduling.scheduled_at)}</p>
+            ) : null}
+            {workOrder.scheduling.schedule_reschedule_reason ? (
+              <p className="mt-1">Client requested another date: {workOrder.scheduling.schedule_reschedule_reason}</p>
+            ) : null}
+            {(workOrder.scheduling.visit_negotiation_history || []).length > 0 ? (
+              <ul className="mt-2 space-y-0.5 border-t border-gray-200 pt-2">
+                {(workOrder.scheduling.visit_negotiation_history || []).map((row, idx) => (
+                  <li key={`${row.at}-${row.event}-${idx}`}>
+                    {String(row.event || '').replace(/_/g, ' ')}
+                    {row.scheduled_at ? ` · ${formatDate(row.scheduled_at)}` : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+
         {(detail.status || '').toUpperCase() === 'CANCELLED' ? (
           <div
             className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800"

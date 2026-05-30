@@ -16,6 +16,7 @@ from models import AuditAction
 from utils.audit import create_audit_log
 
 from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE, WORK_ORDER_KIND_MAINTENANCE
+from services.work_order_workflow_constants import workflow_mode_for_create
 from services.work_order_pricing_constants import (
     ALLOWED_PRICE_STATUSES,
     ALLOWED_PRICING_MODES,
@@ -441,6 +442,8 @@ def default_pricing_fields_for_create(
     kind = (work_order_kind or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
     if kind == WORK_ORDER_KIND_COMPLIANCE:
         return {
+            "workflow_mode": workflow_mode_for_create(work_order_kind=kind),
+            "visit_negotiation_history": [],
             "pricing_mode": PRICING_MODE_COMPLIANCE_FIXED_QUOTE,
             "price_status": PRICE_STATUS_AWAITING_QUOTE,
             "quoted_price": None,
@@ -465,6 +468,8 @@ def default_pricing_fields_for_create(
         else PRICING_MODE_MAINTENANCE_PREQUOTE
     )
     return {
+        "workflow_mode": workflow_mode_for_create(work_order_kind=kind, inspection_required=inspection_required),
+        "visit_negotiation_history": [],
         "pricing_mode": mode,
         "price_status": PRICE_STATUS_AWAITING_QUOTE,
         "quoted_price": None,
@@ -577,6 +582,19 @@ async def submit_quote_for_work_order(
         await _send_client_quote_review_email(out, quote_submitted_at=now)
     except Exception as exc:
         logger.warning("Client quote review email failed (non-fatal): %s", exc)
+    try:
+        from services.work_order_workflow_notification_service import notify_client_work_order_event
+
+        await notify_client_work_order_event(
+            client_id=(wo.get("client_id") or "").strip(),
+            work_order_id=work_order_id,
+            title="Quote submitted for review",
+            message="A contractor has submitted a quote for your approval.",
+            notification_type="work_order_quote_submitted",
+            cta_label="Review quote",
+        )
+    except Exception as exc:
+        logger.warning("Client in-app quote submit notify failed (non-fatal): %s", exc)
     return out
 
 
@@ -801,6 +819,34 @@ async def reject_quote_final_for_work_order(
     out = await _fetch_wo(work_order_id)
     if not out:
         raise RuntimeError("Work order missing after update")
+    try:
+        cid = (wo.get("client_id") or "").strip()
+        ctr = (wo.get("contractor_id") or "").strip()
+        wid = work_order_id
+        db = database.get_db()
+        contractor = await db.contractors.find_one({"contractor_id": ctr}, {"_id": 0, "email": 1}) if ctr else None
+        to_email = (contractor or {}).get("email") if contractor else None
+        if cid and to_email:
+            from services.notification_orchestrator import notification_orchestrator
+
+            await notification_orchestrator.send(
+                template_key="ADMIN_MANUAL",
+                client_id=cid,
+                context={
+                    "recipient": str(to_email).strip(),
+                    "subject": "Quote declined (final) — contact your client",
+                    "message": (
+                        f"<p>The client has finally declined the quote for job <strong>{wid}</strong>.</p>"
+                        f"<p><strong>Reason:</strong> {(reason or '').strip() or 'Not specified'}</p>"
+                        f"<p>Your assignment may still be active — contact the client or wait for reassignment guidance.</p>"
+                    ),
+                    "company_name": "Pleerity Enterprise Ltd",
+                },
+                idempotency_key=f"contractor_quote_rejected_final:{wid}:{now.timestamp()}",
+                event_type="contractor_quote_rejected_final",
+            )
+    except Exception as exc:
+        logger.warning("Contractor quote final decline email failed (non-fatal): %s", exc)
     return out
 
 

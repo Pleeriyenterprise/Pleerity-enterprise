@@ -389,6 +389,12 @@ def _compliance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) ->
         if sched_by == "contractor":
             return [
                 _action("confirm_visit", "Confirm visit", "Confirm the proposed visit window.", section="scheduling"),
+                _action(
+                    "request_visit_reschedule",
+                    "Request another date",
+                    "Ask the contractor to propose a different visit time without cancelling the job.",
+                    section="scheduling",
+                ),
                 cancel_b,
             ]
         return [
@@ -427,9 +433,15 @@ def _compliance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) ->
                 section="scheduling",
             ),
             _action(
+                "request_visit_reschedule",
+                "Request another date",
+                "Ask the contractor to propose a different visit time.",
+                section="scheduling",
+            ),
+            _action(
                 "reschedule_booking",
-                "Reschedule visit",
-                "Propose a new visit time without cancelling the job.",
+                "Propose new visit time",
+                "Propose a replacement visit slot directly.",
                 section="scheduling",
             ),
             _action(
@@ -926,6 +938,9 @@ def apply_contractor_job_enrichment(
     from services.work_order_pricing_service import serialize_pricing_snapshot
 
     wo["pricing"] = serialize_pricing_snapshot(wo)
+    from services.work_order_schedule_service import serialize_schedule_snapshot, _enrich_schedule_snapshot_labels
+
+    wo["scheduling"] = _enrich_schedule_snapshot_labels(serialize_schedule_snapshot(wo))
 
 
 _ALLOWED_DECISION_ACTORS = frozenset({"client", "admin", "contractor"})
@@ -1089,6 +1104,10 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
     from services.work_order_pricing_service import serialize_pricing_snapshot
 
     base["pricing"] = serialize_pricing_snapshot(wo)
+    from services.work_order_schedule_service import serialize_schedule_snapshot, _enrich_schedule_snapshot_labels
+
+    base["scheduling"] = _enrich_schedule_snapshot_labels(serialize_schedule_snapshot(wo))
+    base["workflow_mode"] = base["scheduling"].get("workflow_mode")
     return base
 
 

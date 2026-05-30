@@ -859,6 +859,40 @@ async def job_reschedule(
     return await job_request_booking(request, job_id, body, user)
 
 
+class RequestVisitRescheduleBody(BaseModel):
+    reason: Optional[str] = Field(None, max_length=2000)
+
+
+@router.post("/jobs/{job_id}/request-visit-reschedule")
+async def job_request_visit_reschedule(
+    request: Request,
+    job_id: str,
+    user: Dict[str, Any] = Depends(_require_maintenance_workflows),
+    body: RequestVisitRescheduleBody = Body(default_factory=RequestVisitRescheduleBody),
+):
+    """Ask the other party to propose a new visit time (preserves schedule history)."""
+    wo = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
+    if not wo:
+        raise HTTPException(status_code=404, detail="Job not found")
+    try:
+        await wo_schedule.request_reschedule(
+            job_id.strip(),
+            actor_type=SCHEDULE_ACTOR_CLIENT,
+            actor_id=_actor_id(user),
+            actor_role=user.get("role"),
+            reason=body.reason,
+            client_id=user["client_id"],
+        )
+    except LookupError:
+        raise HTTPException(status_code=404, detail="Job not found")
+    except PermissionError:
+        raise HTTPException(status_code=404, detail="Job not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    fresh = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
+    return serialize_client_job(fresh) if fresh else {}
+
+
 @router.post("/jobs/{job_id}/cancel-booking")
 async def job_cancel_booking(request: Request, job_id: str, user: Dict[str, Any] = Depends(_require_maintenance_workflows)):
     """Cancel the current schedule on the job without cancelling the whole job."""

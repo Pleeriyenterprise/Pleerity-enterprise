@@ -752,6 +752,8 @@ export const clientAPI = {
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/request-quote-revision`, body),
   complianceJobRejectQuoteFinal: (jobId, body) =>
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/reject-quote-final`, body ?? {}),
+  complianceJobRequestVisitReschedule: (jobId, body) =>
+    apiClient.post(`/jobs/${encodeURIComponent(jobId)}/request-visit-reschedule`, body ?? {}),
   complianceJobMarkInspectionComplete: (jobId) =>
     apiClient.post(`/jobs/${encodeURIComponent(jobId)}/mark-inspection-complete`, {}),
   complianceJobCreatePersonalContractorAndAssign: (jobId, body) =>
