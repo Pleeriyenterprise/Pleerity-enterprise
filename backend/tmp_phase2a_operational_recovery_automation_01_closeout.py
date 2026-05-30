@@ -119,26 +119,32 @@ def _browser_runtime(client_pw: str) -> Dict[str, Any]:
     out: Dict[str, Any] = {"captured_at": _utc(), "checks": [], "skipped": sync_playwright is None}
     if sync_playwright is None:
         return out
-    SCREENSHOTS.mkdir(parents=True, exist_ok=True)
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 1440, "height": 900})
-        page.goto(f"{FE}/login", wait_until="networkidle", timeout=90000)
-        page.fill('input[type="email"]', CLIENT_EMAIL)
-        page.fill('input[type="password"]', client_pw)
-        page.click('button[type="submit"]')
-        page.wait_for_timeout(4000)
-        page.goto(f"{FE}/today", wait_until="networkidle", timeout=90000)
-        page.screenshot(path=str(SCREENSHOTS / "landlord_today_recovery.png"))
-        today_html = page.content()
-        out["checks"].append({"name": "landlord_today_loaded", "ok": "Today" in today_html or "today" in today_html.lower()})
+    try:
+        SCREENSHOTS.mkdir(parents=True, exist_ok=True)
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page(viewport={"width": 1440, "height": 900})
+            page.goto(f"{FE}/login", wait_until="domcontentloaded", timeout=90000)
+            page.wait_for_timeout(2000)
+            email_sel = 'input[type="email"], input[name="email"], input[autocomplete="email"]'
+            page.locator(email_sel).first.fill(CLIENT_EMAIL, timeout=15000)
+            page.locator('input[type="password"]').first.fill(client_pw, timeout=15000)
+            page.locator('button[type="submit"]').first.click()
+            page.wait_for_timeout(5000)
+            page.goto(f"{FE}/today", wait_until="domcontentloaded", timeout=90000)
+            page.screenshot(path=str(SCREENSHOTS / "landlord_today_recovery.png"))
+            today_html = page.content()
+            out["checks"].append({"name": "landlord_today_loaded", "ok": "today" in today_html.lower()})
 
-        page.goto(f"{FE}/command-center", wait_until="networkidle", timeout=90000)
-        page.screenshot(path=str(SCREENSHOTS / "command_centre_recovery.png"))
-        cc_html = page.content()
-        out["checks"].append({"name": "command_centre_loaded", "ok": "command" in cc_html.lower() or "urgent" in cc_html.lower()})
-        browser.close()
-    out["ok"] = all(c.get("ok") for c in out["checks"])
+            page.goto(f"{FE}/command-center", wait_until="domcontentloaded", timeout=90000)
+            page.screenshot(path=str(SCREENSHOTS / "command_centre_recovery.png"))
+            cc_html = page.content()
+            out["checks"].append({"name": "command_centre_loaded", "ok": "command" in cc_html.lower() or "urgent" in cc_html.lower()})
+            browser.close()
+        out["ok"] = all(c.get("ok") for c in out["checks"])
+    except Exception as exc:
+        out["error"] = str(exc)
+        out["ok"] = False
     return out
 
 
@@ -172,8 +178,8 @@ def main() -> int:
     cc_body = cc.get("body") if isinstance(cc.get("body"), dict) else {}
     recovery_actions = [a for a in (cc_body.get("urgent_actions") or []) if (a.get("action_type") or "") == "operational_recovery"]
 
-    contractor_tok = _login("/contractor/login", CONTRACTOR_EMAIL, CONTRACTOR_PW_FILE.read_text(encoding="utf-8").strip())
-    ctr_dash = _call("GET", "/contractor/dashboard/summary", contractor_tok)
+    contractor_tok = _login("/contractor-login", CONTRACTOR_EMAIL, CONTRACTOR_PW_FILE.read_text(encoding="utf-8").strip())
+    ctr_dash = _call("GET", "/contractor/dashboard-summary", contractor_tok)
     ctr_body = ctr_dash.get("body") if isinstance(ctr_dash.get("body"), dict) else {}
     ctr_recovery = ctr_body.get("recovery")
 
