@@ -227,6 +227,51 @@ def _maintenance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -
                 section="scheduling",
             ),
         ]
+    ss = (wo.get("schedule_status") or "").strip().lower()
+    sat = (wo.get("scheduled_at") or "").strip()
+    if ss == "proposed" and sat:
+        sb = (wo.get("scheduled_by") or "").strip().lower()
+        base_cancel = _action(
+            "cancel_booking",
+            "Cancel booking request",
+            "Withdraw the proposed visit before it is confirmed.",
+            section="scheduling",
+        )
+        if sb in ("contractor", "admin"):
+            return [
+                _action("confirm_visit", "Confirm visit", "Confirm the proposed time.", section="scheduling"),
+                _action(
+                    "request_visit_reschedule",
+                    "Request another date",
+                    "Ask the contractor to propose a different visit time without cancelling the job.",
+                    section="scheduling",
+                ),
+                base_cancel,
+            ]
+        return [
+            _action(
+                "confirm_visit",
+                "Awaiting contractor confirmation",
+                "The contractor confirms your proposed time.",
+                section="scheduling",
+            ),
+            base_cancel,
+        ]
+    if ss == "reschedule_requested" and sat:
+        return [
+            _action(
+                "propose_schedule",
+                "Propose new visit time",
+                "Propose a replacement visit slot directly.",
+                section="scheduling",
+            ),
+            _action(
+                "cancel_booking",
+                "Cancel booking request",
+                "Withdraw the visit negotiation before confirming.",
+                section="scheduling",
+            ),
+        ]
     if canonical == "SCHEDULED":
         return [
             _action(
@@ -239,6 +284,12 @@ def _maintenance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -
                 "mark_no_access",
                 "Mark no access",
                 "Put the job on hold if the visit could not go ahead.",
+                section="scheduling",
+            ),
+            _action(
+                "request_visit_reschedule",
+                "Request another date",
+                "Ask the contractor to propose a different visit time.",
                 section="scheduling",
             ),
             _action(
@@ -273,8 +324,6 @@ def _maintenance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -
                 section="assignment",
             )
         ]
-    ss = (wo.get("schedule_status") or "").strip().lower()
-    sat = (wo.get("scheduled_at") or "").strip()
     if not sat or ss in ("", "cancelled"):
         return [
             _action(
@@ -284,28 +333,6 @@ def _maintenance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -
                 section="scheduling",
             )
         ]
-    if ss == "proposed":
-        sb = (wo.get("scheduled_by") or "").strip().lower()
-        base_cancel = _action(
-            "cancel_booking",
-            "Cancel booking request",
-            "Withdraw the proposed visit before it is confirmed.",
-            section="scheduling",
-        )
-        if sb in ("contractor", "admin"):
-            return [
-                _action("confirm_visit", "Confirm visit", "Confirm the proposed time.", section="scheduling"),
-                base_cancel,
-            ]
-        return [
-            _action(
-                "confirm_visit",
-                "Awaiting contractor confirmation",
-                "The contractor confirms your proposed time.",
-                section="scheduling",
-            ),
-            base_cancel,
-        ]
     if ss == "confirmed" or canonical == "BOOKED":
         return [
             _action("start", "Mark in progress", "Contractor on site or work underway.", section="execution"),
@@ -313,6 +340,12 @@ def _maintenance_next_job_actions(wo: Dict[str, Any], canonical: str, st: str) -
                 "mark_no_access",
                 "Mark no access",
                 "Record that the visit could not proceed; reschedule when resolved.",
+                section="scheduling",
+            ),
+            _action(
+                "request_visit_reschedule",
+                "Request another date",
+                "Ask the contractor to propose a different visit time.",
                 section="scheduling",
             ),
             _action(

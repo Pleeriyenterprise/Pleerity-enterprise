@@ -50,9 +50,24 @@ def _headers(token: str) -> Dict[str, str]:
 
 
 def _login(path: str, email: str, pw: str) -> str:
-    r = httpx.post(f"{API}{path}", json={"email": email, "password": pw}, timeout=120)
-    r.raise_for_status()
-    return r.json()["access_token"]
+    import time
+
+    last_exc: Optional[Exception] = None
+    for attempt in range(8):
+        try:
+            r = httpx.post(f"{API}{path}", json={"email": email, "password": pw}, timeout=120)
+            if r.status_code in (502, 503, 504) and attempt < 7:
+                time.sleep(20)
+                continue
+            r.raise_for_status()
+            return r.json()["access_token"]
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 7:
+                time.sleep(20)
+                continue
+            raise
+    raise RuntimeError(f"login failed: {last_exc}")
 
 
 def _call(method: str, path: str, token: Optional[str] = None, body: Optional[dict] = None) -> Dict[str, Any]:
@@ -298,6 +313,7 @@ def _seed_for_browser(client_tok: str, contractor_tok: str) -> Optional[str]:
     if not wid:
         return None
     _call("POST", f"/jobs/{wid}/submit-quote", contractor_tok, {"amount": 180.0, "currency": "GBP", "notes": f"{MARK} ui quote"})
+    _call("POST", f"/jobs/{wid}/approve-quote", client_tok)
     _call(
         "POST",
         f"/contractor/work-orders/{wid}/schedule/propose",
@@ -378,7 +394,11 @@ def classify(api: Dict[str, Any], deploy: Dict[str, Any], browser: Dict[str, Any
     ok(
         "landlord_ui_visit_actions",
         (browser.get("landlord_job_page") or {}).get("has_request_another_date")
-        or (browser.get("landlord_job_page") or {}).get("api_has_request_visit_reschedule"),
+        or (browser.get("landlord_job_page") or {}).get("has_confirm_visit")
+        or (
+            (browser.get("landlord_job_page") or {}).get("api_has_request_visit_reschedule")
+            and (deploy.get("bundle_markers") or {}).get("request_another_date_ui")
+        ),
     )
 
     critical_fails = [f for f in fails if f not in ("deploy_request_visit_reschedule", "landlord_ui_visit_actions")]

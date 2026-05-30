@@ -141,6 +141,28 @@ def test_maintenance_verified_issue_resolution_hint():
     assert hint and "closed" in hint.lower()
 
 
+def test_maintenance_contractor_proposed_visit_offers_confirm_and_request_reschedule():
+    wo = _base_maintenance(
+        status=ms.STATUS_SCHEDULED,
+        schedule_status="proposed",
+        scheduled_by="contractor",
+        price_status="APPROVED",
+        pricing_mode="MAINTENANCE_PREQUOTE",
+    )
+    ids = _ids(next_job_actions(wo))
+    assert "confirm_visit" in ids
+    assert "request_visit_reschedule" in ids
+    assert "cancel_booking" in ids
+    assert ids.index("confirm_visit") < ids.index("request_visit_reschedule")
+
+
+def test_maintenance_confirmed_visit_offers_request_reschedule():
+    wo = _base_maintenance(status=ms.STATUS_SCHEDULED, schedule_status="confirmed", price_status="APPROVED")
+    ids = _ids(next_job_actions(wo))
+    assert "request_visit_reschedule" in ids
+    assert "start" in ids
+
+
 def test_compliance_completed_without_proof_requests_link_not_verify():
     wo = {
         "work_order_id": "wo-c-1",
