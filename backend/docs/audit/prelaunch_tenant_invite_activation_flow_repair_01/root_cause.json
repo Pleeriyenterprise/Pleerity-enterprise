@@ -1,0 +1,18 @@
+{
+  "programme": "PRELAUNCH-TENANT-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "captured_at": "2026-05-30T12:53:13.655905+00:00",
+  "findings": [
+    "No derived tenant onboarding state; landlord UI used raw INVITED/Pending only",
+    "portal_invite_sent_at not persisted on invite/resend",
+    "Set-password shared landlord page redirected tenants to /dashboard",
+    "Tenant activation triggered landlord onboarding side effects",
+    "Resend did not revoke tokens or verify email delivery",
+    "duplicate_ignored could return unpersisted tenant_id"
+  ],
+  "repairs": [
+    "tenant_portal_service.py state model + enrich",
+    "invite/resend persistence + token hygiene",
+    "set-password-context + tenant-aware SetPasswordPage",
+    "landlord TenantManagementPage guidance + labels"
+  ]
+}

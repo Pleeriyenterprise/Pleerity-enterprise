@@ -1,0 +1,46 @@
+{
+  "programme": "PRELAUNCH-TENANT-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "activation": {
+    "captured_at": "2026-05-30T12:52:36.396230+00:00",
+    "resend_status": 200,
+    "context_status": 200,
+    "context": {
+      "role": "ROLE_TENANT",
+      "is_tenant": true,
+      "full_name": "Closeout Tenant",
+      "already_active": false,
+      "redirect_path": "/tenant"
+    },
+    "set_password_status": 200,
+    "set_password_ok": true,
+    "tenant_dashboard_status": 200,
+    "tenant_dashboard_ok": true,
+    "tenant_client_api_blocked": true,
+    "landlord_list_after": {
+      "portal_user_id": "aaa55200-bd99-4588-ae6a-cdcaa349e110",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "auth_email": "tenant-closeout-289e4ee1@yopmail.com",
+      "email": "tenant-closeout-289e4ee1@yopmail.com",
+      "full_name": "Closeout Tenant",
+      "role": "ROLE_TENANT",
+      "status": "ACTIVE",
+      "password_status": "SET",
+      "created_at": "2026-05-30T12:52:29.517805+00:00",
+      "invited_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+      "portal_invite_sent_at": "2026-05-30T12:52:40.661827+00:00",
+      "portal_invite_accepted_at": "2026-05-30T12:52:47.084720+00:00",
+      "activated_at": "2026-05-30T12:52:47.084720+00:00",
+      "updated_at": "2026-05-30T12:52:40.661827+00:00",
+      "must_set_password": false,
+      "assigned_properties": [
+        "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+      ],
+      "onboarding_state": "linked_to_tenancy",
+      "onboarding_state_label": "Linked",
+      "portal_activation_pending": false,
+      "linked_to_tenancy": true
+    },
+    "ok": true,
+    "setup_token_prefix": "Lf6I7Irx"
+  }
+}

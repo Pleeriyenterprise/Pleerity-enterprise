@@ -1,0 +1,14 @@
+{
+  "programme": "PRELAUNCH-TENANT-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "captured_at": "2026-05-30T12:55:00+00:00",
+  "commit_sha": "8b2b3eb50cba43124c4faccdc3bd2898c92152bb",
+  "checks": {
+    "landlord_invite_persistence": true,
+    "activation_flow": true,
+    "tenancy_access_authority": true,
+    "admin_status_truth": true,
+    "browser": true
+  },
+  "rationale": "Staging deploy 8b2b3eb5: invite persists portal_invite_sent_at + Activation pending label; set-password-context routes tenants to /tenant; activation yields Linked state with tenant dashboard access and landlord API blocked; landlord UI shows Linked/Active labels."
+}

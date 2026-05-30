@@ -1,0 +1,10 @@
+{
+  "programme": "PRELAUNCH-TENANT-INVITE-ACTIVATION-FLOW-REPAIR-01",
+  "browser": {
+    "bundle_tenant_activation_guidance": true,
+    "bundle_onboarding_state_label": true,
+    "landlord_ui_labels_visible": true,
+    "labels_observed": ["Active", "Linked", "Closeout Tenant"],
+    "ok": true
+  }
+}
