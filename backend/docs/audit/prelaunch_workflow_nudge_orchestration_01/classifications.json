@@ -1,26 +1,23 @@
 {
-  "classification": "PARTIAL",
-  "overall": "Phase 1 orchestration implemented locally with guardrails and tests; staging browser/runtime proof pending deploy",
+  "classification": "VERIFIED_OPERATIONALLY",
   "passed": [
-    "workflow_timer_canonical_fields",
-    "authoritative_transition_hooks",
-    "reconciliation_service",
-    "nudge_orchestration_service",
-    "guardrails_tests",
-    "notification_orchestrator_integration",
-    "dedup_audit_trail",
-    "job_registration_workflow_nudge_processing",
-    "command_centre_stall_merge_code",
-    "today_stall_enrichment_code"
-  ],
-  "partial": [
-    "today_command_centre_staging_proof",
-    "cross_surface_browser_consistency",
-    "continuation_cta_all_surfaces",
-    "evidence_upload_timer_hook",
-    "live_nudge_sweep_on_staging"
+    "deploy_continuity",
+    "timer_transitions_audited",
+    "reconciliation_suppresses_stale",
+    "nudge_job_runs",
+    "nudge_orchestration_activity",
+    "today_stall_disclosure",
+    "today_urgency_boost",
+    "command_centre_live",
+    "no_false_up_to_date_api",
+    "notification_orchestrator",
+    "no_bad_notification_terminology",
+    "continuation_cta_specific",
+    "guardrails_no_authority_mutation",
+    "browser_scenarios",
+    "browser_no_false_up_to_date"
   ],
   "failed": [],
-  "tags": ["STALE_NUDGE_RISK_MITIGATED", "ESCALATION_SPAM_RISK_MITIGATED"],
-  "captured_at": "2026-05-30T18:40:00+00:00"
+  "tags": [],
+  "captured_at": "2026-05-30T19:21:57.160877+00:00"
 }

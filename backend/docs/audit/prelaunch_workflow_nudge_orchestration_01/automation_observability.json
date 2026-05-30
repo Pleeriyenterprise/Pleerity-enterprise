@@ -1,20 +1,17 @@
 {
-  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
-  "part": 11,
-  "classification": "VERIFIED_OPERATIONALLY",
-  "captured_at": "2026-05-30T18:40:00+00:00",
-  "metrics_per_sweep": [
+  "runtime_verified_at": "2026-05-30T19:21:57.160877+00:00",
+  "captured_at": "2026-05-30T19:20:22.433362+00:00",
+  "nudges_sent_audit_rows": 2,
+  "nudges_suppressed_audit_rows": 20,
+  "suppress_reasons": [
+    "stall_mismatch",
+    "below_age_threshold"
+  ],
+  "job_runs": [],
+  "metrics_fields_expected": [
     "nudges_sent",
     "nudges_suppressed",
     "stale_prevented",
-    "escalation_triggered",
-    "entities_scanned"
-  ],
-  "storage": {
-    "workflow_nudge_metrics": "one document per job run",
-    "workflow_nudge_audit": "per nudge decision with outcome and suppress_reason",
-    "audit_log": "WORKFLOW_NUDGE_SENT | WORKFLOW_NUDGE_SUPPRESSED"
-  },
-  "admin_visibility": "automation centre job workflow_nudge_processing + audit trail search by WORKFLOW_NUDGE_*",
-  "future": "workflow_continued_after_nudge and abandonment_recovered require product analytics hooks post-nudge action tracking"
+    "escalation_triggered"
+  ]
 }

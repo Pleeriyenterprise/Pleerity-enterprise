@@ -1,20 +1,69 @@
 {
-  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
-  "part": 9,
-  "classification": "PARTIAL",
-  "captured_at": "2026-05-30T18:40:00+00:00",
-  "shared_backend_truth": {
-    "waiting_on_party": "work_order_stall_context.waiting_on",
-    "escalation_tier": "workflow_stall_escalation_tier metadata",
-    "continuation_cta": "CONTINUATION_CTA map",
-    "timing": "canonical timer fields on Mongo entities"
+  "runtime_verified_at": "2026-05-30T19:21:57.160877+00:00",
+  "browser": {
+    "captured_at": "2026-05-30T19:20:22.433362+00:00",
+    "scenarios": [
+      {
+        "name": "landlord_today_stalled_quote",
+        "ok": true,
+        "false_up_to_date": false,
+        "has_waiting_copy": true
+      },
+      {
+        "name": "landlord_command_centre_stall",
+        "ok": true,
+        "has_waiting_on_copy": false
+      },
+      {
+        "name": "contractor_pending_quote_reminder_state",
+        "ok": true,
+        "false_up_to_date": false
+      }
+    ],
+    "all_scenarios_ok": true,
+    "no_false_up_to_date": true
   },
-  "surfaces": {
-    "landlord_portal": "Today + Command Centre + work order routes",
-    "contractor_portal": "email nudges + existing drawer actions",
-    "tenant_portal": "activation nudges",
-    "email_links": "continuation_url in nudge HTML",
-    "mobile": "inherits responsive portal layouts — not separately tested"
-  },
-  "staging_consistency_proof": "pending post-deploy cross-surface browser pass"
+  "today_cc": {
+    "captured_at": "2026-05-30T19:20:06.083260+00:00",
+    "today_ok": true,
+    "has_stall_disclosure": true,
+    "has_unresolved_dependencies": true,
+    "stalled_count": 50,
+    "urgent_boosted_tasks": 10,
+    "boost_samples": [
+      {
+        "title": "Job \u2014 needs attention",
+        "urgency": "overdue",
+        "banner": "Waiting on contractor quote",
+        "waiting_on": "contractor"
+      },
+      {
+        "title": "Job \u2014 needs attention",
+        "urgency": "overdue",
+        "banner": "Waiting on contractor quote",
+        "waiting_on": "contractor"
+      },
+      {
+        "title": "Job \u2014 needs attention",
+        "urgency": "overdue",
+        "banner": "Waiting on contractor quote",
+        "waiting_on": "contractor"
+      },
+      {
+        "title": "Job \u2014 needs attention",
+        "urgency": "overdue",
+        "banner": "Waiting on contractor quote",
+        "waiting_on": "contractor"
+      },
+      {
+        "title": "Job \u2014 needs attention",
+        "urgency": "overdue",
+        "banner": "Waiting on contractor quote",
+        "waiting_on": "contractor"
+      }
+    ],
+    "command_centre_ok": true,
+    "cc_stall_actions": [],
+    "false_up_to_date_risk": false
+  }
 }

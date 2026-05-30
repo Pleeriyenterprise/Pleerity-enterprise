@@ -1,0 +1,2042 @@
+{
+  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+  "parts": {
+    "deploy_continuity": {
+      "captured_at": "2026-05-30T19:14:52.919138+00:00",
+      "checks": [
+        {
+          "name": "api_version_commit",
+          "ok": true,
+          "sha": "8cb2524f9023f49a0dc37732c5b6ba3c686033d1"
+        },
+        {
+          "name": "api_health",
+          "ok": true,
+          "status": 200
+        },
+        {
+          "name": "workflow_nudge_in_job_runners",
+          "ok": true,
+          "detail": {
+            "detail": "Invalid job. Use one of: abandoned_intake_detection, activation_reminder_processing, checklist_nurture_processing, client_lifecycle_stale_archive, client_purge_eligibility_scan, client_test_like_flag_job, compliance_check_evening, compliance_check_morning, compliance_recalc_enqueue_property, compliance_recalc_sla_monitor, compliance_recalc_worker, compliance_score_snapshots, contractor_performance_recalc, daily_reminders, delivery_reconciliation, expiry_rollover_recalc, generation_auto_retry_processing, lead_compliance_gap_detection, lead_followup_processing, lead_inactive_reactivation_detection, lead_sla_check, monthly_digest, notification_failure_spike_monitor, notification_retry_worker, onboarding_sequence_processing, order_delivery_processing, pending_payment_lifecycle, pending_verification_digest, pilot_lifecycle_reconcile, predictive_insights_job, queued_order_processing, rent_operations_daily_job, risk_lead_nurture_processing, risk_signal_regen_alert_monitor, risk_signal_regen_worker, risk_signals_job, scheduled_admin_communications, scheduled_reports, scheduler_heartbeat, sla_monitoring, sla_watchdog, stripe_subscription_reconcile, stuck_order_detection, subscription_lifecycle, subscription_ops_digest, work_order_contractor_confirmation_timeout_job, work_order_schedule_reminders, work_order_sla_breach_job, workflow_nudge_processing"
+          }
+        },
+        {
+          "name": "scheduler_has_workflow_nudge_processing",
+          "ok": true,
+          "job_ids_sample": [
+            "delivery_reconciliation",
+            "sla_monitoring",
+            "notification_retry_worker",
+            "compliance_recalc_sla_monitor",
+            "abandoned_intake_detection",
+            "order_delivery_processing",
+            "lead_followup_processing",
+            "generation_auto_retry_processing"
+          ]
+        },
+        {
+          "name": "today_workflow_stall_disclosure",
+          "ok": true,
+          "disclosure": {
+            "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+            "stalled_count": 50,
+            "captured_at": "2026-05-30T19:15:38.904708+00:00",
+            "has_unresolved_dependencies": true
+          }
+        },
+        {
+          "name": "command_centre_stall_actions",
+          "ok": true,
+          "stall_action_count": 0,
+          "sample_titles": []
+        },
+        {
+          "name": "notification_orchestrator_message_logs",
+          "ok": true
+        }
+      ],
+      "classification": "PASS",
+      "version": {
+        "commit_sha": "8cb2524f9023f49a0dc37732c5b6ba3c686033d1",
+        "environment": "production"
+      }
+    },
+    "timer_runtime": {
+      "captured_at": "2026-05-30T19:16:02.137651+00:00",
+      "transitions": [
+        {
+          "reason": "quote_requested",
+          "audit_found": true,
+          "recent": [
+            {
+              "audit_id": "466afea9-bad2-4fc0-9f99-d6d2904278ad",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_requested",
+                "set": [
+                  "quote_requested_at",
+                  "awaiting_quote_since"
+                ],
+                "unset": [
+                  "awaiting_landlord_quote_response_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:21.651852+00:00"
+            }
+          ]
+        },
+        {
+          "reason": "quote_submitted",
+          "audit_found": true,
+          "recent": [
+            {
+              "audit_id": "87804790-b012-4a86-8fe4-1f3f5e562247",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_submitted",
+                "set": [
+                  "awaiting_landlord_quote_response_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:34.220795+00:00"
+            },
+            {
+              "audit_id": "466afea9-bad2-4fc0-9f99-d6d2904278ad",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_requested",
+                "set": [
+                  "quote_requested_at",
+                  "awaiting_quote_since"
+                ],
+                "unset": [
+                  "awaiting_landlord_quote_response_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:21.651852+00:00"
+            }
+          ]
+        },
+        {
+          "reason": "quote_revision_requested",
+          "audit_found": true,
+          "recent": [
+            {
+              "audit_id": "de1cab88-7355-42c9-b5cd-67dd157eefa9",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_revision_requested",
+                "set": [
+                  "awaiting_contractor_quote_revision_since"
+                ],
+                "unset": [
+                  "awaiting_landlord_quote_response_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:44.714245+00:00"
+            },
+            {
+              "audit_id": "87804790-b012-4a86-8fe4-1f3f5e562247",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_submitted",
+                "set": [
+                  "awaiting_landlord_quote_response_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:34.220795+00:00"
+            },
+            {
+              "audit_id": "466afea9-bad2-4fc0-9f99-d6d2904278ad",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_requested",
+                "set": [
+                  "quote_requested_at",
+                  "awaiting_quote_since"
+                ],
+                "unset": [
+                  "awaiting_landlord_quote_response_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:21.651852+00:00"
+            }
+          ]
+        },
+        {
+          "reason": "quote_submitted",
+          "audit_found": true,
+          "recent": [
+            {
+              "audit_id": "d4bd91ab-ac38-41c1-b906-6f484feecb74",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_submitted",
+                "set": [
+                  "awaiting_landlord_quote_response_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:53.296838+00:00"
+            },
+            {
+              "audit_id": "de1cab88-7355-42c9-b5cd-67dd157eefa9",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_revision_requested",
+                "set": [
+                  "awaiting_contractor_quote_revision_since"
+                ],
+                "unset": [
+                  "awaiting_landlord_quote_response_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:44.714245+00:00"
+            },
+            {
+              "audit_id": "87804790-b012-4a86-8fe4-1f3f5e562247",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_submitted",
+                "set": [
+                  "awaiting_landlord_quote_response_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:34.220795+00:00"
+            }
+          ]
+        },
+        {
+          "reason": "quote_approved",
+          "audit_found": true,
+          "recent": [
+            {
+              "audit_id": "52c47354-5529-478e-8115-6df2360e6781",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_approved",
+                "set": [
+                  "work_authorised_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_landlord_quote_response_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:17:03.005763+00:00"
+            },
+            {
+              "audit_id": "d4bd91ab-ac38-41c1-b906-6f484feecb74",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_submitted",
+                "set": [
+                  "awaiting_landlord_quote_response_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:53.296838+00:00"
+            },
+            {
+              "audit_id": "de1cab88-7355-42c9-b5cd-67dd157eefa9",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_revision_requested",
+                "set": [
+                  "awaiting_contractor_quote_revision_since"
+                ],
+                "unset": [
+                  "awaiting_landlord_quote_response_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:44.714245+00:00"
+            }
+          ]
+        },
+        {
+          "reason": "visit_proposed",
+          "audit_found": true,
+          "recent": [
+            {
+              "audit_id": "bc22cb58-d37b-4d94-a25a-d36533bb68f3",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "contractor_a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "visit_proposed",
+                "set": [
+                  "visit_proposed_since",
+                  "awaiting_visit_confirmation_since"
+                ],
+                "unset": [
+                  "awaiting_visit_reschedule_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:17:12.940237+00:00"
+            },
+            {
+              "audit_id": "52c47354-5529-478e-8115-6df2360e6781",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_approved",
+                "set": [
+                  "work_authorised_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_landlord_quote_response_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:17:03.005763+00:00"
+            },
+            {
+              "audit_id": "d4bd91ab-ac38-41c1-b906-6f484feecb74",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_submitted",
+                "set": [
+                  "awaiting_landlord_quote_response_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:16:53.296838+00:00"
+            }
+          ]
+        },
+        {
+          "reason": "visit_confirmed",
+          "audit_found": true,
+          "recent": [
+            {
+              "audit_id": "62eb3b03-5652-41db-adea-40129b69aa69",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "visit_confirmed",
+                "set": [],
+                "unset": [
+                  "visit_proposed_since",
+                  "awaiting_visit_confirmation_since",
+                  "awaiting_visit_reschedule_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:17:21.972289+00:00"
+            },
+            {
+              "audit_id": "bc22cb58-d37b-4d94-a25a-d36533bb68f3",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "contractor_a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "visit_proposed",
+                "set": [
+                  "visit_proposed_since",
+                  "awaiting_visit_confirmation_since"
+                ],
+                "unset": [
+                  "awaiting_visit_reschedule_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:17:12.940237+00:00"
+            },
+            {
+              "audit_id": "52c47354-5529-478e-8115-6df2360e6781",
+              "action": "WORKFLOW_TIMER_UPDATED",
+              "actor_role": null,
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "client_id": null,
+              "resource_type": "work_order",
+              "resource_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+              "before_state": null,
+              "after_state": null,
+              "metadata": {
+                "reason": "quote_approved",
+                "set": [
+                  "work_authorised_since"
+                ],
+                "unset": [
+                  "awaiting_quote_since",
+                  "awaiting_landlord_quote_response_since",
+                  "awaiting_contractor_quote_revision_since"
+                ]
+              },
+              "reason_code": null,
+              "ip_address": null,
+              "timestamp": "2026-05-30T19:17:03.005763+00:00"
+            }
+          ]
+        }
+      ],
+      "checks": [
+        {
+          "name": "timer_quote_requested",
+          "ok": true
+        },
+        {
+          "name": "timer_quote_submitted",
+          "ok": true
+        },
+        {
+          "name": "timer_quote_revision_requested",
+          "ok": true
+        },
+        {
+          "name": "timer_quote_submitted_after_revision",
+          "ok": true
+        },
+        {
+          "name": "timer_quote_approved",
+          "ok": true
+        },
+        {
+          "name": "timer_visit_proposed",
+          "ok": true
+        },
+        {
+          "name": "timer_visit_confirmed",
+          "ok": true
+        },
+        {
+          "name": "timers_auditable_not_frontend_derived",
+          "ok": true
+        }
+      ],
+      "seed": {
+        "work_order_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+        "issue_id": "80b00c53-5dd5-40d6-a475-1e6686b0ff75",
+        "assign": true,
+        "accept": true
+      },
+      "quote_submit": {
+        "method": "POST",
+        "path": "/jobs/dc319a32-ad3c-4b66-ba2e-a58121f6ded1/submit-quote",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "work_order_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "description": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z nudge closeout",
+          "source": "client",
+          "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+          "category": "general",
+          "work_order_kind": "MAINTENANCE",
+          "requirement_code": null,
+          "compliance_purpose": null,
+          "compliance_due_at": null,
+          "compliance_generated_from": null,
+          "expected_output_document_type": null,
+          "linked_property_requirement_id": null,
+          "severity": "medium",
+          "status": "SCHEDULED",
+          "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+          "created_at": "2026-05-30T19:16:17.811623+00:00",
+          "updated_at": "2026-05-30T19:16:34.099670+00:00",
+          "sla_respond_by": "2026-05-31T19:16:17.811548+00:00",
+          "sla_complete_by": "2026-06-02T19:16:17.811568+00:00",
+          "completed_at": null,
+          "asset_id": null,
+          "issue_id": "80b00c53-5dd5-40d6-a475-1e6686b0ff75",
+          "risk_signal_id": null,
+          "cost_estimate_min": null,
+          "cost_estimate_max": null,
+          "resolution_outcome": null,
+          "sla_breach_risk_at": null,
+          "sla_breached_at": null,
+          "triage_reasoning": null,
+          "recommended_contractor_type": null,
+          "contractor_notes": null,
+          "completion_notes": null,
+          "evidence_keys": [],
+          "requires_client_assignment_confirmation": true,
+          "assignment_routing_state": "ASSIGNED",
+          "recommended_contractor_id": null,
+          "recommendation_reason_summary": null,
+          "recommended_at": null,
+          "recommendation_id": null,
+          "client_confirmation_deadline_at": null,
+          "confirmation_reminder_sent_at": null,
+          "confirmation_escalated_at": null,
+          "routing_decline_note": null,
+          "routing_pending_admin": false,
+          "routing_invalidation_reason": null,
+          "scheduled_at": null,
+          "scheduled_timezone": null,
+          "schedule_status": null,
+          "scheduled_by": null,
+          "schedule_notes": null,
+          "schedule_reschedule_reason": null,
+          "last_schedule_update_at": null,
+          "reminder_sent": false,
+          "created_from": "issue",
+          "triggering_rule": "create_work_order_from_issue",
+          "jurisdiction": "Wales",
+          "workflow_mode": "QUOTE_FIRST",
+          "visit_negotiation_history": [],
+          "pricing_mode": "MAINTENANCE_PREQUOTE",
+          "price_status": "QUOTED",
+          "quoted_price": 425.0,
+          "price_currency": "GBP",
+          "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+          "quote_submitted_at": "2026-05-30T19:16:33.979000",
+          "quote_approved_at": null,
+          "quote_rejected_at": null,
+          "quote_rejection_reason": null,
+          "quote_revision_requested_at": null,
+          "quote_revision_reason_code": null,
+          "quote_revision_message": null,
+          "quote_revision_target_budget": null,
+          "quote_revision_target_date": null,
+          "quote_negotiation_history": [
+            {
+              "version": 1,
+              "event": "submitted",
+              "amount": 425.0,
+              "currency": "GBP",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+              "at": "2026-05-30T19:16:33.979382+00:00",
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "actor_role": "contractor"
+            }
+          ],
+          "inspection_required": false,
+          "inspection_completed_at": null,
+          "assigned_at": "2026-05-30T19:16:20.896840+00:00",
+          "quote_requested_at": "2026-05-30T19:16:21.517299+00:00",
+          "accepted_at": "2026-05-30T19:16:25.873882+00:00",
+          "awaiting_landlord_quote_response_since": "2026-05-30T19:16:34.099643+00:00",
+          "sla_policy": null,
+          "uploaded_is_verified": false,
+          "evidence_review_state": "not_uploaded",
+          "evidence_requires_review": false,
+          "evidence_authority_note": "Uploaded evidence has been received but has not yet been reviewed or verified.",
+          "completed_work_is_compliant": false,
+          "evidence_count": 0,
+          "job_status": "SCHEDULED",
+          "next_actions": [],
+          "completion_proof_required": false,
+          "completion_proof_satisfied": false,
+          "timeline_events": [
+            {
+              "label": "Created",
+              "at": "2026-05-30T19:16:17.811623+00:00"
+            },
+            {
+              "label": "Updated",
+              "at": "2026-05-30T19:16:34.099670+00:00"
+            },
+            {
+              "label": "Contractor assigned",
+              "at": "2026-05-30T19:16:20.896840+00:00"
+            },
+            {
+              "label": "Contractor accepted",
+              "at": "2026-05-30T19:16:25.873882+00:00"
+            }
+          ],
+          "linked_invoice": null,
+          "pricing": {
+            "pricing_workflow": true,
+            "pricing_mode": "MAINTENANCE_PREQUOTE",
+            "price_status": "QUOTED",
+            "negotiation_status_label": "Quote submitted",
+            "quoted_price": 425.0,
+            "price_currency": "GBP",
+            "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+            "quote_submitted_at": "2026-05-30T19:16:33.979000",
+            "quote_approved_at": null,
+            "quote_rejected_at": null,
+            "quote_rejection_reason": null,
+            "quote_revision_requested_at": null,
+            "quote_revision_reason_code": null,
+            "quote_revision_message": null,
+            "quote_revision_target_budget": null,
+            "quote_revision_target_date": null,
+            "quote_negotiation_history": [
+              {
+                "version": 1,
+                "event": "submitted",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:33.979382+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              }
+            ],
+            "inspection_required": false,
+            "inspection_completed_at": null
+          },
+          "scheduling": {
+            "workflow_mode": "QUOTE_FIRST",
+            "workflow_mode_label": "Quote first",
+            "visit_status_label": "Visit not scheduled",
+            "scheduled_at": null,
+            "scheduled_timezone": null,
+            "schedule_status": null,
+            "scheduled_by": null,
+            "schedule_notes": null,
+            "schedule_reschedule_reason": null,
+            "last_schedule_update_at": null,
+            "visit_negotiation_history": []
+          }
+        }
+      },
+      "revision": {
+        "method": "POST",
+        "path": "/jobs/dc319a32-ad3c-4b66-ba2e-a58121f6ded1/request-quote-revision",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "job_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "work_order_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "work_order_kind": "MAINTENANCE",
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "description": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z nudge closeout",
+          "status": "SCHEDULED",
+          "job_status": "SCHEDULED",
+          "operational_exception": null,
+          "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+          "scheduled_at": null,
+          "scheduled_timezone": null,
+          "schedule_status": null,
+          "scheduled_by": null,
+          "evidence_keys": [],
+          "severity": "medium",
+          "category": "general",
+          "issue_id": "80b00c53-5dd5-40d6-a475-1e6686b0ff75",
+          "asset_id": null,
+          "sla_respond_by": "2026-05-31T19:16:17.811548+00:00",
+          "sla_complete_by": "2026-06-02T19:16:17.811568+00:00",
+          "created_at": "2026-05-30T19:16:17.811623+00:00",
+          "updated_at": "2026-05-30T19:16:44.593788+00:00",
+          "completed_at": null,
+          "jurisdiction": "Wales",
+          "next_actions": [
+            {
+              "id": "mark_no_access",
+              "label": "Mark no access",
+              "hint": "Put the job on hold if the visit could not go ahead.",
+              "section": "scheduling"
+            },
+            {
+              "id": "request_visit_reschedule",
+              "label": "Request another date",
+              "hint": "Ask the contractor to propose a different visit time.",
+              "section": "scheduling"
+            },
+            {
+              "id": "propose_schedule",
+              "label": "Reschedule visit",
+              "hint": "Propose a new visit window on the job (booking sub-flow).",
+              "section": "scheduling"
+            },
+            {
+              "id": "cancel_booking",
+              "label": "Cancel scheduled visit",
+              "hint": "Clears the current visit; assign and request booking again when ready.",
+              "section": "scheduling"
+            }
+          ],
+          "timeline_events": [
+            {
+              "label": "Created",
+              "at": "2026-05-30T19:16:17.811623+00:00"
+            },
+            {
+              "label": "Updated",
+              "at": "2026-05-30T19:16:44.593788+00:00"
+            },
+            {
+              "label": "Contractor assigned",
+              "at": "2026-05-30T19:16:20.896840+00:00"
+            },
+            {
+              "label": "Contractor accepted",
+              "at": "2026-05-30T19:16:25.873882+00:00"
+            }
+          ],
+          "decision_log": [],
+          "resolution_outcome": null,
+          "sla_policy": null,
+          "pricing": {
+            "pricing_workflow": true,
+            "pricing_mode": "MAINTENANCE_PREQUOTE",
+            "price_status": "REVISION_REQUESTED",
+            "negotiation_status_label": "Changes requested",
+            "quoted_price": 425.0,
+            "price_currency": "GBP",
+            "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+            "quote_submitted_at": "2026-05-30T19:16:33.979000",
+            "quote_approved_at": null,
+            "quote_rejected_at": "2026-05-30T19:16:44.473000",
+            "quote_rejection_reason": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+            "quote_revision_requested_at": "2026-05-30T19:16:44.473000",
+            "quote_revision_reason_code": "price_too_high",
+            "quote_revision_message": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+            "quote_revision_target_budget": 400.0,
+            "quote_revision_target_date": null,
+            "quote_negotiation_history": [
+              {
+                "version": 1,
+                "event": "submitted",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:33.979382+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              },
+              {
+                "version": 1,
+                "event": "revision_requested",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:44.473011+00:00",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+                "actor_role": "client",
+                "reason_code": "price_too_high",
+                "message": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "target_budget": 400.0,
+                "target_date": null
+              }
+            ],
+            "inspection_required": false,
+            "inspection_completed_at": null,
+            "revision_active": true
+          },
+          "scheduling": {
+            "workflow_mode": "QUOTE_FIRST",
+            "workflow_mode_label": "Quote first",
+            "visit_status_label": "Visit not scheduled",
+            "scheduled_at": null,
+            "scheduled_timezone": null,
+            "schedule_status": null,
+            "scheduled_by": null,
+            "schedule_notes": null,
+            "schedule_reschedule_reason": null,
+            "last_schedule_update_at": null,
+            "visit_negotiation_history": []
+          },
+          "workflow_mode": "QUOTE_FIRST"
+        }
+      },
+      "quote_resubmit": {
+        "method": "POST",
+        "path": "/jobs/dc319a32-ad3c-4b66-ba2e-a58121f6ded1/submit-quote",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "work_order_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "description": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z nudge closeout",
+          "source": "client",
+          "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+          "category": "general",
+          "work_order_kind": "MAINTENANCE",
+          "requirement_code": null,
+          "compliance_purpose": null,
+          "compliance_due_at": null,
+          "compliance_generated_from": null,
+          "expected_output_document_type": null,
+          "linked_property_requirement_id": null,
+          "severity": "medium",
+          "status": "SCHEDULED",
+          "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+          "created_at": "2026-05-30T19:16:17.811623+00:00",
+          "updated_at": "2026-05-30T19:16:53.176308+00:00",
+          "sla_respond_by": "2026-05-31T19:16:17.811548+00:00",
+          "sla_complete_by": "2026-06-02T19:16:17.811568+00:00",
+          "completed_at": null,
+          "asset_id": null,
+          "issue_id": "80b00c53-5dd5-40d6-a475-1e6686b0ff75",
+          "risk_signal_id": null,
+          "cost_estimate_min": null,
+          "cost_estimate_max": null,
+          "resolution_outcome": null,
+          "sla_breach_risk_at": null,
+          "sla_breached_at": null,
+          "triage_reasoning": null,
+          "recommended_contractor_type": null,
+          "contractor_notes": null,
+          "completion_notes": null,
+          "evidence_keys": [],
+          "requires_client_assignment_confirmation": true,
+          "assignment_routing_state": "ASSIGNED",
+          "recommended_contractor_id": null,
+          "recommendation_reason_summary": null,
+          "recommended_at": null,
+          "recommendation_id": null,
+          "client_confirmation_deadline_at": null,
+          "confirmation_reminder_sent_at": null,
+          "confirmation_escalated_at": null,
+          "routing_decline_note": null,
+          "routing_pending_admin": false,
+          "routing_invalidation_reason": null,
+          "scheduled_at": null,
+          "scheduled_timezone": null,
+          "schedule_status": null,
+          "scheduled_by": null,
+          "schedule_notes": null,
+          "schedule_reschedule_reason": null,
+          "last_schedule_update_at": null,
+          "reminder_sent": false,
+          "created_from": "issue",
+          "triggering_rule": "create_work_order_from_issue",
+          "jurisdiction": "Wales",
+          "workflow_mode": "QUOTE_FIRST",
+          "visit_negotiation_history": [],
+          "pricing_mode": "MAINTENANCE_PREQUOTE",
+          "price_status": "QUOTED",
+          "quoted_price": 399.0,
+          "price_currency": "GBP",
+          "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+          "quote_submitted_at": "2026-05-30T19:16:53.054000",
+          "quote_approved_at": null,
+          "quote_rejected_at": null,
+          "quote_rejection_reason": null,
+          "quote_revision_requested_at": null,
+          "quote_revision_reason_code": null,
+          "quote_revision_message": null,
+          "quote_revision_target_budget": null,
+          "quote_revision_target_date": null,
+          "quote_negotiation_history": [
+            {
+              "version": 1,
+              "event": "submitted",
+              "amount": 425.0,
+              "currency": "GBP",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+              "at": "2026-05-30T19:16:33.979382+00:00",
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "actor_role": "contractor"
+            },
+            {
+              "version": 1,
+              "event": "revision_requested",
+              "amount": 425.0,
+              "currency": "GBP",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+              "at": "2026-05-30T19:16:44.473011+00:00",
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "actor_role": "client",
+              "reason_code": "price_too_high",
+              "message": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+              "target_budget": 400.0,
+              "target_date": null
+            },
+            {
+              "version": 2,
+              "event": "resubmitted",
+              "amount": 399.0,
+              "currency": "GBP",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+              "at": "2026-05-30T19:16:53.054961+00:00",
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "actor_role": "contractor"
+            }
+          ],
+          "inspection_required": false,
+          "inspection_completed_at": null,
+          "assigned_at": "2026-05-30T19:16:20.896840+00:00",
+          "quote_requested_at": "2026-05-30T19:16:21.517299+00:00",
+          "accepted_at": "2026-05-30T19:16:25.873882+00:00",
+          "awaiting_landlord_quote_response_since": "2026-05-30T19:16:53.176277+00:00",
+          "sla_policy": null,
+          "uploaded_is_verified": false,
+          "evidence_review_state": "not_uploaded",
+          "evidence_requires_review": false,
+          "evidence_authority_note": "Uploaded evidence has been received but has not yet been reviewed or verified.",
+          "completed_work_is_compliant": false,
+          "evidence_count": 0,
+          "job_status": "SCHEDULED",
+          "next_actions": [],
+          "completion_proof_required": false,
+          "completion_proof_satisfied": false,
+          "timeline_events": [
+            {
+              "label": "Created",
+              "at": "2026-05-30T19:16:17.811623+00:00"
+            },
+            {
+              "label": "Updated",
+              "at": "2026-05-30T19:16:53.176308+00:00"
+            },
+            {
+              "label": "Contractor assigned",
+              "at": "2026-05-30T19:16:20.896840+00:00"
+            },
+            {
+              "label": "Contractor accepted",
+              "at": "2026-05-30T19:16:25.873882+00:00"
+            }
+          ],
+          "linked_invoice": null,
+          "pricing": {
+            "pricing_workflow": true,
+            "pricing_mode": "MAINTENANCE_PREQUOTE",
+            "price_status": "QUOTED",
+            "negotiation_status_label": "Quote submitted",
+            "quoted_price": 399.0,
+            "price_currency": "GBP",
+            "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+            "quote_submitted_at": "2026-05-30T19:16:53.054000",
+            "quote_approved_at": null,
+            "quote_rejected_at": null,
+            "quote_rejection_reason": null,
+            "quote_revision_requested_at": null,
+            "quote_revision_reason_code": null,
+            "quote_revision_message": null,
+            "quote_revision_target_budget": null,
+            "quote_revision_target_date": null,
+            "quote_negotiation_history": [
+              {
+                "version": 1,
+                "event": "submitted",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:33.979382+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              },
+              {
+                "version": 1,
+                "event": "revision_requested",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:44.473011+00:00",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+                "actor_role": "client",
+                "reason_code": "price_too_high",
+                "message": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "target_budget": 400.0,
+                "target_date": null
+              },
+              {
+                "version": 2,
+                "event": "resubmitted",
+                "amount": 399.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+                "at": "2026-05-30T19:16:53.054961+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              }
+            ],
+            "inspection_required": false,
+            "inspection_completed_at": null
+          },
+          "scheduling": {
+            "workflow_mode": "QUOTE_FIRST",
+            "workflow_mode_label": "Quote first",
+            "visit_status_label": "Visit not scheduled",
+            "scheduled_at": null,
+            "scheduled_timezone": null,
+            "schedule_status": null,
+            "scheduled_by": null,
+            "schedule_notes": null,
+            "schedule_reschedule_reason": null,
+            "last_schedule_update_at": null,
+            "visit_negotiation_history": []
+          }
+        }
+      },
+      "approve": {
+        "method": "POST",
+        "path": "/jobs/dc319a32-ad3c-4b66-ba2e-a58121f6ded1/approve-quote",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "job_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "work_order_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "work_order_kind": "MAINTENANCE",
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "description": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z nudge closeout",
+          "status": "SCHEDULED",
+          "job_status": "SCHEDULED",
+          "operational_exception": null,
+          "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+          "scheduled_at": null,
+          "scheduled_timezone": null,
+          "schedule_status": null,
+          "scheduled_by": null,
+          "evidence_keys": [],
+          "severity": "medium",
+          "category": "general",
+          "issue_id": "80b00c53-5dd5-40d6-a475-1e6686b0ff75",
+          "asset_id": null,
+          "sla_respond_by": "2026-05-31T19:16:17.811548+00:00",
+          "sla_complete_by": "2026-06-02T19:16:17.811568+00:00",
+          "created_at": "2026-05-30T19:16:17.811623+00:00",
+          "updated_at": "2026-05-30T19:17:02.886121+00:00",
+          "completed_at": null,
+          "jurisdiction": "Wales",
+          "next_actions": [
+            {
+              "id": "start",
+              "label": "Mark in progress",
+              "hint": "Use when the contractor is on site or work has started.",
+              "section": "execution"
+            },
+            {
+              "id": "mark_no_access",
+              "label": "Mark no access",
+              "hint": "Put the job on hold if the visit could not go ahead.",
+              "section": "scheduling"
+            },
+            {
+              "id": "request_visit_reschedule",
+              "label": "Request another date",
+              "hint": "Ask the contractor to propose a different visit time.",
+              "section": "scheduling"
+            },
+            {
+              "id": "propose_schedule",
+              "label": "Reschedule visit",
+              "hint": "Propose a new visit window on the job (booking sub-flow).",
+              "section": "scheduling"
+            },
+            {
+              "id": "cancel_booking",
+              "label": "Cancel scheduled visit",
+              "hint": "Clears the current visit; assign and request booking again when ready.",
+              "section": "scheduling"
+            }
+          ],
+          "timeline_events": [
+            {
+              "label": "Created",
+              "at": "2026-05-30T19:16:17.811623+00:00"
+            },
+            {
+              "label": "Updated",
+              "at": "2026-05-30T19:17:02.886121+00:00"
+            },
+            {
+              "label": "Contractor assigned",
+              "at": "2026-05-30T19:16:20.896840+00:00"
+            },
+            {
+              "label": "Contractor accepted",
+              "at": "2026-05-30T19:16:25.873882+00:00"
+            }
+          ],
+          "decision_log": [],
+          "resolution_outcome": null,
+          "sla_policy": null,
+          "pricing": {
+            "pricing_workflow": true,
+            "pricing_mode": "MAINTENANCE_PREQUOTE",
+            "price_status": "APPROVED",
+            "negotiation_status_label": "Work authorised",
+            "quoted_price": 399.0,
+            "price_currency": "GBP",
+            "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+            "quote_submitted_at": "2026-05-30T19:16:53.054000",
+            "quote_approved_at": "2026-05-30T19:17:02.766000",
+            "quote_rejected_at": null,
+            "quote_rejection_reason": null,
+            "quote_revision_requested_at": null,
+            "quote_revision_reason_code": null,
+            "quote_revision_message": null,
+            "quote_revision_target_budget": null,
+            "quote_revision_target_date": null,
+            "quote_negotiation_history": [
+              {
+                "version": 1,
+                "event": "submitted",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:33.979382+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              },
+              {
+                "version": 1,
+                "event": "revision_requested",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:44.473011+00:00",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+                "actor_role": "client",
+                "reason_code": "price_too_high",
+                "message": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "target_budget": 400.0,
+                "target_date": null
+              },
+              {
+                "version": 2,
+                "event": "resubmitted",
+                "amount": 399.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+                "at": "2026-05-30T19:16:53.054961+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              },
+              {
+                "version": 2,
+                "event": "approved",
+                "amount": 399.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+                "at": "2026-05-30T19:17:02.766029+00:00",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+                "actor_role": "client"
+              }
+            ],
+            "inspection_required": false,
+            "inspection_completed_at": null
+          },
+          "scheduling": {
+            "workflow_mode": "QUOTE_FIRST",
+            "workflow_mode_label": "Quote first",
+            "visit_status_label": "Visit not scheduled",
+            "scheduled_at": null,
+            "scheduled_timezone": null,
+            "schedule_status": null,
+            "scheduled_by": null,
+            "schedule_notes": null,
+            "schedule_reschedule_reason": null,
+            "last_schedule_update_at": null,
+            "visit_negotiation_history": []
+          },
+          "workflow_mode": "QUOTE_FIRST"
+        }
+      },
+      "visit_propose": {
+        "method": "POST",
+        "path": "/contractor/work-orders/dc319a32-ad3c-4b66-ba2e-a58121f6ded1/schedule/propose",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "work_order_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "description": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z nudge closeout",
+          "source": "client",
+          "reporter_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+          "category": "general",
+          "work_order_kind": "MAINTENANCE",
+          "requirement_code": null,
+          "compliance_purpose": null,
+          "compliance_due_at": null,
+          "compliance_generated_from": null,
+          "expected_output_document_type": null,
+          "linked_property_requirement_id": null,
+          "severity": "medium",
+          "status": "SCHEDULED",
+          "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+          "created_at": "2026-05-30T19:16:17.811623+00:00",
+          "updated_at": "2026-05-30T19:17:12.455272+00:00",
+          "sla_respond_by": "2026-05-31T19:16:17.811548+00:00",
+          "sla_complete_by": "2026-06-02T19:16:17.811568+00:00",
+          "completed_at": null,
+          "asset_id": null,
+          "issue_id": "80b00c53-5dd5-40d6-a475-1e6686b0ff75",
+          "risk_signal_id": null,
+          "cost_estimate_min": null,
+          "cost_estimate_max": null,
+          "resolution_outcome": null,
+          "sla_breach_risk_at": null,
+          "sla_breached_at": null,
+          "triage_reasoning": null,
+          "recommended_contractor_type": null,
+          "contractor_notes": null,
+          "completion_notes": null,
+          "evidence_keys": [],
+          "requires_client_assignment_confirmation": true,
+          "assignment_routing_state": "ASSIGNED",
+          "recommended_contractor_id": null,
+          "recommendation_reason_summary": null,
+          "recommended_at": null,
+          "recommendation_id": null,
+          "client_confirmation_deadline_at": null,
+          "confirmation_reminder_sent_at": null,
+          "confirmation_escalated_at": null,
+          "routing_decline_note": null,
+          "routing_pending_admin": false,
+          "routing_invalidation_reason": null,
+          "scheduled_at": "2026-06-13T19:17:10+00:00",
+          "scheduled_timezone": "Europe/London",
+          "schedule_status": "proposed",
+          "scheduled_by": "contractor",
+          "schedule_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+          "schedule_reschedule_reason": null,
+          "last_schedule_update_at": "2026-05-30T19:17:12.455272+00:00",
+          "reminder_sent": false,
+          "created_from": "issue",
+          "triggering_rule": "create_work_order_from_issue",
+          "jurisdiction": "Wales",
+          "workflow_mode": "QUOTE_FIRST",
+          "visit_negotiation_history": [
+            {
+              "event": "proposed",
+              "scheduled_at": "2026-06-13T19:17:10+00:00",
+              "timezone": "Europe/London",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+              "reason": null,
+              "at": "2026-05-30T19:17:12.455282+00:00",
+              "actor_role": "contractor",
+              "actor_id": "contractor_a1f2e3b4-c5d6-4789-a012-3456789abcde"
+            }
+          ],
+          "pricing_mode": "MAINTENANCE_PREQUOTE",
+          "price_status": "APPROVED",
+          "quoted_price": 399.0,
+          "price_currency": "GBP",
+          "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+          "quote_submitted_at": "2026-05-30T19:16:53.054000",
+          "quote_approved_at": "2026-05-30T19:17:02.766000",
+          "quote_rejected_at": null,
+          "quote_rejection_reason": null,
+          "quote_revision_requested_at": null,
+          "quote_revision_reason_code": null,
+          "quote_revision_message": null,
+          "quote_revision_target_budget": null,
+          "quote_revision_target_date": null,
+          "quote_negotiation_history": [
+            {
+              "version": 1,
+              "event": "submitted",
+              "amount": 425.0,
+              "currency": "GBP",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+              "at": "2026-05-30T19:16:33.979382+00:00",
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "actor_role": "contractor"
+            },
+            {
+              "version": 1,
+              "event": "revision_requested",
+              "amount": 425.0,
+              "currency": "GBP",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+              "at": "2026-05-30T19:16:44.473011+00:00",
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "actor_role": "client",
+              "reason_code": "price_too_high",
+              "message": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+              "target_budget": 400.0,
+              "target_date": null
+            },
+            {
+              "version": 2,
+              "event": "resubmitted",
+              "amount": 399.0,
+              "currency": "GBP",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+              "at": "2026-05-30T19:16:53.054961+00:00",
+              "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+              "actor_role": "contractor"
+            },
+            {
+              "version": 2,
+              "event": "approved",
+              "amount": 399.0,
+              "currency": "GBP",
+              "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+              "at": "2026-05-30T19:17:02.766029+00:00",
+              "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+              "actor_role": "client"
+            }
+          ],
+          "inspection_required": false,
+          "inspection_completed_at": null,
+          "assigned_at": "2026-05-30T19:16:20.896840+00:00",
+          "quote_requested_at": "2026-05-30T19:16:21.517299+00:00",
+          "accepted_at": "2026-05-30T19:16:25.873882+00:00",
+          "work_authorised_since": "2026-05-30T19:17:02.886094+00:00",
+          "job_status": "SCHEDULED",
+          "next_actions": [
+            {
+              "id": "open_job_detail",
+              "label": "Open job",
+              "hint": "Waiting for the client to confirm your proposed visit time.",
+              "section": "navigation"
+            }
+          ],
+          "completion_proof_required": false,
+          "completion_proof_satisfied": false,
+          "timeline_events": [
+            {
+              "label": "Created",
+              "at": "2026-05-30T19:16:17.811623+00:00"
+            },
+            {
+              "label": "Updated",
+              "at": "2026-05-30T19:17:12.455272+00:00"
+            },
+            {
+              "label": "Contractor assigned",
+              "at": "2026-05-30T19:16:20.896840+00:00"
+            },
+            {
+              "label": "Contractor accepted",
+              "at": "2026-05-30T19:16:25.873882+00:00"
+            },
+            {
+              "label": "Visit time recorded",
+              "at": "2026-06-13T19:17:10+00:00"
+            },
+            {
+              "label": "Schedule last updated",
+              "at": "2026-05-30T19:17:12.455272+00:00"
+            }
+          ],
+          "linked_invoice": null,
+          "pricing": {
+            "pricing_workflow": true,
+            "pricing_mode": "MAINTENANCE_PREQUOTE",
+            "price_status": "APPROVED",
+            "negotiation_status_label": "Work authorised",
+            "quoted_price": 399.0,
+            "price_currency": "GBP",
+            "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+            "quote_submitted_at": "2026-05-30T19:16:53.054000",
+            "quote_approved_at": "2026-05-30T19:17:02.766000",
+            "quote_rejected_at": null,
+            "quote_rejection_reason": null,
+            "quote_revision_requested_at": null,
+            "quote_revision_reason_code": null,
+            "quote_revision_message": null,
+            "quote_revision_target_budget": null,
+            "quote_revision_target_date": null,
+            "quote_negotiation_history": [
+              {
+                "version": 1,
+                "event": "submitted",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:33.979382+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              },
+              {
+                "version": 1,
+                "event": "revision_requested",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:44.473011+00:00",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+                "actor_role": "client",
+                "reason_code": "price_too_high",
+                "message": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "target_budget": 400.0,
+                "target_date": null
+              },
+              {
+                "version": 2,
+                "event": "resubmitted",
+                "amount": 399.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+                "at": "2026-05-30T19:16:53.054961+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              },
+              {
+                "version": 2,
+                "event": "approved",
+                "amount": 399.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+                "at": "2026-05-30T19:17:02.766029+00:00",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+                "actor_role": "client"
+              }
+            ],
+            "inspection_required": false,
+            "inspection_completed_at": null
+          },
+          "scheduling": {
+            "workflow_mode": "QUOTE_FIRST",
+            "workflow_mode_label": "Quote first",
+            "visit_status_label": "Visit proposed",
+            "scheduled_at": "2026-06-13T19:17:10+00:00",
+            "scheduled_timezone": "Europe/London",
+            "schedule_status": "proposed",
+            "scheduled_by": "contractor",
+            "schedule_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+            "schedule_reschedule_reason": null,
+            "last_schedule_update_at": "2026-05-30T19:17:12.455272+00:00",
+            "visit_negotiation_history": [
+              {
+                "event": "proposed",
+                "scheduled_at": "2026-06-13T19:17:10+00:00",
+                "timezone": "Europe/London",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "reason": null,
+                "at": "2026-05-30T19:17:12.455282+00:00",
+                "actor_role": "contractor",
+                "actor_id": "contractor_a1f2e3b4-c5d6-4789-a012-3456789abcde"
+              }
+            ]
+          }
+        }
+      },
+      "visit_confirm": {
+        "method": "POST",
+        "path": "/jobs/dc319a32-ad3c-4b66-ba2e-a58121f6ded1/confirm-booking",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "job_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "work_order_id": "dc319a32-ad3c-4b66-ba2e-a58121f6ded1",
+          "work_order_kind": "MAINTENANCE",
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "description": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z nudge closeout",
+          "status": "SCHEDULED",
+          "job_status": "SCHEDULED",
+          "operational_exception": null,
+          "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+          "scheduled_at": "2026-06-13T19:17:10+00:00",
+          "scheduled_timezone": "Europe/London",
+          "schedule_status": "confirmed",
+          "scheduled_by": "contractor",
+          "evidence_keys": [],
+          "severity": "medium",
+          "category": "general",
+          "issue_id": "80b00c53-5dd5-40d6-a475-1e6686b0ff75",
+          "asset_id": null,
+          "sla_respond_by": "2026-05-31T19:16:17.811548+00:00",
+          "sla_complete_by": "2026-06-02T19:16:17.811568+00:00",
+          "created_at": "2026-05-30T19:16:17.811623+00:00",
+          "updated_at": "2026-05-30T19:17:21.852888+00:00",
+          "completed_at": null,
+          "jurisdiction": "Wales",
+          "next_actions": [
+            {
+              "id": "start",
+              "label": "Mark in progress",
+              "hint": "Use when the contractor is on site or work has started.",
+              "section": "execution"
+            },
+            {
+              "id": "mark_no_access",
+              "label": "Mark no access",
+              "hint": "Put the job on hold if the visit could not go ahead.",
+              "section": "scheduling"
+            },
+            {
+              "id": "request_visit_reschedule",
+              "label": "Request another date",
+              "hint": "Ask the contractor to propose a different visit time.",
+              "section": "scheduling"
+            },
+            {
+              "id": "propose_schedule",
+              "label": "Reschedule visit",
+              "hint": "Propose a new visit window on the job (booking sub-flow).",
+              "section": "scheduling"
+            },
+            {
+              "id": "cancel_booking",
+              "label": "Cancel scheduled visit",
+              "hint": "Clears the current visit; assign and request booking again when ready.",
+              "section": "scheduling"
+            }
+          ],
+          "timeline_events": [
+            {
+              "label": "Created",
+              "at": "2026-05-30T19:16:17.811623+00:00"
+            },
+            {
+              "label": "Updated",
+              "at": "2026-05-30T19:17:21.852888+00:00"
+            },
+            {
+              "label": "Contractor assigned",
+              "at": "2026-05-30T19:16:20.896840+00:00"
+            },
+            {
+              "label": "Contractor accepted",
+              "at": "2026-05-30T19:16:25.873882+00:00"
+            },
+            {
+              "label": "Visit time recorded",
+              "at": "2026-06-13T19:17:10+00:00"
+            },
+            {
+              "label": "Schedule last updated",
+              "at": "2026-05-30T19:17:21.494901+00:00"
+            }
+          ],
+          "decision_log": [],
+          "resolution_outcome": null,
+          "sla_policy": null,
+          "pricing": {
+            "pricing_workflow": true,
+            "pricing_mode": "MAINTENANCE_PREQUOTE",
+            "price_status": "APPROVED",
+            "negotiation_status_label": "Work authorised",
+            "quoted_price": 399.0,
+            "price_currency": "GBP",
+            "quote_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+            "quote_submitted_at": "2026-05-30T19:16:53.054000",
+            "quote_approved_at": "2026-05-30T19:17:02.766000",
+            "quote_rejected_at": null,
+            "quote_rejection_reason": null,
+            "quote_revision_requested_at": null,
+            "quote_revision_reason_code": null,
+            "quote_revision_message": null,
+            "quote_revision_target_budget": null,
+            "quote_revision_target_date": null,
+            "quote_negotiation_history": [
+              {
+                "version": 1,
+                "event": "submitted",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:33.979382+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              },
+              {
+                "version": 1,
+                "event": "revision_requested",
+                "amount": 425.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "at": "2026-05-30T19:16:44.473011+00:00",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+                "actor_role": "client",
+                "reason_code": "price_too_high",
+                "message": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "target_budget": 400.0,
+                "target_date": null
+              },
+              {
+                "version": 2,
+                "event": "resubmitted",
+                "amount": 399.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+                "at": "2026-05-30T19:16:53.054961+00:00",
+                "actor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+                "actor_role": "contractor"
+              },
+              {
+                "version": 2,
+                "event": "approved",
+                "amount": 399.0,
+                "currency": "GBP",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z rev",
+                "at": "2026-05-30T19:17:02.766029+00:00",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+                "actor_role": "client"
+              }
+            ],
+            "inspection_required": false,
+            "inspection_completed_at": null
+          },
+          "scheduling": {
+            "workflow_mode": "QUOTE_FIRST",
+            "workflow_mode_label": "Quote first",
+            "visit_status_label": "Visit confirmed",
+            "scheduled_at": "2026-06-13T19:17:10+00:00",
+            "scheduled_timezone": "Europe/London",
+            "schedule_status": "confirmed",
+            "scheduled_by": "contractor",
+            "schedule_notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+            "schedule_reschedule_reason": null,
+            "last_schedule_update_at": "2026-05-30T19:17:21.494901+00:00",
+            "visit_negotiation_history": [
+              {
+                "event": "proposed",
+                "scheduled_at": "2026-06-13T19:17:10+00:00",
+                "timezone": "Europe/London",
+                "notes": "PRELAUNCH-WFN-CLOSEOUT-20260530T191445Z",
+                "reason": null,
+                "at": "2026-05-30T19:17:12.455282+00:00",
+                "actor_role": "contractor",
+                "actor_id": "contractor_a1f2e3b4-c5d6-4789-a012-3456789abcde"
+              },
+              {
+                "event": "confirmed",
+                "scheduled_at": "2026-06-13T19:17:10+00:00",
+                "timezone": "Europe/London",
+                "notes": null,
+                "reason": null,
+                "at": "2026-05-30T19:17:21.494923+00:00",
+                "actor_role": "client",
+                "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e"
+              }
+            ]
+          },
+          "workflow_mode": "QUOTE_FIRST"
+        }
+      },
+      "frontend_not_exposed": true
+    },
+    "reconciliation": {
+      "captured_at": "2026-05-30T19:17:30.212855+00:00",
+      "cases": [
+        {
+          "case": "no_contractor_quote_reminder_after_quote_submitted",
+          "ok": true,
+          "suppress_samples": []
+        },
+        {
+          "case": "no_visit_reminder_after_confirmed",
+          "ok": true,
+          "visit_sent": []
+        }
+      ],
+      "job_after_quote_submitted": {
+        "method": "POST",
+        "path": "/admin/jobs/run",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "success": true,
+          "job": "workflow_nudge_processing",
+          "message": "Job workflow_nudge_processing completed",
+          "result": {
+            "run_id": "ec63711f-d5c4-4e15-8569-38fb821fca47",
+            "started_at": "2026-05-30T19:17:47.888422+00:00",
+            "finished_at": "2026-05-30T19:17:54.125750+00:00",
+            "nudges_sent": 2,
+            "nudges_suppressed": 8,
+            "stale_prevented": 5,
+            "escalation_triggered": 2,
+            "entities_scanned": 5
+          }
+        }
+      },
+      "job_after_visit_confirmed": {
+        "method": "POST",
+        "path": "/admin/jobs/run",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "success": true,
+          "job": "workflow_nudge_processing",
+          "message": "Job workflow_nudge_processing completed",
+          "result": {
+            "run_id": "1291edd2-7abf-46cd-a017-3d819f47fc56",
+            "started_at": "2026-05-30T19:18:45.759389+00:00",
+            "finished_at": "2026-05-30T19:18:48.017277+00:00",
+            "nudges_sent": 0,
+            "nudges_suppressed": 10,
+            "stale_prevented": 5,
+            "escalation_triggered": 0,
+            "entities_scanned": 5
+          }
+        }
+      },
+      "suppress_reasons_sample": [
+        "stall_mismatch",
+        "below_age_threshold"
+      ]
+    },
+    "nudge_orchestration": {
+      "captured_at": "2026-05-30T19:18:50.784730+00:00",
+      "run1": {
+        "method": "POST",
+        "path": "/admin/jobs/run",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "success": true,
+          "job": "workflow_nudge_processing",
+          "message": "Job workflow_nudge_processing completed",
+          "result": {
+            "run_id": "a3498a7c-209f-43fc-b091-22c4f680aaa4",
+            "started_at": "2026-05-30T19:18:53.395304+00:00",
+            "finished_at": "2026-05-30T19:18:55.660641+00:00",
+            "nudges_sent": 0,
+            "nudges_suppressed": 10,
+            "stale_prevented": 5,
+            "escalation_triggered": 0,
+            "entities_scanned": 5
+          }
+        }
+      },
+      "run2": {
+        "method": "POST",
+        "path": "/admin/jobs/run",
+        "status": 200,
+        "ok": true,
+        "body": {
+          "success": true,
+          "job": "workflow_nudge_processing",
+          "message": "Job workflow_nudge_processing completed",
+          "result": {
+            "run_id": "635ffc8e-5cb6-493e-909d-f020ffe4b25f",
+            "started_at": "2026-05-30T19:19:03.658428+00:00",
+            "finished_at": "2026-05-30T19:19:05.941942+00:00",
+            "nudges_sent": 0,
+            "nudges_suppressed": 10,
+            "stale_prevented": 5,
+            "escalation_triggered": 0,
+            "entities_scanned": 5
+          }
+        }
+      },
+      "sent_count_recent": 2,
+      "suppressed_count_recent": 24,
+      "sent_samples": [
+        {
+          "nudge_key": "requirement_overdue_escalation",
+          "tier": "T24",
+          "resource_id": "2309ec92-ab3d-4e36-91df-1fef2c80ea4e",
+          "automation_type": "auto_prioritise"
+        },
+        {
+          "nudge_key": "requirement_overdue_escalation",
+          "tier": "T24",
+          "resource_id": "fec13efe-067e-47ad-846e-4fa119328c6c",
+          "automation_type": "auto_prioritise"
+        }
+      ],
+      "workflow_message_logs": [],
+      "idempotency_note": "Second sweep should not duplicate same-day sends for same entity+tier (message_logs idempotency_key)"
+    },
+    "today_cc": {
+      "captured_at": "2026-05-30T19:20:06.083260+00:00",
+      "today_ok": true,
+      "has_stall_disclosure": true,
+      "has_unresolved_dependencies": true,
+      "stalled_count": 50,
+      "urgent_boosted_tasks": 10,
+      "boost_samples": [
+        {
+          "title": "Job \u2014 needs attention",
+          "urgency": "overdue",
+          "banner": "Waiting on contractor quote",
+          "waiting_on": "contractor"
+        },
+        {
+          "title": "Job \u2014 needs attention",
+          "urgency": "overdue",
+          "banner": "Waiting on contractor quote",
+          "waiting_on": "contractor"
+        },
+        {
+          "title": "Job \u2014 needs attention",
+          "urgency": "overdue",
+          "banner": "Waiting on contractor quote",
+          "waiting_on": "contractor"
+        },
+        {
+          "title": "Job \u2014 needs attention",
+          "urgency": "overdue",
+          "banner": "Waiting on contractor quote",
+          "waiting_on": "contractor"
+        },
+        {
+          "title": "Job \u2014 needs attention",
+          "urgency": "overdue",
+          "banner": "Waiting on contractor quote",
+          "waiting_on": "contractor"
+        }
+      ],
+      "command_centre_ok": true,
+      "cc_stall_actions": [],
+      "false_up_to_date_risk": false
+    },
+    "notifications": {
+      "captured_at": "2026-05-30T19:20:08.514347+00:00",
+      "message_log_samples": [],
+      "orchestrator_healthy": true
+    },
+    "continuation_cta": {
+      "captured_at": "2026-05-30T19:20:14.670997+00:00",
+      "cc_action_labels": [
+        "Continue maintenance workflow",
+        "Continue maintenance workflow",
+        "Continue maintenance workflow",
+        "Continue maintenance workflow",
+        "Continue maintenance workflow",
+        "Continue maintenance workflow",
+        "Continue maintenance workflow",
+        "Continue maintenance workflow"
+      ],
+      "has_specific_continuation_label": false,
+      "contractor_next_action_labels": [
+        "Start job",
+        "Mark no access",
+        "Reschedule",
+        "Cancel visit",
+        "Start job",
+        "Mark no access",
+        "Reschedule",
+        "Cancel visit",
+        "Submit quote",
+        "Start job",
+        "Mark no access",
+        "Reschedule"
+      ],
+      "generic_open_job_only": false
+    },
+    "guardrails": {
+      "captured_at": "2026-05-30T19:20:16.520036+00:00",
+      "checks": [
+        {
+          "name": "quote_not_auto_approved",
+          "ok": true
+        },
+        {
+          "name": "visit_not_auto_confirmed_without_action",
+          "ok": true
+        },
+        {
+          "name": "contractor_not_auto_assigned",
+          "ok": true
+        }
+      ],
+      "no_authority_mutation_observed": true
+    },
+    "observability": {
+      "captured_at": "2026-05-30T19:20:22.433362+00:00",
+      "nudges_sent_audit_rows": 2,
+      "nudges_suppressed_audit_rows": 20,
+      "suppress_reasons": [
+        "stall_mismatch",
+        "below_age_threshold"
+      ],
+      "job_runs": [],
+      "metrics_fields_expected": [
+        "nudges_sent",
+        "nudges_suppressed",
+        "stale_prevented",
+        "escalation_triggered"
+      ]
+    },
+    "browser_runtime": {
+      "captured_at": "2026-05-30T19:20:22.433362+00:00",
+      "scenarios": [
+        {
+          "name": "landlord_today_stalled_quote",
+          "ok": true,
+          "false_up_to_date": false,
+          "has_waiting_copy": true
+        },
+        {
+          "name": "landlord_command_centre_stall",
+          "ok": true,
+          "has_waiting_on_copy": false
+        },
+        {
+          "name": "contractor_pending_quote_reminder_state",
+          "ok": true,
+          "false_up_to_date": false
+        }
+      ],
+      "all_scenarios_ok": true,
+      "no_false_up_to_date": true
+    }
+  },
+  "classification": {
+    "classification": "VERIFIED_OPERATIONALLY",
+    "passed": [
+      "deploy_continuity",
+      "timer_transitions_audited",
+      "reconciliation_suppresses_stale",
+      "nudge_job_runs",
+      "nudge_orchestration_activity",
+      "today_stall_disclosure",
+      "today_urgency_boost",
+      "command_centre_live",
+      "no_false_up_to_date_api",
+      "notification_orchestrator",
+      "no_bad_notification_terminology",
+      "continuation_cta_specific",
+      "guardrails_no_authority_mutation",
+      "browser_scenarios",
+      "browser_no_false_up_to_date"
+    ],
+    "failed": [],
+    "tags": [],
+    "captured_at": "2026-05-30T19:21:57.160877+00:00"
+  }
+}

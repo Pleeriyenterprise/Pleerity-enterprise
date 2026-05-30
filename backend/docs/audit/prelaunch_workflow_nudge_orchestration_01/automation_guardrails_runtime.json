@@ -1,24 +1,19 @@
 {
-  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
-  "part": 8,
-  "classification": "VERIFIED_OPERATIONALLY",
-  "captured_at": "2026-05-30T18:40:00+00:00",
-  "module": "services/workflow_nudge_guardrails.py",
-  "automation_may": ["remind", "prioritise", "escalate", "recommend", "surface_continuation"],
-  "automation_may_not": [
-    "approve",
-    "assign",
-    "verify",
-    "certify",
-    "mark_compliant",
-    "confirm_visit",
-    "submit_quote",
-    "close_work_orders"
+  "runtime_verified_at": "2026-05-30T19:21:57.160877+00:00",
+  "captured_at": "2026-05-30T19:20:16.520036+00:00",
+  "checks": [
+    {
+      "name": "quote_not_auto_approved",
+      "ok": true
+    },
+    {
+      "name": "visit_not_auto_confirmed_without_action",
+      "ok": true
+    },
+    {
+      "name": "contractor_not_auto_assigned",
+      "ok": true
+    }
   ],
-  "enforcement": {
-    "assert_orchestration_allowed": "orchestration service entry",
-    "assert_no_authority_mutation": "payload guard",
-    "tests": "tests/test_workflow_nudge_orchestration.py"
-  },
-  "explicit_empty_auto_execute": "no authority-changing code paths in nudge sweep"
+  "no_authority_mutation_observed": true
 }

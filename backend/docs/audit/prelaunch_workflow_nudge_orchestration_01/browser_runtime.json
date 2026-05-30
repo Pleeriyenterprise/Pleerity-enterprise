@@ -1,30 +1,23 @@
 {
-  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
-  "part": 10,
-  "classification": "PARTIAL",
-  "captured_at": "2026-05-30T18:37:32+00:00",
-  "environment": "https://pleerity-enterprise.onrender.com/api",
-  "harness": "backend/tmp_prelaunch_workflow_nudge_orchestration_01.py",
-  "scenarios": {
-    "quote_abandonment": "pending post-deploy + T24 synthetic timer",
-    "quote_revision_abandonment": "pending post-deploy",
-    "visit_confirmation_delay": "pending post-deploy",
-    "contractor_activation_abandonment": "timer hook wired; pending live sweep",
-    "tenant_activation_abandonment": "timer hook wired; pending live sweep",
-    "evidence_review_delay": "pending evidence upload hook in documents route",
-    "overdue_requirement_escalation": "sweep scans requirements OVERDUE/EXPIRED"
-  },
-  "local_proof": {
-    "unit_tests_passed": 8,
-    "modules_present": true,
-    "today_api_ok": true,
-    "stall_disclosure_on_staging": false,
-    "reason": "staging not yet deployed with Phase 1 nudge code"
-  },
-  "post_deploy_checklist": [
-    "Re-run harness after Render deploy",
-    "Trigger workflow_nudge_processing via admin job",
-    "Browser: verify Today does not show false up-to-date with stalled WO",
-    "Browser: verify escalation banner + CTA on Command Centre"
-  ]
+  "captured_at": "2026-05-30T19:20:22.433362+00:00",
+  "scenarios": [
+    {
+      "name": "landlord_today_stalled_quote",
+      "ok": true,
+      "false_up_to_date": false,
+      "has_waiting_copy": true
+    },
+    {
+      "name": "landlord_command_centre_stall",
+      "ok": true,
+      "has_waiting_on_copy": false
+    },
+    {
+      "name": "contractor_pending_quote_reminder_state",
+      "ok": true,
+      "false_up_to_date": false
+    }
+  ],
+  "all_scenarios_ok": true,
+  "no_false_up_to_date": true
 }

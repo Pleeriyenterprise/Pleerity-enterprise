@@ -1,24 +1,44 @@
 {
-  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
-  "part": 4,
-  "classification": "PARTIAL",
-  "captured_at": "2026-05-30T18:40:00+00:00",
-  "service": "services/workflow_stall_priority_service.py",
-  "today_integration": {
-    "route": "GET /api/today/items",
-    "enrichment": "apply_workflow_stall_escalation_to_today_payload",
-    "urgency_boost": "derive_today_urgency reads metadata.workflow_stall_escalation_tier (T24→due_soon, T72→overdue)",
-    "disclosure": "workflow_stall_disclosure.has_unresolved_dependencies"
-  },
-  "command_centre_integration": {
-    "route": "GET /api/client/command-center?projection=primary",
-    "merge": "fetch_workflow_stall_priority_actions + merge_workflow_stall_with_urgent",
-    "action_type": "workflow_stall_nudge"
-  },
-  "continuation_banners": [
-    "Waiting on contractor quote",
-    "Waiting on landlord approval",
-    "Visit proposal awaiting confirmation"
+  "runtime_verified_at": "2026-05-30T19:21:57.160877+00:00",
+  "captured_at": "2026-05-30T19:20:06.083260+00:00",
+  "today_ok": true,
+  "has_stall_disclosure": true,
+  "has_unresolved_dependencies": true,
+  "stalled_count": 50,
+  "urgent_boosted_tasks": 10,
+  "boost_samples": [
+    {
+      "title": "Job \u2014 needs attention",
+      "urgency": "overdue",
+      "banner": "Waiting on contractor quote",
+      "waiting_on": "contractor"
+    },
+    {
+      "title": "Job \u2014 needs attention",
+      "urgency": "overdue",
+      "banner": "Waiting on contractor quote",
+      "waiting_on": "contractor"
+    },
+    {
+      "title": "Job \u2014 needs attention",
+      "urgency": "overdue",
+      "banner": "Waiting on contractor quote",
+      "waiting_on": "contractor"
+    },
+    {
+      "title": "Job \u2014 needs attention",
+      "urgency": "overdue",
+      "banner": "Waiting on contractor quote",
+      "waiting_on": "contractor"
+    },
+    {
+      "title": "Job \u2014 needs attention",
+      "urgency": "overdue",
+      "banner": "Waiting on contractor quote",
+      "waiting_on": "contractor"
+    }
   ],
-  "staging_proof": "pending deploy — local unit tests pass; post-deploy browser verification required"
+  "command_centre_ok": true,
+  "cc_stall_actions": [],
+  "false_up_to_date_risk": false
 }

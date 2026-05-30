@@ -1,43 +1,64 @@
 {
-  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
-  "part": 3,
-  "classification": "VERIFIED_OPERATIONALLY",
-  "captured_at": "2026-05-30T18:40:00+00:00",
-  "service": "services/workflow_nudge_orchestration_service.py",
-  "job_id": "workflow_nudge_processing",
-  "schedule": "hourly :25 UTC",
-  "allowed_automation_types": ["auto_notify", "auto_prioritise", "recommend_only"],
-  "forbidden": [
-    "auto_assign",
-    "auto_quote_approval",
-    "auto_visit_confirmation",
-    "auto_evidence_verification",
-    "auto_compliance_status_change",
-    "auto_work_order_creation"
-  ],
-  "ladder": {
-    "quote": {
-      "T24h": ["contractor reminder (auto_notify)"],
-      "T72h": ["landlord visibility escalation (auto_prioritise + notify)", "Today priority boost via stall merge"]
-    },
-    "visit": {
-      "T24h_proposed_unanswered": ["landlord or contractor reminder by waiting_on"],
-      "T72h": ["both-party escalation (auto_prioritise + notify)"]
-    },
-    "activation": {
-      "T24h": ["contractor/tenant reminder"],
-      "T72h": ["landlord visibility escalation"]
-    },
-    "evidence_review": {
-      "T72h": ["reviewer/admin reminder"]
-    },
-    "requirement_overdue": {
-      "T24h": ["Today/CC escalation (auto_prioritise + notify)"]
+  "runtime_verified_at": "2026-05-30T19:21:57.160877+00:00",
+  "captured_at": "2026-05-30T19:18:50.784730+00:00",
+  "run1": {
+    "method": "POST",
+    "path": "/admin/jobs/run",
+    "status": 200,
+    "ok": true,
+    "body": {
+      "success": true,
+      "job": "workflow_nudge_processing",
+      "message": "Job workflow_nudge_processing completed",
+      "result": {
+        "run_id": "a3498a7c-209f-43fc-b091-22c4f680aaa4",
+        "started_at": "2026-05-30T19:18:53.395304+00:00",
+        "finished_at": "2026-05-30T19:18:55.660641+00:00",
+        "nudges_sent": 0,
+        "nudges_suppressed": 10,
+        "stale_prevented": 5,
+        "escalation_triggered": 0,
+        "entities_scanned": 5
+      }
     }
   },
-  "anti_spam": {
-    "same_day_idempotency": true,
-    "tier_once_per_entity": true,
-    "reconciliation_before_send": true
-  }
+  "run2": {
+    "method": "POST",
+    "path": "/admin/jobs/run",
+    "status": 200,
+    "ok": true,
+    "body": {
+      "success": true,
+      "job": "workflow_nudge_processing",
+      "message": "Job workflow_nudge_processing completed",
+      "result": {
+        "run_id": "635ffc8e-5cb6-493e-909d-f020ffe4b25f",
+        "started_at": "2026-05-30T19:19:03.658428+00:00",
+        "finished_at": "2026-05-30T19:19:05.941942+00:00",
+        "nudges_sent": 0,
+        "nudges_suppressed": 10,
+        "stale_prevented": 5,
+        "escalation_triggered": 0,
+        "entities_scanned": 5
+      }
+    }
+  },
+  "sent_count_recent": 2,
+  "suppressed_count_recent": 24,
+  "sent_samples": [
+    {
+      "nudge_key": "requirement_overdue_escalation",
+      "tier": "T24",
+      "resource_id": "2309ec92-ab3d-4e36-91df-1fef2c80ea4e",
+      "automation_type": "auto_prioritise"
+    },
+    {
+      "nudge_key": "requirement_overdue_escalation",
+      "tier": "T24",
+      "resource_id": "fec13efe-067e-47ad-846e-4fa119328c6c",
+      "automation_type": "auto_prioritise"
+    }
+  ],
+  "workflow_message_logs": [],
+  "idempotency_note": "Second sweep should not duplicate same-day sends for same entity+tier (message_logs idempotency_key)"
 }

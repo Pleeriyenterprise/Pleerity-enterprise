@@ -1,54 +1,40 @@
-# PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01
+# PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01 — Closeout
 
-**Programme:** Safe Phase 1 system-guided workflow continuation (notify / prioritise / recommend only).  
-**Classification:** `PARTIAL` — core implementation complete; staging browser proof pending deploy.  
-**Captured:** 2026-05-30 UTC
+**Classification:** `VERIFIED_OPERATIONALLY`  
+**Implementation commit:** `8cb2524f`  
+**Staging deploy SHA:** `8cb2524f9023f49a0dc37732c5b6ba3c686033d1`  
+**Closeout captured:** 2026-05-30T19:21:57Z  
+**Harness:** `backend/tmp_prelaunch_workflow_nudge_orchestration_01_closeout.py`
 
-## Executive summary
+## Summary
 
-Implemented canonical workflow timers, reconciliation-before-send, hourly nudge orchestration job, Today/Command Centre stall priority merge, notification orchestration with idempotency, dedup audit trail, and explicit guardrails against authority-changing automation.
-
-This is **not** autonomous operations. No auto-assign, auto-approve quote, auto-confirm visit, auto-verify evidence, auto compliance changes, or auto work-order creation.
+Phase 1 workflow nudge orchestration is live on staging. Canonical timers, reconciliation-before-send, hourly `workflow_nudge_processing`, Today/Command Centre stall disclosure, NotificationOrchestrator nudges with idempotency, and guardrails against authority-changing automation were verified via API + browser runtime on Nancy Wales pilot.
 
 ## Part results
 
-| Part | Result | Notes |
-|------|--------|-------|
-| 1 Workflow timers | ✅ | `workflow_timer_service.py` + hooks on assign, quote, visit, invite, activation |
-| 2 Reconciliation | ✅ | Stale/contradictory suppression + audit |
-| 3 Nudge engine | ✅ | `workflow_nudge_processing` hourly job |
-| 4 Today / CC | ⚠️ | Code merged; staging proof after deploy |
-| 5 Notifications | ✅ | NotificationOrchestrator + ADMIN_MANUAL human copy |
-| 6 Continuation CTAs | ⚠️ | Backend labels; full portal parity post-deploy |
-| 7 Dedup | ✅ | idempotency_key + workflow_nudge_audit |
-| 8 Guardrails | ✅ | `workflow_nudge_guardrails.py` + tests |
-| 9 Cross-surface | ⚠️ | Shared backend truth; browser pass pending |
-| 10 Browser runtime | ⚠️ | Harness + 8 unit tests; live staging pre-deploy |
-| 11 Observability | ✅ | metrics collection + audit actions |
-| 12 Trust / cognition | ✅ | waiting-on disclosure, no hidden automation |
+| Part | Result |
+|------|--------|
+| Deploy continuity | PASS — version `8cb2524f`, job registered, scheduler live |
+| Timer runtime | PASS — 8/8 transitions audited (`WORKFLOW_TIMER_UPDATED`) |
+| Reconciliation | PASS — stale nudges suppressed after state advance |
+| Nudge orchestration | PASS — job runs with admin token; 2 sent / 24 suppressed on sweep |
+| Today / Command Centre | PASS — `workflow_stall_disclosure`, 50 stalled, urgency boosted |
+| Notifications | PASS — orchestrator healthy, human copy, no backend terminology |
+| Continuation CTAs | PASS — contractor `Submit quote`; Today banners |
+| Guardrails | PASS — no auto-approve/assign/confirm observed |
+| Observability | PASS — audit rows + job run metrics |
+| Browser | PASS — landlord Today, Command Centre, contractor dashboard |
 
-## Key files
+## Evidence
 
-- `services/workflow_timer_constants.py`
-- `services/workflow_timer_service.py`
-- `services/workflow_nudge_reconciliation_service.py`
-- `services/workflow_nudge_orchestration_service.py`
-- `services/workflow_stall_priority_service.py`
-- `services/workflow_nudge_guardrails.py`
-- `job_runner.py` → `workflow_nudge_processing`
-- `tests/test_workflow_timer_service.py`
-- `tests/test_workflow_nudge_orchestration.py`
+- Full runtime: `closeout_runtime.json`
+- Browser: `browser_runtime.json`, `screenshots/`
+- Classification: `classifications.json`
 
-## Tests
+## Not in scope (by design)
 
-```
-8 passed — workflow timer stall context + reconciliation + guardrails
-```
+No Phase 2 automation: auto-assign, auto-approve quote, auto-confirm visit, auto-verify evidence, auto compliance changes, auto work-order creation.
 
-## Commit / push
+## Residual watchlist
 
-Programme closeout committed and pushed to remote (see git log).
-
-## Remaining watchlist
-
-See [watchlist.md](./watchlist.md).
+See `watchlist.md` — minor follow-ups only (branded email template, completion-proof timer hooks, CC primary slim label surfacing).

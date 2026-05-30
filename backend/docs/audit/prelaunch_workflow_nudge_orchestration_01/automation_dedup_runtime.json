@@ -1,18 +1,127 @@
 {
-  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
-  "part": 7,
-  "classification": "VERIFIED_OPERATIONALLY",
-  "captured_at": "2026-05-30T18:40:00+00:00",
-  "collections": {
-    "workflow_nudge_audit": "sent/suppressed records per entity+nudge_key+tier",
-    "message_logs": "idempotency_key sparse unique index",
-    "workflow_nudge_metrics": "per sweep run aggregates"
+  "runtime_verified_at": "2026-05-30T19:21:57.160877+00:00",
+  "reconciliation": {
+    "captured_at": "2026-05-30T19:17:30.212855+00:00",
+    "cases": [
+      {
+        "case": "no_contractor_quote_reminder_after_quote_submitted",
+        "ok": true,
+        "suppress_samples": []
+      },
+      {
+        "case": "no_visit_reminder_after_confirmed",
+        "ok": true,
+        "visit_sent": []
+      }
+    ],
+    "job_after_quote_submitted": {
+      "method": "POST",
+      "path": "/admin/jobs/run",
+      "status": 200,
+      "ok": true,
+      "body": {
+        "success": true,
+        "job": "workflow_nudge_processing",
+        "message": "Job workflow_nudge_processing completed",
+        "result": {
+          "run_id": "ec63711f-d5c4-4e15-8569-38fb821fca47",
+          "started_at": "2026-05-30T19:17:47.888422+00:00",
+          "finished_at": "2026-05-30T19:17:54.125750+00:00",
+          "nudges_sent": 2,
+          "nudges_suppressed": 8,
+          "stale_prevented": 5,
+          "escalation_triggered": 2,
+          "entities_scanned": 5
+        }
+      }
+    },
+    "job_after_visit_confirmed": {
+      "method": "POST",
+      "path": "/admin/jobs/run",
+      "status": 200,
+      "ok": true,
+      "body": {
+        "success": true,
+        "job": "workflow_nudge_processing",
+        "message": "Job workflow_nudge_processing completed",
+        "result": {
+          "run_id": "1291edd2-7abf-46cd-a017-3d819f47fc56",
+          "started_at": "2026-05-30T19:18:45.759389+00:00",
+          "finished_at": "2026-05-30T19:18:48.017277+00:00",
+          "nudges_sent": 0,
+          "nudges_suppressed": 10,
+          "stale_prevented": 5,
+          "escalation_triggered": 0,
+          "entities_scanned": 5
+        }
+      }
+    },
+    "suppress_reasons_sample": [
+      "stall_mismatch",
+      "below_age_threshold"
+    ]
   },
-  "mechanisms": [
-    "UTC-day idempotency keys",
-    "tier_already_sent suppression",
-    "reconciliation stall_mismatch → stale_prevented metric",
-    "WORKFLOW_NUDGE_SUPPRESSED audit with reason"
-  ],
-  "cooldown": "one send per tier per entity (audit gate); same-day duplicate blocked via message_logs"
+  "nudge_runs": {
+    "captured_at": "2026-05-30T19:18:50.784730+00:00",
+    "run1": {
+      "method": "POST",
+      "path": "/admin/jobs/run",
+      "status": 200,
+      "ok": true,
+      "body": {
+        "success": true,
+        "job": "workflow_nudge_processing",
+        "message": "Job workflow_nudge_processing completed",
+        "result": {
+          "run_id": "a3498a7c-209f-43fc-b091-22c4f680aaa4",
+          "started_at": "2026-05-30T19:18:53.395304+00:00",
+          "finished_at": "2026-05-30T19:18:55.660641+00:00",
+          "nudges_sent": 0,
+          "nudges_suppressed": 10,
+          "stale_prevented": 5,
+          "escalation_triggered": 0,
+          "entities_scanned": 5
+        }
+      }
+    },
+    "run2": {
+      "method": "POST",
+      "path": "/admin/jobs/run",
+      "status": 200,
+      "ok": true,
+      "body": {
+        "success": true,
+        "job": "workflow_nudge_processing",
+        "message": "Job workflow_nudge_processing completed",
+        "result": {
+          "run_id": "635ffc8e-5cb6-493e-909d-f020ffe4b25f",
+          "started_at": "2026-05-30T19:19:03.658428+00:00",
+          "finished_at": "2026-05-30T19:19:05.941942+00:00",
+          "nudges_sent": 0,
+          "nudges_suppressed": 10,
+          "stale_prevented": 5,
+          "escalation_triggered": 0,
+          "entities_scanned": 5
+        }
+      }
+    },
+    "sent_count_recent": 2,
+    "suppressed_count_recent": 24,
+    "sent_samples": [
+      {
+        "nudge_key": "requirement_overdue_escalation",
+        "tier": "T24",
+        "resource_id": "2309ec92-ab3d-4e36-91df-1fef2c80ea4e",
+        "automation_type": "auto_prioritise"
+      },
+      {
+        "nudge_key": "requirement_overdue_escalation",
+        "tier": "T24",
+        "resource_id": "fec13efe-067e-47ad-846e-4fa119328c6c",
+        "automation_type": "auto_prioritise"
+      }
+    ],
+    "workflow_message_logs": [],
+    "idempotency_note": "Second sweep should not duplicate same-day sends for same entity+tier (message_logs idempotency_key)"
+  }
 }
