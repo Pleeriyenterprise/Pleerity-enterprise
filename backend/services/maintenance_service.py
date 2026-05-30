@@ -1040,20 +1040,26 @@ async def update_work_order(
                         )
                     except Exception as aud_e:
                         logger.warning("Audit assignment email sent failed: %s", aud_e)
-                    try:
-                        from services import contractor_service as _cs_invite
-
-                        await _cs_invite.record_contractor_job_invite_sent(contractor_id, work_order_id)
-                        await _cs_invite.ensure_portal_invite_for_job_assignment(
-                            contractor_id,
-                            actor_id=assigned_by,
-                            work_order_id=work_order_id,
-                            return_job_token=assignment_job_token,
-                        )
-                    except Exception as inv_e:
-                        logger.warning("Post-assignment portal invite failed (non-fatal): %s", inv_e)
             except Exception as e:
                 logger.warning("Failed to send contractor assignment notification: %s", e)
+            if assignment_job_token and contractor_id:
+                try:
+                    from services import contractor_service as _cs_invite
+
+                    await _cs_invite.record_contractor_job_invite_sent(contractor_id, work_order_id)
+                except Exception as rec_e:
+                    logger.warning("Post-assignment job invite record failed (non-fatal): %s", rec_e)
+                try:
+                    from services import contractor_service as _cs_invite
+
+                    await _cs_invite.ensure_portal_invite_for_job_assignment(
+                        contractor_id,
+                        actor_id=assigned_by,
+                        work_order_id=work_order_id,
+                        return_job_token=assignment_job_token,
+                    )
+                except Exception as inv_e:
+                    logger.warning("Post-assignment portal invite failed (non-fatal): %s", inv_e)
         if status == STATUS_COMPLETED and result.get("client_id") and result.get("property_id"):
             try:
                 from services.predictive_maintenance_service import record_maintenance_event

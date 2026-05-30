@@ -85,7 +85,7 @@ export default function JobPage() {
   const jobLinkOpenUsageWidRef = useRef(null);
   const loadErrorToastKeyRef = useRef(null);
 
-  const api = token ? createJobLinkAPI(token) : null;
+  const api = useMemo(() => (token ? createJobLinkAPI(token) : null), [token]);
 
   const loadWorkOrder = useCallback(() => {
     if (!api) return Promise.resolve();

@@ -2,6 +2,8 @@
 Admin API for contractors (Ops & Compliance / Contractor Network).
 List, create, update, delete contractors. Optional filter by client_id.
 """
+import logging
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel
 from typing import Optional, List
@@ -9,6 +11,8 @@ from typing import Optional, List
 from database import database
 from middleware import admin_route_guard, require_owner_or_admin
 from services import contractor_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin/ops", tags=["ops-contractors"], dependencies=[Depends(admin_route_guard)])
 
@@ -397,7 +401,10 @@ async def _issue_contractor_portal_invite(request: Request, contractor_id: str, 
             include_next_steps=False,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("Contractor portal invite failed contractor_id=%s", contractor_id)
+        raise HTTPException(status_code=500, detail=f"Contractor portal invite failed: {e}") from e
     return {
         "ok": True,
         "message": "Invite sent. Contractor can set password via the link.",

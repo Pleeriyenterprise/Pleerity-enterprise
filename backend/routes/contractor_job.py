@@ -300,6 +300,15 @@ async def request_portal_activation(request: Request, token: Optional[str] = Que
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.exception("Job-link portal activation request failed contractor_id=%s", contractor_id)
+        raise HTTPException(
+            status_code=500,
+            detail=structured_error(
+                "PORTAL_INVITE_FAILED",
+                f"Could not send portal activation email: {e}",
+            ),
+        ) from e
     if not payload:
         raise HTTPException(
             status_code=400,

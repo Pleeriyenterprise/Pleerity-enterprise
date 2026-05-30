@@ -462,7 +462,7 @@ def _sanitize_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
     """Return a JSON-safe copy of a contractor document (no raw ObjectId)."""
     out = dict(doc)
     out.pop("_id", None)
-    return _make_json_safe(out)
+    return enrich_contractor_onboarding_view(_make_json_safe(out))
 
 
 def _default_vetting_status(vetted: bool, status: Optional[str]) -> str:
@@ -756,6 +756,8 @@ async def update_contractor(
     portal_invite_expires_at: Optional[str] = None,
     portal_invite_last_token_id: Optional[str] = None,
     portal_invite_accepted_at: Optional[str] = None,
+    job_invite_sent_at: Optional[str] = None,
+    job_invite_last_work_order_id: Optional[str] = None,
     vetting_status: Optional[str] = None,
     coverage_area: Optional[List[str]] = None,
     activated_at: Optional[str] = None,
