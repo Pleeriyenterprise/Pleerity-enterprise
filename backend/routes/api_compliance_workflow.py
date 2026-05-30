@@ -1373,6 +1373,11 @@ async def get_today_items(
             out,
             stalled_work_orders=stalled,
         )
+    except Exception as stall_exc:
+        import logging
+
+        logging.getLogger(__name__).warning("Today workflow stall enrichment failed: %s", stall_exc)
+    try:
         from services.recovery_priority_service import apply_operational_recovery_to_today_payload
 
         out = await apply_operational_recovery_to_today_payload(
@@ -1380,10 +1385,10 @@ async def get_today_items(
             out,
             property_id_filter=prop_filter,
         )
-    except Exception as stall_exc:
+    except Exception as recovery_exc:
         import logging
 
-        logging.getLogger(__name__).warning("Today workflow stall enrichment failed: %s", stall_exc)
+        logging.getLogger(__name__).warning("Today operational recovery enrichment failed: %s", recovery_exc)
     return merge_rent_into_today_payload(out, rent_tasks)
 
 

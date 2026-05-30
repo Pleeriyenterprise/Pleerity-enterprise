@@ -20,7 +20,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "docs/audit/phase2a_operational_recovery_automation_01"
 PROGRAMME = "PHASE-2A-OPERATIONAL-RECOVERY-AUTOMATION-01"
-EXPECTED_SHA_PREFIXES = ("7f5c3f75", "1c391891")
+EXPECTED_SHA_PREFIXES = ("7f5c3f75", "1c391891", "83f3d485")
 API = "https://pleerity-enterprise.onrender.com/api"
 FE = "https://pleerityenterprise.co.uk"
 SLUG = "6fd5ac4c_d35a58ae"
