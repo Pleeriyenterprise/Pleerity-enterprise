@@ -384,16 +384,18 @@ async def detect_workflow_recovery_candidates(
     *,
     property_id_filter: Optional[str] = None,
     limit: int = 50,
+    fast_mode: bool = False,
 ) -> List[Dict[str, Any]]:
     db = database.get_db()
     candidates: List[Dict[str, Any]] = []
     wo_q: Dict[str, Any] = {"client_id": client_id, "status": {"$nin": list(_TERMINAL_WO)}}
     if property_id_filter:
         wo_q["property_id"] = property_id_filter
-    async for wo in db.work_orders.find(wo_q, {"_id": 0}).limit(limit * 4):
+    scan_limit = limit * 2 if fast_mode else limit * 4
+    async for wo in db.work_orders.find(wo_q, {"_id": 0}).limit(scan_limit):
         wid = wo.get("work_order_id")
         stall = work_order_stall_context(wo)
-        nudge_count = await _nudge_count_for_entity("work_order", wid or "")
+        nudge_count = 0 if fast_mode else await _nudge_count_for_entity("work_order", wid or "")
         rtype = classify_recovery_state("work_order", wo, stall=stall, nudge_count=nudge_count)
         if not rtype:
             continue

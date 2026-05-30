@@ -1,0 +1,905 @@
+{
+  "captured_at": "2026-05-30T21:23:42.873396+00:00",
+  "unit_tests": {
+    "exit_code": 0,
+    "stdout": "............                                                             [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1806\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1806: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n12 passed, 4 warnings in 0.15s\n",
+    "ok": true
+  },
+  "deploy": {
+    "captured_at": "2026-05-30T21:23:59.594410+00:00",
+    "checks": [
+      {
+        "name": "api_version_commit",
+        "ok": true,
+        "sha": "bb79d425741bfc459093ef0eebf4908bf98052c8"
+      },
+      {
+        "name": "api_health",
+        "ok": true,
+        "status": 200
+      },
+      {
+        "name": "operational_recovery_in_job_runners",
+        "ok": true
+      },
+      {
+        "name": "scheduler_has_operational_recovery_processing",
+        "ok": true
+      },
+      {
+        "name": "today_recovery_disclosure",
+        "ok": true,
+        "disclosure": {
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "recovery_count": 50,
+          "blocked_count": 0,
+          "waiting_count": 50,
+          "has_recovery_attention": true,
+          "high_risk_count": 5,
+          "captured_at": "2026-05-30T21:24:44.656320+00:00"
+        }
+      },
+      {
+        "name": "today_recovery_risk",
+        "ok": true
+      },
+      {
+        "name": "command_centre_ok",
+        "ok": true,
+        "recovery_action_count": 0
+      }
+    ],
+    "classification": "PASS",
+    "version": {
+      "commit_sha": "bb79d425741bfc459093ef0eebf4908bf98052c8",
+      "environment": "production"
+    },
+    "today_body_keys": [
+      "tasks",
+      "summary",
+      "freshness",
+      "activity_feed",
+      "spend_this_month",
+      "items",
+      "flat_items_included",
+      "list_projection",
+      "bucket_continuation",
+      "workflow_stall_disclosure",
+      "recovery_disclosure",
+      "recovery_risk",
+      "waiting_on_summary",
+      "stalled_reason",
+      "recovery_actions",
+      "rent_attention_count"
+    ]
+  },
+  "detection": {
+    "captured_at": "2026-05-30T21:25:19.757753+00:00",
+    "work_orders_scanned": 129,
+    "candidates_found": 82,
+    "types_found": [
+      "CONTRACTOR_NON_RESPONSE",
+      "WAITING_ON_CONTRACTOR_ACTION",
+      "WAITING_ON_LANDLORD_APPROVAL"
+    ],
+    "coverage_matrix": {
+      "CONTRACTOR_NON_RESPONSE": true,
+      "QUOTE_NEGOTIATION_LOOP": false,
+      "VISIT_RESCHEDULE_LOOP": false,
+      "EVIDENCE_REJECTION_LOOP": false,
+      "TENANT_ACTIVATION_STALL": false,
+      "CONTRACTOR_ACTIVATION_STALL": false,
+      "OVERDUE_REQUIREMENT_STALL": false,
+      "WORK_ORDER_ABANDONMENT_RISK": false,
+      "WAITING_ON_LANDLORD_APPROVAL": true,
+      "WAITING_ON_CONTRACTOR_ACTION": true,
+      "WAITING_ON_EVIDENCE_REVIEW": false,
+      "WORKFLOW_STATE_DRIFT": false,
+      "OPERATIONAL_DEAD_END": false
+    },
+    "live_types_count": 3,
+    "samples": [
+      {
+        "work_order_id": "8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "waiting_on_party": "contractor",
+        "severity": "low",
+        "recovery_confidence": "LOW",
+        "authority_safe": true,
+        "recovery_summary": "This job is waiting on the contractor to take the next step for 2 hours.",
+        "recommended_next_steps": [
+          "Follow up with the contractor on the outstanding step.",
+          "Review whether another contractor should be considered."
+        ],
+        "suggested_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_quote",
+            "label": "Submit quote",
+            "url": "/operations/work-orders/8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_revised_quote",
+            "label": "Submit revised quote",
+            "url": "/operations/work-orders/8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+            "preparatory": true
+          },
+          {
+            "action_id": "propose_visit",
+            "label": "Propose visit",
+            "url": "/operations/work-orders/8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+            "preparatory": true
+          }
+        ]
+      },
+      {
+        "work_order_id": "1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "waiting_on_party": "contractor",
+        "severity": "low",
+        "recovery_confidence": "LOW",
+        "authority_safe": true,
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "recommended_next_steps": [
+          "Follow up with the contractor on the outstanding step.",
+          "Review whether another contractor should be considered."
+        ],
+        "suggested_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_quote",
+            "label": "Submit quote",
+            "url": "/operations/work-orders/1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_revised_quote",
+            "label": "Submit revised quote",
+            "url": "/operations/work-orders/1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+            "preparatory": true
+          },
+          {
+            "action_id": "propose_visit",
+            "label": "Propose visit",
+            "url": "/operations/work-orders/1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+            "preparatory": true
+          }
+        ]
+      },
+      {
+        "work_order_id": "90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "waiting_on_party": "contractor",
+        "severity": "low",
+        "recovery_confidence": "LOW",
+        "authority_safe": true,
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "recommended_next_steps": [
+          "Follow up with the contractor on the outstanding step.",
+          "Review whether another contractor should be considered."
+        ],
+        "suggested_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_quote",
+            "label": "Submit quote",
+            "url": "/operations/work-orders/90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_revised_quote",
+            "label": "Submit revised quote",
+            "url": "/operations/work-orders/90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+            "preparatory": true
+          },
+          {
+            "action_id": "propose_visit",
+            "label": "Propose visit",
+            "url": "/operations/work-orders/90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+            "preparatory": true
+          }
+        ]
+      },
+      {
+        "work_order_id": "dfd77417-af57-454e-aa75-ad07f2eccb24",
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "waiting_on_party": "contractor",
+        "severity": "low",
+        "recovery_confidence": "LOW",
+        "authority_safe": true,
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "recommended_next_steps": [
+          "Follow up with the contractor on the outstanding step.",
+          "Review whether another contractor should be considered."
+        ],
+        "suggested_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/dfd77417-af57-454e-aa75-ad07f2eccb24",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_quote",
+            "label": "Submit quote",
+            "url": "/operations/work-orders/dfd77417-af57-454e-aa75-ad07f2eccb24",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_revised_quote",
+            "label": "Submit revised quote",
+            "url": "/operations/work-orders/dfd77417-af57-454e-aa75-ad07f2eccb24",
+            "preparatory": true
+          },
+          {
+            "action_id": "propose_visit",
+            "label": "Propose visit",
+            "url": "/operations/work-orders/dfd77417-af57-454e-aa75-ad07f2eccb24",
+            "preparatory": true
+          }
+        ]
+      },
+      {
+        "work_order_id": "53cbed11-a778-4362-a916-ee33f88eb34e",
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "waiting_on_party": "contractor",
+        "severity": "low",
+        "recovery_confidence": "LOW",
+        "authority_safe": true,
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "recommended_next_steps": [
+          "Follow up with the contractor on the outstanding step.",
+          "Review whether another contractor should be considered."
+        ],
+        "suggested_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/53cbed11-a778-4362-a916-ee33f88eb34e",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_quote",
+            "label": "Submit quote",
+            "url": "/operations/work-orders/53cbed11-a778-4362-a916-ee33f88eb34e",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_revised_quote",
+            "label": "Submit revised quote",
+            "url": "/operations/work-orders/53cbed11-a778-4362-a916-ee33f88eb34e",
+            "preparatory": true
+          },
+          {
+            "action_id": "propose_visit",
+            "label": "Propose visit",
+            "url": "/operations/work-orders/53cbed11-a778-4362-a916-ee33f88eb34e",
+            "preparatory": true
+          }
+        ]
+      },
+      {
+        "work_order_id": "ac499bad-94f7-4dc7-85ed-e70f4307216b",
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "waiting_on_party": "contractor",
+        "severity": "low",
+        "recovery_confidence": "LOW",
+        "authority_safe": true,
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "recommended_next_steps": [
+          "Follow up with the contractor on the outstanding step.",
+          "Review whether another contractor should be considered."
+        ],
+        "suggested_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/ac499bad-94f7-4dc7-85ed-e70f4307216b",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_quote",
+            "label": "Submit quote",
+            "url": "/operations/work-orders/ac499bad-94f7-4dc7-85ed-e70f4307216b",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_revised_quote",
+            "label": "Submit revised quote",
+            "url": "/operations/work-orders/ac499bad-94f7-4dc7-85ed-e70f4307216b",
+            "preparatory": true
+          },
+          {
+            "action_id": "propose_visit",
+            "label": "Propose visit",
+            "url": "/operations/work-orders/ac499bad-94f7-4dc7-85ed-e70f4307216b",
+            "preparatory": true
+          }
+        ]
+      },
+      {
+        "work_order_id": "a1ccad4d-4e01-46ac-9595-1a534b33f729",
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "waiting_on_party": "contractor",
+        "severity": "low",
+        "recovery_confidence": "LOW",
+        "authority_safe": true,
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "recommended_next_steps": [
+          "Follow up with the contractor on the outstanding step.",
+          "Review whether another contractor should be considered."
+        ],
+        "suggested_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/a1ccad4d-4e01-46ac-9595-1a534b33f729",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_quote",
+            "label": "Submit quote",
+            "url": "/operations/work-orders/a1ccad4d-4e01-46ac-9595-1a534b33f729",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_revised_quote",
+            "label": "Submit revised quote",
+            "url": "/operations/work-orders/a1ccad4d-4e01-46ac-9595-1a534b33f729",
+            "preparatory": true
+          },
+          {
+            "action_id": "propose_visit",
+            "label": "Propose visit",
+            "url": "/operations/work-orders/a1ccad4d-4e01-46ac-9595-1a534b33f729",
+            "preparatory": true
+          }
+        ]
+      },
+      {
+        "work_order_id": "8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "waiting_on_party": "landlord",
+        "severity": "medium",
+        "recovery_confidence": "LOW",
+        "authority_safe": true,
+        "recovery_summary": "This job is waiting on the landlord to take the next step for 6 hours.",
+        "recommended_next_steps": [
+          "Follow up with the contractor on the outstanding step.",
+          "Review whether another contractor should be considered."
+        ],
+        "suggested_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_quote",
+            "label": "Submit quote",
+            "url": "/operations/work-orders/8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+            "preparatory": true
+          },
+          {
+            "action_id": "submit_revised_quote",
+            "label": "Submit revised quote",
+            "url": "/operations/work-orders/8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+            "preparatory": true
+          },
+          {
+            "action_id": "propose_visit",
+            "label": "Propose visit",
+            "url": "/operations/work-orders/8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+            "preparatory": true
+          }
+        ]
+      }
+    ],
+    "terminal_suppression_ok": true,
+    "ok": true
+  },
+  "guidance": {
+    "ok": true,
+    "issues": [],
+    "samples": [
+      {
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "recovery_summary": "This job is waiting on the contractor to take the next step for 2 hours.",
+        "has_next_steps": true,
+        "has_risk": false
+      },
+      {
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "has_next_steps": true,
+        "has_risk": false
+      },
+      {
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "has_next_steps": true,
+        "has_risk": false
+      },
+      {
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "has_next_steps": true,
+        "has_risk": false
+      },
+      {
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "has_next_steps": true,
+        "has_risk": false
+      },
+      {
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "has_next_steps": true,
+        "has_risk": false
+      },
+      {
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+        "has_next_steps": true,
+        "has_risk": false
+      },
+      {
+        "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+        "recovery_summary": "This job is waiting on the landlord to take the next step for 6 hours.",
+        "has_next_steps": true,
+        "has_risk": false
+      }
+    ]
+  },
+  "action_safety": {
+    "ok": true,
+    "violations": []
+  },
+  "today_cc": {
+    "captured_at": "2026-05-30T21:25:30.786345+00:00",
+    "today_checks": {
+      "recovery_disclosure": true,
+      "recovery_risk": true,
+      "waiting_on_summary": true,
+      "stalled_reason_or_count": true,
+      "recovery_actions": true,
+      "blocked_vs_waiting": true,
+      "no_false_calm": true
+    },
+    "recovery_disclosure": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "recovery_count": 50,
+      "blocked_count": 0,
+      "waiting_count": 50,
+      "has_recovery_attention": true,
+      "high_risk_count": 5,
+      "captured_at": "2026-05-30T21:25:28.215486+00:00"
+    },
+    "recovery_risk": {
+      "high_risk_count": 5,
+      "blocked_count": 0,
+      "by_recovery_type": {
+        "CONTRACTOR_NON_RESPONSE": 18,
+        "WAITING_ON_CONTRACTOR_ACTION": 31,
+        "WAITING_ON_LANDLORD_APPROVAL": 1
+      }
+    },
+    "cc_recovery_actions": [],
+    "cc_recovery_count": 0,
+    "ok": true
+  },
+  "contractor": {
+    "captured_at": "2026-05-30T21:25:32.938395+00:00",
+    "recovery_block_present": true,
+    "recovery_count": 5,
+    "items_sample": [
+      {
+        "work_order_id": "d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+        "recovery_type": "CONTRACTOR_NON_RESPONSE",
+        "recovery_summary": "The contractor has not responded to the requested quote for 2 days.",
+        "recovery_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+            "preparatory": true
+          },
+          {
+            "action_id": "contact_support",
+            "label": "Contact support",
+            "url": "/operations/work-orders/d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+            "preparatory": true
+          }
+        ],
+        "waiting_on_summary": "contractor"
+      },
+      {
+        "work_order_id": "e3c67bd0-c568-48cf-bff8-1121099a4086",
+        "recovery_type": "CONTRACTOR_NON_RESPONSE",
+        "recovery_summary": "The contractor has not responded to the requested quote for 2 days.",
+        "recovery_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/e3c67bd0-c568-48cf-bff8-1121099a4086",
+            "preparatory": true
+          },
+          {
+            "action_id": "contact_support",
+            "label": "Contact support",
+            "url": "/operations/work-orders/e3c67bd0-c568-48cf-bff8-1121099a4086",
+            "preparatory": true
+          }
+        ],
+        "waiting_on_summary": "contractor"
+      },
+      {
+        "work_order_id": "f7d080d0-c13a-4ba2-8d29-248bda1c01b5",
+        "recovery_type": "CONTRACTOR_NON_RESPONSE",
+        "recovery_summary": "The contractor has not responded to the requested quote for 2 days.",
+        "recovery_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/f7d080d0-c13a-4ba2-8d29-248bda1c01b5",
+            "preparatory": true
+          },
+          {
+            "action_id": "contact_support",
+            "label": "Contact support",
+            "url": "/operations/work-orders/f7d080d0-c13a-4ba2-8d29-248bda1c01b5",
+            "preparatory": true
+          }
+        ],
+        "waiting_on_summary": "contractor"
+      },
+      {
+        "work_order_id": "74469ca1-0382-49a7-8208-572567762cc3",
+        "recovery_type": "CONTRACTOR_NON_RESPONSE",
+        "recovery_summary": "The contractor has not responded to the requested quote for 2 days.",
+        "recovery_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/74469ca1-0382-49a7-8208-572567762cc3",
+            "preparatory": true
+          },
+          {
+            "action_id": "contact_support",
+            "label": "Contact support",
+            "url": "/operations/work-orders/74469ca1-0382-49a7-8208-572567762cc3",
+            "preparatory": true
+          }
+        ],
+        "waiting_on_summary": "contractor"
+      },
+      {
+        "work_order_id": "8729beb8-0344-4067-a4a2-31de2b513943",
+        "recovery_type": "CONTRACTOR_NON_RESPONSE",
+        "recovery_summary": "The contractor has not responded to the requested quote for 7 days.",
+        "recovery_actions": [
+          {
+            "action_id": "open_job",
+            "label": "Open job",
+            "url": "/operations/work-orders/8729beb8-0344-4067-a4a2-31de2b513943",
+            "preparatory": true
+          },
+          {
+            "action_id": "contact_support",
+            "label": "Contact support",
+            "url": "/operations/work-orders/8729beb8-0344-4067-a4a2-31de2b513943",
+            "preparatory": true
+          }
+        ],
+        "waiting_on_summary": "contractor"
+      }
+    ],
+    "has_recovery_attention": true,
+    "no_landlord_only_on_contractor": true,
+    "ok": true
+  },
+  "notifications": {
+    "captured_at": "2026-05-30T21:26:48.147436+00:00",
+    "run1": {
+      "method": "POST",
+      "path": "/admin/jobs/run",
+      "status": 200,
+      "ok": true,
+      "body": {
+        "success": true,
+        "job": "operational_recovery_processing",
+        "message": "Job operational_recovery_processing completed",
+        "result": {
+          "clients_scanned": 43,
+          "candidates_found": 66,
+          "notifications_sent": 0,
+          "notifications_suppressed": 14,
+          "stale_prevented": 0
+        }
+      }
+    },
+    "run2": {
+      "method": "POST",
+      "path": "/admin/jobs/run",
+      "status": 200,
+      "ok": true,
+      "body": {
+        "success": true,
+        "job": "operational_recovery_processing",
+        "message": "Job operational_recovery_processing completed",
+        "result": {
+          "clients_scanned": 43,
+          "candidates_found": 66,
+          "notifications_sent": 0,
+          "notifications_suppressed": 14,
+          "stale_prevented": 0
+        }
+      }
+    },
+    "run1_ok": true,
+    "run2_ok": true,
+    "sent_delta": 0,
+    "suppressed_delta": 0,
+    "sent_samples": [
+      {
+        "audit_id": "1ae1342a-aa3d-4e54-8bc4-9c6ecde428cf",
+        "action": "WORKFLOW_RECOVERY_SENT",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "5c4f2d5e-f367-4fee-8bc7-34c2899b36a4",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "idempotency_key": "workflow_recovery:work_order:5c4f2d5e-f367-4fee-8bc7-34c2899b36a4:CONTRACTOR_NON_RESPONSE:2026-05-30"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T20:00:29.309706+00:00"
+      },
+      {
+        "audit_id": "15bc3481-93ab-4034-a783-4603cff5889d",
+        "action": "WORKFLOW_RECOVERY_SENT",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "53a45869-37c3-4382-8dee-196fed8071f5",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "idempotency_key": "workflow_recovery:work_order:53a45869-37c3-4382-8dee-196fed8071f5:CONTRACTOR_NON_RESPONSE:2026-05-30"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T20:00:27.426714+00:00"
+      },
+      {
+        "audit_id": "cc177845-b170-4f9b-b342-0a83ff1376e3",
+        "action": "WORKFLOW_RECOVERY_SENT",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "37957387-57af-47aa-83e9-281caff13a4c",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "idempotency_key": "workflow_recovery:work_order:37957387-57af-47aa-83e9-281caff13a4c:CONTRACTOR_NON_RESPONSE:2026-05-30"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T20:00:25.523594+00:00"
+      },
+      {
+        "audit_id": "8ad3e4da-ecfe-43ad-a8f0-a409f4ebb352",
+        "action": "WORKFLOW_RECOVERY_SENT",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "fce6742c-7ab1-4e51-b01e-7be4ec7867f4",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "idempotency_key": "workflow_recovery:work_order:fce6742c-7ab1-4e51-b01e-7be4ec7867f4:CONTRACTOR_NON_RESPONSE:2026-05-30"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T20:00:23.352721+00:00"
+      },
+      {
+        "audit_id": "2dd7dcad-d036-4d29-b863-ebe66a89e0b9",
+        "action": "WORKFLOW_RECOVERY_SENT",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "idempotency_key": "workflow_recovery:work_order:d3f59e36-e07b-4bd5-ae8c-f02912d8bc94:CONTRACTOR_NON_RESPONSE:2026-05-30"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T20:00:21.411113+00:00"
+      }
+    ],
+    "suppressed_samples": [
+      {
+        "audit_id": "d669ab4b-5e96-4d01-bb31-7bcc06c6dbc7",
+        "action": "WORKFLOW_RECOVERY_SUPPRESSED",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "5c4f2d5e-f367-4fee-8bc7-34c2899b36a4",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "reason": "duplicate_same_day"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T21:26:32.361260+00:00"
+      },
+      {
+        "audit_id": "5daa2b9b-63c8-4fac-80b0-4653414fe737",
+        "action": "WORKFLOW_RECOVERY_SUPPRESSED",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "53a45869-37c3-4382-8dee-196fed8071f5",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "reason": "duplicate_same_day"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T21:26:31.884194+00:00"
+      },
+      {
+        "audit_id": "0ce16eb5-604f-4d13-9521-2cc0fa48143e",
+        "action": "WORKFLOW_RECOVERY_SUPPRESSED",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "37957387-57af-47aa-83e9-281caff13a4c",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "reason": "duplicate_same_day"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T21:26:31.406495+00:00"
+      },
+      {
+        "audit_id": "4868270d-e22d-44df-8d03-5638c5dfe046",
+        "action": "WORKFLOW_RECOVERY_SUPPRESSED",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "fce6742c-7ab1-4e51-b01e-7be4ec7867f4",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "reason": "duplicate_same_day"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T21:26:30.923083+00:00"
+      },
+      {
+        "audit_id": "388497ac-5d20-43ab-9ad8-8a168303c600",
+        "action": "WORKFLOW_RECOVERY_SUPPRESSED",
+        "actor_role": null,
+        "actor_id": null,
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "resource_type": "work_order",
+        "resource_id": "d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+        "before_state": null,
+        "after_state": null,
+        "metadata": {
+          "recovery_type": "CONTRACTOR_NON_RESPONSE",
+          "reason": "duplicate_same_day"
+        },
+        "reason_code": null,
+        "ip_address": null,
+        "timestamp": "2026-05-30T21:26:30.446318+00:00"
+      }
+    ],
+    "recovery_message_logs": 0,
+    "idempotency_keys_sample": [
+      "workflow_recovery:work_order:5c4f2d5e-f367-4fee-8bc7-34c2899b36a4:CONTRACTOR_NON_RESPONSE:2026-05-30",
+      "workflow_recovery:work_order:53a45869-37c3-4382-8dee-196fed8071f5:CONTRACTOR_NON_RESPONSE:2026-05-30",
+      "workflow_recovery:work_order:37957387-57af-47aa-83e9-281caff13a4c:CONTRACTOR_NON_RESPONSE:2026-05-30",
+      "workflow_recovery:work_order:fce6742c-7ab1-4e51-b01e-7be4ec7867f4:CONTRACTOR_NON_RESPONSE:2026-05-30",
+      "workflow_recovery:work_order:d3f59e36-e07b-4bd5-ae8c-f02912d8bc94:CONTRACTOR_NON_RESPONSE:2026-05-30"
+    ],
+    "duplicate_spam_risk": true,
+    "ok": true
+  },
+  "convergence": {
+    "captured_at": "2026-05-30T21:27:56.421625+00:00",
+    "today_waiting_on": "contractor",
+    "today_disclosure": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "recovery_count": 50,
+      "blocked_count": 0,
+      "waiting_count": 50,
+      "has_recovery_attention": true,
+      "high_risk_count": 5,
+      "captured_at": "2026-05-30T21:27:28.074526+00:00"
+    },
+    "cc_urgent_total": null,
+    "contractor_recovery_count": 5,
+    "notification_run_ok": true,
+    "issues": [],
+    "ok": true
+  },
+  "guardrails": {
+    "captured_at": "2026-05-30T21:28:00.157062+00:00",
+    "field_changes_observed": [],
+    "authority_mutations": [],
+    "ok": true
+  },
+  "browser": {
+    "captured_at": "2026-05-30T21:28:00.158062+00:00",
+    "checks": [
+      {
+        "name": "landlord_today",
+        "ok": true,
+        "has_recovery_disclosure_api": true
+      },
+      {
+        "name": "command_centre",
+        "ok": true
+      },
+      {
+        "name": "contractor_dashboard",
+        "ok": true,
+        "no_false_up_to_date": true
+      }
+    ],
+    "screenshots": [
+      "landlord_today_recovery.png",
+      "command_centre_recovery.png",
+      "contractor_dashboard_recovery.png"
+    ],
+    "ok": true
+  }
+}

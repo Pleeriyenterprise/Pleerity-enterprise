@@ -1,0 +1,18 @@
+{
+  "captured_at": "2026-05-30T21:27:56.421625+00:00",
+  "today_waiting_on": "contractor",
+  "today_disclosure": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "recovery_count": 50,
+    "blocked_count": 0,
+    "waiting_count": 50,
+    "has_recovery_attention": true,
+    "high_risk_count": 5,
+    "captured_at": "2026-05-30T21:27:28.074526+00:00"
+  },
+  "cc_urgent_total": null,
+  "contractor_recovery_count": 5,
+  "notification_run_ok": true,
+  "issues": [],
+  "ok": true
+}

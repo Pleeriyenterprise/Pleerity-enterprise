@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "issues": [],
+  "samples": [
+    {
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "recovery_summary": "This job is waiting on the contractor to take the next step for 2 hours.",
+      "has_next_steps": true,
+      "has_risk": false
+    },
+    {
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+      "has_next_steps": true,
+      "has_risk": false
+    },
+    {
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+      "has_next_steps": true,
+      "has_risk": false
+    },
+    {
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+      "has_next_steps": true,
+      "has_risk": false
+    },
+    {
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+      "has_next_steps": true,
+      "has_risk": false
+    },
+    {
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+      "has_next_steps": true,
+      "has_risk": false
+    },
+    {
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+      "has_next_steps": true,
+      "has_risk": false
+    },
+    {
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "recovery_summary": "This job is waiting on the landlord to take the next step for 6 hours.",
+      "has_next_steps": true,
+      "has_risk": false
+    }
+  ]
+}

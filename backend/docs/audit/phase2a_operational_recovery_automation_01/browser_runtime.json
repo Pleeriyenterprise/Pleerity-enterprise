@@ -1,0 +1,25 @@
+{
+  "captured_at": "2026-05-30T21:28:00.158062+00:00",
+  "checks": [
+    {
+      "name": "landlord_today",
+      "ok": true,
+      "has_recovery_disclosure_api": true
+    },
+    {
+      "name": "command_centre",
+      "ok": true
+    },
+    {
+      "name": "contractor_dashboard",
+      "ok": true,
+      "no_false_up_to_date": true
+    }
+  ],
+  "screenshots": [
+    "landlord_today_recovery.png",
+    "command_centre_recovery.png",
+    "contractor_dashboard_recovery.png"
+  ],
+  "ok": true
+}

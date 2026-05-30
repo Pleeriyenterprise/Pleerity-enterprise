@@ -1,0 +1,126 @@
+{
+  "confidence_bands": [
+    "LOW",
+    "MODERATE",
+    "HIGH"
+  ],
+  "samples": [
+    {
+      "work_order_id": "8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "waiting_on_party": "contractor",
+      "severity": "low",
+      "recovery_confidence": "LOW",
+      "authority_safe": true,
+      "recovery_summary": "This job is waiting on the contractor to take the next step for 2 hours.",
+      "recommended_next_steps": [
+        "Follow up with the contractor on the outstanding step.",
+        "Review whether another contractor should be considered."
+      ],
+      "suggested_actions": [
+        {
+          "action_id": "open_job",
+          "label": "Open job",
+          "url": "/operations/work-orders/8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+          "preparatory": true
+        },
+        {
+          "action_id": "submit_quote",
+          "label": "Submit quote",
+          "url": "/operations/work-orders/8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+          "preparatory": true
+        },
+        {
+          "action_id": "submit_revised_quote",
+          "label": "Submit revised quote",
+          "url": "/operations/work-orders/8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+          "preparatory": true
+        },
+        {
+          "action_id": "propose_visit",
+          "label": "Propose visit",
+          "url": "/operations/work-orders/8d7b8ce3-0129-4676-9ec0-e43e17b8b4be",
+          "preparatory": true
+        }
+      ]
+    },
+    {
+      "work_order_id": "1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "waiting_on_party": "contractor",
+      "severity": "low",
+      "recovery_confidence": "LOW",
+      "authority_safe": true,
+      "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+      "recommended_next_steps": [
+        "Follow up with the contractor on the outstanding step.",
+        "Review whether another contractor should be considered."
+      ],
+      "suggested_actions": [
+        {
+          "action_id": "open_job",
+          "label": "Open job",
+          "url": "/operations/work-orders/1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+          "preparatory": true
+        },
+        {
+          "action_id": "submit_quote",
+          "label": "Submit quote",
+          "url": "/operations/work-orders/1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+          "preparatory": true
+        },
+        {
+          "action_id": "submit_revised_quote",
+          "label": "Submit revised quote",
+          "url": "/operations/work-orders/1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+          "preparatory": true
+        },
+        {
+          "action_id": "propose_visit",
+          "label": "Propose visit",
+          "url": "/operations/work-orders/1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+          "preparatory": true
+        }
+      ]
+    },
+    {
+      "work_order_id": "90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+      "recovery_type": "WAITING_ON_CONTRACTOR_ACTION",
+      "waiting_on_party": "contractor",
+      "severity": "low",
+      "recovery_confidence": "LOW",
+      "authority_safe": true,
+      "recovery_summary": "This job is waiting on the contractor to take the next step for some time.",
+      "recommended_next_steps": [
+        "Follow up with the contractor on the outstanding step.",
+        "Review whether another contractor should be considered."
+      ],
+      "suggested_actions": [
+        {
+          "action_id": "open_job",
+          "label": "Open job",
+          "url": "/operations/work-orders/90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+          "preparatory": true
+        },
+        {
+          "action_id": "submit_quote",
+          "label": "Submit quote",
+          "url": "/operations/work-orders/90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+          "preparatory": true
+        },
+        {
+          "action_id": "submit_revised_quote",
+          "label": "Submit revised quote",
+          "url": "/operations/work-orders/90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+          "preparatory": true
+        },
+        {
+          "action_id": "propose_visit",
+          "label": "Propose visit",
+          "url": "/operations/work-orders/90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+          "preparatory": true
+        }
+      ]
+    }
+  ]
+}

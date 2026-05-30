@@ -50,6 +50,7 @@ async def fetch_operational_recovery_priority_actions(
         client_id,
         property_id_filter=property_id_filter,
         limit=limit * 3,
+        fast_mode=True,
     )
     actions: List[Dict[str, Any]] = []
     for rec in candidates:
