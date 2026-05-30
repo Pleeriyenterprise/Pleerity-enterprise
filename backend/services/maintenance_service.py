@@ -809,6 +809,16 @@ async def update_work_order(
                 await invalidate_pending_routing_for_work_order(work_order_id, reason=str(status).strip().upper())
             except Exception as inv_e:
                 logger.warning("Contractor routing invalidate on work order close failed: %s", inv_e)
+            try:
+                from services.workflow_timer_service import clear_work_order_timers
+
+                await clear_work_order_timers(
+                    work_order_id,
+                    reason=str(status).strip().upper(),
+                    actor_id=assigned_by,
+                )
+            except Exception as timer_exc:
+                logger.warning("Workflow timer clear on close failed (non-fatal): %s", timer_exc)
         if (
             status is not None
             and prev_status
@@ -914,6 +924,14 @@ async def update_work_order(
                 )
             except Exception as e:
                 logger.warning("Failed to create job token or audit for assignment: %s", e)
+            try:
+                from services.work_order_pricing_service import PRICE_STATUS_AWAITING_QUOTE
+                from services.workflow_timer_service import on_work_order_quote_requested
+
+                if (str(result.get("price_status") or "")).strip().upper() == PRICE_STATUS_AWAITING_QUOTE:
+                    await on_work_order_quote_requested(work_order_id, actor_id=assigned_by)
+            except Exception as timer_exc:
+                logger.warning("Workflow timer quote_requested hook failed (non-fatal): %s", timer_exc)
             try:
                 contractor = await db.contractors.find_one(
                     {"contractor_id": contractor_id},

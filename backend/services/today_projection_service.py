@@ -432,6 +432,12 @@ def derive_today_urgency(task: Dict[str, Any], now: datetime) -> str:
     ):
         return "due_soon"
 
+    stall_tier = meta.get("workflow_stall_escalation_tier")
+    if stall_tier == "T72":
+        return "overdue"
+    if stall_tier == "T24":
+        return "due_soon"
+
     return "on_track"
 
 

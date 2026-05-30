@@ -1358,6 +1358,25 @@ async def get_today_items(
         include_flat_items=include_flat_items,
         compact=not include_flat_items,
     )
+    try:
+        from services.workflow_stall_priority_service import (
+            apply_workflow_stall_escalation_to_today_payload,
+            load_stalled_work_orders_for_client,
+        )
+
+        stalled = await load_stalled_work_orders_for_client(
+            user["client_id"],
+            property_id_filter=prop_filter,
+        )
+        out = apply_workflow_stall_escalation_to_today_payload(
+            user["client_id"],
+            out,
+            stalled_work_orders=stalled,
+        )
+    except Exception as stall_exc:
+        import logging
+
+        logging.getLogger(__name__).warning("Today workflow stall enrichment failed: %s", stall_exc)
     return merge_rent_into_today_payload(out, rent_tasks)
 
 

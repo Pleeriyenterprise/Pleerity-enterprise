@@ -122,6 +122,16 @@ async def record_tenant_portal_invite_sent(
         {"portal_user_id": portal_user_id},
         {"$set": patch},
     )
+    try:
+        from services.workflow_timer_service import on_tenant_portal_invite_sent
+
+        await on_tenant_portal_invite_sent(portal_user_id)
+    except Exception as timer_exc:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Workflow timer tenant invite hook failed (non-fatal): %s", timer_exc
+        )
 
 
 async def revoke_unused_tenant_invite_tokens(db, portal_user_id: str) -> None:

@@ -447,6 +447,18 @@ async def _load_urgent_slice_from_priority_stream(
             actions = merge_coordination_with_urgent(coord_actions, actions, cap=24)
         except Exception as exc_coord:
             logger.debug("coordination momentum merge skipped: %s", exc_coord)
+        try:
+            from services.workflow_stall_priority_service import (
+                fetch_workflow_stall_priority_actions,
+                merge_workflow_stall_with_urgent,
+            )
+
+            stall_actions = await fetch_workflow_stall_priority_actions(
+                client_id, property_id_filter, limit=5
+            )
+            actions = merge_workflow_stall_with_urgent(stall_actions, actions, cap=24)
+        except Exception as exc_stall:
+            logger.debug("workflow stall merge skipped: %s", exc_stall)
     except Exception as exc:
         logger.debug("momentum closure merge skipped: %s", exc)
     try:

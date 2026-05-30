@@ -1,0 +1,20 @@
+{
+  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+  "part": 9,
+  "classification": "PARTIAL",
+  "captured_at": "2026-05-30T18:40:00+00:00",
+  "shared_backend_truth": {
+    "waiting_on_party": "work_order_stall_context.waiting_on",
+    "escalation_tier": "workflow_stall_escalation_tier metadata",
+    "continuation_cta": "CONTINUATION_CTA map",
+    "timing": "canonical timer fields on Mongo entities"
+  },
+  "surfaces": {
+    "landlord_portal": "Today + Command Centre + work order routes",
+    "contractor_portal": "email nudges + existing drawer actions",
+    "tenant_portal": "activation nudges",
+    "email_links": "continuation_url in nudge HTML",
+    "mobile": "inherits responsive portal layouts — not separately tested"
+  },
+  "staging_consistency_proof": "pending post-deploy cross-surface browser pass"
+}

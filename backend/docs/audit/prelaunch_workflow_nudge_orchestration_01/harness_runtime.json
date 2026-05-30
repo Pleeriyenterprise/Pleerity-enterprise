@@ -1,0 +1,47 @@
+{
+  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "captured_at": "2026-05-30T18:37:32.434992+00:00",
+  "checks": [
+    {
+      "name": "today_items",
+      "ok": true,
+      "has_stall_disclosure_key": false
+    },
+    {
+      "name": "command_centre_primary",
+      "ok": false,
+      "urgent_count": 0
+    },
+    {
+      "name": "nudge_job_run",
+      "ok": null,
+      "detail": "skipped \u2014 set PRELAUNCH_ADMIN_PW for live sweep"
+    },
+    {
+      "name": "module_services/workflow_timer_service.py",
+      "ok": true
+    },
+    {
+      "name": "module_services/workflow_nudge_reconciliation_service.py",
+      "ok": true
+    },
+    {
+      "name": "module_services/workflow_nudge_orchestration_service.py",
+      "ok": true
+    },
+    {
+      "name": "module_services/workflow_stall_priority_service.py",
+      "ok": true
+    },
+    {
+      "name": "module_services/workflow_nudge_guardrails.py",
+      "ok": true
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 1
+  }
+}

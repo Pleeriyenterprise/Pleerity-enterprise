@@ -124,6 +124,7 @@ from job_runner import (
     run_client_purge_eligibility_scan,
     run_client_test_like_flag_job,
     run_work_order_schedule_reminders,
+    run_workflow_nudge_processing,
 )
 
 # Lifespan context manager for startup/shutdown
@@ -1050,6 +1051,15 @@ async def lifespan(app: FastAPI):
             name="Work Order Contractor Confirmation Timeout",
             replace_existing=True,
             args=["work_order_contractor_confirmation_timeout_job"],
+            kwargs={"run_type": "schedule"},
+        )
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=25, timezone=SCHEDULER_TIMEZONE),
+            id="workflow_nudge_processing",
+            name="Workflow Nudge Orchestration (Phase 1)",
+            replace_existing=True,
+            args=["workflow_nudge_processing"],
             kwargs={"run_type": "schedule"},
         )
         

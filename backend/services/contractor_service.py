@@ -1386,6 +1386,12 @@ async def issue_contractor_portal_invite(
         portal_invite_expires_at=expires_at.isoformat(),
         portal_invite_last_token_id=token_hash,
     )
+    try:
+        from services.workflow_timer_service import on_contractor_portal_invite_sent
+
+        await on_contractor_portal_invite_sent(contractor_id, actor_id=actor_id)
+    except Exception as timer_exc:
+        logger.warning("Workflow timer contractor invite hook failed (non-fatal): %s", timer_exc)
     base_url = get_frontend_base_url().rstrip("/")
     setup_url = f"{base_url}/contractor-set-password?token={raw_token}"
     job_tok = (return_job_token or "").strip()

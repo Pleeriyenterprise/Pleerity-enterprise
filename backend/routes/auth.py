@@ -826,6 +826,13 @@ async def set_password(request: Request, data: SetPasswordRequest):
             {"portal_user_id": portal_user["portal_user_id"]},
             {"$set": user_patch},
         )
+        if is_tenant:
+            try:
+                from services.workflow_timer_service import on_tenant_activated
+
+                await on_tenant_activated(portal_user["portal_user_id"], actor_id=portal_user["portal_user_id"])
+            except Exception as timer_exc:
+                logger.warning("Workflow timer tenant activated hook failed (non-fatal): %s", timer_exc)
         
         # Mark token as used
         await db.password_tokens.update_one(
@@ -1241,6 +1248,16 @@ async def contractor_set_password(request: Request, data: SetPasswordRequest):
         resource_id=contractor_id,
         metadata={"email": email, "triggered_by": "contractor_self_service"},
     )
+    try:
+        from services.workflow_timer_service import on_contractor_activated
+
+        await on_contractor_activated(contractor_id, actor_id=contractor_id)
+    except Exception as timer_exc:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Workflow timer contractor activated hook failed (non-fatal): %s", timer_exc
+        )
     token_data = {
         "portal_user_id": f"contractor_{contractor_id}",
         "contractor_id": contractor_id,

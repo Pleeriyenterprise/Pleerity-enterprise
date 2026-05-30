@@ -1,0 +1,55 @@
+{
+  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+  "part": 1,
+  "classification": "VERIFIED_OPERATIONALLY",
+  "captured_at": "2026-05-30T18:40:00+00:00",
+  "implementation": {
+    "constants_module": "services/workflow_timer_constants.py",
+    "service_module": "services/workflow_timer_service.py",
+    "audit_action": "WORKFLOW_TIMER_UPDATED"
+  },
+  "work_order_timers": [
+    "quote_requested_at",
+    "awaiting_quote_since",
+    "awaiting_landlord_quote_response_since",
+    "awaiting_contractor_quote_revision_since",
+    "visit_proposed_since",
+    "awaiting_visit_confirmation_since",
+    "awaiting_visit_reschedule_since",
+    "work_authorised_since",
+    "completion_proof_pending_since",
+    "invoice_pending_since"
+  ],
+  "contractor_onboarding_timers": [
+    "portal_invite_sent_at",
+    "activation_pending_since"
+  ],
+  "tenant_onboarding_timers": [
+    "tenant_portal_invite_sent_at",
+    "tenant_activation_pending_since"
+  ],
+  "evidence_timers": [
+    "evidence_uploaded_since",
+    "awaiting_evidence_review_since",
+    "awaiting_landlord_evidence_action_since"
+  ],
+  "requirement_timers": [
+    "overdue_since",
+    "unresolved_since"
+  ],
+  "authoritative_transition_hooks": [
+    "maintenance_service.update_work_order (assign → quote_requested; close → clear)",
+    "work_order_pricing_service (submit/approve/revision)",
+    "work_order_schedule_service (propose/confirm/reschedule)",
+    "contractor_service.issue_contractor_portal_invite",
+    "auth.contractor-set-password → activated",
+    "tenant_portal_service.record_tenant_portal_invite_sent",
+    "auth.set-password tenant → activated"
+  ],
+  "rules": {
+    "frontend_derived": false,
+    "survives_refresh": true,
+    "auditable": true,
+    "legacy_fallback": "work_order_stall_context reads legacy quote_submitted_at / assigned_at when canonical field absent"
+  }
+}

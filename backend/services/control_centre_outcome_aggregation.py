@@ -171,6 +171,7 @@ REGISTRY_JOB_OUTCOME_FAMILY: Dict[str, str] = {
     "work_order_contractor_confirmation_timeout_job": "monitoring_and_watchdog",
     "work_order_schedule_reminders": "notification_and_delivery",
     "work_order_sla_breach_job": "monitoring_and_watchdog",
+    "workflow_nudge_processing": "notification_and_delivery",
 }
 
 

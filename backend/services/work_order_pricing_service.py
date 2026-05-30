@@ -574,6 +574,12 @@ async def submit_quote_for_work_order(
             }
         },
     )
+    try:
+        from services.workflow_timer_service import on_work_order_quote_submitted
+
+        await on_work_order_quote_submitted(work_order_id, actor_id=contractor_id)
+    except Exception as timer_exc:
+        logger.warning("Workflow timer quote_submitted hook failed (non-fatal): %s", timer_exc)
     await create_audit_log(
         action=AuditAction.CONTRACTOR_WORK_ORDER_STATUS_CHANGED,
         actor_id=contractor_id,
@@ -652,6 +658,12 @@ async def approve_quote_for_work_order(work_order_id: str, client_id: str, *, ac
             }
         },
     )
+    try:
+        from services.workflow_timer_service import on_work_order_quote_approved
+
+        await on_work_order_quote_approved(work_order_id, actor_id=actor_id or client_id)
+    except Exception as timer_exc:
+        logger.warning("Workflow timer quote_approved hook failed (non-fatal): %s", timer_exc)
     await create_audit_log(
         action=AuditAction.WORK_ORDER_QUOTE_APPROVED_BY_CLIENT,
         actor_id=actor_id or client_id,
@@ -742,6 +754,12 @@ async def request_quote_revision_for_work_order(
             }
         },
     )
+    try:
+        from services.workflow_timer_service import on_work_order_quote_revision_requested
+
+        await on_work_order_quote_revision_requested(work_order_id, actor_id=actor_id or client_id)
+    except Exception as timer_exc:
+        logger.warning("Workflow timer quote_revision hook failed (non-fatal): %s", timer_exc)
     await create_audit_log(
         action=AuditAction.WORK_ORDER_QUOTE_REJECTED_BY_CLIENT,
         actor_id=actor_id or client_id,

@@ -1601,6 +1601,12 @@ async def perform_client_document_upload(
     else:
         doc.update(persist_fields_for_upload_without_requirement())
     await db.documents.insert_one(doc)
+    try:
+        from services.workflow_timer_service import on_evidence_uploaded
+
+        await on_evidence_uploaded(document.document_id, actor_id=user.get("portal_user_id"))
+    except Exception as timer_exc:
+        logger.warning("Workflow timer evidence_uploaded hook failed (non-fatal): %s", timer_exc)
     client_upload_fanout: Optional[Dict[str, Any]] = None
     if requirement_id and not is_supporting_only_upload:
         await safe_upsert_document_upload_evidence_for_linked_document(

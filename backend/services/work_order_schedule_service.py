@@ -593,6 +593,12 @@ async def propose_schedule(
             "scheduled_by": actor_type,
         },
     )
+    try:
+        from services.workflow_timer_service import on_work_order_visit_proposed
+
+        await on_work_order_visit_proposed(work_order_id, actor_id=actor_id)
+    except Exception as timer_exc:
+        logger.warning("Workflow timer visit_proposed hook failed (non-fatal): %s", timer_exc)
     # Notifications: other party (admin proposes → both)
     client_em = await _client_primary_email(db, cid) if cid else None
     contr_em = await _contractor_email(db, str(wo.get("contractor_id") or "")) if wo.get("contractor_id") else None
@@ -719,6 +725,12 @@ async def confirm_schedule(
             "notes": merged.get("schedule_notes"),
         },
     )
+    try:
+        from services.workflow_timer_service import on_work_order_visit_confirmed
+
+        await on_work_order_visit_confirmed(work_order_id, actor_id=actor_id)
+    except Exception as timer_exc:
+        logger.warning("Workflow timer visit_confirmed hook failed (non-fatal): %s", timer_exc)
     client_em = await _client_primary_email(db, cid) if cid else None
     contr_em = await _contractor_email(db, str(wo.get("contractor_id") or "")) if wo.get("contractor_id") else None
     subj = f"Visit confirmed — work order {work_order_id}"
@@ -822,6 +834,12 @@ async def request_reschedule(
             "notes": reason,
         },
     )
+    try:
+        from services.workflow_timer_service import on_work_order_visit_reschedule_requested
+
+        await on_work_order_visit_reschedule_requested(work_order_id, actor_id=actor_id)
+    except Exception as timer_exc:
+        logger.warning("Workflow timer visit_reschedule hook failed (non-fatal): %s", timer_exc)
     prop_label = await _load_property_label(db, cid, wo.get("property_id"))
     merged = {**wo, **res}
     subj = f"Reschedule requested — work order {work_order_id}"

@@ -1,0 +1,43 @@
+{
+  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+  "part": 3,
+  "classification": "VERIFIED_OPERATIONALLY",
+  "captured_at": "2026-05-30T18:40:00+00:00",
+  "service": "services/workflow_nudge_orchestration_service.py",
+  "job_id": "workflow_nudge_processing",
+  "schedule": "hourly :25 UTC",
+  "allowed_automation_types": ["auto_notify", "auto_prioritise", "recommend_only"],
+  "forbidden": [
+    "auto_assign",
+    "auto_quote_approval",
+    "auto_visit_confirmation",
+    "auto_evidence_verification",
+    "auto_compliance_status_change",
+    "auto_work_order_creation"
+  ],
+  "ladder": {
+    "quote": {
+      "T24h": ["contractor reminder (auto_notify)"],
+      "T72h": ["landlord visibility escalation (auto_prioritise + notify)", "Today priority boost via stall merge"]
+    },
+    "visit": {
+      "T24h_proposed_unanswered": ["landlord or contractor reminder by waiting_on"],
+      "T72h": ["both-party escalation (auto_prioritise + notify)"]
+    },
+    "activation": {
+      "T24h": ["contractor/tenant reminder"],
+      "T72h": ["landlord visibility escalation"]
+    },
+    "evidence_review": {
+      "T72h": ["reviewer/admin reminder"]
+    },
+    "requirement_overdue": {
+      "T24h": ["Today/CC escalation (auto_prioritise + notify)"]
+    }
+  },
+  "anti_spam": {
+    "same_day_idempotency": true,
+    "tier_once_per_entity": true,
+    "reconciliation_before_send": true
+  }
+}

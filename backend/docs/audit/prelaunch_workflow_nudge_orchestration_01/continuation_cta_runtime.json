@@ -1,0 +1,21 @@
+{
+  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+  "part": 6,
+  "classification": "PARTIAL",
+  "captured_at": "2026-05-30T18:40:00+00:00",
+  "source": "services/workflow_stall_priority_service.CONTINUATION_CTA",
+  "mappings": {
+    "awaiting_contractor_quote": {"contractor": "Submit quote", "banner": "Waiting on contractor quote"},
+    "awaiting_contractor_quote_revision": {"contractor": "Submit revised quote"},
+    "awaiting_landlord_quote_response": {"landlord": "Review contractor quote", "banner": "Waiting on landlord approval"},
+    "awaiting_visit_confirmation": {"both": "Confirm proposed visit", "banner": "Visit proposal awaiting confirmation"},
+    "completion_proof_pending": {"contractor": "Upload completion proof"},
+    "invoice_pending": {"contractor": "Submit invoice"}
+  },
+  "surfaces": {
+    "command_centre": "recommended_action_label from stall priority actions",
+    "today": "continuation_banner in task metadata when stalled WO linked",
+    "contractor_drawer": "prior programme fixed Open job → action-specific CTAs (retained)"
+  },
+  "residual": "Full portal drawer CTA parity across all stall types deferred to post-deploy UX pass"
+}

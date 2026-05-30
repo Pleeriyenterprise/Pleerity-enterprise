@@ -1,0 +1,25 @@
+{
+  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+  "part": 2,
+  "classification": "VERIFIED_OPERATIONALLY",
+  "captured_at": "2026-05-30T18:40:00+00:00",
+  "service": "services/workflow_nudge_reconciliation_service.py",
+  "capabilities": [
+    "canonical_stall_confirmation",
+    "terminal_entity_suppression",
+    "stall_type_mismatch_suppression",
+    "waiting_on_party_mismatch_suppression",
+    "age_threshold_gate",
+    "same_day_idempotency_via_message_logs",
+    "tier_sent_dedup_via_workflow_nudge_audit",
+    "suppress_audit_with_WORKFLOW_NUDGE_SUPPRESSED"
+  ],
+  "examples_verified_in_tests": [
+    "no nudge after work order COMPLETED",
+    "no contractor quote reminder when stall is awaiting_landlord_quote_response",
+    "fire when awaiting_contractor_quote age >= 24h"
+  ],
+  "idempotency_key_format": "workflow_nudge:{entity_type}:{entity_id}:{nudge_key}:{tier}:{YYYY-MM-DD}",
+  "replay_safe": true,
+  "race_tolerance": "message_logs unique idempotency_key + workflow_nudge_audit tier gate"
+}

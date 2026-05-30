@@ -1569,6 +1569,17 @@ async def run_work_order_schedule_reminders():
         raise
 
 
+async def run_workflow_nudge_processing():
+    """Phase 1 workflow nudge orchestration — notify/prioritise only."""
+    try:
+        from services.workflow_nudge_orchestration_service import run_workflow_nudge_sweep
+
+        return await run_workflow_nudge_sweep()
+    except Exception as e:
+        logger.error("Workflow nudge processing job failed: %s", e)
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -1618,5 +1629,6 @@ JOB_RUNNERS = {
     "contractor_performance_recalc": run_contractor_performance_recalc,
     "scheduled_admin_communications": run_scheduled_admin_communications,
     "work_order_schedule_reminders": run_work_order_schedule_reminders,
+    "workflow_nudge_processing": run_workflow_nudge_processing,
     "pilot_lifecycle_reconcile": run_pilot_lifecycle_reconcile,
 }

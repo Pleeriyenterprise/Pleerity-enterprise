@@ -94,6 +94,7 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("rent_operations_daily_job", False, 26 * 60, "Daily", True),
     JobScheduleEntry("work_order_sla_breach_job", False, 90, "Hourly", True),
     JobScheduleEntry("work_order_contractor_confirmation_timeout_job", False, 90, "Hourly", True),
+    JobScheduleEntry("workflow_nudge_processing", False, 90, "Hourly", True),
 ]
 
 # All jobs that may appear in health summary / automation centre (including non-critical)

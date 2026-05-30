@@ -1,0 +1,18 @@
+{
+  "programme": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+  "part": 7,
+  "classification": "VERIFIED_OPERATIONALLY",
+  "captured_at": "2026-05-30T18:40:00+00:00",
+  "collections": {
+    "workflow_nudge_audit": "sent/suppressed records per entity+nudge_key+tier",
+    "message_logs": "idempotency_key sparse unique index",
+    "workflow_nudge_metrics": "per sweep run aggregates"
+  },
+  "mechanisms": [
+    "UTC-day idempotency keys",
+    "tier_already_sent suppression",
+    "reconciliation stall_mismatch → stale_prevented metric",
+    "WORKFLOW_NUDGE_SUPPRESSED audit with reason"
+  ],
+  "cooldown": "one send per tier per entity (audit gate); same-day duplicate blocked via message_logs"
+}
