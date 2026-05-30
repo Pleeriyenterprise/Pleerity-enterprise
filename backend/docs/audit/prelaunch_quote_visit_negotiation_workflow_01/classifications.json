@@ -1,0 +1,24 @@
+{
+  "classification": "VERIFIED_OPERATIONALLY",
+  "passed": [
+    "deploy_request_visit_reschedule",
+    "v1_submitted",
+    "revision_requested",
+    "assignment_persists_after_revision",
+    "quote_lineage_grows",
+    "quote_approved",
+    "visit_proposed",
+    "visit_reschedule_requested",
+    "visit_reproposed",
+    "visit_confirmed",
+    "visit_lineage_grows",
+    "same_work_order_lineage",
+    "no_duplicate_jobs",
+    "final_decline_status",
+    "reassign_after_decline",
+    "contractor_surface_confirmed",
+    "landlord_ui_visit_actions"
+  ],
+  "failed": [],
+  "captured_at": "2026-05-30T15:12:55.976108+00:00"
+}

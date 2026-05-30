@@ -1,0 +1,42 @@
+{
+  "programme": "PRELAUNCH-QUOTE-VISIT-NEGOTIATION-WORKFLOW-01",
+  "captured_at": "2026-05-30T15:10:13.902207+00:00",
+  "findings": [
+    {
+      "id": "RC-01",
+      "area": "quote_rejection",
+      "before": "Legacy reject-quote could terminate negotiation without revision path",
+      "after": "Default rejection routes to REVISION_REQUESTED; reject-quote-final is explicit terminal decline",
+      "severity": "resolved"
+    },
+    {
+      "id": "RC-02",
+      "area": "visit_scheduling",
+      "before": "schedule_status existed but visit_negotiation_history and landlord request-visit-reschedule were missing; maintenance next_actions skipped proposed-visit branch when status was SCHEDULED",
+      "after": "visit_negotiation_history appended on propose/confirm/reschedule/cancel; POST /request-visit-reschedule added; maintenance next_actions evaluate proposed visits before SCHEDULED canonical",
+      "severity": "resolved"
+    },
+    {
+      "id": "RC-03",
+      "area": "workflow_mode",
+      "before": "Mode inferred loosely from inspection_required UI hints",
+      "after": "Explicit workflow_mode field (QUOTE_FIRST / INSPECTION_FIRST) on work order create",
+      "severity": "resolved"
+    },
+    {
+      "id": "RC-04",
+      "area": "notifications",
+      "before": "Schedule emails only; landlord in-app missing for quote/visit events",
+      "after": "Landlord in-app on quote submit + visit propose/confirm; contractor email on quote revision/final decline",
+      "severity": "partial",
+      "residual": "Contractor in-app notifications not implemented; visit emails use ADMIN_MANUAL template"
+    },
+    {
+      "id": "RC-05",
+      "area": "ux_overloaded_reject",
+      "before": "Single Reject button conflated quote revision vs contractor removal",
+      "after": "Separate Request changes, Decline quote (final), Approve and authorise; Request another date for visits",
+      "severity": "resolved"
+    }
+  ]
+}

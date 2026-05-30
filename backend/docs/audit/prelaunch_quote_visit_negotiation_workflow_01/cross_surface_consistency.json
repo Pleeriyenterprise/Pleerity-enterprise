@@ -1,0 +1,16 @@
+{
+  "captured_at": "2026-05-30T15:12:01.902557+00:00",
+  "client_after_confirm": {
+    "schedule_status": "confirmed",
+    "visit_history_len": 4,
+    "price_status": "APPROVED",
+    "work_order_id": "22f1af1f-9301-4de2-a8cb-b6a967f910e9"
+  },
+  "contractor_after_confirm": {
+    "ok": true,
+    "schedule_status": "confirmed",
+    "visit_history_len": 4
+  },
+  "price_status_at_confirm": "APPROVED",
+  "schedule_status_match": true
+}

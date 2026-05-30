@@ -1,0 +1,2 @@
+- Contractor in-app notifications remain out of scope — email + portal state only.
+- Visit notification emails use ADMIN_MANUAL template — branded templates deferred.

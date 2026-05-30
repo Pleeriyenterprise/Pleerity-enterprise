@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-05-30T15:12:01.902557+00:00",
+  "landlord_in_app": [
+    "quote_submitted",
+    "visit_proposed",
+    "visit_confirmed"
+  ],
+  "contractor_email": [
+    "quote_revision_requested",
+    "quote_rejected_final",
+    "visit_proposed",
+    "visit_confirmed"
+  ],
+  "residual_gaps": [
+    "contractor_in_app_not_supported",
+    "visit_email_template_ADMIN_MANUAL"
+  ],
+  "api_steps_ok": [
+    "contractor_submit_quote_v1",
+    "landlord_request_revision",
+    "contractor_submit_quote_v2",
+    "landlord_approve_v2",
+    "contractor_propose_visit_v1",
+    "landlord_request_visit_reschedule",
+    "contractor_propose_visit_v2",
+    "landlord_confirm_visit",
+    "landlord_reject_quote_final",
+    "landlord_reassign_contractor"
+  ]
+}

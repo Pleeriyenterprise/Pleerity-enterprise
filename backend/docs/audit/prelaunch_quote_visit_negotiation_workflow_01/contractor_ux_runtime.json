@@ -1,0 +1,10 @@
+{
+  "captured_at": "2026-05-30T15:12:55.975159+00:00",
+  "after_confirm": {
+    "ok": true,
+    "schedule_status": "confirmed",
+    "visit_history_len": 4
+  },
+  "resubmit_ok": true,
+  "visit_repropose_ok": true
+}

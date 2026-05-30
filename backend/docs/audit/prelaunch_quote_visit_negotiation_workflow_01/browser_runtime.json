@@ -1,0 +1,19 @@
+{
+  "captured_at": "2026-05-30T15:12:39.966557+00:00",
+  "steps": [],
+  "landlord_job_page": {
+    "job_id": "8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+    "has_request_changes": false,
+    "has_request_another_date": true,
+    "has_confirm_visit": true,
+    "has_visit_history": true,
+    "api_next_actions": [
+      "confirm_visit",
+      "request_visit_reschedule",
+      "cancel_booking"
+    ],
+    "api_has_request_visit_reschedule": true,
+    "api_schedule_status": "proposed",
+    "api_workflow_mode": "QUOTE_FIRST"
+  }
+}

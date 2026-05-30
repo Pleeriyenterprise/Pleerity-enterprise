@@ -1,0 +1,15 @@
+{
+  "captured_at": "2026-05-30T15:10:17.686813+00:00",
+  "api_sha": "9af0d370c5b818ae0a1ee336e822693efbeeb987",
+  "frontend_js": "/static/js/main.5b39cef3.js",
+  "bundle_markers": {
+    "request_quote_revision_api": true,
+    "request_visit_reschedule_api": true,
+    "request_changes_ui": true,
+    "request_another_date_ui": true,
+    "visit_history_ui": true,
+    "submit_revised_quote_ui": true,
+    "propose_visit_ui": true
+  },
+  "api_has_request_visit_reschedule_route": true
+}

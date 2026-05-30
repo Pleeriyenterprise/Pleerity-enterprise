@@ -1,0 +1,31 @@
+{
+  "captured_at": "2026-05-30T15:12:01.902557+00:00",
+  "workflow_modes": [
+    "QUOTE_FIRST",
+    "INSPECTION_FIRST"
+  ],
+  "default_mode": "QUOTE_FIRST",
+  "initial_mode_observed": "QUOTE_FIRST",
+  "quote_states": [
+    "QUOTE_REQUESTED",
+    "QUOTE_SUBMITTED",
+    "QUOTE_UNDER_REVIEW",
+    "QUOTE_REVISION_REQUESTED",
+    "QUOTE_RESUBMITTED",
+    "QUOTE_APPROVED",
+    "QUOTE_REJECTED_FINAL",
+    "WORK_AUTHORISED"
+  ],
+  "visit_states": [
+    "VISIT_PROPOSED",
+    "VISIT_RESCHEDULE_REQUESTED",
+    "VISIT_CONFIRMED",
+    "VISIT_DECLINED",
+    "VISIT_COMPLETED",
+    "VISIT_CANCELLED"
+  ],
+  "storage_mapping": {
+    "quote": "price_status + quote_negotiation_history[]",
+    "visit": "schedule_status + visit_negotiation_history[]"
+  }
+}
