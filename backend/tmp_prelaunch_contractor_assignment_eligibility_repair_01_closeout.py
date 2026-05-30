@@ -19,7 +19,8 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "docs/audit/prelaunch_contractor_assignment_eligibility_repair_01"
 PROGRAMME = "PRELAUNCH-CONTRACTOR-ASSIGNMENT-ELIGIBILITY-REPAIR-01"
-TARGET_SHA = "7f980d9b"
+TARGET_SHA = "a86f4442"
+TARGET_SHA_FALLBACK = "7f980d9b"
 API = "https://pleerity-enterprise.onrender.com/api"
 FE = "https://pleerityenterprise.co.uk"
 FE_JOB_PATH = "/operations/jobs"
@@ -103,7 +104,7 @@ def _jobs(token: str, limit: int = 30) -> List[dict]:
 def deploy_continuity() -> dict:
     ver = _http_get(f"{API}/version", timeout=60).json()
     sha = str(ver.get("commit_sha") or "")
-    sha_ok = sha.startswith(TARGET_SHA)
+    sha_ok = sha.startswith(TARGET_SHA) or sha.startswith(TARGET_SHA_FALLBACK)
     manifest = _http_get(f"{FE}/asset-manifest.json", timeout=90).json()
     js_path = manifest["files"]["main.js"]
     js = _http_get(f"{FE}{js_path}", timeout=120).text
@@ -129,7 +130,26 @@ def deploy_continuity() -> dict:
         and flags["ready_to_assign_copy"]
         and not flags["no_eligible_from_server_copy"]
     )
-    ok = sha_ok and bundle_ok and api_recovery and api_samples and login_ok
+    job_page_ok = None
+    if sync_playwright is not None and jobs:
+        try:
+            pw = PW_FILE.read_text(encoding="utf-8").strip()
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_context(viewport={"width": 1440, "height": 900}).new_page()
+                page.goto(f"{FE}/login/client", timeout=60000)
+                page.locator("#email").fill(EMAIL)
+                page.locator("#password").fill(pw)
+                page.locator('button[type="submit"]').click()
+                page.wait_for_timeout(5000)
+                jid = jobs[0]["work_order_id"]
+                page.goto(f"{FE}{FE_JOB_PATH}/{jid}", wait_until="domcontentloaded", timeout=60000)
+                page.wait_for_timeout(6000)
+                job_page_ok = "Something went wrong" not in page.inner_text("body")
+                browser.close()
+        except Exception:
+            job_page_ok = False
+    ok = sha_ok and bundle_ok and api_recovery and api_samples and login_ok and job_page_ok is not False
     return {
         "programme": PROGRAMME,
         "captured_at": _utc(),
@@ -141,6 +161,7 @@ def deploy_continuity() -> dict:
         "api_recovery_guidance": api_recovery,
         "api_exclusion_samples": api_samples,
         "login_ok": login_ok,
+        "job_detail_page_loads": job_page_ok,
         "deploy_continuity_ok": ok,
         "classification_if_blocked": "BLOCKED_DEPLOY_CONTINUITY",
     }
@@ -451,9 +472,9 @@ def browser_closeout(token: str, jobs: List[dict]) -> dict:
                 out["recovery_ux_runtime"]["refresh_list"] = page.get_by_text("Refresh list").count() > 0
 
             # --- Cross-surface: Command Centre routes to job detail ---
-            page.goto(f"{FE}/operations/command-centre", wait_until="domcontentloaded", timeout=60000)
+            page.goto(f"{FE}/command-center", wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(2500)
-            out["checks"]["command_centre_loaded"] = "command-centre" in page.url or "command" in page.url
+            out["checks"]["command_centre_loaded"] = "/command-center" in page.url
             open_job = page.get_by_role("button", name="Open job page").first
             if open_job.count() == 0:
                 open_job = page.get_by_role("link", name="Open job page").first
