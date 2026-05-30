@@ -446,16 +446,16 @@ def browser_closeout(token: str, jobs: List[dict]) -> dict:
                             if assign_selected.count():
                                 out["dropdown_runtime"]["assign_enabled_after_selection"] = not assign_selected.is_disabled()
                                 assign_selected.click()
-                            page.wait_for_timeout(5000)
-                            out["assignment_e2e"]["assign_clicked"] = True
-                            jr = _http_get(f"{API}/jobs/{eligible_job}", headers=_headers(token), timeout=60)
-                            if jr.is_success:
-                                job_body = jr.json()
-                                cid = (job_body.get("contractor_id") or "").strip()
-                                if isinstance(job_body.get("contractor"), dict):
-                                    cid = job_body["contractor"].get("contractor_id") or cid
-                                out["assignment_e2e"]["contractor_linked"] = bool(cid)
-                                out["assignment_e2e"]["job_id"] = eligible_job
+                                page.wait_for_timeout(5000)
+                                out["assignment_e2e"]["assign_clicked"] = True
+                                jr = _http_get(f"{API}/jobs/{eligible_job}", headers=_headers(token), timeout=60)
+                                if jr.is_success:
+                                    job_body = jr.json()
+                                    cid = (job_body.get("contractor_id") or "").strip()
+                                    if isinstance(job_body.get("contractor"), dict):
+                                        cid = job_body["contractor"].get("contractor_id") or cid
+                                    out["assignment_e2e"]["contractor_linked"] = bool(cid)
+                                    out["assignment_e2e"]["job_id"] = eligible_job
                     except Exception as exc:
                         out["dropdown_runtime"]["error"] = str(exc)
 

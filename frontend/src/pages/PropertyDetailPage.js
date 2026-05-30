@@ -99,6 +99,7 @@ import {
   GUIDED_CTA_UNAVAILABLE_TITLE,
   resolvePrimaryCtaNavigatedAway,
 } from '../utils/requirementCtaParity';
+import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
 import {
   clientFacingVerificationLabel,
   clientVerificationLabelRedundantWithPrimary,
