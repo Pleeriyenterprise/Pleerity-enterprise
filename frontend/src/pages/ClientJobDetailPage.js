@@ -597,6 +597,42 @@ function ClientJobDetailInner() {
     return { total, hiddenByTrade, hiddenBySearch, afterTradeCount: afterTrade.length };
   }, [assignableContractors, tradeTypeFilter, contractorFilter, filteredAssignableContractors]);
 
+  const assignDropdownEmpty = useMemo(
+    () =>
+      assignDropdownEmptyMessage({
+        filteredCount: filteredAssignableContractors.length,
+        eligibleTotal: assignableContractors.length,
+        filterStats: assignableClientFilterStats,
+        diagnostics: assignableFilterDiagnostics,
+        tradeTypeFilter,
+        contractorFilter,
+      }),
+    [
+      filteredAssignableContractors.length,
+      assignableContractors.length,
+      assignableClientFilterStats,
+      assignableFilterDiagnostics,
+      tradeTypeFilter,
+      contractorFilter,
+    ]
+  );
+
+  const excludedContractorGroups = useMemo(
+    () => groupedExclusionSamples(assignableExclusionSamples),
+    [assignableExclusionSamples]
+  );
+
+  const handleRecoveryAction = (action) => {
+    if (!action) return;
+    if (action.action === 'focus_add_form') {
+      setShowAddContractorForm(true);
+      return;
+    }
+    if (action.href && typeof window !== 'undefined') {
+      window.open(action.href, '_self');
+    }
+  };
+
   const openEvidenceFile = async (key) => {
     if (!jobId || !key || key.startsWith('document:')) return;
     try {
