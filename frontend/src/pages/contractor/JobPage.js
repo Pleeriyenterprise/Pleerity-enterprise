@@ -436,7 +436,7 @@ export default function JobPage() {
         .catch((err) => toast.error(parseApiError(err, 'Could not submit quote')))
         .finally(() => setQuoteSaving(false));
     },
-    [api, quoteForm, loadWorkOrder],
+    [api, quoteForm, loadWorkOrder, workOrder?.pricing?.revision_active],
   );
 
   const handleSubmitInvoice = useCallback(
