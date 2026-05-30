@@ -1,5 +1,7 @@
 /** Server-aligned recovery guidance for assign-contractor modal (display only — authority stays on API). */
 
+import { EARLY_NETWORK_GUIDANCE } from './assignContractorEarlyNetwork';
+
 export const EXCLUSION_REASON_LABELS = {
   excluded_not_assignment_ready: 'Not assignment-ready',
   excluded_wrong_client_scope: 'Wrong client scope',
@@ -46,8 +48,8 @@ export function assignDropdownEmptyMessage({
   if (serverEligible === 0 && directoryTotal > 0) {
     return {
       kind: 'server_empty',
-      headline: 'No contractors qualify for this job yet.',
-      detail: 'Use the recovery steps below to update coverage, complete setup, or add a contractor.',
+      headline: 'No contractors currently cover this property area.',
+      detail: EARLY_NETWORK_GUIDANCE,
     };
   }
 

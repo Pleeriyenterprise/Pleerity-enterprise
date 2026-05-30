@@ -61,6 +61,16 @@ import {
   assignDropdownEmptyMessage,
   groupedExclusionSamples,
 } from '../utils/assignContractorRecovery';
+import {
+  earlyNetworkSupportText,
+  ELIGIBILITY_EMPTY_SUMMARY,
+  EARLY_NETWORK_GUIDANCE,
+  EARLY_NETWORK_PRIMARY_CTA,
+  EARLY_NETWORK_SECONDARY_HEADER,
+  isEarlyNetworkMode,
+  NETWORK_MATURITY_BANNER,
+  networkCoverageLevel,
+} from '../utils/assignContractorEarlyNetwork';
 
 function formatWhen(iso) {
   if (!iso) return '—';
@@ -258,7 +268,9 @@ function ClientJobDetailInner() {
   const [assignableFilterDiagnostics, setAssignableFilterDiagnostics] = useState(null);
   const [assignableRecoveryGuidance, setAssignableRecoveryGuidance] = useState(null);
   const [assignableExclusionSamples, setAssignableExclusionSamples] = useState(null);
+  const [assignablePropertyPostcode, setAssignablePropertyPostcode] = useState(null);
   const [showExcludedContractors, setShowExcludedContractors] = useState(false);
+  const [showEligibilityDiagnostics, setShowEligibilityDiagnostics] = useState(false);
   const [assignableLoading, setAssignableLoading] = useState(false);
   const [contractorFilter, setContractorFilter] = useState('');
   const [tradeTypeFilter, setTradeTypeFilter] = useState('all');
@@ -353,6 +365,7 @@ function ClientJobDetailInner() {
       setAssignableFilterDiagnostics(r.data?.filter_diagnostics ?? null);
       setAssignableRecoveryGuidance(r.data?.recovery_guidance ?? null);
       setAssignableExclusionSamples(r.data?.exclusion_samples ?? null);
+      setAssignablePropertyPostcode(r.data?.property_postcode ?? null);
       const jj = r.data?.job_jurisdiction ?? null;
       setAssignableJobJurisdiction(jj);
       return r.data;
@@ -375,6 +388,7 @@ function ClientJobDetailInner() {
       setAssignModalOpen(true);
       setShowAddContractorForm(!!focusAdd);
       setShowExcludedContractors(false);
+      setShowEligibilityDiagnostics(false);
       const suggested = defaultTradeForJob(job);
       setTradeTypeFilter(suggested);
       setNewContractor((prev) => ({ ...prev, tradeType: suggested }));
@@ -661,6 +675,31 @@ function ClientJobDetailInner() {
   const excludedContractorGroups = useMemo(
     () => groupedExclusionSamples(assignableExclusionSamples),
     [assignableExclusionSamples]
+  );
+
+  const serverEligibleCount = assignableFilterDiagnostics?.eligible ?? assignableContractors.length;
+
+  const earlyNetworkMode = useMemo(
+    () =>
+      isEarlyNetworkMode({
+        diagnostics: assignableFilterDiagnostics,
+        eligibleCount: serverEligibleCount,
+      }),
+    [assignableFilterDiagnostics, serverEligibleCount]
+  );
+
+  const coverageLevel = useMemo(
+    () => networkCoverageLevel(assignableFilterDiagnostics),
+    [assignableFilterDiagnostics]
+  );
+
+  const earlyNetworkSupport = useMemo(
+    () =>
+      earlyNetworkSupportText({
+        jobJurisdiction: assignableJobJurisdiction,
+        propertyPostcode: assignablePropertyPostcode,
+      }),
+    [assignableJobJurisdiction, assignablePropertyPostcode]
   );
 
   const handleRecoveryAction = (action) => {
@@ -1605,6 +1644,8 @@ function ClientJobDetailInner() {
             setAssignableRecoveryGuidance(null);
             setAssignableExclusionSamples(null);
             setShowExcludedContractors(false);
+            setShowEligibilityDiagnostics(false);
+            setAssignablePropertyPostcode(null);
           }
         }}
       >
@@ -1612,17 +1653,27 @@ function ClientJobDetailInner() {
           <DialogHeader>
             <DialogTitle>Assign contractor</DialogTitle>
             <DialogDescription>
-              Search eligible contractors for this job and filter by trade. Add a new contractor only from here — not from
-              requirement cards or Today.
+              Match contractors to this job by trade and coverage, or add someone new for this property area.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <Alert className="border-teal-200 bg-teal-50/80 text-teal-950 py-2">
-              <AlertDescription className="text-xs">
-                When you assign a contractor, they will receive an email. They must activate their contractor portal
-                before they can view the job, submit a quote, or update progress.
-              </AlertDescription>
-            </Alert>
+          <div
+            className="space-y-3 text-sm"
+            data-testid="assign-contractor-modal"
+            data-early-network-mode={earlyNetworkMode ? 'true' : 'false'}
+            data-coverage-level={coverageLevel}
+          >
+            {!assignableLoading && serverEligibleCount === 0 ? (
+              <Alert className="border-slate-200 bg-slate-50 text-slate-800 py-2" data-testid="assign-contractor-network-banner">
+                <AlertDescription className="text-xs leading-relaxed">{NETWORK_MATURITY_BANNER}</AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="border-teal-200 bg-teal-50/80 text-teal-950 py-2">
+                <AlertDescription className="text-xs">
+                  When you assign a contractor, they will receive an email. They must activate their contractor portal
+                  before they can view the job, submit a quote, or update progress.
+                </AlertDescription>
+              </Alert>
+            )}
             {assignSelectedNeedsActivation ? (
               <Alert className="border-amber-200 bg-amber-50/90 text-amber-950 py-2">
                 <AlertDescription className="text-xs">
@@ -1630,16 +1681,44 @@ function ClientJobDetailInner() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {assignableJobJurisdiction ? (
-              <Alert className="border-slate-200 bg-slate-50 text-slate-800 py-2">
-                <AlertDescription className="text-xs">
-                  This job is in the <strong>{assignableJobJurisdiction}</strong> jurisdiction. Only contractors whose
-                  service regions include that area are listed. If the list is empty, add a contractor and set their regions
-                  accordingly.
-                </AlertDescription>
-              </Alert>
+            {!assignableLoading && serverEligibleCount === 0 ? (
+              <div
+                className="rounded-lg border-2 border-teal-600 bg-teal-50/90 px-4 py-3 space-y-2"
+                data-testid="assign-contractor-primary-cta"
+              >
+                <p className="text-sm text-gray-800">{earlyNetworkSupport}</p>
+                <Button
+                  type="button"
+                  className="w-full bg-midnight-blue hover:bg-midnight-blue/90"
+                  onClick={() => setShowAddContractorForm(true)}
+                >
+                  {EARLY_NETWORK_PRIMARY_CTA}
+                </Button>
+                <p className="text-xs text-gray-600">{EARLY_NETWORK_GUIDANCE}</p>
+              </div>
             ) : null}
-            {!assignableLoading && assignableFilterDiagnostics ? (
+            {!assignableLoading && serverEligibleCount === 0 && assignableFilterDiagnostics ? (
+              <div className="text-xs text-gray-800" data-testid="assign-contractor-eligibility-summary">
+                <p>
+                  {ELIGIBILITY_EMPTY_SUMMARY}{' '}
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-teal-800 align-baseline"
+                    onClick={() => setShowEligibilityDiagnostics((v) => !v)}
+                  >
+                    {showEligibilityDiagnostics ? 'Hide details' : 'Why?'}
+                  </Button>
+                </p>
+              </div>
+            ) : null}
+            {!assignableLoading && serverEligibleCount > 0 && assignableFilterDiagnostics ? (
+              <p className="text-xs text-teal-900 font-medium">
+                {serverEligibleCount} contractor{serverEligibleCount === 1 ? '' : 's'} ready to assign on this job.
+              </p>
+            ) : null}
+            {!assignableLoading && showEligibilityDiagnostics && assignableFilterDiagnostics ? (
               <div
                 className="rounded-lg border border-gray-200 bg-gray-50/90 px-3 py-2 text-xs text-gray-800 space-y-1.5"
                 data-testid="assign-contractor-funnel"
@@ -1693,7 +1772,8 @@ function ClientJobDetailInner() {
               </div>
             ) : null}
             {!assignableLoading &&
-            assignableContractors.length === 0 &&
+            showEligibilityDiagnostics &&
+            serverEligibleCount === 0 &&
             assignableRecoveryGuidance?.recovery_actions?.length ? (
               <div
                 className="rounded-lg border border-teal-100 bg-teal-50/60 px-3 py-2 text-xs space-y-2"
@@ -1731,7 +1811,7 @@ function ClientJobDetailInner() {
                 </ul>
               </div>
             ) : null}
-            {!assignableLoading && excludedContractorGroups.length > 0 ? (
+            {!assignableLoading && showEligibilityDiagnostics && excludedContractorGroups.length > 0 ? (
               <div className="text-xs" data-testid="assign-contractor-excluded-review">
                 <Button
                   type="button"
@@ -1762,6 +1842,11 @@ function ClientJobDetailInner() {
                     </Link>
                   </div>
                 ) : null}
+              </div>
+            ) : null}
+            {!assignableLoading && serverEligibleCount === 0 ? (
+              <div className="border-t border-gray-100 pt-3">
+                <p className="text-xs font-semibold text-gray-800 mb-2">{EARLY_NETWORK_SECONDARY_HEADER}</p>
               </div>
             ) : null}
             {(tradeTypeFilter && tradeTypeFilter !== 'all') || (contractorFilter || '').trim() ? (
@@ -1840,18 +1925,22 @@ function ClientJobDetailInner() {
                 </Button>
               </>
             )}
-            <div className="border-t border-gray-100 pt-3 space-y-2">
-              <p className="text-xs text-gray-600">No suitable match in the list?</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => setShowAddContractorForm((v) => !v)}
-              >
-                {showAddContractorForm ? 'Hide add new contractor' : 'Add a new contractor'}
-              </Button>
-            </div>
+            {serverEligibleCount > 0 || showAddContractorForm ? (
+              <div className="border-t border-gray-100 pt-3 space-y-2">
+                {serverEligibleCount > 0 ? (
+                  <p className="text-xs text-gray-600">No suitable match in the list?</p>
+                ) : null}
+                <Button
+                  type="button"
+                  variant={serverEligibleCount > 0 ? 'outline' : 'ghost'}
+                  size="sm"
+                  className={serverEligibleCount > 0 ? 'w-full' : 'w-full text-teal-800'}
+                  onClick={() => setShowAddContractorForm((v) => !v)}
+                >
+                  {showAddContractorForm ? 'Hide add contractor form' : EARLY_NETWORK_PRIMARY_CTA}
+                </Button>
+              </div>
+            ) : null}
             {showAddContractorForm ? (
               <div className="space-y-2 border border-dashed border-gray-200 rounded-lg p-3 bg-gray-50/80">
                 <p className="text-xs text-gray-700 rounded-md border border-teal-100 bg-teal-50/70 px-2.5 py-2">

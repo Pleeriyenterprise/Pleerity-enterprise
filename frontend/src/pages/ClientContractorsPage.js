@@ -5,7 +5,7 @@ import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Briefcase, Loader2, AlertCircle, CheckCircle, Send, UserPlus, Eye } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { toast } from '@/utils/portalNotifications';
+import { CONTRACTOR_DIRECTORY_EMPTY_HINT } from '../utils/assignContractorEarlyNetwork';
 
 function sourceLabel(sourceType) {
   const s = (sourceType || '').toLowerCase();
@@ -83,8 +83,9 @@ function ClientContractorsPageInner() {
     if (activeTab === 'my') {
       return (
         <>
-          No contractors in your list yet. To add someone new, open a job under Operations (maintenance or compliance) and use{' '}
-          <span className="font-medium">Add contractor & assign</span> in the assignment section (
+          {CONTRACTOR_DIRECTORY_EMPTY_HINT}{' '}
+          Open a job under Operations and use <span className="font-medium">Add contractor for this area</span> when
+          assigning (
           <Link to="/operations/work-orders" className="text-electric-teal hover:underline">
             Operations → Jobs
           </Link>
