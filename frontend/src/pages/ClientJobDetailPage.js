@@ -57,6 +57,10 @@ import {
   prioritizedClientJobNextAction,
 } from '../utils/jobWorkflowUi';
 import NextActionHero from '../components/operational/NextActionHero';
+import {
+  assignDropdownEmptyMessage,
+  groupedExclusionSamples,
+} from '../utils/assignContractorRecovery';
 
 function formatWhen(iso) {
   if (!iso) return '—';
@@ -247,6 +251,9 @@ function ClientJobDetailInner() {
   const [assignableJobJurisdiction, setAssignableJobJurisdiction] = useState(null);
   /** Server pipeline counts: who appears in directory vs excluded at each gate (mutually exclusive buckets). */
   const [assignableFilterDiagnostics, setAssignableFilterDiagnostics] = useState(null);
+  const [assignableRecoveryGuidance, setAssignableRecoveryGuidance] = useState(null);
+  const [assignableExclusionSamples, setAssignableExclusionSamples] = useState(null);
+  const [showExcludedContractors, setShowExcludedContractors] = useState(false);
   const [assignableLoading, setAssignableLoading] = useState(false);
   const [contractorFilter, setContractorFilter] = useState('');
   const [tradeTypeFilter, setTradeTypeFilter] = useState('all');
@@ -318,37 +325,50 @@ function ClientJobDetailInner() {
     setAllowCreateDespiteDuplicates(false);
   }, [newContractor.company_name, newContractor.email, newContractor.phone]);
 
+  const loadAssignableContractors = useCallback(async () => {
+    if (!jobId || !hasFeature('contractor_network')) return;
+    setAssignableLoading(true);
+    try {
+      const r = await clientAPI.getJobAssignableContractors(jobId, { limit: 200 });
+      setAssignableContractors(r.data?.contractors || []);
+      setAssignableFilterDiagnostics(r.data?.filter_diagnostics ?? null);
+      setAssignableRecoveryGuidance(r.data?.recovery_guidance ?? null);
+      setAssignableExclusionSamples(r.data?.exclusion_samples ?? null);
+      const jj = r.data?.job_jurisdiction ?? null;
+      setAssignableJobJurisdiction(jj);
+      return r.data;
+    } catch {
+      setAssignableContractors([]);
+      setAssignableJobJurisdiction(null);
+      setAssignableRecoveryGuidance(null);
+      setAssignableExclusionSamples(null);
+      toast.error('Could not load assignable contractors');
+      return null;
+    } finally {
+      setAssignableLoading(false);
+    }
+  }, [jobId, hasFeature]);
+
   const openAssignModal = useCallback(
     async (opts = {}) => {
       const { focusAdd = false } = opts;
       if (!jobId || !hasFeature('contractor_network')) return;
       setAssignModalOpen(true);
       setShowAddContractorForm(!!focusAdd);
+      setShowExcludedContractors(false);
       const suggested = defaultTradeForJob(job);
       setTradeTypeFilter(suggested);
       setNewContractor((prev) => ({ ...prev, tradeType: suggested }));
-      setAssignableLoading(true);
-      try {
-        const r = await clientAPI.getJobAssignableContractors(jobId, { limit: 200 });
-        setAssignableContractors(r.data?.contractors || []);
-        setAssignableFilterDiagnostics(r.data?.filter_diagnostics ?? null);
-        const jj = r.data?.job_jurisdiction ?? null;
-        setAssignableJobJurisdiction(jj);
-        setNewContractor((prev) => ({
-          ...prev,
-          tradeType: suggested,
-          service_regions:
-            (job?.work_order_kind || '').toUpperCase() === 'COMPLIANCE' && jj ? [jj] : [],
-        }));
-      } catch {
-        setAssignableContractors([]);
-        setAssignableJobJurisdiction(null);
-        toast.error('Could not load assignable contractors');
-      } finally {
-        setAssignableLoading(false);
-      }
+      const data = await loadAssignableContractors();
+      const jj = data?.job_jurisdiction ?? null;
+      setNewContractor((prev) => ({
+        ...prev,
+        tradeType: suggested,
+        service_regions:
+          (job?.work_order_kind || '').toUpperCase() === 'COMPLIANCE' && jj ? [jj] : [],
+      }));
     },
-    [jobId, job, hasFeature]
+    [jobId, job, hasFeature, loadAssignableContractors]
   );
 
   const kindLabel = useMemo(() => {
@@ -1336,6 +1356,9 @@ function ClientJobDetailInner() {
             setShowAddContractorForm(false);
             setAllowCreateDespiteDuplicates(false);
             setAssignableFilterDiagnostics(null);
+            setAssignableRecoveryGuidance(null);
+            setAssignableExclusionSamples(null);
+            setShowExcludedContractors(false);
           }
         }}
       >
@@ -1400,14 +1423,86 @@ function ClientJobDetailInner() {
                     <strong>{assignableFilterDiagnostics.excluded_wrong_client_scope}</strong>
                   </li>
                   <li>
-                    <span className="text-teal-800 font-medium">Eligible from server for this job: </span>
+                    <span className="text-teal-800 font-medium">Ready to assign on this job: </span>
                     <strong>{assignableFilterDiagnostics.eligible}</strong>
                   </li>
                 </ul>
                 <p className="text-[11px] text-gray-500 border-t border-gray-200 pt-1.5">
-                  Each contractor is counted once at the first rule that blocked them. The dropdown below can hide
-                  additional rows using the trade and search filters (client-side only).
+                  Each contractor is counted once at the first rule that blocked them. Trade and search filters below
+                  can hide additional rows from the dropdown.
                 </p>
+              </div>
+            ) : null}
+            {!assignableLoading &&
+            assignableContractors.length === 0 &&
+            assignableRecoveryGuidance?.recovery_actions?.length ? (
+              <div
+                className="rounded-lg border border-teal-100 bg-teal-50/60 px-3 py-2 text-xs space-y-2"
+                data-testid="assign-contractor-recovery"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-teal-950">What you can do next</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-[11px] h-7"
+                    disabled={assignableLoading}
+                    onClick={() => loadAssignableContractors()}
+                  >
+                    Refresh list
+                  </Button>
+                </div>
+                <ul className="space-y-2 list-none">
+                  {assignableRecoveryGuidance.recovery_actions.map((action) => (
+                    <li key={action.key} className="rounded-md border border-teal-100 bg-white/80 px-2.5 py-2">
+                      <p className="font-medium text-gray-900">{action.headline}</p>
+                      {action.detail ? <p className="text-gray-600 mt-0.5">{action.detail}</p> : null}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="mt-1.5 text-[11px] h-7"
+                        onClick={() => handleRecoveryAction(action)}
+                      >
+                        {action.cta_label}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {!assignableLoading && excludedContractorGroups.length > 0 ? (
+              <div className="text-xs" data-testid="assign-contractor-excluded-review">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-0 text-teal-800 hover:text-teal-900"
+                  onClick={() => setShowExcludedContractors((v) => !v)}
+                >
+                  {showExcludedContractors ? 'Hide excluded contractors' : 'Review excluded contractors'}
+                </Button>
+                {showExcludedContractors ? (
+                  <div className="mt-1 space-y-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                    {excludedContractorGroups.map((group) => (
+                      <div key={group.reasonKey}>
+                        <p className="font-medium text-gray-800">{group.label}</p>
+                        <ul className="mt-1 space-y-0.5 text-gray-600 list-disc pl-4">
+                          {group.contractors.map((c) => (
+                            <li key={c.contractor_id}>
+                              {c.name || 'Unnamed contractor'}
+                              {c.trade_types?.length ? ` · ${c.trade_types.join(', ')}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                    <Link to="/contractors" className="inline-block text-teal-800 underline mt-1">
+                      Open contractor directory to update coverage or readiness
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {(tradeTypeFilter && tradeTypeFilter !== 'all') || (contractorFilter || '').trim() ? (
@@ -1469,43 +1564,19 @@ function ClientJobDetailInner() {
                       </option>
                     ))}
                   </select>
-                  {!filteredAssignableContractors.length ? (
+                  {!filteredAssignableContractors.length && assignDropdownEmpty ? (
                     <div className="text-xs text-amber-800 mt-1 space-y-1">
-                      <p>No rows in the dropdown match the current trade and search filters.</p>
-                      {assignableClientFilterStats.total > 0 ? (
-                        <p>
-                          {assignableClientFilterStats.hiddenByTrade > 0 ? (
-                            <>
-                              Hidden by trade filter: <strong>{assignableClientFilterStats.hiddenByTrade}</strong>
-                              {' · '}
-                            </>
-                          ) : null}
-                          {assignableClientFilterStats.hiddenBySearch > 0 ? (
-                            <>
-                              Hidden by search: <strong>{assignableClientFilterStats.hiddenBySearch}</strong>
-                            </>
-                          ) : null}
-                          {assignableClientFilterStats.hiddenByTrade === 0 &&
-                          assignableClientFilterStats.hiddenBySearch === 0 ? (
-                            <span>Use &quot;Show all trades&quot; or clear search.</span>
-                          ) : (
-                            <span> Try &quot;Show all trades&quot; or clear search.</span>
-                          )}
-                        </p>
-                      ) : assignableFilterDiagnostics &&
-                        (assignableFilterDiagnostics.visible_in_directory || 0) > 0 ? (
-                        <p>
-                          The server returned no eligible contractors for this job (
-                          <strong>{assignableFilterDiagnostics.eligible}</strong> eligible). Use the funnel above to see
-                          which rule removed them (common: region, compliance verification, or assignment-ready status).
-                        </p>
-                      ) : (
-                        <p>No contractors in your directory yet — add one below.</p>
-                      )}
+                      <p>{assignDropdownEmpty.headline}</p>
+                      <p>{assignDropdownEmpty.detail}</p>
                     </div>
                   ) : null}
                 </div>
-                <Button type="button" size="sm" disabled={!!actionBusy} onClick={handleAssign}>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!!actionBusy || !assignContractorId.trim() || !filteredAssignableContractors.length}
+                  onClick={handleAssign}
+                >
                   {actionBusy === 'assign' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Assign selected'}
                 </Button>
               </>

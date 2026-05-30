@@ -1,0 +1,49 @@
+{
+  "captured_at": "2026-05-30T00:52:43.147895+00:00",
+  "checks_run": 40,
+  "jobs_with_eligible_contractors": 40,
+  "recovery_fields_present": false,
+  "sample_eligible_jobs": [
+    {
+      "job_id": "f31ba8b8-66cc-46ee-95b3-305eadc54c79",
+      "eligible": 1,
+      "has_recovery_guidance": false,
+      "has_exclusion_samples": false,
+      "job_jurisdiction": "Wales",
+      "property_postcode": null
+    },
+    {
+      "job_id": "028ea46a-fec6-4618-ac58-4f7195727065",
+      "eligible": 1,
+      "has_recovery_guidance": false,
+      "has_exclusion_samples": false,
+      "job_jurisdiction": "Wales",
+      "property_postcode": null
+    },
+    {
+      "job_id": "4b3b53b2-94ca-4c0b-9e55-b3b2eb4151ba",
+      "eligible": 1,
+      "has_recovery_guidance": false,
+      "has_exclusion_samples": false,
+      "job_jurisdiction": "Wales",
+      "property_postcode": null
+    },
+    {
+      "job_id": "df36fff8-b8ea-4399-92f8-279d094fcfe8",
+      "eligible": 1,
+      "has_recovery_guidance": false,
+      "has_exclusion_samples": false,
+      "job_jurisdiction": "Wales",
+      "property_postcode": null
+    },
+    {
+      "job_id": "4fafdacb-09e2-4b1c-8f50-c7b4732da4f7",
+      "eligible": 1,
+      "has_recovery_guidance": false,
+      "has_exclusion_samples": false,
+      "job_jurisdiction": "Wales",
+      "property_postcode": null
+    }
+  ],
+  "authority_repair_deployed": true
+}

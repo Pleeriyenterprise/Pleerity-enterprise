@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-05-30T00:52:45.079909+00:00",
+  "frontend_bundle": "/static/js/main.d55c70dd.js",
+  "flags": {
+    "assign_contractor_recovery_testid": false,
+    "assign_contractor_excluded_review": false,
+    "assign_contractor_funnel": true,
+    "ready_to_assign_copy": false,
+    "recovery_refresh": true,
+    "no_eligible_from_server_copy": true
+  },
+  "recovery_ux_ok": false
+}

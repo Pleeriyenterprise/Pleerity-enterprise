@@ -1,0 +1,9 @@
+{
+  "captured_at": "2026-05-30T00:53:48.271324+00:00",
+  "surfaces": {
+    "job_detail_modal": true,
+    "getJobAssignableContractors": true,
+    "client_job_detail": true
+  },
+  "note": "Primary assign modal lives on ClientJobDetailPage; Today/Command Centre route to job detail for assign."
+}

@@ -1,0 +1,219 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-ASSIGNMENT-ELIGIBILITY-REPAIR-01",
+  "captured_at": "2026-05-30T00:51:03.422228+00:00",
+  "data_flow": {
+    "modal": "frontend/src/pages/ClientJobDetailPage.js",
+    "api": "GET /api/jobs/{job_id}/assignable-contractors",
+    "service": "contractor_service.list_assignable_contractors_for_work_order",
+    "pipeline_order": [
+      "visible_in_directory",
+      "excluded_not_assignment_ready",
+      "excluded_wrong_client_scope",
+      "excluded_property_scope",
+      "excluded_location_postcode",
+      "excluded_execution_capability",
+      "excluded_maintenance_trade",
+      "excluded_service_region_jurisdiction",
+      "eligible"
+    ]
+  },
+  "root_cause": {
+    "classification": "LOCATION_COVERAGE_MISMATCH",
+    "summary": "Portfolio region labels (e.g. England) were compared as postcodes in contractor_location_matches_property, excluding contractors before the service-region gate. Funnel counts were internally consistent; recovery UX was a dead-end.",
+    "frontend_drop_bug": false,
+    "eligibility_authority_bug": true,
+    "recovery_ux_gap": true
+  },
+  "jobs_sampled": 100,
+  "jobs_with_zero_eligible": 10,
+  "jobs_with_eligible": 90,
+  "screenshot_pattern_matches": [],
+  "representative_zero_eligible": [
+    {
+      "job_id": "63509f71-abf4-4cb6-84c5-e219d00f180b",
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "work_order_kind": "MAINTENANCE",
+      "category": "general",
+      "requirement_code": null,
+      "job_jurisdiction": "Scotland",
+      "property_postcode": null,
+      "filter_diagnostics": {
+        "visible_in_directory": 15,
+        "excluded_not_assignment_ready": 3,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 12,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 0
+      },
+      "eligible": 0,
+      "recovery_primary_blocker": null,
+      "anonymized_exclusion_samples": {}
+    },
+    {
+      "job_id": "5b52bd48-d7e5-47f9-b1ed-0480f77123ce",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "work_order_kind": "COMPLIANCE",
+      "category": "compliance",
+      "requirement_code": "eicr",
+      "job_jurisdiction": "Northern Ireland",
+      "property_postcode": null,
+      "filter_diagnostics": {
+        "visible_in_directory": 15,
+        "excluded_not_assignment_ready": 3,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 12,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 0
+      },
+      "eligible": 0,
+      "recovery_primary_blocker": null,
+      "anonymized_exclusion_samples": {}
+    },
+    {
+      "job_id": "55f206c4-9cc4-4119-b4a8-326954f6fd05",
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "work_order_kind": "MAINTENANCE",
+      "category": "general",
+      "requirement_code": null,
+      "job_jurisdiction": "Scotland",
+      "property_postcode": null,
+      "filter_diagnostics": {
+        "visible_in_directory": 15,
+        "excluded_not_assignment_ready": 3,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 12,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 0
+      },
+      "eligible": 0,
+      "recovery_primary_blocker": null,
+      "anonymized_exclusion_samples": {}
+    },
+    {
+      "job_id": "dcc28a43-9a2b-4327-a058-e3b9cb577a5b",
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+      "work_order_kind": "COMPLIANCE",
+      "category": "compliance",
+      "requirement_code": "epc",
+      "job_jurisdiction": "Northern Ireland",
+      "property_postcode": null,
+      "filter_diagnostics": {
+        "visible_in_directory": 15,
+        "excluded_not_assignment_ready": 3,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 12,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 0
+      },
+      "eligible": 0,
+      "recovery_primary_blocker": null,
+      "anonymized_exclusion_samples": {}
+    },
+    {
+      "job_id": "7faad62e-c860-4f7e-8ec6-1fc92a3baf32",
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "work_order_kind": "MAINTENANCE",
+      "category": "general",
+      "requirement_code": null,
+      "job_jurisdiction": "Northern Ireland",
+      "property_postcode": null,
+      "filter_diagnostics": {
+        "visible_in_directory": 15,
+        "excluded_not_assignment_ready": 3,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 12,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 0
+      },
+      "eligible": 0,
+      "recovery_primary_blocker": null,
+      "anonymized_exclusion_samples": {}
+    }
+  ],
+  "representative_eligible": [
+    {
+      "job_id": "f31ba8b8-66cc-46ee-95b3-305eadc54c79",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "work_order_kind": "MAINTENANCE",
+      "category": "general",
+      "requirement_code": null,
+      "job_jurisdiction": "Wales",
+      "property_postcode": null,
+      "filter_diagnostics": {
+        "visible_in_directory": 15,
+        "excluded_not_assignment_ready": 3,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 11,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 1
+      },
+      "eligible": 1,
+      "recovery_primary_blocker": null,
+      "anonymized_exclusion_samples": {}
+    },
+    {
+      "job_id": "028ea46a-fec6-4618-ac58-4f7195727065",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "work_order_kind": "MAINTENANCE",
+      "category": "general",
+      "requirement_code": null,
+      "job_jurisdiction": "Wales",
+      "property_postcode": null,
+      "filter_diagnostics": {
+        "visible_in_directory": 15,
+        "excluded_not_assignment_ready": 3,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 11,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 1
+      },
+      "eligible": 1,
+      "recovery_primary_blocker": null,
+      "anonymized_exclusion_samples": {}
+    },
+    {
+      "job_id": "4b3b53b2-94ca-4c0b-9e55-b3b2eb4151ba",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "work_order_kind": "MAINTENANCE",
+      "category": "general",
+      "requirement_code": null,
+      "job_jurisdiction": "Wales",
+      "property_postcode": null,
+      "filter_diagnostics": {
+        "visible_in_directory": 15,
+        "excluded_not_assignment_ready": 3,
+        "excluded_wrong_client_scope": 0,
+        "excluded_property_scope": 0,
+        "excluded_location_postcode": 11,
+        "excluded_execution_capability": 0,
+        "excluded_maintenance_trade": 0,
+        "excluded_service_region_jurisdiction": 0,
+        "eligible": 1
+      },
+      "eligible": 1,
+      "recovery_primary_blocker": null,
+      "anonymized_exclusion_samples": {}
+    }
+  ]
+}

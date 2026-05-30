@@ -6,7 +6,13 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from database import database
 import logging
+import re
 
+from services.assignment_eligibility_recovery import (
+    EXCLUSION_SAMPLE_LIMIT,
+    build_assignment_eligibility_recovery,
+    contractor_exclusion_sample,
+)
 from services.compliance_contractor_capability import (
     contractor_verified_qualifies_for_requirement,
     parse_execution_capabilities,
@@ -249,25 +255,76 @@ def _contractor_location_strings(contractor: Dict[str, Any]) -> List[str]:
     return pools
 
 
-def contractor_location_matches_property(contractor: Dict[str, Any], property_postcode: Optional[str]) -> bool:
+def contractor_location_matches_property(
+    contractor: Dict[str, Any],
+    property_postcode: Optional[str],
+    *,
+    property_jurisdiction: Optional[str] = None,
+) -> bool:
+    """
+    True when contractor location data is absent, informational only, or matches the property.
+
+    Portfolio labels (England, Scotland, …) match job/property jurisdiction — not postcodes.
+    Postcode-like fragments match the property postcode (outward or full).
+    Free-text labels (e.g. London, Midlands) are informational and do not block assignment.
+    """
     prop_pc = (property_postcode or "").strip().upper()
-    if not prop_pc:
-        return True
-    outward_prop = _uk_postcode_outward(prop_pc)
+    outward_prop = _uk_postcode_outward(prop_pc) if prop_pc else ""
+    job_j = canonicalize_uk_portfolio_label(property_jurisdiction or "") if property_jurisdiction else None
     pools = _contractor_location_strings(contractor)
     if not pools:
         return True
-    prop_norm = prop_pc.replace(" ", "")
+
+    portfolio_entries: List[str] = []
+    postcode_entries: List[str] = []
     for p in pools:
+        pl = canonicalize_uk_portfolio_label(p)
+        if pl:
+            if pl not in portfolio_entries:
+                portfolio_entries.append(pl)
+        elif _looks_like_uk_postcode_fragment(p):
+            postcode_entries.append(p)
+
+    if not portfolio_entries and not postcode_entries:
+        return True
+
+    if portfolio_entries and job_j and job_j in portfolio_entries:
+        return True
+
+    if not prop_pc:
+        if portfolio_entries:
+            return False
+        return True
+
+    prop_norm = prop_pc.replace(" ", "")
+    for p in postcode_entries:
         pn = p.upper().replace(" ", "")
         if not pn:
             continue
         if pn == prop_norm:
             return True
         out_c = _uk_postcode_outward(p)
-        if outward_prop and out_c and (out_c == outward_prop or outward_prop.startswith(out_c) or out_c.startswith(outward_prop)):
+        if outward_prop and out_c and (
+            out_c == outward_prop or outward_prop.startswith(out_c) or out_c.startswith(outward_prop)
+        ):
             return True
     return False
+
+
+_UK_POSTCODE_FRAGMENT_RE = re.compile(
+    r"^[A-Z]{1,2}\d{1,2}[A-Z]?$|^[A-Z]{1,2}\d{1,2}[A-Z]?\d[A-Z]{2}$",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_uk_postcode_fragment(value: str) -> bool:
+    """True when a location string is postcode-like, not a region or city label."""
+    compact = (value or "").strip().upper().replace(" ", "")
+    if not compact or len(compact) > 8:
+        return False
+    if canonicalize_uk_portfolio_label(value):
+        return False
+    return bool(_UK_POSTCODE_FRAGMENT_RE.match(compact))
 
 
 def contractor_property_scope_allows(contractor: Dict[str, Any], property_id: Optional[str]) -> bool:
@@ -1488,7 +1545,8 @@ async def validate_contractor_for_work_order_assignment(
                 {"_id": 0, "postcode": 1},
             )
             prop_pc = (prop or {}).get("postcode")
-        if not contractor_location_matches_property(contractor_s, prop_pc):
+        job_j = await resolve_effective_work_order_jurisdiction(db, wo, client_id)
+        if not contractor_location_matches_property(contractor_s, prop_pc, property_jurisdiction=job_j):
             raise ValueError("Contractor location does not match the property postcode")
         kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
         if kind == WORK_ORDER_KIND_MAINTENANCE:
@@ -1533,7 +1591,8 @@ async def validate_contractor_for_work_order_assignment(
             {"_id": 0, "postcode": 1},
         )
         prop_pc = (prop or {}).get("postcode")
-    if not contractor_location_matches_property(contractor_s, prop_pc):
+    job_j = await resolve_effective_work_order_jurisdiction(db, wo, client_id)
+    if not contractor_location_matches_property(contractor_s, prop_pc, property_jurisdiction=job_j):
         raise ValueError("Contractor location does not match the property postcode")
     kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
     if kind == WORK_ORDER_KIND_MAINTENANCE:
@@ -1582,6 +1641,8 @@ async def list_assignable_contractors_for_work_order(
             "limit": limit,
             "job_jurisdiction": None,
             "filter_diagnostics": empty_diag,
+            "exclusion_samples": {},
+            "recovery_guidance": build_assignment_eligibility_recovery(empty_diag, eligible=0),
         }
     job_jurisdiction = await resolve_effective_work_order_jurisdiction(db, wo, client_id)
     prop_pc = None
@@ -1606,43 +1667,68 @@ async def list_assignable_contractors_for_work_order(
         "excluded_service_region_jurisdiction": 0,
         "eligible": 0,
     }
+    exclusion_samples: Dict[str, List[Dict[str, Any]]] = {
+        "excluded_not_assignment_ready": [],
+        "excluded_wrong_client_scope": [],
+        "excluded_property_scope": [],
+        "excluded_location_postcode": [],
+        "excluded_execution_capability": [],
+        "excluded_maintenance_trade": [],
+        "excluded_service_region_jurisdiction": [],
+    }
+
+    def _record_exclusion(reason_key: str, contractor_row: Dict[str, Any]) -> None:
+        diag[reason_key] += 1
+        bucket = exclusion_samples[reason_key]
+        if len(bucket) < EXCLUSION_SAMPLE_LIMIT:
+            bucket.append(contractor_exclusion_sample(contractor_row))
+
     for raw in all_rows:
         c = _sanitize_doc(raw)
         ok, _ = contractor_is_assignable(c)
         if not ok:
-            diag["excluded_not_assignment_ready"] += 1
+            _record_exclusion("excluded_not_assignment_ready", c)
             continue
         if not contractor_client_link_allows(c, client_id):
-            diag["excluded_wrong_client_scope"] += 1
+            _record_exclusion("excluded_wrong_client_scope", c)
             continue
         if not contractor_property_scope_allows(c, wo.get("property_id")):
-            diag["excluded_property_scope"] += 1
+            _record_exclusion("excluded_property_scope", c)
             continue
-        if not contractor_location_matches_property(c, prop_pc):
-            diag["excluded_location_postcode"] += 1
+        if not contractor_location_matches_property(c, prop_pc, property_jurisdiction=job_jurisdiction):
+            _record_exclusion("excluded_location_postcode", c)
             continue
         if not contractor_passes_work_order_execution_gate(c, wo):
-            diag["excluded_execution_capability"] += 1
+            _record_exclusion("excluded_execution_capability", c)
             continue
         kind = (wo.get("work_order_kind") or WORK_ORDER_KIND_MAINTENANCE).strip().upper()
         if kind == WORK_ORDER_KIND_MAINTENANCE:
             if not contractor_trade_matches_category(c, wo.get("category")):
-                diag["excluded_maintenance_trade"] += 1
+                _record_exclusion("excluded_maintenance_trade", c)
                 continue
         if not contractor_service_regions_allow_jurisdiction(c, job_jurisdiction):
-            diag["excluded_service_region_jurisdiction"] += 1
+            _record_exclusion("excluded_service_region_jurisdiction", c)
             continue
         matched.append(c)
     total = len(matched)
     diag["eligible"] = total
     page = matched[skip : skip + limit]
+    recovery_guidance = build_assignment_eligibility_recovery(
+        diag,
+        job_jurisdiction=job_jurisdiction,
+        property_postcode=prop_pc,
+        eligible=total,
+    )
     return {
         "contractors": page,
         "total": total,
         "skip": skip,
         "limit": limit,
         "job_jurisdiction": job_jurisdiction,
+        "property_postcode": prop_pc,
         "filter_diagnostics": diag,
+        "exclusion_samples": exclusion_samples,
+        "recovery_guidance": recovery_guidance,
     }
 
 
@@ -2050,7 +2136,7 @@ async def recommend_contractors_for_work_order(
             continue
         if cid and not contractor_property_scope_allows(c, wo.get("property_id")):
             continue
-        if not contractor_location_matches_property(c, prop_pc):
+        if not contractor_location_matches_property(c, prop_pc, property_jurisdiction=job_jurisdiction):
             continue
         if not contractor_passes_work_order_execution_gate(c, wo):
             continue

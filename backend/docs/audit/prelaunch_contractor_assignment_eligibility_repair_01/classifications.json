@@ -1,0 +1,17 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-ASSIGNMENT-ELIGIBILITY-REPAIR-01",
+  "captured_at": "2026-05-30T01:05:00+00:00",
+  "classification": "PARTIAL",
+  "rationale": {
+    "code_fix": "LOCATION_COVERAGE_MISMATCH repaired in contractor_location_matches_property (portfolio vs postcode); unit tests pass.",
+    "recovery_ux": "Recovery guidance API + modal UX implemented in repo; staging CDN bundle not yet deployed (recovery testids absent).",
+    "staging_api": "90/100 sampled jobs return >=1 eligible contractor; dropdown payload matches eligible count.",
+    "zero_eligible_jobs": "10 jobs with 0 eligible are predominantly Scotland/Northern Ireland with null property postcode in response — portfolio mismatch or missing coverage remains authoritative.",
+    "browser_proof": "Assign button not present on sampled job detail without deploy — re-run after frontend/backend deploy for VERIFIED_OPERATIONALLY."
+  },
+  "eligible_jobs_on_staging_sample": 90,
+  "recovery_ux_deployed_on_cdn": false,
+  "dropdown_payload_ok": true,
+  "unit_tests_pass": true,
+  "target_after_deploy": "VERIFIED_OPERATIONALLY"
+}
