@@ -934,7 +934,7 @@ function ClientJobDetailInner() {
           <p className="text-sm text-amber-800">No contractor assigned yet.</p>
         )}
         {hasFeature('contractor_network') && na.some((a) => a.id === 'assign_contractor') ? (
-          <Button type="button" size="sm" className="mt-2 bg-midnight-blue hover:bg-midnight-blue/90" onClick={() => openAssignModal()}>
+          <Button type="button" size="sm" className="mt-2 bg-midnight-blue hover:bg-midnight-blue/90" data-testid="open-assign-contractor-modal" onClick={() => openAssignModal()}>
             Assign contractor
           </Button>
         ) : null}

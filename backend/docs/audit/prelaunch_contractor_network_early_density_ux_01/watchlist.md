@@ -1,0 +1,2 @@
+- Contractor in-app notifications unchanged.
+- Coverage intelligence recommendations not implemented (scaffold only).

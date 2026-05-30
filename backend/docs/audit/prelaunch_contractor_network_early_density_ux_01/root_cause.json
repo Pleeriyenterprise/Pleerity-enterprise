@@ -1,0 +1,14 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-NETWORK-EARLY-DENSITY-UX-01",
+  "captured_at": "2026-05-30T16:34:43.126565+00:00",
+  "finding": "Eligibility engine correct; sparse-network UX created false failure perception via expanded diagnostics and buried add-contractor CTA.",
+  "remediation": "Presentation-only early-network mode: network maturity banner, dominant add CTA, collapsed Why? diagnostics, operational empty copy.",
+  "authority_preserved": [
+    "contractor_location_matches_property",
+    "jurisdiction filtering",
+    "assignment readiness",
+    "trade/capability validation",
+    "portal activation",
+    "service-region enforcement"
+  ]
+}

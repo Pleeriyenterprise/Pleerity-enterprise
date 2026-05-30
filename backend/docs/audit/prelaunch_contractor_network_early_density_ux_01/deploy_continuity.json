@@ -1,0 +1,12 @@
+{
+  "captured_at": "2026-05-30T16:33:20.896189+00:00",
+  "api_sha": "9785c624167d473d373954c9cd8e2c5903ccbae5",
+  "frontend_js": "/static/js/main.c57d91d6.js",
+  "bundle_markers": {
+    "early_network_primary_cta": true,
+    "network_maturity_banner": true,
+    "secondary_search_beta": true,
+    "eligibility_empty_summary": true,
+    "why_expand": true
+  }
+}

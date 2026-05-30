@@ -1,0 +1,166 @@
+{
+  "captured_at": "2026-05-30T16:33:20.897745+00:00",
+  "candidates": [
+    {
+      "work_order_id": "90c56ca1-475a-4e5c-9da5-6ddf95d42d87",
+      "jurisdiction": "Scotland",
+      "eligible": 0,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 10,
+      "property_postcode": "M2"
+    },
+    {
+      "work_order_id": "dfd77417-af57-454e-aa75-ad07f2eccb24",
+      "jurisdiction": "Scotland",
+      "eligible": 0,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 10,
+      "property_postcode": "M2"
+    },
+    {
+      "work_order_id": "53cbed11-a778-4362-a916-ee33f88eb34e",
+      "jurisdiction": "Scotland",
+      "eligible": 0,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 10,
+      "property_postcode": "M2"
+    },
+    {
+      "work_order_id": "ac499bad-94f7-4dc7-85ed-e70f4307216b",
+      "jurisdiction": "Scotland",
+      "eligible": 0,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 10,
+      "property_postcode": "M2"
+    },
+    {
+      "work_order_id": "a1ccad4d-4e01-46ac-9595-1a534b33f729",
+      "jurisdiction": "Scotland",
+      "eligible": 0,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 10,
+      "property_postcode": "M2"
+    },
+    {
+      "work_order_id": "028ea46a-fec6-4618-ac58-4f7195727065",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "4fafdacb-09e2-4b1c-8f50-c7b4732da4f7",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "3f6cb4c1-5961-460a-8d10-71f02ad938a2",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "215ab44a-90e6-4dfb-b939-fd841901cc0b",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "acabd6e4-7b0a-44c9-8e74-3fc926594406",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "1c992916-1dfb-4682-b23b-25b7693b22fe",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "3c15b0e9-536b-40bb-9fb9-9f93b8c10c7b",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "cd73994d-af06-46c6-9738-c0111fdc10e2",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "67397d8e-f892-4746-8ff4-90952aae4b4a",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "ad6f96a8-b820-470e-936e-873a503e4ff4",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "b5ed998a-456f-4a43-b349-2219fed799a0",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "d815762c-bbac-431e-8d76-b148ca974e16",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    },
+    {
+      "work_order_id": "0ff7bdd1-699d-4874-87b3-9a43d1c4ae35",
+      "jurisdiction": "Wales",
+      "eligible": 1,
+      "visible_in_directory": 24,
+      "excluded_location_postcode": 9,
+      "property_postcode": "W8"
+    }
+  ],
+  "empty_job_id": "1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+  "empty_diag": {
+    "visible_in_directory": 24,
+    "excluded_not_assignment_ready": 12,
+    "excluded_wrong_client_scope": 0,
+    "excluded_property_scope": 0,
+    "excluded_location_postcode": 10,
+    "excluded_execution_capability": 1,
+    "excluded_maintenance_trade": 1,
+    "excluded_service_region_jurisdiction": 0,
+    "eligible": 0
+  },
+  "empty_jurisdiction": "Scotland",
+  "scotland_empty_job_id": "1bbf2761-4a4c-4c1a-b65e-d2aa8972d061",
+  "eligible_job_id": "028ea46a-fec6-4618-ac58-4f7195727065",
+  "eligible_count": 1,
+  "seeded_scotland_job_id": "1bbf2761-4a4c-4c1a-b65e-d2aa8972d061"
+}
