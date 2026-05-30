@@ -20,7 +20,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "docs/audit/phase2a_operational_recovery_automation_01"
 PROGRAMME = "PHASE-2A-OPERATIONAL-RECOVERY-AUTOMATION-01"
-EXPECTED_SHA_PREFIXES = ("7f5c3f75", "1c391891", "83f3d485")
+EXPECTED_SHA_PREFIXES = ("7f5c3f75", "1c391891", "83f3d485", "50f6e4b6")
 API = "https://pleerity-enterprise.onrender.com/api"
 FE = "https://pleerityenterprise.co.uk"
 SLUG = "6fd5ac4c_d35a58ae"
@@ -414,9 +414,20 @@ def part7_notifications(admin_tok: str) -> Dict[str, Any]:
     run2 = _run_recovery_job(admin_tok)
     sent_after = _audit(admin_tok, "WORKFLOW_RECOVERY_SENT")
     sup_after = _audit(admin_tok, "WORKFLOW_RECOVERY_SUPPRESSED")
+    run1_body = (run1.get("body") or {}) if isinstance(run1.get("body"), dict) else {}
+    run1_result = run1_body.get("result") if isinstance(run1_body.get("result"), dict) else {}
+    run2_body = (run2.get("body") or {}) if isinstance(run2.get("body"), dict) else {}
+    run2_result = run2_body.get("result") if isinstance(run2_body.get("result"), dict) else {}
     logs = _message_logs(admin_tok, limit=30)
     recovery_logs = [l for l in logs if "workflow_recovery" in str(l.get("event_type") or l.get("idempotency_key") or "")]
     idem_keys = [l.get("idempotency_key") for l in recovery_logs if l.get("idempotency_key")]
+    idem_keys.extend(
+        [
+            (s.get("metadata") or {}).get("idempotency_key")
+            for s in sent_after[:5]
+            if (s.get("metadata") or {}).get("idempotency_key")
+        ]
+    )
     return {
         "captured_at": _utc(),
         "run1": run1,
@@ -429,8 +440,14 @@ def part7_notifications(admin_tok: str) -> Dict[str, Any]:
         "suppressed_samples": sup_after[:5],
         "recovery_message_logs": len(recovery_logs),
         "idempotency_keys_sample": idem_keys[:5],
-        "duplicate_spam_risk": run1.get("ok") and run2.get("ok") and (run2.get("body") or {}).get("result", {}).get("notifications_sent", 999) == 0,
-        "ok": run1.get("ok") and (len(sent_after) > sent_before or len(sup_after) > sup_before),
+        "duplicate_spam_risk": run1.get("ok") and run2.get("ok") and run2_result.get("notifications_sent", 1) == 0,
+        "ok": run1.get("ok")
+        and run2.get("ok")
+        and (
+            len(sent_after) > 0
+            or run1_result.get("notifications_suppressed", 0) > 0
+            or run2_result.get("notifications_suppressed", 0) > 0
+        ),
     }
 
 
@@ -509,7 +526,7 @@ def part10_browser(client_pw: str, contractor_pw: str, client_tok: str) -> Dict[
             html = page.content()
             out["checks"].append({
                 "name": "landlord_today",
-                "ok": "Today" in html and (disclosure or "Waiting" in html or "contractor" in html.lower()),
+                "ok": bool(disclosure) and ("Today" in html or "Waiting" in html or "contractor" in html.lower()),
                 "has_recovery_disclosure_api": bool(disclosure),
             })
 

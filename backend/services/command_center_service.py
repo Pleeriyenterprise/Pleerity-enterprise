@@ -687,7 +687,7 @@ async def get_command_center_primary_bundle(
                     client_id, property_id_filter=property_id_filter, profile=profile
                 ),
             ),
-            timeout=8.5,
+            timeout=12.0,
         )
     except Exception as exc:
         reason = f"primary_urgent_or_summary_timeout_or_failure:{str(exc)[:80]}"
@@ -697,6 +697,29 @@ async def get_command_center_primary_bundle(
         maint_rows, maint_debt = await _load_maintenance_debt_urgent_rows(
             client_id, property_id_filter=property_id_filter
         )
+        try:
+            from services.recovery_priority_service import fetch_operational_recovery_priority_actions
+
+            recovery_actions = await asyncio.wait_for(
+                fetch_operational_recovery_priority_actions(client_id, property_id_filter, limit=4),
+                timeout=6.0,
+            )
+            prop_ids = [a.get("related_property_id") for a in recovery_actions if a.get("related_property_id")]
+            property_labels = await _load_property_labels(client_id, [str(x) for x in prop_ids if x])
+            recovery_slim = [_priority_action_to_slim_urgent(a, property_labels) for a in recovery_actions]
+            seen: set = set()
+            merged_maint: List[Dict[str, Any]] = []
+            for row in recovery_slim + maint_rows:
+                key = row.get("related_work_order_id") or row.get("task_id") or row.get("id")
+                if key and key in seen:
+                    continue
+                if key:
+                    seen.add(key)
+                merged_maint.append(row)
+            maint_rows = merged_maint
+            maint_debt = max(maint_debt, len(recovery_slim))
+        except Exception as rec_exc:
+            logger.debug("degraded fallback recovery merge skipped: %s", rec_exc)
         urgent_block = _build_primary_urgent_fallback(
             reason=reason,
             compliance_status_summary=compliance_status_summary,
