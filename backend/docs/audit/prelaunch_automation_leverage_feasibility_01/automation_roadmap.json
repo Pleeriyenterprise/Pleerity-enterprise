@@ -1,0 +1,106 @@
+{
+  "programme": "PRELAUNCH-AUTOMATION-LEVERAGE-FEASIBILITY-AUDIT-01",
+  "captured_at": "2026-05-30T18:50:00+00:00",
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Safe automation now",
+      "timeline": "0-8 weeks",
+      "theme": "Reduce effort without mutating authority",
+      "capabilities": [
+        "Workflow abandonment nudges (quote pending, visit pending, activation pending)",
+        "Escalation ladders via NotificationOrchestrator (T+1d, T+3d, T+7d)",
+        "Today/Command Centre auto-prioritisation and one-click continuation",
+        "Duplicate maintenance report detection (recommend merge/dismiss)",
+        "Contractor profile missing-field prompts and readiness score",
+        "Tenant/contractor onboarding reminder sequences (extend existing jobs)",
+        "SLA-at-risk surfacing on contractor dashboard metrics (already partial)"
+      ],
+      "automation_types": ["auto_notify", "auto_prioritise", "recommend_only", "draft_for_review"],
+      "prerequisites": ["Fix job_schedule_registry drift", "WO workflow timer collection or metadata fields"],
+      "success_metrics": [
+        "Median time from assign → first contractor action down 20%",
+        "Quote/visit stall rate down 15%",
+        "Notification duplicate rate < 0.1%",
+        "Today continuation click-through up"
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Assisted automation",
+      "timeline": "8-20 weeks",
+      "theme": "Human-in-the-loop intelligence",
+      "capabilities": [
+        "Evidence review queue prioritisation",
+        "Document classification draft + wrong-document warnings",
+        "Compliance remediation plan drafts (grouped gaps)",
+        "Reassignment suggestions on stalled/deadlocked jobs",
+        "Risk-signal issue suggestions (SUGGEST_ONLY tier expansion with audit)",
+        "Rent reminder sequencing optimisation",
+        "Admin unresolved queue prioritisation"
+      ],
+      "automation_types": ["recommend_only", "draft_for_review", "auto_escalate"],
+      "prerequisites": ["Unified confidence scoring", "Automation reconciliation job", "Granular notification preferences"],
+      "success_metrics": [
+        "Admin evidence throughput up 25%",
+        "Mis-linked document rate down",
+        "Landlord reassignment time on stalled jobs down"
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Semi-autonomous operations",
+      "timeline": "20-40 weeks",
+      "theme": "Smart matching and predictive escalation",
+      "capabilities": [
+        "Contractor ranking for assignment (recommend only)",
+        "Predictive risk escalation (recurring maintenance patterns)",
+        "Contractor performance decay alerts",
+        "Auto-renewal workflow drafts for compliance requirements",
+        "Cross-surface hidden-debt detection in Command Centre"
+      ],
+      "automation_types": ["recommend_only", "auto_prioritise", "auto_escalate"],
+      "prerequisites": ["Event bus or workflow timer platform", "Operational cognition PARTIAL → VERIFIED", "Fairness/explainability framework for ranking"],
+      "success_metrics": [
+        "First-time assign success rate up",
+        "Repeat issue rate down on flagged properties"
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "Advanced automation",
+      "timeline": "40+ weeks",
+      "theme": "Self-driving compliance with approval gates",
+      "capabilities": [
+        "End-to-end compliance remediation orchestration (user approval at each gate)",
+        "Semi-autonomous contractor matching with landlord one-click confirm",
+        "Predictive compliance bottleneck forecasting",
+        "Self-healing workflow recovery (detect drift, propose fix)"
+      ],
+      "automation_types": ["auto_execute_requires_approval"],
+      "prerequisites": ["Phases 1-3 verified operationally", "Legal/compliance sign-off on automation scope", "Full cross-surface consistency audits"],
+      "success_metrics": [
+        "Compliance score improvement velocity",
+        "Support ticket volume per active landlord down 30%"
+      ]
+    }
+  ],
+  "recommended_first_programme": {
+    "id": "PRELAUNCH-WORKFLOW-NUDGE-ORCHESTRATION-01",
+    "scope": "Phase 1 — AUTO-001 + AUTO-002 + AUTO-003",
+    "rationale": "Builds on VERIFIED_OPERATIONALLY quote/visit workflow, existing NotificationOrchestrator, and Today projection. Highest ROI, lowest authority risk.",
+    "deliverables": [
+      "Per-WO workflow timer metadata (quote_pending_since, visit_pending_since)",
+      "Escalation ladder templates in notification_templates",
+      "Scheduled reconciliation job (suppress nudges if state advanced)",
+      "Today priority boost for stalled workflow items",
+      "Audit + idempotency for each nudge send"
+    ],
+    "explicitly_out_of_scope": [
+      "Auto-assign contractor",
+      "Auto-approve quote",
+      "Auto-confirm visit",
+      "Auto-verify evidence"
+    ]
+  }
+}

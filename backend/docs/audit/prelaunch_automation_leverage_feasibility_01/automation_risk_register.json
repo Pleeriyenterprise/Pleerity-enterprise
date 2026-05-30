@@ -1,0 +1,106 @@
+{
+  "programme": "PRELAUNCH-AUTOMATION-LEVERAGE-FEASIBILITY-AUDIT-01",
+  "captured_at": "2026-05-30T18:50:00+00:00",
+  "risks": [
+    {
+      "id": "RISK-01",
+      "title": "False automation (action on stale state)",
+      "severity": "high",
+      "likelihood": "medium",
+      "affected_modules": ["notifications", "today_command_centre", "contractor_coordination"],
+      "mitigation": "Reconciliation job before send; check canonical status at send time; idempotency keys include state version",
+      "delay_automation": false
+    },
+    {
+      "id": "RISK-02",
+      "title": "Wrong contractor selected by ranking",
+      "severity": "high",
+      "likelihood": "medium",
+      "affected_modules": ["contractor_assignment", "contractor_onboarding"],
+      "mitigation": "recommend_only; show eligibility exclusions; never auto-assign",
+      "delay_automation": true,
+      "delay_scope": "auto-assign only"
+    },
+    {
+      "id": "RISK-03",
+      "title": "Wrong evidence matched to requirement",
+      "severity": "critical",
+      "likelihood": "medium",
+      "affected_modules": ["document_classification", "evidence_upload_review"],
+      "mitigation": "Human confirm; confidence thresholds; MISMATCH_SUSPECTED blocks",
+      "delay_automation": true,
+      "delay_scope": "auto-link/auto-verify"
+    },
+    {
+      "id": "RISK-04",
+      "title": "Premature compliance status / overclaiming",
+      "severity": "critical",
+      "likelihood": "low",
+      "affected_modules": ["compliance_score", "compliance_remediation"],
+      "mitigation": "trust_language_governance; scoring_semantics_v1 authority labels; draft_for_review only",
+      "delay_automation": true,
+      "delay_scope": "auto compliance state changes"
+    },
+    {
+      "id": "RISK-05",
+      "title": "Notification spam / escalation fatigue",
+      "severity": "medium",
+      "likelihood": "high",
+      "affected_modules": ["notifications"],
+      "mitigation": "Orchestrator throttle; per-event idempotency; escalation caps; preferences",
+      "delay_automation": false
+    },
+    {
+      "id": "RISK-06",
+      "title": "Role-boundary leakage",
+      "severity": "high",
+      "likelihood": "low",
+      "affected_modules": ["contractor_coordination", "tenant_workflow", "quote_negotiation"],
+      "mitigation": "Route guards on all mutations; automation notify-only cross-role",
+      "delay_automation": false
+    },
+    {
+      "id": "RISK-07",
+      "title": "Duplicate workflow creation",
+      "severity": "medium",
+      "likelihood": "low",
+      "affected_modules": ["tenant_maintenance", "risk_signals"],
+      "mitigation": "Existing idempotency services; operational_root_key",
+      "delay_automation": false
+    },
+    {
+      "id": "RISK-08",
+      "title": "User distrust from hidden automation",
+      "severity": "high",
+      "likelihood": "medium",
+      "affected_modules": ["today_command_centre", "command_centre", "compliance_score"],
+      "mitigation": "Explain why surfaced; show source state; no silent mutations",
+      "delay_automation": false
+    },
+    {
+      "id": "RISK-09",
+      "title": "Scheduler duplicate ticks (multi-instance)",
+      "severity": "medium",
+      "likelihood": "low",
+      "affected_modules": ["notifications", "background_jobs"],
+      "mitigation": "Mongo job store; heartbeat; idempotency on job side effects",
+      "delay_automation": false
+    },
+    {
+      "id": "RISK-10",
+      "title": "Legal overclaiming in AI remediation plans",
+      "severity": "high",
+      "likelihood": "medium",
+      "affected_modules": ["compliance_remediation"],
+      "mitigation": "Advisory language only; human approval; legal review of templates",
+      "delay_automation": true,
+      "delay_scope": "unsupervised remediation copy"
+    }
+  ],
+  "summary": {
+    "critical_count": 2,
+    "high_count": 4,
+    "automation_safe_with_mitigations": 8,
+    "must_delay_auto_execute": 4
+  }
+}

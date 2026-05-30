@@ -1,0 +1,371 @@
+{
+  "programme": "PRELAUNCH-AUTOMATION-LEVERAGE-FEASIBILITY-AUDIT-01",
+  "captured_at": "2026-05-30T18:50:00+00:00",
+  "methodology": "Codebase architecture review, prior prelaunch audit classifications, service/state-model inspection. No new features implemented.",
+  "modules": [
+    {
+      "module": "contractor_assignment",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "high",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "medium",
+      "evidence": [
+        "work_order_assignment_constants.py routing states",
+        "assignment_execution_momentum_service.py stalled/decaying detection",
+        "prelaunch_contractor_assignment_eligibility_repair_01 VERIFIED_OPERATIONALLY"
+      ],
+      "notes": "Eligibility authority is explicit; auto-assign unsafe. Recommendations, reminders, and reassignment suggestions are safe now."
+    },
+    {
+      "module": "contractor_activation",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "high",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "low",
+      "evidence": [
+        "derive_contractor_onboarding_state in contractor_service.py",
+        "prelaunch_contractor_invite_activation_flow_repair_01 VERIFIED_OPERATIONALLY"
+      ],
+      "notes": "Onboarding nudges and missing-field prompts are low risk; portal enablement must remain human-gated."
+    },
+    {
+      "module": "quote_negotiation",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "medium",
+      "error_recovery": "medium",
+      "data_quality": "high",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "medium",
+      "evidence": [
+        "work_order_pricing_constants.py PRICE_STATUS_*",
+        "quote_negotiation_history lineage",
+        "prelaunch_quote_visit_negotiation_workflow_01 VERIFIED_OPERATIONALLY",
+        "prelaunch_contractor_quote_visit_runtime_truth_verify_01 VERIFIED_OPERATIONALLY"
+      ],
+      "notes": "Follow-up reminders and escalation safe; auto-approve quotes unsafe."
+    },
+    {
+      "module": "visit_scheduling",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "medium",
+      "error_recovery": "medium",
+      "data_quality": "high",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "medium",
+      "evidence": [
+        "work_order_schedule_constants.py SCHEDULE_STATUS_*",
+        "QUOTE_FIRST visit gating enforced 03e06200",
+        "work_order_schedule_reminders job exists"
+      ],
+      "notes": "Reminders and reschedule nudges safe; auto-confirm visits unsafe."
+    },
+    {
+      "module": "job_completion",
+      "readiness_bucket": "needs_foundation",
+      "classification": "PARTIAL",
+      "confidence": "medium",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "medium",
+      "notification_readiness": "medium",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "high",
+      "evidence": [
+        "completion proof gating in compliance_workflow_service",
+        "contractor vs client authority on complete_job"
+      ],
+      "notes": "Auto-complete or auto-close unsafe. Proof-required nudges and SLA reminders are feasible."
+    },
+    {
+      "module": "evidence_upload_review",
+      "readiness_bucket": "needs_foundation",
+      "classification": "PARTIAL",
+      "confidence": "medium",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "medium",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "high",
+      "evidence": [
+        "EvidenceReviewState enum in models/evidence_review.py",
+        "prelaunch_document_evidence_authority_repair_01 VERIFIED_OPERATIONALLY",
+        "19+ evidence test files"
+      ],
+      "notes": "Review queue prioritisation and upload nudges safe; auto-verify unsafe."
+    },
+    {
+      "module": "document_classification",
+      "readiness_bucket": "needs_foundation",
+      "classification": "PARTIAL",
+      "confidence": "medium",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "low",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "medium",
+      "risk_if_automated_incorrectly": "high",
+      "evidence": [
+        "evidence_document_match_engine.py + evidence_document_taxonomy.py",
+        "MATCH_LIKELY vs MISMATCH_SUSPECTED reason codes",
+        "extraction confidence threshold 0.85"
+      ],
+      "notes": "Draft classification and wrong-document warnings safe as recommend_only; auto-link to requirement unsafe without human confirm."
+    },
+    {
+      "module": "requirements",
+      "readiness_bucket": "needs_foundation",
+      "classification": "FOUNDATION_REQUIRED",
+      "confidence": "medium",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "medium",
+      "notification_readiness": "medium",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "medium",
+      "risk_if_automated_incorrectly": "high",
+      "evidence": [
+        "requirement_truth.py evidence states",
+        "compliance_recalc_queue async propagation",
+        "requirement_transition_observability"
+      ],
+      "notes": "Requirement status changes fan out widely; automation must respect recalc queue and trust language."
+    },
+    {
+      "module": "today_execution_workspace",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "medium",
+      "audit_trail_quality": "medium",
+      "role_boundary_safety": "high",
+      "notification_readiness": "low",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "medium",
+      "risk_if_automated_incorrectly": "low",
+      "evidence": [
+        "today_projection_service.py bucket/urgency projection",
+        "prelaunch_today_execution_workspace_01 VERIFIED_OPERATIONALLY",
+        "visibility actions non-mutating (snooze/dismiss)"
+      ],
+      "notes": "Auto-prioritisation and continuation CTAs safe as projection-only; must not mutate domain state silently."
+    },
+    {
+      "module": "command_centre",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "PARTIAL",
+      "confidence": "medium",
+      "state_model_maturity": "medium",
+      "audit_trail_quality": "medium",
+      "role_boundary_safety": "high",
+      "notification_readiness": "low",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "medium",
+      "risk_if_automated_incorrectly": "medium",
+      "evidence": [
+        "command_center_service.py composed read model",
+        "trust_surface_observability section health states",
+        "operational_cognition_layer_audit_01 PARTIAL"
+      ],
+      "notes": "Recommendations and hidden-debt surfacing safe; latency/coherence under load still partial."
+    },
+    {
+      "module": "notifications",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "high",
+      "error_recovery": "high",
+      "data_quality": "medium",
+      "workflow_lineage": "medium",
+      "risk_if_automated_incorrectly": "medium",
+      "evidence": [
+        "notification_orchestrator.py idempotency + throttle + plan gate",
+        "email_event_registry.py 38 lifecycle events",
+        "notification_retry_worker scheduled job"
+      ],
+      "notes": "Strongest automation substrate; escalation ladders should extend orchestrator not bypass it."
+    },
+    {
+      "module": "compliance_score",
+      "readiness_bucket": "needs_foundation",
+      "classification": "PARTIAL",
+      "confidence": "medium",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "medium",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "medium",
+      "risk_if_automated_incorrectly": "high",
+      "evidence": [
+        "scoring_semantics_v1.py SCORE_STATUS_* authority",
+        "prelaunch_scoring_trust_consistency_pdf_kb_01 TRUST_DRIFT_RISK",
+        "trust_language_governance.py"
+      ],
+      "notes": "Remediation suggestions safe; auto-changing score presentation or compliance claims unsafe."
+    },
+    {
+      "module": "risk_signals",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "medium",
+      "error_recovery": "high",
+      "data_quality": "medium",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "medium",
+      "evidence": [
+        "risk_signal_service.py lifecycle ordering",
+        "operational_automation_service.py AUTO_CREATE/SUGGEST_ONLY tiers",
+        "ops_runtime_04_risk_signals VERIFIED_OPERATIONALLY"
+      ],
+      "notes": "Issue suggestions and prioritisation safe; WO auto-create currently disabled (AUTO_CREATE tuple empty)."
+    },
+    {
+      "module": "rent_operations",
+      "readiness_bucket": "needs_foundation",
+      "classification": "PARTIAL",
+      "confidence": "medium",
+      "state_model_maturity": "medium",
+      "audit_trail_quality": "medium",
+      "role_boundary_safety": "high",
+      "notification_readiness": "high",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "medium",
+      "risk_if_automated_incorrectly": "medium",
+      "evidence": [
+        "rent_reminder_service.py + rent_operations_daily_job",
+        "prelaunch_rent_operations_outcome_verify_01 VERIFIED_OPERATIONALLY",
+        "earlier rent_operations_tenancy_authority BLOCKED resolved"
+      ],
+      "notes": "Reminder sequencing feasible; auto ledger/payment actions unsafe."
+    },
+    {
+      "module": "tenant_onboarding",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "high",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "low",
+      "evidence": [
+        "tenant_portal_service.py derived onboarding states",
+        "prelaunch_tenant_invite_activation_flow_repair_01 VERIFIED_OPERATIONALLY"
+      ],
+      "notes": "Invite/activation nudges and move-in guidance safe; auto-link tenancy unsafe without landlord confirm."
+    },
+    {
+      "module": "tenant_maintenance_reports",
+      "readiness_bucket": "needs_foundation",
+      "classification": "PARTIAL",
+      "confidence": "medium",
+      "state_model_maturity": "medium",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "medium",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "medium",
+      "evidence": [
+        "maintenance_issue_create_idempotency.py",
+        "maintenance_service.py issue→WO lineage",
+        "ops_runtime_01_issues VERIFIED_OPERATIONALLY"
+      ],
+      "notes": "Duplicate detection and classification drafts safe; auto-triage to WO unsafe without landlord authority."
+    },
+    {
+      "module": "contractor_onboarding_profile_setup",
+      "readiness_bucket": "ready_for_automation_now",
+      "classification": "AUTOMATION_READY",
+      "confidence": "high",
+      "state_model_maturity": "high",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "high",
+      "error_recovery": "medium",
+      "data_quality": "low",
+      "error_recovery_note": "sparse regions / incomplete service-region data",
+      "workflow_lineage": "high",
+      "risk_if_automated_incorrectly": "low",
+      "evidence": [
+        "contractor_service.py onboarding derivation",
+        "prelaunch_contractor_network_early_density_ux_01 UX for sparse regions"
+      ],
+      "notes": "Missing-field prompts and readiness scoring safe; auto-approve contractor profile unsafe."
+    },
+    {
+      "module": "admin_unresolved_queues",
+      "readiness_bucket": "needs_foundation",
+      "classification": "PARTIAL",
+      "confidence": "medium",
+      "state_model_maturity": "medium",
+      "audit_trail_quality": "high",
+      "role_boundary_safety": "high",
+      "notification_readiness": "low",
+      "error_recovery": "medium",
+      "data_quality": "medium",
+      "workflow_lineage": "medium",
+      "risk_if_automated_incorrectly": "high",
+      "evidence": [
+        "admin_verification_readiness.py READY/PROCESSING/FAILED",
+        "admin_control_remediation_01 ADMIN_READY",
+        "backlog_reduction_runtime_01 OPERATIONAL_VALUE_FAILURE"
+      ],
+      "notes": "Queue prioritisation drafts safe for admin; auto-resolve evidence unsafe."
+    }
+  ],
+  "summary_counts": {
+    "ready_for_automation_now": 10,
+    "needs_foundation": 8,
+    "unsafe_to_automate_now": 0,
+    "manual_only_for_now": 0
+  }
+}

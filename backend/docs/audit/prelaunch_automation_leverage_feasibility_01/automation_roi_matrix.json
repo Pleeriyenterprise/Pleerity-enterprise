@@ -1,0 +1,248 @@
+{
+  "programme": "PRELAUNCH-AUTOMATION-LEVERAGE-FEASIBILITY-AUDIT-01",
+  "captured_at": "2026-05-30T18:50:00+00:00",
+  "ranking_method": "Weighted score 1-5 on effort_reduction, support_reduction, revenue_retention, complexity (inverse), operational_risk (inverse), dependency_readiness, defensibility. Higher total = higher priority.",
+  "opportunities": [
+    {
+      "id": "AUTO-001",
+      "domain": "notification_orchestration",
+      "title": "Workflow abandonment nudges (quote/visit/activation)",
+      "rank": 1,
+      "scores": {
+        "user_effort_reduced": 5,
+        "support_burden_reduced": 5,
+        "revenue_retention_impact": 4,
+        "implementation_complexity": 2,
+        "operational_risk": 2,
+        "dependency_readiness": 5,
+        "defensibility": 4
+      },
+      "total_score": 23,
+      "phase": 1,
+      "automation_type": "auto_notify",
+      "dependencies": ["notification_orchestrator", "work_order_workflow_notification_service", "verified quote/visit state"],
+      "outcome": "Reduce stalled jobs; measurable drop in assignment-to-first-action time"
+    },
+    {
+      "id": "AUTO-002",
+      "domain": "contractor_coordination",
+      "title": "Quote/visit follow-up escalation ladder",
+      "rank": 2,
+      "scores": {
+        "user_effort_reduced": 5,
+        "support_burden_reduced": 4,
+        "revenue_retention_impact": 4,
+        "implementation_complexity": 3,
+        "operational_risk": 2,
+        "dependency_readiness": 5,
+        "defensibility": 4
+      },
+      "total_score": 21,
+      "phase": 1,
+      "automation_type": "auto_notify",
+      "dependencies": ["QUOTE_FIRST gating", "schedule/pricing constants", "idempotency keys"],
+      "outcome": "Landlord/contractor response latency reduction on verified workflow"
+    },
+    {
+      "id": "AUTO-003",
+      "domain": "today_command_centre",
+      "title": "Predictive urgency + one-click continuation",
+      "rank": 3,
+      "scores": {
+        "user_effort_reduced": 5,
+        "support_burden_reduced": 3,
+        "revenue_retention_impact": 4,
+        "implementation_complexity": 3,
+        "operational_risk": 2,
+        "dependency_readiness": 4,
+        "defensibility": 5
+      },
+      "total_score": 20,
+      "phase": 1,
+      "automation_type": "auto_prioritise",
+      "dependencies": ["today_projection_service", "operational_continuation_service", "unified_tasks_service"],
+      "outcome": "Faster next-action selection; improved Today engagement metrics"
+    },
+    {
+      "id": "AUTO-004",
+      "domain": "evidence_document",
+      "title": "Review queue prioritisation + wrong-document warnings",
+      "rank": 4,
+      "scores": {
+        "user_effort_reduced": 4,
+        "support_burden_reduced": 4,
+        "revenue_retention_impact": 3,
+        "implementation_complexity": 3,
+        "operational_risk": 3,
+        "dependency_readiness": 4,
+        "defensibility": 5
+      },
+      "total_score": 18,
+      "phase": 2,
+      "automation_type": "recommend_only",
+      "dependencies": ["evidence_document_match_engine", "admin_verification_readiness"],
+      "outcome": "Admin throughput up; fewer mis-linked documents"
+    },
+    {
+      "id": "AUTO-005",
+      "domain": "contractor_coordination",
+      "title": "Reassignment suggestions on stalled/deadlocked assignment",
+      "rank": 5,
+      "scores": {
+        "user_effort_reduced": 4,
+        "support_burden_reduced": 4,
+        "revenue_retention_impact": 4,
+        "implementation_complexity": 4,
+        "operational_risk": 3,
+        "dependency_readiness": 4,
+        "defensibility": 4
+      },
+      "total_score": 17,
+      "phase": 2,
+      "automation_type": "recommend_only",
+      "dependencies": ["assignment_execution_momentum_service", "contractor eligibility authority"],
+      "outcome": "Reduce deadlocked jobs without bypassing assign authority"
+    },
+    {
+      "id": "AUTO-006",
+      "domain": "compliance_remediation",
+      "title": "Grouped remediation action plans from gaps",
+      "rank": 6,
+      "scores": {
+        "user_effort_reduced": 4,
+        "support_burden_reduced": 3,
+        "revenue_retention_impact": 4,
+        "implementation_complexity": 4,
+        "operational_risk": 3,
+        "dependency_readiness": 3,
+        "defensibility": 5
+      },
+      "total_score": 16,
+      "phase": 2,
+      "automation_type": "draft_for_review",
+      "dependencies": ["scoring_semantics_v1", "trust_language_governance", "requirement_truth"],
+      "outcome": "Clear cheapest-path guidance; must not overclaim compliance"
+    },
+    {
+      "id": "AUTO-007",
+      "domain": "risk_forecasting",
+      "title": "Recurring maintenance pattern detection + escalation",
+      "rank": 7,
+      "scores": {
+        "user_effort_reduced": 3,
+        "support_burden_reduced": 3,
+        "revenue_retention_impact": 4,
+        "implementation_complexity": 4,
+        "operational_risk": 3,
+        "dependency_readiness": 4,
+        "defensibility": 4
+      },
+      "total_score": 15,
+      "phase": 2,
+      "automation_type": "auto_prioritise",
+      "dependencies": ["risk_signal_service", "operational_automation_service SUGGEST_ONLY"],
+      "outcome": "Proactive issue suggestions; WO auto-create remains off"
+    },
+    {
+      "id": "AUTO-008",
+      "domain": "tenant_workflow",
+      "title": "Duplicate maintenance report detection",
+      "rank": 8,
+      "scores": {
+        "user_effort_reduced": 4,
+        "support_burden_reduced": 3,
+        "revenue_retention_impact": 2,
+        "implementation_complexity": 3,
+        "operational_risk": 2,
+        "dependency_readiness": 4,
+        "defensibility": 3
+      },
+      "total_score": 15,
+      "phase": 1,
+      "automation_type": "recommend_only",
+      "dependencies": ["maintenance_issue_create_idempotency", "operational_root_key dedupe"],
+      "outcome": "Fewer duplicate issues; cleaner landlord queue"
+    },
+    {
+      "id": "AUTO-009",
+      "domain": "contractor_onboarding",
+      "title": "Profile readiness scoring + missing-field automation",
+      "rank": 9,
+      "scores": {
+        "user_effort_reduced": 4,
+        "support_burden_reduced": 4,
+        "revenue_retention_impact": 3,
+        "implementation_complexity": 3,
+        "operational_risk": 2,
+        "dependency_readiness": 4,
+        "defensibility": 3
+      },
+      "total_score": 15,
+      "phase": 1,
+      "automation_type": "auto_notify",
+      "dependencies": ["derive_contractor_onboarding_state", "service region data quality"],
+      "outcome": "Faster contractor activation; better match density"
+    },
+    {
+      "id": "AUTO-010",
+      "domain": "evidence_document",
+      "title": "Document classification draft + expiry extraction assist",
+      "rank": 10,
+      "scores": {
+        "user_effort_reduced": 4,
+        "support_burden_reduced": 4,
+        "revenue_retention_impact": 3,
+        "implementation_complexity": 4,
+        "operational_risk": 4,
+        "dependency_readiness": 3,
+        "defensibility": 4
+      },
+      "total_score": 14,
+      "phase": 2,
+      "automation_type": "draft_for_review",
+      "dependencies": ["document_extraction_service", "confidence threshold 0.85", "human review gate"],
+      "outcome": "Upload friction down; verification authority preserved"
+    },
+    {
+      "id": "AUTO-011",
+      "domain": "contractor_coordination",
+      "title": "Contractor ranking for assignment suggestions",
+      "rank": 11,
+      "scores": {
+        "user_effort_reduced": 3,
+        "support_burden_reduced": 2,
+        "revenue_retention_impact": 3,
+        "implementation_complexity": 4,
+        "operational_risk": 4,
+        "dependency_readiness": 3,
+        "defensibility": 4
+      },
+      "total_score": 11,
+      "phase": 3,
+      "automation_type": "recommend_only",
+      "dependencies": ["contractor_performance_recalc job", "eligibility authority", "early-network UX"],
+      "outcome": "Better assign decisions; must not auto-assign"
+    },
+    {
+      "id": "AUTO-012",
+      "domain": "risk_forecasting",
+      "title": "Contractor performance decay alerts",
+      "rank": 12,
+      "scores": {
+        "user_effort_reduced": 2,
+        "support_burden_reduced": 2,
+        "revenue_retention_impact": 3,
+        "implementation_complexity": 4,
+        "operational_risk": 4,
+        "dependency_readiness": 3,
+        "defensibility": 3
+      },
+      "total_score": 9,
+      "phase": 3,
+      "automation_type": "auto_notify",
+      "dependencies": ["contractor_performance_recalc", "fairness/explainability guardrails"],
+      "outcome": "Network quality signal; high trust risk if wrong"
+    }
+  ],
+  "top_3_recommended_first": ["AUTO-001", "AUTO-002", "AUTO-003"]
+}

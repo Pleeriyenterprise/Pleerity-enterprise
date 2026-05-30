@@ -1,0 +1,133 @@
+{
+  "programme": "PRELAUNCH-AUTOMATION-LEVERAGE-FEASIBILITY-AUDIT-01",
+  "captured_at": "2026-05-30T18:50:00+00:00",
+  "opportunities": [
+    {
+      "id": "AUTO-001",
+      "landlord_value": "high",
+      "contractor_value": "high",
+      "tenant_value": "low",
+      "platform_value": "high",
+      "monetisation": "included_in_pro",
+      "retention_impact": "high",
+      "support_burden_reduction": "high",
+      "operational_defensibility": "high",
+      "packaging": ["core_pro", "reduces_churn"]
+    },
+    {
+      "id": "AUTO-002",
+      "landlord_value": "high",
+      "contractor_value": "high",
+      "tenant_value": "medium",
+      "platform_value": "high",
+      "monetisation": "included_in_pro",
+      "retention_impact": "high",
+      "support_burden_reduction": "high",
+      "operational_defensibility": "high",
+      "packaging": ["core_pro"]
+    },
+    {
+      "id": "AUTO-003",
+      "landlord_value": "high",
+      "contractor_value": "medium",
+      "tenant_value": "low",
+      "platform_value": "high",
+      "monetisation": "premium_differentiator",
+      "retention_impact": "high",
+      "support_burden_reduction": "medium",
+      "operational_defensibility": "high",
+      "packaging": ["pro_plan", "daily_driver_ux"]
+    },
+    {
+      "id": "AUTO-004",
+      "landlord_value": "medium",
+      "contractor_value": "low",
+      "tenant_value": "low",
+      "platform_value": "high",
+      "monetisation": "ai_add_on_candidate",
+      "retention_impact": "medium",
+      "support_burden_reduction": "high",
+      "operational_defensibility": "high",
+      "packaging": ["admin_efficiency", "future_ai_tier"]
+    },
+    {
+      "id": "AUTO-005",
+      "landlord_value": "high",
+      "contractor_value": "medium",
+      "tenant_value": "low",
+      "platform_value": "medium",
+      "monetisation": "included_in_pro",
+      "retention_impact": "medium",
+      "support_burden_reduction": "medium",
+      "operational_defensibility": "high",
+      "packaging": ["core_pro"]
+    },
+    {
+      "id": "AUTO-006",
+      "landlord_value": "high",
+      "contractor_value": "low",
+      "tenant_value": "low",
+      "platform_value": "high",
+      "monetisation": "premium_ai_add_on",
+      "retention_impact": "high",
+      "support_burden_reduction": "medium",
+      "operational_defensibility": "medium",
+      "packaging": ["compliance_copilot", "pro_plus_candidate"]
+    },
+    {
+      "id": "AUTO-007",
+      "landlord_value": "high",
+      "contractor_value": "medium",
+      "tenant_value": "medium",
+      "platform_value": "high",
+      "monetisation": "premium_feature",
+      "retention_impact": "high",
+      "support_burden_reduction": "low",
+      "operational_defensibility": "high",
+      "packaging": ["risk_intelligence"]
+    },
+    {
+      "id": "AUTO-008",
+      "landlord_value": "medium",
+      "contractor_value": "low",
+      "tenant_value": "medium",
+      "platform_value": "medium",
+      "monetisation": "included",
+      "retention_impact": "low",
+      "support_burden_reduction": "medium",
+      "operational_defensibility": "medium",
+      "packaging": ["tenant_portal_quality"]
+    },
+    {
+      "id": "AUTO-009",
+      "landlord_value": "medium",
+      "contractor_value": "high",
+      "tenant_value": "low",
+      "platform_value": "high",
+      "monetisation": "network_growth",
+      "retention_impact": "medium",
+      "support_burden_reduction": "high",
+      "operational_defensibility": "medium",
+      "packaging": ["contractor_network_efficiency"]
+    },
+    {
+      "id": "AUTO-010",
+      "landlord_value": "high",
+      "contractor_value": "medium",
+      "tenant_value": "low",
+      "platform_value": "high",
+      "monetisation": "ai_add_on",
+      "retention_impact": "medium",
+      "support_burden_reduction": "high",
+      "operational_defensibility": "high",
+      "packaging": ["document_intelligence"]
+    }
+  ],
+  "monetisation_summary": {
+    "core_pro_included": ["AUTO-001", "AUTO-002", "AUTO-003", "AUTO-005", "AUTO-008", "AUTO-009"],
+    "premium_ai_add_on": ["AUTO-004", "AUTO-006", "AUTO-010"],
+    "risk_intelligence_tier": ["AUTO-007"],
+    "internal_admin_efficiency": ["AUTO-004", "admin queue prioritisation"]
+  },
+  "highest_platform_value": ["AUTO-001", "AUTO-002", "AUTO-003", "AUTO-006", "AUTO-007"]
+}

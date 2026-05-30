@@ -1,0 +1,112 @@
+{
+  "programme": "PRELAUNCH-AUTOMATION-LEVERAGE-FEASIBILITY-AUDIT-01",
+  "captured_at": "2026-05-30T18:50:00+00:00",
+  "overall_readiness": "PARTIAL",
+  "checks": {
+    "workflow_states_canonical": {
+      "status": "strong",
+      "detail": "Work orders, orders, evidence review V2, risk signals, contractor/tenant onboarding use explicit enums/constants. Projection layers (Today, Command Centre) derive from upstream truth.",
+      "gaps": ["No single unified workflow engine; domain-specific state machines"]
+    },
+    "transitions_auditable": {
+      "status": "strong",
+      "detail": "~292 AuditAction types; create_audit_log() on pricing, schedule, assignment, evidence mutations.",
+      "gaps": ["Some notification paths audit via message_logs only"]
+    },
+    "events_emitted_consistently": {
+      "status": "partial",
+      "detail": "Domain collections (subscription_operational_events, enablement, pilot) + in-app WO notifications.",
+      "gaps": ["No generic event bus; cross-domain automation requires bespoke wiring"]
+    },
+    "notifications_idempotent": {
+      "status": "strong",
+      "detail": "NotificationOrchestrator idempotency_key unique index, throttle, plan gate, retry worker.",
+      "gaps": ["Contractor in-app notification centre limited; email registry has unimplemented triggers"]
+    },
+    "background_jobs_exist": {
+      "status": "strong",
+      "detail": "APScheduler + 48 JOB_RUNNERS; Mongo queues for recalc, regen, extraction.",
+      "gaps": ["No Celery/broker; scheduler/API coupling; registry drift on 2 jobs"]
+    },
+    "queues_handle_volume": {
+      "status": "medium",
+      "detail": "Compliance recalc + risk regen workers with reclaim/dead-letter patterns.",
+      "gaps": ["No load test evidence for notification escalation at scale"]
+    },
+    "tenant_client_scoping_safe": {
+      "status": "strong",
+      "detail": "Route guards, client_id/contractor_id checks on WO/issue mutations.",
+      "gaps": ["Automation must inherit same guards; no cross-tenant batch without admin scope"]
+    },
+    "stale_cache_misleads": {
+      "status": "medium",
+      "detail": "Command Centre trust_surface_observability flags STALE_DATA_POSSIBLE; scoring_semantics_v1 stale policy.",
+      "gaps": ["Frontend list caches; dashboard summary can lag until refresh"]
+    },
+    "ai_outputs_constrained": {
+      "status": "partial",
+      "detail": "trust_language_governance.py; extraction confidence thresholds; match reason codes.",
+      "gaps": ["No central confidence scoring service for all AI-assisted outputs"]
+    },
+    "evidence_semantics_clear": {
+      "status": "strong",
+      "detail": "EvidenceReviewState V2 + requirement_truth evidence states + CER verification.",
+      "gaps": ["Legacy migration bridge still active"]
+    },
+    "duplicate_prevention_exists": {
+      "status": "strong",
+      "detail": "Issue/WO idempotency services, operational_root_key, notification idempotency.",
+      "gaps": ["Risk-signal→WO HTTP idempotency test gap noted in prior audits"]
+    }
+  },
+  "existing_foundations": [
+    "APScheduler + job_run_service instrumentation",
+    "Mongo work queues (compliance_recalc, risk_signal_regen, extraction)",
+    "NotificationOrchestrator gateway",
+    "AuditAction enum + create_audit_log",
+    "operational_automation_service policy tiers",
+    "workflow_automation_service (orders WF1–WF10)",
+    "work_order_schedule_reminders job",
+    "assignment_execution_momentum_service",
+    "today_projection_service + operational_continuation_service",
+    "Idempotency keys on issues, WOs, notifications"
+  ],
+  "missing_or_weak_foundations": [
+    {
+      "foundation": "generic_event_bus",
+      "priority": "medium",
+      "reason": "Cross-module automation (quote stall → Today bump → notify) requires bespoke wiring today"
+    },
+    {
+      "foundation": "workflow_timers",
+      "priority": "high",
+      "reason": "Escalation ladders need per-WO/per-entity timer state (e.g. T+24h quote pending)"
+    },
+    {
+      "foundation": "unified_confidence_scoring",
+      "priority": "medium",
+      "reason": "Document classification and remediation drafts need shared confidence→action mapping"
+    },
+    {
+      "foundation": "notification_preferences_granularity",
+      "priority": "medium",
+      "reason": "Escalation must respect per-role/per-event opt-out to avoid spam"
+    },
+    {
+      "foundation": "automation_reconciliation_jobs",
+      "priority": "high",
+      "reason": "Detect false-positive nudges (already resolved), stale automation triggers"
+    },
+    {
+      "foundation": "admin_override_audit",
+      "priority": "low",
+      "reason": "Exists for admin actions; extend for automation suppression overrides"
+    },
+    {
+      "foundation": "job_schedule_registry_completeness",
+      "priority": "high",
+      "reason": "2 jobs missing from registry → SLA watchdog blind spot"
+    }
+  ],
+  "architecture_verdict": "Platform can support Phase 1 automation (notify, prioritise, recommend) safely using existing orchestrator + scheduler. Phase 2+ requires workflow timers and reconciliation before semi-autonomous operations."
+}
