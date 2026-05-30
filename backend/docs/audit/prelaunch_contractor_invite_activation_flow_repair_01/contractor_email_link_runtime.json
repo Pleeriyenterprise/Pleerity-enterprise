@@ -1,12 +1,29 @@
 {
   "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
-  "link_context_endpoint": "GET /api/job/link-context",
-  "request_activation_endpoint": "POST /api/job/request-portal-activation",
-  "auto_portal_invite_on_assign": true,
-  "staging_probe": {
-    "checked_at": "2026-05-30T10:52:56.577657+00:00",
-    "link_context_invalid_status": 404,
-    "link_context_deployed": false,
-    "landlord_jobs_status": 200
-  }
+  "captured_at": "2026-05-30T12:20:00+00:00",
+  "pre_activation_api": {
+    "link_context_status": 200,
+    "activation_required": true,
+    "work_order_status": 403,
+    "work_order_error_code": "ACTIVATION_REQUIRED",
+    "request_portal_activation_status": 200,
+    "ok": true
+  },
+  "pre_activation_browser": {
+    "job_url": "https://pleerityenterprise.co.uk/job?token=otCENYaEMsjWKTwJsaxumXAKQLCskYW2GwF_iO3RAQw",
+    "activation_panel": true,
+    "resend_button": true,
+    "quote_message": true,
+    "link_context_calls_8s": 1,
+    "link_context_loop": false,
+    "inactive_toast_count": 0,
+    "ok": true
+  },
+  "post_activation_api": {
+    "contractor_active": true,
+    "activation_required": false,
+    "work_order_status": 200,
+    "ok": true
+  },
+  "ok": true
 }

@@ -1,5 +1,19 @@
 {
   "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
-  "set_password_return_to": "ContractorSetPasswordPage return_to=/job?token=\u2026",
-  "portal_invite_includes_return_job_token": true
+  "captured_at": "2026-05-30T12:20:00+00:00",
+  "activation": {
+    "set_password_status": 200,
+    "return_to_path": "/job?token=VJ3yOjyWdJuzf8cuBhTCrM8Z2UNLqvz_gVFjkU5A7fs",
+    "post_activation_contractor_active": true,
+    "post_activation_work_order_status": 200,
+    "admin_onboarding_state_after": "active",
+    "admin_onboarding_label_after": "Active",
+    "ok": true
+  },
+  "browser_post_activation": {
+    "post_activation_job_loaded": true,
+    "post_activation_no_dead_end": true,
+    "ok": true
+  },
+  "ok": true
 }

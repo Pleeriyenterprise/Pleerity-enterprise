@@ -1,24 +1,33 @@
 {
   "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
-  "states": [
-    "directory_created",
-    "job_invite_sent",
-    "portal_invite_sent",
-    "portal_activation_pending",
-    "active",
-    "unavailable",
-    "disabled"
-  ],
-  "derivation": "services.contractor_service.derive_contractor_onboarding_state",
-  "persisted_fields": [
-    "job_invite_sent_at",
-    "job_invite_last_work_order_id",
-    "portal_invite_sent_at"
-  ],
-  "pytest": {
-    "exit_code": 0,
-    "stdout": ".......                                                                  [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1806\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1806: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n7 passed, 4 warnings in 0.11s\n",
-    "stderr": "",
-    "passed": true
+  "captured_at": "2026-05-30T12:15:08.979561+00:00",
+  "landlord_assignment": {
+    "captured_at": "2026-05-30T12:11:41.621964+00:00",
+    "job_id": "df36fff8-b8ea-4399-92f8-279d094fcfe8",
+    "job_jurisdiction": "Wales",
+    "job_price_status": null,
+    "create_status": 200,
+    "contractor_id": "47c6137e-7f21-47bb-b7c4-de576c0f6982",
+    "contractor_email": "closeout-act-dd09fb6fc9@yopmail.com",
+    "assign_status": 200,
+    "assign_body": null,
+    "assign_ok": true,
+    "admin_onboarding_state": "portal_activation_pending",
+    "admin_onboarding_label": "Activation pending",
+    "job_invite_sent_at": "2026-05-30T12:11:53.039390+00:00",
+    "job_invite_last_work_order_id": "df36fff8-b8ea-4399-92f8-279d094fcfe8",
+    "portal_invite_sent_at": "2026-05-30T12:11:53.516307+00:00",
+    "portal_access_status": "invite_pending",
+    "not_invited_contradiction": false,
+    "ok": true,
+    "job_link_from_email": "https://pleerityenterprise.co.uk/job?token=VJ3yOjyWdJuzf8cuBhTCrM8Z2UNLqvz_gVFjkU5A7fs"
+  },
+  "admin_before": {
+    "onboarding_state": "portal_activation_pending",
+    "label": "Activation pending"
+  },
+  "admin_after": {
+    "onboarding_state": "active",
+    "label": "Active"
   }
 }

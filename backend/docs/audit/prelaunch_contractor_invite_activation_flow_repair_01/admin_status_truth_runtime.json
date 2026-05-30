@@ -1,6 +1,24 @@
 {
   "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
-  "admin_column": "Invite / activation",
-  "uses_onboarding_state_label": true,
-  "job_invite_sent_visible": true
+  "captured_at": "2026-05-30T12:20:00+00:00",
+  "before_activation": {
+    "onboarding_state": "portal_activation_pending",
+    "onboarding_state_label": "Activation pending",
+    "portal_access_status": "invite_pending",
+    "job_invite_sent_at": "2026-05-30T12:11:53.039390+00:00",
+    "shows_not_invited": false,
+    "ok": true
+  },
+  "after_activation": {
+    "onboarding_state": "active",
+    "onboarding_state_label": "Active",
+    "portal_access_status": "enabled",
+    "ok": true
+  },
+  "resend_invite": {
+    "status": 200,
+    "updates_portal_invite_sent_at": true
+  },
+  "admin_ui_column": "Invite / activation",
+  "ok": true
 }

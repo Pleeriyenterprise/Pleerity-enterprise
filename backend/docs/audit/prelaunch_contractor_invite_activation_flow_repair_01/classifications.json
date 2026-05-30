@@ -1,10 +1,19 @@
 {
   "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
-  "classification": "PARTIAL",
-  "verified_at": "2026-05-30T10:53:47.239140+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "captured_at": "2026-05-30T12:20:00+00:00",
+  "commit_sha": "c8586fe9adc76dbea9d2681ff47307c86af75ee1",
+  "prior_sha": "327142093e3323a43429f36a5652e5c06fdc32b3",
   "checks": {
-    "unit_tests": true,
-    "code_repair_present": true,
-    "staging_link_context_live": false
-  }
+    "deploy_continuity": true,
+    "invite_persistence": true,
+    "admin_status_truth": true,
+    "pre_activation_link_api": true,
+    "pre_activation_jobpage_panel": true,
+    "activation_redirect": true,
+    "quote_submission_smoke": true,
+    "toast_loop_governance": true,
+    "browser_runtime": true
+  },
+  "rationale": "c8586fe9 hotfix deployed. Assign persists job_invite + portal invite fields; admin shows Activation pending then Active; inactive job link returns activation_required; JobPage renders activation panel with single link-context fetch; set-password activates contractor and restores job access; AWAITING_QUOTE quote submit returns 200."
 }

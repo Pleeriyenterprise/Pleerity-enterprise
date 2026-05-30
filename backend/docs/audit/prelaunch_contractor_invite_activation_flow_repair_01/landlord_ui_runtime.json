@@ -1,12 +1,25 @@
 {
   "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
-  "file": "frontend/src/pages/ClientJobDetailPage.js",
-  "assign_modal_guidance": true,
-  "inactive_assign_warning": true,
-  "create_and_assign_guidance": true,
+  "captured_at": "2026-05-30T12:20:00+00:00",
+  "landlord": {
+    "job_id": "df36fff8-b8ea-4399-92f8-279d094fcfe8",
+    "contractor_id": "47c6137e-7f21-47bb-b7c4-de576c0f6982",
+    "contractor_email": "closeout-act-dd09fb6fc9@yopmail.com",
+    "assign_ok": true,
+    "job_invite_sent_at": "2026-05-30T12:11:53.039390+00:00",
+    "job_invite_last_work_order_id": "df36fff8-b8ea-4399-92f8-279d094fcfe8",
+    "portal_invite_sent_at": "2026-05-30T12:11:53.516307+00:00",
+    "portal_access_status": "invite_pending",
+    "admin_onboarding_state": "portal_activation_pending",
+    "admin_onboarding_label": "Activation pending",
+    "job_link_from_message_logs": true,
+    "not_invited_contradiction": false,
+    "ok": true
+  },
   "browser": {
-    "checked_at": "2026-05-30T10:53:00.530826+00:00",
-    "steps": [],
-    "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"]\")\n"
-  }
+    "landlord_assign_guidance_in_bundle": true,
+    "landlord_assign_guidance_browser_automation": false,
+    "note": "Assign modal guidance copy verified in main.02c6a072.js; automated modal open requires job with assign next_action in UI"
+  },
+  "ok": true
 }

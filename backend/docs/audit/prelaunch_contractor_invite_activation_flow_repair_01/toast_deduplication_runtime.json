@@ -1,5 +1,11 @@
 {
   "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
-  "mechanism": "loadErrorToastKeyRef single toast per error code; activation panel replaces toast for ACTIVATION_REQUIRED",
-  "code_present": true
+  "captured_at": "2026-05-30T12:20:00+00:00",
+  "inactive_profile_toast_count": 0,
+  "network_error_toast_count": 0,
+  "link_context_call_count_8s": 1,
+  "link_context_loop": false,
+  "activation_panel_visible": true,
+  "inline_activation_message_only": true,
+  "ok": true
 }

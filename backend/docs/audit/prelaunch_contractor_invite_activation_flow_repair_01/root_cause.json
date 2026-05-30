@@ -1,21 +1,41 @@
 {
   "programme": "PRELAUNCH-CONTRACTOR-INVITE-ACTIVATION-FLOW-REPAIR-01",
-  "audited_at": "2026-05-30T10:53:47.239140+00:00",
-  "primary_root_cause": "INVITE_STATE_DRIFT",
-  "summary": "Job assignment email (contractor_job_tokens + /job?token=) was sent without updating portal_access_status or issuing portal invite. Job-link API required status=active while landlord-added contractors remained approved/not_invited. Admin UI showed portal_access only, so job email sent appeared as Not invited.",
-  "split_authority": {
-    "job_email_path": "maintenance_service.update_work_order \u2192 CONTRACTOR_JOB_ASSIGNMENT_*",
-    "portal_invite_path": "issue_contractor_portal_invite \u2192 password_tokens contractor_invite",
-    "job_link_gate": "contractor_job.get_job_context required status active",
-    "admin_label": "portal_access_status only \u2192 Not invited"
-  },
-  "code_audit": {
-    "onboarding_state_model": true,
-    "job_invite_sent_field": true,
-    "auto_portal_invite_on_assign": true,
-    "link_context_endpoint": true,
-    "activation_required_error": true,
-    "job_page_activation_panel": true,
-    "toast_dedup": true
-  }
+  "original_root_cause": "Split authority between job assignment email (contractor_job_tokens + /job?token=) and portal invite (password_tokens, /contractor-set-password). Landlord assign sent job email without updating portal/onboarding state; job link required active contractor; admin showed Not invited when only job email was sent.",
+  "closeout_at": "2026-05-30T12:15:08.979561+00:00",
+  "deploy_verified": true,
+  "deploy_sha": "327142093e3323a43429f36a5652e5c06fdc32b3",
+  "post_deploy_regressions_found": [
+    {
+      "id": "update_contractor_job_invite_params",
+      "severity": "critical",
+      "summary": "update_contractor referenced job_invite_sent_at / job_invite_last_work_order_id in body without function parameters, causing NameError on every contractor update and TypeError on record_contractor_job_invite_sent.",
+      "impact": "job_invite_sent_at never persisted; portal invite/resend/request-portal-activation returned 500; admin onboarding labels missing from API."
+    },
+    {
+      "id": "sanitize_doc_missing_enrich",
+      "severity": "high",
+      "summary": "_sanitize_doc did not call enrich_contractor_onboarding_view despite derive model existing.",
+      "impact": "admin onboarding_state / onboarding_state_label null in API responses."
+    },
+    {
+      "id": "jobpage_api_usememo",
+      "severity": "high",
+      "summary": "JobPage created createJobLinkAPI(token) on every render, retriggering loadJobEntry in an infinite loop (~19-24 link-context calls).",
+      "impact": "activation panel never rendered; page stuck on Loading your job."
+    },
+    {
+      "id": "record_inside_email_try",
+      "severity": "medium",
+      "summary": "record_contractor_job_invite_sent and ensure_portal_invite were nested inside assignment email try block on 32714209.",
+      "impact": "invite state skipped when email path threw after send; moved outside email try in hotfix."
+    }
+  ],
+  "hotfix_files": [
+    "backend/services/contractor_service.py",
+    "backend/services/maintenance_service.py",
+    "frontend/src/pages/contractor/JobPage.js",
+    "backend/routes/contractor_job.py",
+    "backend/routes/contractors.py"
+  ],
+  "resolution": "Repair deployed; post-deploy closeout executed."
 }
