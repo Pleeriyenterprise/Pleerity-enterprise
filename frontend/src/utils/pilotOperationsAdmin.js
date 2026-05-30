@@ -208,10 +208,4 @@ export function formatTimelineEvent(ev) {
   };
 }
 
-export function apiErrorMessage(err, fallback = 'Request failed') {
-  const detail = err?.response?.data?.detail;
-  if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail)) return detail.map((d) => d?.msg || JSON.stringify(d)).join('; ');
-  if (detail && typeof detail === 'object') return detail.message || JSON.stringify(detail);
-  return err?.message || fallback;
-}
+export { apiErrorMessage, formatApiDetail, formatDisplayValue } from './apiErrorMessage';

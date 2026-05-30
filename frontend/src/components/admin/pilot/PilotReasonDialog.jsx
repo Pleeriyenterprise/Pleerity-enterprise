@@ -10,6 +10,7 @@ import {
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Loader2 } from 'lucide-react';
+import { apiErrorMessage } from '../../../utils/apiErrorMessage';
 
 export default function PilotReasonDialog({
   open,
@@ -41,7 +42,7 @@ export default function PilotReasonDialog({
       setExtra({});
       onOpenChange(false);
     } catch (err) {
-      setError(err?.message || 'Action failed');
+      setError(apiErrorMessage(err, 'Action failed'));
     } finally {
       setLoading(false);
     }

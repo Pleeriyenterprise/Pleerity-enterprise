@@ -5,6 +5,7 @@ import { adminAPI } from '../../../api/client';
 import { Button } from '../../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { toast } from '@/utils/portalNotifications';
+import { formatDisplayValue } from '../../../utils/apiErrorMessage';
 import PilotEligibilityOverrideDialog from './PilotEligibilityOverrideDialog';
 import PilotReasonDialog from './PilotReasonDialog';
 import {
@@ -123,7 +124,7 @@ function RedemptionRow({
       </p>
       {redemption.failure_reason && (
         <p className="text-red-800/90" data-testid="redemption-failure-reason">
-          Failure: {redemption.failure_reason}
+          Failure: {formatDisplayValue(redemption.failure_reason)}
         </p>
       )}
       {(redemption.checkout_session_id || redemption.plan_code) && (
@@ -155,7 +156,7 @@ function OverrideHistoryRow({ override, onRevoke, revokingId }) {
             {overrideTypeLabel(override.override_type)} · {override.scope}={override.scope_value}
             {!active && <span className="text-slate-500 ml-1">(inactive)</span>}
           </p>
-          <p className="text-gray-600 mt-0.5">{override.override_reason}</p>
+          <p className="text-gray-600 mt-0.5">{formatDisplayValue(override.override_reason)}</p>
           <p className="text-gray-500 mt-0.5">
             By {override.override_actor?.email || override.override_actor?.id || 'admin'} ·{' '}
             {formatDate(override.override_created_at)}

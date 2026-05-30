@@ -31,6 +31,7 @@ import {
   headlineScoreDisplayForDashboard,
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
+import { apiErrorMessage, formatDisplayValue } from '../utils/apiErrorMessage';
 
 const MIN_DANGEROUS_ACTION_REASON = 10;
 
@@ -55,7 +56,7 @@ const SectionCard = ({ title, children, actions = null, subdued = false }) => (
 const Row = ({ label, value }) => (
   <div className="flex items-center justify-between gap-4 py-2 border-b border-gray-100/80 last:border-0">
     <span className="text-sm text-gray-600">{label}</span>
-    <span className="text-sm font-medium text-gray-900 text-right">{value ?? '—'}</span>
+    <span className="text-sm font-medium text-gray-900 text-right">{formatDisplayValue(value)}</span>
   </div>
 );
 
@@ -263,7 +264,7 @@ const formatTaskActivityLine = (row) => {
   if (action === 'DISMISS') return `Dismissed ${source}`;
   if (action === 'DONE') return `Marked ${source} as done`;
   if (action === 'RESTORE') return `Restored ${source}`;
-  return row?.summary || row?.description || action || 'Task inbox activity';
+  return formatDisplayValue(row?.summary || row?.description || action || 'Task inbox activity', 'Task inbox activity');
 };
 
 const AdminClientControlPanelPage = () => {
@@ -299,8 +300,7 @@ const AdminClientControlPanelPage = () => {
       setData(res.data || null);
       setPaymentHistoryError('');
     } catch (err) {
-      const msg = err?.response?.data?.detail || 'Failed to load client control panel';
-      toast.error(typeof msg === 'string' ? msg : 'Failed to load client control panel');
+      toast.error(apiErrorMessage(err, 'Failed to load client control panel'));
       setPaymentHistoryError('Failed to load payment history');
       setData(null);
     } finally {
@@ -320,8 +320,7 @@ const AdminClientControlPanelPage = () => {
       setTaskActivity(res.data?.items || []);
     } catch (err) {
       setTaskActivity([]);
-      const msg = err?.response?.data?.detail;
-      toast.error(typeof msg === 'string' ? msg : 'Failed to load command centre task activity');
+      toast.error(apiErrorMessage(err, 'Failed to load command centre task activity'));
     } finally {
       setTaskActivityLoading(false);
     }
@@ -801,7 +800,7 @@ const AdminClientControlPanelPage = () => {
         <div className="text-right text-sm space-y-1 min-w-[10rem]">
           <div>
             <span className="text-gray-500">Risk level</span>
-            <div className="font-semibold text-gray-900">{compliance.risk_level || 'Not yet recorded'}</div>
+            <div className="font-semibold text-gray-900">{formatDisplayValue(compliance.risk_level, 'Not yet recorded')}</div>
           </div>
         </div>
       </div>
@@ -1142,7 +1141,7 @@ const AdminClientControlPanelPage = () => {
             )}
             {compliance.risk_level ? (
               <li>
-                Modelled risk level: <span className="font-medium">{compliance.risk_level}</span>
+                Modelled risk level: <span className="font-medium">{formatDisplayValue(compliance.risk_level)}</span>
                 {' '}
                 (headline:{' '}
                 {String(headlineScoreDisplayForDashboard(compliance.compliance_score, compliance.score_status))}
@@ -1317,7 +1316,7 @@ const AdminClientControlPanelPage = () => {
       <SectionCard title="Billing & subscription">
         {billing.billing_reconciliation_needed ? (
           <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-            Reconciliation required: {billing.billing_reconciliation_reason || 'Needs review'}
+            Reconciliation required: {formatDisplayValue(billing.billing_reconciliation_reason, 'Needs review')}
           </div>
         ) : null}
         <Row label="Plan" value={billing.plan} />

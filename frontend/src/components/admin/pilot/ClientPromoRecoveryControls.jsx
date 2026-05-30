@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronDown, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { usePilotAccountRecovery } from '../../../hooks/usePilotAccountRecovery';
+import { formatDisplayValue } from '../../../utils/apiErrorMessage';
 import { shouldShowRecoveryPanel } from '../../../utils/pilotRedemptionAdmin';
 import PilotRecoveryIndicatorBadges from './PilotRecoveryIndicatorBadges';
 import PromoRecoveryStateSummary from './PromoRecoveryStateSummary';
@@ -90,13 +91,16 @@ export default function ClientPromoRecoveryControls({
         />
       </button>
 
+      {error && (
+        <div className="px-4 pt-2" data-testid="promo-recovery-error">
+          <Alert variant="destructive">
+            <AlertDescription>{formatDisplayValue(error, 'Failed to load promo recovery data')}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t border-amber-100/80">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
           <PilotRecoveryIndicatorBadges indicators={indicators} />
           <PromoRecoveryStateSummary
             inviteMetadata={inviteMetadata}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { adminAPI } from '../api/client';
-import { apiErrorMessage } from '../utils/pilotOperationsAdmin';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 
 /**
  * Loads promo recovery context for any client (not gated on active pilot lifecycle).

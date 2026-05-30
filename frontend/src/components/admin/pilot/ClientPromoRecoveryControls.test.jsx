@@ -83,6 +83,29 @@ describe('ClientPromoRecoveryControls', () => {
     expect(screen.getByTestId('mock-recovery-section')).toBeInTheDocument();
   });
 
+  it('shows structured API errors without crashing', () => {
+    usePilotAccountRecovery.mockReturnValue({
+      loading: false,
+      error: { error_code: 'FORBIDDEN', message: 'Insufficient permissions' },
+      reload: jest.fn(),
+      showRecoveryPanel: false,
+      redemptions: [],
+      eligibilityOverrides: [],
+      overrideHistory: [],
+      waiverHistory: [],
+      indicators: {},
+      inviteMetadata: {},
+      latestRedemption: null,
+      strandedCount: 0,
+    });
+    render(
+      <MemoryRouter>
+        <ClientPromoRecoveryControls clientId="err-client" />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('Insufficient permissions')).toBeInTheDocument();
+  });
+
   it('expands collapsible section on click', () => {
     usePilotAccountRecovery.mockReturnValue({
       loading: false,

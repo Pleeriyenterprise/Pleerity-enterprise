@@ -10,6 +10,7 @@ import {
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Loader2 } from 'lucide-react';
+import { apiErrorMessage } from '../../../utils/apiErrorMessage';
 import {
   ELIGIBILITY_OVERRIDE_TYPES,
   OVERRIDE_SCOPE_OPTIONS,
@@ -68,7 +69,7 @@ export default function PilotEligibilityOverrideDialog({
       await onSubmit(body);
       onOpenChange(false);
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed');
+      setError(apiErrorMessage(err, 'Failed'));
     } finally {
       setLoading(false);
     }

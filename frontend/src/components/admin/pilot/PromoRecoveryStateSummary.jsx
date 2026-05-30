@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { formatDisplayValue } from '../../../utils/apiErrorMessage';
 import { redemptionStatusBadgeClass } from '../../../utils/pilotRedemptionAdmin';
 
 function formatDate(iso) {
@@ -16,7 +17,7 @@ function SummaryRow({ label, value, testId }) {
     <div className="flex justify-between gap-3 py-1.5 border-b border-slate-100 last:border-0 text-xs">
       <span className="text-gray-600 shrink-0">{label}</span>
       <span className="font-medium text-gray-900 text-right" data-testid={testId}>
-        {value ?? '—'}
+        {value == null || value === '' ? '—' : typeof value === 'string' || typeof value === 'number' ? value : formatDisplayValue(value)}
       </span>
     </div>
   );
@@ -66,8 +67,8 @@ export default function PromoRecoveryStateSummary({
           )
         }
       />
-      <SummaryRow label="Campaign" value={meta.campaign_name || '—'} />
-      <SummaryRow label="Code type" value={meta.pilot_code_type || '—'} />
+      <SummaryRow label="Campaign" value={formatDisplayValue(meta.campaign_name)} />
+      <SummaryRow label="Code type" value={formatDisplayValue(meta.pilot_code_type)} />
       <SummaryRow
         label="Latest redemption status"
         testId="summary-redemption-status"
@@ -82,16 +83,16 @@ export default function PromoRecoveryStateSummary({
         }
       />
       <SummaryRow label="Retry eligibility" testId="summary-retry-eligibility" value={retryLabel} />
-      <SummaryRow label="Onboarding status" testId="summary-onboarding-status" value={onboarding} />
-      <SummaryRow label="Provisioning" value={provisioning} />
-      <SummaryRow label="Subscription" value={subscription} />
-      <SummaryRow label="Billing lifecycle" value={billingLc} />
+      <SummaryRow label="Onboarding status" testId="summary-onboarding-status" value={formatDisplayValue(onboarding)} />
+      <SummaryRow label="Provisioning" value={formatDisplayValue(provisioning)} />
+      <SummaryRow label="Subscription" value={formatDisplayValue(subscription)} />
+      <SummaryRow label="Billing lifecycle" value={formatDisplayValue(billingLc)} />
       <SummaryRow
         label="Onboarding fee policy"
         value={meta.onboarding_fee_policy || (meta.onboarding_fee_waived ? 'waived' : '—')}
       />
       {latestRedemption?.failure_reason && (
-        <SummaryRow label="Failure reason" testId="summary-failure-reason" value={latestRedemption.failure_reason} />
+        <SummaryRow label="Failure reason" testId="summary-failure-reason" value={formatDisplayValue(latestRedemption.failure_reason)} />
       )}
       {latestRedemption?.created_at && (
         <SummaryRow label="Last attempt" value={formatDate(latestRedemption.created_at)} />
