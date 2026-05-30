@@ -1,0 +1,10 @@
+{
+  "captured_at": "2026-05-30T13:43:42.909932+00:00",
+  "api_sha": "1adb8f7348089afb555ceab5baf9d6491cbf134c",
+  "frontend_js": "/static/js/main.23bfdc0f.js",
+  "bundle_markers": {
+    "request_quote_revision_api": false,
+    "request_changes_ui": false,
+    "submit_revised_quote_ui": false
+  }
+}

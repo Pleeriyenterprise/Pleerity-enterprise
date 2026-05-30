@@ -1,0 +1,25 @@
+{
+  "api_price_status_chain": [
+    {
+      "price_status": "QUOTED",
+      "history_len": 1,
+      "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde"
+    },
+    {
+      "price_status": "REVISION_REQUESTED",
+      "revision_active": true,
+      "reason_code": "price_too_high",
+      "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+      "history_len": 2
+    },
+    {
+      "price_status": "QUOTED",
+      "quoted_price": 275.0,
+      "history_len": 3
+    },
+    {
+      "price_status": "APPROVED",
+      "history_len": 4
+    }
+  ]
+}

@@ -67,9 +67,10 @@ def _call(method: str, path: str, token: Optional[str] = None, body: Optional[di
         return {"method": method, "path": path, "status": 599, "ok": False, "body": str(exc)}
 
 
-def _seed_wo(client_tok: str) -> Dict[str, Any]:
+def _seed_wo(client_tok: str, *, desc: Optional[str] = None) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
-    issue = _call("POST", "/client/maintenance/issues", client_tok, {"property_id": PID, "description": f"{MARK} quote negotiation", "category": "general"})
+    description = desc or f"{MARK} quote negotiation"
+    issue = _call("POST", "/client/maintenance/issues", client_tok, {"property_id": PID, "description": description, "category": "general"})
     out["create_issue"] = issue
     issue_id = (issue.get("body") or {}).get("issue_id") if isinstance(issue.get("body"), dict) else None
     if not issue_id:
@@ -91,7 +92,18 @@ def _pricing(body: dict) -> dict:
     return (body.get("pricing") or {}) if isinstance(body, dict) else {}
 
 
+def _price_status(body: dict) -> str:
+    if not isinstance(body, dict):
+        return ""
+    top = body.get("price_status")
+    if top:
+        return str(top)
+    return str(_pricing(body).get("price_status") or "")
+
+
 def _history_len(body: dict) -> int:
+    if isinstance(body, dict) and body.get("quote_negotiation_history"):
+        return len(body.get("quote_negotiation_history") or [])
     return len(_pricing(body).get("quote_negotiation_history") or [])
 
 
@@ -124,7 +136,7 @@ def run_api_scenario(client_tok: str, contractor_tok: str) -> Dict[str, Any]:
     s1 = _call("POST", f"/jobs/{wid}/submit-quote", contractor_tok, {"amount": 320.0, "currency": "GBP", "notes": f"{MARK} v1"})
     step("contractor_submit_quote_v1", s1)
     body1 = s1.get("body") if isinstance(s1.get("body"), dict) else {}
-    out["after_v1"] = {"price_status": body1.get("price_status"), "history_len": _history_len(body1), "contractor_id": body1.get("contractor_id")}
+    out["after_v1"] = {"price_status": _price_status(body1), "history_len": _history_len(body1), "contractor_id": body1.get("contractor_id")}
 
     s2 = _call(
         "POST",
@@ -135,7 +147,7 @@ def run_api_scenario(client_tok: str, contractor_tok: str) -> Dict[str, Any]:
     step("landlord_request_revision", s2)
     body2 = s2.get("body") if isinstance(s2.get("body"), dict) else {}
     out["after_revision"] = {
-        "price_status": body2.get("price_status"),
+        "price_status": _price_status(body2),
         "revision_active": _pricing(body2).get("revision_active"),
         "reason_code": _pricing(body2).get("quote_revision_reason_code"),
         "contractor_id": body2.get("contractor_id"),
@@ -145,15 +157,15 @@ def run_api_scenario(client_tok: str, contractor_tok: str) -> Dict[str, Any]:
     s3 = _call("POST", f"/jobs/{wid}/submit-quote", contractor_tok, {"amount": 275.0, "currency": "GBP", "notes": f"{MARK} v2"})
     step("contractor_submit_quote_v2", s3)
     body3 = s3.get("body") if isinstance(s3.get("body"), dict) else {}
-    out["after_v2"] = {"price_status": body3.get("price_status"), "quoted_price": _pricing(body3).get("quoted_price"), "history_len": _history_len(body3)}
+    out["after_v2"] = {"price_status": _price_status(body3), "quoted_price": _pricing(body3).get("quoted_price"), "history_len": _history_len(body3)}
 
     s4 = _call("POST", f"/jobs/{wid}/approve-quote", client_tok)
     step("landlord_approve_v2", s4)
     body4 = s4.get("body") if isinstance(s4.get("body"), dict) else {}
-    out["after_approve"] = {"price_status": body4.get("price_status"), "history_len": _history_len(body4)}
+    out["after_approve"] = {"price_status": _price_status(body4), "history_len": _history_len(body4)}
 
-    # Separate final-decline scenario
-    seed2 = _seed_wo(client_tok)
+    # Separate final-decline scenario (unique description avoids operational continuation replay)
+    seed2 = _seed_wo(client_tok, desc=f"{MARK} final decline scenario")
     wid2 = seed2.get("work_order_id")
     out["final_decline_seed"] = seed2
     if wid2:
@@ -161,7 +173,7 @@ def run_api_scenario(client_tok: str, contractor_tok: str) -> Dict[str, Any]:
         fd = _call("POST", f"/jobs/{wid2}/reject-quote-final", client_tok, {"reason": f"{MARK} final decline"})
         step("landlord_reject_final", fd)
         b = fd.get("body") if isinstance(fd.get("body"), dict) else {}
-        out["after_final_decline"] = {"price_status": b.get("price_status"), "contractor_id": b.get("contractor_id")}
+        out["after_final_decline"] = {"price_status": _price_status(b), "contractor_id": b.get("contractor_id")}
 
     # Duplicate WO check: count WOs with MARK in description via client list
     jobs = _call("GET", "/client/maintenance/work-orders", client_tok)
@@ -216,10 +228,19 @@ def classify(api: Dict[str, Any], deploy: Dict[str, Any], browser: Dict[str, Any
     ok("approved_work_authorised", (api.get("after_approve") or {}).get("price_status") == "APPROVED")
     ok("final_decline_status", (api.get("after_final_decline") or {}).get("price_status") == "REJECTED_FINAL")
     ok("no_duplicate_jobs", api.get("no_duplicate_jobs"))
+    ok("api_request_revision_endpoint", any(
+        s.get("name") == "landlord_request_revision" and s.get("ok") for s in api.get("steps", [])
+    ))
     ok("landlord_ui_request_changes", (browser.get("landlord_job_page") or {}).get("has_request_changes"))
 
     if fails:
-        classification = "PARTIAL" if len(fails) <= 2 else "QUOTE_NEGOTIATION_GAP"
+        ui_only = set(fails).issubset({"deploy_bundle_has_revision_api", "landlord_ui_request_changes"})
+        if ui_only and "api_request_revision_endpoint" in checks:
+            classification = "PARTIAL"
+        elif len(fails) <= 1 and "deploy_bundle_has_revision_api" in fails:
+            classification = "PARTIAL"
+        else:
+            classification = "QUOTE_NEGOTIATION_GAP" if len(fails) <= 3 else "FAIL_OPERATIONAL"
     else:
         classification = "VERIFIED_OPERATIONALLY"
 

@@ -1,0 +1,18 @@
+{
+  "classification": "PARTIAL",
+  "passed": [
+    "v1_submitted",
+    "revision_requested_not_terminal",
+    "assignment_persists_after_revision",
+    "lineage_grows",
+    "approved_work_authorised",
+    "final_decline_status",
+    "no_duplicate_jobs",
+    "api_request_revision_endpoint"
+  ],
+  "failed": [
+    "deploy_bundle_has_revision_api",
+    "landlord_ui_request_changes"
+  ],
+  "captured_at": "2026-05-30T13:45:05.256109+00:00"
+}

@@ -1,0 +1,2 @@
+- Frontend bundle missing request-quote-revision — deploy may be pending.
+- Classification PARTIAL: failed checks ['deploy_bundle_has_revision_api', 'landlord_ui_request_changes']
