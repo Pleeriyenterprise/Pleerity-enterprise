@@ -12,12 +12,19 @@ function formatDate(iso) {
   }
 }
 
+function renderSummaryValue(value) {
+  if (value == null || value === '') return '—';
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (React.isValidElement(value)) return value;
+  return formatDisplayValue(value);
+}
+
 function SummaryRow({ label, value, testId }) {
   return (
     <div className="flex justify-between gap-3 py-1.5 border-b border-slate-100 last:border-0 text-xs">
       <span className="text-gray-600 shrink-0">{label}</span>
       <span className="font-medium text-gray-900 text-right" data-testid={testId}>
-        {value == null || value === '' ? '—' : typeof value === 'string' || typeof value === 'number' ? value : formatDisplayValue(value)}
+        {renderSummaryValue(value)}
       </span>
     </div>
   );
