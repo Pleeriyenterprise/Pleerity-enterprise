@@ -46,5 +46,8 @@
     "compliance_workflow_service: filter propose_visit + contractor_portal_waiting_on_others helper",
     "ContractorDashboardPage: urgent waiting copy, active empty state, drawer waiting presentation",
     "JobPage: waiting presentation for open_job_detail-only state"
-  ]
+  ],
+  "post_fix_classification": "VERIFIED_OPERATIONALLY",
+  "post_fix_commit": "03e06200",
+  "post_fix_work_order": "3a7eecbb-4c8e-45c3-970c-2578f7ffec32"
 }

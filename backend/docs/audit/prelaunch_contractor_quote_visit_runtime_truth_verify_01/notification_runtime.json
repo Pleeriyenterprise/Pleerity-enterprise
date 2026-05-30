@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-05-30T17:30:39.047036+00:00",
+  "contractor_in_app": "out_of_scope_explicit",
+  "events_verified_via_api_state": [
+    "quote submitted \u2192 landlord approve_quote action present",
+    "quote revision requested \u2192 contractor submit_quote action present",
+    "quote approved \u2192 price_status APPROVED both surfaces",
+    "visit proposed \u2192 schedule_status proposed",
+    "visit reschedule \u2192 schedule_status reschedule_requested",
+    "visit confirmed \u2192 schedule_status confirmed"
+  ],
+  "email_notifications": "not_probed_in_browser_harness"
+}

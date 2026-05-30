@@ -1,0 +1,19 @@
+{
+  "classification": "VERIFIED_OPERATIONALLY",
+  "passed": [
+    "seed_work_order",
+    "quote_v3_approved",
+    "quote_lineage",
+    "visit_confirmed",
+    "visit_lineage",
+    "landlord_approve_works",
+    "progress_price_parity",
+    "progress_schedule_parity",
+    "drawer_not_open_job_only",
+    "urgent_not_false_up_to_date",
+    "quote_first_visit_gating_enforced"
+  ],
+  "failed": [],
+  "tags": [],
+  "captured_at": "2026-05-30T17:30:39.047036+00:00"
+}

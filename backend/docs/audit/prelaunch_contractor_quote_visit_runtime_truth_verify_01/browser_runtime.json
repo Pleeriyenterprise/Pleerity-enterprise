@@ -1,0 +1,23 @@
+{
+  "captured_at": "2026-05-30T17:30:09.343796+00:00",
+  "steps": [],
+  "contractor_dashboard": {
+    "has_up_to_date": false,
+    "has_waiting_on_others_heading": true,
+    "has_show_all_active_jobs": false,
+    "show_all_active_jobs_visible": false
+  },
+  "contractor_drawer": {
+    "opened_from_waiting": true,
+    "next_action_has_open_job_button": false,
+    "next_action_button_disabled": null,
+    "drawer_visible": false
+  },
+  "landlord_job": {
+    "has_approve_button": false,
+    "approve_visible": false,
+    "has_request_changes": false,
+    "has_confirm_visit": false,
+    "has_visit_history": true
+  }
+}

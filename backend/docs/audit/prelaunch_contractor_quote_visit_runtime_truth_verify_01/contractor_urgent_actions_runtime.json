@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-05-30T17:02:08.481958+00:00",
+  "captured_at": "2026-05-30T17:29:58.095188+00:00",
   "urgent_items": [
     {
       "work_order_id": "89575031-b16f-47e3-88d1-481e13d2ab60",
@@ -24,29 +24,25 @@
     {
       "work_order_id": "84bf4ed9-e1c4-481e-b2f8-94b9e28240a5",
       "actions": [
-        "submit_quote",
-        "propose_visit"
+        "submit_quote"
       ]
     },
     {
       "work_order_id": "c816f964-e607-4739-b3a5-772722f781ba",
       "actions": [
-        "submit_quote",
-        "propose_visit"
+        "submit_quote"
       ]
     },
     {
       "work_order_id": "4386c404-e85a-4344-a850-85c4d514539c",
       "actions": [
-        "submit_quote",
-        "propose_visit"
+        "submit_quote"
       ]
     },
     {
       "work_order_id": "945533e6-f197-4bc9-972a-782083b961c3",
       "actions": [
-        "submit_quote",
-        "propose_visit"
+        "submit_quote"
       ]
     },
     {
@@ -66,8 +62,7 @@
     {
       "work_order_id": "d3fabe29-f58e-4a43-970d-cbdc5ac6eecf",
       "actions": [
-        "submit_quote",
-        "propose_visit"
+        "submit_quote"
       ]
     },
     {
@@ -233,8 +228,7 @@
     {
       "work_order_id": "8729beb8-0344-4067-a4a2-31de2b513943",
       "actions": [
-        "submit_quote",
-        "propose_visit"
+        "submit_quote"
       ]
     },
     {

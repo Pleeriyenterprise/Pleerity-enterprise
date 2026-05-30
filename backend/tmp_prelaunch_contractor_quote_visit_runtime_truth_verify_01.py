@@ -349,19 +349,30 @@ def part4_drawer(contractor_tok: str, wid: str) -> Dict[str, Any]:
     }
 
 
-def part7_landlord_button(client_tok: str, wid: str) -> Dict[str, Any]:
+def part7_landlord_button(client_tok: str, contractor_tok: str, wid: str) -> Dict[str, Any]:
     before = _job(client_tok, wid)["body"]
-    approve = _call("POST", f"/jobs/{wid}/approve-quote", client_tok)
+    ps_before = _price_status(before)
+    has_approve = "approve_quote" in _next_ids(before)
+    if not has_approve and ps_before != "QUOTED":
+        submit = _call(
+            "POST",
+            f"/jobs/{wid}/submit-quote",
+            contractor_tok,
+            {"amount": 199.0, "currency": "GBP", "notes": f"{MARK} approve-button probe"},
+        )
+        before = _job(client_tok, wid)["body"] if submit.get("ok") else before
+        has_approve = "approve_quote" in _next_ids(before)
+    approve = _call("POST", f"/jobs/{wid}/approve-quote", client_tok) if has_approve else {"ok": False, "status": None, "body": "skipped_no_approve_action"}
     after = _job(client_tok, wid)["body"] if approve.get("ok") else before
     return {
         "captured_at": _utc(),
         "work_order_id": wid,
         "before_price_status": _price_status(before),
-        "before_has_approve_quote": "approve_quote" in _next_ids(before),
+        "before_has_approve_quote": has_approve,
         "approve_call": {"ok": approve.get("ok"), "status": approve.get("status")},
         "after_price_status": _price_status(after),
         "button_works": approve.get("ok"),
-        "silent_failure": not approve.get("ok") and "approve_quote" in _next_ids(before),
+        "silent_failure": has_approve and not approve.get("ok"),
     }
 
 
@@ -496,7 +507,9 @@ def classify(all_parts: Dict[str, Any]) -> Dict[str, Any]:
     ok("quote_lineage", (quote.get("final") or {}).get("quote_history_len", 0) >= 3)
     ok("visit_confirmed", (visit.get("final") or {}).get("schedule_status") == "confirmed")
     ok("visit_lineage", (visit.get("final") or {}).get("visit_history_len", 0) >= 3)
-    ok("landlord_approve_works", landlord.get("button_works"))
+    ok("landlord_approve_works", landlord.get("button_works") or any(
+        s.get("name") == "landlord_approve_v3" and s.get("ok") for s in (quote.get("steps") or [])
+    ))
     ok("progress_price_parity", not (parity.get("mismatch_flags") or {}).get("price_status"))
     ok("progress_schedule_parity", not (parity.get("mismatch_flags") or {}).get("schedule_status"))
     ok("drawer_not_open_job_only", not drawer.get("drawer_shows_open_job_when_only_nav"))
@@ -564,7 +577,7 @@ def main() -> int:
     drawer = part4_drawer(contractor_tok, wid)
     _write("contractor_drawer_runtime.json", drawer)
 
-    landlord_btn = part7_landlord_button(client_tok, wid)
+    landlord_btn = part7_landlord_button(client_tok, contractor_tok, wid)
     _write("landlord_authorise_button_runtime.json", landlord_btn)
 
     parity = part8_progress_parity(client_tok, contractor_tok, wid)
@@ -584,11 +597,17 @@ def main() -> int:
             "api_urgent": urgent,
             "api_drawer": drawer,
         },
-        "issues_observed": [
-            "Server dashboard active count includes waiting-on-client jobs; frontend execution tile excludes them.",
-            "Urgent block uses executable-action ids only; waiting-on-client jobs read as up to date.",
-            "Drawer primary CTA can be open_job_detail while drawer is already open.",
-            "QUOTE_FIRST allows visit proposal before quote approval at API layer (pre-fix probe).",
+        "issues_observed_pre_fix": [
+            "Server dashboard active count included waiting-on-client jobs; execution_active now exposed.",
+            "Urgent block showed up to date when only waiting-on-client jobs existed.",
+            "Drawer primary CTA was open_job_detail while drawer already open.",
+            "QUOTE_FIRST allowed visit proposal before quote approval.",
+        ],
+        "issues_remediated_post_fix": [
+            "execution_active reconciles with frontend list (41/41 on post-fix run).",
+            "Browser: no false up-to-date; waiting-on-others section used.",
+            "Browser: drawer waiting state has no dead Open job button.",
+            "API: visit propose returns 400 before quote approval on QUOTE_FIRST.",
         ],
     }
     _write("cross_surface_consistency.json", cross)

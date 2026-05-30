@@ -1,0 +1,491 @@
+{
+  "captured_at": "2026-05-30T17:30:39.047036+00:00",
+  "work_order_id": "3a7eecbb-4c8e-45c3-970c-2578f7ffec32",
+  "surfaces": {
+    "contractor_dashboard": {
+      "has_up_to_date": false,
+      "has_waiting_on_others_heading": true,
+      "has_show_all_active_jobs": false,
+      "show_all_active_jobs_visible": false
+    },
+    "contractor_drawer": {
+      "opened_from_waiting": true,
+      "next_action_has_open_job_button": false,
+      "next_action_button_disabled": null,
+      "drawer_visible": false
+    },
+    "landlord_job": {
+      "has_approve_button": false,
+      "approve_visible": false,
+      "has_request_changes": false,
+      "has_confirm_visit": false,
+      "has_visit_history": true
+    },
+    "api_metrics": {
+      "captured_at": "2026-05-30T17:29:48.294583+00:00",
+      "dashboard_summary_api": {
+        "generated_at": "2026-05-30T17:29:36.582940+00:00",
+        "work_orders": {
+          "overdue": 13,
+          "pending_scheduling": 39,
+          "completed": 23,
+          "total_assigned": 67
+        },
+        "earnings_gbp": {
+          "pending_approval_total": 0.0,
+          "ready_to_invoice_jobs": 23,
+          "ready_to_invoice_estimated_total": 0.0,
+          "paid_this_month_total": 0.0
+        },
+        "workflow": {
+          "action_needed": {
+            "visit_confirmation": 0,
+            "proof_upload": 0,
+            "invoice_submission": 12,
+            "invoice_correction": 0
+          },
+          "payments": {
+            "ready_to_invoice_jobs": 23,
+            "awaiting_approval_jobs": 0,
+            "paid_this_month_total": 0.0
+          },
+          "jobs": {
+            "active": 44,
+            "execution_active": 42,
+            "waiting_on_client": 6,
+            "scheduled_today": 0,
+            "overdue_at_risk": 13
+          },
+          "submit_invoice_primary_cta": true
+        },
+        "notes": {
+          "ready_to_invoice": "ready_to_invoice_jobs = completed work orders with no invoice. ready_to_invoice_estimated_total sums cost_estimate_max/min where present \u2014 indicative only."
+        }
+      },
+      "api_active_jobs": 44,
+      "api_execution_active_jobs": 42,
+      "api_waiting_on_client_jobs": 6,
+      "frontend_execution_active_count": 42,
+      "frontend_waiting_count": 6,
+      "api_total_assigned": 67,
+      "list_total": 67,
+      "metric_reconciliation": {
+        "execution_active_count": 42,
+        "waiting_on_others_count": 6,
+        "api_total_assigned": 67,
+        "active_exec_ids": [
+          "3a7eecbb-4c8e-45c3-970c-2578f7ffec32",
+          "caac5eec-988f-4d6d-8e96-ef13e4cb218d",
+          "24365ac0-9fdf-4cac-a1da-7ea8df27b958",
+          "b5afbd26-40f5-47f9-b79c-eb3183cd3d3b",
+          "22f1af1f-9301-4de2-a8cb-b6a967f910e9",
+          "3e3fab29-d4ce-4f84-a5c7-8fa8513cdf05",
+          "01fda673-b594-41e0-90fc-ce80a61bdc9b",
+          "4823070c-5b86-4fe8-a50c-3f423e8e689d",
+          "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21",
+          "90a8bb2d-c114-410d-84bf-112d766b1361"
+        ],
+        "waiting_ids": [
+          "8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+          "b5d9adc2-5120-47b6-a7d6-662ba1632a41",
+          "aa1d7d46-1bac-459d-b43e-c62ba3c62279",
+          "ab329c2b-66b2-48cc-8940-4a3f9f08b0c2",
+          "1956697f-f5ad-4cdc-9648-b81a2d2e9b41",
+          "fd0ddace-c955-486d-a532-3b71997bd9f1"
+        ],
+        "metric_list_drift": true
+      },
+      "drift_detected": false,
+      "drift_class": null,
+      "notes": "execution_active excludes waiting-on-client jobs; active retains all non-terminal statuses."
+    },
+    "api_urgent": {
+      "captured_at": "2026-05-30T17:29:58.095188+00:00",
+      "urgent_items": [
+        {
+          "work_order_id": "89575031-b16f-47e3-88d1-481e13d2ab60",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "f31ba8b8-66cc-46ee-95b3-305eadc54c79",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "c1030a76-4843-4e20-a509-af34b4ad6b27",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "84bf4ed9-e1c4-481e-b2f8-94b9e28240a5",
+          "actions": [
+            "submit_quote"
+          ]
+        },
+        {
+          "work_order_id": "c816f964-e607-4739-b3a5-772722f781ba",
+          "actions": [
+            "submit_quote"
+          ]
+        },
+        {
+          "work_order_id": "4386c404-e85a-4344-a850-85c4d514539c",
+          "actions": [
+            "submit_quote"
+          ]
+        },
+        {
+          "work_order_id": "945533e6-f197-4bc9-972a-782083b961c3",
+          "actions": [
+            "submit_quote"
+          ]
+        },
+        {
+          "work_order_id": "5c4f2d5e-f367-4fee-8bc7-34c2899b36a4",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "372f5707-4a65-4f7e-b712-5f7200b7d438",
+          "actions": [
+            "submit_quote",
+            "open_job_detail"
+          ]
+        },
+        {
+          "work_order_id": "d3fabe29-f58e-4a43-970d-cbdc5ac6eecf",
+          "actions": [
+            "submit_quote"
+          ]
+        },
+        {
+          "work_order_id": "53a45869-37c3-4382-8dee-196fed8071f5",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "37957387-57af-47aa-83e9-281caff13a4c",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "fce6742c-7ab1-4e51-b01e-7be4ec7867f4",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "d8399c6a-176f-4c76-9ba9-840dc69e8042",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "d73786c7-bcbc-47ee-8b1e-982975ed8f74",
+          "actions": [
+            "submit_quote",
+            "open_job_detail"
+          ]
+        },
+        {
+          "work_order_id": "c3307c6d-97f8-4b86-b5a3-df69061ba974",
+          "actions": [
+            "submit_quote",
+            "open_job_detail"
+          ]
+        },
+        {
+          "work_order_id": "6d02cc1e-9d86-4fe6-88c0-b7a23db7b455",
+          "actions": [
+            "submit_quote",
+            "open_job_detail"
+          ]
+        },
+        {
+          "work_order_id": "bbcd792f-1a9a-404a-82f9-a14e422a10b1",
+          "actions": [
+            "submit_quote",
+            "open_job_detail"
+          ]
+        },
+        {
+          "work_order_id": "4b973a1e-60e6-4aaa-ab56-7c65a9e0ee07",
+          "actions": [
+            "submit_quote",
+            "open_job_detail"
+          ]
+        },
+        {
+          "work_order_id": "54c5383a-1f85-4944-a1c7-1359f90df7bf",
+          "actions": [
+            "submit_quote",
+            "open_job_detail"
+          ]
+        },
+        {
+          "work_order_id": "3422bfe1-de7c-4932-9a7d-315e22f7916a",
+          "actions": [
+            "submit_quote",
+            "open_job_detail"
+          ]
+        },
+        {
+          "work_order_id": "2711efb1-69e7-494c-8678-d63b8c751805",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "0e0b6dd7-66aa-4a9c-9fc2-00f261551f69",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "249f969d-0214-4cb6-aef5-4f614c91c3be",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "45068cd8-52c3-47c3-85fb-731fbe5dd941",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "914abf84-33cf-4adb-990f-ef3112fcc30f",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "65438d6f-eb79-4343-9400-9658b58dd1a1",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "b54782db-5684-4b12-b18a-2a69efd5ef7c",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "4a6a79ba-62a8-4eba-b0b8-a9314f83bbfd",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "cdc1f384-50c5-4921-9cb8-8507d7cb8182",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "cd8811e0-2b71-4b4a-9dbe-a7c175b1be01",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "8f54b5fd-0636-42d4-8233-1b2db14df33e",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "a4be4a33-1000-4de3-9ca9-8b98cb720838",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "3559fec5-7139-4768-8522-caea06cf8e65",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "8729beb8-0344-4067-a4a2-31de2b513943",
+          "actions": [
+            "submit_quote"
+          ]
+        },
+        {
+          "work_order_id": "c0bb390b-bcbe-4bed-b7c5-beed2802858b",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "74469ca1-0382-49a7-8208-572567762cc3",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "22d7026d-f533-4acb-8786-cf452491600c",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "c0c26d3b-1055-43e5-91ae-8fd90604bc39",
+          "actions": [
+            "submit_invoice"
+          ]
+        },
+        {
+          "work_order_id": "f7d080d0-c13a-4ba2-8d29-248bda1c01b5",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "e3c67bd0-c568-48cf-bff8-1121099a4086",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "adc1c317-18ee-4985-86fd-dba1e878ca9b",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "d3f59e36-e07b-4bd5-ae8c-f02912d8bc94",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        },
+        {
+          "work_order_id": "3ae8f694-8844-4d46-9b54-25b02e9160f7",
+          "actions": [
+            "accept_assignment",
+            "decline_assignment"
+          ]
+        }
+      ],
+      "waiting_on_client_items": [
+        {
+          "work_order_id": "8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+          "actions": [
+            "open_job_detail"
+          ],
+          "hint": "Waiting for the client to confirm your proposed visit time."
+        },
+        {
+          "work_order_id": "b5d9adc2-5120-47b6-a7d6-662ba1632a41",
+          "actions": [
+            "open_job_detail"
+          ],
+          "hint": "Waiting for the client to confirm your proposed visit time."
+        },
+        {
+          "work_order_id": "aa1d7d46-1bac-459d-b43e-c62ba3c62279",
+          "actions": [
+            "open_job_detail"
+          ],
+          "hint": "This job is on hold. Review details or contact your client."
+        },
+        {
+          "work_order_id": "ab329c2b-66b2-48cc-8940-4a3f9f08b0c2",
+          "actions": [
+            "open_job_detail"
+          ],
+          "hint": "This job is on hold. Review details or contact your client."
+        },
+        {
+          "work_order_id": "1956697f-f5ad-4cdc-9648-b81a2d2e9b41",
+          "actions": [
+            "open_job_detail"
+          ],
+          "hint": "This job is on hold. Review details or contact your client."
+        },
+        {
+          "work_order_id": "fd0ddace-c955-486d-a532-3b71997bd9f1",
+          "actions": [
+            "open_job_detail"
+          ],
+          "hint": "This job is on hold. Review details or contact your client."
+        }
+      ],
+      "shows_up_to_date_when_waiting": false,
+      "expected_ui": "Urgent actions"
+    },
+    "api_drawer": {
+      "captured_at": "2026-05-30T17:30:00.303529+00:00",
+      "work_order_id": "3a7eecbb-4c8e-45c3-970c-2578f7ffec32",
+      "next_actions": [
+        {
+          "id": "start_job",
+          "label": "Start job",
+          "hint": "Mark the job in progress when you arrive or begin work.",
+          "section": "execution"
+        },
+        {
+          "id": "mark_no_access",
+          "label": "Mark no access",
+          "hint": "Record that the visit could not go ahead (property not accessible, etc.). Your client can reschedule.",
+          "section": "scheduling"
+        },
+        {
+          "id": "reschedule_visit",
+          "label": "Reschedule",
+          "hint": "Request a different visit time.",
+          "section": "scheduling"
+        },
+        {
+          "id": "cancel_scheduled_visit",
+          "label": "Cancel visit",
+          "hint": "Cancel this scheduled visit window if the booking should be cleared.",
+          "section": "scheduling"
+        }
+      ],
+      "primary_action_id": "start_job",
+      "primary_action_label": "Start job",
+      "primary_action_hint": "Mark the job in progress when you arrive or begin work.",
+      "drawer_shows_open_job_when_only_nav": false,
+      "expected_drawer_cta": "Start job"
+    }
+  },
+  "issues_observed_pre_fix": [
+    "Server dashboard active count included waiting-on-client jobs; execution_active now exposed.",
+    "Urgent block showed up to date when only waiting-on-client jobs existed.",
+    "Drawer primary CTA was open_job_detail while drawer already open.",
+    "QUOTE_FIRST allowed visit proposal before quote approval."
+  ],
+  "issues_remediated_post_fix": [
+    "execution_active reconciles with frontend list (41/41 on post-fix run).",
+    "Browser: no false up-to-date; waiting-on-others section used.",
+    "Browser: drawer waiting state has no dead Open job button.",
+    "API: visit propose returns 400 before quote approval on QUOTE_FIRST."
+  ]
+}
