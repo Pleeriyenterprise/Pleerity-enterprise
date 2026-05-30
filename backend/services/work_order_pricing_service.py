@@ -390,6 +390,17 @@ def assert_invoice_submission_allowed(wo: Dict[str, Any]) -> None:
         raise ValueError("Invoices cannot be submitted until the client has approved the quote for this job.")
 
 
+def contractor_may_propose_visit(wo: Dict[str, Any]) -> bool:
+    """Whether contractor may propose a visit (QUOTE_FIRST requires approved quote first)."""
+    if not pricing_workflow_applies(wo):
+        return True
+    from services.work_order_workflow_constants import WORKFLOW_MODE_INSPECTION_FIRST, resolve_workflow_mode
+
+    if resolve_workflow_mode(wo) == WORKFLOW_MODE_INSPECTION_FIRST:
+        return True
+    return quote_is_approved_for_api(wo)
+
+
 def contractor_may_offer_start_job(wo: Dict[str, Any]) -> bool:
     """Whether contractor next_actions may include start_job (inspection-first exception)."""
     if not pricing_workflow_applies(wo):

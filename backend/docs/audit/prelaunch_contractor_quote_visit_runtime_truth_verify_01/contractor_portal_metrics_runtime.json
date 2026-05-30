@@ -1,0 +1,74 @@
+{
+  "captured_at": "2026-05-30T17:01:57.875194+00:00",
+  "dashboard_summary_api": {
+    "generated_at": "2026-05-30T17:01:47.111840+00:00",
+    "work_orders": {
+      "overdue": 13,
+      "pending_scheduling": 39,
+      "completed": 23,
+      "total_assigned": 65
+    },
+    "earnings_gbp": {
+      "pending_approval_total": 0.0,
+      "ready_to_invoice_jobs": 23,
+      "ready_to_invoice_estimated_total": 0.0,
+      "paid_this_month_total": 0.0
+    },
+    "workflow": {
+      "action_needed": {
+        "visit_confirmation": 0,
+        "proof_upload": 0,
+        "invoice_submission": 12,
+        "invoice_correction": 0
+      },
+      "payments": {
+        "ready_to_invoice_jobs": 23,
+        "awaiting_approval_jobs": 0,
+        "paid_this_month_total": 0.0
+      },
+      "jobs": {
+        "active": 42,
+        "scheduled_today": 0,
+        "overdue_at_risk": 13
+      },
+      "submit_invoice_primary_cta": true
+    },
+    "notes": {
+      "ready_to_invoice": "ready_to_invoice_jobs = completed work orders with no invoice. ready_to_invoice_estimated_total sums cost_estimate_max/min where present \u2014 indicative only."
+    }
+  },
+  "api_active_jobs": 42,
+  "frontend_execution_active_count": 40,
+  "frontend_waiting_count": 6,
+  "api_total_assigned": 65,
+  "list_total": 65,
+  "metric_reconciliation": {
+    "execution_active_count": 40,
+    "waiting_on_others_count": 6,
+    "api_total_assigned": 65,
+    "active_exec_ids": [
+      "24365ac0-9fdf-4cac-a1da-7ea8df27b958",
+      "b5afbd26-40f5-47f9-b79c-eb3183cd3d3b",
+      "22f1af1f-9301-4de2-a8cb-b6a967f910e9",
+      "3e3fab29-d4ce-4f84-a5c7-8fa8513cdf05",
+      "01fda673-b594-41e0-90fc-ce80a61bdc9b",
+      "4823070c-5b86-4fe8-a50c-3f423e8e689d",
+      "3dbcaa84-e1af-47a5-88d7-6f05f95ccc21",
+      "90a8bb2d-c114-410d-84bf-112d766b1361",
+      "a3aec0d6-72f8-49cf-aedb-97536c6454e4",
+      "c5a2ce89-e47c-4e95-860d-3f87fcd90aa5"
+    ],
+    "waiting_ids": [
+      "8dd3192e-bb03-4c00-b74a-284f0df0e4fb",
+      "b5d9adc2-5120-47b6-a7d6-662ba1632a41",
+      "aa1d7d46-1bac-459d-b43e-c62ba3c62279",
+      "ab329c2b-66b2-48cc-8940-4a3f9f08b0c2",
+      "1956697f-f5ad-4cdc-9648-b81a2d2e9b41",
+      "fd0ddace-c955-486d-a532-3b71997bd9f1"
+    ],
+    "metric_list_drift": true
+  },
+  "drift_detected": true,
+  "drift_class": "METRIC_LIST_DRIFT",
+  "notes": "Server summary counts all active statuses; frontend execution tile excludes waiting-on-client bucket."
+}

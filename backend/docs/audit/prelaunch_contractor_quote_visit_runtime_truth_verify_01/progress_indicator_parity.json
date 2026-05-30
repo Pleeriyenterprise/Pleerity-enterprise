@@ -1,0 +1,35 @@
+{
+  "captured_at": "2026-05-30T17:02:17.864350+00:00",
+  "work_order_id": "24365ac0-9fdf-4cac-a1da-7ea8df27b958",
+  "landlord": {
+    "workflow_mode": "QUOTE_FIRST",
+    "price_status": "APPROVED",
+    "schedule_status": "confirmed",
+    "canonical_status": "SCHEDULED",
+    "next_actions": [
+      "start",
+      "mark_no_access",
+      "request_visit_reschedule",
+      "propose_schedule",
+      "cancel_booking"
+    ]
+  },
+  "contractor": {
+    "workflow_mode": "QUOTE_FIRST",
+    "price_status": "APPROVED",
+    "schedule_status": "confirmed",
+    "canonical_status": "SCHEDULED",
+    "next_actions": [
+      "start_job",
+      "mark_no_access",
+      "reschedule_visit",
+      "cancel_scheduled_visit"
+    ]
+  },
+  "mismatch_flags": {
+    "workflow_mode": false,
+    "price_status": false,
+    "schedule_status": false,
+    "canonical_status": false
+  }
+}

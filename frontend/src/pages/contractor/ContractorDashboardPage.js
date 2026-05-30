@@ -45,6 +45,7 @@ import {
   contractorDetailExecutionProgressFromWorkOrder,
   contractorPortalExecutableActions,
   contractorListPrimaryAction,
+  contractorDrawerPrimaryPresentation,
   CONTRACTOR_DETAIL_JOB_ACTION_IDS,
   contractorBillingPhaseForWorkOrder,
   contractorDetailTimelineSorted,
@@ -249,6 +250,10 @@ export default function ContractorDashboardPage() {
   const detailPortalActions = useMemo(() => contractorPortalExecutableActions(detail || {}), [detail]);
 
   const detailPrimaryAction = useMemo(() => (detail ? contractorListPrimaryAction(detail) : null), [detail]);
+  const detailDrawerPresentation = useMemo(
+    () => (detail ? contractorDrawerPrimaryPresentation(detail) : { mode: 'none' }),
+    [detail],
+  );
 
   const detailActionIds = useMemo(
     () => new Set(detailPortalActions.map((a) => a.id)),
@@ -440,10 +445,11 @@ export default function ContractorDashboardPage() {
     return list;
   }, [sortedWorkOrders, activeJobFilter]);
 
-  const executionActiveCount = useMemo(
-    () => sortedWorkOrders.filter((w) => isContractorExecutionActive(w) && !isContractorWaitingOnOthers(w)).length,
-    [sortedWorkOrders],
-  );
+  const executionActiveCount = useMemo(() => {
+    const server = displayWorkflow?.jobs?.execution_active;
+    if (typeof server === 'number') return server;
+    return sortedWorkOrders.filter((w) => isContractorExecutionActive(w) && !isContractorWaitingOnOthers(w)).length;
+  }, [sortedWorkOrders, displayWorkflow]);
   const scheduledTodayActiveCount = useMemo(
     () =>
       sortedWorkOrders.filter(
@@ -1021,9 +1027,18 @@ export default function ContractorDashboardPage() {
                 <Zap className="w-4 h-4 text-amber-500" />
                 Urgent actions
               </h2>
-              {urgentItems.length === 0 ? (
+              {urgentItems.length === 0 && waitingJobs.length === 0 ? (
                 <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
                   You&apos;re up to date. No urgent contractor actions right now.
+                </div>
+              ) : urgentItems.length === 0 ? (
+                <div className="rounded-lg border border-sky-200 bg-sky-50/60 px-4 py-3 text-sm text-midnight-blue">
+                  <p className="font-medium">No urgent actions from you right now.</p>
+                  <p className="mt-1 text-gray-700">
+                    {waitingJobs.length === 1
+                      ? '1 assigned job is waiting on your client — see Waiting on others below.'
+                      : `${waitingJobs.length} assigned jobs are waiting on your client — see Waiting on others below.`}
+                  </p>
                 </div>
               ) : (
                 <ul className="space-y-2">
@@ -1189,7 +1204,13 @@ export default function ContractorDashboardPage() {
                 <h2 className="text-lg font-bold text-midnight-blue flex items-center gap-2">
                   <CalendarClock className="w-5 h-5 text-electric-teal" />
                   Active jobs
-                  {total > 0 ? <span className="text-sm font-normal text-gray-500">({total} assigned)</span> : null}
+                  {executionActiveCount > 0 ? (
+                    <span className="text-sm font-normal text-gray-500">({executionActiveCount} need your action)</span>
+                  ) : waitingJobs.length > 0 ? (
+                    <span className="text-sm font-normal text-gray-500">({waitingJobs.length} waiting on client)</span>
+                  ) : total > 0 ? (
+                    <span className="text-sm font-normal text-gray-500">({total} assigned)</span>
+                  ) : null}
                 </h2>
                 {activeJobFilter !== 'all' ? (
                   <Button type="button" variant="ghost" size="sm" onClick={() => setActiveJobFilter('all')}>
@@ -1218,10 +1239,23 @@ export default function ContractorDashboardPage() {
               activeJobsFiltered.length === 0 ? (
                 <Card className="mb-10">
                   <CardContent className="py-8 text-center text-gray-600 text-sm">
-                    No active jobs match this filter.{' '}
-                    <button type="button" className="text-electric-teal underline font-medium" onClick={() => setActiveJobFilter('all')}>
-                      Show all active jobs
-                    </button>
+                    {activeJobFilter !== 'all' ? (
+                      <>
+                        No active jobs match this filter.{' '}
+                        <button type="button" className="text-electric-teal underline font-medium" onClick={() => setActiveJobFilter('all')}>
+                          Show all active jobs
+                        </button>
+                      </>
+                    ) : waitingJobs.length > 0 && executionActiveCount === 0 ? (
+                      <>
+                        All assigned jobs are waiting on your client.{' '}
+                        <button type="button" className="text-electric-teal underline font-medium" onClick={() => scrollToRef(waitingSectionRef)}>
+                          View waiting on others
+                        </button>
+                      </>
+                    ) : (
+                      'No active jobs need your action right now.'
+                    )}
                   </CardContent>
                 </Card>
               ) : (
@@ -1524,14 +1558,17 @@ export default function ContractorDashboardPage() {
                 ) : detail ? (
                   <>
                     {(() => {
-                      const primary = detailPrimaryAction;
+                      const presentation = detailDrawerPresentation;
+                      const primary = presentation.mode === 'action' ? presentation.action : detailPrimaryAction;
                       return (
                         <section
                           className="rounded-xl border-2 border-electric-teal/80 bg-gradient-to-b from-teal-50 via-white to-white shadow-md p-5 md:p-6"
                           aria-label="Next action"
                         >
                           <p className="text-[11px] font-bold text-electric-teal uppercase tracking-[0.12em] mb-3">Next action</p>
-                          {detailNextIdleMessage ? (
+                          {presentation.mode === 'waiting' ? (
+                            <p className="text-base text-midnight-blue font-medium leading-relaxed">{presentation.message}</p>
+                          ) : detailNextIdleMessage ? (
                             <p className="text-base text-midnight-blue font-medium leading-relaxed">{detailNextIdleMessage}</p>
                           ) : primary ? (
                             <>

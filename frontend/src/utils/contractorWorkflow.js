@@ -362,6 +362,16 @@ export function contractorListPrimaryAction(wo) {
   return pick;
 }
 
+/** Drawer next-action presentation: waiting-on-client should not show a dead Open job button. */
+export function contractorDrawerPrimaryPresentation(wo) {
+  const primary = contractorListPrimaryAction(wo);
+  if (!primary) return { mode: 'none' };
+  if (primary.id === 'open_job_detail' && isContractorWaitingOnOthers(wo)) {
+    return { mode: 'waiting', message: primary.hint || 'Waiting on your client.' };
+  }
+  return { mode: 'action', action: primary };
+}
+
 const DETAIL_PROGRESS_STEPS = ['Assigned', 'Scheduled', 'In progress', 'Proof uploaded', 'Completed', 'Closed'];
 
 /**

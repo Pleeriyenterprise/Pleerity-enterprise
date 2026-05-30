@@ -532,6 +532,13 @@ async def propose_schedule(
         work_order_id, client_id=client_id, contractor_id=contractor_id, admin=admin
     )
     _assert_wo_schedulable(wo)
+    if actor_type == SCHEDULE_ACTOR_CONTRACTOR:
+        from services.work_order_pricing_service import contractor_may_propose_visit
+
+        if not contractor_may_propose_visit(wo):
+            raise ValueError(
+                "Visit times can be proposed only after the client approves your quote on quote-first jobs."
+            )
     if not admin and actor_type != SCHEDULE_ACTOR_ADMIN and not (wo.get("contractor_id") or "").strip():
         raise ValueError("Assign a contractor before proposing a visit time")
     utc_iso, tz_canon = normalize_scheduled_instant(scheduled_at_raw, timezone_name)

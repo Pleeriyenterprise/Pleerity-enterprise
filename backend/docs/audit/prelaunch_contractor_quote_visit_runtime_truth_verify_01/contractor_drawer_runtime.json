@@ -1,0 +1,35 @@
+{
+  "captured_at": "2026-05-30T17:02:10.486481+00:00",
+  "work_order_id": "24365ac0-9fdf-4cac-a1da-7ea8df27b958",
+  "next_actions": [
+    {
+      "id": "start_job",
+      "label": "Start job",
+      "hint": "Mark the job in progress when you arrive or begin work.",
+      "section": "execution"
+    },
+    {
+      "id": "mark_no_access",
+      "label": "Mark no access",
+      "hint": "Record that the visit could not go ahead (property not accessible, etc.). Your client can reschedule.",
+      "section": "scheduling"
+    },
+    {
+      "id": "reschedule_visit",
+      "label": "Reschedule",
+      "hint": "Request a different visit time.",
+      "section": "scheduling"
+    },
+    {
+      "id": "cancel_scheduled_visit",
+      "label": "Cancel visit",
+      "hint": "Cancel this scheduled visit window if the booking should be cleared.",
+      "section": "scheduling"
+    }
+  ],
+  "primary_action_id": "start_job",
+  "primary_action_label": "Start job",
+  "primary_action_hint": "Mark the job in progress when you arrive or begin work.",
+  "drawer_shows_open_job_when_only_nav": false,
+  "expected_drawer_cta": "Start job"
+}

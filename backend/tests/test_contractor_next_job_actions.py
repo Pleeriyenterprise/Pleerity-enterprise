@@ -161,6 +161,34 @@ def test_contractor_completed_invoice_paid_view():
     assert "Paid on" in (acts[0].get("hint") or "")
 
 
+def test_apply_enrichment_quote_first_blocks_propose_until_approved():
+    w = _wo(
+        status=ms.STATUS_SCHEDULED,
+        schedule_status="",
+        scheduled_at="",
+        pricing_mode="MAINTENANCE_PREQUOTE",
+        price_status="AWAITING_QUOTE",
+        workflow_mode="QUOTE_FIRST",
+    )
+    apply_contractor_job_enrichment(w, invoice=None)
+    ids = _ids(w["next_actions"])
+    assert "propose_visit" not in ids
+    assert "submit_quote" in ids
+
+
+def test_apply_enrichment_quote_first_allows_propose_after_approval():
+    w = _wo(
+        status=ms.STATUS_SCHEDULED,
+        schedule_status="",
+        scheduled_at="",
+        pricing_mode="MAINTENANCE_PREQUOTE",
+        price_status="APPROVED",
+        workflow_mode="QUOTE_FIRST",
+    )
+    apply_contractor_job_enrichment(w, invoice=None)
+    assert "propose_visit" in _ids(w["next_actions"])
+
+
 def test_apply_enrichment_sets_flags():
     w = _wo(status=ms.STATUS_IN_PROGRESS, work_order_kind=ms.WORK_ORDER_KIND_COMPLIANCE, evidence_keys=[])
     apply_contractor_job_enrichment(w, invoice=None)

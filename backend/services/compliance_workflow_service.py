@@ -895,17 +895,55 @@ def contractor_next_job_actions(
 
 
 def _filter_contractor_actions_for_pricing(wo: Dict[str, Any], actions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    from services.work_order_pricing_service import contractor_may_offer_complete_job, contractor_may_offer_start_job
+    from services.work_order_pricing_service import (
+        contractor_may_offer_complete_job,
+        contractor_may_offer_start_job,
+        contractor_may_propose_visit,
+    )
 
     out: List[Dict[str, Any]] = []
     for a in actions:
         aid = a.get("id")
+        if aid == "propose_visit" and not contractor_may_propose_visit(wo):
+            continue
         if aid == "start_job" and not contractor_may_offer_start_job(wo):
             continue
         if aid == "complete_job" and not contractor_may_offer_complete_job(wo):
             continue
         out.append(a)
     return out
+
+
+_CONTRACTOR_PUSH_ACTION_IDS = frozenset(
+    {
+        "accept_assignment",
+        "decline_assignment",
+        "confirm_visit",
+        "upload_completion_proof",
+        "submit_invoice",
+        "edit_invoice",
+        "submit_quote",
+        "mark_inspection_complete",
+        "start_job",
+        "resume_job",
+        "complete_job",
+        "propose_visit",
+        "awaiting_parts",
+        "mark_no_access",
+        "cancel_scheduled_visit",
+        "reschedule_visit",
+    }
+)
+
+
+def contractor_portal_waiting_on_others(wo: Dict[str, Any]) -> bool:
+    """True when next_actions are navigation-only — contractor is waiting on client/system."""
+    ids = [a.get("id") for a in (wo.get("next_actions") or []) if a.get("id")]
+    if not ids:
+        return False
+    if any(i in _CONTRACTOR_PUSH_ACTION_IDS for i in ids):
+        return False
+    return all(i in ("open_job_detail", "view_invoice") for i in ids)
 
 
 def _prepend_contractor_pricing_actions(wo: Dict[str, Any]) -> List[Dict[str, Any]]:

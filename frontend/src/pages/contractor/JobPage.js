@@ -21,6 +21,7 @@ import { toast } from '@/utils/portalNotifications';
 import {
   contractorPortalExecutableActions,
   contractorListPrimaryAction,
+  contractorDrawerPrimaryPresentation,
   contractorNextStepLineFromNextActions,
   defaultInvoiceAmountFieldFromWorkOrder,
   formatContractorInvoiceStateLabel,
@@ -241,6 +242,10 @@ export default function JobPage() {
 
   const primaryAction = useMemo(
     () => (workOrder ? contractorListPrimaryAction(workOrder) : null),
+    [workOrder],
+  );
+  const primaryPresentation = useMemo(
+    () => (workOrder ? contractorDrawerPrimaryPresentation(workOrder) : { mode: 'none' }),
     [workOrder],
   );
   const nextStepLine = useMemo(
@@ -800,7 +805,9 @@ export default function JobPage() {
             <Zap className="w-3.5 h-3.5" aria-hidden />
             Next action
           </p>
-          {primaryAction ? (
+          {primaryPresentation.mode === 'waiting' ? (
+            <p className="text-base text-midnight-blue font-medium leading-relaxed">{primaryPresentation.message}</p>
+          ) : primaryAction ? (
             <>
               {primaryAction.hint ? (
                 <p className="text-base text-gray-800 leading-relaxed mb-4">{primaryAction.hint}</p>

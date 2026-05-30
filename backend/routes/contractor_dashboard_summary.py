@@ -8,7 +8,11 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from database import database
-from services.compliance_workflow_service import contractor_next_job_actions
+from services.compliance_workflow_service import (
+    apply_contractor_job_enrichment,
+    contractor_next_job_actions,
+    contractor_portal_waiting_on_others,
+)
 
 # Align with maintenance_service terminal / active semantics
 _TERMINAL = frozenset({"CANCELLED", "COMPLETED", "CLOSED", "VERIFIED"})
@@ -168,16 +172,25 @@ async def build_contractor_dashboard_summary(contractor_id: str) -> Dict[str, An
         "invoice_correction": 0,
     }
     jobs_active = 0
+    jobs_execution_active = 0
+    jobs_waiting_on_client = 0
     jobs_scheduled_today = 0
     for wo in work_orders:
         st = (wo.get("status") or "").strip().upper()
         wid = (wo.get("work_order_id") or "").strip()
         if _work_order_active(st):
             jobs_active += 1
-        if _scheduled_today_utc(wo, now):
-            jobs_scheduled_today += 1
         inv = inv_by_wo.get(wid) if wid else None
-        acts = contractor_next_job_actions(wo, invoice=inv)
+        wo_view = dict(wo)
+        apply_contractor_job_enrichment(wo_view, invoice=inv)
+        waiting = contractor_portal_waiting_on_others(wo_view)
+        if _work_order_active(st) and not waiting:
+            jobs_execution_active += 1
+        if waiting:
+            jobs_waiting_on_client += 1
+        if _work_order_active(st) and not waiting and _scheduled_today_utc(wo, now):
+            jobs_scheduled_today += 1
+        acts = wo_view.get("next_actions") or contractor_next_job_actions(wo, invoice=inv)
         ids = {a.get("id") for a in acts if a.get("id")}
         if "confirm_visit" in ids:
             wf_action["visit_confirmation"] += 1
@@ -219,6 +232,8 @@ async def build_contractor_dashboard_summary(contractor_id: str) -> Dict[str, An
             },
             "jobs": {
                 "active": jobs_active,
+                "execution_active": jobs_execution_active,
+                "waiting_on_client": jobs_waiting_on_client,
                 "scheduled_today": jobs_scheduled_today,
                 "overdue_at_risk": overdue,
             },

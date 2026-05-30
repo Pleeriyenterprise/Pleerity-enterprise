@@ -1,0 +1,50 @@
+{
+  "programme": "PRELAUNCH-CONTRACTOR-QUOTE-VISIT-RUNTIME-TRUTH-VERIFY-01",
+  "captured_at": "2026-05-30T17:00:00+00:00",
+  "findings": [
+    {
+      "id": "RC-01",
+      "issue": "Active jobs metric vs list empty",
+      "cause": "METRIC_LIST_DRIFT",
+      "detail": "Server dashboard-summary jobs.active counted all non-terminal statuses; frontend execution tile excluded waiting-on-client bucket. Section header used API total_assigned, producing '(1 assigned)' with empty active list."
+    },
+    {
+      "id": "RC-02",
+      "issue": "Show all active jobs dead link",
+      "cause": "UI_FILTER_EMPTY_STATE",
+      "detail": "Empty-state copy assumed a sub-filter was active; when filter was already 'all' and all jobs were in waiting-on-client, the link called setActiveJobFilter('all') as a no-op."
+    },
+    {
+      "id": "RC-03",
+      "issue": "Urgent actions says up to date while waiting on landlord",
+      "cause": "URGENT_CLASSIFIER_GAP",
+      "detail": "urgentItems only counted executable push actions; waiting-on-client jobs (open_job_detail only) were ignored."
+    },
+    {
+      "id": "RC-04",
+      "issue": "Drawer next action Open job when already open",
+      "cause": "DRAWER_CTA_RESOLVER",
+      "detail": "contractorListPrimaryAction selected open_job_detail as primary CTA; executeContractorAction only re-set detailId."
+    },
+    {
+      "id": "RC-05",
+      "issue": "QUOTE_FIRST visit before quote approval",
+      "cause": "QUOTE_VISIT_GATING_DRIFT",
+      "detail": "propose_schedule and contractor next_actions did not gate on quote approval for QUOTE_FIRST workflow_mode (runtime probe HTTP 200 on AWAITING_QUOTE job)."
+    },
+    {
+      "id": "RC-06",
+      "issue": "Landlord Approve and authorise work",
+      "cause": "VERIFIED_WORKING",
+      "detail": "POST /jobs/{id}/approve-quote returned 200 on staging for QUOTED job b5d9adc2; not a silent failure in API path tested."
+    }
+  ],
+  "remediation_applied": [
+    "contractor_dashboard_summary: jobs.execution_active + waiting_on_client",
+    "work_order_pricing_service: contractor_may_propose_visit",
+    "work_order_schedule_service: block contractor propose before quote approval on QUOTE_FIRST",
+    "compliance_workflow_service: filter propose_visit + contractor_portal_waiting_on_others helper",
+    "ContractorDashboardPage: urgent waiting copy, active empty state, drawer waiting presentation",
+    "JobPage: waiting presentation for open_job_detail-only state"
+  ]
+}
