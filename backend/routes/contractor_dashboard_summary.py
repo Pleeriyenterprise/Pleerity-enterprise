@@ -209,6 +209,47 @@ async def build_contractor_dashboard_summary(contractor_id: str) -> Dict[str, An
 
     submit_invoice_primary_cta = wf_action["invoice_submission"] > 0
 
+    recovery_items: List[Dict[str, Any]] = []
+    try:
+        from services.operational_recovery_service import classify_recovery_state, generate_recovery_guidance
+        from services.workflow_timer_service import work_order_stall_context
+
+        for wo in work_orders:
+            st = (wo.get("status") or "").strip().upper()
+            if st in _TERMINAL:
+                continue
+            stall = work_order_stall_context(wo)
+            if not stall or stall.get("waiting_on") != "contractor":
+                continue
+            rtype = classify_recovery_state("work_order", wo, stall=stall)
+            if not rtype:
+                continue
+            wid = wo.get("work_order_id")
+            guidance = generate_recovery_guidance(
+                rtype,
+                waiting_on_party="contractor",
+                age_hours=stall.get("age_hours"),
+                repetition_count=int(wo.get("reschedule_count") or 0),
+                entity_label=(wo.get("title") or f"Job {wid}")[:80],
+                entity_type="work_order",
+                entity_id=wid or "",
+            )
+            recovery_items.append(
+                {
+                    "work_order_id": wid,
+                    "recovery_type": rtype,
+                    "recovery_summary": guidance.get("recovery_summary"),
+                    "recovery_actions": guidance.get("suggested_actions"),
+                    "waiting_on_summary": "contractor",
+                }
+            )
+            if len(recovery_items) >= 5:
+                break
+    except Exception as rec_exc:
+        import logging
+
+        logging.getLogger(__name__).debug("contractor recovery enrichment skipped: %s", rec_exc)
+
     return {
         "generated_at": now.isoformat(),
         "work_orders": {
@@ -238,6 +279,11 @@ async def build_contractor_dashboard_summary(contractor_id: str) -> Dict[str, An
                 "overdue_at_risk": overdue,
             },
             "submit_invoice_primary_cta": submit_invoice_primary_cta,
+        },
+        "recovery": {
+            "items": recovery_items,
+            "recovery_count": len(recovery_items),
+            "has_recovery_attention": len(recovery_items) > 0,
         },
         "notes": {
             "ready_to_invoice": "ready_to_invoice_jobs = completed work orders with no invoice. "

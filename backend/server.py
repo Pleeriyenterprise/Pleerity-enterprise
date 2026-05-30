@@ -1062,6 +1062,15 @@ async def lifespan(app: FastAPI):
             args=["workflow_nudge_processing"],
             kwargs={"run_type": "schedule"},
         )
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(minute=35, timezone=SCHEDULER_TIMEZONE),
+            id="operational_recovery_processing",
+            name="Operational Recovery Orchestration (Phase 2A)",
+            replace_existing=True,
+            args=["operational_recovery_processing"],
+            kwargs={"run_type": "schedule"},
+        )
         
         _sched_flag[0] = False
         try:

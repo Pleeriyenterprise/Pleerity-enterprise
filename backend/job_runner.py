@@ -1580,6 +1580,17 @@ async def run_workflow_nudge_processing():
         raise
 
 
+async def run_operational_recovery_processing():
+    """Phase 2A operational recovery orchestration — guidance and notify only."""
+    try:
+        from services.operational_recovery_notification_service import run_operational_recovery_sweep
+
+        return await run_operational_recovery_sweep()
+    except Exception as e:
+        logger.error("Operational recovery processing job failed: %s", e)
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -1630,5 +1641,6 @@ JOB_RUNNERS = {
     "scheduled_admin_communications": run_scheduled_admin_communications,
     "work_order_schedule_reminders": run_work_order_schedule_reminders,
     "workflow_nudge_processing": run_workflow_nudge_processing,
+    "operational_recovery_processing": run_operational_recovery_processing,
     "pilot_lifecycle_reconcile": run_pilot_lifecycle_reconcile,
 }

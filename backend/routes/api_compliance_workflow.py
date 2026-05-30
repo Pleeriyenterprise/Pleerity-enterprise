@@ -1373,6 +1373,13 @@ async def get_today_items(
             out,
             stalled_work_orders=stalled,
         )
+        from services.recovery_priority_service import apply_operational_recovery_to_today_payload
+
+        out = await apply_operational_recovery_to_today_payload(
+            user["client_id"],
+            out,
+            property_id_filter=prop_filter,
+        )
     except Exception as stall_exc:
         import logging
 

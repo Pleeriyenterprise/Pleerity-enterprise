@@ -459,6 +459,18 @@ async def _load_urgent_slice_from_priority_stream(
             actions = merge_workflow_stall_with_urgent(stall_actions, actions, cap=24)
         except Exception as exc_stall:
             logger.debug("workflow stall merge skipped: %s", exc_stall)
+        try:
+            from services.recovery_priority_service import (
+                fetch_operational_recovery_priority_actions,
+                merge_recovery_with_urgent,
+            )
+
+            recovery_actions = await fetch_operational_recovery_priority_actions(
+                client_id, property_id_filter, limit=5
+            )
+            actions = merge_recovery_with_urgent(recovery_actions, actions, cap=24)
+        except Exception as exc_recovery:
+            logger.debug("operational recovery merge skipped: %s", exc_recovery)
     except Exception as exc:
         logger.debug("momentum closure merge skipped: %s", exc)
     try:
