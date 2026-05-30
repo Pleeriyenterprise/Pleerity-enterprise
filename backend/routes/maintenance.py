@@ -185,6 +185,12 @@ async def get_work_order(request: Request, work_order_id: str):
             doc = dict(doc)
             doc["property_effective_jurisdiction_label"] = att.get("effective_jurisdiction_label")
             doc["property_jurisdiction_source"] = att.get("jurisdiction_source")
+    from services.compliance_workflow_service import derive_canonical_job_status
+    from services.progress_contract_service import attach_progress_contract
+
+    doc = dict(doc)
+    doc["job_status"] = derive_canonical_job_status(doc)
+    attach_progress_contract(doc, audience="admin")
     return doc
 
 

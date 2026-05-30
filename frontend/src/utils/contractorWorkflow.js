@@ -2,6 +2,7 @@
  * Contractor portal: lifecycle stages, prioritisation, next-step copy, and allowed status transitions.
  * Aligns with backend maintenance_service work order statuses and invoice approval flow.
  */
+import { progressTrackerFromContract } from './jobWorkflowUi';
 
 const TERMINAL = new Set(['CANCELLED', 'COMPLETED', 'CLOSED', 'VERIFIED']);
 const ACTIVE = new Set(['OPEN', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS', 'AWAITING_PARTS']);
@@ -353,8 +354,11 @@ export function isScheduledTodayUtc(wo, now = new Date()) {
   }
 }
 
-/** Single dominant list CTA: first executable action except open_job_detail when other steps exist. */
+/** Single dominant list CTA: server progress contract primary, else first executable action. */
 export function contractorListPrimaryAction(wo) {
+  const primary = wo?.progress_contract?.next_primary_action;
+  if (primary?.id && primary.id !== 'none') return primary;
+
   const list = contractorPortalExecutableActions(wo);
   if (!list.length) return null;
   const withoutNav = list.filter((a) => a.id !== 'open_job_detail');
@@ -375,9 +379,14 @@ export function contractorDrawerPrimaryPresentation(wo) {
 const DETAIL_PROGRESS_STEPS = ['Assigned', 'Scheduled', 'In progress', 'Proof uploaded', 'Completed', 'Closed'];
 
 /**
- * Drawer progress: Assigned → Scheduled → In progress → Proof uploaded → Completed → Closed
+ * Drawer progress — prefers server progress_contract_v1.
  */
 export function contractorDetailExecutionProgressFromWorkOrder(wo) {
+  const fromContract = progressTrackerFromContract(wo);
+  if (fromContract) {
+    return { steps: fromContract.steps, currentIndex: fromContract.currentIndex };
+  }
+
   const steps = DETAIL_PROGRESS_STEPS;
   const st = (wo?.status || '').toUpperCase();
   if (st === 'CANCELLED') return { steps, currentIndex: -1 };

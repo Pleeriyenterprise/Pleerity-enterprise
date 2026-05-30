@@ -1,0 +1,2173 @@
+{
+  "programme": "PRELAUNCH-JOB-PROGRESS-PARITY-REPAIR-01",
+  "generated_at": "2026-05-30T23:00:16.440539+00:00",
+  "method": "synthetic_fixture_matrix",
+  "cases_total": 17,
+  "cases_parity_ok": 17,
+  "cases_failed": 0,
+  "rows": [
+    {
+      "scenario": "assigned_no_quote",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-assigned_no_quote",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "quote_submitted",
+        "canonical_status": "ASSIGNED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "request_booking",
+        "contractor": "accept_assignment",
+        "admin": "request_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "current"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "current"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "current"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "quote_submitted",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-quote_submitted",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "quote_approved",
+        "canonical_status": "ASSIGNED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "landlord"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "approve_quote",
+        "contractor": "propose_visit",
+        "admin": "approve_quote"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "current"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "current"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "current"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "quote_revision_requested",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-quote_revision_requested",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "quote_approved",
+        "canonical_status": "ASSIGNED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "request_booking",
+        "contractor": "propose_visit",
+        "admin": "request_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "current"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "current"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "current"
+        ],
+        [
+          "visit_booked",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "quote_approved_no_visit",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-quote_approved_no_visit",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "visit_booked",
+        "canonical_status": "ASSIGNED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": null
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "request_booking",
+        "contractor": "accept_assignment",
+        "admin": "request_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "visit_proposed",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-visit_proposed",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "visit_booked",
+        "canonical_status": "BOOKING_REQUESTED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "landlord"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "confirm_visit",
+        "contractor": "open_job_detail",
+        "admin": "confirm_visit"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "visit_confirmed",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-visit_confirmed",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "work_started",
+        "canonical_status": "BOOKED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "reschedule_booking",
+        "contractor": "start_job",
+        "admin": "reschedule_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "work_started",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-work_started",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "work_started",
+        "canonical_status": "IN_PROGRESS",
+        "work_execution_status": "IN_PROGRESS",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": null
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "complete",
+        "contractor": "upload_completion_proof",
+        "admin": "complete"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "no_access",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-no_access",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "work_started",
+        "canonical_status": "NO_ACCESS",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "clear_operational_exception",
+        "contractor": "open_job_detail",
+        "admin": "clear_operational_exception"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "blocked"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "blocked"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "blocked"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "proof_uploaded",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-proof_uploaded",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "proof_reviewed",
+        "canonical_status": "COMPLETED",
+        "work_execution_status": "COMPLETED",
+        "proof_status": "UPLOADED",
+        "waiting_on": null
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "link_document",
+        "contractor": "submit_invoice",
+        "admin": "link_document"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "complete"
+        ],
+        [
+          "proof_uploaded",
+          "complete"
+        ],
+        [
+          "proof_reviewed",
+          "current"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "complete"
+        ],
+        [
+          "proof_uploaded",
+          "complete"
+        ],
+        [
+          "proof_reviewed",
+          "current"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "complete"
+        ],
+        [
+          "proof_uploaded",
+          "complete"
+        ],
+        [
+          "proof_reviewed",
+          "current"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "proof_reviewed",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-proof_reviewed",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "closed",
+        "canonical_status": "VERIFIED",
+        "work_execution_status": "VERIFIED",
+        "proof_status": "REVIEWED",
+        "waiting_on": null
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": null,
+        "contractor": "submit_invoice",
+        "admin": null
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "complete"
+        ],
+        [
+          "proof_uploaded",
+          "complete"
+        ],
+        [
+          "proof_reviewed",
+          "complete"
+        ],
+        [
+          "closed",
+          "current"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "complete"
+        ],
+        [
+          "proof_uploaded",
+          "complete"
+        ],
+        [
+          "proof_reviewed",
+          "complete"
+        ],
+        [
+          "closed",
+          "current"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "complete"
+        ],
+        [
+          "work_started",
+          "complete"
+        ],
+        [
+          "proof_uploaded",
+          "complete"
+        ],
+        [
+          "proof_reviewed",
+          "complete"
+        ],
+        [
+          "closed",
+          "current"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "closed",
+      "mode": "QUOTE_FIRST",
+      "work_order_id": "fixture-closed",
+      "workflow_mode": "QUOTE_FIRST",
+      "shared_truth": {
+        "current_stage": "visit_booked",
+        "canonical_status": "CLOSED",
+        "work_execution_status": "CLOSED",
+        "proof_status": "REVIEWED",
+        "waiting_on": null
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": null,
+        "contractor": "submit_invoice",
+        "admin": null
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "visit_booked",
+          "current"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "assigned",
+      "mode": "INSPECTION_FIRST",
+      "work_order_id": "fixture-assigned",
+      "workflow_mode": "INSPECTION_FIRST",
+      "shared_truth": {
+        "current_stage": "inspection_visit_booked",
+        "canonical_status": "ASSIGNED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "request_booking",
+        "contractor": "accept_assignment",
+        "admin": "request_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "inspection_proposed",
+      "mode": "INSPECTION_FIRST",
+      "work_order_id": "fixture-inspection_proposed",
+      "workflow_mode": "INSPECTION_FIRST",
+      "shared_truth": {
+        "current_stage": "inspection_visit_booked",
+        "canonical_status": "BOOKING_REQUESTED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "reschedule_booking",
+        "contractor": "open_job_detail",
+        "admin": "reschedule_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "inspection_confirmed",
+      "mode": "INSPECTION_FIRST",
+      "work_order_id": "fixture-inspection_confirmed",
+      "workflow_mode": "INSPECTION_FIRST",
+      "shared_truth": {
+        "current_stage": "inspection_completed",
+        "canonical_status": "BOOKED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "reschedule_booking",
+        "contractor": "start_job",
+        "admin": "reschedule_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "current"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "current"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "current"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "inspection_completed",
+      "mode": "INSPECTION_FIRST",
+      "work_order_id": "fixture-inspection_completed",
+      "workflow_mode": "INSPECTION_FIRST",
+      "shared_truth": {
+        "current_stage": "quote_submitted",
+        "canonical_status": "BOOKED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "reschedule_booking",
+        "contractor": "start_job",
+        "admin": "reschedule_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "current"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "current"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "current"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "quote_submitted",
+      "mode": "INSPECTION_FIRST",
+      "work_order_id": "fixture-quote_submitted",
+      "workflow_mode": "INSPECTION_FIRST",
+      "shared_truth": {
+        "current_stage": "inspection_visit_booked",
+        "canonical_status": "ASSIGNED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "landlord"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "approve_quote",
+        "contractor": "propose_visit",
+        "admin": "approve_quote"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "current"
+        ],
+        [
+          "inspection_completed",
+          "pending"
+        ],
+        [
+          "quote_submitted",
+          "pending"
+        ],
+        [
+          "quote_approved",
+          "pending"
+        ],
+        [
+          "work_started",
+          "pending"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    },
+    {
+      "scenario": "quote_approved",
+      "mode": "INSPECTION_FIRST",
+      "work_order_id": "fixture-quote_approved",
+      "workflow_mode": "INSPECTION_FIRST",
+      "shared_truth": {
+        "current_stage": "work_started",
+        "canonical_status": "BOOKED",
+        "work_execution_status": "NOT_STARTED",
+        "proof_status": "NOT_UPLOADED",
+        "waiting_on": "contractor"
+      },
+      "mismatched_fields": [],
+      "step_parity_ok": true,
+      "next_primary_action_by_role": {
+        "landlord": "reschedule_booking",
+        "contractor": "start_job",
+        "admin": "reschedule_booking"
+      },
+      "landlord_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "contractor_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "admin_steps": [
+        [
+          "assigned",
+          "complete"
+        ],
+        [
+          "inspection_visit_booked",
+          "complete"
+        ],
+        [
+          "inspection_completed",
+          "complete"
+        ],
+        [
+          "quote_submitted",
+          "complete"
+        ],
+        [
+          "quote_approved",
+          "complete"
+        ],
+        [
+          "work_started",
+          "current"
+        ],
+        [
+          "proof_uploaded",
+          "pending"
+        ],
+        [
+          "proof_reviewed",
+          "pending"
+        ],
+        [
+          "closed",
+          "pending"
+        ]
+      ],
+      "field_drift_detail": null
+    }
+  ]
+}

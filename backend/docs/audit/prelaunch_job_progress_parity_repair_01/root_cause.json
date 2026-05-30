@@ -1,0 +1,50 @@
+{
+  "programme": "PRELAUNCH-JOB-PROGRESS-PARITY-REPAIR-01",
+  "generated_at": "2026-05-30T23:00:16.438540+00:00",
+  "findings": [
+    {
+      "id": "RC-01",
+      "classification": "WORKFLOW_STATE_DRIFT",
+      "summary": "Four independent frontend progress composers derived stage from raw status/schedule without quote or proof gates.",
+      "locations": [
+        "frontend/src/utils/jobWorkflowUi.js:clientJobProgressFromJob",
+        "frontend/src/utils/jobWorkflowUi.js:adminSimplifiedProgressFromWorkOrder",
+        "frontend/src/utils/contractorWorkflow.js:contractorDetailExecutionProgressFromWorkOrder"
+      ]
+    },
+    {
+      "id": "RC-02",
+      "classification": "NEXT_ACTION_CONTRADICTION",
+      "summary": "Landlord prioritizedClientJobNextAction and contractorListPrimaryAction used local priority lists; contractor could surface mark_no_access while quote awaited landlord approval.",
+      "locations": [
+        "frontend/src/utils/jobWorkflowUi.js:CLIENT_JOB_NEXT_ACTION_PRIORITY",
+        "frontend/src/utils/contractorWorkflow.js:contractorListPrimaryAction",
+        "backend/services/compliance_workflow_service.py:next_job_actions vs contractor_next_job_actions"
+      ]
+    },
+    {
+      "id": "RC-03",
+      "classification": "ROLE_VIEW_MISMATCH",
+      "summary": "Landlord progress used findIndex on completedFlags treating visit booked as complete then advancing current to Work completed; contractor mapped SCHEDULED+confirmed to In progress index.",
+      "example": "SCHEDULED + confirmed visit showed landlord current=Work completed, contractor current=In progress"
+    },
+    {
+      "id": "RC-04",
+      "classification": "PROGRESS_PARITY_DRIFT",
+      "summary": "Admin GET /work-orders/{id} returned raw WO without progress contract or next_actions; landlord/contractor used different enrichment paths.",
+      "locations": [
+        "backend/routes/maintenance.py:get_work_order"
+      ]
+    },
+    {
+      "id": "RC-05",
+      "classification": "WORKFLOW_STATE_DRIFT",
+      "summary": "Orphan compliance_proof_status=SUBMITTED advanced proof UI while persisted status remained SCHEDULED/BOOKED."
+    }
+  ],
+  "remediation": [
+    "backend/services/progress_contract_service.py \u2014 progress_contract_v1",
+    "Attached in serialize_client_job, apply_contractor_job_enrichment, admin get_work_order",
+    "Frontend consumes progress_contract via progressTrackerFromContract adapters"
+  ]
+}

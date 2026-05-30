@@ -1,0 +1,13 @@
+{
+  "programme": "PRELAUNCH-JOB-PROGRESS-PARITY-REPAIR-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "generated_at": "2026-05-30T23:00:16.443538+00:00",
+  "root_cause_count": 5,
+  "runtime_cases": 17,
+  "runtime_failures": 0,
+  "watchlist": [
+    "Post-deploy staging browser screenshots for work_order a2b9491f-274a-464f-877e-df318fefaf6",
+    "Today / Command Centre task cards still use next_actions priority \u2014 inherit progress_contract when task payload enriched",
+    "operational_cognition progression_state.step still mirrors job_status only"
+  ]
+}

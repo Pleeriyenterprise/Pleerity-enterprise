@@ -49,8 +49,32 @@ const CLIENT_PROGRESS_STEPS = [
   'Closed',
 ];
 
-/** Client oversight tracker (aligned with product copy, not contractor execution steps). */
+/**
+ * Map progress_contract_v1 steps to UI tracker shape.
+ * @param {Record<string, unknown>|null|undefined} job
+ * @returns {{ steps: string[], currentIndex: number, completedFlags: boolean[], progressContract?: object }|null}
+ */
+export function progressTrackerFromContract(job) {
+  const pc = job?.progress_contract;
+  const raw = pc?.progress_steps;
+  if (!Array.isArray(raw) || !raw.length) return null;
+  const visible = raw.filter((s) => s && s.state !== 'skipped');
+  if (!visible.length) return null;
+  const steps = visible.map((s) => String(s.label || s.key || ''));
+  let currentIndex = visible.findIndex((s) => s.state === 'current');
+  if (currentIndex < 0) {
+    const allComplete = visible.every((s) => s.state === 'complete');
+    currentIndex = allComplete ? visible.length - 1 : visible.findIndex((s) => s.state === 'pending');
+  }
+  const completedFlags = visible.map((s) => s.state === 'complete');
+  return { steps, currentIndex, completedFlags, progressContract: pc };
+}
+
+/** Client oversight tracker — prefers server progress_contract_v1. */
 export function clientJobProgressFromJob(job) {
+  const fromContract = progressTrackerFromContract(job);
+  if (fromContract) return fromContract;
+
   const steps = CLIENT_PROGRESS_STEPS;
   const st = String(job?.status || '').toUpperCase();
   if (st === 'CANCELLED') return { steps, currentIndex: -1, completedFlags: [] };
@@ -92,6 +116,23 @@ const CANONICAL_LABELS = {
  * @param {Record<string, unknown>|null|undefined} job
  */
 export function clientCurrentUpdateSummary(job) {
+  const pc = job?.progress_contract;
+  if (pc?.headline) {
+    const lines = [];
+    const ss = String(job?.schedule_status || '').toLowerCase();
+    const when = job?.scheduled_at ? formatShortWhen(job.scheduled_at) : null;
+    if (when && ss === 'confirmed') lines.push(`Confirmed visit: ${when}.`);
+    else if (when && ss === 'proposed') lines.push(`Proposed visit: ${when} — confirm when agreed.`);
+    if (job?.operational_exception) {
+      const canonical = String(job?.job_status || '').trim() || deriveCanonicalJobStatus(job);
+      if (canonical !== 'NO_ACCESS' && canonical !== 'RESCHEDULE_REQUIRED') {
+        const hold = operationalExceptionLabel(job.operational_exception);
+        lines.push(hold ? `Operational note: ${hold}.` : 'Operational note: On hold.');
+      }
+    }
+    return { headline: String(pc.headline), lines, canonical: String(pc.canonical_status || deriveCanonicalJobStatus(job)) };
+  }
+
   const canonical = String(job?.job_status || '').trim() || deriveCanonicalJobStatus(job);
   const headline = CANONICAL_LABELS[canonical] || 'Needs attention';
   const ss = String(job?.schedule_status || '').toLowerCase();
@@ -135,8 +176,13 @@ export function adminInterventionRequired(canonical, operationalException) {
 
 const ADMIN_PROGRESS_STEPS = ['Created', 'Assigned', 'Booked / scheduled', 'In progress', 'Complete', 'Verified / closed'];
 
-/** Admin: simplified strip plus caller shows raw `status` / `job_status` beside it. */
+/** Admin: simplified strip — prefers server progress_contract_v1. */
 export function adminSimplifiedProgressFromWorkOrder(wo) {
+  const fromContract = progressTrackerFromContract(wo);
+  if (fromContract) {
+    return { steps: fromContract.steps, currentIndex: fromContract.currentIndex };
+  }
+
   const steps = ADMIN_PROGRESS_STEPS;
   const st = String(wo?.status || '').toUpperCase();
   const js = String(wo?.job_status || deriveCanonicalJobStatus(wo)).toUpperCase();
@@ -187,6 +233,9 @@ const CLIENT_JOB_NEXT_ACTION_PRIORITY = [
 
 /** @param {Record<string, unknown>|null|undefined} job */
 export function prioritizedClientJobNextAction(job) {
+  const primary = job?.progress_contract?.next_primary_action;
+  if (primary?.id && primary.id !== 'none') return primary;
+
   const na = (job?.next_actions || []).filter((a) => a?.id && a.id !== 'none');
   if (!na.length) return null;
   for (const id of CLIENT_JOB_NEXT_ACTION_PRIORITY) {

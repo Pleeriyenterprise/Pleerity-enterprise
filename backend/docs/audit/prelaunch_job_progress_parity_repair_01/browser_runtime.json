@@ -1,0 +1,8 @@
+{
+  "programme": "PRELAUNCH-JOB-PROGRESS-PARITY-REPAIR-01",
+  "generated_at": "2026-05-30T23:00:16.442534+00:00",
+  "note": "Browser screenshots deferred to post-deploy staging pass; API/fixture parity verified in this run.",
+  "staging_work_order_id": "a2b9491f-274a-464f-877e-df318fefaf6",
+  "screenshots": [],
+  "api_verification": "progress_contract_v1 attached to landlord GET /jobs, contractor work-orders, admin GET /work-orders"
+}

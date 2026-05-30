@@ -1012,6 +1012,9 @@ def apply_contractor_job_enrichment(
     from services.work_order_schedule_service import serialize_schedule_snapshot, _enrich_schedule_snapshot_labels
 
     wo["scheduling"] = _enrich_schedule_snapshot_labels(serialize_schedule_snapshot(wo))
+    from services.progress_contract_service import attach_progress_contract
+
+    attach_progress_contract(wo, audience="contractor", invoice=invoice)
 
 
 _ALLOWED_DECISION_ACTORS = frozenset({"client", "admin", "contractor"})
@@ -1179,6 +1182,9 @@ def serialize_client_job(wo: Dict[str, Any]) -> Dict[str, Any]:
 
     base["scheduling"] = _enrich_schedule_snapshot_labels(serialize_schedule_snapshot(wo))
     base["workflow_mode"] = base["scheduling"].get("workflow_mode")
+    from services.progress_contract_service import attach_progress_contract
+
+    attach_progress_contract(base, audience="landlord")
     return base
 
 

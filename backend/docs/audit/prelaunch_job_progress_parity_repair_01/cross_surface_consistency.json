@@ -1,0 +1,19 @@
+{
+  "programme": "PRELAUNCH-JOB-PROGRESS-PARITY-REPAIR-01",
+  "generated_at": "2026-05-30T23:00:16.442534+00:00",
+  "surfaces": [
+    "landlord job detail (ClientJobDetailPage \u2192 progress_contract)",
+    "contractor dashboard drawer (ContractorDashboardPage \u2192 progress_contract)",
+    "contractor full job page (JobPage \u2192 next_primary_action)",
+    "admin work-order detail (AdminWorkOrderDetailPage \u2192 progress_contract)"
+  ],
+  "consistency_rules": [
+    "current_stage matches across roles",
+    "work_execution_status matches across roles",
+    "proof_status ignores orphan proof before work started",
+    "quote_approved gates visit_booked for QUOTE_FIRST",
+    "next_primary_action resolved server-side"
+  ],
+  "parity_failures": [],
+  "status": "VERIFIED_OPERATIONALLY"
+}
