@@ -20,13 +20,9 @@ def _iso(value: Any) -> Optional[str]:
 
 
 def _portal_activity_label(tenant: Dict[str, Any]) -> str:
-    status = str(tenant.get("status") or "").upper()
-    pw = str(tenant.get("password_status") or "").upper()
-    if status == "INVITED" or pw == "NOT_SET":
-        return "pending_invite"
-    if tenant.get("last_login"):
-        return "active"
-    return "invited"
+    from services.tenant_portal_service import portal_activity_label
+
+    return portal_activity_label(tenant)
 
 
 async def build_property_occupancy_operational_summary(
@@ -109,8 +105,11 @@ async def build_property_occupancy_operational_summary(
                 "full_name": t.get("full_name") or t.get("name"),
                 "status": t.get("status"),
                 "password_status": t.get("password_status"),
+                "portal_invite_sent_at": _iso(t.get("portal_invite_sent_at")),
                 "last_login_at": _iso(t.get("last_login")),
-                "portal_activity": _portal_activity_label(t),
+                "portal_activity": _portal_activity_label(
+                    {**t, "assigned_properties": [property_id]}
+                ),
             }
             summary["active_tenants"].append(row)
             summary["portal_activity"].append(

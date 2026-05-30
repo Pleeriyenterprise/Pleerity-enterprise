@@ -657,6 +657,36 @@ def _request_id(request: Request) -> str:
     return getattr(request.state, "request_id", None) or __import__("uuid").uuid4().hex[:12]
 
 
+@router.get("/set-password-context")
+async def set_password_context(token: str):
+    """Non-sensitive context for set-password page (tenant vs landlord copy and redirect)."""
+    if not (token or "").strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token is required")
+    db = database.get_db()
+    token_hash_value = hash_token(token.strip())
+    password_token = await db.password_tokens.find_one({"token_hash": token_hash_value}, {"_id": 0})
+    if not password_token:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired link")
+    portal_user = await db.portal_users.find_one(
+        merge_active_portal_user({"portal_user_id": password_token["portal_user_id"]}),
+        {"_id": 0, "role": 1, "full_name": 1, "auth_email": 1, "status": 1, "password_status": 1},
+    )
+    if not portal_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    role = portal_user.get("role") or ""
+    is_tenant = role == UserRole.ROLE_TENANT.value
+    return {
+        "role": role,
+        "is_tenant": is_tenant,
+        "full_name": portal_user.get("full_name") or "",
+        "already_active": (
+            (portal_user.get("status") or "").upper() == UserStatus.ACTIVE.value
+            and (portal_user.get("password_status") or "").upper() == PasswordStatus.SET.value
+        ),
+        "redirect_path": "/tenant" if is_tenant else "/dashboard",
+    }
+
+
 @router.post("/set-password")
 async def set_password(request: Request, data: SetPasswordRequest):
     """Set password using token (production-safe)."""
@@ -782,16 +812,19 @@ async def set_password(request: Request, data: SetPasswordRequest):
         password_hash = hash_password(data.password)
         
         # Update portal user
+        is_tenant = portal_user.get("role") == UserRole.ROLE_TENANT.value
+        user_patch = {
+            "password_hash": password_hash,
+            "password_status": PasswordStatus.SET.value,
+            "must_set_password": False,
+            "status": UserStatus.ACTIVE.value,
+        }
+        if is_tenant:
+            user_patch["portal_invite_accepted_at"] = now.isoformat()
+            user_patch["activated_at"] = now.isoformat()
         await db.portal_users.update_one(
             {"portal_user_id": portal_user["portal_user_id"]},
-            {
-                "$set": {
-                    "password_hash": password_hash,
-                    "password_status": PasswordStatus.SET.value,
-                    "must_set_password": False,
-                    "status": UserStatus.ACTIVE.value
-                }
-            }
+            {"$set": user_patch},
         )
         
         # Mark token as used
@@ -857,7 +890,7 @@ async def set_password(request: Request, data: SetPasswordRequest):
                 from services.onboarding_email_governance import milestone_set_payload
 
                 cid_pw = password_token.get("client_id")
-                if cid_pw:
+                if cid_pw and portal_user.get("role") != UserRole.ROLE_TENANT.value:
                     await db.clients.update_one(
                         {"client_id": cid_pw},
                         {"$set": milestone_set_payload("password_set_at", now)},
@@ -886,7 +919,8 @@ async def set_password(request: Request, data: SetPasswordRequest):
             try:
                 from services.onboarding_lifecycle_service import send_dashboard_ready_and_start_sequence
 
-                await send_dashboard_ready_and_start_sequence(password_token.get("client_id"))
+                if portal_user.get("role") != UserRole.ROLE_TENANT.value:
+                    await send_dashboard_ready_and_start_sequence(password_token.get("client_id"))
             except Exception as onb_err:
                 logger.warning(
                     "send_dashboard_ready_and_start_sequence failed client_id=%s: %s",

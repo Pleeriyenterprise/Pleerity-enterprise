@@ -400,6 +400,7 @@ export const authAPI = {
   contractorLogin: (data) => apiClient.post('/auth/contractor-login', data),
   contractorSetPassword: (data) => apiClient.post('/auth/contractor-set-password', data),
   setPassword: (data) => apiClient.post('/auth/set-password', data),
+  setPasswordContext: (token) => apiClient.get('/auth/set-password-context', { params: { token } }),
   forgotPassword: (data) => apiClient.post('/auth/forgot-password', data),
   stopImpersonation: () => apiClient.post('/auth/impersonation/stop'),
   extendSession: () => apiClient.post('/auth/session/extend'),

@@ -2522,35 +2522,65 @@ async def invite_tenant(request: Request):
                 detail="Email is required"
             )
         
+        import uuid
+        from datetime import datetime, timezone, timedelta
+        from auth import generate_secure_token, hash_token
+        from services import tenant_portal_service as tps
+        
         # Check if tenant already exists (auth_email is used for login)
         email_lower = email.strip().lower()
         existing = await db.portal_users.find_one({
             "$or": [{"auth_email": email_lower}, {"email": email_lower}]
         })
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User with this email already exists"
-            )
+            ex_role = (existing.get("role") or "").strip()
+            ex_status = (existing.get("status") or "").strip().upper()
+            ex_client = existing.get("client_id")
+            if ex_role == "ROLE_TENANT" and ex_client == user["client_id"] and ex_status == "DISABLED":
+                tenant_id = existing["portal_user_id"]
+                await db.portal_users.update_one(
+                    {"portal_user_id": tenant_id},
+                    {
+                        "$set": {
+                            "status": "INVITED",
+                            "password_status": "NOT_SET",
+                            "full_name": full_name or existing.get("full_name") or "",
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                    },
+                )
+            elif ex_role == "ROLE_TENANT" and ex_client == user["client_id"] and ex_status == "INVITED":
+                tenant_id = existing["portal_user_id"]
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User with this email already exists",
+                )
+        else:
+            tenant_id = None
         
         # Build tenant and token in memory; send email first so we only persist on success
-        import uuid
-        from datetime import datetime, timezone, timedelta
-        from auth import generate_secure_token, hash_token
+        if not tenant_id:
+            tenant_id = str(uuid.uuid4())
+            tenant_user = {
+                "portal_user_id": tenant_id,
+                "client_id": user["client_id"],
+                "auth_email": email_lower,
+                "email": email_lower,
+                "full_name": full_name,
+                "role": "ROLE_TENANT",
+                "status": "INVITED",
+                "password_status": "NOT_SET",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "invited_by": user["portal_user_id"],
+                "portal_invite_sent_at": None,
+                "portal_invite_accepted_at": None,
+                "activated_at": None,
+            }
+        else:
+            tenant_user = await db.portal_users.find_one({"portal_user_id": tenant_id}, {"_id": 0})
         
-        tenant_id = str(uuid.uuid4())
-        tenant_user = {
-            "portal_user_id": tenant_id,
-            "client_id": user["client_id"],
-            "auth_email": email_lower,
-            "email": email_lower,
-            "full_name": full_name,
-            "role": "ROLE_TENANT",
-            "status": "INVITED",
-            "password_status": "NOT_SET",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "invited_by": user["portal_user_id"]
-        }
+        await tps.revoke_unused_tenant_invite_tokens(db, tenant_id)
         raw_token = generate_secure_token()
         token_hash = hash_token(raw_token)
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
@@ -2558,11 +2588,12 @@ async def invite_tenant(request: Request):
             "token_hash": token_hash,
             "portal_user_id": tenant_id,
             "client_id": user["client_id"],
+            "purpose": "tenant_invite",
             "expires_at": expires_at.isoformat(),
         }
         from utils.public_app_url import get_frontend_base_url
         base = get_frontend_base_url().rstrip("/")
-        invite_url = f"{base}/set-password?token={raw_token}"
+        invite_url = tps.build_tenant_invite_url(base, raw_token)
         login_url = f"{base}/login/client"
         
         from services.notification_orchestrator import notification_orchestrator
@@ -2596,11 +2627,17 @@ async def invite_tenant(request: Request):
                 detail=f"Invitation email failed to deliver: {msg}",
             )
         if result.outcome == "duplicate_ignored":
+            persisted = await db.portal_users.find_one(
+                {"portal_user_id": tenant_id, "client_id": user["client_id"], "role": "ROLE_TENANT"},
+                {"_id": 0, "portal_user_id": 1},
+            )
+            if persisted:
+                await tps.record_tenant_portal_invite_sent(db, tenant_id, resend=True)
             return {
                 "message": "An invitation was already sent to this email recently. If they did not receive it, check spam or resend from Tenant Management.",
-                "tenant_id": tenant_id,
+                "tenant_id": tenant_id if persisted else None,
                 "email": email,
-                "invite_sent": False,
+                "invite_sent": bool(persisted),
                 "duplicate": True,
             }
         if result.outcome != "sent":
@@ -2610,8 +2647,11 @@ async def invite_tenant(request: Request):
             )
         
         # Email sent successfully; persist tenant and token
-        await db.portal_users.insert_one(tenant_user)
+        existing_row = await db.portal_users.find_one({"portal_user_id": tenant_id}, {"_id": 1})
+        if not existing_row:
+            await db.portal_users.insert_one(tenant_user)
         await db.password_tokens.insert_one(token_doc)
+        await tps.record_tenant_portal_invite_sent(db, tenant_id, resend=bool(existing and tenant_id))
         if property_ids:
             for prop_id in property_ids:
                 prop = await db.properties.find_one({
@@ -2681,10 +2721,19 @@ async def list_tenants(request: Request):
             assignment_map[a["tenant_id"]].append(a["property_id"])
         
         # Add assignments to tenant data
+        from services.tenant_portal_service import enrich_tenant_portal_view
+
+        enriched = []
         for tenant in tenants:
             tenant["assigned_properties"] = assignment_map.get(tenant["portal_user_id"], [])
+            enriched.append(
+                enrich_tenant_portal_view(
+                    tenant,
+                    assigned_property_count=len(tenant["assigned_properties"]),
+                )
+            )
         
-        return {"tenants": tenants}
+        return {"tenants": enriched}
     
     except Exception as e:
         logger.error(f"List tenants error: {e}")
@@ -3161,7 +3210,9 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
         # Create new password token (same schema as set_password: token_hash, client_id)
         from datetime import datetime, timezone, timedelta
         from auth import generate_secure_token, hash_token
+        from services import tenant_portal_service as tps
         
+        await tps.revoke_unused_tenant_invite_tokens(db, tenant_id)
         raw_token = generate_secure_token()
         token_hash = hash_token(raw_token)
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
@@ -3169,17 +3220,17 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
             "token_hash": token_hash,
             "portal_user_id": tenant_id,
             "client_id": user["client_id"],
+            "purpose": "tenant_invite",
             "expires_at": expires_at.isoformat(),
         }
-        await db.password_tokens.insert_one(token_doc)
         
         from utils.public_app_url import get_frontend_base_url
         from services.notification_orchestrator import notification_orchestrator
         base = get_frontend_base_url().rstrip("/")
-        invite_url = f"{base}/set-password?token={raw_token}"
+        invite_url = tps.build_tenant_invite_url(base, raw_token)
         login_url = f"{base}/login/client"
         idempotency_key = f"{tenant_id}_TENANT_INVITE_resend"
-        await notification_orchestrator.send(
+        result = await notification_orchestrator.send(
             template_key="TENANT_INVITE",
             client_id=user["client_id"],
             context={
@@ -3192,9 +3243,20 @@ async def resend_tenant_invite(request: Request, tenant_id: str):
             idempotency_key=idempotency_key,
             event_type="tenant_invite_resend",
         )
+        if result.outcome in ("blocked", "failed") or result.outcome not in ("sent", "duplicate_ignored"):
+            msg = result.error_message or result.block_reason or "Email delivery failed"
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Invitation email failed to deliver: {msg}",
+            )
+        await db.password_tokens.insert_one(token_doc)
+        await tps.record_tenant_portal_invite_sent(db, tenant_id, resend=True)
         logger.info(f"Tenant invite resent to {tenant.get('auth_email') or tenant.get('email', '')}")
         
-        return {"message": "Invitation resent successfully"}
+        return {
+            "message": "Invitation resent successfully",
+            "portal_invite_sent_at": datetime.now(timezone.utc).isoformat(),
+        }
     
     except HTTPException:
         raise

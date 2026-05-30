@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { authAPI } from '../api/client';
@@ -6,13 +6,14 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Home } from 'lucide-react';
 
 const SetPasswordPage = () => {
   const navigate = useNavigate();
   const { loginWithToken } = useAuth();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const portalHint = (searchParams.get('portal') || '').toLowerCase();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,6 +21,35 @@ const SetPasswordPage = () => {
   const [error, setError] = useState('');
   const [errorIsFromServer, setErrorIsFromServer] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [contextLoading, setContextLoading] = useState(Boolean(token));
+  const [isTenant, setIsTenant] = useState(portalHint === 'tenant');
+  const [redirectPath, setRedirectPath] = useState(portalHint === 'tenant' ? '/tenant' : '/dashboard');
+
+  useEffect(() => {
+    if (!token) {
+      setContextLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await authAPI.setPasswordContext(token);
+        if (cancelled) return;
+        setIsTenant(Boolean(data.is_tenant));
+        setRedirectPath(data.redirect_path || (data.is_tenant ? '/tenant' : '/dashboard'));
+      } catch {
+        if (!cancelled && portalHint === 'tenant') {
+          setIsTenant(true);
+          setRedirectPath('/tenant');
+        }
+      } finally {
+        if (!cancelled) setContextLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, portalHint]);
 
   const validatePassword = () => {
     if (password.length < 8) {
@@ -64,12 +94,15 @@ const SetPasswordPage = () => {
       const response = await authAPI.setPassword({ token, password });
       const { access_token, user } = response.data;
 
-      // Update AuthContext state (this triggers re-render and allows ProtectedRoute to work)
       loginWithToken(access_token, user);
 
+      const dest =
+        user?.role === 'ROLE_TENANT' ? '/tenant' : redirectPath;
       setSuccess(true);
       setTimeout(() => {
-        navigate('/dashboard?first_login=1');
+        navigate(user?.role === 'ROLE_TENANT' ? '/tenant?first_login=1' : `${dest}?first_login=1`, {
+          replace: true,
+        });
       }, 1500);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to set password');
@@ -87,7 +120,7 @@ const SetPasswordPage = () => {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Invalid or missing password setup link. Please check your email or contact support.
+                This link is not valid. Open your invite email and use the setup link there, or ask your landlord to resend the invite.
               </AlertDescription>
             </Alert>
             <Button 
@@ -103,6 +136,16 @@ const SetPasswordPage = () => {
     );
   }
 
+  if (contextLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center text-gray-600">Loading…</CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -110,7 +153,9 @@ const SetPasswordPage = () => {
           <CardContent className="pt-6 text-center">
             <CheckCircle2 className="w-16 h-16 text-green-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-midnight-blue mb-2">Account activated</h3>
-            <p className="text-gray-600">Redirecting to your dashboard...</p>
+            <p className="text-gray-600">
+              {isTenant ? 'Opening your tenant portal…' : 'Redirecting to your dashboard…'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -121,9 +166,14 @@ const SetPasswordPage = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-midnight-blue">Set Your Password</CardTitle>
+          <div className="flex items-center gap-2">
+            {isTenant && <Home className="h-6 w-6 text-electric-teal" />}
+            <CardTitle className="text-2xl font-bold text-midnight-blue">Set Your Password</CardTitle>
+          </div>
           <CardDescription>
-            Create a secure password for your Compliance Vault Pro account
+            {isTenant
+              ? 'Activate your tenant portal to access your tenancy, documents, rent information, and maintenance reporting.'
+              : 'Create a secure password for your Compliance Vault Pro account'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -136,8 +186,20 @@ const SetPasswordPage = () => {
                 </Alert>
                 {errorIsFromServer && (
                   <p className="text-sm text-gray-600 mt-2">
-                    Need a new link? <Link to="/onboarding/status" className="text-electric-teal hover:underline">Go to onboarding status</Link> to resend the activation email, or contact support at{' '}
-                    <a href="mailto:info@pleerityenterprise.co.uk" className="text-electric-teal hover:underline">info@pleerityenterprise.co.uk</a>.
+                    {isTenant ? (
+                      <>
+                        Need a new link? Ask your landlord to resend the invite from Tenant Management, or contact{' '}
+                        <a href="mailto:info@pleerityenterprise.co.uk" className="text-electric-teal hover:underline">
+                          info@pleerityenterprise.co.uk
+                        </a>
+                        .
+                      </>
+                    ) : (
+                      <>
+                        Need a new link? <Link to="/onboarding/status" className="text-electric-teal hover:underline">Go to onboarding status</Link> to resend the activation email, or contact support at{' '}
+                        <a href="mailto:info@pleerityenterprise.co.uk" className="text-electric-teal hover:underline">info@pleerityenterprise.co.uk</a>.
+                      </>
+                    )}
                   </p>
                 )}
               </>
@@ -182,7 +244,7 @@ const SetPasswordPage = () => {
               disabled={loading}
               data-testid="set-password-submit-btn"
             >
-              {loading ? 'Setting password...' : 'Set Password & Continue'}
+              {loading ? 'Setting password…' : isTenant ? 'Activate portal & continue' : 'Set Password & Continue'}
             </Button>
           </form>
         </CardContent>

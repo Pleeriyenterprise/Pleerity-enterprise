@@ -4,6 +4,7 @@ import api from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from '@/utils/portalNotifications';
 import { buildEntityRoute } from '../utils/clientPortalNavigation';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
@@ -152,6 +153,7 @@ const TenantManagementPage = ({ section } = {}) => {
         base_url: window.location.origin
       });
       toast.success('Invitation resent');
+      fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to resend invitation');
     }
@@ -208,8 +210,36 @@ const TenantManagementPage = ({ section } = {}) => {
     }
   };
 
-  const getStatusBadge = (status) => {
-    switch (status) {
+  const getStatusBadge = (tenant) => {
+    const label = tenant.onboarding_state_label;
+    if (label) {
+      const state = tenant.onboarding_state || '';
+      if (state === 'active' || state === 'linked_to_tenancy') {
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
+            <Check className="w-3 h-3" />
+            {label}
+          </span>
+        );
+      }
+      if (state === 'access_revoked') {
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">
+            <UserX className="w-3 h-3" />
+            {label}
+          </span>
+        );
+      }
+      if (state === 'activation_pending' || state === 'tenant_invite_sent') {
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+            <Clock className="w-3 h-3" />
+            {label}
+          </span>
+        );
+      }
+    }
+    switch (tenant.status) {
       case 'ACTIVE':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
@@ -527,7 +557,7 @@ const TenantManagementPage = ({ section } = {}) => {
                               <span className="font-medium text-midnight-blue">
                                 {tenant.full_name || 'No Name'}
                               </span>
-                              {getStatusBadge(tenant.status)}
+                              {getStatusBadge(tenant)}
                             </div>
                             <div className="flex items-center gap-1 text-sm text-gray-500">
                               <Mail className="w-3 h-3" />
@@ -659,6 +689,9 @@ const TenantManagementPage = ({ section } = {}) => {
                           {/* Meta info */}
                           <div className="text-xs text-gray-400 pt-2">
                             Created: {new Date(tenant.created_at).toLocaleDateString()}
+                            {tenant.portal_invite_sent_at && (
+                              <> • Last invite: {new Date(tenant.portal_invite_sent_at).toLocaleString()}</>
+                            )}
                             {tenant.invited_by && ` • Invited by: ${tenant.invited_by}`}
                           </div>
                         </div>
@@ -688,6 +721,12 @@ const TenantManagementPage = ({ section } = {}) => {
                   <X className="w-6 h-6" />
                 </button>
               </div>
+              
+              <Alert className="border-teal-200 bg-teal-50/80 text-teal-950 py-2 mb-4">
+                <AlertDescription className="text-xs">
+                  This tenant will receive an email invite. They must activate their portal before they can access tenancy details, documents, rent information, or maintenance reporting.
+                </AlertDescription>
+              </Alert>
               
               <form onSubmit={handleInvite} className="space-y-4">
                 <div>
