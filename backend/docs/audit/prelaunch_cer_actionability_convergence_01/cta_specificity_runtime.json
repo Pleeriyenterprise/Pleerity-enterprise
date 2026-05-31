@@ -1,0 +1,42 @@
+{
+  "programme": "PRELAUNCH-CER-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "20260531T143332Z",
+  "rows": [
+    {
+      "scenario": "smoke_co_incomplete",
+      "truth_label": "Additional action still required",
+      "specific_cta": "Complete CO alarm details",
+      "take_action_label": "Complete CO alarm details",
+      "generic_avoided": true
+    },
+    {
+      "scenario": "legionella_followup",
+      "truth_label": "Follow-up evidence required",
+      "specific_cta": "Update Legionella assessment",
+      "take_action_label": "Update Legionella assessment",
+      "generic_avoided": true
+    },
+    {
+      "scenario": "fire_risk_incomplete",
+      "truth_label": "Additional action still required",
+      "specific_cta": "Add missing fire-risk actions",
+      "take_action_label": "Add missing fire-risk actions",
+      "generic_avoided": true
+    },
+    {
+      "scenario": "supporting_upload_only",
+      "truth_label": "Supporting evidence uploaded",
+      "specific_cta": "Upload supporting evidence",
+      "take_action_label": "Upload supporting evidence",
+      "generic_avoided": true
+    },
+    {
+      "scenario": "gas_platform_pending",
+      "truth_label": "Platform verification pending",
+      "specific_cta": null,
+      "take_action_label": "Upload Gas Safety Certificate",
+      "generic_avoided": true
+    }
+  ],
+  "pass": true
+}

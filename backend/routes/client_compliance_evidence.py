@@ -165,6 +165,24 @@ async def get_evidence_resolution(
         row["checklist_schema"] = schema.get("items") or []
         row["checklist_schema_fallback_used"] = bool(schema.get("fallback_used"))
     guided_label = str(policy.get("guided_primary_cta_label") or "").strip() or "Add compliance evidence"
+    component_guidance: List[str] = []
+    existing_submission_banner = None
+    try:
+        from services.cer_actionability_presentation import (
+            component_guidance_lines,
+            resolve_actionability_primary_cta_label,
+            resolve_existing_submission_banner_copy,
+            build_reopen_prefill_from_record,
+        )
+
+        specific_cta = resolve_actionability_primary_cta_label(enriched, fallback=guided_label)
+        if specific_cta:
+            guided_label = specific_cta
+        component_guidance = component_guidance_lines(enriched)
+        existing_submission_banner = resolve_existing_submission_banner_copy(enriched)
+    except Exception:
+        pass
+
     modal_title = str(policy.get("modal_title") or "").strip() or guided_label
     if not modal_title:
         modal_title = "Add compliance evidence"
@@ -174,6 +192,25 @@ async def get_evidence_resolution(
 
     cognition = build_envelope_for_requirement(enriched)
     guidance = cognition.get("requirement_guidance_v1") if isinstance(cognition, dict) else None
+
+    reopen_context = None
+    try:
+        from services.cer_actionability_presentation import build_reopen_prefill_from_record
+
+        stage = str(enriched.get("truth_presentation_stage") or "").strip()
+        ea = enriched.get("evidence_authority") if isinstance(enriched.get("evidence_authority"), dict) else {}
+        eid = str(ea.get("primary_evidence_record_id") or "").strip()
+        if eid and stage in ("followup_required", "operational_incomplete"):
+            rec = await db.compliance_evidence_records.find_one(
+                {"evidence_record_id": eid, "client_id": client_id},
+                {"_id": 0},
+            )
+            if rec:
+                reopen_context = build_reopen_prefill_from_record(rec)
+                reopen_context["truth_presentation_stage"] = stage
+    except Exception:
+        reopen_context = None
+
     return {
         "requirement_id": requirement_id,
         "property_id": property_id,
@@ -189,11 +226,18 @@ async def get_evidence_resolution(
         "policy": policy,
         "operational_cognition": cognition,
         "requirement_guidance_v1": guidance,
+        "component_guidance_lines": component_guidance,
+        "existing_submission_banner": existing_submission_banner,
+        "reopen_context": reopen_context,
         "requirement": {
             "requirement_id": enriched.get("requirement_id"),
             "client_lifecycle_state": enriched.get("client_lifecycle_state"),
             "evidence_authority": enriched.get("evidence_authority"),
             "take_action": enriched.get("take_action"),
+            "truth_presentation_stage": enriched.get("truth_presentation_stage"),
+            "queue_backed_review": enriched.get("queue_backed_review"),
+            "review_owner": enriched.get("review_owner"),
+            "evidence_completeness": enriched.get("evidence_completeness"),
         },
     }
 

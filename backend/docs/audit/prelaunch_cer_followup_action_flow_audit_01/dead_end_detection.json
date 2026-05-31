@@ -1,0 +1,28 @@
+{
+  "programme": "PRELAUNCH-CER-FOLLOWUP-ACTION-FLOW-AUDIT-01",
+  "generated_at": "20260531T140246Z",
+  "dead_ends": [
+    {
+      "scenario_key": "org_admin_queue_missing",
+      "truth_label": "Organisation review pending",
+      "cta_label": "varies",
+      "classification": "ROLE_AUTHORITY_GAP",
+      "detail": "Governance B-family references org_admin_queue; no org admin verify UI/route \u2014 label can over-promise authority"
+    },
+    {
+      "scenario_key": "legionella_modal_banner",
+      "truth_label": "Follow-up evidence required",
+      "cta_label": "Add compliance evidence",
+      "classification": "CTA_DRIFT",
+      "detail": "ComplianceEvidenceResolveModal shows 'awaiting review' banner for existing submission even when queue_backed_review=false"
+    },
+    {
+      "scenario_key": "fire_risk_multi_incomplete",
+      "truth_label": "Follow-up evidence required",
+      "cta_label": "Add compliance evidence",
+      "classification": "STATE_TRANSITION_DRIFT",
+      "detail": "cer_governance_presentation checks followup (state_reason multi_evidence_components_incomplete) before operational_incomplete for PLATFORM_OVERSIGHT_OPTIONAL \u2014 fire_risk shows follow-up label when components are missing, not follow-up remediation"
+    }
+  ],
+  "count": 3
+}

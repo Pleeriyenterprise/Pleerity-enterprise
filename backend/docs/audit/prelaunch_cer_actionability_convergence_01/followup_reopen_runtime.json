@@ -1,0 +1,11 @@
+{
+  "programme": "PRELAUNCH-CER-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "20260531T143332Z",
+  "prefill_keys": [
+    "evidence_mode",
+    "evidence_record_id",
+    "declaration_statement",
+    "structured_fields_prefill"
+  ],
+  "pass": true
+}

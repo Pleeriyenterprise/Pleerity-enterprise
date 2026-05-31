@@ -32,6 +32,7 @@ export function RequirementEvidenceGuidancePanel({
   onPrimaryClick,
   primaryDisabled = false,
   truthLines = [],
+  componentGuidanceLines = [],
   className = '',
 }) {
   const cognition = getOperationalCognition(cognitionEntity);
@@ -39,6 +40,11 @@ export function RequirementEvidenceGuidancePanel({
   const steps = progressionStepsFromCognition(cognitionEntity);
 
   const remaining = useMemo(() => (guidance?.remaining_steps || []).filter(Boolean), [guidance]);
+  const componentLines = useMemo(() => {
+    const explicit = Array.isArray(componentGuidanceLines) ? componentGuidanceLines.filter(Boolean) : [];
+    if (explicit.length > 0) return explicit;
+    return Array.isArray(guidance?.missing_actions) ? guidance.missing_actions.filter(Boolean) : [];
+  }, [componentGuidanceLines, guidance]);
 
   if (!cognition && !guidance) return null;
 
@@ -50,6 +56,20 @@ export function RequirementEvidenceGuidancePanel({
         primaryDisabled={primaryDisabled}
         className="mb-0"
       />
+
+      {componentLines.length > 0 ? (
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5 space-y-1"
+          data-testid="component-guidance-lines"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">Still required</p>
+          <ul className="text-sm text-amber-950 space-y-1 list-disc list-inside">
+            {componentLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {steps.length > 0 ? (
         <div

@@ -1,0 +1,6 @@
+{
+  "programme": "PRELAUNCH-CER-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "20260531T143332Z",
+  "mechanism": "backfillGovernanceTruthSurface (frontend) + attach_cer_governance_presentation (API enrich)",
+  "pass": true
+}

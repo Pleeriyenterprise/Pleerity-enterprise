@@ -1,0 +1,100 @@
+{
+  "programme": "PRELAUNCH-CER-FOLLOWUP-ACTION-FLOW-AUDIT-01",
+  "generated_at": "20260531T140246Z",
+  "families": {
+    "A_SELF_CERTIFIED": {
+      "examples": [
+        "smoke_heat_alarms",
+        "how_to_rent"
+      ],
+      "declaration_edit_flow": {
+        "exists": true,
+        "path": "ComplianceEvidenceResolveModal \u2192 POST .../compliance-evidence",
+        "modes": [
+          "STRUCTURED_DECLARATION",
+          "INSPECTION_CHECKLIST",
+          "CONTRACTOR_CONFIRMATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      "incomplete_component_flow": {
+        "exists": true,
+        "backend": "requirement_evidence_completeness.evaluate_domestic_alarm_completeness",
+        "ui": "evidence_completeness.summary_label on RequirementsPage; guided modal checklist modes",
+        "transition": "operational_incomplete \u2192 declaration_recorded when is_complete=true",
+        "verified": true
+      },
+      "gaps": [
+        "CTA remains generic 'Add compliance evidence' \u2014 component gap not named in CTA",
+        "Modal banner 'Submission already on file \u2014 awaiting review' misleading when queue_backed_review=false"
+      ]
+    },
+    "C_PLATFORM_OVERSIGHT_OPTIONAL": {
+      "examples": [
+        "legionella",
+        "fire_risk_assessment",
+        "lead_testing"
+      ],
+      "followup_evidence_submission": {
+        "exists": true,
+        "path": "Re-submit STRUCTURED_DECLARATION with actions_required=no (legionella/lead_testing)",
+        "schema_fields": [
+          "actions_required",
+          "next_review_date",
+          "actions_taken (lead_testing only)"
+        ],
+        "dedicated_followup_form": false
+      },
+      "remediation_fields": {
+        "exists_partial": true,
+        "note": "No separate remediation upload mode \u2014 closure via structured field update only"
+      },
+      "transition": "followup_required \u2192 assessment_recorded when external_assessment_structured_followup_status=False",
+      "verified": true,
+      "gaps": [
+        "No follow-up-specific CTA copy or form section",
+        "fire_risk multi-component incomplete mislabeled as followup_required (governance ordering bug)",
+        "Legacy rows without truth_presentation_stage may collapse to View submission when primary CTA is generic Add compliance evidence"
+      ]
+    },
+    "B_ORG_ADMIN_REVIEWED": {
+      "examples": [
+        "right_to_rent",
+        "tenancy_agreement",
+        "deposit_pi",
+        "wales_occupation_contract"
+      ],
+      "org_review_action": {
+        "exists": false,
+        "note": "No org_admin verify queue route/UI found; optional org verify via client POST .../verification exists but not role-gated org queue"
+      },
+      "user_resolve_org_review_pending": {
+        "exists": false,
+        "label_behavior": "Phase 1 shows 'Evidence recorded' not 'Organisation review pending' unless queue_backed_review + review_owner=org_admin"
+      },
+      "gaps": [
+        "ROLE_AUTHORITY_GAP: governance decision references org_admin_queue; no dedicated org admin fulfilment UI",
+        "Misleading 'Organisation review pending' only from legacy presentation path when queue_backed incorrectly set"
+      ]
+    },
+    "D_PLATFORM_VERIFIED": {
+      "examples": [
+        "epc",
+        "gas_safety",
+        "eicr"
+      ],
+      "document_upload_path": {
+        "exists": true,
+        "cta": "Upload document / registry override",
+        "route": "/documents?property_id=&requirement_id="
+      },
+      "platform_verification_path": {
+        "exists": true,
+        "queue": "GET /api/admin/documents/pending-verification",
+        "label": "Platform verification pending"
+      },
+      "regression_from_phase1": false,
+      "verified": true
+    }
+  }
+}

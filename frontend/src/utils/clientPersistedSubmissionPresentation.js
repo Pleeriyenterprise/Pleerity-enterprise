@@ -3,7 +3,7 @@
  * Does not change backend authority — consumes governance fields when present.
  */
 
-import { resolveGovernanceAwareLifecycle, isQueueBackedReview, resolveTruthPresentationSubline } from './cerGovernancePresentation';
+import { resolveGovernanceAwareLifecycle, isQueueBackedReview, resolveTruthPresentationSubline, backfillGovernanceTruthSurface } from './cerGovernancePresentation';
 import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
 
 /**
@@ -45,10 +45,11 @@ export function isSubmissionAwaitingReview(row) {
  * @returns {ReturnType<typeof resolveClientRequirementLifecycle>}
  */
 export function resolveClientRequirementLifecycleForPresentation(row) {
-  if (row?.truth_presentation_label) {
-    return resolveGovernanceAwareLifecycle(row);
+  const enriched = backfillGovernanceTruthSurface(row);
+  if (enriched?.truth_presentation_label) {
+    return resolveGovernanceAwareLifecycle(enriched);
   }
-  const base = resolveClientRequirementLifecycle(row);
+  const base = resolveClientRequirementLifecycle(enriched);
   if (!isSubmissionAwaitingReview(row)) return base;
   if (base.state === 'PENDING_REVIEW' || base.state === 'VERIFIED' || base.state === 'SATISFIED_UNVERIFIED') {
     return base;
@@ -157,6 +158,35 @@ export function recentSupportingUploadAttributionSubline(requirementId, recentBy
   const rid = String(requirementId || '').trim();
   if (!rid || !recentByRequirementId || !recentByRequirementId[rid]) return null;
   return 'Additional supporting document uploaded — does not replace your submission on file.';
+}
+
+/**
+ * Modal banner when authoritative submission exists — queue wording only when queue-backed.
+ * @param {Record<string, unknown>|null|undefined} row
+ * @returns {string|null}
+ */
+export function resolveExistingSubmissionBannerCopy(row) {
+  if (!requirementHasPersistedClientSubmission(row)) return null;
+  const queueBacked = isQueueBackedReview(row);
+  const owner = String(row?.review_owner || '').trim();
+  const stage = String(row?.truth_presentation_stage || '').trim();
+
+  if (queueBacked && owner) {
+    if (owner === 'platform_admin') return 'Submission on file — platform verification in progress.';
+    if (owner === 'org_admin') return 'Submission on file — organisation review in progress.';
+    if (owner === 'platform_admin_escalation') return 'Submission on file — escalated for platform review.';
+    return 'Submission on file — awaiting review.';
+  }
+  if (stage === 'followup_required') {
+    return 'Assessment on file — additional follow-up information is still required. You can update your submission below.';
+  }
+  if (stage === 'operational_incomplete') {
+    return 'Submission on file — additional information is still required. You can update your submission below.';
+  }
+  if (stage === 'supporting_upload_only') {
+    return 'Supporting evidence has already been uploaded. Complete the structured record below.';
+  }
+  return 'Submission on file. You can update your submission below.';
 }
 
 /**

@@ -1,0 +1,11 @@
+{
+  "programme": "PRELAUNCH-CER-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "20260531T143332Z",
+  "smoke_lines": [
+    "Carbon monoxide alarm compliance still required"
+  ],
+  "legionella_lines": [
+    "Risk mitigation actions still required for the Legionella assessment"
+  ],
+  "pass": true
+}

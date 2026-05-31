@@ -88,16 +88,58 @@ export function resolveGovernanceTierBadge(row) {
 }
 
 /**
+ * Safe client-side backfill when API row lacks truth_presentation_* (stale cache).
+ * Enrichment-only — does not mutate authority.
+ * @param {Record<string, unknown>|null|undefined} row
+ */
+export function backfillGovernanceTruthSurface(row) {
+  if (!row || typeof row !== 'object') return row;
+  if (hasGovernanceTruthSurface(row)) return row;
+
+  const ea = row.evidence_authority && typeof row.evidence_authority === 'object' ? row.evidence_authority : null;
+  const reason = String(ea?.state_reason || '').toLowerCase();
+  const semantic = String(ea?.semantic_state || row.semantic_state || '').trim().toUpperCase();
+  const comp = row.evidence_completeness && typeof row.evidence_completeness === 'object' ? row.evidence_completeness : null;
+  const incomplete =
+    comp?.is_complete === false || Number(comp?.required_missing_count || 0) > 0 || reason === 'multi_evidence_components_incomplete';
+  const followup =
+    semantic === 'ASSESSMENT_FOLLOWUP_REQUIRED' ||
+    semantic === 'EXTERNAL_ASSESSMENT_FOLLOWUP_REQUIRED' ||
+    reason === 'external_assessment_remediation_or_followup_unresolved';
+
+  if (incomplete) {
+    return {
+      ...row,
+      truth_presentation_stage: 'operational_incomplete',
+      truth_presentation_label: 'Additional action still required',
+      truth_presentation_subline: 'Some required evidence components are still missing.',
+      queue_backed_review: false,
+    };
+  }
+  if (followup) {
+    return {
+      ...row,
+      truth_presentation_stage: 'followup_required',
+      truth_presentation_label: 'Follow-up evidence required',
+      truth_presentation_subline: 'Complete remaining assessment or remediation steps to close this obligation.',
+      queue_backed_review: false,
+    };
+  }
+  return row;
+}
+
+/**
  * @param {Record<string, unknown>|null|undefined} row
  * @returns {ReturnType<typeof resolveClientRequirementLifecycle>}
  */
 export function resolveGovernanceAwareLifecycle(row) {
-  const base = resolveClientRequirementLifecycle(row);
-  if (!hasGovernanceTruthSurface(row)) return base;
+  const enriched = backfillGovernanceTruthSurface(row);
+  const base = resolveClientRequirementLifecycle(enriched);
+  if (!hasGovernanceTruthSurface(enriched)) return base;
 
-  const label = resolveTruthPresentationLabel(row) || base.label;
-  const queueBacked = isQueueBackedReview(row);
-  const state = mapTruthStageToLifecycleState(String(row?.truth_presentation_stage || ''), queueBacked);
+  const label = resolveTruthPresentationLabel(enriched) || base.label;
+  const queueBacked = isQueueBackedReview(enriched);
+  const state = mapTruthStageToLifecycleState(String(enriched?.truth_presentation_stage || ''), queueBacked);
 
   return {
     ...base,

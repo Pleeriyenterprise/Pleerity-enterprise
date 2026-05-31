@@ -1,0 +1,25 @@
+{
+  "programme": "PRELAUNCH-CER-FOLLOWUP-ACTION-FLOW-AUDIT-01",
+  "generated_at": "20260531T140246Z",
+  "primary_classification": "CTA_DRIFT",
+  "secondary_classifications": [
+    "CTA_DRIFT",
+    "ROLE_AUTHORITY_GAP",
+    "STATE_TRANSITION_DRIFT"
+  ],
+  "distinction": {
+    "label_only_drift": [
+      "CTA_DRIFT",
+      "modal banner copy"
+    ],
+    "true_missing_workflow": [
+      "ROLE_AUTHORITY_GAP for org admin queue"
+    ],
+    "backend_transition_failure": [],
+    "role_authority_gap": [
+      "ORG_ADMIN_REVIEWED optional verify with no org UI"
+    ]
+  },
+  "audit_only": true,
+  "fixes_deferred": true
+}

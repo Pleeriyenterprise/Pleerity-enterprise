@@ -1,0 +1,51 @@
+{
+  "programme": "PRELAUNCH-CER-FOLLOWUP-ACTION-FLOW-AUDIT-01",
+  "generated_at": "20260531T140246Z",
+  "status": "PARTIAL",
+  "reason": "Staging browser credentials not available in audit harness; static + enrichment runtime verified",
+  "test_matrix": [
+    {
+      "case": "Smoke & CO incomplete components",
+      "expected_label": "Additional action still required",
+      "expected_cta": "Add compliance evidence (guided modal \u2192 INSPECTION_CHECKLIST)",
+      "static_verification": "PASS \u2014 ACTION_REQUIRED preserves actionable CTA; completeness projected",
+      "browser_verification": "DEFERRED",
+      "screenshots": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "case": "Legionella follow-up evidence required",
+      "expected_label": "Follow-up evidence required",
+      "expected_cta": "Add compliance evidence \u2192 structured re-submit",
+      "static_verification": "PASS with CTA_DRIFT \u2014 flow exists, copy generic; banner misleading",
+      "browser_verification": "DEFERRED",
+      "screenshots": {
+        "before": null,
+        "after": null
+      }
+    },
+    {
+      "case": "Declaration-style (how_to_rent recorded)",
+      "expected_label": "Declaration recorded",
+      "expected_cta": "View submission (informational)",
+      "static_verification": "PASS \u2014 informational dead-end acceptable",
+      "browser_verification": "DEFERRED"
+    },
+    {
+      "case": "Right-to-rent org-reviewed family",
+      "expected_label": "Evidence recorded",
+      "expected_cta": "Add/View via guided declaration",
+      "static_verification": "PASS \u2014 no false platform queue; org queue not implemented",
+      "browser_verification": "DEFERRED"
+    },
+    {
+      "case": "Document upload control (gas_safety)",
+      "expected_label": "Platform verification pending",
+      "expected_cta": "Upload document / View evidence",
+      "static_verification": "PASS \u2014 no Phase 1 regression",
+      "browser_verification": "DEFERRED"
+    }
+  ]
+}

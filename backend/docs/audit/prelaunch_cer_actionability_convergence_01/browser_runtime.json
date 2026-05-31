@@ -1,0 +1,10 @@
+{
+  "programme": "PRELAUNCH-CER-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "20260531T143332Z",
+  "status": "PARTIAL",
+  "reason": "Unit/runtime verified; staging browser E2E deferred post-deploy",
+  "screenshots": {
+    "before": null,
+    "after": null
+  }
+}

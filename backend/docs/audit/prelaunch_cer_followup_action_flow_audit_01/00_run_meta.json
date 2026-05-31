@@ -1,0 +1,6 @@
+{
+  "programme": "PRELAUNCH-CER-FOLLOWUP-ACTION-FLOW-AUDIT-01",
+  "generated_at": "20260531T140246Z",
+  "method": "static_code_trace + enrichment_runtime_harness",
+  "browser": "PARTIAL/DEFERRED"
+}

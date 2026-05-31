@@ -561,7 +561,13 @@ def build_requirement_guidance_v1(
     weak_submission_risk = strongest == "STRUCTURED_DECLARATION" and len(modes) > 1
 
     missing_actions: List[str] = []
-    if missing > 0:
+    try:
+        from services.cer_actionability_presentation import component_guidance_lines
+
+        missing_actions.extend(component_guidance_lines(req))
+    except Exception:
+        pass
+    if missing > 0 and not missing_actions:
         missing_actions.append(f"Complete {missing} required field(s)")
     if stage == "no_evidence" and strongest:
         missing_actions.append(_MODE_LABELS.get(strongest, "Choose evidence method"))

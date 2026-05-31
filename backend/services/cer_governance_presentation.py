@@ -145,6 +145,12 @@ FOLLOWUP_SEMANTICS = frozenset(
 FOLLOWUP_STATE_REASONS = frozenset(
     {
         "external_assessment_remediation_or_followup_unresolved",
+    }
+)
+
+# Operational component gaps — not assessment follow-up semantics.
+COMPONENT_INCOMPLETE_STATE_REASONS = frozenset(
+    {
         "multi_evidence_components_incomplete",
     }
 )
@@ -257,17 +263,17 @@ def derive_truth_presentation(
         stage = "platform_verification_pending"
         label = "Platform verification pending"
         subline = "Our team will verify your uploaded certificate."
+    elif incomplete:
+        stage = "operational_incomplete"
+        label = "Additional action still required"
+        subline = "Some required evidence components are still missing."
+        stale_owner = "landlord"
     elif followup and family == GF_PLATFORM_OPT:
         stage = "followup_required"
         label = "Follow-up evidence required"
         subline = "Complete remaining assessment or remediation steps to close this obligation."
         stale_owner = "landlord"
         tier_supplement = "Remediation or follow-up may remain open"
-    elif incomplete:
-        stage = "operational_incomplete"
-        label = "Additional action still required"
-        subline = "Some required evidence components are still missing."
-        stale_owner = "landlord"
     elif has_sub and family == GF_SELF:
         stage = "declaration_recorded"
         label = "Declaration recorded"
@@ -362,17 +368,34 @@ def cognition_next_step_for_requirement(requirement: Dict[str, Any]) -> Tuple[st
             ["Wait for Pleerity review team"],
         )
     if stage == "followup_required":
-        return (
-            "Complete follow-up evidence",
-            subline or "Finish open assessment or remediation steps.",
-            ["Complete follow-up actions", "Update your submission if needed"],
-        )
+        from services.cer_actionability_presentation import component_guidance_lines
+
+        comp_lines = component_guidance_lines(requirement)
+        canon = normalize_requirement_code(
+            str(requirement.get("requirement_code") or requirement.get("requirement_type") or "")
+        ) or ""
+        if canon == "legionella":
+            step = "Update Legionella assessment"
+            reason = "Supporting evidence for the Legionella assessment is still required."
+        elif canon == "lead_testing":
+            step = "Update lead assessment"
+            reason = "Follow-up actions for the lead assessment are still required."
+        elif canon in ("fire_risk_assessment", "hmo_fire_risk", "hmo_fire_risk_evidence"):
+            step = "Add missing fire-risk actions"
+            reason = "Additional fire-risk actions still need to be completed."
+        else:
+            step = "Complete follow-up evidence"
+            reason = subline or "Finish open assessment or remediation steps."
+        remaining = comp_lines or ["Complete follow-up actions", "Update your submission if needed"]
+        return step, reason, remaining
     if stage == "operational_incomplete":
-        return (
-            "Complete remaining compliance steps",
-            subline or "Required evidence components are still missing.",
-            ["Complete missing checklist or component evidence", "Submit when complete"],
-        )
+        from services.cer_actionability_presentation import component_guidance_lines
+
+        comp_lines = component_guidance_lines(requirement)
+        step = "Complete remaining compliance steps"
+        reason = subline or "Required evidence components are still missing."
+        remaining = comp_lines or ["Complete missing checklist or component evidence", "Submit when complete"]
+        return step, reason, remaining
     if stage == "declaration_recorded":
         return (
             "Declaration on file",

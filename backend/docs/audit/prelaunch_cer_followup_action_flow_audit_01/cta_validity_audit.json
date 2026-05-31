@@ -1,0 +1,122 @@
+{
+  "programme": "PRELAUNCH-CER-FOLLOWUP-ACTION-FLOW-AUDIT-01",
+  "generated_at": "20260531T140246Z",
+  "rows": [
+    {
+      "scenario_key": "smoke_operational_incomplete",
+      "truth_label": "Additional action still required",
+      "cta_label": "Add compliance evidence",
+      "specific": false,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [
+        "Generic CTA without explaining missing action"
+      ],
+      "valid": false
+    },
+    {
+      "scenario_key": "legionella_followup_required",
+      "truth_label": "Follow-up evidence required",
+      "cta_label": "Record Legionella risk assessment",
+      "specific": true,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [],
+      "valid": true
+    },
+    {
+      "scenario_key": "how_to_rent_declaration_recorded",
+      "truth_label": "Declaration recorded",
+      "cta_label": "View submission",
+      "specific": true,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [],
+      "valid": true
+    },
+    {
+      "scenario_key": "right_to_rent_evidence_recorded",
+      "truth_label": "Evidence recorded",
+      "cta_label": "View submission",
+      "specific": true,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [],
+      "valid": true
+    },
+    {
+      "scenario_key": "deposit_pi_evidence_recorded",
+      "truth_label": "Evidence recorded",
+      "cta_label": "View submission",
+      "specific": true,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [],
+      "valid": true
+    },
+    {
+      "scenario_key": "gas_platform_verification_pending",
+      "truth_label": "Platform verification pending",
+      "cta_label": "View evidence",
+      "specific": true,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [],
+      "valid": true
+    },
+    {
+      "scenario_key": "legionella_assessment_recorded_closed",
+      "truth_label": "Verified",
+      "cta_label": "View verified evidence",
+      "specific": true,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [],
+      "valid": true
+    },
+    {
+      "scenario_key": "supporting_upload_only",
+      "truth_label": "Supporting evidence uploaded",
+      "cta_label": "Record Legionella risk assessment",
+      "specific": true,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [],
+      "valid": true
+    },
+    {
+      "scenario_key": "fire_risk_multi_incomplete",
+      "truth_label": "Follow-up evidence required",
+      "cta_label": "Add compliance evidence",
+      "specific": false,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [
+        "Generic CTA without explaining missing action"
+      ],
+      "valid": false
+    },
+    {
+      "scenario_key": "legacy_no_truth_surface_followup",
+      "truth_label": "",
+      "cta_label": "Record Legionella risk assessment",
+      "specific": true,
+      "clickable": true,
+      "role_appropriate": true,
+      "state_aware": true,
+      "issues": [],
+      "valid": true
+    }
+  ],
+  "pass": false,
+  "invalid_count": 2
+}

@@ -197,7 +197,16 @@ def _ordered_unique_evidence_modes(modes: List[str]) -> List[str]:
     return out
 
 
-def _single_non_document_cta_label(mode: str) -> str:
+def _single_non_document_cta_label(mode: str, requirement: Optional[Dict[str, Any]] = None) -> str:
+    if requirement:
+        try:
+            from services.cer_actionability_presentation import resolve_actionability_primary_cta_label
+
+            specific = resolve_actionability_primary_cta_label(requirement)
+            if specific:
+                return specific
+        except Exception:
+            pass
     m = str(mode or "").strip().upper()
     if m == EVIDENCE_MODE_STRUCTURED_DECLARATION:
         return "Submit compliance declaration"
@@ -231,7 +240,16 @@ def _document_upload_primary_label(requirement: Dict[str, Any], meta: Dict[str, 
     return fallback
 
 
-def _guided_multi_mode_primary_label(policy: Dict[str, Any]) -> str:
+def _guided_multi_mode_primary_label(policy: Dict[str, Any], requirement: Optional[Dict[str, Any]] = None) -> str:
+    if requirement:
+        try:
+            from services.cer_actionability_presentation import resolve_actionability_primary_cta_label
+
+            specific = resolve_actionability_primary_cta_label(requirement)
+            if specific:
+                return specific
+        except Exception:
+            pass
     s = str(policy.get("guided_primary_cta_label") or "").strip()
     if s:
         return s
@@ -606,7 +624,7 @@ def resolve_take_action_envelope(
         only_mode = ordered_modes[0]
         ta_direct: Dict[str, Any] = {
             "primary": {
-                "label": _single_non_document_cta_label(only_mode),
+                "label": _single_non_document_cta_label(only_mode, requirement),
                 "route": None,
                 "kind": "direct_evidence_action",
                 "handler": "direct_evidence",
@@ -627,7 +645,7 @@ def resolve_take_action_envelope(
 
     # Multiple allowed evidence modes — single guided primary; document paths live in guided modal / Documents.
     if len(ordered_modes) >= 2 and pid and rid and non_doc_modes:
-        guided_label = _guided_multi_mode_primary_label(policy)
+        guided_label = _guided_multi_mode_primary_label(policy, requirement)
         ta_guided: Dict[str, Any] = {
             "primary": {
                 "label": guided_label,

@@ -1,0 +1,30 @@
+{
+  "programme": "PRELAUNCH-CER-FOLLOWUP-ACTION-FLOW-AUDIT-01",
+  "generated_at": "20260531T140246Z",
+  "safe_implementation_scope": "A + B + C + G (no new queues, no score rewrite)",
+  "fixes_by_category": {
+    "A_label_cta_wiring_only": [
+      "Follow-up-specific primary CTA when truth_presentation_stage=followup_required ('Complete follow-up' not 'Add compliance evidence')",
+      "Component-aware CTA when operational_incomplete ('Complete CO alarm evidence' from evidence_completeness.summary_label)",
+      "Fix modal existing-submission banner copy when queue_backed_review=false (follow-up/incomplete states)"
+    ],
+    "B_existing_modal_reuse": [
+      "Pre-fill legionella/lead structured declaration from primary CER when reopening for follow-up closure",
+      "Surface missing component checklist prominently in RequirementEvidenceGuidancePanel for smoke"
+    ],
+    "C_backend_transition_repair": [
+      "Ensure new CER submission with actions_required=no triggers external_assessment_structured_followup_status=False and truth stage transition",
+      "Fix derive_truth_presentation ordering: multi_evidence_components_incomplete should map to operational_incomplete not followup_required for Family C"
+    ],
+    "D_new_lightweight_followup_component": [],
+    "E_admin_org_review_queue_needed": [
+      "Org admin verify queue UX (Phase 2) \u2014 do not implement in follow-up hotfix"
+    ],
+    "F_score_convergence_repair": [],
+    "G_migration_backfill_needed": [
+      "Re-enrich legacy client caches missing truth_presentation_* to prevent View submission dead-end on follow-up rows"
+    ]
+  },
+  "dead_end_count": 3,
+  "do_not_implement_in_this_programme": true
+}

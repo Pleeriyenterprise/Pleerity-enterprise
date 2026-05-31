@@ -1,0 +1,41 @@
+{
+  "programme": "PRELAUNCH-CER-FOLLOWUP-ACTION-FLOW-AUDIT-01",
+  "generated_at": "20260531T140246Z",
+  "reuse_recommendations": [
+    {
+      "flow": "All non-document follow-up / declaration / multi-mode",
+      "reuse": "ComplianceEvidenceResolveModal (guided evidence)",
+      "endpoint": "POST /client/properties/{pid}/requirements/{rid}/compliance-evidence",
+      "avoid_new_flow": true
+    },
+    {
+      "flow": "Requirement context + submission view",
+      "reuse": "RequirementIntelligenceModal",
+      "note": "View-only \u2014 should not be primary path when action required"
+    },
+    {
+      "flow": "Operational guidance copy",
+      "reuse": "RequirementEvidenceGuidancePanel + build_requirement_guidance_v1",
+      "endpoint": "GET .../compliance-evidence/resolution"
+    },
+    {
+      "flow": "Document-primary (Family D)",
+      "reuse": "Documents upload + admin pending-verification queue",
+      "endpoint": "existing document upload + admin verify"
+    },
+    {
+      "flow": "Follow-up closure (legionella/lead)",
+      "reuse": "Same STRUCTURED_DECLARATION schema \u2014 update actions_required",
+      "avoid": "New follow-up microservice \u2014 extend modal copy + pre-fill existing record instead"
+    },
+    {
+      "flow": "Smoke multi-component",
+      "reuse": "INSPECTION_CHECKLIST mode in guided modal + evaluate_domestic_alarm_completeness"
+    },
+    {
+      "flow": "Org admin review (future)",
+      "reuse": "apply_verification_decision endpoint with role gate",
+      "status": "not wired to org admin UI \u2014 defer new queue until Phase 2"
+    }
+  ]
+}

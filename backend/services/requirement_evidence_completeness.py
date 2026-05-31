@@ -267,6 +267,7 @@ def project_evidence_completeness_for_client(full: Dict[str, Any]) -> Dict[str, 
         "is_complete": full.get("is_complete"),
         "summary_label": full.get("summary_label") or "",
         "missing_components": pub_missing,
+        "required_missing_count": len(pub_missing),
     }
 
 

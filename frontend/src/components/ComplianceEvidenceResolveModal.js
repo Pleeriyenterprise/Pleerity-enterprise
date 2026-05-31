@@ -19,6 +19,7 @@ import {
 import {
   dispatchSupportingUploadAttribution,
   requirementHasPersistedClientSubmission,
+  resolveExistingSubmissionBannerCopy,
   resolveStaticSupportingUploadDisclaimer,
 } from '../utils/clientPersistedSubmissionPresentation';
 import { supportingUploadSuccessToast } from '../utils/supportingUploadToastCopy';
@@ -125,6 +126,20 @@ export default function ComplianceEvidenceResolveModal({
     if (list.includes(im)) setSelectedMode(im);
   }, [open, loading, initialEvidenceMode, info]);
 
+  useEffect(() => {
+    if (!open || loading || !info?.reopen_context) return;
+    const ctx = info.reopen_context;
+    const mode = String(ctx.evidence_mode || '').trim().toUpperCase();
+    if (mode) setSelectedMode(mode);
+    if (ctx.declaration_statement) setDeclStatement(String(ctx.declaration_statement));
+    if (ctx.structured_fields_prefill && typeof ctx.structured_fields_prefill === 'object') {
+      setDeclFields(ctx.structured_fields_prefill);
+    }
+    if (ctx.checklist_answers_prefill && typeof ctx.checklist_answers_prefill === 'object') {
+      setInspAnswers(ctx.checklist_answers_prefill);
+    }
+  }, [open, loading, info]);
+
   const guidance = useMemo(
     () => getRequirementGuidance(info || requirement),
     [info, requirement],
@@ -175,7 +190,22 @@ export default function ComplianceEvidenceResolveModal({
   const isTenancyAgreement = canonicalReqCode === 'tenancy_agreement';
   const selectedMethod = (info?.guided_methods || []).find((x) => x.evidence_mode === selectedMode) || null;
   const selectedChecklistSchema = Array.isArray(selectedMethod?.checklist_schema) ? selectedMethod.checklist_schema : [];
-  const hasExistingAuthoritativeSubmission = requirementHasPersistedClientSubmission(requirement);
+  const mergedRequirement = useMemo(
+    () => ({ ...(requirement || {}), ...(info?.requirement || {}) }),
+    [requirement, info],
+  );
+  const hasExistingAuthoritativeSubmission = requirementHasPersistedClientSubmission(mergedRequirement);
+  const existingSubmissionBanner = useMemo(() => {
+    const fromApi = String(info?.existing_submission_banner || '').trim();
+    if (fromApi) return fromApi;
+    return resolveExistingSubmissionBannerCopy(mergedRequirement);
+  }, [info, mergedRequirement]);
+  const componentGuidanceLines = useMemo(() => {
+    const fromApi = Array.isArray(info?.component_guidance_lines) ? info.component_guidance_lines.filter(Boolean) : [];
+    if (fromApi.length > 0) return fromApi;
+    const fromGuidance = Array.isArray(guidance?.missing_actions) ? guidance.missing_actions.filter(Boolean) : [];
+    return fromGuidance;
+  }, [info, guidance]);
   const staticSupportingDisclaimer = resolveStaticSupportingUploadDisclaimer(requirement);
   const reviewBlocked = Boolean(
     guidance?.submitted_not_verified && !guidance?.rejected_requires_action && !guidance?.reviewer_requested_changes,
@@ -463,6 +493,7 @@ export default function ComplianceEvidenceResolveModal({
             onPrimaryClick={reviewBlocked ? undefined : handleGuidancePrimary}
             primaryDisabled={reviewBlocked || modes.length === 0}
             truthLines={staticSupportingDisclaimer}
+            componentGuidanceLines={componentGuidanceLines}
           />
         ) : !submitSummaryRecord && !loading ? (
           <div
@@ -477,12 +508,12 @@ export default function ComplianceEvidenceResolveModal({
             ))}
           </div>
         ) : null}
-        {hasExistingAuthoritativeSubmission ? (
+        {hasExistingAuthoritativeSubmission && existingSubmissionBanner ? (
           <p
             className="text-xs font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
             data-testid="existing-submission-on-file-banner"
           >
-            Submission already on file — awaiting review. Uploading supporting files here supplements that record only.
+            {existingSubmissionBanner}
           </p>
         ) : null}
         {clientEvidenceDisclosure ? (
