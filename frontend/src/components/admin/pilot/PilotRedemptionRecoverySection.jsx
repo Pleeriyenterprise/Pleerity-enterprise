@@ -218,27 +218,22 @@ export default function PilotRedemptionRecoverySection({
   const resetIncompleteApi = (id, body) => adminAPI.resetPilotRedemptionIncomplete(id, body);
 
   const createOverride = async (body) => {
-    try {
-      await stepUp.request(async (headers) => {
-        if (context === 'account' && clientId) {
-          return adminAPI.createPilotAccountEligibilityOverride(
-            clientId,
-            {
-              ...body,
-              invite_code: inviteCode || undefined,
-            },
-            { headers },
-          );
-        }
-        if (inviteCode) {
-          return adminAPI.createPilotEligibilityOverride(inviteCode, body, { headers });
-        }
-        throw new Error('No invite or account context for override');
-      });
-    } catch (err) {
-      if (err?.message === 'step_up_cancelled') return;
-      throw err;
-    }
+    await stepUp.request(async (headers) => {
+      if (context === 'account' && clientId) {
+        return adminAPI.createPilotAccountEligibilityOverride(
+          clientId,
+          {
+            ...body,
+            invite_code: inviteCode || undefined,
+          },
+          { headers },
+        );
+      }
+      if (inviteCode) {
+        return adminAPI.createPilotEligibilityOverride(inviteCode, body, { headers });
+      }
+      throw new Error('No invite or account context for override');
+    });
     toast.success('Override recorded — auditable in history below');
     await onReload();
   };
