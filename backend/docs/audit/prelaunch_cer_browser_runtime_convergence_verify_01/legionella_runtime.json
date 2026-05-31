@@ -1,0 +1,31 @@
+{
+  "programme": "PRELAUNCH-CER-BROWSER-RUNTIME-CONVERGENCE-VERIFY-01",
+  "verified_at": "20260531T145000Z",
+  "found_followup_state": false,
+  "pass": false,
+  "status": "NOT_EXERCISABLE_ON_STAGING",
+  "assessment_recorded_proxy": {
+    "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "truth_presentation_label": "Assessment recorded",
+    "truth_presentation_stage": "assessment_recorded",
+    "cta_label": "Record Legionella risk assessment",
+    "queue_backed_review": false
+  },
+  "fresh_legionella": {
+    "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+    "truth_presentation_stage": "action_required",
+    "cta_label": "Record Legionella risk assessment",
+    "reopen_context": null
+  },
+  "checks": {
+    "followup_label": false,
+    "update_legionella_cta": false,
+    "reopen_context_prefill": false,
+    "no_fake_review_banner": true
+  },
+  "notes": "Zero followup_required rows in landlord portfolio; follow-up reopen flow not exercisable without seeding actions_required=yes CER",
+  "screenshots": {
+    "legionella_modal": "screenshots/03_legionella_modal.png"
+  }
+}

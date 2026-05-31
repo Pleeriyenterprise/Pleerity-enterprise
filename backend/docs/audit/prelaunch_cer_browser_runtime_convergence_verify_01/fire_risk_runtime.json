@@ -1,0 +1,16 @@
+{
+  "programme": "PRELAUNCH-CER-BROWSER-RUNTIME-CONVERGENCE-VERIFY-01",
+  "verified_at": "20260531T145000Z",
+  "found_incomplete_scenario": false,
+  "pass": null,
+  "status": "NOT_EXERCISABLE_ON_STAGING",
+  "available_row": {
+    "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+    "requirement_type": "hmo_fire_risk_evidence",
+    "truth_presentation_stage": "verified",
+    "truth_presentation_label": "Verified"
+  },
+  "semantic_ordering_code_verified": true,
+  "notes": "No fire_risk multi_evidence_components_incomplete row on staging; code fix deployed (e217a300) but runtime scenario absent",
+  "screenshots": {}
+}

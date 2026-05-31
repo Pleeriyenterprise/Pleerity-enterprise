@@ -1,0 +1,26 @@
+{
+  "programme": "PRELAUNCH-CER-BROWSER-RUNTIME-CONVERGENCE-VERIFY-01",
+  "verified_at": "20260531T145000Z",
+  "items": [
+    {
+      "risk": "CTA_DRIFT",
+      "status": "partially_repaired",
+      "evidence": "fire_alarm operational_incomplete (6 rows) still shows Add compliance evidence despite missing smoke_alarm component; smoke_heat_alarms type absent on staging"
+    },
+    {
+      "risk": "MODAL_TRUTH_DRIFT",
+      "status": "repaired",
+      "evidence": "declaration/evidence_recorded rows use operational banner copy (Submission on file. You can update...); no queue-less awaiting review in modal API for tested rows"
+    },
+    {
+      "risk": "SEMANTIC_ORDERING_DRIFT",
+      "status": "repaired",
+      "evidence": "fire_alarm rows show operational_incomplete not followup_required; fire-risk incomplete scenario not present to re-test"
+    },
+    {
+      "risk": "ROLE_AUTHORITY_GAP",
+      "status": "unresolved",
+      "evidence": "org admin queue still not implemented — no regression observed"
+    }
+  ]
+}

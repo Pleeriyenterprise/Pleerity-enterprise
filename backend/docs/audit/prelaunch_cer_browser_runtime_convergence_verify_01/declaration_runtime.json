@@ -1,0 +1,533 @@
+{
+  "found": true,
+  "checks": {
+    "label_contains": [
+      "recorded"
+    ],
+    "forbidden_review_label": true,
+    "queue_backed_false": true
+  },
+  "pass": true,
+  "summary": {
+    "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "requirement_type": "occupation_contract",
+    "governance_family": "ORG_ADMIN_REVIEWED",
+    "semantic_state": "MISSING",
+    "truth_presentation_label": "Evidence recorded",
+    "truth_presentation_stage": "evidence_recorded",
+    "queue_backed_review": false,
+    "cta_label": "Record Wales occupation contract",
+    "evidence_completeness": null,
+    "guidance_next_step": "Evidence recorded",
+    "missing_actions": [],
+    "submitted_not_verified": false
+  },
+  "evidence_resolution": {
+    "status": 200,
+    "ok": true,
+    "body": {
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "modal_title": "Record Wales occupation contract",
+      "primary_client_cta": "Record Wales occupation contract",
+      "client_evidence_disclosure": "This records Wales occupation contract evidence for review on the platform. It does not represent legal verification or replace legal advice.",
+      "primary_resolution_workflow": "GUIDED_DECLARATION",
+      "allowed_evidence_modes": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "guided_methods": [
+        {
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "label": "Submit compliance declaration",
+          "description": "Use when compliance is confirmed by a structured signed declaration.",
+          "typical_confidence": "Medium or low depending on supporting detail.",
+          "verification_note": "Declarations are reviewed before they can satisfy compliance.",
+          "checklist_schema": [
+            {
+              "id": "contract_type",
+              "label": "Contract type",
+              "answer_type": "TEXT",
+              "required": false
+            },
+            {
+              "id": "occupation_contract_issued",
+              "label": "Occupation contract issued to contract-holder",
+              "answer_type": "YES_NO",
+              "required": true
+            },
+            {
+              "id": "issue_date",
+              "label": "Issue date",
+              "answer_type": "DATE",
+              "required": false
+            },
+            {
+              "id": "contract_holder_name",
+              "label": "Contract-holder name",
+              "answer_type": "TEXT",
+              "required": false
+            },
+            {
+              "id": "service_method",
+              "label": "How the occupation contract was provided",
+              "answer_type": "SELECT",
+              "required": false,
+              "choices": [
+                {
+                  "value": "email",
+                  "label": "Email"
+                },
+                {
+                  "value": "hand_delivery",
+                  "label": "Hand delivery"
+                },
+                {
+                  "value": "post",
+                  "label": "Post"
+                },
+                {
+                  "value": "tenant_portal",
+                  "label": "Tenant portal"
+                },
+                {
+                  "value": "other",
+                  "label": "Other"
+                }
+              ]
+            },
+            {
+              "id": "proof_reference",
+              "label": "Proof reference (optional)",
+              "answer_type": "TEXT",
+              "required": false
+            },
+            {
+              "id": "declaration_confirmed",
+              "label": "I confirm this Wales occupation contract record is accurate to the best of my knowledge",
+              "answer_type": "YES_NO",
+              "required": true
+            }
+          ],
+          "checklist_schema_fallback_used": false
+        },
+        {
+          "evidence_mode": "DOCUMENT_UPLOAD",
+          "label": "Upload evidence document",
+          "description": "Best for certificates, reports, licences, or official records.",
+          "typical_confidence": "High when verified.",
+          "verification_note": "Documents are reviewed before they can satisfy compliance.",
+          "checklist_schema": [],
+          "checklist_schema_fallback_used": true
+        }
+      ],
+      "supporting_upload_required": false,
+      "supporting_upload_recommended": true,
+      "allowed_upload_types": [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ],
+      "policy": {
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ],
+        "primary_resolution_workflow": "GUIDED_DECLARATION",
+        "allow_medium_non_document_satisfaction": true,
+        "allow_low_non_document_satisfaction": false,
+        "supporting_upload_required": false,
+        "supporting_upload_recommended": true,
+        "allowed_upload_types": [
+          "application/pdf",
+          "image/jpeg",
+          "image/png",
+          "image/webp"
+        ],
+        "checklist_schema_by_mode": {
+          "STRUCTURED_DECLARATION": [
+            {
+              "id": "contract_type",
+              "label": "Contract type",
+              "answer_type": "TEXT",
+              "required": false
+            },
+            {
+              "id": "occupation_contract_issued",
+              "label": "Occupation contract issued to contract-holder",
+              "answer_type": "YES_NO",
+              "required": true
+            },
+            {
+              "id": "issue_date",
+              "label": "Issue date",
+              "answer_type": "DATE",
+              "required": false
+            },
+            {
+              "id": "contract_holder_name",
+              "label": "Contract-holder name",
+              "answer_type": "TEXT",
+              "required": false
+            },
+            {
+              "id": "service_method",
+              "label": "How the occupation contract was provided",
+              "answer_type": "SELECT",
+              "required": false,
+              "choices": [
+                {
+                  "value": "email",
+                  "label": "Email"
+                },
+                {
+                  "value": "hand_delivery",
+                  "label": "Hand delivery"
+                },
+                {
+                  "value": "post",
+                  "label": "Post"
+                },
+                {
+                  "value": "tenant_portal",
+                  "label": "Tenant portal"
+                },
+                {
+                  "value": "other",
+                  "label": "Other"
+                }
+              ]
+            },
+            {
+              "id": "proof_reference",
+              "label": "Proof reference (optional)",
+              "answer_type": "TEXT",
+              "required": false
+            },
+            {
+              "id": "declaration_confirmed",
+              "label": "I confirm this Wales occupation contract record is accurate to the best of my knowledge",
+              "answer_type": "YES_NO",
+              "required": true
+            }
+          ]
+        },
+        "verification_required": false,
+        "guided_primary_cta_label": "Record Wales occupation contract",
+        "modal_title": "Record Wales occupation contract",
+        "client_evidence_disclosure": "This records Wales occupation contract evidence for review on the platform. It does not represent legal verification or replace legal advice.",
+        "guided_secondary_upload_label": "Upload occupation contract"
+      },
+      "operational_cognition": {
+        "cognition_version": "operational_cognition_v1",
+        "entity_type": "requirement",
+        "read_only": true,
+        "forbidden_mutations": [
+          "clear_arrears",
+          "clear_obligation",
+          "complete_work_order",
+          "infer_legal_compliance",
+          "mark_compliant",
+          "mint_workflow",
+          "override_evidence_review",
+          "resolve_workflow",
+          "suppress_degraded_state",
+          "suppress_operational_debt",
+          "verify_evidence"
+        ],
+        "primary_action": {
+          "key": "guided_evidence_resolution",
+          "label": "Record Wales occupation contract",
+          "url": null,
+          "hint": "",
+          "source": "requirement_action_resolver.take_action"
+        },
+        "continuation_state": {
+          "mode": "compliance",
+          "summary": "ACTION_REQUIRED"
+        },
+        "workflow_state": {
+          "lifecycle": "ACTION_REQUIRED",
+          "status": "PENDING",
+          "workflow_stage": "recorded_on_file"
+        },
+        "progression_state": {
+          "evidence_badge": "Not uploaded",
+          "step": "recorded_on_file",
+          "steps": [
+            {
+              "id": "choose_method",
+              "label": "Choose evidence method",
+              "status": "complete"
+            },
+            {
+              "id": "complete_form",
+              "label": "Complete structured record",
+              "status": "complete"
+            },
+            {
+              "id": "optional_supporting",
+              "label": "Attach supporting files (optional)",
+              "status": "complete"
+            },
+            {
+              "id": "submit",
+              "label": "Submit evidence for review",
+              "status": "current"
+            },
+            {
+              "id": "review",
+              "label": "Await verification",
+              "status": "pending"
+            },
+            {
+              "id": "compliant",
+              "label": "Requirement verified",
+              "status": "pending"
+            }
+          ]
+        },
+        "blockers": [],
+        "warnings": [],
+        "review_state": {
+          "client_lifecycle": "ACTION_REQUIRED",
+          "evidence_authority_state": "MISSING",
+          "stale_review": false
+        },
+        "escalation_state": {
+          "active": false,
+          "level": null,
+          "label": null
+        },
+        "degraded_state": {
+          "active": false
+        },
+        "stale_state": {
+          "active": false,
+          "label": null
+        },
+        "operational_truth_flags": {
+          "uploaded_not_verified": true,
+          "submitted_not_compliant": true,
+          "assigned_not_fixed": false,
+          "completed_not_compliant": false,
+          "acknowledged_not_resolved": false
+        },
+        "recommended_priority": "normal",
+        "user_safe_summary": "Evidence recorded",
+        "requirement_guidance_v1": {
+          "guidance_version": "requirement_guidance_v1",
+          "read_only": true,
+          "likely_intent": "operational_closure",
+          "recommended_authority_path": "STRUCTURED_DECLARATION",
+          "strongest_evidence_method": "STRUCTURED_DECLARATION",
+          "weaker_alternative_methods": [],
+          "recommended_next_step": "Evidence recorded",
+          "recommended_next_step_reason": "Recorded for compliance tracking; not platform certificate verification.",
+          "recommended_evidence_mode": null,
+          "recommended_outcome": "Verified evidence can satisfy the compliance obligation after review.",
+          "remaining_steps": [],
+          "current_progress_state": "recorded_on_file",
+          "workflow_stage": "recorded_on_file",
+          "missing_actions": [],
+          "uploaded_not_submitted": false,
+          "submitted_not_verified": false,
+          "rejected_requires_action": false,
+          "reviewer_requested_changes": false,
+          "authority_confidence_level": "medium_low",
+          "progression_steps": [
+            {
+              "id": "choose_method",
+              "label": "Choose evidence method",
+              "status": "complete"
+            },
+            {
+              "id": "complete_form",
+              "label": "Complete structured record",
+              "status": "complete"
+            },
+            {
+              "id": "optional_supporting",
+              "label": "Attach supporting files (optional)",
+              "status": "complete"
+            },
+            {
+              "id": "submit",
+              "label": "Submit evidence for review",
+              "status": "current"
+            },
+            {
+              "id": "review",
+              "label": "Await verification",
+              "status": "pending"
+            },
+            {
+              "id": "compliant",
+              "label": "Requirement verified",
+              "status": "pending"
+            }
+          ],
+          "operational_risk_flags": [],
+          "blocked_paths": [],
+          "weak_submission_risk": false,
+          "missing_required_step": null,
+          "review_state": {
+            "client_lifecycle": "ACTION_REQUIRED",
+            "evidence_authority_state": "MISSING",
+            "stale_review": false
+          },
+          "progression_state": "recorded_on_file"
+        },
+        "list_guidance": {
+          "recommended_action_label": "Record Wales occupation contract",
+          "recommended_action_url": null,
+          "recommended_action_key": "guided_evidence_resolution",
+          "continuation_summary": "ACTION_REQUIRED",
+          "escalation_badge": null,
+          "escalation_level": null,
+          "stale_warning": false,
+          "degraded_warning": false,
+          "blocker_summary": null,
+          "cognition_version": "operational_cognition_v1"
+        }
+      },
+      "requirement_guidance_v1": {
+        "guidance_version": "requirement_guidance_v1",
+        "read_only": true,
+        "likely_intent": "operational_closure",
+        "recommended_authority_path": "STRUCTURED_DECLARATION",
+        "strongest_evidence_method": "STRUCTURED_DECLARATION",
+        "weaker_alternative_methods": [],
+        "recommended_next_step": "Evidence recorded",
+        "recommended_next_step_reason": "Recorded for compliance tracking; not platform certificate verification.",
+        "recommended_evidence_mode": null,
+        "recommended_outcome": "Verified evidence can satisfy the compliance obligation after review.",
+        "remaining_steps": [],
+        "current_progress_state": "recorded_on_file",
+        "workflow_stage": "recorded_on_file",
+        "missing_actions": [],
+        "uploaded_not_submitted": false,
+        "submitted_not_verified": false,
+        "rejected_requires_action": false,
+        "reviewer_requested_changes": false,
+        "authority_confidence_level": "medium_low",
+        "progression_steps": [
+          {
+            "id": "choose_method",
+            "label": "Choose evidence method",
+            "status": "complete"
+          },
+          {
+            "id": "complete_form",
+            "label": "Complete structured record",
+            "status": "complete"
+          },
+          {
+            "id": "optional_supporting",
+            "label": "Attach supporting files (optional)",
+            "status": "complete"
+          },
+          {
+            "id": "submit",
+            "label": "Submit evidence for review",
+            "status": "current"
+          },
+          {
+            "id": "review",
+            "label": "Await verification",
+            "status": "pending"
+          },
+          {
+            "id": "compliant",
+            "label": "Requirement verified",
+            "status": "pending"
+          }
+        ],
+        "operational_risk_flags": [],
+        "blocked_paths": [],
+        "weak_submission_risk": false,
+        "missing_required_step": null,
+        "review_state": {
+          "client_lifecycle": "ACTION_REQUIRED",
+          "evidence_authority_state": "MISSING",
+          "stale_review": false
+        },
+        "progression_state": "recorded_on_file"
+      },
+      "component_guidance_lines": [],
+      "existing_submission_banner": "Submission on file. You can update your submission below.",
+      "reopen_context": null,
+      "requirement": {
+        "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-22T09:59:08.903389+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "predicted_document_type": null,
+          "match_outcome": null,
+          "match_confidence": null,
+          "mismatch_reason_code": null,
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "STRUCTURED_DECLARATION",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": "PENDING_REVIEW",
+          "primary_evidence_record_id": "cer_18e18faabbe44737b8fc20ee716f96a4",
+          "pending_non_document_evidence_count": 5,
+          "semantic_state": "MISSING"
+        },
+        "take_action": {
+          "primary": {
+            "label": "Record Wales occupation contract",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4"
+          },
+          "secondary": {
+            "label": "Upload occupation contract",
+            "route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=488269bb-1be7-47e7-a030-98accf6dffc4",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "truth_presentation_stage": "evidence_recorded",
+        "queue_backed_review": false,
+        "review_owner": null,
+        "evidence_completeness": null
+      }
+    }
+  },
+  "resolution_fields": {
+    "primary_client_cta": "Record Wales occupation contract",
+    "existing_submission_banner": "Submission on file. You can update your submission below.",
+    "component_guidance_lines": [],
+    "reopen_context_keys": []
+  }
+}

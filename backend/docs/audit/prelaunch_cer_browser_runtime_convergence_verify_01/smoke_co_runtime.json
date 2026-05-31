@@ -1,0 +1,35 @@
+{
+  "programme": "PRELAUNCH-CER-BROWSER-RUNTIME-CONVERGENCE-VERIFY-01",
+  "verified_at": "20260531T145000Z",
+  "scenario_note": "No smoke_heat_alarms on staging; verified proxy via 6 fire_alarm operational_incomplete rows",
+  "found": true,
+  "pass": false,
+  "representative_row": {
+    "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+    "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+    "requirement_type": "fire_alarm",
+    "truth_presentation_label": "Additional action still required",
+    "truth_presentation_stage": "operational_incomplete",
+    "queue_backed_review": false,
+    "cta_label": "Add compliance evidence",
+    "expected_cta": "Complete smoke alarm details",
+    "evidence_completeness": {
+      "is_complete": false,
+      "summary_label": "Incomplete: smoke alarm evidence missing",
+      "missing_components": [{"key": "smoke_alarm", "label": "Smoke alarm compliance"}]
+    },
+    "missing_actions": ["Smoke alarm compliance still required"],
+    "submitted_not_verified": false
+  },
+  "checks": {
+    "label_additional_action": true,
+    "no_awaiting_review_label": true,
+    "cta_specific": false,
+    "component_guidance_present": true,
+    "queue_backed_false": true
+  },
+  "verified_contradiction": "CTA_DRIFT — operational_incomplete + missing smoke_alarm component but generic Add compliance evidence CTA",
+  "screenshots": {
+    "requirements_page": "screenshots/01_requirements_page.png"
+  }
+}

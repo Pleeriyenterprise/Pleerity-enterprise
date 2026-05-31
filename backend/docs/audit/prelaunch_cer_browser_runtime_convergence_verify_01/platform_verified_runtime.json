@@ -1,0 +1,352 @@
+{
+  "found": true,
+  "checks": {
+    "label_contains": [
+      "platform verification",
+      "verification",
+      "upload",
+      "missing",
+      "action"
+    ]
+  },
+  "pass": true,
+  "summary": {
+    "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+    "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+    "requirement_type": "gas_safety",
+    "governance_family": "PLATFORM_VERIFIED",
+    "semantic_state": null,
+    "truth_presentation_label": "Action required",
+    "truth_presentation_stage": "action_required",
+    "queue_backed_review": false,
+    "cta_label": "Upload Gas Safety Certificate",
+    "evidence_completeness": null,
+    "guidance_next_step": "Upload valid evidence document",
+    "missing_actions": [],
+    "submitted_not_verified": false
+  },
+  "evidence_resolution": {
+    "status": 200,
+    "ok": true,
+    "body": {
+      "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "modal_title": "Add compliance evidence",
+      "primary_client_cta": "Add compliance evidence",
+      "client_evidence_disclosure": null,
+      "primary_resolution_workflow": "LEGACY_DOCUMENT_UPLOAD",
+      "allowed_evidence_modes": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "guided_methods": [
+        {
+          "evidence_mode": "DOCUMENT_UPLOAD",
+          "label": "Upload evidence document",
+          "description": "Best for certificates, reports, licences, or official records.",
+          "typical_confidence": "High when verified.",
+          "verification_note": "Documents are reviewed before they can satisfy compliance.",
+          "checklist_schema": [],
+          "checklist_schema_fallback_used": true
+        }
+      ],
+      "supporting_upload_required": false,
+      "supporting_upload_recommended": false,
+      "allowed_upload_types": [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ],
+      "policy": {
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ],
+        "primary_resolution_workflow": "LEGACY_DOCUMENT_UPLOAD",
+        "allow_medium_non_document_satisfaction": false,
+        "allow_low_non_document_satisfaction": false,
+        "supporting_upload_required": false,
+        "supporting_upload_recommended": false,
+        "allowed_upload_types": [
+          "application/pdf",
+          "image/jpeg",
+          "image/png",
+          "image/webp"
+        ],
+        "checklist_schema_by_mode": {},
+        "verification_required": false
+      },
+      "operational_cognition": {
+        "cognition_version": "operational_cognition_v1",
+        "entity_type": "requirement",
+        "read_only": true,
+        "forbidden_mutations": [
+          "clear_arrears",
+          "clear_obligation",
+          "complete_work_order",
+          "infer_legal_compliance",
+          "mark_compliant",
+          "mint_workflow",
+          "override_evidence_review",
+          "resolve_workflow",
+          "suppress_degraded_state",
+          "suppress_operational_debt",
+          "verify_evidence"
+        ],
+        "primary_action": {
+          "key": "upload_evidence",
+          "label": "Upload valid evidence document",
+          "hint": "This requirement is satisfied by an authoritative document upload on the Documents page.",
+          "url": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=bb32fac0-c219-4401-8739-13ded9511721",
+          "source": "requirement_guidance_v1"
+        },
+        "continuation_state": {
+          "mode": "compliance",
+          "summary": "ACTION_REQUIRED"
+        },
+        "workflow_state": {
+          "lifecycle": "ACTION_REQUIRED",
+          "status": "PENDING",
+          "workflow_stage": "no_evidence"
+        },
+        "progression_state": {
+          "evidence_badge": "Not uploaded",
+          "step": "no_evidence",
+          "steps": [
+            {
+              "id": "choose_method",
+              "label": "Choose evidence method",
+              "status": "current"
+            },
+            {
+              "id": "complete_form",
+              "label": "Complete structured record",
+              "status": "pending"
+            },
+            {
+              "id": "optional_supporting",
+              "label": "Attach supporting files (optional)",
+              "status": "pending"
+            },
+            {
+              "id": "submit",
+              "label": "Submit evidence for review",
+              "status": "pending"
+            },
+            {
+              "id": "review",
+              "label": "Await verification",
+              "status": "pending"
+            },
+            {
+              "id": "compliant",
+              "label": "Requirement verified",
+              "status": "pending"
+            }
+          ]
+        },
+        "blockers": [],
+        "warnings": [],
+        "review_state": {
+          "client_lifecycle": "ACTION_REQUIRED",
+          "evidence_authority_state": null,
+          "stale_review": false
+        },
+        "escalation_state": {
+          "active": false,
+          "level": null,
+          "label": null
+        },
+        "degraded_state": {
+          "active": false
+        },
+        "stale_state": {
+          "active": false,
+          "label": null
+        },
+        "operational_truth_flags": {
+          "uploaded_not_verified": true,
+          "submitted_not_compliant": true,
+          "assigned_not_fixed": false,
+          "completed_not_compliant": false,
+          "acknowledged_not_resolved": false
+        },
+        "recommended_priority": "normal",
+        "user_safe_summary": "Upload valid evidence document",
+        "requirement_guidance_v1": {
+          "guidance_version": "requirement_guidance_v1",
+          "read_only": true,
+          "likely_intent": "upload_document",
+          "recommended_authority_path": "DOCUMENT_UPLOAD",
+          "strongest_evidence_method": null,
+          "weaker_alternative_methods": [],
+          "recommended_next_step": "Upload valid evidence document",
+          "recommended_next_step_reason": "This requirement is satisfied by an authoritative document upload on the Documents page.",
+          "recommended_evidence_mode": null,
+          "recommended_outcome": "Verified evidence can satisfy the compliance obligation after review.",
+          "remaining_steps": [],
+          "current_progress_state": "no_evidence",
+          "workflow_stage": "no_evidence",
+          "missing_actions": [],
+          "uploaded_not_submitted": false,
+          "submitted_not_verified": false,
+          "rejected_requires_action": false,
+          "reviewer_requested_changes": false,
+          "authority_confidence_level": "unknown",
+          "progression_steps": [
+            {
+              "id": "choose_method",
+              "label": "Choose evidence method",
+              "status": "current"
+            },
+            {
+              "id": "complete_form",
+              "label": "Complete structured record",
+              "status": "pending"
+            },
+            {
+              "id": "optional_supporting",
+              "label": "Attach supporting files (optional)",
+              "status": "pending"
+            },
+            {
+              "id": "submit",
+              "label": "Submit evidence for review",
+              "status": "pending"
+            },
+            {
+              "id": "review",
+              "label": "Await verification",
+              "status": "pending"
+            },
+            {
+              "id": "compliant",
+              "label": "Requirement verified",
+              "status": "pending"
+            }
+          ],
+          "operational_risk_flags": [],
+          "blocked_paths": [],
+          "weak_submission_risk": false,
+          "missing_required_step": null,
+          "review_state": {
+            "client_lifecycle": "ACTION_REQUIRED",
+            "evidence_authority_state": null,
+            "stale_review": false
+          },
+          "progression_state": "no_evidence"
+        },
+        "list_guidance": {
+          "recommended_action_label": "Upload valid evidence document",
+          "recommended_action_url": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=bb32fac0-c219-4401-8739-13ded9511721",
+          "recommended_action_key": "upload_evidence",
+          "continuation_summary": "ACTION_REQUIRED",
+          "escalation_badge": null,
+          "escalation_level": null,
+          "stale_warning": false,
+          "degraded_warning": false,
+          "blocker_summary": null,
+          "cognition_version": "operational_cognition_v1"
+        }
+      },
+      "requirement_guidance_v1": {
+        "guidance_version": "requirement_guidance_v1",
+        "read_only": true,
+        "likely_intent": "upload_document",
+        "recommended_authority_path": "DOCUMENT_UPLOAD",
+        "strongest_evidence_method": null,
+        "weaker_alternative_methods": [],
+        "recommended_next_step": "Upload valid evidence document",
+        "recommended_next_step_reason": "This requirement is satisfied by an authoritative document upload on the Documents page.",
+        "recommended_evidence_mode": null,
+        "recommended_outcome": "Verified evidence can satisfy the compliance obligation after review.",
+        "remaining_steps": [],
+        "current_progress_state": "no_evidence",
+        "workflow_stage": "no_evidence",
+        "missing_actions": [],
+        "uploaded_not_submitted": false,
+        "submitted_not_verified": false,
+        "rejected_requires_action": false,
+        "reviewer_requested_changes": false,
+        "authority_confidence_level": "unknown",
+        "progression_steps": [
+          {
+            "id": "choose_method",
+            "label": "Choose evidence method",
+            "status": "current"
+          },
+          {
+            "id": "complete_form",
+            "label": "Complete structured record",
+            "status": "pending"
+          },
+          {
+            "id": "optional_supporting",
+            "label": "Attach supporting files (optional)",
+            "status": "pending"
+          },
+          {
+            "id": "submit",
+            "label": "Submit evidence for review",
+            "status": "pending"
+          },
+          {
+            "id": "review",
+            "label": "Await verification",
+            "status": "pending"
+          },
+          {
+            "id": "compliant",
+            "label": "Requirement verified",
+            "status": "pending"
+          }
+        ],
+        "operational_risk_flags": [],
+        "blocked_paths": [],
+        "weak_submission_risk": false,
+        "missing_required_step": null,
+        "review_state": {
+          "client_lifecycle": "ACTION_REQUIRED",
+          "evidence_authority_state": null,
+          "stale_review": false
+        },
+        "progression_state": "no_evidence"
+      },
+      "component_guidance_lines": [],
+      "existing_submission_banner": null,
+      "reopen_context": null,
+      "requirement": {
+        "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "evidence_authority": null,
+        "take_action": {
+          "primary": {
+            "label": "Upload Gas Safety Certificate",
+            "route": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=bb32fac0-c219-4401-8739-13ded9511721",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "truth_presentation_stage": "action_required",
+        "queue_backed_review": false,
+        "review_owner": null,
+        "evidence_completeness": null
+      }
+    }
+  },
+  "resolution_fields": {
+    "primary_client_cta": "Add compliance evidence",
+    "existing_submission_banner": null,
+    "component_guidance_lines": [],
+    "reopen_context_keys": []
+  },
+  "platform_verified_family": true
+}

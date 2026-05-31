@@ -1,0 +1,43 @@
+{
+  "programme": "PRELAUNCH-CER-BROWSER-RUNTIME-CONVERGENCE-VERIFY-01",
+  "verified_at": "20260531T144257Z",
+  "expected_commit_prefix": "e217a30",
+  "api_version": {
+    "commit_sha": "e217a30012fde272eaf9641e26f9aec829875adc",
+    "environment": "production"
+  },
+  "commit_sha": "e217a30012fde272eaf9641e26f9aec829875adc",
+  "commit_matches_expected": true,
+  "bundle_path": "/static/js/main.b360eba0.js",
+  "bundle_marker_hits": {
+    "backfillGovernanceTruthSurface": false,
+    "resolveExistingSubmissionBannerCopy": false,
+    "component-guidance-lines": true,
+    "componentGuidanceLines": true,
+    "reopen_context": true,
+    "truth_presentation_label": true,
+    "Update Legionella assessment": false,
+    "Complete CO alarm details": false,
+    "Add missing fire-risk actions": false,
+    "existing-submission-on-file-banner": true
+  },
+  "bundle_markers_found": 5,
+  "deploy_ready": true,
+  "enriched_requirement_sample": {
+    "requirement_id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+    "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+    "requirement_type": "portable_appliance_test",
+    "governance_family": "PLATFORM_VERIFIED",
+    "semantic_state": null,
+    "truth_presentation_label": "Action required",
+    "truth_presentation_stage": "action_required",
+    "queue_backed_review": false,
+    "cta_label": "Upload document",
+    "evidence_completeness": null,
+    "guidance_next_step": "Upload valid evidence document",
+    "missing_actions": [],
+    "submitted_not_verified": false
+  },
+  "requirements_with_governance_fields": 49,
+  "requirements_with_truth_label": 49
+}

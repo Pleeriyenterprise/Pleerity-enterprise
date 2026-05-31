@@ -1,0 +1,147 @@
+{
+  "programme": "PRELAUNCH-CER-BROWSER-RUNTIME-CONVERGENCE-VERIFY-01",
+  "verified_at": "20260531T144257Z",
+  "browser": {
+    "today_awaiting_review": 1,
+    "command_center_awaiting_review": 0,
+    "dashboard_awaiting_review": 0
+  },
+  "api_guidance_samples": [
+    {
+      "requirement_id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "requirement_type": "portable_appliance_test",
+      "governance_family": "PLATFORM_VERIFIED",
+      "semantic_state": null,
+      "truth_presentation_label": "Action required",
+      "truth_presentation_stage": "action_required",
+      "queue_backed_review": false,
+      "cta_label": "Upload document",
+      "evidence_completeness": null,
+      "guidance_next_step": "Upload valid evidence document",
+      "missing_actions": [],
+      "submitted_not_verified": false
+    },
+    {
+      "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "requirement_type": "gas_safety",
+      "governance_family": "PLATFORM_VERIFIED",
+      "semantic_state": null,
+      "truth_presentation_label": "Action required",
+      "truth_presentation_stage": "action_required",
+      "queue_backed_review": false,
+      "cta_label": "Upload Gas Safety Certificate",
+      "evidence_completeness": null,
+      "guidance_next_step": "Upload valid evidence document",
+      "missing_actions": [],
+      "submitted_not_verified": false
+    },
+    {
+      "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "requirement_type": "eicr",
+      "governance_family": "PLATFORM_VERIFIED",
+      "semantic_state": null,
+      "truth_presentation_label": "Action required",
+      "truth_presentation_stage": "action_required",
+      "queue_backed_review": false,
+      "cta_label": "Upload valid EICR certificate",
+      "evidence_completeness": null,
+      "guidance_next_step": "Upload valid evidence document",
+      "missing_actions": [],
+      "submitted_not_verified": false
+    },
+    {
+      "requirement_id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "requirement_type": "epc",
+      "governance_family": "PLATFORM_VERIFIED",
+      "semantic_state": null,
+      "truth_presentation_label": "Action required",
+      "truth_presentation_stage": "action_required",
+      "queue_backed_review": false,
+      "cta_label": "Upload valid EPC document",
+      "evidence_completeness": null,
+      "guidance_next_step": "Upload valid evidence document",
+      "missing_actions": [],
+      "submitted_not_verified": false
+    },
+    {
+      "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "requirement_type": "legionella",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": null,
+      "truth_presentation_label": "Action required",
+      "truth_presentation_stage": "action_required",
+      "queue_backed_review": false,
+      "cta_label": "Record Legionella risk assessment",
+      "evidence_completeness": null,
+      "guidance_next_step": "Complete compliance declaration",
+      "missing_actions": [
+        "Complete compliance declaration"
+      ],
+      "submitted_not_verified": false
+    },
+    {
+      "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "requirement_type": "fire_alarm",
+      "governance_family": "SELF_CERTIFIED",
+      "semantic_state": null,
+      "truth_presentation_label": "Additional action still required",
+      "truth_presentation_stage": "operational_incomplete",
+      "queue_backed_review": false,
+      "cta_label": "Add compliance evidence",
+      "evidence_completeness": {
+        "evaluated": true,
+        "is_complete": false,
+        "summary_label": "Incomplete: smoke alarm evidence missing",
+        "missing_components": [
+          {
+            "key": "smoke_alarm",
+            "label": "Smoke alarm compliance"
+          }
+        ],
+        "required_missing_count": 1
+      },
+      "guidance_next_step": "Complete remaining compliance steps",
+      "missing_actions": [
+        "Smoke alarm compliance still required"
+      ],
+      "submitted_not_verified": false
+    },
+    {
+      "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_type": "eicr",
+      "governance_family": "PLATFORM_VERIFIED",
+      "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+      "truth_presentation_label": "Verified",
+      "truth_presentation_stage": "verified",
+      "queue_backed_review": false,
+      "cta_label": "Upload valid EICR certificate",
+      "evidence_completeness": null,
+      "guidance_next_step": "No further evidence required",
+      "missing_actions": [],
+      "submitted_not_verified": false
+    },
+    {
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_type": "legionella",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": "MISSING",
+      "truth_presentation_label": "Assessment recorded",
+      "truth_presentation_stage": "assessment_recorded",
+      "queue_backed_review": false,
+      "cta_label": "Record Legionella risk assessment",
+      "evidence_completeness": null,
+      "guidance_next_step": "Assessment on file \u2014 check follow-up items",
+      "missing_actions": [],
+      "submitted_not_verified": false
+    }
+  ],
+  "pass": true
+}

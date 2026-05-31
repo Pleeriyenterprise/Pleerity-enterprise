@@ -1,0 +1,27 @@
+{
+  "programme": "PRELAUNCH-CER-BROWSER-RUNTIME-CONVERGENCE-VERIFY-01",
+  "generated_at": "20260531T145000Z",
+  "classification": "PARTIAL",
+  "secondary_classifications": ["CTA_DRIFT"],
+  "deploy_ready": true,
+  "browser_status": "COMPLETE",
+  "verdict_summary": {
+    "deploy_continuity": "PASS — commit e217a300, 49/49 governance fields",
+    "badge_dedupe": "PASS",
+    "declaration_recorded": "PASS",
+    "platform_verified_family": "PASS — PLATFORM_VERIFIED on gas/epc/eicr",
+    "cognition_surfaces": "PASS with minor Today awaiting review count=1",
+    "score_alignment": "PASS",
+    "operational_incomplete_label": "PASS — Additional action still required on fire_alarm rows",
+    "cta_specificity": "FAIL — fire_alarm operational_incomplete still generic CTA",
+    "legionella_followup_flow": "NOT_EXERCISABLE — zero followup_required rows",
+    "fire_risk_incomplete_flow": "NOT_EXERCISABLE — no incomplete fire-risk rows"
+  },
+  "verified_runtime_contradiction": {
+    "type": "CTA_DRIFT",
+    "requirement_type": "fire_alarm",
+    "truth_stage": "operational_incomplete",
+    "observed_cta": "Add compliance evidence",
+    "expected_cta": "Complete smoke alarm details"
+  }
+}

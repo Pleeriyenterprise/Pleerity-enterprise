@@ -1,0 +1,22 @@
+{
+  "programme": "PRELAUNCH-CER-BROWSER-RUNTIME-CONVERGENCE-VERIFY-01",
+  "verified_at": "20260531T145000Z",
+  "landlord": "nancy@yopmail.com",
+  "requirements_total": 49,
+  "truth_stage_counts": {
+    "followup_required": 0,
+    "operational_incomplete": 6,
+    "platform_verification_pending": 0,
+    "declaration_recorded": 0,
+    "assessment_recorded": 1,
+    "evidence_recorded": 3,
+    "verified": 12,
+    "action_required": 24
+  },
+  "notes": {
+    "legionella_followup": "No followup_required rows — legionella on Willow Grove is assessment_recorded; fresh legionella on other property is action_required",
+    "smoke_co_incomplete": "No smoke_heat_alarms rows; 6 fire_alarm rows use operational_incomplete + smoke alarm completeness",
+    "fire_risk_incomplete": "No multi_evidence_components_incomplete fire_risk rows; hmo_fire_risk_evidence verified",
+    "platform_pending": "No platform_verification_pending rows; gas/epc missing docs show action_required"
+  }
+}
