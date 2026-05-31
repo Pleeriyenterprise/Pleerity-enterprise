@@ -1,0 +1,25 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T193617Z",
+  "api_diagnostics": {
+    "missing_required_documents": 33,
+    "requirements_unresolved": 57,
+    "satisfied_by_declaration": 1,
+    "awaiting_org_platform_review": 3,
+    "follow_up_required": 0,
+    "satisfied_without_uploaded_document": 1,
+    "missing_documents_legacy": 33
+  },
+  "recomputed_from_client_api": {
+    "missing_required_documents": 25,
+    "requirements_unresolved": 44,
+    "satisfied_by_declaration": 1,
+    "awaiting_org_platform_review": 3,
+    "follow_up_required": 0,
+    "satisfied_without_uploaded_document": 1
+  },
+  "has_split_fields": true,
+  "legacy_missing_documents_alias_ok": true,
+  "false_ten_missing_documents": false,
+  "pass": true
+}

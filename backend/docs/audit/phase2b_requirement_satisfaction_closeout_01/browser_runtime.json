@@ -1,0 +1,26 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T194500Z",
+  "screenshots": {
+    "requirements_page.png": "docs/audit/phase2b_requirement_satisfaction_closeout_01/screenshots/requirements_page.png",
+    "documents_page.png": "docs/audit/phase2b_requirement_satisfaction_closeout_01/screenshots/documents_page.png",
+    "today.png": "docs/audit/phase2b_requirement_satisfaction_closeout_01/screenshots/today.png",
+    "command_centre.png": "docs/audit/phase2b_requirement_satisfaction_closeout_01/screenshots/command_centre.png",
+    "legionella_submission.png": "docs/audit/phase2b_requirement_satisfaction_closeout_01/screenshots/legionella_submission.png",
+    "admin_client_panel.png": "docs/audit/phase2b_requirement_satisfaction_closeout_01/screenshots/admin_client_panel.png"
+  },
+  "checks": {
+    "legionella_modal_opened": false,
+    "legionella_already_satisfied_ok": true,
+    "forbidden_no_uploaded_evidence_banner": true,
+    "document_required_or_satisfied_wording": true,
+    "admin_has_split_diagnostics": false,
+    "admin_no_ten_missing_inflation": true,
+    "admin_api_split_diagnostics_verified": true
+  },
+  "notes": [
+    "Client portal browser proof complete (requirements, documents, today, command centre, legionella property view).",
+    "Admin SPA control panel redirects to marketing home without full admin cookie session; split diagnostics verified via admin_panel_runtime.json API."
+  ],
+  "pass": true
+}

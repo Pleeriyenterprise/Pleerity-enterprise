@@ -1,0 +1,55 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T193317Z",
+  "target": {
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a"
+  },
+  "before": {
+    "requirement_satisfied": true,
+    "missing_required_document": false,
+    "document_upload_required": false,
+    "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+    "truth_presentation_stage": "assessment_recorded",
+    "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+    "semantic_state": "MISSING",
+    "primary_evidence_record_id": null
+  },
+  "after": {
+    "requirement_satisfied": true,
+    "missing_required_document": false,
+    "document_upload_required": false,
+    "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+    "truth_presentation_stage": "assessment_recorded",
+    "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+    "semantic_state": "MISSING",
+    "primary_evidence_record_id": null,
+    "evidence_authority_state": "MISSING",
+    "requirement_attention_eligible": false,
+    "cer_count": 12
+  },
+  "submit": {
+    "status": 200,
+    "body_excerpt": "{\"ok\":true,\"workflow_complete\":true,\"authority_synced\":true,\"recalc_enqueued\":true,\"message\":\"Requirement recorded and compliance status is updating.\",\"requirement_id\":\"537da91b-d80c-49b2-bc92-f32514b00a2a\",\"property_id\":\"d35a58ae-3c81-491c-9694-1d021dd3b8ad\",\"requirement\":{\"requirement_id\":\"537da91b-d80c-49b2-bc92-f32514b00a2a\",\"client_id\":\"6fd5ac4c-3fd4-4112-ade7-156977deb49f\",\"property_id\":\"d35"
+  },
+  "attention": {
+    "today_before": false,
+    "today_after": false,
+    "cc_before": false,
+    "cc_after": false
+  },
+  "checks": {
+    "cer_persisted": true,
+    "requirement_satisfied_true": true,
+    "missing_required_document_false": true,
+    "document_upload_not_required": true,
+    "governance_platform_oversight_optional": true,
+    "lifecycle_not_action_required": true,
+    "truth_declaration_or_assessment": true,
+    "requirement_satisfied_or_assessment_on_file": true,
+    "today_no_stale_task": true,
+    "cc_no_stale_task": true,
+    "authority_or_semantic_updated": true
+  },
+  "pass": true
+}

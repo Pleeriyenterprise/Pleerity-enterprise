@@ -1,0 +1,50 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T193547Z",
+  "action_required_truth_count": 47,
+  "action_required_legacy_lifecycle_count": 44,
+  "false_action_on_satisfied": [],
+  "unresolved_sample": [
+    {
+      "type": "portable_appliance_test",
+      "id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+      "reason": "renewal_due"
+    },
+    {
+      "type": "gas_safety",
+      "id": "bb32fac0-c219-4401-8739-13ded9511721",
+      "reason": "renewal_due"
+    },
+    {
+      "type": "eicr",
+      "id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+      "reason": "action_required"
+    },
+    {
+      "type": "epc",
+      "id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+      "reason": "action_required"
+    },
+    {
+      "type": "legionella",
+      "id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+      "reason": "renewal_due"
+    },
+    {
+      "type": "fire_alarm",
+      "id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+      "reason": "renewal_due"
+    },
+    {
+      "type": "eicr",
+      "id": "216ed196-883b-42a2-9011-39918534d32d",
+      "reason": "renewal_due"
+    },
+    {
+      "type": "hmo_license",
+      "id": "71e89158-5de0-422a-970c-5a2163fcc823",
+      "reason": "platform_verification_pending"
+    }
+  ],
+  "pass": true
+}

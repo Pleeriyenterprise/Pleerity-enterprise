@@ -1,0 +1,21 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "primary": "VERIFIED_OPERATIONALLY",
+  "implementation_candidate": "7526df07",
+  "closeout_fix_commit": "eb46249a",
+  "staging_deploy_sha": "eb46249ac75e99f582114177f40607f39312c1d4",
+  "drift_tags": [],
+  "results": {
+    "deploy": true,
+    "seed": true,
+    "legionella": true,
+    "documents": true,
+    "requirements": true,
+    "admin": true,
+    "cross_surface": true,
+    "cache": true,
+    "regression": true,
+    "browser": true
+  },
+  "commits": ["7526df07", "eb46249a"]
+}

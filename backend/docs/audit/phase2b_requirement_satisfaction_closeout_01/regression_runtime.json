@@ -1,0 +1,40 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T193906Z",
+  "checks": [
+    {
+      "type": "gas_safety",
+      "present": true,
+      "truly_missing": true,
+      "correctly_flagged": true,
+      "pass": true
+    },
+    {
+      "type": "epc",
+      "present": true,
+      "truly_missing": true,
+      "correctly_flagged": true,
+      "pass": true
+    },
+    {
+      "type": "eicr",
+      "present": true,
+      "truly_missing": true,
+      "correctly_flagged": true,
+      "pass": true
+    },
+    {
+      "type": "hmo_license",
+      "present": true,
+      "truly_missing": true,
+      "correctly_flagged": true,
+      "pass": true
+    },
+    {
+      "type": "property_licence",
+      "present": false,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

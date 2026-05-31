@@ -1,0 +1,197 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T193312Z",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "properties_count": 7,
+  "property_ids": [
+    "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+    "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+    "0a6f0874-19b4-4344-b2af-f423585a5b94",
+    "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+    "9786b4ea-3523-4665-9849-db93745d457d",
+    "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+    "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+  ],
+  "visible_requirements": 49,
+  "buckets": {
+    "verified_documents": [
+      {
+        "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_type": "gas_safety",
+        "truth_presentation_stage": "verified",
+        "requirement_satisfied": true,
+        "missing_required_document": false,
+        "document_upload_required": true
+      }
+    ],
+    "declarations_satisfied": [
+      {
+        "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_type": "legionella",
+        "truth_presentation_stage": "assessment_recorded",
+        "requirement_satisfied": true,
+        "missing_required_document": false,
+        "document_upload_required": false
+      }
+    ],
+    "self_cert": [
+      {
+        "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "fire_alarm",
+        "truth_presentation_stage": "operational_incomplete",
+        "requirement_satisfied": false,
+        "missing_required_document": false,
+        "document_upload_required": false
+      },
+      {
+        "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_type": "fire_alarm",
+        "truth_presentation_stage": "verified",
+        "requirement_satisfied": false,
+        "missing_required_document": false,
+        "document_upload_required": false
+      },
+      {
+        "requirement_id": "ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "requirement_type": "fire_alarm",
+        "truth_presentation_stage": "operational_incomplete",
+        "requirement_satisfied": false,
+        "missing_required_document": false,
+        "document_upload_required": false
+      },
+      {
+        "requirement_id": "edf564a2-ea75-4919-88f5-85aab93b42a5",
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "requirement_type": "fire_alarm",
+        "truth_presentation_stage": "operational_incomplete",
+        "requirement_satisfied": false,
+        "missing_required_document": false,
+        "document_upload_required": false
+      },
+      {
+        "requirement_id": "89308629-f183-44e4-b07d-71c564a14eca",
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "requirement_type": "fire_alarm",
+        "truth_presentation_stage": "operational_incomplete",
+        "requirement_satisfied": false,
+        "missing_required_document": false,
+        "document_upload_required": false
+      }
+    ],
+    "missing_required_documents": [
+      {
+        "requirement_id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "portable_appliance_test",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      },
+      {
+        "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "gas_safety",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      },
+      {
+        "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "eicr",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      },
+      {
+        "requirement_id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "epc",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      },
+      {
+        "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_type": "eicr",
+        "truth_presentation_stage": "verified",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      }
+    ],
+    "follow_up": [],
+    "unresolved": [
+      {
+        "requirement_id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "portable_appliance_test",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      },
+      {
+        "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "gas_safety",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      },
+      {
+        "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "eicr",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      },
+      {
+        "requirement_id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "epc",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": true,
+        "document_upload_required": true
+      },
+      {
+        "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "requirement_type": "legionella",
+        "truth_presentation_stage": "action_required",
+        "requirement_satisfied": false,
+        "missing_required_document": false,
+        "document_upload_required": false
+      }
+    ]
+  },
+  "fixtures": {
+    "gas_safety_verified": "bb32fac0-c219-4401-8739-13ded9511721",
+    "epc_verified": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+    "legionella": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+    "smoke_heat_alarms": null
+  },
+  "checks": {
+    "properties_gte_2": true,
+    "has_satisfaction_fields": true,
+    "verified_document_example": true,
+    "declaration_example": true,
+    "missing_required_document_example": true,
+    "follow_up_capable_or_present": true
+  },
+  "pass": true
+}

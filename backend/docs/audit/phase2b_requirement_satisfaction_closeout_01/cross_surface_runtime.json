@@ -1,0 +1,59 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T193757Z",
+  "admin_missing_required_documents": 33,
+  "admin_requirements_unresolved": 57,
+  "dashboard_loaded": true,
+  "samples": [
+    {
+      "requirement_type": "legionella",
+      "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+      "requirement_satisfied": false,
+      "missing_required_document": false,
+      "requirement_attention_eligible": true,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "today_task": false,
+      "command_centre_urgent": false,
+      "operational_cognition_present": true
+    },
+    {
+      "requirement_type": "gas_safety",
+      "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+      "requirement_satisfied": false,
+      "missing_required_document": true,
+      "requirement_attention_eligible": true,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "today_task": false,
+      "command_centre_urgent": false,
+      "operational_cognition_present": true
+    },
+    {
+      "requirement_type": "epc",
+      "requirement_id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+      "requirement_satisfied": false,
+      "missing_required_document": true,
+      "requirement_attention_eligible": true,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "today_task": false,
+      "command_centre_urgent": false,
+      "operational_cognition_present": true
+    },
+    {
+      "requirement_type": "eicr",
+      "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+      "requirement_satisfied": false,
+      "missing_required_document": true,
+      "requirement_attention_eligible": true,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "today_task": false,
+      "command_centre_urgent": false,
+      "operational_cognition_present": true
+    }
+  ],
+  "contradictions": [],
+  "pass": true
+}

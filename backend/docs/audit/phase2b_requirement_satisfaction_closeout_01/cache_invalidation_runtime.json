@@ -1,0 +1,13 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T193906Z",
+  "checks": {
+    "requirement_satisfied_changed": false,
+    "lifecycle_changed": false,
+    "truth_stage_changed": false,
+    "requirements_row_matches_after": true,
+    "today_stale_absent": true,
+    "cc_stale_absent": true
+  },
+  "pass": true
+}

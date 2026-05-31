@@ -1,0 +1,48 @@
+{
+  "programme": "PHASE-2B-REQUIREMENT-SATISFACTION-CLOSEOUT-01",
+  "verified_at": "20260531T193258Z",
+  "expected_commit_prefix": "7526df07",
+  "api_version": {
+    "commit_sha": "eb46249ac75e99f582114177f40607f39312c1d4",
+    "environment": "production"
+  },
+  "commit_matches": true,
+  "accepted_commit_prefixes": [
+    "7526df07",
+    "eb46249a"
+  ],
+  "backend_markers_in_repo": [
+    "requirement_satisfaction_service",
+    "document_upload_required",
+    "distinguish_document_gap_from_requirement_gap",
+    "summarize_client_compliance_diagnostics",
+    "attach_satisfaction_fields",
+    "reconcile_client_lifecycle_with_satisfaction"
+  ],
+  "backend_module_probe": {
+    "document_upload_required": true,
+    "distinguish_document_gap_from_requirement_gap": true,
+    "summarize_client_compliance_diagnostics": true,
+    "attach_satisfaction_fields": true,
+    "reconcile_client_lifecycle_with_satisfaction": true
+  },
+  "api_satisfaction_fields": true,
+  "sample_fields": {
+    "requirement_satisfied": false,
+    "missing_required_document": true,
+    "document_upload_required": true,
+    "satisfaction_source": "unresolved",
+    "requirement_attention_eligible": true
+  },
+  "bundle_path": "/static/js/main.7bedcb33.js",
+  "frontend_markers": {
+    "document-required workflows only": true,
+    "satisfied via structured declaration": true,
+    "missing_required_documents": true,
+    "satisfied_without_uploaded_document": false,
+    "document_required_workflows": true,
+    "structured_declaration_satisfied": true
+  },
+  "frontend_markers_found": 5,
+  "pass": true
+}
