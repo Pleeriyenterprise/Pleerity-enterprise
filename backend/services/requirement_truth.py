@@ -49,6 +49,11 @@ CONFIDENCE_ESTIMATED = "ESTIMATED"
 CONFIDENCE_PARTIALLY_CONFIRMED = "PARTIALLY_CONFIRMED"
 CONFIDENCE_VERIFIED = "VERIFIED"
 
+# Requirement types that need compliance_evidence_records during client/admin enrich batch loads.
+_CLIENT_ENRICH_CER_BATCH_CANONICAL = frozenset(
+    {"smoke_heat_alarms", "tenancy_agreement", "legionella", "lead_testing"}
+)
+
 ESTIMATED_NOTICE_TEXT = (
     "We've created estimated compliance dates based on standard regulatory cycles and your property setup. "
     "Upload your documents to confirm dates and improve accuracy."
@@ -679,6 +684,9 @@ def enrich_requirement_dict(
             if (audience or "client").strip().lower() != "admin":
                 out["status_label"] = "Assessment recorded — follow-up required"
                 out["evidence_badge_label"] = "Remediation or follow-up may remain open"
+        elif fu_status is False and (audience or "client").strip().lower() != "admin":
+            out["status_label"] = "Assessment recorded"
+            out["evidence_badge_label"] = "Assessment on file"
 
     if _canon == "tenancy_agreement":
         out["tenancy_agreement_status_text"] = _derive_tenancy_agreement_status_text(
@@ -893,7 +901,7 @@ async def enrich_requirements_for_client(
         and normalize_requirement_code(
             str(r.get("requirement_code") or r.get("requirement_type") or "").strip()
         )
-        in {"smoke_heat_alarms", "tenancy_agreement"}
+        in _CLIENT_ENRICH_CER_BATCH_CANONICAL
     ]
     cer_by_rid: Dict[str, List[Dict[str, Any]]] = {}
     if evidence_rids:
@@ -1016,7 +1024,7 @@ async def enrich_requirements_for_admin(
         cid = r.get("client_id")
         rid = r.get("requirement_id")
         code = str(r.get("requirement_code") or r.get("requirement_type") or "").strip()
-        if cid and rid and normalize_requirement_code(code) in {"smoke_heat_alarms", "tenancy_agreement"}:
+        if cid and rid and normalize_requirement_code(code) in _CLIENT_ENRICH_CER_BATCH_CANONICAL:
             evidence_by_client[str(cid)].append(str(rid))
 
     cer_by_client_rid: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}

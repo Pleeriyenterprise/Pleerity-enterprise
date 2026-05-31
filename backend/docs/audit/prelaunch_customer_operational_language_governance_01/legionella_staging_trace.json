@@ -1,0 +1,573 @@
+{
+  "client_email": "nancy@yopmail.com",
+  "legionella_row_count": 7,
+  "traces": [
+    {
+      "property_label": "722075 Lookup Test Street",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+      "jurisdiction": "England",
+      "status": "PENDING",
+      "due_date": "2026-07-24T15:14:37.803412+00:00",
+      "expiry_date": null,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "truth_presentation_subline": null,
+      "truth_presentation_tier_supplement": null,
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": null,
+      "requirement_satisfied": false,
+      "document_upload_required": false,
+      "missing_required_document": false,
+      "requirement_resolution_status": "UNRESOLVED",
+      "evidence_satisfaction_source": null,
+      "evidence_authority": {
+        "state": null,
+        "state_reason": null,
+        "semantic_state": null,
+        "primary_evidence_record_id": null,
+        "version": null
+      },
+      "evidence_completeness": {
+        "is_complete": null,
+        "required_missing_count": null,
+        "completeness_reason": null
+      },
+      "primary_cta": "Record Legionella risk assessment",
+      "cer_count": 0,
+      "cer_recent": [],
+      "diagnosis": [
+        "No compliance evidence records \u2014 nothing persisted via structured submit."
+      ]
+    },
+    {
+      "property_label": "Kenny Cresent",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "jurisdiction": "Wales",
+      "status": "PENDING",
+      "due_date": "2026-06-02T12:46:40.887335+00:00",
+      "expiry_date": null,
+      "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+      "truth_presentation_stage": "assessment_recorded",
+      "truth_presentation_label": "Assessment recorded",
+      "truth_presentation_subline": "Your assessment is on file. Complete any open follow-up actions.",
+      "truth_presentation_tier_supplement": null,
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": "MISSING",
+      "requirement_satisfied": true,
+      "document_upload_required": false,
+      "missing_required_document": false,
+      "requirement_resolution_status": "RESOLVED",
+      "evidence_satisfaction_source": null,
+      "evidence_authority": {
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "semantic_state": "MISSING",
+        "primary_evidence_record_id": "cer_34cc262630374043a8bc2e399c79e209",
+        "version": 1
+      },
+      "evidence_completeness": {
+        "is_complete": null,
+        "required_missing_count": null,
+        "completeness_reason": null
+      },
+      "primary_cta": "Record Legionella risk assessment",
+      "cer_count": 12,
+      "cer_recent": [
+        {
+          "evidence_record_id": "cer_34cc262630374043a8bc2e399c79e209",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-31T19:34:23.769677+00:00",
+          "is_primary": true,
+          "actions_required": {
+            "answer": false
+          },
+          "assessment_completed": {
+            "answer": true
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": true
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_e4825c06eb854837a6b97b6dc0f87005",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-31T19:18:10.697320+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": false
+          },
+          "assessment_completed": {
+            "answer": true
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": true
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_8fd43034b9994b0cb08665b01c27f457",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-31T19:12:41.597882+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": false
+          },
+          "assessment_completed": {
+            "answer": true
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": true
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_b42f9eddbeff4d6bb7b9f335142f3a1e",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-31T18:49:23.529727+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": false
+          },
+          "assessment_completed": {
+            "answer": true
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": true
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_9a45ca97a67e43f793e9266236bd8677",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-24T18:29:29.485164+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": "NO"
+          },
+          "assessment_completed": {
+            "answer": "YES"
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": "YES"
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_e09120c3c0104261b66ad2eb1b07930f",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-24T18:25:16.554026+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": "NO"
+          },
+          "assessment_completed": {
+            "answer": "YES"
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": "YES"
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_8333e31df81544589aa7f2bfd54e9b47",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-24T18:20:14.768898+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": "NO"
+          },
+          "assessment_completed": {
+            "answer": "YES"
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": "YES"
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_2ccd97b1428f4df0a3e19b83e78f4bb3",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-24T18:14:00.961044+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": "NO"
+          },
+          "assessment_completed": {
+            "answer": "YES"
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": "YES"
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_9e9595af4fda4e31a502357122e3ae15",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-22T08:57:47.308173+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": false,
+            "notes": null,
+            "observation": null
+          },
+          "assessment_completed": {
+            "answer": true,
+            "notes": null,
+            "observation": null
+          },
+          "next_review_date": {
+            "answer": null,
+            "notes": null,
+            "observation": null
+          },
+          "declaration_confirmed": {
+            "answer": true,
+            "notes": null,
+            "observation": null
+          },
+          "risk_level": {
+            "answer": "low",
+            "notes": null,
+            "observation": null
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_701ed7d3ee674fd09bc1ede7a2e480ff",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-22T08:42:02.154746+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": false,
+            "notes": null,
+            "observation": null
+          },
+          "assessment_completed": {
+            "answer": true,
+            "notes": null,
+            "observation": null
+          },
+          "next_review_date": {
+            "answer": null,
+            "notes": null,
+            "observation": null
+          },
+          "declaration_confirmed": {
+            "answer": true,
+            "notes": null,
+            "observation": null
+          },
+          "risk_level": {
+            "answer": "low",
+            "notes": null,
+            "observation": null
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_5c003eeeacb94162890304ada203045d",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-22T07:44:37.719124+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": false,
+            "notes": null,
+            "observation": null
+          },
+          "assessment_completed": {
+            "answer": true,
+            "notes": null,
+            "observation": null
+          },
+          "next_review_date": {
+            "answer": null,
+            "notes": null,
+            "observation": null
+          },
+          "declaration_confirmed": {
+            "answer": true,
+            "notes": null,
+            "observation": null
+          },
+          "risk_level": {
+            "answer": "low",
+            "notes": null,
+            "observation": null
+          },
+          "document_id": null
+        },
+        {
+          "evidence_record_id": "cer_c6239030b9894ffb93a435527275554d",
+          "evidence_mode": "STRUCTURED_DECLARATION",
+          "status": null,
+          "created_at": "2026-05-21T09:28:25.389177+00:00",
+          "is_primary": false,
+          "actions_required": {
+            "answer": "NO"
+          },
+          "assessment_completed": {
+            "answer": "YES"
+          },
+          "next_review_date": null,
+          "declaration_confirmed": {
+            "answer": "YES"
+          },
+          "risk_level": {
+            "answer": "low"
+          },
+          "document_id": null
+        }
+      ],
+      "diagnosis": [
+        "evidence_authority.state_reason=no_evidence_document"
+      ]
+    },
+    {
+      "property_label": "78, Trewe Close",
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "requirement_id": "43375303-fdfc-46f4-b153-2bc8e8ad53ee",
+      "jurisdiction": "Scotland",
+      "status": "PENDING",
+      "due_date": "2026-06-02T12:46:43.337961+00:00",
+      "expiry_date": null,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "truth_presentation_subline": null,
+      "truth_presentation_tier_supplement": null,
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": null,
+      "requirement_satisfied": false,
+      "document_upload_required": false,
+      "missing_required_document": false,
+      "requirement_resolution_status": "UNRESOLVED",
+      "evidence_satisfaction_source": null,
+      "evidence_authority": {
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "semantic_state": null,
+        "primary_evidence_record_id": null,
+        "version": 1
+      },
+      "evidence_completeness": {
+        "is_complete": null,
+        "required_missing_count": null,
+        "completeness_reason": null
+      },
+      "primary_cta": "Record Legionella risk assessment",
+      "cer_count": 0,
+      "cer_recent": [],
+      "diagnosis": [
+        "No compliance evidence records \u2014 nothing persisted via structured submit.",
+        "evidence_authority.state_reason=no_evidence_document"
+      ]
+    },
+    {
+      "property_label": "4, Merchent Street",
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "requirement_id": "5dfd5abf-8642-4d2a-b25e-54afd9d5a9de",
+      "jurisdiction": "Northern Ireland",
+      "status": "PENDING",
+      "due_date": "2026-06-02T12:46:45.181811+00:00",
+      "expiry_date": null,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "truth_presentation_subline": null,
+      "truth_presentation_tier_supplement": null,
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": null,
+      "requirement_satisfied": false,
+      "document_upload_required": false,
+      "missing_required_document": false,
+      "requirement_resolution_status": "UNRESOLVED",
+      "evidence_satisfaction_source": null,
+      "evidence_authority": {
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "semantic_state": null,
+        "primary_evidence_record_id": null,
+        "version": 1
+      },
+      "evidence_completeness": {
+        "is_complete": null,
+        "required_missing_count": null,
+        "completeness_reason": null
+      },
+      "primary_cta": "Record Legionella risk assessment",
+      "cer_count": 0,
+      "cer_recent": [],
+      "diagnosis": [
+        "No compliance evidence records \u2014 nothing persisted via structured submit.",
+        "evidence_authority.state_reason=no_evidence_document"
+      ]
+    },
+    {
+      "property_label": "63 Chesetre Close",
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "requirement_id": "f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
+      "jurisdiction": "Northern Ireland",
+      "status": "PENDING",
+      "due_date": "2026-06-02T12:46:46.997780+00:00",
+      "expiry_date": null,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "truth_presentation_subline": null,
+      "truth_presentation_tier_supplement": null,
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": null,
+      "requirement_satisfied": false,
+      "document_upload_required": false,
+      "missing_required_document": false,
+      "requirement_resolution_status": "UNRESOLVED",
+      "evidence_satisfaction_source": null,
+      "evidence_authority": {
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "semantic_state": null,
+        "primary_evidence_record_id": null,
+        "version": 1
+      },
+      "evidence_completeness": {
+        "is_complete": null,
+        "required_missing_count": null,
+        "completeness_reason": null
+      },
+      "primary_cta": "Record Legionella risk assessment",
+      "cer_count": 0,
+      "cer_recent": [],
+      "diagnosis": [
+        "No compliance evidence records \u2014 nothing persisted via structured submit.",
+        "evidence_authority.state_reason=no_evidence_document"
+      ]
+    },
+    {
+      "property_label": "4, Mill Groove",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "requirement_id": "77f4422f-099e-48f8-a61f-18ca9a3f57f3",
+      "jurisdiction": "Northern Ireland",
+      "status": "PENDING",
+      "due_date": "2026-06-02T12:46:50.628538+00:00",
+      "expiry_date": null,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "truth_presentation_subline": null,
+      "truth_presentation_tier_supplement": null,
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": null,
+      "requirement_satisfied": false,
+      "document_upload_required": false,
+      "missing_required_document": false,
+      "requirement_resolution_status": "UNRESOLVED",
+      "evidence_satisfaction_source": null,
+      "evidence_authority": {
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "semantic_state": null,
+        "primary_evidence_record_id": null,
+        "version": 1
+      },
+      "evidence_completeness": {
+        "is_complete": null,
+        "required_missing_count": null,
+        "completeness_reason": null
+      },
+      "primary_cta": "Record Legionella risk assessment",
+      "cer_count": 0,
+      "cer_recent": [],
+      "diagnosis": [
+        "No compliance evidence records \u2014 nothing persisted via structured submit.",
+        "evidence_authority.state_reason=no_evidence_document"
+      ]
+    },
+    {
+      "property_label": "90, Jesmond Road",
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+      "requirement_id": "e7540d87-2ae8-4231-b142-311bcf0b370b",
+      "jurisdiction": "Northern Ireland",
+      "status": "PENDING",
+      "due_date": "2026-06-02T12:46:48.809519+00:00",
+      "expiry_date": null,
+      "client_lifecycle_state": "ACTION_REQUIRED",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "truth_presentation_subline": null,
+      "truth_presentation_tier_supplement": null,
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "semantic_state": null,
+      "requirement_satisfied": false,
+      "document_upload_required": false,
+      "missing_required_document": false,
+      "requirement_resolution_status": "UNRESOLVED",
+      "evidence_satisfaction_source": null,
+      "evidence_authority": {
+        "state": "MISSING",
+        "state_reason": "no_evidence_document",
+        "semantic_state": null,
+        "primary_evidence_record_id": null,
+        "version": 1
+      },
+      "evidence_completeness": {
+        "is_complete": null,
+        "required_missing_count": null,
+        "completeness_reason": null
+      },
+      "primary_cta": "Record Legionella risk assessment",
+      "cer_count": 0,
+      "cer_recent": [],
+      "diagnosis": [
+        "No compliance evidence records \u2014 nothing persisted via structured submit.",
+        "evidence_authority.state_reason=no_evidence_document"
+      ]
+    }
+  ]
+}

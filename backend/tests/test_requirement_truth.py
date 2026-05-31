@@ -469,3 +469,157 @@ def test_requirement_negative_actionability_includes_expired_and_due_soon_follow
         "follow_up_date": (now + timedelta(days=90)).isoformat(),
     }
     assert requirement_has_active_negative_actionability(followup_future, now=now, expiring_window_days=30) is False
+
+
+def _legionella_structured_cer(*, actions_required: bool = False) -> dict:
+    return {
+        "evidence_record_id": "cer-leg-1",
+        "client_id": "c1",
+        "property_id": "p1",
+        "requirement_id": "r-leg",
+        "archived": False,
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_confidence_level": "HIGH",
+        "evidence_payload": {
+            "structured_fields": {
+                "actions_required": {"answer": actions_required},
+                "assessment_completed": {"answer": True},
+                "declaration_confirmed": {"answer": True},
+                "risk_level": {"answer": "low"},
+            }
+        },
+    }
+
+
+def test_enrich_requirement_dict_legionella_closed_followup_no_false_badge():
+    from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
+
+    req = {
+        "requirement_id": "r-leg",
+        "property_id": "p1",
+        "client_id": "c1",
+        "requirement_type": "legionella",
+        "requirement_code": "legionella",
+        "status": "PENDING",
+        "evidence_authority": {
+            "primary_evidence_record_id": "cer-leg-1",
+            "version": 1,
+        },
+    }
+    out = enrich_requirement_dict(
+        req,
+        EVIDENCE_MISSING,
+        audience="client",
+        compliance_evidence_records=[_legionella_structured_cer(actions_required=False)],
+    )
+    assert out["status_label"] == "Assessment recorded"
+    assert out["evidence_badge_label"] == "Assessment on file"
+    assert "follow-up" not in out["evidence_badge_label"].lower()
+
+
+def test_enrich_requirement_dict_legionella_empty_cer_keeps_followup_uncertainty():
+    from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
+
+    req = {
+        "requirement_id": "r-leg",
+        "property_id": "p1",
+        "requirement_type": "legionella",
+        "status": "PENDING",
+    }
+    out = enrich_requirement_dict(req, EVIDENCE_MISSING, audience="client", compliance_evidence_records=[])
+    assert out["evidence_badge_label"] == "Remediation or follow-up may remain open"
+    assert "follow-up" in out["status_label"].lower()
+
+
+def test_enrich_requirement_dict_legionella_open_followup_when_actions_required():
+    from services.requirement_truth import EVIDENCE_MISSING, enrich_requirement_dict
+
+    req = {
+        "requirement_id": "r-leg",
+        "property_id": "p1",
+        "requirement_type": "legionella",
+        "status": "PENDING",
+    }
+    out = enrich_requirement_dict(
+        req,
+        EVIDENCE_MISSING,
+        audience="client",
+        compliance_evidence_records=[_legionella_structured_cer(actions_required=True)],
+    )
+    assert out["evidence_badge_label"] == "Remediation or follow-up may remain open"
+    assert "follow-up" in out["status_label"].lower()
+
+
+@pytest.mark.asyncio
+async def test_enrich_requirements_for_client_batch_loads_legionella_cer(monkeypatch):
+    from services import requirement_truth as rt
+
+    captured_rids: list = []
+
+    async def fake_batch(db, client_id, requirement_ids):
+        captured_rids.extend(requirement_ids)
+        return {rid: [_legionella_structured_cer()] for rid in requirement_ids}
+
+    async def fake_load(db, client_id, requirement_ids):
+        return {rid: rt.EVIDENCE_MISSING for rid in requirement_ids}
+
+    monkeypatch.setattr(
+        "services.compliance_evidence_record_service.batch_list_evidence_records_for_requirements",
+        fake_batch,
+    )
+    monkeypatch.setattr(rt, "load_evidence_state_by_requirement_id", fake_load)
+    monkeypatch.setattr(rt, "fetch_active_published_registry_entries", AsyncMock(return_value=None))
+    monkeypatch.setattr(rt, "load_linked_primary_documents_for_client_requirements", AsyncMock(return_value={}))
+
+    class _Cursor:
+        def __init__(self, rows):
+            self._rows = list(rows)
+
+        async def to_list(self, _n):
+            return list(self._rows)
+
+        def __aiter__(self):
+            self._it = iter(self._rows)
+            return self
+
+        async def __anext__(self):
+            try:
+                return next(self._it)
+            except StopIteration:
+                raise StopAsyncIteration
+
+    class _CountDB:
+        def __init__(self):
+            self.clients = type("C", (), {"find_one": AsyncMock(return_value={"default_jurisdiction": "Wales"})})()
+            self.documents = type("D", (), {"find": lambda *a, **k: _Cursor([])})()
+            self.properties = type(
+                "P",
+                (),
+                {
+                    "find": lambda *a, **k: _Cursor(
+                        [{"property_id": "p1", "client_id": "c1", "jurisdiction": "Wales"}]
+                    )
+                },
+            )()
+            self.maintenance_issues = type("MI", (), {"count_documents": AsyncMock(return_value=0)})()
+            self.work_orders = type("WO", (), {"count_documents": AsyncMock(return_value=0)})()
+            self.risk_signals = type("RS", (), {"count_documents": AsyncMock(return_value=0)})()
+            self.compliance_gaps = type("CG", (), {"count_documents": AsyncMock(return_value=0)})()
+
+    rows = [
+        {
+            "client_id": "c1",
+            "property_id": "p1",
+            "requirement_id": "r-leg",
+            "requirement_type": "legionella",
+            "requirement_code": "legionella",
+            "status": "PENDING",
+            "applicability": "REQUIRED",
+            "evidence_authority": {"primary_evidence_record_id": "cer-leg-1", "version": 1},
+        }
+    ]
+    enriched, _ = await rt.enrich_requirements_for_client(_CountDB(), "c1", rows)
+    assert "r-leg" in captured_rids
+    leg = enriched[0]
+    assert leg["evidence_badge_label"] == "Assessment on file"
+    assert leg["status_label"] == "Assessment recorded"
