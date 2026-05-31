@@ -539,7 +539,27 @@ def dedupe_tasks_by_requirement(tasks: List[Dict[str, Any]]) -> List[Dict[str, A
 
 
 def today_task_is_actionable(task: Dict[str, Any]) -> bool:
-    """Has at least one business action or a primary deep link from the unified engine."""
+    """Has at least one business action or primary deep link; suppresses satisfied requirement tasks."""
+    meta = task.get("metadata") if isinstance(task.get("metadata"), dict) else {}
+    ta = meta.get("take_action") if isinstance(meta.get("take_action"), dict) else {}
+    if ta.get("suppressed"):
+        return False
+    st = str(task.get("source_type") or "").lower()
+    if st == "requirement":
+        skeleton = {
+            "requirement_id": meta.get("requirement_id") or task.get("source_entity_id"),
+            "property_id": task.get("property_id"),
+            "truth_presentation_stage": meta.get("truth_presentation_stage"),
+            "semantic_state": meta.get("semantic_state"),
+            "take_action": ta,
+            "status": meta.get("legacy_status") or meta.get("status"),
+            "evidence_authority": meta.get("evidence_authority"),
+        }
+        from services.requirement_attention_eligibility_service import is_requirement_attention_eligible
+
+        eligible, _, _ = is_requirement_attention_eligible(skeleton)
+        if not eligible:
+            return False
     acts = task.get("business_actions") or []
     if acts:
         return True

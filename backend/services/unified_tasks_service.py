@@ -408,6 +408,10 @@ def _action_to_task(
         task_metadata["property_jurisdiction"] = a.get("jurisdiction")
         if a.get("semantic_state") is not None:
             task_metadata["semantic_state"] = a.get("semantic_state")
+        if a.get("truth_presentation_stage") is not None:
+            task_metadata["truth_presentation_stage"] = a.get("truth_presentation_stage")
+        if a.get("truth_presentation_label") is not None:
+            task_metadata["truth_presentation_label"] = a.get("truth_presentation_label")
         for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
             if a.get(k) is not None:
                 task_metadata[k] = a.get(k)

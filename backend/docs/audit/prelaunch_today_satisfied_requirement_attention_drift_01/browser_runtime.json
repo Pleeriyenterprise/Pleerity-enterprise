@@ -1,0 +1,11 @@
+{
+  "programme": "PRELAUNCH-TODAY-SATISFIED-REQUIREMENT-ATTENTION-DRIFT-01",
+  "verified_at": "20260531T174139Z",
+  "screenshots": {
+    "today": "docs\\audit\\prelaunch_today_satisfied_requirement_attention_drift_01\\screenshots\\01_today.png",
+    "command_center": "docs\\audit\\prelaunch_today_satisfied_requirement_attention_drift_01\\screenshots\\02_command_center.png"
+  },
+  "gas_phrase_absent": true,
+  "legionella_phrase_absent": true,
+  "pass": true
+}

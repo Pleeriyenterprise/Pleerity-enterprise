@@ -533,6 +533,16 @@ def infer_compliance_gaps_for_requirement(
     or transitional AUTHORITY_UNSYNCED gap (low severity, Command Centre only).
     """
     now = now or datetime.now(timezone.utc)
+    from services.requirement_attention_eligibility_service import is_requirement_attention_eligible
+
+    eligible, _, suppression = is_requirement_attention_eligible(
+        requirement,
+        now=now,
+        expiring_window_days=resolve_expiring_soon_days_for_requirement(requirement, property_doc, None),
+    )
+    if not eligible and suppression:
+        return []
+
     ea = requirement.get("evidence_authority") or {}
     synced = bool(requirement.get("evidence_authority_synced_at")) and int(ea.get("version") or 0) >= AUTHORITY_VERSION
     if synced and authority_state(requirement):
@@ -663,5 +673,12 @@ def gaps_to_priority_actions(gaps: List[ComplianceGap], requirement: Dict[str, A
         rd = requirement.get("requirement_display")
         if isinstance(rd, dict) and rd:
             row["requirement_display"] = rd
+        if requirement.get("truth_presentation_stage") is not None:
+            row["truth_presentation_stage"] = requirement.get("truth_presentation_stage")
+        if requirement.get("truth_presentation_label") is not None:
+            row["truth_presentation_label"] = requirement.get("truth_presentation_label")
+        ea_req = requirement.get("evidence_authority")
+        if isinstance(ea_req, dict) and ea_req:
+            row["evidence_authority"] = ea_req
         out.append(row)
     return out

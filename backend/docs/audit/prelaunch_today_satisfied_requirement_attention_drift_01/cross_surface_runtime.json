@@ -1,0 +1,58 @@
+{
+  "programme": "PRELAUNCH-TODAY-SATISFIED-REQUIREMENT-ATTENTION-DRIFT-01",
+  "verified_at": "20260531T174130Z",
+  "samples": [
+    {
+      "requirement_type": "gas_safety",
+      "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "satisfied": false,
+      "today_action_tasks": 2,
+      "cc_urgent_tasks": 0,
+      "leak": false
+    },
+    {
+      "requirement_type": "legionella",
+      "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "satisfied": false,
+      "today_action_tasks": 0,
+      "cc_urgent_tasks": 0,
+      "leak": false
+    },
+    {
+      "requirement_type": "epc",
+      "requirement_id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "satisfied": false,
+      "today_action_tasks": 0,
+      "cc_urgent_tasks": 0,
+      "leak": false
+    },
+    {
+      "requirement_type": "eicr",
+      "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+      "truth_presentation_stage": "action_required",
+      "truth_presentation_label": "Action required",
+      "satisfied": false,
+      "today_action_tasks": 0,
+      "cc_urgent_tasks": 0,
+      "leak": false
+    },
+    {
+      "requirement_type": "fire_alarm",
+      "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+      "truth_presentation_stage": "operational_incomplete",
+      "truth_presentation_label": "Additional action still required",
+      "satisfied": false,
+      "today_action_tasks": 0,
+      "cc_urgent_tasks": 0,
+      "leak": false
+    }
+  ],
+  "leaks": [],
+  "pass": true
+}

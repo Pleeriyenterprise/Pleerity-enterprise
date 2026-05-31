@@ -1,0 +1,10 @@
+{
+  "programme": "PRELAUNCH-TODAY-SATISFIED-REQUIREMENT-ATTENTION-DRIFT-01",
+  "primary": "VERIFIED_OPERATIONALLY",
+  "results": {
+    "local_eligibility": true,
+    "cross_surface": true,
+    "forbidden_phrases": true,
+    "browser": true
+  }
+}

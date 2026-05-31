@@ -1,0 +1,10 @@
+{
+  "programme": "PRELAUNCH-TODAY-SATISFIED-REQUIREMENT-ATTENTION-DRIFT-01",
+  "verified_at": "20260531T174020Z",
+  "checks": {
+    "verified_gas_suppressed": true,
+    "legionella_declaration_suppressed": true,
+    "rejected_still_eligible": true
+  },
+  "pass": true
+}

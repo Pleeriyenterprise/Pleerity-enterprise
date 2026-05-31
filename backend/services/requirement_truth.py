@@ -460,47 +460,14 @@ def requirement_has_active_negative_actionability(
     True only when a requirement row has active negative actionability for
     Needs Attention / Today / Score Drivers surfaces.
     """
-    row = dict(requirement or {})
-    status = _status_upper(row.get("status"))
-    if status in {"OVERDUE", "EXPIRED", "MISSING", "MISSING_EVIDENCE", "NEEDS_REVIEW"}:
-        return True
-    if status in {"PENDING", "EXPIRING_SOON", "AWAITING_USER_CONFIRM", "INCOMPLETE"}:
-        return True
+    from services.requirement_attention_eligibility_service import is_requirement_attention_eligible
 
-    ev = _status_upper(row.get("evidence_state"))
-    if ev in {"MISSING", "AWAITING_USER_CONFIRM", "MISMATCH_FLAGGED", "UPLOADED_UNVERIFIED"}:
-        return True
-
-    comp = row.get("evidence_completeness") if isinstance(row.get("evidence_completeness"), dict) else {}
-    try:
-        if int(comp.get("required_missing_count") or 0) > 0:
-            return True
-    except Exception:
-        pass
-    try:
-        if float(comp.get("completion_percent") or 100.0) < 100.0:
-            return True
-    except Exception:
-        pass
-
-    active_summary = row.get("active_standard_status_summary") if isinstance(row.get("active_standard_status_summary"), dict) else {}
-    signals = active_summary.get("signal_counts") if isinstance(active_summary.get("signal_counts"), dict) else {}
-    if any(int(signals.get(k) or 0) > 0 for k in ("open_issues", "open_work_orders", "open_risk_signals", "open_compliance_gaps")):
-        return True
-
-    if status in {"VALID", "COMPLIANT", "VERIFIED", "NOT_REQUIRED", "NOT_APPLICABLE", "RESOLVED"}:
-        window = int(expiring_window_days if expiring_window_days is not None else get_default_expiring_soon_days())
-        ref = now or datetime.now(timezone.utc)
-        for key in ("due_date", "expiry_date", "follow_up_date", "next_review_date"):
-            dt = _parse_due_date_value(row.get(key))
-            if dt is None:
-                continue
-            days = (dt - ref.date()).days
-            if 0 <= days <= window:
-                return True
-        return False
-
-    return False
+    eligible, _, _ = is_requirement_attention_eligible(
+        requirement,
+        now=now,
+        expiring_window_days=expiring_window_days,
+    )
+    return eligible
 
 
 def build_date_presentation(

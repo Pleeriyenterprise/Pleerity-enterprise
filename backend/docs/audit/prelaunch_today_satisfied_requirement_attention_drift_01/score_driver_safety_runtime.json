@@ -1,0 +1,4 @@
+{
+  "delegates_to": "requirement_has_active_negative_actionability \u2192 attention eligibility",
+  "pass": true
+}

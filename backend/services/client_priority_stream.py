@@ -22,6 +22,7 @@ from services.compliance_gap_engine import (
     gaps_to_priority_actions,
     infer_compliance_gaps_for_requirement,
 )
+from services.compliance_expiry_policy import resolve_expiring_soon_days_for_requirement
 from services.requirement_truth import enrich_requirements_for_client
 
 logger = logging.getLogger(__name__)
@@ -173,6 +174,12 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
     for r in gap_reqs_by_rid.values():
         rid = r.get("requirement_id")
         prop_doc = next((p for p in props_surface if p.get("property_id") == r.get("property_id")), None)
+        from services.requirement_attention_eligibility_service import is_requirement_attention_eligible
+
+        window_days = resolve_expiring_soon_days_for_requirement(r, prop_doc, client_doc)
+        eligible, _, _ = is_requirement_attention_eligible(r, expiring_window_days=window_days)
+        if not eligible:
+            continue
         raw_gaps = infer_compliance_gaps_for_requirement(r, property_doc=prop_doc)
         for g in raw_gaps:
             kind = _priority_stream_kind_for_gap(g.gap_kind)
@@ -376,7 +383,7 @@ async def fetch_client_priority_actions_primary(
         client_doc=client_doc,
         properties=props_surface,
     )
-    gap_reqs = [project_requirement_row_client_runtime(r) for r in gap_reqs]
+    gap_reqs, _presentation = await enrich_requirements_for_client(db, client_id, gap_reqs)
     gap_reqs_by_rid: Dict[str, Dict[str, Any]] = {}
     for r in gap_reqs:
         rid = r.get("requirement_id")
@@ -384,6 +391,12 @@ async def fetch_client_priority_actions_primary(
             gap_reqs_by_rid[str(rid)] = r
     for r in gap_reqs_by_rid.values():
         prop_doc = props_by_id.get(str(r.get("property_id") or ""))
+        from services.requirement_attention_eligibility_service import is_requirement_attention_eligible
+
+        window_days = resolve_expiring_soon_days_for_requirement(r, prop_doc, client_doc)
+        eligible, _, _ = is_requirement_attention_eligible(r, expiring_window_days=window_days)
+        if not eligible:
+            continue
         raw_gaps = infer_compliance_gaps_for_requirement(r, property_doc=prop_doc)
         for g in raw_gaps:
             kind = _priority_stream_kind_for_gap(g.gap_kind)

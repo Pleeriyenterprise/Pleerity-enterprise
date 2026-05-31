@@ -1,0 +1,60 @@
+{
+  "programme": "PRELAUNCH-TODAY-SATISFIED-REQUIREMENT-ATTENTION-DRIFT-01",
+  "verified_at": "2026-05-31T18:00:00Z",
+  "attention_pipeline": {
+    "today": "GET /api/today/items → build_today_payload_from_unified → enrich_task_bucket(filter_non_actionable=True) → today_task_is_actionable",
+    "command_centre": "command_center_service → fetch_client_priority_actions_primary / get_unified_tasks_for_client",
+    "priority_stream": "client_priority_stream.fetch_client_priority_actions* → infer_compliance_gaps_for_requirement → gaps_to_priority_actions",
+    "unified_tasks_guard": "unified_tasks_service._apply_requirement_lifecycle_guard → requirement_has_active_negative_actionability",
+    "take_action": "requirement_action_resolver.resolve_take_action_envelope + enrich on enriched requirement rows",
+    "score_drivers": "compliance_score portfolio drivers → requirement_has_active_negative_actionability"
+  },
+  "root_causes": [
+    {
+      "id": "RC-01",
+      "severity": "high",
+      "summary": "Legacy status / gap bridge emitted priority actions without authoritative satisfied truth",
+      "detail": "derive_gaps_from_legacy_requirement_row and Mongo gap queries keyed on status PENDING/MISSING even when enriched truth_presentation_stage was verified or declaration_recorded.",
+      "surfaces": ["Today", "Command Centre", "unified_tasks"]
+    },
+    {
+      "id": "RC-02",
+      "severity": "high",
+      "summary": "Command Centre primary stream used runtime projection without full enrich",
+      "detail": "fetch_client_priority_actions_primary called project_requirement_row_client_runtime instead of enrich_requirements_for_client, omitting truth_presentation_stage and suppressed take_action.",
+      "surfaces": ["Command Centre primary urgent slice"]
+    },
+    {
+      "id": "RC-03",
+      "severity": "medium",
+      "summary": "requirement_has_active_negative_actionability used legacy status/evidence_completeness alone",
+      "detail": "VALID/VERIFIED rows with stale PENDING status or incomplete evidence_completeness flags still passed lifecycle guard; did not consult truth_presentation_stage or evidence_authority VERIFIED_CURRENT.",
+      "surfaces": ["Today", "unified_tasks", "score drivers"]
+    },
+    {
+      "id": "RC-04",
+      "severity": "medium",
+      "summary": "today_task_is_actionable only checked business_actions presence",
+      "detail": "Did not suppress tasks when take_action.suppressed or authoritative satisfied truth applied.",
+      "surfaces": ["Today"]
+    },
+    {
+      "id": "RC-05",
+      "severity": "low",
+      "summary": "Operational surface cache invalidation not wired on authority sync",
+      "detail": "invalidate_unified_tasks_for_client existed but was never called after evidence authority sync, allowing stale Today/CC tasks for up to TTL (~45s).",
+      "surfaces": ["Today", "Command Centre cache"]
+    }
+  ],
+  "repair": {
+    "service": "services/requirement_attention_eligibility_service.py",
+    "wired_into": [
+      "requirement_truth.requirement_has_active_negative_actionability",
+      "compliance_gap_engine.infer_compliance_gaps_for_requirement",
+      "client_priority_stream (full + primary)",
+      "today_projection_service.today_task_is_actionable",
+      "requirement_evidence_authority sync cache invalidation"
+    ]
+  },
+  "pass": true
+}
