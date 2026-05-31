@@ -1,0 +1,24 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "verified_at": "20260531T164908Z",
+  "actions": [],
+  "org_queue_before": {
+    "status": 200,
+    "total": 1
+  },
+  "org_admin_reviewed_count": 5,
+  "pending_org_queue_rows": 1,
+  "org_queue_after_seed": {
+    "status": 200,
+    "total": 1
+  },
+  "fixtures": {
+    "A_org_queue": {
+      "seeded_or_present": true,
+      "pending_count": 1
+    },
+    "B_escalation_rows_on_client": 0,
+    "C_queue_less_sample": 5
+  },
+  "pass": true
+}

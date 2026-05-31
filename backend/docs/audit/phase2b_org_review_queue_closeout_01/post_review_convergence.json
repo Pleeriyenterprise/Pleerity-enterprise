@@ -1,0 +1,11 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "verified_at": "20260531T165206Z",
+  "requirement_label": "Evidence recorded",
+  "cognition_stage": "recorded_on_file",
+  "still_in_org_queue": false,
+  "today_status": 200,
+  "command_center_status": 200,
+  "no_orphan_pending_queue_wording": true,
+  "pass": true
+}

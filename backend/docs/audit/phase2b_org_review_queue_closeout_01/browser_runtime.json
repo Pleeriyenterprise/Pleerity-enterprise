@@ -1,0 +1,30 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "verified_at": "20260531T165608Z",
+  "pre_verify": {
+    "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+    "phase": "pre_verify",
+    "verified_at": "20260531T164919Z",
+    "screenshots": {
+      "org_queue": "docs\\audit\\phase2b_org_review_queue_closeout_01\\screenshots\\01_org_queue.png",
+      "review_deeplink": "docs\\audit\\phase2b_org_review_queue_closeout_01\\screenshots\\02_review_deeplink.png"
+    },
+    "org_queue_visible": true,
+    "pass": true
+  },
+  "post_verify": {
+    "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+    "phase": "post_verify",
+    "verified_at": "20260531T165400Z",
+    "screenshots": {
+      "post_resolution_org_queue": "docs\\audit\\phase2b_org_review_queue_closeout_01\\screenshots\\05_post_resolution_org_queue.png",
+      "today": "docs\\audit\\phase2b_org_review_queue_closeout_01\\screenshots\\03_today.png",
+      "command_center": "docs\\audit\\phase2b_org_review_queue_closeout_01\\screenshots\\04_command_center.png"
+    },
+    "post_queue_empty_or_resolved": true,
+    "pass": true
+  },
+  "escalation_screenshot": "docs\\audit\\phase2b_org_review_queue_closeout_01\\screenshots\\05_escalation_queue.png",
+  "escalation_page_visible": true,
+  "pass": true
+}

@@ -1,0 +1,27 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "verified_at": "20260531T165007Z",
+  "steps": [
+    {
+      "reject_status": 200,
+      "mutation": "existing POST .../verification"
+    },
+    {
+      "reseed_status": 200
+    },
+    {
+      "verify_status": 200
+    }
+  ],
+  "queue_count_before": 1,
+  "target": {
+    "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+    "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+    "evidence_record_id": "cer_0c84ff606a2b4f5091950d733aa20f69"
+  },
+  "queue_count_after_reject": 0,
+  "queue_count_after_verify": 0,
+  "queue_row_removed_after_reject": true,
+  "queue_row_removed_after_verify": true,
+  "pass": true
+}

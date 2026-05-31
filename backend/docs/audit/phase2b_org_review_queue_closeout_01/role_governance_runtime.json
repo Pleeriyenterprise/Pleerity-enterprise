@@ -1,0 +1,13 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "verified_at": "20260531T165400Z",
+  "org_reviewer_role": "ROLE_CLIENT_ADMIN",
+  "is_org_reviewer": true,
+  "role_client_not_reviewer": true,
+  "unauth_org_queue_status": 401,
+  "org_reviewer_queue_status": 200,
+  "admin_escalation_status": 200,
+  "org_token_escalation_forbidden": true,
+  "david_locked_note": "david@yopmail.com returns 423 \u2014 ROLE_CLIENT live 403 not exercised on staging",
+  "pass": true
+}

@@ -1,0 +1,35 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "verified_at": "20260531T164919Z",
+  "status": 200,
+  "total": 1,
+  "items": [
+    {
+      "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "property_label": "78, Trewe Close",
+      "requirement_type": "scotland_landlord_registration",
+      "display_label": "Landlord registration (Scotland)",
+      "truth_presentation_label": "Organisation review pending",
+      "truth_presentation_stage": "org_verification_pending",
+      "semantic_state": "MISSING",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "review_owner": "org_admin",
+      "queue_backed_review": true,
+      "stale_owner": "org_admin",
+      "stale_review": true,
+      "submitted_at": "2026-05-31T16:38:27.955332+00:00",
+      "evidence_record_id": "cer_0c84ff606a2b4f5091950d733aa20f69",
+      "verification_status": "PENDING_REVIEW",
+      "review_deeplink": "/properties/cd7c9bbc-f100-42e9-b5b1-69384898c75f?resolve_requirement=ad878819-8de2-4a32-85f2-9ee21f09817c",
+      "review_route": "/properties/cd7c9bbc-f100-42e9-b5b1-69384898c75f?resolve_requirement=ad878819-8de2-4a32-85f2-9ee21f09817c"
+    }
+  ],
+  "invariant_checks": [
+    {
+      "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+      "governance_invariant": true
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,94 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "verified_at": "20260531T165225Z",
+  "ac_samples": [
+    {
+      "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+      "requirement_type": "legionella",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+      "requirement_type": "fire_alarm",
+      "governance_family": "SELF_CERTIFIED",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "requirement_type": "legionella",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+      "requirement_type": "fire_alarm",
+      "governance_family": "SELF_CERTIFIED",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "requirement_type": "hmo_fire_risk_evidence",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "43375303-fdfc-46f4-b153-2bc8e8ad53ee",
+      "requirement_type": "legionella",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
+      "requirement_type": "fire_alarm",
+      "governance_family": "SELF_CERTIFIED",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "5dfd5abf-8642-4d2a-b25e-54afd9d5a9de",
+      "requirement_type": "legionella",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "edf564a2-ea75-4919-88f5-85aab93b42a5",
+      "requirement_type": "fire_alarm",
+      "governance_family": "SELF_CERTIFIED",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "524648e3-60e0-4888-985a-d014f0bb7a94",
+      "requirement_type": "hmo_fire_risk_evidence",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
+      "requirement_type": "legionella",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "queue_backed_review": false,
+      "review_owner": null
+    },
+    {
+      "requirement_id": "89308629-f183-44e4-b07d-71c564a14eca",
+      "requirement_type": "fire_alarm",
+      "governance_family": "SELF_CERTIFIED",
+      "queue_backed_review": false,
+      "review_owner": null
+    }
+  ],
+  "queue_backed_ac_rows": [],
+  "ac_rows_in_org_queue": [],
+  "org_queue_status": 200,
+  "pass": true
+}

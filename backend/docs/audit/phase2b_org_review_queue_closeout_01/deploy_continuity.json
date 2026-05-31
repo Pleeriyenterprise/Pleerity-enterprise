@@ -1,0 +1,26 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "verified_at": "20260531T164859Z",
+  "expected_commit_prefix": "40165e8a",
+  "api_version": {
+    "commit_sha": "40165e8a68ecb12120d1482f21a0e6737e81f742",
+    "environment": "production"
+  },
+  "commit_matches": true,
+  "org_queue_route_status_unauth": 401,
+  "bundle_path": "/static/js/main.03b2923f.js",
+  "frontend_markers": {
+    "compliance-review": true,
+    "org-review-queue": true,
+    "escalation-queue": true
+  },
+  "frontend_markers_found": 3,
+  "backend_markers_in_repo": [
+    "matches_org_review_queue",
+    "matches_escalation_queue",
+    "_converge_queue_presentation_fields",
+    "audit_orphan_queue_states",
+    "org_verification_pending"
+  ],
+  "pass": true
+}

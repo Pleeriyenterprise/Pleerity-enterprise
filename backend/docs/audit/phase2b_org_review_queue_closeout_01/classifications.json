@@ -1,0 +1,18 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CLOSEOUT-01",
+  "primary": "VERIFIED_OPERATIONALLY",
+  "results": {
+    "deploy": true,
+    "seed": true,
+    "org_queue": true,
+    "verify_flow": true,
+    "post_review": true,
+    "escalation": true,
+    "queue_less": true,
+    "orphan": true,
+    "cognition": true,
+    "role": true,
+    "browser": true
+  },
+  "deploy_commit": "40165e8a68ecb12120d1482f21a0e6737e81f742"
+}
