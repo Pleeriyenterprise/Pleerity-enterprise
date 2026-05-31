@@ -13,6 +13,10 @@ jest.mock('../../../api/client', () => ({
   },
 }));
 
+jest.mock('../../../hooks/useStepUpApi', () => ({
+  useStepUpApi: () => ({ request: (fn) => fn({}), modal: null }),
+}));
+
 describe('PilotRedemptionRecoverySection', () => {
   test('account panel renders redemption attempts and overrides', () => {
     render(

@@ -1185,10 +1185,10 @@ export const adminAPI = {
     apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/redemptions`, { params }),
   getPilotInviteEligibilityOverrides: (code) =>
     apiClient.get(`/admin/pilot-invites/${encodeURIComponent(code)}/eligibility-overrides`),
-  createPilotEligibilityOverride: (code, body) =>
-    apiClient.post(`/admin/pilot-invites/${encodeURIComponent(code)}/eligibility-overrides`, body),
-  revokePilotEligibilityOverride: (overrideId) =>
-    apiClient.delete(`/admin/pilot-invites/eligibility-overrides/${encodeURIComponent(overrideId)}`),
+  createPilotEligibilityOverride: (code, body, config = {}) =>
+    apiClient.post(`/admin/pilot-invites/${encodeURIComponent(code)}/eligibility-overrides`, body, config),
+  revokePilotEligibilityOverride: (overrideId, config = {}) =>
+    apiClient.delete(`/admin/pilot-invites/eligibility-overrides/${encodeURIComponent(overrideId)}`, config),
   allowPilotRedemptionRetry: (redemptionId, body) =>
     apiClient.post(`/admin/pilot-invites/redemptions/${encodeURIComponent(redemptionId)}/allow-retry`, body),
   resetPilotRedemptionIncomplete: (redemptionId, body) =>
@@ -1196,10 +1196,11 @@ export const adminAPI = {
       `/admin/pilot-invites/redemptions/${encodeURIComponent(redemptionId)}/reset-incomplete`,
       body,
     ),
-  createPilotAccountEligibilityOverride: (clientId, body) =>
+  createPilotAccountEligibilityOverride: (clientId, body, config = {}) =>
     apiClient.post(
       `/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/eligibility-overrides`,
       body,
+      config,
     ),
   listPilotLifecycleAccounts: (params = {}) => apiClient.get('/admin/pilot-lifecycle/accounts', { params }),
   getPilotLifecycleOpsDashboard: (params = {}) => apiClient.get('/admin/pilot-lifecycle/ops-dashboard', { params }),

@@ -69,6 +69,7 @@ export default function PilotEligibilityOverrideDialog({
       await onSubmit(body);
       onOpenChange(false);
     } catch (err) {
+      if (err?.message === 'step_up_cancelled') return;
       setError(apiErrorMessage(err, 'Failed'));
     } finally {
       setLoading(false);

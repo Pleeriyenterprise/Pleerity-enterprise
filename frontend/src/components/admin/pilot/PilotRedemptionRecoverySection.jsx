@@ -6,6 +6,7 @@ import { Button } from '../../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../ui/card';
 import { toast } from '@/utils/portalNotifications';
 import { formatDisplayValue } from '../../../utils/apiErrorMessage';
+import { useStepUpApi } from '../../../hooks/useStepUpApi';
 import PilotEligibilityOverrideDialog from './PilotEligibilityOverrideDialog';
 import PilotReasonDialog from './PilotReasonDialog';
 import {
@@ -211,20 +212,32 @@ export default function PilotRedemptionRecoverySection({
   const [overrideDialog, setOverrideDialog] = useState(null);
   const [reasonDialog, setReasonDialog] = useState(null);
   const [revokingId, setRevokingId] = useState(null);
+  const stepUp = useStepUpApi();
 
   const allowRetryApi = (id, body) => adminAPI.allowPilotRedemptionRetry(id, body);
   const resetIncompleteApi = (id, body) => adminAPI.resetPilotRedemptionIncomplete(id, body);
 
   const createOverride = async (body) => {
-    if (context === 'account' && clientId) {
-      await adminAPI.createPilotAccountEligibilityOverride(clientId, {
-        ...body,
-        invite_code: inviteCode || undefined,
+    try {
+      await stepUp.request(async (headers) => {
+        if (context === 'account' && clientId) {
+          return adminAPI.createPilotAccountEligibilityOverride(
+            clientId,
+            {
+              ...body,
+              invite_code: inviteCode || undefined,
+            },
+            { headers },
+          );
+        }
+        if (inviteCode) {
+          return adminAPI.createPilotEligibilityOverride(inviteCode, body, { headers });
+        }
+        throw new Error('No invite or account context for override');
       });
-    } else if (inviteCode) {
-      await adminAPI.createPilotEligibilityOverride(inviteCode, body);
-    } else {
-      throw new Error('No invite or account context for override');
+    } catch (err) {
+      if (err?.message === 'step_up_cancelled') return;
+      throw err;
     }
     toast.success('Override recorded — auditable in history below');
     await onReload();
@@ -485,6 +498,8 @@ export default function PilotRedemptionRecoverySection({
           await onReload();
         }}
       />
+
+      {stepUp.modal}
     </>
   );
 }
