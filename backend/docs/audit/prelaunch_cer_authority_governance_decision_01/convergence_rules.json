@@ -1,0 +1,54 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-GOVERNANCE-DECISION-01",
+  "generated_at": "20260531T130149Z",
+  "single_source_of_truth": "requirements.evidence_authority (synced via sync_requirement_evidence_authority)",
+  "mandatory_convergence_rules": [
+    {
+      "id": "CR-01",
+      "rule": "Frontend labels MUST derive from evidence_authority.state + semantic_state + governance_family \u2014 never override to generic review without owner.",
+      "surfaces": [
+        "RequirementsPage",
+        "PropertyDetailPage",
+        "PropertyOperatingHub",
+        "Today",
+        "Command Centre"
+      ]
+    },
+    {
+      "id": "CR-02",
+      "rule": "Stale escalation ONLY when review_visibility names an active queue owner OR operational follow-up is overdue with defined owner.",
+      "forbidden": "stale_review on submitted_pending_review without queue"
+    },
+    {
+      "id": "CR-03",
+      "rule": "compliance_score MUST use map_authority_to_scoring_status only \u2014 no parallel score writers."
+    },
+    {
+      "id": "CR-04",
+      "rule": "client_lifecycle_state MUST NOT contradict evidence_authority.state after sync; presentation layer may not upgrade ACTION_REQUIRED to PENDING_REVIEW."
+    },
+    {
+      "id": "CR-05",
+      "rule": "CER verification_status transitions MUST propagate through propagate_requirement_evidence_outcome."
+    },
+    {
+      "id": "CR-06",
+      "rule": "Admin queue entries MUST include queue_owner and governance_family; no orphan PENDING_REVIEW rows."
+    },
+    {
+      "id": "CR-07",
+      "rule": "operational_cognition workflow_stage vocabulary MUST align with truth_surface_language_matrix stage ids."
+    },
+    {
+      "id": "CR-08",
+      "rule": "Forbidden labels (Awaiting review, Review pending) MUST NOT render unless queue_owner is platform_admin or org_admin and item is enqueued."
+    }
+  ],
+  "forbidden_patterns": [
+    "duplicate semantic meanings across status chip and tier badge",
+    "queue-less review states in UI or cognition",
+    "stale escalation without authority owner",
+    "second authority model parallel to evidence_authority",
+    "score fraction diverging from authority state without documented governance exception"
+  ]
+}

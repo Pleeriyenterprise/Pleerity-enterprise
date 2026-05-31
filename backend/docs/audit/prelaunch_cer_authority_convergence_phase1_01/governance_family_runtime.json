@@ -1,0 +1,42 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-CONVERGENCE-PHASE1-01",
+  "generated_at": "20260531T133031Z",
+  "samples": {
+    "smoke_incomplete": {
+      "governance_family": "SELF_CERTIFIED",
+      "review_authority": "automated_governance_guards",
+      "review_visibility": "none",
+      "operational_completion_mode": "governance_guard_auto_close",
+      "semantic_state": null,
+      "review_owner": null,
+      "stale_owner": "landlord"
+    },
+    "legionella_followup": {
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "review_authority": "landlord_operational_followup",
+      "review_visibility": "none_default",
+      "operational_completion_mode": "external_assessment_followup_guard",
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "review_owner": null,
+      "stale_owner": "landlord"
+    },
+    "gas_platform_pending": {
+      "governance_family": "PLATFORM_VERIFIED",
+      "review_authority": "platform_admin",
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_completion_mode": "admin_document_verify_plus_authority_sync",
+      "semantic_state": null,
+      "review_owner": "platform_admin",
+      "stale_owner": "platform_admin"
+    },
+    "how_to_rent_recorded": {
+      "governance_family": "SELF_CERTIFIED",
+      "review_authority": "automated_governance_guards",
+      "review_visibility": "none",
+      "operational_completion_mode": "tenant_delivery_record_guard",
+      "semantic_state": null,
+      "review_owner": null,
+      "stale_owner": null
+    }
+  }
+}

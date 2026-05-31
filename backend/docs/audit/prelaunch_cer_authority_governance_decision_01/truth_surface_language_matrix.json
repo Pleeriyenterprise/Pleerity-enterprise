@@ -1,0 +1,115 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-GOVERNANCE-DECISION-01",
+  "generated_at": "20260531T130149Z",
+  "principle": "Every user-visible state MUST name the authority owner or operational gap. Generic review language forbidden without queue owner.",
+  "forbidden_generic_labels": [
+    {
+      "label": "Awaiting review",
+      "reason": "Implies reviewer exists; often false for CER"
+    },
+    {
+      "label": "Review pending",
+      "reason": "Same \u2014 no owner specified"
+    },
+    {
+      "label": "Authoritative submission on file \u2014 awaiting review",
+      "reason": "Collapses operational incompleteness into fake review"
+    }
+  ],
+  "authoritative_replacements": [
+    {
+      "authority_state_or_stage": "SELF_CERTIFIED_SUBMITTED",
+      "governance_family": "SELF_CERTIFIED",
+      "primary_label": "Declaration recorded",
+      "secondary_label": "Compliance steps complete",
+      "subline": "Your submission is recorded. No platform review is required for this obligation.",
+      "forbidden": [
+        "Awaiting review"
+      ]
+    },
+    {
+      "authority_state_or_stage": "OPERATIONAL_INCOMPLETE",
+      "governance_family": "SELF_CERTIFIED",
+      "primary_label": "Additional action still required",
+      "secondary_label": "Incomplete compliance steps remain",
+      "subline": "Some required evidence components are still missing.",
+      "semantic_triggers": [
+        "multi_evidence_components_incomplete",
+        "declaration_incomplete"
+      ]
+    },
+    {
+      "authority_state_or_stage": "FOLLOWUP_REQUIRED",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "primary_label": "Follow-up evidence required",
+      "secondary_label": "Remediation or follow-up may remain open",
+      "subline": "Complete remaining assessment or remediation steps to close this obligation.",
+      "semantic_triggers": [
+        "external_assessment_remediation_or_followup_unresolved",
+        "ASSESSMENT_FOLLOWUP_REQUIRED"
+      ]
+    },
+    {
+      "authority_state_or_stage": "ORG_REVIEW_PENDING",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "primary_label": "Organisation review pending",
+      "secondary_label": "Record on file \u2014 organisation verification optional",
+      "subline": "Your organisation admin can verify this record when required.",
+      "queue_owner": "org_admin"
+    },
+    {
+      "authority_state_or_stage": "PLATFORM_VERIFICATION_PENDING",
+      "governance_family": "PLATFORM_VERIFIED",
+      "primary_label": "Platform verification pending",
+      "secondary_label": "Document submitted \u2014 Pleerity review in progress",
+      "subline": "Our team will verify your uploaded certificate.",
+      "queue_owner": "platform_admin"
+    },
+    {
+      "authority_state_or_stage": "PLATFORM_OVERSIGHT_SAMPLE",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "primary_label": "Assessment recorded",
+      "secondary_label": "Operational review may apply",
+      "subline": "Your assessment is on file. Complete any open follow-up actions.",
+      "queue_owner": "none_default"
+    },
+    {
+      "authority_state_or_stage": "SUPPORTING_UPLOAD_ONLY",
+      "governance_family": "any",
+      "primary_label": "Supporting evidence uploaded",
+      "secondary_label": "Formal submission not yet complete",
+      "subline": "Supporting files alone do not complete this obligation."
+    },
+    {
+      "authority_state_or_stage": "ESCALATION_REVIEW",
+      "governance_family": "ESCALATION_REVIEW_ONLY",
+      "primary_label": "Escalated for platform review",
+      "secondary_label": "Manual review required",
+      "subline": "This submission was flagged for Pleerity review.",
+      "queue_owner": "platform_admin_escalation"
+    },
+    {
+      "authority_state_or_stage": "VERIFIED",
+      "governance_family": "any",
+      "primary_label": "Verified",
+      "secondary_label": "Requirement satisfied"
+    },
+    {
+      "authority_state_or_stage": "EVIDENCE_RECORDED_UNVERIFIED",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "primary_label": "Evidence recorded",
+      "secondary_label": "Not independently verified",
+      "subline": "Recorded for compliance tracking; not platform certificate verification."
+    }
+  ],
+  "presentation_rules": {
+    "single_primary_badge": true,
+    "tier_badge_must_not_duplicate_primary": true,
+    "stale_label_requires_owner": true,
+    "cognition_recommended_step_must_name_owner": true
+  },
+  "migration_from_current": {
+    "clientPersistedSubmissionPresentation.FRONTEND_SUBMISSION_ON_FILE": "Replace with semantic_state-driven label from matrix",
+    "operational_cognition.submitted_pending_review": "Rename stage to owner-qualified stage ids"
+  }
+}

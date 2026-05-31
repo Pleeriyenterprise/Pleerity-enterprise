@@ -1,0 +1,39 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-CONVERGENCE-PHASE1-01",
+  "generated_at": "20260531T133031Z",
+  "checks": [
+    {
+      "sample": "smoke_incomplete",
+      "label": "Additional action still required",
+      "forbidden_generic_review": false,
+      "uses_generic_awaiting_review": false,
+      "review_owner": null,
+      "queue_backed_review": false
+    },
+    {
+      "sample": "legionella_followup",
+      "label": "Follow-up evidence required",
+      "forbidden_generic_review": false,
+      "uses_generic_awaiting_review": false,
+      "review_owner": null,
+      "queue_backed_review": false
+    },
+    {
+      "sample": "gas_platform_pending",
+      "label": "Platform verification pending",
+      "forbidden_generic_review": false,
+      "uses_generic_awaiting_review": false,
+      "review_owner": "platform_admin",
+      "queue_backed_review": true
+    },
+    {
+      "sample": "how_to_rent_recorded",
+      "label": "Declaration recorded",
+      "forbidden_generic_review": false,
+      "uses_generic_awaiting_review": false,
+      "review_owner": null,
+      "queue_backed_review": false
+    }
+  ],
+  "pass": true
+}

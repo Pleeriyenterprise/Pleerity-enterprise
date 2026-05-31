@@ -403,6 +403,25 @@ def _has_persisted_submission(req: Dict[str, Any]) -> bool:
 
 
 def _workflow_stage(req: Dict[str, Any]) -> str:
+    truth_stage = str(req.get("truth_presentation_stage") or "").strip()
+    if truth_stage:
+        stage_map = {
+            "verified": "verified",
+            "platform_verification_pending": "platform_verification_pending",
+            "escalation_review": "escalation_review",
+            "followup_required": "followup_required",
+            "operational_incomplete": "declaration_incomplete",
+            "declaration_recorded": "recorded_on_file",
+            "assessment_recorded": "recorded_on_file",
+            "evidence_recorded": "recorded_on_file",
+            "supporting_upload_only": "supporting_uploaded",
+            "action_required": "no_evidence",
+            "collect_evidence": "no_evidence",
+        }
+        mapped = stage_map.get(truth_stage)
+        if mapped:
+            return mapped
+
     lifecycle = (req.get("client_lifecycle_state") or "").upper()
     ea = req.get("evidence_authority") if isinstance(req.get("evidence_authority"), dict) else {}
     ea_state = (ea.get("state") or "").upper()
@@ -416,11 +435,19 @@ def _workflow_stage(req: Dict[str, Any]) -> str:
     if ea_state in ("MISMATCH_FLAGGED", "EA_MISMATCH_FLAGGED"):
         return "reviewer_feedback"
     if lifecycle == "PENDING_REVIEW" or ea_state in ("PENDING_ADMIN_REVIEW", "EA_PENDING_ADMIN_REVIEW"):
+        if req.get("queue_backed_review") is True or req.get("review_owner") in (
+            "platform_admin",
+            "platform_admin_escalation",
+            "org_admin",
+        ):
+            return "awaiting_review"
+        if _has_persisted_submission(req):
+            return "recorded_on_file"
         return "awaiting_review"
     if missing > 0:
         return "declaration_incomplete"
     if _has_persisted_submission(req):
-        return "submitted_pending_review"
+        return "recorded_on_file"
     if ea_state in ("UPLOADED_UNCONFIRMED", "EA_UPLOADED_UNCONFIRMED", "UPLOADED"):
         return "supporting_uploaded"
     if lifecycle == "ACTION_REQUIRED" or ea_state in ("MISSING", "EA_MISSING", ""):
@@ -429,8 +456,17 @@ def _workflow_stage(req: Dict[str, Any]) -> str:
 
 
 def _stale_review_active(req: Dict[str, Any]) -> bool:
+    try:
+        from services.cer_governance_presentation import stale_allowed_for_requirement
+
+        if req.get("truth_presentation_stage") and not stale_allowed_for_requirement(req):
+            return False
+    except Exception:
+        pass
     stage = _workflow_stage(req)
-    if stage not in ("awaiting_review", "submitted_pending_review"):
+    if stage not in ("awaiting_review", "platform_verification_pending", "escalation_review", "followup_required"):
+        if stage == "recorded_on_file":
+            return False
         return False
     for key in ("updated_at", "submitted_at", "last_review_at"):
         ea = req.get("evidence_authority") if isinstance(req.get("evidence_authority"), dict) else {}
@@ -462,14 +498,20 @@ def _progression_steps(req: Dict[str, Any], stage: str, strongest: Optional[str]
         "rejected": 1,
         "reviewer_feedback": 3,
         "submitted_pending_review": 3,
+        "recorded_on_file": 3,
+        "followup_required": 3,
+        "platform_verification_pending": 4,
+        "escalation_review": 4,
         "awaiting_review": 4,
         "verified": 5,
     }
     cursor = status_for.get(stage, 0)
     if stage == "verified":
         cursor = 5
-    elif stage in ("awaiting_review", "submitted_pending_review"):
+    elif stage in ("awaiting_review", "submitted_pending_review", "platform_verification_pending", "escalation_review"):
         cursor = 4
+    elif stage in ("recorded_on_file", "followup_required") and has_submission:
+        cursor = max(cursor, 3)
     elif has_submission and stage not in ("rejected", "reviewer_feedback"):
         cursor = max(cursor, 3)
     elif uploaded:
@@ -511,10 +553,9 @@ def build_requirement_guidance_v1(
     uploaded_not_submitted = stage == "supporting_uploaded" or (
         ea_state in ("UPLOADED_UNCONFIRMED", "EA_UPLOADED_UNCONFIRMED", "UPLOADED") and not _has_persisted_submission(req)
     )
-    submitted_not_verified = lifecycle in ("PENDING_REVIEW", "SATISFIED_UNVERIFIED") or stage in (
-        "awaiting_review",
-        "submitted_pending_review",
-    )
+    submitted_not_verified = (
+        lifecycle in ("PENDING_REVIEW", "SATISFIED_UNVERIFIED") or stage in ("awaiting_review",)
+    ) and req.get("queue_backed_review") is True
     rejected_requires_action = stage == "rejected"
     reviewer_requested_changes = stage == "reviewer_feedback"
     weak_submission_risk = strongest == "STRUCTURED_DECLARATION" and len(modes) > 1
@@ -568,6 +609,18 @@ def build_requirement_guidance_v1(
         recommended_mode = None
         remaining_steps = ["Wait for reviewer decision", "Respond if reviewer requests changes"]
         likely_intent = "await_review"
+    elif stage in ("recorded_on_file", "followup_required", "declaration_incomplete", "platform_verification_pending", "escalation_review"):
+        try:
+            from services.cer_governance_presentation import cognition_next_step_for_requirement
+
+            recommended_next_step, recommended_reason, remaining_steps = cognition_next_step_for_requirement(req)
+            recommended_mode = None
+            likely_intent = "operational_closure"
+        except Exception:
+            recommended_next_step = str(req.get("truth_presentation_label") or "Review requirement status")
+            recommended_reason = str(req.get("truth_presentation_subline") or "")
+            remaining_steps = []
+            likely_intent = "operational_closure"
     elif stage == "declaration_incomplete":
         recommended_next_step = "Complete missing checklist fields"
         recommended_reason = f"{missing} required field(s) must be completed before submission."
@@ -682,10 +735,18 @@ def build_envelope_for_requirement(req: Dict[str, Any]) -> Dict[str, Any]:
             },
         )
     if stale:
+        owner = req.get("review_owner") or req.get("stale_owner") or "reviewer"
+        stale_msg = f"Follow-up outstanding — action may be required ({owner})."
+        if owner == "platform_admin":
+            stale_msg = "Platform verification has been pending for an extended period."
+        elif owner == "platform_admin_escalation":
+            stale_msg = "Escalated review has been pending for an extended period."
+        elif owner == "org_admin":
+            stale_msg = "Organisation review has been pending for an extended period."
         blockers.append(
             {
                 "code": "STALE_REVIEW",
-                "message": "Review has been pending for an extended period — follow up may be required.",
+                "message": stale_msg,
                 "truth_note": TRUTH_DISTINCTIONS["submitted_not_compliant"],
             }
         )

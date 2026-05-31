@@ -1,0 +1,7 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-CONVERGENCE-PHASE1-01",
+  "generated_at": "20260531T133031Z",
+  "rule": "tier badge suppressed when duplicate semantics or generic awaiting review without queue",
+  "frontend": "composeRequirementStatusBadgeVisibility + getLifecycleTierBadge",
+  "pass": true
+}

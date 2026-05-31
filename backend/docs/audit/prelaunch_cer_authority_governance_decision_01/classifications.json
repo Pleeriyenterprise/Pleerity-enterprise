@@ -1,0 +1,22 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-GOVERNANCE-DECISION-01",
+  "generated_at": "20260531T130149Z",
+  "classification": "GOVERNANCE_DESIGN_COMPLETE",
+  "sub_classifications": [],
+  "unresolved_items": [
+    {
+      "id": "GOV-U1",
+      "topic": "Org admin queue UX scope",
+      "status": "deferred_to_implementation",
+      "note": "API exists (client verify); org-facing queue UI not yet designed"
+    },
+    {
+      "id": "GOV-U2",
+      "topic": "Platform oversight sampling rate for PLATFORM_OVERSIGHT_OPTIONAL",
+      "status": "product_policy",
+      "note": "Default: no human review unless escalation trigger"
+    }
+  ],
+  "implementation_approved": false,
+  "prior_audit": "PRELAUNCH-NONDOCUMENT-EVIDENCE-AUTHORITY-AUDIT-01"
+}

@@ -1,0 +1,76 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-GOVERNANCE-DECISION-01",
+  "generated_at": "20260531T130149Z",
+  "principle": "Score, UI, Today, and Command Centre MUST converge from evidence_authority.state via map_authority_to_scoring_status and governance_family policy.",
+  "authority_to_score": {
+    "SELF_CERTIFIED_CLOSED": {
+      "authority_states": [
+        "VERIFIED_CURRENT"
+      ],
+      "score": "VALID (1.0)",
+      "ui_must_match": true
+    },
+    "SELF_CERTIFIED_PARTIAL": {
+      "authority_states": [
+        "UPLOADED_UNCONFIRMED"
+      ],
+      "score": "NEEDS_REVIEW (0.5)",
+      "ui_label": "Additional action still required"
+    },
+    "ORG_RECORDED": {
+      "authority_states": [
+        "UPLOADED_UNCONFIRMED"
+      ],
+      "score": "NEEDS_REVIEW (0.5)",
+      "ui_label": "Evidence recorded / Organisation review pending"
+    },
+    "PLATFORM_PENDING": {
+      "authority_states": [
+        "PENDING_ADMIN_REVIEW"
+      ],
+      "score": "NEEDS_REVIEW (0.5)",
+      "ui_label": "Platform verification pending"
+    },
+    "MISSING": {
+      "authority_states": [
+        "MISSING"
+      ],
+      "score": "MISSING (0)",
+      "ui_label": "Action required"
+    },
+    "FOLLOWUP_UNRESOLVED": {
+      "authority_states": [
+        "UPLOADED_UNCONFIRMED"
+      ],
+      "semantic_state": "ASSESSMENT_FOLLOWUP_REQUIRED",
+      "score": "NEEDS_REVIEW (0.5)",
+      "ui_label": "Follow-up evidence required"
+    },
+    "VERIFIED": {
+      "authority_states": [
+        "VERIFIED_CURRENT"
+      ],
+      "score": "VALID (1.0)",
+      "ui_label": "Verified"
+    },
+    "EXPIRED": {
+      "authority_states": [
+        "VERIFIED_EXPIRED"
+      ],
+      "score": "EXPIRED",
+      "ui_label": "Expired \u2014 renewal required"
+    }
+  },
+  "score_authority_modes_by_family": {
+    "SELF_CERTIFIED": "Governance guard closure \u2192 VERIFIED_CURRENT; partial \u2192 NEEDS_REVIEW until complete",
+    "ORG_ADMIN_REVIEWED": "Declaration recorded \u2192 NEEDS_REVIEW until org verify or auto-accept policy",
+    "PLATFORM_OVERSIGHT_OPTIONAL": "Follow-up resolved \u2192 VERIFIED_CURRENT; unresolved \u2192 NEEDS_REVIEW",
+    "PLATFORM_VERIFIED": "PENDING_ADMIN_REVIEW \u2192 NEEDS_REVIEW; verified doc \u2192 VALID",
+    "ESCALATION_REVIEW_ONLY": "Escalated \u2192 NEEDS_REVIEW until platform escalation resolved"
+  },
+  "divergence_prevention": [
+    "Ban frontend score-adjacent labels that imply VALID when authority is NEEDS_REVIEW",
+    "Today hero counts use same map_authority_to_scoring_status",
+    "Command Centre task severity derives from authority + governance_family stale rules"
+  ]
+}

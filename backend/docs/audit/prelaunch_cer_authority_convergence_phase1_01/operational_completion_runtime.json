@@ -1,0 +1,11 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-CONVERGENCE-PHASE1-01",
+  "generated_at": "20260531T133031Z",
+  "samples": {
+    "smoke_incomplete": "operational_incomplete",
+    "legionella_followup": "followup_required",
+    "gas_platform_pending": "platform_verification_pending",
+    "how_to_rent_recorded": "declaration_recorded"
+  },
+  "pass": true
+}

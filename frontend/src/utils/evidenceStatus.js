@@ -18,6 +18,7 @@ import {
   isSubmissionAwaitingReview,
   requirementHasPersistedClientSubmission,
 } from './clientPersistedSubmissionPresentation';
+import { isQueueBackedReview, resolveTruthPresentationLabel, resolveTruthPresentationSubline } from './cerGovernancePresentation';
 
 function awaitingVerificationSubline() {
   const s = documentVerificationAwaitingSubline();
@@ -133,13 +134,24 @@ export function workflowAwareMissingEvidenceLabel(row) {
   const wf = _workflowClass(row);
   const tenancyStatus = _tenancyAgreementStatusText(row);
   if (tenancyStatus) return tenancyStatus;
+
+  const truthSubline = resolveTruthPresentationSubline(row);
+  if (truthSubline) return truthSubline;
+  const truthLabel = resolveTruthPresentationLabel(row);
+  if (truthLabel && requirementHasPersistedClientSubmission(row) && !isQueueBackedReview(row)) {
+    return truthLabel;
+  }
+
   if (requirementHasPersistedClientSubmission(row) && isSubmissionAwaitingReview(row)) {
     if (wf === 'GUIDED_DECLARATION') {
       if (isRightToRentMixedEvidencePendingReview(row)) return rightToRentPendingReviewEvidenceLine();
-      return 'Authoritative declaration on file — awaiting review';
+      return 'Organisation review pending';
     }
-    if (wf === 'TENANT_DELIVERY') return 'Delivery record on file — awaiting review';
-    if (wf === 'REGISTRATION_TRACKING') return 'Registration details recorded — awaiting review';
+    if (wf === 'TENANT_DELIVERY') return 'Delivery record on file';
+    if (wf === 'REGISTRATION_TRACKING') return 'Registration details recorded';
+    if (wf === 'DOCUMENT_UPLOAD' || wf === 'LEGACY_DOCUMENT_UPLOAD') {
+      return 'Platform verification pending';
+    }
   }
   if (_isActiveStandardRow(row)) return 'Condition status needs review';
   if (wf === 'DOCUMENT_UPLOAD' || wf === 'LEGACY_DOCUMENT_UPLOAD') {
@@ -177,10 +189,24 @@ export function getEvidenceStatus(status, row) {
   let out;
   if (key === 'PENDING' && linked) {
     out = { ...VERIFY_CHIP, subline: awaitingVerificationSubline() };
-  } else if (key === 'MISSING' || key === 'MISSING_EVIDENCE' || (key === 'PENDING' && !linked)) {
+  } else   if (key === 'MISSING' || key === 'MISSING_EVIDENCE' || (key === 'PENDING' && !linked)) {
     const wf = _workflowClass(row);
     let chip = NO_DOC_CHIP;
-    if (isMultiEvidenceStyleWorkflow(wf)) chip = MULTI_COMPONENT_CHIP;
+    if (_isActiveStandardRow(row)) {
+      const summary =
+        row?.active_standard_status_summary && typeof row.active_standard_status_summary === 'object'
+          ? row.active_standard_status_summary
+          : {};
+      const signals = summary.signal_counts && typeof summary.signal_counts === 'object' ? summary.signal_counts : {};
+      const hasSignals = ['open_issues', 'open_work_orders', 'open_risk_signals', 'open_compliance_gaps'].some(
+        (k) => Number(signals[k] || 0) > 0,
+      );
+      chip = {
+        icon: AlertTriangle,
+        text: hasSignals ? 'Condition status needs review' : 'Operational review in progress',
+        className: 'bg-amber-100 text-amber-900 border-amber-300 font-medium',
+      };
+    } else if (isMultiEvidenceStyleWorkflow(wf)) chip = MULTI_COMPONENT_CHIP;
     else if (wf === 'EXTERNAL_ASSESSMENT_EVIDENCE') chip = ASSESSMENT_GAP_CHIP;
     else if (wf === 'DOCUMENT_UPLOAD' || wf === 'LEGACY_DOCUMENT_UPLOAD') chip = CERTIFICATE_GAP_CHIP;
     out = { ...chip, subline: workflowAwareMissingEvidenceLabel(row) };

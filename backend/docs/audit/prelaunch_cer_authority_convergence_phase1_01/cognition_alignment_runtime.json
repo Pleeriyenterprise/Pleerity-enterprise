@@ -1,0 +1,10 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-CONVERGENCE-PHASE1-01",
+  "generated_at": "20260531T133031Z",
+  "changes": [
+    "stale_review only when stale_allowed_for_requirement",
+    "submitted_pending_review replaced with recorded_on_file when no queue owner",
+    "owner-qualified stale blocker messages"
+  ],
+  "pass": true
+}

@@ -1,0 +1,878 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-GOVERNANCE-DECISION-01",
+  "prior_audit": "PRELAUNCH-NONDOCUMENT-EVIDENCE-AUTHORITY-AUDIT-01",
+  "generated_at": "20260531T130149Z",
+  "governance_families": {
+    "A_SELF_CERTIFIED": {
+      "key": "SELF_CERTIFIED",
+      "description": "Landlord attestation closes via governance guards; no default human review queue.",
+      "requirement_codes": [
+        "how_to_rent",
+        "smoke_heat_alarms"
+      ]
+    },
+    "B_ORG_ADMIN_REVIEWED": {
+      "key": "ORG_ADMIN_REVIEWED",
+      "description": "Organisation admin may verify; platform admin not default reviewer.",
+      "requirement_codes": [
+        "deposit_pi",
+        "landlord_registration",
+        "landlord_registration_ni",
+        "rent_smart_wales",
+        "right_to_rent",
+        "scotland_landlord_registration",
+        "tenancy_agreement",
+        "wales_occupation_contract"
+      ]
+    },
+    "C_PLATFORM_OVERSIGHT_OPTIONAL": {
+      "key": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "description": "Operational follow-up / sample platform oversight; not certificate verification.",
+      "requirement_codes": [
+        "fire_risk_assessment",
+        "hmo_fire_risk",
+        "hmo_fire_risk_evidence",
+        "lead_testing",
+        "legionella"
+      ]
+    },
+    "D_PLATFORM_VERIFIED": {
+      "key": "PLATFORM_VERIFIED",
+      "description": "Official certificates verified by platform admin document queue.",
+      "requirement_codes": [
+        "asbestos",
+        "eicr",
+        "electrical_installation_condition_report",
+        "emergency_lighting",
+        "energy_performance_certificate",
+        "epc",
+        "fire_alarm",
+        "fire_door",
+        "gas_safety",
+        "hmo_licence",
+        "lift_inspection",
+        "oil_tank",
+        "pat",
+        "portable_appliance_test",
+        "selective_licence"
+      ]
+    },
+    "E_ESCALATION_REVIEW_ONLY": {
+      "key": "ESCALATION_REVIEW_ONLY",
+      "description": "Cross-cutting overlay \u2014 not a primary family; triggered by risk signals.",
+      "trigger_conditions": [
+        "manual_review_flag",
+        "evidence_mismatch",
+        "repeated_rejection",
+        "contradiction_pattern",
+        "abuse_signal",
+        "low_confidence_extraction"
+      ],
+      "applies_to": "any family when triggered"
+    }
+  },
+  "requirements": [
+    {
+      "requirement_code": "asbestos",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "deposit_pi",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Organisation-managed deposit compliance record.",
+      "authority_owner": "org_admin",
+      "verification_required": "org_admin_optional",
+      "review_visibility": "org_admin_queue",
+      "operational_closure_mode": "declaration_recorded_plus_org_verify_optional",
+      "score_authority_mode": "declaration_confidence",
+      "escalation_conditions": [
+        "manual_review_flag",
+        "contradiction_detected"
+      ],
+      "stale_rules": "no_platform_stale_review",
+      "admin_visibility": "org_queue_future",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "GUIDED_DECLARATION",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "eicr",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "electrical_installation_condition_report",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "emergency_lighting",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "energy_performance_certificate",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "epc",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "fire_alarm",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "fire_door",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "fire_risk_assessment",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": null,
+      "authority_owner": "landlord_with_platform_oversight_optional",
+      "verification_required": "conditional",
+      "review_visibility": "platform_oversight_sample",
+      "operational_closure_mode": "multi_evidence_governance_guard",
+      "score_authority_mode": "multi_component_conditional",
+      "escalation_conditions": [
+        "multi_evidence_components_incomplete",
+        "manual_review_flag"
+      ],
+      "stale_rules": "no_stale_without_review_owner",
+      "admin_visibility": "oversight_queue_sampled",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD",
+        "CONTRACTOR_CONFIRMATION",
+        "INSPECTION_CHECKLIST"
+      ],
+      "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "gas_safety",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "hmo_fire_risk",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": null,
+      "authority_owner": "landlord_with_platform_oversight_optional",
+      "verification_required": "conditional",
+      "review_visibility": "platform_oversight_sample",
+      "operational_closure_mode": "multi_evidence_governance_guard",
+      "score_authority_mode": "multi_component_conditional",
+      "escalation_conditions": [
+        "multi_evidence_components_incomplete",
+        "manual_review_flag"
+      ],
+      "stale_rules": "no_stale_without_review_owner",
+      "admin_visibility": "oversight_queue_sampled",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD",
+        "CONTRACTOR_CONFIRMATION",
+        "INSPECTION_CHECKLIST"
+      ],
+      "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "hmo_fire_risk_evidence",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": null,
+      "authority_owner": "landlord_with_platform_oversight_optional",
+      "verification_required": "conditional",
+      "review_visibility": "platform_oversight_sample",
+      "operational_closure_mode": "multi_evidence_governance_guard",
+      "score_authority_mode": "multi_component_conditional",
+      "escalation_conditions": [
+        "multi_evidence_components_incomplete",
+        "manual_review_flag"
+      ],
+      "stale_rules": "no_stale_without_review_owner",
+      "admin_visibility": "oversight_queue_sampled",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD",
+        "CONTRACTOR_CONFIRMATION",
+        "INSPECTION_CHECKLIST"
+      ],
+      "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "hmo_licence",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "how_to_rent",
+      "governance_family": "SELF_CERTIFIED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Tenant delivery attestation; tenant_delivery_record_guard closes operationally without platform human review.",
+      "authority_owner": "landlord_self_attestation",
+      "verification_required": false,
+      "review_visibility": "none",
+      "operational_closure_mode": "tenant_delivery_record_guard",
+      "score_authority_mode": "delivery_record",
+      "escalation_conditions": [
+        "manual_review_flag",
+        "contradiction_detected"
+      ],
+      "stale_rules": "none",
+      "admin_visibility": "none",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "TENANT_DELIVERY",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "landlord_registration",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Registration tracking \u2014 org attestation with optional supporting document.",
+      "authority_owner": "org_admin",
+      "verification_required": "org_admin_optional",
+      "review_visibility": "org_admin_queue",
+      "operational_closure_mode": "registration_tracking_record_guard",
+      "score_authority_mode": "registration_record",
+      "escalation_conditions": [
+        "manual_review_flag",
+        "registration_contradiction"
+      ],
+      "stale_rules": "no_platform_stale_review",
+      "admin_visibility": "org_queue_future",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "REGISTRATION_TRACKING",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "landlord_registration_ni",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Registration tracking \u2014 org attestation with optional supporting document.",
+      "authority_owner": "org_admin",
+      "verification_required": "org_admin_optional",
+      "review_visibility": "org_admin_queue",
+      "operational_closure_mode": "registration_tracking_record_guard",
+      "score_authority_mode": "registration_record",
+      "escalation_conditions": [
+        "manual_review_flag",
+        "registration_contradiction"
+      ],
+      "stale_rules": "no_platform_stale_review",
+      "admin_visibility": "org_queue_future",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "REGISTRATION_TRACKING",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "lead_testing",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Same family as legionella \u2014 assessment + follow-up.",
+      "authority_owner": "landlord_with_platform_oversight_optional",
+      "verification_required": "operational_followup_not_human_review_default",
+      "review_visibility": "platform_oversight_sample",
+      "operational_closure_mode": "external_assessment_followup_guard",
+      "score_authority_mode": "assessment_conditional",
+      "escalation_conditions": [
+        "external_assessment_remediation_unresolved",
+        "manual_review_flag"
+      ],
+      "stale_rules": "stale_on_unresolved_followup_not_generic_review",
+      "admin_visibility": "oversight_queue_sampled",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "EXTERNAL_ASSESSMENT_EVIDENCE",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "legionella",
+      "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "External assessment with follow-up remediation; platform may sample-review but primary closure is operational follow-up resolution.",
+      "authority_owner": "landlord_with_platform_oversight_optional",
+      "verification_required": "operational_followup_not_human_review_default",
+      "review_visibility": "platform_oversight_sample",
+      "operational_closure_mode": "external_assessment_followup_guard",
+      "score_authority_mode": "assessment_conditional",
+      "escalation_conditions": [
+        "external_assessment_remediation_unresolved",
+        "manual_review_flag",
+        "contradiction_detected"
+      ],
+      "stale_rules": "stale_on_unresolved_followup_not_generic_review",
+      "admin_visibility": "oversight_queue_sampled; not document pending-verification",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "EXTERNAL_ASSESSMENT_EVIDENCE",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "lift_inspection",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "oil_tank",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "pat",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "portable_appliance_test",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "rent_smart_wales",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Registration tracking \u2014 org attestation with optional supporting document.",
+      "authority_owner": "org_admin",
+      "verification_required": "org_admin_optional",
+      "review_visibility": "org_admin_queue",
+      "operational_closure_mode": "registration_tracking_record_guard",
+      "score_authority_mode": "registration_record",
+      "escalation_conditions": [
+        "manual_review_flag",
+        "registration_contradiction"
+      ],
+      "stale_rules": "no_platform_stale_review",
+      "admin_visibility": "org_queue_future",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "REGISTRATION_TRACKING",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "right_to_rent",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Organisation records statutory check; org admin may verify internally; not platform certificate verification.",
+      "authority_owner": "org_admin",
+      "verification_required": "org_admin_optional",
+      "review_visibility": "org_admin_queue",
+      "operational_closure_mode": "declaration_recorded_plus_org_verify_optional",
+      "score_authority_mode": "declaration_confidence",
+      "escalation_conditions": [
+        "guided_declaration_low_confidence",
+        "manual_review_flag",
+        "contradiction_detected"
+      ],
+      "stale_rules": "no_platform_stale_review",
+      "admin_visibility": "org_queue_future; not platform pending-verification",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "GUIDED_DECLARATION",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "scotland_landlord_registration",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Registration tracking \u2014 org attestation with optional supporting document.",
+      "authority_owner": "org_admin",
+      "verification_required": "org_admin_optional",
+      "review_visibility": "org_admin_queue",
+      "operational_closure_mode": "registration_tracking_record_guard",
+      "score_authority_mode": "registration_record",
+      "escalation_conditions": [
+        "manual_review_flag",
+        "registration_contradiction"
+      ],
+      "stale_rules": "no_platform_stale_review",
+      "admin_visibility": "org_queue_future",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "REGISTRATION_TRACKING",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "selective_licence",
+      "governance_family": "PLATFORM_VERIFIED",
+      "governance_family_label": "Platform verified (certificate)",
+      "authority_owner": "platform_admin",
+      "verification_required": true,
+      "review_visibility": "platform_admin_documents_queue",
+      "operational_closure_mode": "admin_document_verify_plus_authority_sync",
+      "score_authority_mode": "direct_certificate",
+      "escalation_conditions": [
+        "mismatch_flagged",
+        "manual_review_flag",
+        "extraction_low_confidence",
+        "repeated_rejection"
+      ],
+      "stale_rules": "stale_on_pending_admin_review_with_owner",
+      "admin_visibility": "GET /api/admin/documents/pending-verification",
+      "acceptable_evidence_types": [
+        "DOCUMENT_UPLOAD"
+      ],
+      "cer_applicable": false,
+      "notes": "Document-primary; not CER governance path unless supporting upload only."
+    },
+    {
+      "requirement_code": "smoke_heat_alarms",
+      "governance_family": "SELF_CERTIFIED",
+      "governance_family_secondary": "PLATFORM_OVERSIGHT_OPTIONAL",
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": "Multi-component checklist/declaration can self-close when completeness guards pass; platform oversight only on escalation or low-confidence paths.",
+      "authority_owner": "landlord_self_attestation",
+      "verification_required": "conditional",
+      "review_visibility": "org_internal_optional",
+      "operational_closure_mode": "governance_guard_auto_close",
+      "score_authority_mode": "multi_component_conditional",
+      "escalation_conditions": [
+        "multi_evidence_components_incomplete",
+        "manual_review_flag",
+        "repeated_rejection"
+      ],
+      "stale_rules": "no_stale_without_review_owner",
+      "admin_visibility": "none_primary; escalation_queue_only",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "INSPECTION_CHECKLIST",
+        "CONTRACTOR_CONFIRMATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "GUIDED_EVIDENCE_RESOLUTION",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "tenancy_agreement",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": null,
+      "authority_owner": "org_admin",
+      "verification_required": "org_admin_optional",
+      "review_visibility": "org_admin_queue",
+      "operational_closure_mode": "declaration_recorded_plus_org_verify_optional",
+      "score_authority_mode": "declaration_confidence",
+      "escalation_conditions": [
+        "manual_review_flag"
+      ],
+      "stale_rules": "no_platform_stale_review",
+      "admin_visibility": "org_queue_future",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "GUIDED_DECLARATION",
+      "cer_applicable": true
+    },
+    {
+      "requirement_code": "wales_occupation_contract",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "governance_family_secondary": null,
+      "governance_family_labels": {
+        "SELF_CERTIFIED": "Self-certified (automated governance closure)",
+        "ORG_ADMIN_REVIEWED": "Organisation admin reviewed",
+        "PLATFORM_OVERSIGHT_OPTIONAL": "Platform oversight optional",
+        "PLATFORM_VERIFIED": "Platform verified certificate",
+        "ESCALATION_REVIEW_ONLY": "Escalation review only (overlay)"
+      },
+      "rationale": null,
+      "authority_owner": "org_admin",
+      "verification_required": "org_admin_optional",
+      "review_visibility": "org_admin_queue",
+      "operational_closure_mode": "declaration_recorded_plus_org_verify_optional",
+      "score_authority_mode": "declaration_confidence",
+      "escalation_conditions": [
+        "manual_review_flag"
+      ],
+      "stale_rules": "no_platform_stale_review",
+      "admin_visibility": "org_queue_future",
+      "acceptable_evidence_types": [
+        "STRUCTURED_DECLARATION",
+        "DOCUMENT_UPLOAD"
+      ],
+      "primary_resolution_workflow": "GUIDED_DECLARATION",
+      "cer_applicable": true
+    }
+  ],
+  "inventory_count": 30
+}

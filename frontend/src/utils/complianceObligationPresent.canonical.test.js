@@ -65,15 +65,18 @@ describe('canonicalComplianceInlineNarrative', () => {
     expect(canonicalComplianceInlineNarrative(row).recommended_action_text).toContain('Upload assessment');
   });
 
-  it('shows awaiting review for registration tracking with persisted submission', () => {
+  it('shows evidence recorded for registration tracking with governance truth surface', () => {
     const row = {
       requirement_id: 'r-rsw',
       property_id: 'p1',
       requirement_code: 'rent_smart_wales',
       workflow_class: 'REGISTRATION_TRACKING',
       status: 'MISSING',
+      truth_presentation_label: 'Evidence recorded',
+      truth_presentation_stage: 'evidence_recorded',
       evidence_authority: { state: 'MISSING', primary_evidence_record_id: 'cer-1' },
-      client_lifecycle_state: 'ACTION_REQUIRED',
+      client_lifecycle_state: 'SATISFIED_UNVERIFIED',
+      client_lifecycle_label: 'Evidence recorded',
       take_action: {
         primary: {
           label: 'Record registration details',
@@ -82,7 +85,7 @@ describe('canonicalComplianceInlineNarrative', () => {
         },
       },
     };
-    expect(complianceObligationStatusLabel(row)).toBe('Awaiting review');
+    expect(complianceObligationStatusLabel(row)).toBe('Evidence recorded');
   });
 
   it('keeps condition-standard rows operational-safe', () => {

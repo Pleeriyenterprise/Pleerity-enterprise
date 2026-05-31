@@ -84,7 +84,7 @@ export function complianceObligationStatusLabel(r) {
   if (['OVERDUE', 'EXPIRED'].includes(s)) return 'Overdue';
   if (s === 'EXPIRING_SOON') return 'Expiring';
   if (isSubmissionAwaitingReview(r)) {
-    return resolveClientRequirementLifecycleForPresentation(r).label || 'Awaiting review';
+    return resolveClientRequirementLifecycleForPresentation(r).label || 'Review in progress';
   }
   if (isRequirementMissingDocument(r)) return sem?.missing_evidence_label || workflowAwareMissingEvidenceLabel(r);
   return 'Valid';

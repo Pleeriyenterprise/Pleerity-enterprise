@@ -4,6 +4,7 @@
  */
 
 import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
+import { resolveGovernanceTierBadge, labelsDuplicateSemantics } from './cerGovernancePresentation';
 import {
   authorityPermitsVerifiedPresentationLanguage,
   isRightToRentMixedEvidencePendingReview,
@@ -34,6 +35,7 @@ export function applyLifecycleAwareCtaPresentation(requirement, cta) {
   const rtrCta = resolveRightToRentMixedEvidenceCtaPresentation(requirement, cta);
   if (rtrCta) return rtrCta;
   const { state } = resolveClientRequirementLifecycleForPresentation(requirement);
+  const truthStage = String(requirement?.truth_presentation_stage || '').trim();
   if (state === 'ACTION_REQUIRED' || state === 'NOT_APPLICABLE') {
     return cta;
   }
@@ -48,8 +50,17 @@ export function applyLifecycleAwareCtaPresentation(requirement, cta) {
     if (handler === 'guided_evidence') primary_action_label = 'View submission';
     else if (route.includes('/documents')) primary_action_label = 'View evidence';
     else primary_action_label = 'Review submission';
-  } else if (state === 'SATISFIED_UNVERIFIED') {
-    primary_action_label = handler === 'guided_evidence' ? 'View or update evidence' : 'View evidence';
+  } else if (
+    state === 'SATISFIED_UNVERIFIED' ||
+    ['declaration_recorded', 'assessment_recorded', 'evidence_recorded', 'followup_required'].includes(truthStage)
+  ) {
+    if (handler === 'guided_evidence') {
+      primary_action_label = truthStage === 'followup_required' ? 'View submission' : 'View or update evidence';
+      if (['declaration_recorded', 'assessment_recorded', 'evidence_recorded'].includes(truthStage)) {
+        primary_action_label = 'View submission';
+      }
+    } else if (route.includes('/documents')) primary_action_label = 'View evidence';
+    else primary_action_label = 'View evidence';
   } else if (state === 'VERIFIED') {
     const suppressVerified =
       isRightToRentMixedEvidencePendingReview(requirement) ||
@@ -123,12 +134,12 @@ export function getRequirementLifecycleCardShellClass(row) {
  * @returns {{ text: string, className: string } | null}
  */
 export function getLifecycleTierBadge(row) {
-  const { state } = resolveClientRequirementLifecycleForPresentation(row);
-  if (state === 'PENDING_REVIEW') {
-    return {
-      text: 'Awaiting review',
-      className: 'bg-amber-100 text-amber-950 border-amber-300',
-    };
+  const govTier = resolveGovernanceTierBadge(row);
+  if (govTier) return govTier;
+
+  const { state, label } = resolveClientRequirementLifecycleForPresentation(row);
+  if (state === 'SATISFIED_UNVERIFIED' && label && labelsDuplicateSemantics(label, 'Evidence on file')) {
+    return null;
   }
   if (state === 'SATISFIED_UNVERIFIED') {
     return {
@@ -137,10 +148,10 @@ export function getLifecycleTierBadge(row) {
     };
   }
   if (state === 'VERIFIED') {
-    return {
-      text: 'Verified',
-      className: 'bg-green-100 text-green-900 border-green-300',
-    };
+    return null;
+  }
+  if (state === 'PENDING_REVIEW') {
+    return null;
   }
   return null;
 }

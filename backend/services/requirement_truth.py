@@ -819,6 +819,13 @@ def enrich_requirement_dict(
         if not str(out.get("document_id") or "").strip() and str(out.get("evidence_doc_id") or "").strip():
             out["document_id"] = str(out.get("evidence_doc_id")).strip()
 
+        from services.cer_governance_presentation import attach_cer_governance_presentation
+
+        out.update(attach_cer_governance_presentation(out))
+        truth_label = str(out.get("truth_presentation_label") or "").strip()
+        if truth_label:
+            out["client_lifecycle_label"] = truth_label
+
     try:
         from services.operational_cognition_service import build_envelope_for_requirement
 

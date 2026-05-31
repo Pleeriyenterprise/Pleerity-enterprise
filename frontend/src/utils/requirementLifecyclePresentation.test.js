@@ -40,9 +40,11 @@ describe('requirementLifecyclePresentation', () => {
       expect(out.primary_action_label).toBe('Record gas safety certificate');
     });
 
-    it('maps ACTION_REQUIRED + persisted CER to View submission for guided_evidence', () => {
-      const row = rowWithLifecycle('ACTION_REQUIRED', {
-        evidence_authority: { state: 'MISSING', primary_evidence_record_id: 'cer_1' },
+    it('maps persisted declaration to View submission for guided_evidence', () => {
+      const row = rowWithLifecycle('SATISFIED_UNVERIFIED', {
+        truth_presentation_stage: 'declaration_recorded',
+        truth_presentation_label: 'Declaration recorded',
+        evidence_authority: { state: 'UPLOADED_UNCONFIRMED', primary_evidence_record_id: 'cer_1' },
       });
       const out = applyLifecycleAwareCtaPresentation(row, {
         ...baseCta,
@@ -135,11 +137,19 @@ describe('requirementLifecyclePresentation', () => {
       expect(getRequirementLifecycleIconTone(rowWithLifecycle('VERIFIED'))).toBe('green');
     });
 
-    it('tier badge only for non-action tiers', () => {
+    it('tier badge supplements only when distinct from primary status', () => {
       expect(getLifecycleTierBadge(rowWithLifecycle('ACTION_REQUIRED'))).toBeNull();
-      expect(getLifecycleTierBadge(rowWithLifecycle('PENDING_REVIEW'))?.text).toBe('Awaiting review');
+      expect(getLifecycleTierBadge(rowWithLifecycle('PENDING_REVIEW'))).toBeNull();
       expect(getLifecycleTierBadge(rowWithLifecycle('SATISFIED_UNVERIFIED'))?.text).toBe('Evidence on file');
-      expect(getLifecycleTierBadge(rowWithLifecycle('VERIFIED'))?.text).toBe('Verified');
+      expect(getLifecycleTierBadge(rowWithLifecycle('VERIFIED'))).toBeNull();
+      expect(
+        getLifecycleTierBadge(
+          rowWithLifecycle('SATISFIED_UNVERIFIED', {
+            truth_presentation_tier_supplement: 'Remediation or follow-up may remain open',
+            truth_presentation_label: 'Follow-up evidence required',
+          }),
+        )?.text,
+      ).toBe('Remediation or follow-up may remain open');
     });
   });
 });

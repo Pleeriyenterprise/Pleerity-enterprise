@@ -1,8 +1,9 @@
 /**
- * OPS / TRUST-01: frontend presentation when persisted client submission exists but API
- * lifecycle still reads ACTION_REQUIRED / missing-evidence. Does not change backend authority.
+ * OPS / TRUST-01 + CER Phase 1: truth-surface presentation for persisted submissions.
+ * Does not change backend authority — consumes governance fields when present.
  */
 
+import { resolveGovernanceAwareLifecycle, isQueueBackedReview, resolveTruthPresentationSubline } from './cerGovernancePresentation';
 import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
 
 /**
@@ -21,22 +22,20 @@ export function requirementHasPersistedClientSubmission(row) {
 }
 
 /**
- * Persisted submission still in client/admin review (not verified current).
+ * Queue-backed review pending (not generic operational incompleteness).
  * @param {Record<string, unknown>|null|undefined} row
  */
 export function isSubmissionAwaitingReview(row) {
   if (!requirementHasPersistedClientSubmission(row)) return false;
+  if (isQueueBackedReview(row)) return true;
   const reqStatus = String(row.status || '').trim().toUpperCase();
   if (reqStatus === 'COMPLIANT') return false;
-  const lc = String(row.client_lifecycle_state || '').trim().toUpperCase();
   const ea = row.evidence_authority && typeof row.evidence_authority === 'object' ? row.evidence_authority : null;
   const eaState = String(ea?.state || '').toUpperCase();
   if (eaState === 'VERIFIED_CURRENT' || eaState === 'VERIFIED') return false;
-  if (lc === 'PENDING_REVIEW') return true;
   if (eaState === 'PENDING_ADMIN_REVIEW') return true;
-  const vs = String(row.verification_status || row.client_evidence_verification_status || '').toUpperCase();
-  if (vs === 'PENDING_REVIEW') return true;
-  if (lc === 'ACTION_REQUIRED' || eaState === 'MISSING') return true;
+  const lc = String(row.client_lifecycle_state || '').trim().toUpperCase();
+  if (lc === 'PENDING_REVIEW' && row?.governance_family === 'PLATFORM_VERIFIED') return true;
   return false;
 }
 
@@ -46,18 +45,28 @@ export function isSubmissionAwaitingReview(row) {
  * @returns {ReturnType<typeof resolveClientRequirementLifecycle>}
  */
 export function resolveClientRequirementLifecycleForPresentation(row) {
+  if (row?.truth_presentation_label) {
+    return resolveGovernanceAwareLifecycle(row);
+  }
   const base = resolveClientRequirementLifecycle(row);
   if (!isSubmissionAwaitingReview(row)) return base;
   if (base.state === 'PENDING_REVIEW' || base.state === 'VERIFIED' || base.state === 'SATISFIED_UNVERIFIED') {
     return base;
   }
-  return {
-    ...base,
-    state: 'PENDING_REVIEW',
-    label: 'Awaiting review',
-    reasonCodes: [...(base.reasonCodes || []), 'FRONTEND_SUBMISSION_ON_FILE'],
-    source: 'presentation',
-  };
+  if (isQueueBackedReview(row)) {
+    const owner = String(row?.review_owner || '');
+    let label = 'Platform verification pending';
+    if (owner === 'org_admin') label = 'Organisation review pending';
+    if (owner === 'platform_admin_escalation') label = 'Escalated for platform review';
+    return {
+      ...base,
+      state: 'PENDING_REVIEW',
+      label,
+      reasonCodes: [...(base.reasonCodes || []), 'QUEUE_BACKED_REVIEW'],
+      source: 'presentation',
+    };
+  }
+  return base;
 }
 
 /**
@@ -67,7 +76,7 @@ export function resolveClientRequirementLifecycleForPresentation(row) {
 export function resolveSubmissionAwareEvidenceBadgeLabel(badgeLabel, row) {
   const raw = String(badgeLabel || '').trim();
   if (!raw) return null;
-  if (!isSubmissionAwaitingReview(row)) return raw;
+  if (!requirementHasPersistedClientSubmission(row)) return raw;
   if (/^not uploaded$/i.test(raw) || /^no document uploaded$/i.test(raw)) {
     return 'Submission on file';
   }
@@ -81,17 +90,23 @@ export function resolveSubmissionAwareEvidenceBadgeLabel(badgeLabel, row) {
  * @param {Record<string, unknown>|null|undefined} row
  */
 export function submissionAwaitingReviewSubline(row) {
+  const fromApi = resolveTruthPresentationSubline(row);
+  if (fromApi) return fromApi;
   if (!isSubmissionAwaitingReview(row)) return null;
-  return 'Authoritative submission on file — awaiting review. Supporting uploads alone do not complete this obligation.';
+  const owner = String(row?.review_owner || '');
+  if (owner === 'platform_admin') {
+    return 'Document submitted — Pleerity verification in progress.';
+  }
+  if (owner === 'org_admin') {
+    return 'Your organisation admin can verify this record when required.';
+  }
+  return null;
 }
 
 /** @typedef {{ requirement_id: string; property_id?: string; at?: number; document_count?: number }} SupportingUploadAttributionDetail */
 
 export const COMPLIANCE_SUPPORTING_UPLOAD_EVENT = 'compliance-supporting-upload';
 
-/**
- * @param {SupportingUploadAttributionDetail} detail
- */
 const SUPPORTING_UPLOAD_SESSION_PREFIX = 'cvp_recent_supporting_upload:';
 
 export function dispatchSupportingUploadAttribution(detail) {
@@ -145,7 +160,6 @@ export function recentSupportingUploadAttributionSubline(requirementId, recentBy
 }
 
 /**
- * Static copy shown before evidence-resolution API finishes (OPS-VERIFY-01 Journey C).
  * @param {Record<string, unknown>|null|undefined} requirement
  */
 export function resolveStaticSupportingUploadDisclaimer(requirement) {

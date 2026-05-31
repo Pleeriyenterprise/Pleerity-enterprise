@@ -4,6 +4,7 @@
  */
 import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
 import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
+import { labelsDuplicateSemantics } from './cerGovernancePresentation';
 import { normalizeRouteId, resolvePropertyPath } from './clientPortalNavigation';
 
 export function propertyIdsMatch(a, b) {
@@ -159,6 +160,16 @@ export function composeRequirementStatusBadgeVisibility(req, statusConfig, tierB
 
   if (state === 'SATISFIED_UNVERIFIED' && /^evidence on file$/i.test(tierText) && /verified|valid|on file/i.test(evidenceText)) {
     showEvidence = false;
+  }
+
+  if (labelsDuplicateSemantics(statusText, tierText)) {
+    showTier = false;
+  }
+  if (labelsDuplicateSemantics(statusText, evidenceText)) {
+    showEvidence = false;
+  }
+  if (/^awaiting review$|^review pending$/i.test(tierText) && !req?.queue_backed_review) {
+    showTier = false;
   }
 
   return { showTier, showEvidence, evidenceDisplay };

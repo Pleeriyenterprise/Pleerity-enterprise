@@ -1,0 +1,11 @@
+{
+  "programme": "PRELAUNCH-CER-AUTHORITY-CONVERGENCE-PHASE1-01",
+  "generated_at": "20260531T133031Z",
+  "status": "PARTIAL",
+  "reason": "Unit/runtime enrichment verified; staging browser E2E deferred",
+  "expected_after_deploy": {
+    "smoke_heat_alarms": "Additional action still required (not duplicate Awaiting review)",
+    "legionella": "Follow-up evidence required",
+    "gas_safety": "Platform verification pending unchanged"
+  }
+}

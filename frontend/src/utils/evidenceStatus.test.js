@@ -37,35 +37,31 @@ describe('workflowAwareMissingEvidenceLabel', () => {
     ).toBe('Agreement not recorded — action required');
   });
 
-  it('uses awaiting-review copy when structured submission is on file', () => {
+  it('uses recorded copy when structured submission is on file (non-queue)', () => {
     const row = {
       workflow_class: 'GUIDED_DECLARATION',
-      client_lifecycle_state: 'ACTION_REQUIRED',
+      truth_presentation_label: 'Declaration recorded',
+      truth_presentation_stage: 'declaration_recorded',
       evidence_authority: {
         primary_evidence_record_id: 'cer_test',
         state: 'MISSING',
-        non_document_verification_status: 'PENDING_REVIEW',
       },
     };
-    expect(workflowAwareMissingEvidenceLabel(row)).toBe(
-      'Authoritative declaration on file — awaiting review',
-    );
+    expect(workflowAwareMissingEvidenceLabel(row)).toBe('Declaration recorded');
   });
 
-  it('uses awaiting-review copy for REGISTRATION_TRACKING when submission is on file', () => {
+  it('uses recorded copy for REGISTRATION_TRACKING when submission is on file', () => {
     const row = {
       workflow_class: 'REGISTRATION_TRACKING',
       requirement_code: 'rent_smart_wales',
-      client_lifecycle_state: 'ACTION_REQUIRED',
+      truth_presentation_label: 'Evidence recorded',
+      truth_presentation_stage: 'evidence_recorded',
       evidence_authority: {
         primary_evidence_record_id: 'cer_rsw',
         state: 'MISSING',
-        non_document_verification_status: 'PENDING_REVIEW',
       },
     };
-    expect(workflowAwareMissingEvidenceLabel(row)).toBe(
-      'Registration details recorded — awaiting review',
-    );
+    expect(workflowAwareMissingEvidenceLabel(row)).toBe('Evidence recorded');
   });
 });
 
@@ -94,13 +90,16 @@ describe('getEvidenceStatus', () => {
     expect(s.subline).toBe('Agreement recorded — unsigned');
   });
 
-  it('uses API client_lifecycle_state chip when set (overrides workflow-only wording)', () => {
+  it('uses API client_lifecycle_state chip when set (platform queue-backed review)', () => {
     const s = getEvidenceStatus('MISSING', {
-      workflow_class: 'MULTI_EVIDENCE',
+      workflow_class: 'DOCUMENT_UPLOAD',
+      governance_family: 'PLATFORM_VERIFIED',
       client_lifecycle_state: 'PENDING_REVIEW',
-      client_lifecycle_label: 'Awaiting review',
+      client_lifecycle_label: 'Platform verification pending',
+      queue_backed_review: true,
+      review_owner: 'platform_admin',
     });
-    expect(s.text).toBe('Awaiting review');
+    expect(s.text).toBe('Platform verification pending');
     expect(s.className).toContain('amber');
   });
 });
