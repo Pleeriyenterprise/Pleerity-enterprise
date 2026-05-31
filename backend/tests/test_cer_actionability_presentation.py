@@ -1,6 +1,7 @@
 import pytest
 
 from services.cer_actionability_presentation import (
+    apply_actionability_cta_override,
     build_reopen_prefill_from_record,
     component_guidance_lines,
     resolve_actionability_primary_cta_label,
@@ -89,3 +90,63 @@ def test_reopen_prefill_structured():
     pre = build_reopen_prefill_from_record(rec)
     assert pre["evidence_mode"] == "STRUCTURED_DECLARATION"
     assert pre["structured_fields_prefill"]["actions_required"]["answer"] is True
+
+
+def test_fire_alarm_operational_incomplete_cta_specific():
+    """Staging fire_alarm rows normalize to smoke_heat_alarms but take_action resolves before completeness."""
+    row = {
+        "requirement_type": "fire_alarm",
+        "truth_presentation_stage": "operational_incomplete",
+        "evidence_completeness": {
+            "evaluated": True,
+            "is_complete": False,
+            "missing_components": [{"key": "smoke_alarm", "label": "Smoke alarm compliance"}],
+            "summary_label": "Incomplete: smoke alarm evidence missing",
+        },
+    }
+    assert resolve_actionability_primary_cta_label(row) == "Complete smoke alarm details"
+
+
+def test_fire_alarm_cta_override_after_early_generic_take_action():
+    row = {
+        "requirement_type": "fire_alarm",
+        "truth_presentation_stage": "operational_incomplete",
+        "evidence_completeness": {
+            "evaluated": True,
+            "is_complete": False,
+            "missing_components": [{"key": "smoke_alarm", "label": "Smoke alarm compliance"}],
+            "summary_label": "Incomplete: smoke alarm evidence missing",
+        },
+        "take_action": {
+            "primary": {
+                "label": "Add compliance evidence",
+                "kind": "guided_evidence_resolution",
+                "handler": "guided_evidence",
+            }
+        },
+    }
+    assert apply_actionability_cta_override(row) is True
+    assert row["take_action"]["primary"]["label"] == "Complete smoke alarm details"
+
+
+def test_alarm_installation_cta_from_missing_label():
+    row = {
+        "requirement_type": "smoke_heat_alarms",
+        "truth_presentation_stage": "operational_incomplete",
+        "evidence_completeness": {
+            "evaluated": True,
+            "is_complete": False,
+            "missing_components": [{"key": "smoke_alarm", "label": "Alarm installation count missing"}],
+        },
+    }
+    assert resolve_actionability_primary_cta_label(row) == "Complete alarm installation details"
+
+
+def test_gas_safety_cta_not_overridden_without_operational_specificity():
+    row = {
+        "requirement_type": "gas_safety",
+        "truth_presentation_stage": "action_required",
+        "take_action": {"primary": {"label": "Upload Gas Safety Certificate"}},
+    }
+    assert apply_actionability_cta_override(row) is False
+    assert row["take_action"]["primary"]["label"] == "Upload Gas Safety Certificate"

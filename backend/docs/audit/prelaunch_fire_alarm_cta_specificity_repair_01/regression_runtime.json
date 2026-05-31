@@ -1,0 +1,25 @@
+{
+  "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
+  "cases": [
+    {
+      "case": "smoke_heat_co",
+      "pass": true,
+      "got": "Complete CO alarm details"
+    },
+    {
+      "case": "legionella_followup",
+      "pass": true,
+      "got": "Update Legionella assessment"
+    },
+    {
+      "case": "fire_risk_incomplete",
+      "pass": true,
+      "got": "Add missing fire-risk actions"
+    },
+    {
+      "case": "gas_safety_action_required",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

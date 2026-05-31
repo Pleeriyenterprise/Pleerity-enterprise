@@ -826,6 +826,10 @@ def enrich_requirement_dict(
         if truth_label:
             out["client_lifecycle_label"] = truth_label
 
+        from services.cer_actionability_presentation import apply_actionability_cta_override
+
+        apply_actionability_cta_override(out)
+
     try:
         from services.operational_cognition_service import build_envelope_for_requirement
 

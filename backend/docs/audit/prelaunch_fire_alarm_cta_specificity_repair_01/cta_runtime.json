@@ -1,0 +1,48 @@
+{
+  "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
+  "verified_at": "20260531T151237Z",
+  "staging_simulation": {
+    "before_cta": "Add compliance evidence",
+    "specific_resolver": "Complete smoke alarm details",
+    "override_applied": true,
+    "after_cta": "Complete smoke alarm details",
+    "truth_stage": "operational_incomplete",
+    "pass": true
+  },
+  "regression": [
+    {
+      "case": "smoke_heat_co",
+      "pass": true,
+      "got": "Complete CO alarm details"
+    },
+    {
+      "case": "legionella_followup",
+      "pass": true,
+      "got": "Update Legionella assessment"
+    },
+    {
+      "case": "fire_risk_incomplete",
+      "pass": true,
+      "got": "Add missing fire-risk actions"
+    },
+    {
+      "case": "gas_safety_action_required",
+      "pass": true
+    }
+  ],
+  "all_regression_pass": true,
+  "staging_api": {
+    "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
+    "verified_at": "20260531T151243Z",
+    "fire_alarm_operational_incomplete_count": 0,
+    "representative": {
+      "requirement_id": null,
+      "truth_presentation_label": null,
+      "truth_presentation_stage": null,
+      "cta_label": "",
+      "evidence_completeness": null,
+      "missing_actions": null
+    },
+    "pass": false
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
+  "verified_at": "20260531T151237Z",
+  "root_cause": "CTA_PRECEDENCE_FAILURE",
+  "summary": "resolve_take_action_envelope runs in enrich_requirement_dict before evidence_completeness and attach_cer_governance_presentation. resolve_actionability_primary_cta_label therefore sees no truth_presentation_stage or missing_components and returns None; guided primary falls back to generic Add compliance evidence. Component guidance works because it is computed later from the fully enriched row.",
+  "ordering_in_enrich_requirement_dict": [
+    "654-664 take_action resolved (CTA frozen)",
+    "682-692 evidence_completeness attached (fire_alarm -> smoke_heat_alarms canon)",
+    "822-824 attach_cer_governance_presentation (truth_presentation_stage set)",
+    "NEW apply_actionability_cta_override re-applies specific CTA"
+  ],
+  "why_smoke_heat_alarms_tests_passed_but_fire_alarm_staging_failed": "Unit tests passed truth_presentation_stage and evidence_completeness directly into resolve_actionability_primary_cta_label; production enrich order never re-applied CTA after those fields existed. Staging uses requirement_type fire_alarm with operational_incomplete.",
+  "files": {
+    "primary_fix": "services/cer_actionability_presentation.py:apply_actionability_cta_override",
+    "wiring": "services/requirement_truth.py (post-governance)",
+    "resolver": "services/requirement_action_resolver.py:_guided_multi_mode_primary_label"
+  },
+  "not_root_cause": [
+    "fire_alarm canon normalization (already maps to smoke_heat_alarms)",
+    "component_guidance_lines (already worked)",
+    "governance family misclassification"
+  ]
+}

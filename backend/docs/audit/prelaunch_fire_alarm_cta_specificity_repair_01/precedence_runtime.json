@@ -1,0 +1,12 @@
+{
+  "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
+  "verified_at": "20260531T151237Z",
+  "precedence_order": [
+    "component-specific CTA (_resolve_missing_component_cta)",
+    "follow-up-specific CTA (legionella/lead/fire-risk)",
+    "domestic-alarm family fallback",
+    "generic Add compliance evidence (only when no specificity signals)"
+  ],
+  "override_gate": "apply_actionability_cta_override after governance attach",
+  "pass": true
+}

@@ -11,6 +11,19 @@ from services.requirement_code_registry import normalize_requirement_code
 
 _GENERIC_GUIDED = "Add compliance evidence"
 
+_GENERIC_FALLBACK_LABELS = frozenset(
+    {
+        _GENERIC_GUIDED,
+        "Complete inspection checklist",
+        "Add contractor confirmation",
+        "Submit compliance declaration",
+        "Complete follow-up evidence",
+        "Complete missing evidence components",
+    }
+)
+
+_DOMESTIC_ALARM_CANON = frozenset({"smoke_heat_alarms", "fire_alarm", "fire_detection", "smoke_alarms", "co_alarms"})
+
 _FIRE_RISK_CODES = frozenset(
     {
         "fire_risk_assessment",
@@ -33,6 +46,49 @@ def _missing_components(requirement: Dict[str, Any]) -> List[Dict[str, Any]]:
     comp = requirement.get("evidence_completeness") if isinstance(requirement.get("evidence_completeness"), dict) else {}
     raw = comp.get("missing_components") or []
     return [m for m in raw if isinstance(m, dict)]
+
+
+def _is_domestic_alarm_canon(canon: str) -> bool:
+    return canon in _DOMESTIC_ALARM_CANON or normalize_requirement_code(canon) == "smoke_heat_alarms"
+
+
+def _resolve_missing_component_cta(
+    missing: List[Dict[str, Any]],
+    *,
+    comp: Dict[str, Any],
+    canon: str,
+    stage: str,
+) -> Optional[str]:
+    """Component-aware CTA from missing_components keys/labels and completeness summary."""
+    if not missing:
+        summary = str(comp.get("summary_label") or "").lower()
+        if "co alarm" in summary or "co_alarm" in summary:
+            return "Complete CO alarm details"
+        if "smoke" in summary:
+            return "Complete smoke alarm details"
+        if stage == "operational_incomplete" and _is_domestic_alarm_canon(canon):
+            return "Complete smoke alarm details"
+        return None
+
+    first = missing[0] if isinstance(missing[0], dict) else {}
+    key = str(first.get("key") or "").strip().lower()
+    label = str(first.get("label") or "").strip().lower()
+
+    if key == "smoke_alarm" or ("smoke" in label and "alarm" in label):
+        if any(t in label for t in ("location", "test", "detail")):
+            return "Complete smoke alarm details"
+        if any(t in label for t in ("count", "installation", "installed")):
+            return "Complete alarm installation details"
+        return "Complete smoke alarm details"
+    if key == "co_alarm" or "carbon monoxide" in label:
+        return "Complete CO alarm details"
+    if any(t in label for t in ("remediation", "action", "mitigation")) or key in ("remediation", "follow_up_actions"):
+        if canon in _FIRE_RISK_CODES:
+            return "Add missing fire-risk actions"
+        return "Complete follow-up evidence"
+    if key and _is_domestic_alarm_canon(canon):
+        return "Add missing smoke alarm information"
+    return None
 
 
 def component_guidance_lines(requirement: Dict[str, Any]) -> List[str]:
@@ -91,7 +147,6 @@ def resolve_actionability_primary_cta_label(
     """
     stage = _truth_stage(requirement)
     canon = _canon(requirement)
-    fb = str(fallback or _GENERIC_GUIDED).strip()
 
     if stage == "supporting_upload_only":
         return "Upload supporting evidence"
@@ -102,19 +157,13 @@ def resolve_actionability_primary_cta_label(
     if stage == "operational_incomplete" or (comp.get("is_complete") is False and comp.get("evaluated")):
         if canon in _FIRE_RISK_CODES and stage == "operational_incomplete":
             return "Add missing fire-risk actions"
-        if missing:
-            key = str(missing[0].get("key") or "").strip()
-            if key == "co_alarm":
-                return "Complete CO alarm details"
-            if key == "smoke_alarm":
-                return "Complete smoke alarm details"
-        summary = str(comp.get("summary_label") or "").lower()
-        if "co alarm" in summary or "co_alarm" in summary:
-            return "Complete CO alarm details"
-        if "smoke" in summary:
-            return "Complete smoke alarm details"
+        component_cta = _resolve_missing_component_cta(missing, comp=comp, canon=canon, stage=stage)
+        if component_cta:
+            return component_cta
         if canon in _FIRE_RISK_CODES:
             return "Add missing fire-risk actions"
+        if stage == "operational_incomplete" and _is_domestic_alarm_canon(canon):
+            return "Complete fire alarm compliance details"
         if stage == "operational_incomplete":
             return "Complete missing evidence components"
 
@@ -127,10 +176,50 @@ def resolve_actionability_primary_cta_label(
             return "Add missing fire-risk actions"
         return "Complete follow-up evidence"
 
-    if stage == "action_required" and canon == "smoke_heat_alarms":
+    if stage == "action_required" and _is_domestic_alarm_canon(canon):
         return "Complete smoke alarm details"
 
-    return None if fb == _GENERIC_GUIDED else None
+    return None
+
+
+def apply_actionability_cta_override(requirement: Dict[str, Any]) -> bool:
+    """
+    Re-apply specific primary CTA after governance/completeness enrichment.
+
+    take_action is resolved earlier in enrich_requirement_dict before truth_presentation_stage
+    and evidence_completeness exist; this restores component-specific labels for client surfaces.
+    """
+    specific = resolve_actionability_primary_cta_label(requirement)
+    if not specific:
+        return False
+    ta = requirement.get("take_action")
+    if not isinstance(ta, dict):
+        return False
+    pri = ta.get("primary")
+    if not isinstance(pri, dict):
+        return False
+    current = str(pri.get("label") or "").strip()
+    if current == specific:
+        return False
+
+    stage = _truth_stage(requirement)
+    missing = _missing_components(requirement)
+    has_operational_specificity = bool(missing) or stage in (
+        "operational_incomplete",
+        "followup_required",
+        "supporting_upload_only",
+    )
+    if not has_operational_specificity:
+        return False
+
+    # Component-specific and follow-up CTAs always beat generic guided fallback.
+    if missing or stage in ("operational_incomplete", "followup_required", "supporting_upload_only"):
+        pri["label"] = specific
+        return True
+    if current in _GENERIC_FALLBACK_LABELS:
+        pri["label"] = specific
+        return True
+    return False
 
 
 def resolve_existing_submission_banner_copy(requirement: Dict[str, Any]) -> Optional[str]:
