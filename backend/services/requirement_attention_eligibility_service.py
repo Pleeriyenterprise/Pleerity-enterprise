@@ -90,9 +90,13 @@ def _expiring_within_window(
     *,
     now: datetime,
     expiring_window_days: Optional[int],
+    allow_legacy_due_date: bool = True,
 ) -> bool:
     ea = requirement.get("evidence_authority") if isinstance(requirement.get("evidence_authority"), dict) else {}
-    eff = ea.get("effective_expiry_date") or requirement.get("due_date") or requirement.get("expiry_date")
+    eff = ea.get("effective_expiry_date")
+    if eff is None and not allow_legacy_due_date:
+        return False
+    eff = eff or requirement.get("due_date") or requirement.get("expiry_date")
     dt = _parse_due_date(eff)
     if dt is None:
         return False
@@ -131,7 +135,10 @@ def derive_attention_reason(
 
     if _is_expired(row, now=ref):
         return "expired"
-    if _expiring_within_window(row, now=ref, expiring_window_days=expiring_window_days):
+    from services.requirement_satisfaction_service import legacy_due_date_blocks_renewal_attention
+
+    allow_legacy_due = legacy_due_date_blocks_renewal_attention(row)
+    if _expiring_within_window(row, now=ref, expiring_window_days=expiring_window_days, allow_legacy_due_date=allow_legacy_due):
         return "renewal_due"
     if ea_st == EA_REJECTED:
         return "rejected"

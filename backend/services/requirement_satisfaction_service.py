@@ -60,6 +60,28 @@ def _status_upper(value: Any) -> str:
     return str(value or "").strip().upper()
 
 
+def non_document_evidence_on_file(row: Dict[str, Any]) -> bool:
+    """True when authoritative non-document evidence (CER) is linked on the requirement."""
+    ea = row.get("evidence_authority") if isinstance(row.get("evidence_authority"), dict) else {}
+    if str(ea.get("primary_evidence_record_id") or row.get("primary_evidence_record_id") or "").strip():
+        return True
+    truth = str(row.get("truth_presentation_stage") or "").lower()
+    return truth in SATISFIED_TRUTH_STAGES and truth not in ("verified",)
+
+
+def legacy_due_date_blocks_renewal_attention(row: Dict[str, Any]) -> bool:
+    """
+    Legacy calendar due_date must not force renewal attention on non-document declarations
+    when authority carries no effective expiry (e.g. legionella assessment on file).
+    """
+    if document_upload_required(row):
+        return True
+    if not non_document_evidence_on_file(row):
+        return True
+    ea = row.get("evidence_authority") if isinstance(row.get("evidence_authority"), dict) else {}
+    return bool(ea.get("effective_expiry_date") or row.get("expiry_date"))
+
+
 _NON_DOCUMENT_GOVERNANCE_FAMILIES = frozenset({GF_SELF, GF_ORG, GF_PLATFORM_OPT})
 
 

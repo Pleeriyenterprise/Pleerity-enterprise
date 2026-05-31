@@ -80,6 +80,29 @@ def test_admin_diagnostics_split():
     assert diag["satisfied_by_declaration"] >= 1
 
 
+def test_legionella_assessment_on_file_not_renewal_due_from_legacy_calendar():
+    from services.requirement_attention_eligibility_service import is_requirement_attention_eligible
+
+    row = {
+        "requirement_type": "legionella",
+        "status": "EXPIRING_SOON",
+        "due_date": "2026-06-15T00:00:00+00:00",
+        "truth_presentation_stage": "assessment_recorded",
+        "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+        "document_upload_required": False,
+        "evidence_authority": {
+            "version": 1,
+            "state": "MISSING",
+            "primary_evidence_record_id": "cer_test",
+            "primary_evidence_mode": "STRUCTURED_DECLARATION",
+        },
+        "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+    }
+    eligible, reason, _ = is_requirement_attention_eligible(row)
+    assert eligible is False
+    assert reason is None
+
+
 def test_verified_epc_not_unresolved():
     row = {
         "requirement_id": "r-epc",
