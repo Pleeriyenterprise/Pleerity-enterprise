@@ -454,7 +454,7 @@ def evaluate_document_requirement_match(
             "match_outcome": MATCH_OUTCOME_NEEDS_ADMIN_REVIEW,
             "match_confidence": round(float(conf), 4),
             "mismatch_reason_code": REASON_CODE_EXTRACTION_AMBIGUOUS,
-            "mismatch_reason_text": "Ambiguous classification signals.",
+            "mismatch_reason_text": "We need more information before this requirement can be confirmed.",
             "matched_requirement_family": matched_requirement_family,
             "detection_signals": {"signals": signals, "scores": scores, "route": upload_route_context},
             "evidence_match_policy": POLICY_QUARANTINE,

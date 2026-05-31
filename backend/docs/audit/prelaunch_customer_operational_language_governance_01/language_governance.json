@@ -1,0 +1,29 @@
+{
+  "programme": "PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01",
+  "timestamp": "20260531T204947Z",
+  "commit": "1298a98b",
+  "architecture": [
+    "Raw engine state",
+    "Operational interpretation",
+    "Governance truth",
+    "Customer-safe semantic translation",
+    "Role-aware action language",
+    "UI presentation"
+  ],
+  "canonical_service": "services/customer_operational_language_service.py",
+  "mandatory_call_sites": [
+    "unified_tasks_service.get_unified_tasks_for_client (pre-return sanitize)",
+    "today_projection_service.compact_task_for_today_list",
+    "command_center_service._slim_task / _priority_action_to_slim_urgent",
+    "client_priority_stream issue actions",
+    "operational_cognition_service.build_envelope_for_issue",
+    "compliance_gap_operational_bridge issue create"
+  ],
+  "forbidden_on_customer_surfaces": [
+    "internal enums",
+    "UUIDs / evidence keys",
+    "Gap:/Key: diagnostics",
+    "HIGH/MEDIUM/LOW engine flags",
+    "classifier / reconciliation jargon"
+  ]
+}

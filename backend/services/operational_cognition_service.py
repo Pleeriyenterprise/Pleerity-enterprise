@@ -235,15 +235,32 @@ def build_envelope_for_job(
 
 
 def build_envelope_for_issue(issue: Dict[str, Any]) -> Dict[str, Any]:
+    from services.customer_operational_language_service import (
+        derive_customer_safe_cta,
+        derive_customer_safe_issue_summary,
+        is_customer_safe_maintenance_escalation,
+    )
+
     cont = issue.get("operational_continuation") if isinstance(issue.get("operational_continuation"), dict) else {}
     primary = _primary_from_continuation(cont)
+    compliance_issue = not is_customer_safe_maintenance_escalation(issue)
     if not primary and (issue.get("status") or "").lower() not in ("closed", "cancelled", "resolved"):
-        primary = {
-            "key": "create_work_order",
-            "label": "Create maintenance job",
-            "hint": "No active workflow linked to this issue yet.",
-            "source": "maintenance_issues_service",
-        }
+        if compliance_issue:
+            cta = derive_customer_safe_cta({**issue, "related_property_id": issue.get("property_id")})
+            primary = {
+                "key": "review_evidence",
+                "label": cta.get("label") or "Review uploaded document",
+                "url": cta.get("url"),
+                "hint": "Confirm or replace the uploaded record for this requirement.",
+                "source": "customer_operational_language",
+            }
+        else:
+            primary = {
+                "key": "create_work_order",
+                "label": "Create maintenance job",
+                "hint": "No active workflow linked to this issue yet.",
+                "source": "maintenance_issues_service",
+            }
     blockers: List[Dict[str, Any]] = []
     if (issue.get("status") or "").lower() in ("closed", "cancelled"):
         blockers.append({"code": "ISSUE_TERMINAL", "message": "Issue is closed — creation actions are not valid."})
@@ -275,7 +292,7 @@ def build_envelope_for_issue(issue: Dict[str, Any]) -> Dict[str, Any]:
             "completed_not_compliant": False,
         },
         "recommended_priority": "high" if (issue.get("severity") or "").lower() in ("high", "critical") else "normal",
-        "user_safe_summary": primary.get("label") if primary else issue.get("status"),
+        "user_safe_summary": derive_customer_safe_issue_summary(issue),
     }
     envelope["list_guidance"] = build_list_guidance(envelope)
     return envelope

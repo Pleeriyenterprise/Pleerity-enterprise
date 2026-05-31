@@ -290,8 +290,13 @@ function todayDecisionLayerTitle(task) {
   }
 
   if (task.source_type === 'issue') {
+    const safe = String(task.customer_safe_title || task.title || '').trim();
+    if (safe.length > 12) return safe.length > 160 ? `${safe.slice(0, 157)}…` : safe;
     const d = String(task.description || '').trim();
-    if (d.length > 12) return d.length > 160 ? `${d.slice(0, 157)}…` : d;
+    if (d.length > 12 && !/\bGap:\s*[A-Z_]+/i.test(d)) {
+      return d.length > 160 ? `${d.slice(0, 157)}…` : d;
+    }
+    return 'An item needs your review on this property';
   }
 
   return base;

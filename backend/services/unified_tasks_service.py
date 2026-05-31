@@ -399,6 +399,12 @@ def _action_to_task(
     gk = a.get("gap_key")
     if gk:
         task_metadata["gap_key"] = str(gk)
+    if a.get("created_from"):
+        task_metadata["issue_created_from"] = a.get("created_from")
+    if a.get("triggering_rule"):
+        task_metadata["issue_triggering_rule"] = a.get("triggering_rule")
+    if a.get("maintenance_escalation_allowed") is not None:
+        task_metadata["maintenance_escalation_allowed"] = bool(a.get("maintenance_escalation_allowed"))
     if action_type == ACTION_PENDING_APPROVAL:
         task_metadata["domain"] = "billing"
         task_metadata["billing_milestone_type"] = "pending_invoice_approval"
@@ -1294,6 +1300,17 @@ async def get_unified_tasks_for_client(
     freshness = await _freshness_block(client_id)
     feed_cap = 8 if list_surface else 25
     activity_feed = activity_rows[:feed_cap]
+
+    from services.customer_operational_language_service import sanitize_task_for_customer
+
+    def _cust(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        return [sanitize_task_for_customer(t) for t in rows]
+
+    urgent = _cust(urgent)
+    upcoming = _cust(upcoming)
+    in_progress = _cust(in_progress)
+    snoozed_sorted = _cust(snoozed_sorted)
+    hidden_inbox = _cust(hidden_inbox)
 
     out: Dict[str, Any] = {
         "tasks": {

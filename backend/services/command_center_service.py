@@ -101,7 +101,9 @@ def _slim_task(t: Dict[str, Any]) -> Dict[str, Any]:
         ):
             if metadata.get(k) is not None:
                 out[k] = metadata.get(k)
-    return out
+    from services.customer_operational_language_service import sanitize_customer_visible_payload
+
+    return sanitize_customer_visible_payload(out, surface="command_center")
 
 
 def _slim_risk(s: Dict[str, Any]) -> Dict[str, Any]:
@@ -152,8 +154,6 @@ def _priority_action_to_slim_urgent(
     if rid:
         meta["requirement_id"] = rid
         meta["linked_property_requirement_id"] = rid
-    if a.get("gap_key"):
-        meta["gap_key"] = a.get("gap_key")
     if a.get("consequence_category"):
         meta["consequence_category"] = a.get("consequence_category")
     if a.get("if_ignored"):
@@ -172,7 +172,13 @@ def _priority_action_to_slim_urgent(
     if action_type.startswith("coordination_"):
         meta["coordination_momentum_action"] = True
         meta["blockage_class"] = "coordination_failure"
-    return {
+    if a.get("created_from"):
+        meta["issue_created_from"] = a.get("created_from")
+    if a.get("triggering_rule"):
+        meta["issue_triggering_rule"] = a.get("triggering_rule")
+    if a.get("maintenance_escalation_allowed") is not None:
+        meta["maintenance_escalation_allowed"] = a.get("maintenance_escalation_allowed")
+    row = {
         "id": task_id,
         "task_id": task_id,
         "title": a.get("title"),
@@ -189,7 +195,12 @@ def _priority_action_to_slim_urgent(
         "primary_action_label": a.get("recommended_action_label") or "View",
         "primary_action_url": a.get("recommended_url") or "/today",
         "metadata": meta,
+        "triggering_rule": a.get("triggering_rule"),
+        "created_from": a.get("created_from"),
     }
+    from services.customer_operational_language_service import sanitize_customer_visible_payload
+
+    return sanitize_customer_visible_payload(row, surface="command_center")
 
 
 def _profile_mark(profile: Optional[Dict[str, Any]], key: str, started: float) -> None:
@@ -310,28 +321,54 @@ async def _load_maintenance_debt_urgent_rows(
             }
         )
     if len(rows) < cap:
+        from services.customer_operational_language_service import (
+            derive_customer_safe_issue_detail,
+            derive_customer_safe_issue_summary,
+            derive_customer_safe_cta,
+            is_customer_safe_maintenance_escalation,
+            sanitize_task_for_customer,
+        )
+
         async for issue in db.maintenance_issues.find(
-            issue_q, {"_id": 0, "issue_id": 1, "description": 1, "status": 1}
+            issue_q,
+            {
+                "_id": 0,
+                "issue_id": 1,
+                "description": 1,
+                "status": 1,
+                "triggering_rule": 1,
+                "created_from": 1,
+                "operational_root_key": 1,
+                "property_id": 1,
+            },
         ).sort("updated_at", -1).limit(max(0, cap - len(rows))):
             iid = issue.get("issue_id")
             if not iid:
                 continue
-            rows.append(
-                {
-                    "id": f"maintenance:issue:{iid}",
-                    "task_id": f"maintenance:issue:{iid}",
-                    "title": (issue.get("description") or "Maintenance issue")[:120],
-                    "description": "Open maintenance issue requires coordination",
-                    "section": "urgent",
-                    "source_type": "maintenance_issue",
-                    "primary_action_type": "open_issue",
-                    "primary_action_label": "Review issue",
-                    "primary_action_url": f"/operations/issues/{iid}",
-                    "related_issue_id": iid,
-                    "urgency_level": "medium",
-                    "metadata": {"degraded_maintenance_fallback": True},
-                }
-            )
+            safe_title = derive_customer_safe_issue_summary(issue)
+            safe_desc = derive_customer_safe_issue_detail(issue)
+            cta = derive_customer_safe_cta({**issue, "related_property_id": issue.get("property_id")})
+            maint_ok = is_customer_safe_maintenance_escalation(issue)
+            row = {
+                "id": f"maintenance:issue:{iid}",
+                "task_id": f"maintenance:issue:{iid}",
+                "title": safe_title,
+                "description": safe_desc,
+                "section": "urgent",
+                "source_type": "issue",
+                "primary_action_type": "open_issue",
+                "primary_action_label": cta["label"] if not maint_ok else "Review details",
+                "primary_action_url": cta.get("url") or f"/operations/issues/{iid}",
+                "related_issue_id": iid,
+                "urgency_level": "medium",
+                "metadata": {
+                    "degraded_maintenance_fallback": True,
+                    "issue_triggering_rule": issue.get("triggering_rule"),
+                    "issue_created_from": issue.get("created_from"),
+                    "maintenance_escalation_allowed": maint_ok,
+                },
+            }
+            rows.append(sanitize_task_for_customer(row))
     return rows, debt_total
 
 

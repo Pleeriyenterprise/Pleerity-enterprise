@@ -1,0 +1,38 @@
+{
+  "programme": "PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01",
+  "timestamp": "20260531T204947Z",
+  "commit": "1298a98b",
+  "staging_api": {
+    "today_tasks": {
+      "url": "https://pleerity-enterprise.onrender.com/api/client/tasks",
+      "status": 200,
+      "leaks": [
+        "\\(\\s*(HIGH|MEDIUM|LOW|CRITICAL)\\s*\\)",
+        "\\bGap:\\s*[A-Z_]+",
+        "\\bKey:\\s*[0-9a-f:\\-]+",
+        "\\bMISMATCHED_EVIDENCE\\b",
+        "\\bMISSING_EVIDENCE\\b",
+        "\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}.*MISMATCHED",
+        "classification signal"
+      ],
+      "maintenance_cta_drift": [],
+      "passed": false
+    },
+    "command_center_bundle": {
+      "url": "https://pleerity-enterprise.onrender.com/api/client/command-center",
+      "status": 200,
+      "leaks": [
+        "\\(\\s*(HIGH|MEDIUM|LOW|CRITICAL)\\s*\\)",
+        "\\bGap:\\s*[A-Z_]+",
+        "\\bKey:\\s*[0-9a-f:\\-]+",
+        "\\bMISMATCHED_EVIDENCE\\b",
+        "\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}.*MISMATCHED",
+        "classification signal"
+      ],
+      "maintenance_cta_drift": [],
+      "passed": false
+    }
+  },
+  "passed": false,
+  "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"]\")\n"
+}

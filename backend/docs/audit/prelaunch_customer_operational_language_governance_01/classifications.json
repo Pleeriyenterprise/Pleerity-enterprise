@@ -1,0 +1,16 @@
+{
+  "programme": "PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01",
+  "timestamp": "20260531T204947Z",
+  "commit": "1298a98b",
+  "classification": "IMPLEMENTED_PENDING_RUNTIME",
+  "gates": {
+    "unit_regression": true,
+    "staging_api_no_leaks": false,
+    "browser_today_no_leaks": false
+  },
+  "blocking_if_not_verified": [
+    "Deploy language layer to staging",
+    "Re-run harness after deploy",
+    "Confirm Today cards show customer-safe copy only"
+  ]
+}

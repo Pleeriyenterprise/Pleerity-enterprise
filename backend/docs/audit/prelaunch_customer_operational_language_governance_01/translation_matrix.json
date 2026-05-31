@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "mappings": {
+    "MISMATCHED_EVIDENCE": {
+      "summary": "We could not confidently match this document to a requirement yet.",
+      "detail": "Please review the uploaded file and confirm it is the correct certificate or record for this property.",
+      "cta": "Review uploaded document"
+    },
+    "MISSING_EVIDENCE": {
+      "summary": "Valid evidence is still needed for this requirement.",
+      "detail": "Upload the correct certificate or record so this requirement can be confirmed.",
+      "cta": "Upload document"
+    },
+    "MISSING_EVIDENCE_HIGH": {
+      "summary": "A valid certificate or record is still needed for this property.",
+      "detail": "Upload the required evidence to keep this requirement on track.",
+      "cta": "Upload document"
+    },
+    "NO_ACCEPTABLE_EVIDENCE": {
+      "summary": "We still need valid evidence for this requirement.",
+      "detail": "Upload or confirm the correct record for this obligation.",
+      "cta": "Upload document"
+    },
+    "CLASSIFICATION_AMBIGUOUS": {
+      "summary": "We need more information before this requirement can be confirmed.",
+      "detail": "Review the uploaded file or provide the missing details.",
+      "cta": "Review uploaded document"
+    },
+    "RECONCILIATION_PENDING": {
+      "summary": "We are still processing the latest update.",
+      "detail": "No action is required right now \u2014 check back shortly.",
+      "cta": "View requirement"
+    },
+    "EVIDENCE_UPLOADED_UNCONFIRMED": {
+      "summary": "Uploaded evidence still needs your confirmation.",
+      "detail": "Confirm the dates and details so they apply correctly.",
+      "cta": "Confirm details"
+    },
+    "EXPIRED": {
+      "summary": "Evidence for this requirement has expired.",
+      "detail": "Renew or replace the record to restore compliance.",
+      "cta": "Renew evidence"
+    },
+    "EXPIRING_SOON": {
+      "summary": "Evidence for this requirement is due for renewal soon.",
+      "detail": "Plan renewal before the expiry date.",
+      "cta": "Plan renewal"
+    },
+    "ACTION_REQUIRED": {
+      "summary": "This requirement needs your attention.",
+      "detail": "Complete the next step shown for this obligation.",
+      "cta": "Take action"
+    },
+    "AUTHORITY_UNSYNCED": {
+      "summary": "We are updating the latest compliance status.",
+      "detail": "Refresh shortly if this item still appears.",
+      "cta": "View requirement"
+    },
+    "DELIVERY_PROOF_MISSING": {
+      "summary": "Completion proof is still needed for this workflow.",
+      "detail": "Add proof that the required work or delivery was completed.",
+      "cta": "Add proof"
+    },
+    "COMPLIANCE_GAP": {
+      "summary": "A compliance item needs your attention.",
+      "detail": "Review the requirement and complete the next step.",
+      "cta": "View requirement"
+    },
+    "DEFAULT": {
+      "summary": "Something needs your attention on this property.",
+      "detail": "Review the details and complete the recommended next step.",
+      "cta": "View details"
+    }
+  }
+}

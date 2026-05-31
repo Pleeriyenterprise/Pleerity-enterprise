@@ -51,8 +51,26 @@ async def apply_gap_operational_bridge(
             from services import maintenance_issues_service as mis
             from services import maintenance_service as msrv
 
-            title = row.get("title") or "Compliance gap"
-            desc = f"{row.get('description') or ''}\n\nGap: {row.get('gap_kind')} ({row.get('severity')}). Key: {gk}"
+            from services.customer_operational_language_service import (
+                derive_customer_safe_issue_detail,
+                derive_customer_safe_issue_summary,
+            )
+
+            title = derive_customer_safe_issue_summary(
+                {
+                    "description": row.get("description") or row.get("title"),
+                    "triggering_rule": f"compliance_gap:{row.get('gap_kind')}",
+                    "created_from": "compliance",
+                    "operational_root_key": str(gk),
+                }
+            )
+            desc = derive_customer_safe_issue_detail(
+                {
+                    "description": row.get("description") or row.get("title"),
+                    "triggering_rule": f"compliance_gap:{row.get('gap_kind')}",
+                    "created_from": "compliance",
+                }
+            )
             await mis.create_issue(
                 client_id=cid,
                 property_id=pid,

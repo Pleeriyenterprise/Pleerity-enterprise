@@ -289,18 +289,39 @@ def build_business_actions_for_task(task: Dict[str, Any]) -> List[Dict[str, Any]
 
     if source_type == "issue" and source_entity_id:
         iid = str(source_entity_id)
-        out.append(
-            {
-                "id": "create_maintenance_job",
-                "label": "Create maintenance job",
-                "issue_id": iid,
-                "hint": "From issue detail you can open a work order when ready.",
-                "intent": "create_maintenance_job",
-                "action_authority": "operations_template",
-                "source_type": "issue",
-                "provenance": {"primary_label": PROVENANCE_OPERATIONS_TEMPLATE, "bundle": "operations"},
-            }
-        )
+        from services.customer_operational_language_service import is_customer_safe_maintenance_escalation
+
+        issue_ctx = {
+            **meta,
+            "source_type": "issue",
+            "created_from": meta.get("issue_created_from"),
+            "triggering_rule": meta.get("issue_triggering_rule"),
+        }
+        if is_customer_safe_maintenance_escalation(issue_ctx):
+            out.append(
+                {
+                    "id": "create_maintenance_job",
+                    "label": "Create maintenance job",
+                    "issue_id": iid,
+                    "hint": "From issue detail you can open a work order when ready.",
+                    "intent": "create_maintenance_job",
+                    "action_authority": "operations_template",
+                    "source_type": "issue",
+                    "provenance": {"primary_label": PROVENANCE_OPERATIONS_TEMPLATE, "bundle": "operations"},
+                }
+            )
+        else:
+            out.append(
+                {
+                    "id": "review_evidence",
+                    "label": "Review uploaded document",
+                    "navigate": task.get("primary_action_url") or f"/documents?property_id={prop_id or ''}",
+                    "intent": "upload_evidence",
+                    "action_authority": "requirement_resolver",
+                    "source_type": "issue",
+                    "provenance": {"primary_label": "customer_operational_language", "bundle": "compliance"},
+                }
+            )
         out.append(
             {
                 "id": "view_issue",
@@ -614,7 +635,9 @@ def compact_task_for_today_list(task: Dict[str, Any], now: datetime) -> Dict[str
     if isinstance(rank, dict):
         t["attention_rank"] = rank.get("rank")
         t["attention_reason"] = rank.get("reason") or rank.get("summary")
-    return t
+    from services.customer_operational_language_service import sanitize_task_for_customer
+
+    return sanitize_task_for_customer(t)
 
 
 def enrich_task_for_today(task: Dict[str, Any], now: datetime) -> Dict[str, Any]:

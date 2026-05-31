@@ -1,0 +1,7 @@
+{
+  "programme": "PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01",
+  "timestamp": "20260531T204947Z",
+  "commit": "1298a98b",
+  "passed": false,
+  "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"]\")\n"
+}

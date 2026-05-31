@@ -1,0 +1,36 @@
+{
+  "programme": "PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01",
+  "timestamp": "20260531T204947Z",
+  "commit": "1298a98b",
+  "primary_leak_vectors": [
+    {
+      "file": "services/compliance_gap_operational_bridge.py",
+      "issue": "Appended Gap/Key diagnostic suffix to maintenance issue descriptions",
+      "fixed": true
+    },
+    {
+      "file": "services/client_priority_stream.py",
+      "issue": "Raw issue.description used as task title/text",
+      "fixed": "derive_customer_safe_issue_summary wired"
+    },
+    {
+      "file": "frontend/src/pages/ClientTasksPage.js",
+      "issue": "Issue description used as card title",
+      "fixed": "customer_safe_title preferred; Gap: rejected"
+    },
+    {
+      "file": "services/today_projection_service.py",
+      "issue": "Create maintenance job business action for all issues",
+      "fixed": "is_customer_safe_maintenance_escalation gates CTA"
+    },
+    {
+      "file": "services/command_center_service.py",
+      "issue": "Degraded fallback used raw issue.description as title",
+      "fixed": "language service + sanitize on slim tasks"
+    }
+  ],
+  "screenshot_symptoms": [
+    "Ambiguous classification signals. Gap: MISMATCHED_EVIDENCE (HIGH). Key: \u2026",
+    "Start maintenance job on evidence-gap cards"
+  ]
+}

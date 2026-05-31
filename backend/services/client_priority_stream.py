@@ -301,17 +301,33 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
             issues_result = await mis.list_issues(client_id=client_id, property_id=property_id_filter, status=st, limit=limit)
             for iss in (issues_result.get("issues") or [])[:limit]:
                 iid = iss.get("issue_id")
-                actions.append(_action(
-                    ACTION_OPEN_ISSUE, "Open operational issue",
-                    (iss.get("description") or "")[:200] or f"Issue {str(iid)[:8]}…",
+                from services.customer_operational_language_service import (
+                    derive_customer_safe_cta,
+                    derive_customer_safe_issue_detail,
+                    derive_customer_safe_issue_summary,
+                    is_customer_safe_maintenance_escalation,
+                )
+
+                safe_title = derive_customer_safe_issue_summary(iss)
+                safe_desc = derive_customer_safe_issue_detail(iss)
+                cta = derive_customer_safe_cta({**iss, "related_property_id": iss.get("property_id")})
+                maint_ok = is_customer_safe_maintenance_escalation(iss)
+                act = _action(
+                    ACTION_OPEN_ISSUE, safe_title,
+                    safe_desc,
                     SCORE_OPEN_ISSUE, SEVERITY_MEDIUM,
                     related_issue_id=iid, related_property_id=iss.get("property_id"),
                     source_updated_at=_iso_or_none(iss.get("updated_at")),
-                    why_matters="Unresolved issues can escalate into property damage, complaints, or statutory risk.",
-                    recommended_action_detail=f"Status: {issue_status_label(iss.get('status'), 'client')}. Triage, assign, or create a work order.",
-                    recommended_url=f"/operations/issues/{iid}" if iid else "/operations/issues",
-                    recommended_action_label="View issue",
-                ))
+                    why_matters="Completing this step keeps your property records accurate and up to date.",
+                    recommended_action_detail=safe_desc,
+                    recommended_url=cta.get("url") or (f"/operations/issues/{iid}" if iid else "/operations/issues"),
+                    recommended_action_label=cta.get("label") or "View details",
+                )
+                act["created_from"] = iss.get("created_from")
+                act["triggering_rule"] = iss.get("triggering_rule")
+                act["operational_root_key"] = iss.get("operational_root_key")
+                act["maintenance_escalation_allowed"] = maint_ok
+                actions.append(act)
     except Exception as e:
         logger.debug("Priority stream: issues fetch failed for client %s: %s", client_id, e)
 
