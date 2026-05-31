@@ -1,0 +1,13 @@
+{
+  "programme": "PRELAUNCH-REQUIREMENT-SATISFACTION-VS-DOCUMENT-MISSING-CONVERGENCE-01",
+  "verified_at": "20260531T183530Z",
+  "wired_on": "sync_requirement_evidence_authority \u2192 invalidate_client_operational_surfaces",
+  "invalidates": [
+    "unified_tasks",
+    "command_center_primary",
+    "compliance_score",
+    "operational_intelligence_sections"
+  ],
+  "callable": true,
+  "pass": true
+}

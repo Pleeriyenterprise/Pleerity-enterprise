@@ -1,0 +1,13 @@
+{
+  "programme": "PRELAUNCH-REQUIREMENT-SATISFACTION-VS-DOCUMENT-MISSING-CONVERGENCE-01",
+  "verified_at": "20260531T183530Z",
+  "checks": {
+    "legionella_not_missing_document": true,
+    "legionella_satisfied": true,
+    "legionella_lifecycle_reconciled": true,
+    "gas_missing_required_document": true,
+    "smoke_declaration_satisfied": true,
+    "admin_diag_split": true
+  },
+  "pass": true
+}

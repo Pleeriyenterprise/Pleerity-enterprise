@@ -5827,8 +5827,29 @@ async def get_client_control_panel(request: Request, client_id: str):
         )
 
         properties_count = await db.properties.count_documents({"client_id": client_id})
-        missing_docs = await db.requirements.count_documents({"client_id": client_id, "status": "PENDING"})
         overdue_items = await db.requirements.count_documents({"client_id": client_id, "status": "OVERDUE"})
+
+        compliance_diagnostics: Dict[str, Any] = {
+            "missing_required_documents": 0,
+            "requirements_unresolved": 0,
+            "satisfied_by_declaration": 0,
+            "awaiting_org_platform_review": 0,
+            "follow_up_required": 0,
+            "satisfied_without_uploaded_document": 0,
+            "visible_requirements_count": 0,
+            "missing_documents": 0,
+        }
+        try:
+            from services.requirement_satisfaction_service import summarize_client_compliance_diagnostics
+            from services.requirement_truth import enrich_requirements_for_client
+
+            req_rows = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(5000)
+            enriched_reqs, _ = await enrich_requirements_for_client(db, client_id, req_rows)
+            compliance_diagnostics = summarize_client_compliance_diagnostics(enriched_reqs)
+        except Exception as diag_exc:
+            logger.warning("Admin compliance diagnostics enrichment failed client_id=%s: %s", client_id, diag_exc)
+
+        missing_docs = int(compliance_diagnostics.get("missing_documents") or 0)
 
         compliance_score = None
         compliance_risk_level = None
@@ -5998,6 +6019,16 @@ async def get_client_control_panel(request: Request, client_id: str):
                 "score_status_message": score_data.get("score_status_message"),
                 "scoring_semantics_version": score_data.get("scoring_semantics_version"),
                 "missing_documents": missing_docs,
+                "missing_required_documents": compliance_diagnostics.get("missing_required_documents", missing_docs),
+                "requirements_unresolved": compliance_diagnostics.get("requirements_unresolved", 0),
+                "satisfied_by_declaration": compliance_diagnostics.get("satisfied_by_declaration", 0),
+                "awaiting_org_platform_review": compliance_diagnostics.get("awaiting_org_platform_review", 0),
+                "follow_up_required": compliance_diagnostics.get("follow_up_required", 0),
+                "satisfied_without_uploaded_document": compliance_diagnostics.get(
+                    "satisfied_without_uploaded_document", 0
+                ),
+                "visible_requirements_count": compliance_diagnostics.get("visible_requirements_count", 0),
+                "compliance_diagnostics": compliance_diagnostics,
                 "overdue_items": overdue_items,
                 "unresolved_evidence_document_count": unresolved_evidence_document_count,
             },

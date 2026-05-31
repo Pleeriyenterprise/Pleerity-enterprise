@@ -1,0 +1,4 @@
+{
+  "pass": false,
+  "error": "Client error '403 Forbidden' for url 'https://pleerity-enterprise.onrender.com/api/auth/login'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+}

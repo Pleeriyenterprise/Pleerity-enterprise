@@ -63,7 +63,7 @@ import {
   GUIDED_CTA_UNAVAILABLE_TITLE,
 } from '../utils/requirementCtaParity';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
-import { isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
+import { isRequirementActionRequired, isRequirementMissingDocument } from '../utils/propertyDocumentsMatrix';
 import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
 import { useComplianceOutcomeRefresh } from '../utils/useComplianceOutcomeRefresh';
 import {
@@ -791,7 +791,7 @@ const RequirementsPage = () => {
       return s === 'VERIFIED' || s === 'SATISFIED_UNVERIFIED';
     }).length,
     expiringSoon: statsBase.filter((r) => r.status === 'EXPIRING_SOON').length,
-    attentionAction: statsBase.filter((r) => resolveClientRequirementLifecycle(r).state === 'ACTION_REQUIRED').length,
+    attentionAction: statsBase.filter((r) => isRequirementActionRequired(r)).length,
     pendingReview: statsBase.filter((r) => resolveClientRequirementLifecycle(r).state === 'PENDING_REVIEW').length,
   };
 

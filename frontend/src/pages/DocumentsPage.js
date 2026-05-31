@@ -919,13 +919,23 @@ const DocumentsPage = () => {
     () =>
       requirements.filter((r) => {
         if (!isRequirementIncludedInAttentionViews(r)) return false;
-        if (resolveClientRequirementLifecycle(r).state !== 'ACTION_REQUIRED') return false;
+        if (r.document_upload_required === false) return false;
+        if (r.requirement_satisfied === true) return false;
+        if (isRequirementMissingDocument(r)) return true;
         const ev = String(r.evidence_state || '').toUpperCase();
+        return ev === 'AWAITING_USER_CONFIRM' || ev === 'MISMATCH_FLAGGED' || ev === 'MISSING';
+      }).length,
+    [requirements],
+  );
+
+  const requirementsSatisfiedWithoutDocuments = useMemo(
+    () =>
+      requirements.filter((r) => {
+        if (!isRequirementIncludedInAttentionViews(r)) return false;
         return (
-          isRequirementMissingDocument(r) ||
-          ev === 'AWAITING_USER_CONFIRM' ||
-          ev === 'MISMATCH_FLAGGED' ||
-          ev === 'MISSING'
+          r.requirement_satisfied === true &&
+          r.missing_required_document === false &&
+          !(r.evidence_doc_id || String(r.document_id || '').trim())
         );
       }).length,
     [requirements],
@@ -1057,13 +1067,12 @@ const DocumentsPage = () => {
           >
             <p className="text-sm text-amber-950">
               <span className="font-semibold">{requirementsNeedingDocuments}</span>{' '}
-              {requirementsNeedingDocuments === 1 ? 'requirement currently has' : 'requirements currently have'} no
-              uploaded evidence (from the requirement list on this page).
+              {requirementsNeedingDocuments === 1 ? 'requirement still needs' : 'requirements still need'} an uploaded
+              document (document-required workflows only).
             </p>
             <p className="text-xs text-amber-900/90 max-w-prose">
-              Command Center may show a different number for “missing evidence” because it uses your latest{' '}
-              <strong>compliance score snapshot</strong> (portfolio-wide, score-impacting count)—not this page’s live
-              filter alone.
+              Structured declarations and self-certified records are not counted here — they satisfy the obligation without
+              a file upload when document evidence is not required.
             </p>
             <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <Button variant="outline" size="sm" className="border-amber-300 shrink-0 min-h-10" asChild>
@@ -1073,6 +1082,18 @@ const DocumentsPage = () => {
               <Link to="/compliance-score">How score counts missing evidence</Link>
             </Button>
             </div>
+          </div>
+        )}
+        {requirementsSatisfiedWithoutDocuments > 0 && (
+          <div
+            className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50/90 px-4 py-3"
+            data-testid="documents-satisfied-without-upload-banner"
+          >
+            <p className="text-sm text-emerald-950">
+              <span className="font-semibold">{requirementsSatisfiedWithoutDocuments}</span>{' '}
+              {requirementsSatisfiedWithoutDocuments === 1 ? 'requirement is' : 'requirements are'} satisfied via
+              structured declaration or self-certified record — no uploaded document is required.
+            </p>
           </div>
         )}
         {requirementsAwaitingInternalReview > 0 && (

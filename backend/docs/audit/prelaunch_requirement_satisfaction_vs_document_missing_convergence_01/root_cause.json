@@ -1,0 +1,44 @@
+{
+  "programme": "PRELAUNCH-REQUIREMENT-SATISFACTION-VS-DOCUMENT-MISSING-CONVERGENCE-01",
+  "verified_at": "20260531T183530Z",
+  "summary": "Document-missing used as proxy for requirement-unresolved across surfaces.",
+  "findings": [
+    {
+      "surface": "admin_client_control_panel",
+      "location": "backend/routes/admin.py",
+      "issue": "missing_documents counted all status=PENDING requirements (10 for 2x5 portfolio)",
+      "fix": "summarize_client_compliance_diagnostics from enriched requirements"
+    },
+    {
+      "surface": "documents_page_banner",
+      "location": "frontend/src/pages/DocumentsPage.js",
+      "issue": "requirementsNeedingDocuments used ACTION_REQUIRED + isRequirementMissingDocument ignoring declarations",
+      "fix": "document_upload_required + missing_required_document backend fields; split satisfied-without-upload banner"
+    },
+    {
+      "surface": "requirements_page_action_count",
+      "location": "frontend/src/pages/RequirementsPage.js",
+      "issue": "attentionAction counted client_lifecycle_state ACTION_REQUIRED before governance reconcile",
+      "fix": "isRequirementActionRequired uses requirement_attention_eligible + satisfaction truth"
+    },
+    {
+      "surface": "client_lifecycle_derivation",
+      "location": "backend/services/client_requirement_lifecycle.py",
+      "issue": "derive_client_lifecycle_fields runs before attach_cer_governance_presentation; PENDING+no doc \u2192 ACTION_REQUIRED",
+      "fix": "reconcile_client_lifecycle_with_satisfaction after governance attach"
+    },
+    {
+      "surface": "isRequirementMissingDocument",
+      "location": "frontend/src/utils/propertyDocumentsMatrix.js",
+      "issue": "PENDING without document_id treated as missing regardless of declaration satisfaction",
+      "fix": "respect missing_required_document / requirement_satisfied / document_upload_required"
+    },
+    {
+      "surface": "legionella_structured_submission",
+      "location": "backend/services/requirement_satisfaction_service.py",
+      "issue": "engine catalog marks legionella requires_document_evidence=True while governance is PLATFORM_OVERSIGHT_OPTIONAL",
+      "fix": "document_upload_required prefers governance_family over engine default"
+    }
+  ],
+  "pass": true
+}

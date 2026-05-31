@@ -97,3 +97,44 @@ def invalidate_command_center_primary_for_client(client_id: str) -> None:
     for k in list(_store.keys()):
         if k.startswith(prefix):
             _store.pop(k, None)
+
+
+def invalidate_compliance_score_for_client(client_id: str) -> None:
+    _store.pop(compliance_score_cache_key(client_id), None)
+
+
+def invalidate_operational_intelligence_sections_for_client(client_id: str) -> None:
+    prefix = f"oi_section:{client_id}:"
+    for k in list(_store.keys()):
+        if k.startswith(prefix):
+            _store.pop(k, None)
+
+
+def invalidate_client_operational_surfaces(client_id: str) -> None:
+    """Fan-out cache bust for Today/CC/dashboard/score/admin read models."""
+    invalidate_unified_tasks_for_client(client_id)
+    invalidate_command_center_primary_for_client(client_id)
+    invalidate_compliance_score_for_client(client_id)
+    invalidate_operational_intelligence_sections_for_client(client_id)
+
+
+def operational_intelligence_section_cache_key(
+    client_id: str,
+    property_id_filter: Optional[str],
+    section_name: str,
+) -> str:
+    section = str(section_name or "").strip().lower()
+    return f"oi_section:{client_id}:{property_id_filter or ''}:{section}"
+
+
+def get_cached_operational_intelligence_section(key: str) -> Optional[Dict[str, Any]]:
+    return get_cached_unified_tasks(key)
+
+
+def set_cached_operational_intelligence_section(
+    key: str,
+    payload: Dict[str, Any],
+    *,
+    ttl_seconds: int = 120,
+) -> None:
+    set_cached_unified_tasks(key, payload, ttl_seconds=ttl_seconds)

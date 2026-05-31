@@ -137,7 +137,8 @@ function CollapsibleBlock({ title, subtitle, defaultOpen = false, children, clas
 function deriveComplianceHeadline(compliance) {
   const risk = String(compliance?.risk_level || '').trim().toUpperCase();
   const overdue = Number(compliance?.overdue_items) || 0;
-  const missing = Number(compliance?.missing_documents) || 0;
+  const missing = Number(compliance?.missing_required_documents ?? compliance?.missing_documents) || 0;
+  const unresolved = Number(compliance?.requirements_unresolved) || 0;
   const score = compliance?.compliance_score;
   const st = compliance?.score_status;
   const headlineBlocked = ['unavailable', 'reconciliation_required', 'unknown', 'calculating'];
@@ -160,6 +161,7 @@ function deriveComplianceHeadline(compliance) {
   }
   if (
     missing > 0 ||
+    unresolved > 0 ||
     risk === 'MEDIUM' ||
     risk === 'WARNING' ||
     risk === 'ELEVATED' ||
@@ -183,9 +185,13 @@ function deriveComplianceHeadline(compliance) {
 
 function nextRequiredActionText(compliance, operationalSnapshot) {
   const overdue = Number(compliance?.overdue_items) || 0;
-  const missing = Number(compliance?.missing_documents) || 0;
+  const missing = Number(compliance?.missing_required_documents ?? compliance?.missing_documents) || 0;
+  const unresolved = Number(compliance?.requirements_unresolved) || 0;
   if (overdue > 0) {
     return `Resolve ${overdue} overdue requirement${overdue === 1 ? '' : 's'}`;
+  }
+  if (unresolved > 0) {
+    return `Resolve ${unresolved} unresolved requirement${unresolved === 1 ? '' : 's'}`;
   }
   if (missing > 0) {
     return `Follow up on ${missing} missing document${missing === 1 ? '' : 's'}`;
@@ -806,14 +812,36 @@ const AdminClientControlPanelPage = () => {
       </div>
       <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-black/5 pt-4">
         <div>
-          <div className="text-xs text-gray-600">Missing documents</div>
-          <div className="text-2xl font-bold text-gray-900 tabular-nums">{compliance.missing_documents ?? '—'}</div>
+          <div className="text-xs text-gray-600">Missing required documents</div>
+          <div className="text-2xl font-bold text-gray-900 tabular-nums">
+            {compliance.missing_required_documents ?? compliance.missing_documents ?? '—'}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-600">Unresolved requirements</div>
+          <div className="text-2xl font-bold text-gray-900 tabular-nums">{compliance.requirements_unresolved ?? '—'}</div>
         </div>
         <div>
           <div className="text-xs text-gray-600">Overdue items</div>
           <div className="text-2xl font-bold text-gray-900 tabular-nums">{compliance.overdue_items ?? '—'}</div>
         </div>
-        <div className="col-span-2 sm:col-span-2">
+        <div>
+          <div className="text-xs text-gray-600">Satisfied by declaration</div>
+          <div className="text-2xl font-bold text-gray-900 tabular-nums">{compliance.satisfied_by_declaration ?? '—'}</div>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div>
+          <div className="text-xs text-gray-600">Awaiting org/platform review</div>
+          <div className="text-lg font-semibold text-gray-900 tabular-nums">
+            {compliance.awaiting_org_platform_review ?? '—'}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-600">Follow-up required</div>
+          <div className="text-lg font-semibold text-gray-900 tabular-nums">{compliance.follow_up_required ?? '—'}</div>
+        </div>
+        <div className="col-span-2 sm:col-span-1">
           <div className="text-xs text-gray-600">Next suggested action</div>
           <div className="text-sm font-medium text-gray-900 leading-snug mt-0.5">
             {nextActionLine || 'No queued action from this snapshot — monitor as usual.'}
@@ -1116,7 +1144,11 @@ const AdminClientControlPanelPage = () => {
         <Row label="Score status" value={compliance.score_status || '—'} />
         <Row label="Last calculated (headline)" value={compliance.last_calculated_at || '—'} />
         <Row label="Risk level" value={compliance.risk_level || 'Not yet recorded'} />
-              <Row label="Missing documents" value={compliance.missing_documents} />
+              <Row label="Missing required documents" value={compliance.missing_required_documents ?? compliance.missing_documents} />
+              <Row label="Requirements unresolved" value={compliance.requirements_unresolved} />
+              <Row label="Satisfied by declaration" value={compliance.satisfied_by_declaration} />
+              <Row label="Awaiting org/platform review" value={compliance.awaiting_org_platform_review} />
+              <Row label="Follow-up required" value={compliance.follow_up_required} />
               <Row label="Overdue items" value={compliance.overdue_items} />
             </SectionCard>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1131,14 +1163,33 @@ const AdminClientControlPanelPage = () => {
             ) : (
               <li>No overdue requirements in this snapshot.</li>
             )}
-            {(Number(compliance.missing_documents) || 0) > 0 ? (
+            {(Number(compliance.missing_required_documents ?? compliance.missing_documents) || 0) > 0 ? (
               <li>
-                <span className="font-medium text-gray-900">{compliance.missing_documents}</span> required document
-                {Number(compliance.missing_documents) === 1 ? ' is' : 's are'} still pending upload or review.
+                <span className="font-medium text-gray-900">
+                  {compliance.missing_required_documents ?? compliance.missing_documents}
+                </span>{' '}
+                document-required workflow
+                {Number(compliance.missing_required_documents ?? compliance.missing_documents) === 1 ? ' is' : 's are'}{' '}
+                still missing an uploaded file.
               </li>
             ) : (
-              <li>No pending “missing document” count reported.</li>
+              <li>No document-required uploads missing in this snapshot.</li>
             )}
+            {(Number(compliance.requirements_unresolved) || 0) > 0 ? (
+              <li>
+                <span className="font-medium text-gray-900">{compliance.requirements_unresolved}</span> requirement
+                {Number(compliance.requirements_unresolved) === 1 ? ' remains' : 's remain'} unresolved (includes
+                non-document gaps).
+              </li>
+            ) : (
+              <li>No unresolved requirements in this snapshot.</li>
+            )}
+            {(Number(compliance.satisfied_by_declaration) || 0) > 0 ? (
+              <li>
+                <span className="font-medium text-gray-900">{compliance.satisfied_by_declaration}</span> satisfied via
+                structured declaration or self-cert (not counted as missing documents).
+              </li>
+            ) : null}
             {compliance.risk_level ? (
               <li>
                 Modelled risk level: <span className="font-medium">{formatDisplayValue(compliance.risk_level)}</span>

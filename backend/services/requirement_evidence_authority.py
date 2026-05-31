@@ -926,13 +926,9 @@ async def sync_requirement_evidence_authority(
     merged = {**requirement, "evidence_authority": blob, "evidence_authority_synced_at": now, **mirror}
     if cid_client:
         try:
-            from services.operational_surface_cache import (
-                invalidate_command_center_primary_for_client,
-                invalidate_unified_tasks_for_client,
-            )
+            from services.operational_surface_cache import invalidate_client_operational_surfaces
 
-            invalidate_unified_tasks_for_client(cid_client)
-            invalidate_command_center_primary_for_client(cid_client)
+            invalidate_client_operational_surfaces(cid_client)
         except Exception:
             pass
     gap_errors: List[Any] = []

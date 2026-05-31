@@ -793,6 +793,14 @@ def enrich_requirement_dict(
         if truth_label:
             out["client_lifecycle_label"] = truth_label
 
+        from services.requirement_satisfaction_service import (
+            attach_satisfaction_fields,
+            reconcile_client_lifecycle_with_satisfaction,
+        )
+
+        out.update(reconcile_client_lifecycle_with_satisfaction(out))
+        out.update(attach_satisfaction_fields(out))
+
         from services.cer_actionability_presentation import apply_actionability_cta_override
 
         apply_actionability_cta_override(out)

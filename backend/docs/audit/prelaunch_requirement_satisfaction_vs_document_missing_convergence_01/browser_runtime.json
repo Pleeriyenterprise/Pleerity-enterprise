@@ -1,0 +1,15 @@
+{
+  "programme": "PRELAUNCH-REQUIREMENT-SATISFACTION-VS-DOCUMENT-MISSING-CONVERGENCE-01",
+  "verified_at": "20260531T183645Z",
+  "screenshots": {
+    "documents": "docs\\audit\\prelaunch_requirement_satisfaction_vs_document_missing_convergence_01\\screenshots\\documents.png",
+    "requirements": "docs\\audit\\prelaunch_requirement_satisfaction_vs_document_missing_convergence_01\\screenshots\\requirements.png",
+    "today": "docs\\audit\\prelaunch_requirement_satisfaction_vs_document_missing_convergence_01\\screenshots\\today.png",
+    "command_center": "docs\\audit\\prelaunch_requirement_satisfaction_vs_document_missing_convergence_01\\screenshots\\command_center.png"
+  },
+  "checks": {
+    "documents_no_false_upload_banner": true,
+    "documents_has_document_required_wording": true
+  },
+  "pass": true
+}

@@ -13,13 +13,38 @@ function incompleteMultiEvidenceFamily(r) {
 
 /**
  * True when a file still needs to be supplied (not awaiting verification on an uploaded file).
- * PENDING + linked document = verification path, excluded from “missing document” counts/filters.
+ * Uses backend satisfaction truth when present; legacy fallback for stale payloads.
  */
 export function isRequirementMissingDocument(r) {
+  if (r?.missing_required_document === true) return true;
+  if (r?.missing_required_document === false || r?.requirement_satisfied === true) return false;
+  if (r?.document_upload_required === false) return false;
   const s = (r?.status || '').toUpperCase();
   if (s === 'MISSING' || s === 'MISSING_EVIDENCE') return true;
   if (s === 'PENDING') return !(r?.evidence_doc_id || String(r?.document_id || '').trim());
   return false;
+}
+
+/** Requirements satisfied without an uploaded document (declarations / self-cert). */
+export function isRequirementSatisfiedWithoutUploadedDocument(r) {
+  if (r?.requirement_satisfied === true && r?.missing_required_document === false) {
+    return !(r?.evidence_doc_id || String(r?.document_id || '').trim());
+  }
+  if (r?.satisfaction_source && ['accepted_declaration', 'self_certified_record', 'org_review'].includes(r.satisfaction_source)) {
+    return true;
+  }
+  const { state } = resolveClientRequirementLifecycle(r);
+  if (state === 'SATISFIED_UNVERIFIED' || state === 'VERIFIED') {
+    return !isRequirementMissingDocument(r) && !(r?.evidence_doc_id || String(r?.document_id || '').trim());
+  }
+  return false;
+}
+
+/** True when landlord action is still required (aligned with backend attention eligibility). */
+export function isRequirementActionRequired(r) {
+  if (r?.requirement_attention_eligible === true) return true;
+  if (r?.requirement_attention_eligible === false || r?.requirement_satisfied === true) return false;
+  return resolveClientRequirementLifecycle(r).state === 'ACTION_REQUIRED';
 }
 
 export function requirementCriticalityRank(r) {

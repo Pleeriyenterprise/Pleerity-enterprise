@@ -1,0 +1,12 @@
+{
+  "programme": "PRELAUNCH-REQUIREMENT-SATISFACTION-VS-DOCUMENT-MISSING-CONVERGENCE-01",
+  "primary": "PARTIAL",
+  "drift_tags": [],
+  "local_satisfaction_service": true,
+  "staging_api": false,
+  "browser": true,
+  "staging_notes": [
+    "Staging API missing requirement_satisfaction fields \u2014 deploy pending",
+    "Client error '403 Forbidden' for url 'https://pleerity-enterprise.onrender.com/api/auth/login'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/403"
+  ]
+}
