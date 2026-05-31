@@ -1,7 +1,12 @@
 {
+  "screenshots": [
+    "docs\\audit\\prelaunch_customer_operational_language_governance_01\\screenshots\\today.png",
+    "docs\\audit\\prelaunch_customer_operational_language_governance_01\\screenshots\\command_centre.png"
+  ],
+  "page_leaks": [],
+  "forbidden_phrases": [],
+  "passed": true,
   "programme": "PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01",
-  "timestamp": "20260531T204947Z",
-  "commit": "1298a98b",
-  "passed": false,
-  "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"]\")\n"
+  "timestamp": "20260531T211130Z",
+  "commit": "0a8da8a3"
 }

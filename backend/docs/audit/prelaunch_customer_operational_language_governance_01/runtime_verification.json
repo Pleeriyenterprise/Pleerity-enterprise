@@ -1,38 +1,22 @@
 {
   "programme": "PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01",
-  "timestamp": "20260531T204947Z",
-  "commit": "1298a98b",
+  "timestamp": "20260531T211130Z",
+  "commit": "0a8da8a3",
   "staging_api": {
     "today_tasks": {
       "url": "https://pleerity-enterprise.onrender.com/api/client/tasks",
       "status": 200,
-      "leaks": [
-        "\\(\\s*(HIGH|MEDIUM|LOW|CRITICAL)\\s*\\)",
-        "\\bGap:\\s*[A-Z_]+",
-        "\\bKey:\\s*[0-9a-f:\\-]+",
-        "\\bMISMATCHED_EVIDENCE\\b",
-        "\\bMISSING_EVIDENCE\\b",
-        "\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}.*MISMATCHED",
-        "classification signal"
-      ],
+      "leaks": [],
       "maintenance_cta_drift": [],
-      "passed": false
+      "passed": true
     },
     "command_center_bundle": {
       "url": "https://pleerity-enterprise.onrender.com/api/client/command-center",
       "status": 200,
-      "leaks": [
-        "\\(\\s*(HIGH|MEDIUM|LOW|CRITICAL)\\s*\\)",
-        "\\bGap:\\s*[A-Z_]+",
-        "\\bKey:\\s*[0-9a-f:\\-]+",
-        "\\bMISMATCHED_EVIDENCE\\b",
-        "\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}.*MISMATCHED",
-        "classification signal"
-      ],
+      "leaks": [],
       "maintenance_cta_drift": [],
-      "passed": false
+      "passed": true
     }
   },
-  "passed": false,
-  "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"]\")\n"
+  "passed": true
 }

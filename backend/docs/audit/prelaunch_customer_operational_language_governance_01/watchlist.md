@@ -1,8 +1,8 @@
 # Watchlist — customer operational language governance
 
 - **Programme:** PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01
-- **Commit (local):** `1298a98b`
-- **Classification:** IMPLEMENTED_PENDING_RUNTIME
+- **Commit (local):** `0a8da8a3`
+- **Classification:** VERIFIED_OPERATIONALLY
 
 ## Post-deploy checks
 - Today / Command Centre API payloads: zero `Gap:` / `Key:` / internal enums

@@ -1,7 +1,7 @@
 {
   "programme": "PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01",
-  "timestamp": "20260531T204947Z",
-  "commit": "1298a98b",
+  "timestamp": "20260531T211130Z",
+  "commit": "0a8da8a3",
   "architecture": [
     "Raw engine state",
     "Operational interpretation",

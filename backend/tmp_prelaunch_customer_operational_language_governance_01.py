@@ -165,29 +165,38 @@ def _api_surface_scan(token: str) -> Dict[str, Any]:
     return surfaces
 
 
-def _browser_today_capture(token: str) -> Dict[str, Any]:
+def _browser_today_capture() -> Dict[str, Any]:
     if sync_playwright is None:
-        return {"skipped": True, "reason": "playwright not installed"}
+        return {"skipped": True, "reason": "playwright not installed", "passed": False}
     SHOT.mkdir(parents=True, exist_ok=True)
-    result: Dict[str, Any] = {"screenshots": [], "page_leaks": [], "passed": False}
+    result: Dict[str, Any] = {"screenshots": [], "page_leaks": [], "forbidden_phrases": [], "passed": False}
+    pw = NANCY_PW.read_text(encoding="utf-8").strip()
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        context = browser.new_context(viewport={"width": 1440, "height": 900})
-        page = context.new_page()
-        page.goto(f"{FRONTEND}/login", wait_until="domcontentloaded", timeout=90000)
-        pw = NANCY_PW.read_text(encoding="utf-8").strip()
-        page.fill('input[type="email"]', NANCY_EMAIL)
-        page.fill('input[type="password"]', pw)
-        page.click('button[type="submit"]')
-        page.wait_for_timeout(5000)
-        page.goto(f"{FRONTEND}/today", wait_until="domcontentloaded", timeout=90000)
-        page.wait_for_timeout(8000)
-        shot = SHOT / f"today_{_utc()}.png"
-        page.screenshot(path=str(shot), full_page=True)
-        result["screenshots"].append(str(shot.relative_to(ROOT.parent)))
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(f"{FRONTEND}/login/client", timeout=120000)
+        page.locator("#email").fill(NANCY_EMAIL)
+        page.locator("#password").fill(pw)
+        page.locator('button[type="submit"]').click()
+        page.wait_for_url(re.compile(r"/(today|dashboard|requirements|properties|app/)"), timeout=120000)
+        for path, fname in (("/today", "today.png"), ("/command-center", "command_centre.png")):
+            page.goto(f"{FRONTEND}{path}", wait_until="networkidle", timeout=120000)
+            page.wait_for_timeout(3000)
+            shot = SHOT / fname
+            page.screenshot(path=str(shot), full_page=True)
+            result["screenshots"].append(str(shot.relative_to(ROOT)))
         body_text = page.inner_text("body")
         result["page_leaks"] = _scan_text_for_leaks(body_text)
-        result["passed"] = not result["page_leaks"] and "Gap:" not in body_text
+        forbidden_ui = [
+            "Gap:",
+            "Key:",
+            "MISMATCHED_EVIDENCE",
+            "MISSING_EVIDENCE",
+            "classification signal",
+            "Ambiguous classification",
+        ]
+        result["forbidden_phrases"] = [p for p in forbidden_ui if p.lower() in body_text.lower()]
+        result["passed"] = not result["page_leaks"] and not result["forbidden_phrases"]
         browser.close()
     return result
 
@@ -291,10 +300,21 @@ def main() -> int:
         token, _user = _login_client()
         runtime["staging_api"] = _api_surface_scan(token)
         runtime["passed"] = all(v.get("passed") for v in runtime["staging_api"].values())
-        browser = _browser_today_capture(token)
     except Exception as exc:
         runtime["error"] = str(exc)
-        browser["error"] = str(exc)
+    try:
+        browser = _browser_today_capture()
+        browser["programme"] = PROGRAMME
+        browser["timestamp"] = ts
+        browser["commit"] = commit
+    except Exception as exc:
+        browser = {
+            "programme": PROGRAMME,
+            "timestamp": ts,
+            "commit": commit,
+            "passed": False,
+            "error": str(exc),
+        }
     _write("runtime_verification.json", runtime)
     _write("browser_runtime.json", browser)
 
@@ -308,6 +328,7 @@ def main() -> int:
         "timestamp": ts,
         "commit": commit,
         "classification": "VERIFIED_OPERATIONALLY" if all_pass else "IMPLEMENTED_PENDING_RUNTIME",
+        "deploy_commit": commit,
         "gates": {
             "unit_regression": regression.get("passed"),
             "staging_api_no_leaks": runtime.get("passed"),

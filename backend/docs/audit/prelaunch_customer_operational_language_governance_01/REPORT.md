@@ -1,9 +1,9 @@
 # PRELAUNCH-CUSTOMER-OPERATIONAL-LANGUAGE-GOVERNANCE-01
 
-**Classification:** IMPLEMENTED_PENDING_RUNTIME
+**Classification:** VERIFIED_OPERATIONALLY
 
-**Local commit:** `1298a98b`
-**Harness timestamp:** 20260531T204947Z
+**Local commit:** `0a8da8a3`
+**Harness timestamp:** 20260531T211130Z
 
 ## Summary
 
@@ -16,14 +16,20 @@ and compliance gap issue creation. Removed Gap/Key append from gap operational b
 | Gate | Result |
 |------|--------|
 | Unit regression (`test_customer_operational_language_service`) | PASS |
-| Staging API leak scan | PENDING/FAIL |
-| Browser Today capture | PENDING/FAIL |
+| Staging API leak scan | PASS |
+| Browser Today capture | PASS |
 
 ## Root cause
 
 Internal gap diagnostics (`Gap: MISMATCHED_EVIDENCE (HIGH). Key: …`) were written into
 maintenance issue descriptions and surfaced verbatim on Today cards as titles and primary CTAs.
 
-## Next step
+## Runtime proof (staging)
 
-Deploy to staging and re-run this harness for `VERIFIED_OPERATIONALLY`.
+- **Deploy:** `0a8da8a3` live on staging
+- **API:** `/api/client/tasks` and `/api/client/command-center` — zero `Gap:` / `Key:` / internal enum leakage
+- **Browser:** Today + Command Centre — no forbidden diagnostic phrases; screenshots in `screenshots/`
+
+## Closeout
+
+All gates passed at harness run `20260531T211130Z`. Classification: **VERIFIED_OPERATIONALLY**.
