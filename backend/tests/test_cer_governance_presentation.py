@@ -70,6 +70,22 @@ def test_gas_platform_verification_pending():
     assert fields["queue_backed_review"] is True
 
 
+def test_org_review_pending_queue_backed():
+    row = {
+        "requirement_type": "right_to_rent",
+        "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+        "evidence_authority": {
+            "state": "UPLOADED_UNCONFIRMED",
+            "primary_evidence_record_id": "cer_org",
+            "non_document_verification_status": "PENDING_REVIEW",
+        },
+    }
+    fields = attach_cer_governance_presentation(row)
+    assert fields["truth_presentation_label"] == "Organisation review pending"
+    assert fields["review_owner"] == "org_admin"
+    assert fields["queue_backed_review"] is True
+
+
 def test_stale_not_allowed_without_review_owner():
     row = attach_cer_governance_presentation(_smoke_incomplete())
     merged = {**_smoke_incomplete(), **row}

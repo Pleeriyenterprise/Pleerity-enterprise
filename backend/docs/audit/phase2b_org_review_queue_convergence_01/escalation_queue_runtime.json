@@ -1,0 +1,7 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CONVERGENCE-01",
+  "local_escalation_owner": "platform_admin_escalation",
+  "admin_endpoint": "GET /api/admin/compliance-evidence/escalation-queue",
+  "separate_from_doc_queue": true,
+  "pass": true
+}

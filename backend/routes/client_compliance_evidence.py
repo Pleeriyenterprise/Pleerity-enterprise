@@ -91,6 +91,39 @@ def _admin_like(role: str) -> bool:
     return r in {"ROLE_CLIENT_ADMIN", "ROLE_OWNER", "ROLE_PROPERTY_MANAGER"}
 
 
+def _org_reviewer(role: str) -> bool:
+    from services.review_queue_service import is_org_reviewer_role
+
+    return is_org_reviewer_role(role)
+
+
+@router.get("/compliance-evidence/org-review-queue")
+async def get_org_review_queue(
+    request: Request,
+    property_id: Optional[str] = None,
+    limit: int = 100,
+    user: Dict[str, Any] = Depends(_require_user),
+) -> Dict[str, Any]:
+    """
+    Org-admin review queue — discovery only. Inclusion from governance truth, not lifecycle alone.
+    Creator/reviewer separation: only ROLE_CLIENT_ADMIN may list org review work.
+    """
+    if not _org_reviewer(str(user.get("role") or "")):
+        raise HTTPException(status_code=403, detail="Organisation admin role required for review queue")
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=403, detail="Client required")
+    from services.review_queue_service import list_org_review_queue
+
+    db = database.get_db()
+    return await list_org_review_queue(
+        db,
+        client_id=str(client_id),
+        property_id=property_id,
+        limit=min(max(limit, 1), 200),
+    )
+
+
 async def _reject_with_attachment_audit(
     *,
     reason_code: str,

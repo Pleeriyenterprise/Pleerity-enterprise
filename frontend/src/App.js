@@ -135,6 +135,7 @@ import ClientIssueDetailPage from './pages/ClientIssueDetailPage';
 import ClientRiskSignalsPage from './pages/ClientRiskSignalsPage';
 import ClientRentOperationsPage from './pages/ClientRentOperationsPage';
 import ClientApprovalsPage from './pages/ClientApprovalsPage';
+import ClientOrgComplianceReviewPage from './pages/ClientOrgComplianceReviewPage';
 import ViewOrderPage from './pages/ViewOrderPage';
 import UnifiedIntakeWizard from './pages/UnifiedIntakeWizard';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
@@ -206,6 +207,7 @@ import AdminWorkOrderDetailPage from './pages/admin/AdminWorkOrderDetailPage';
 import AdminReportingPage from './pages/AdminReportingPage';
 import AdminClientControlPanelPage from './pages/AdminClientControlPanelPage';
 import AdminUnresolvedEvidenceQueuePage from './pages/AdminUnresolvedEvidenceQueuePage';
+import AdminEscalationReviewQueuePage from './pages/AdminEscalationReviewQueuePage';
 import AdminExtractionQueuePage from './pages/AdminExtractionQueuePage';
 import AdminTeamPage from './pages/AdminTeamPage';
 import AdminPromptManagerPage from './pages/AdminPromptManagerPage';
@@ -442,6 +444,7 @@ function App() {
             <Route path="/operations/rent" element={<ClientPortal><ClientRentOperationsPage /></ClientPortal>} />
             <Route path="/operations/expenses" element={<Navigate to="/operations/rent?tab=expenses" replace />} />
             <Route path="/operations/approvals" element={<ClientPortal><ClientApprovalsPage /></ClientPortal>} />
+            <Route path="/operations/compliance-review" element={<ClientPortal><ClientOrgComplianceReviewPage /></ClientPortal>} />
             {/* Legacy maintenance/contractors → redirect to operations */}
             <Route path="/maintenance" element={<Navigate to="/operations/work-orders" replace />} />
             <Route path="/contractors" element={<Navigate to="/operations/contractors" replace />} />
@@ -727,6 +730,14 @@ function App() {
             <Route path="/admin/content/feedback" element={<ProtectedRoute requireAdmin><AdminInsightsFeedbackPage /></ProtectedRoute>} />
             <Route path="/admin/postal-tracking" element={<ProtectedRoute requireAdmin><AdminPostalTrackingPage /></ProtectedRoute>} />
             <Route path="/admin/clients/:clientId" element={<ProtectedRoute requireAdmin><AdminClientControlPanelPage /></ProtectedRoute>} />
+            <Route
+              path="/admin/compliance-evidence/escalation-queue"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminEscalationReviewQueuePage />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/admin/documents/unresolved-queue"
               element={

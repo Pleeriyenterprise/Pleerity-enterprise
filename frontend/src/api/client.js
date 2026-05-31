@@ -557,6 +557,13 @@ export const clientAPI = {
     apiClient.get(
       `/client/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/compliance-evidence`,
     ),
+  getOrgReviewQueue: (params = {}) =>
+    apiClient.get('/client/compliance-evidence/org-review-queue', { params }),
+  postComplianceEvidenceVerification: (propertyId, requirementId, evidenceRecordId, body) =>
+    apiClient.post(
+      `/client/properties/${encodeURIComponent(propertyId)}/requirements/${encodeURIComponent(requirementId)}/compliance-evidence/${encodeURIComponent(evidenceRecordId)}/verification`,
+      body,
+    ),
   getRequirementExplanation: (propertyId, params) => apiClient.get(`/client/properties/${propertyId}/requirements/explanation`, { params: params || {} }),
   /** Mark a catalog requirement as not applicable for this property (creates/updates requirement row). */
   markRequirementNotApplicable: (propertyId, body) =>
@@ -833,6 +840,8 @@ export const adminAPI = {
     apiClient.get('/admin/search', { params: { q, limit, include_archived: includeArchived || undefined } }),
   getPendingVerificationDocuments: (hours = 0, clientId = null, limit = 50, skip = 0) =>
     apiClient.get('/admin/documents/pending-verification', { params: { hours, client_id: clientId || undefined, limit, skip } }),
+  getEscalationReviewQueue: (params = {}) =>
+    apiClient.get('/admin/compliance-evidence/escalation-queue', { params }),
   /** Admin document verify (optional evidence mismatch override for audited resolution). */
   verifyDocument: (documentId, body = {}) =>
     apiClient.post(`/documents/verify/${encodeURIComponent(documentId)}`, body),

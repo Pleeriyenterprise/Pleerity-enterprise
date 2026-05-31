@@ -1,0 +1,11 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CONVERGENCE-01",
+  "governance_invariant": "governance_family + review_owner + queue_backed_review (+ semantic_state)",
+  "forbidden": [
+    "PENDING_REVIEW alone",
+    "UPLOADED_UNCONFIRMED alone",
+    "EA_PENDING_ADMIN_REVIEW alone"
+  ],
+  "orphan_repair": "_converge_queue_presentation_fields",
+  "pass": true
+}

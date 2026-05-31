@@ -1,0 +1,9 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CONVERGENCE-01",
+  "verified_at": "20260531T160500Z",
+  "org_queue_match": true,
+  "org_review_owner": "org_admin",
+  "escalation_match": true,
+  "self_cert_queue_backed": false,
+  "pass": true
+}

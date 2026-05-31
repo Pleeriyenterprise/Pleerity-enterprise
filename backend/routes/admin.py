@@ -379,6 +379,29 @@ async def get_email_health(request: Request):
     }
 
 
+@router.get("/compliance-evidence/escalation-queue", dependencies=[Depends(require_owner_or_admin)])
+async def list_escalation_review_queue(
+    request: Request,
+    client_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    skip: int = Query(0, ge=0),
+):
+    """
+    Platform escalation review queue — separate from routine document certificate verification.
+    Inclusion derived from governance truth (review_owner=platform_admin_escalation).
+    """
+    await admin_route_guard(request)
+    db = database.get_db()
+    from services.review_queue_service import list_escalation_review_queue
+
+    return await list_escalation_review_queue(
+        db,
+        client_id=client_id,
+        limit=limit,
+        skip=skip,
+    )
+
+
 @router.get("/documents/pending-verification", dependencies=[Depends(require_owner_or_admin)])
 async def list_pending_verification_documents(
     request: Request,

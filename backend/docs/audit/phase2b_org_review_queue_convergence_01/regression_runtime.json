@@ -1,0 +1,13 @@
+{
+  "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CONVERGENCE-01",
+  "phase1_fire_alarm_cta": {
+    "programme": "PHASE-2B-ORG-REVIEW-QUEUE-CONVERGENCE-01",
+    "verified_at": "20260531T160507Z",
+    "fire_alarm_operational_incomplete_count": 6,
+    "cta_label": "Complete smoke alarm details",
+    "cta_specific": true,
+    "pass": true
+  },
+  "a_family_self_cert_no_queue": true,
+  "pass": true
+}

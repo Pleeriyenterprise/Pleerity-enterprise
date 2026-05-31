@@ -226,6 +226,44 @@ def _followup_unresolved(req: Dict[str, Any], ea: Dict[str, Any]) -> bool:
     return reason in FOLLOWUP_STATE_REASONS or "followup" in reason or "follow_up" in reason
 
 
+def _org_review_pending(req: Dict[str, Any], ea: Dict[str, Any], meta: Dict[str, Any]) -> bool:
+    """
+    Org queue eligibility from governance truth — never lifecycle state alone.
+    Requires ORG family, org_admin_queue visibility, persisted submission, and
+    pending non-document verification signals on evidence authority.
+    """
+    if str(meta.get("governance_family") or "") != GF_ORG:
+        return False
+    if str(meta.get("review_visibility") or "") != "org_admin_queue":
+        return False
+    if not _has_persisted_submission(req):
+        return False
+    if _is_escalation_active(req, ea):
+        return False
+    if str(ea.get("state") or "").upper() in ("VERIFIED_CURRENT", "EA_VERIFIED_CURRENT"):
+        return False
+    ndvs = str(ea.get("non_document_verification_status") or "").upper()
+    if ndvs == "PENDING_REVIEW":
+        return True
+    if int(ea.get("pending_non_document_evidence_count") or 0) > 0:
+        return True
+    return False
+
+
+def _converge_queue_presentation_fields(truth: Dict[str, Any]) -> Dict[str, Any]:
+    """Repair orphan queue presentation: queue-backed semantics require a review owner."""
+    owner = truth.get("review_owner")
+    qbr = truth.get("queue_backed_review") is True
+    allowed_owners = ("platform_admin", "platform_admin_escalation", "org_admin")
+    if qbr and not owner:
+        truth = {**truth, "queue_backed_review": False}
+    elif owner in allowed_owners and not qbr:
+        truth = {**truth, "queue_backed_review": True}
+    elif owner and owner not in allowed_owners:
+        truth = {**truth, "review_owner": None, "queue_backed_review": False}
+    return truth
+
+
 def derive_truth_presentation(
     requirement: Dict[str, Any],
     meta: Dict[str, Any],
@@ -263,6 +301,13 @@ def derive_truth_presentation(
         stage = "platform_verification_pending"
         label = "Platform verification pending"
         subline = "Our team will verify your uploaded certificate."
+    elif _org_review_pending(requirement, ea, meta):
+        review_owner = "org_admin"
+        stale_owner = "org_admin"
+        stage = "org_verification_pending"
+        label = "Organisation review pending"
+        subline = "Your organisation admin can verify this record when required."
+        tier_supplement = "Record on file — organisation verification optional"
     elif incomplete:
         stage = "operational_incomplete"
         label = "Additional action still required"
@@ -303,15 +348,17 @@ def derive_truth_presentation(
     elif review_owner is None and has_sub and family in (GF_SELF, GF_PLATFORM_OPT) and not followup and not incomplete:
         stale_owner = None
 
-    return {
-        "truth_presentation_stage": stage,
-        "truth_presentation_label": label,
-        "truth_presentation_subline": subline,
-        "truth_presentation_tier_supplement": tier_supplement,
-        "review_owner": review_owner,
-        "stale_owner": stale_owner,
-        "queue_backed_review": review_owner in ("platform_admin", "platform_admin_escalation", "org_admin"),
-    }
+    return _converge_queue_presentation_fields(
+        {
+            "truth_presentation_stage": stage,
+            "truth_presentation_label": label,
+            "truth_presentation_subline": subline,
+            "truth_presentation_tier_supplement": tier_supplement,
+            "review_owner": review_owner,
+            "stale_owner": stale_owner,
+            "queue_backed_review": review_owner in ("platform_admin", "platform_admin_escalation", "org_admin"),
+        }
+    )
 
 
 def attach_cer_governance_presentation(requirement: Dict[str, Any]) -> Dict[str, Any]:
@@ -360,6 +407,12 @@ def cognition_next_step_for_requirement(requirement: Dict[str, Any]) -> Tuple[st
             "Platform verification in progress",
             "Pleerity will verify your uploaded certificate.",
             ["Wait for platform verification"],
+        )
+    if stage == "org_verification_pending":
+        return (
+            "Organisation review pending",
+            subline or "Your organisation admin can verify this record when required.",
+            ["Organisation admin verification"],
         )
     if stage == "escalation_review":
         return (

@@ -55,6 +55,7 @@ const OPERATIONS_CHILDREN = [
   { path: '/operations/risk-signals', label: 'Risk signals', icon: TrendingUp, feature: 'predictive_maintenance' },
   { path: '/operations/rent', label: 'Rent Operations', icon: PoundSterling, feature: 'rent_operations' },
   { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },
+  { path: '/operations/compliance-review', label: 'Compliance review', icon: FileCheck, orgReviewerOnly: true },
 ];
 
 /** Top-level client portal nav tabs (feature-gated entries may be filtered at render). Exported for tests. */
@@ -263,7 +264,12 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
     ? TENANT_PORTAL_TABS
     : PORTAL_TABS.map((t) => {
         if (t.type === 'group' && t.children) {
-          const children = t.children.filter((c) => (c.feature ? navHasFeature(c.feature) : true));
+          const children = t.children.filter((c) => {
+            if (c.orgReviewerOnly && String(user?.role || '').toUpperCase() !== 'ROLE_CLIENT_ADMIN') {
+              return false;
+            }
+            return c.feature ? navHasFeature(c.feature) : true;
+          });
           if (children.length === 0) return null;
           return { ...t, children };
         }
