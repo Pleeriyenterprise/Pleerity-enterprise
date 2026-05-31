@@ -197,6 +197,18 @@ def derive_missing_document_status(row: Dict[str, Any]) -> str:
     return MISSING_DOC_REQUIRED
 
 
+def row_counts_as_missing_evidence(row: Dict[str, Any]) -> bool:
+    """True when a portal-visible row belongs in the missing-documents bucket (not engine PENDING alone)."""
+    r = dict(row or {})
+    if r.get("requirement_satisfied") is True:
+        return False
+    if r.get("missing_required_document") is False:
+        return False
+    if r.get("missing_required_document") is True:
+        return True
+    return derive_missing_document_status(r) == MISSING_DOC_REQUIRED
+
+
 def derive_requirement_resolution_status(row: Dict[str, Any]) -> str:
     r = dict(row or {})
     lifecycle = _status_upper(r.get("client_lifecycle_state"))

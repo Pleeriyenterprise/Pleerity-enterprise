@@ -136,6 +136,8 @@ export function requirementNeedsAttentionUrgencyTier(r) {
 
 /** True when row should not appear in Needs Attention (valid/compliant with no follow-up or incomplete evidence). */
 export function isRequirementExcludedFromNeedsAttention(r) {
+  if (r?.requirement_attention_eligible === false) return true;
+  if (r?.requirement_satisfied === true && r?.requirement_attention_eligible !== true) return true;
   const st = String(r?.status || '').toUpperCase();
   if (st === 'EXPIRING_SOON') return false;
   const { state } = resolveClientRequirementLifecycle(r);

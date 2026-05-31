@@ -121,15 +121,19 @@ def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str
     missing_evidence = 0
     expiring_soon = 0
     overdue = 0
+    from services.requirement_satisfaction_service import row_counts_as_missing_evidence
+
     for r in portal_projected_rows:
         s = (str(r.get("status") or "PENDING")).strip().upper()
         if s in ("COMPLIANT", "VALID"):
             compliant += 1
         elif s == "PENDING":
             pending += 1
-            missing_evidence += 1
+            if row_counts_as_missing_evidence(r):
+                missing_evidence += 1
         elif s == "MISSING":
-            missing_evidence += 1
+            if row_counts_as_missing_evidence(r):
+                missing_evidence += 1
         elif s == "EXPIRING_SOON":
             expiring_soon += 1
         elif s in ("OVERDUE", "EXPIRED"):

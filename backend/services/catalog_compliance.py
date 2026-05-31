@@ -244,9 +244,14 @@ async def get_property_compliance_detail(
             if is_high:
                 high_expiring += 1
         elif status in ("PENDING", "MISSING"):
-            kpis["missing"] += 1
-            if is_high:
-                high_missing += 1
+            from services.requirement_satisfaction_service import row_counts_as_missing_evidence
+
+            if row_counts_as_missing_evidence(row):
+                kpis["missing"] += 1
+                if is_high:
+                    high_missing += 1
+            else:
+                kpis["compliant"] += 1
         else:
             kpis["compliant"] += 1
         weighted_sum += weight * score

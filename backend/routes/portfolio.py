@@ -29,7 +29,6 @@ from services.trust_surface_observability import (
     ensure_trust_surface_correlation_id,
 )
 from utils.compliance_fanout_log import compliance_fanout_extra
-from utils.expiry_utils import get_computed_status, get_effective_expiry_date
 from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
 
 logger = logging.getLogger(__name__)
@@ -489,7 +488,12 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             elif s == "EXPIRING_SOON" and (m.get("days_to_expiry") or 0) <= 30:
                 kpis["expiring_30"] += 1
             elif s in ("PENDING", "MISSING"):
-                kpis["missing"] += 1
+                from services.requirement_satisfaction_service import row_counts_as_missing_evidence
+
+                if row_counts_as_missing_evidence(r_raw):
+                    kpis["missing"] += 1
+                else:
+                    kpis["compliant"] += 1
             else:
                 kpis["compliant"] += 1
         response = {
@@ -680,19 +684,23 @@ async def get_property_evidence(request: Request, property_id: str):
         client_doc=client_doc_ev,
         properties=[prop_evidence],
     )
+    from services.requirement_truth import enrich_requirements_for_client
+    from services.requirement_satisfaction_service import row_counts_as_missing_evidence
+
+    requirements, _ev_pres = await enrich_requirements_for_client(db, client_id, requirements)
 
     # Linked: documents that have a requirement linked
     linked = sum(1 for d in documents if d.get("requirement_id"))
-    # Requirement IDs that have at least one document linked
-    linked_req_ids = {d.get("requirement_id") for d in documents if d.get("requirement_id")}
     missing_critical = 0
     for r in requirements:
         if (r.get("applicability") or "").upper() == "NOT_REQUIRED":
             continue
-        if r.get("requirement_id") in linked_req_ids:
+        if r.get("client_surface_visible") is False:
             continue
-        cs = get_computed_status(r, property_doc=prop_evidence, client_doc=client_doc_ev)
-        if cs in ("OVERDUE", "EXPIRED", "EXPIRING_SOON", "UNKNOWN_DATE"):
+        if not row_counts_as_missing_evidence(r):
+            continue
+        crit = str(r.get("criticality") or r.get("risk") or "").upper()
+        if crit in ("HIGH", "MED", "MEDIUM"):
             missing_critical += 1
 
     # Pending confirmation: has extraction but status != VERIFIED

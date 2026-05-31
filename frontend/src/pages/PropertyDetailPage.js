@@ -69,6 +69,7 @@ import {
 } from '../domain/presentDomain';
 import {
   buildNeedsAttentionSubset,
+  isRequirementActionRequired,
   isRequirementMissingDocument,
   listRequirementsMissingDocumentsSorted,
   sortRequirementsCriticalityThenTitle,
@@ -1331,12 +1332,13 @@ export default function PropertyDetailPage() {
   const getComplianceSummary = () => {
     const kpis = complianceDetail?.kpis || {};
     const total = requirements.length;
+    const missingFromRequirements = requirements.filter(isRequirementMissingDocument).length;
     return {
       totalApplicable: total,
       valid: kpis.compliant ?? requirements.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase())).length,
       expiringSoon: kpis.expiring_30 ?? requirements.filter((r) => (r.status || '').toUpperCase() === 'EXPIRING_SOON').length,
       overdue: kpis.overdue ?? requirements.filter((r) => ['OVERDUE', 'EXPIRED'].includes((r.status || '').toUpperCase())).length,
-      missingDocuments: kpis.missing ?? requirements.filter(isRequirementMissingDocument).length,
+      missingDocuments: requirements.length ? missingFromRequirements : (kpis.missing ?? 0),
     };
   };
 
@@ -1367,14 +1369,7 @@ export default function PropertyDetailPage() {
 
   const hubPrioritizedRequirements = useMemo(() => {
     const scoped = getTrackedRequirementsForProperty(propertyId, requirements);
-    const filtered = scoped.filter((r) => {
-      const st = (r.status || '').toUpperCase();
-      if (st === 'EXPIRING_SOON') return true;
-      const lc = resolveClientRequirementLifecycle(r).state;
-      if (lc === 'ACTION_REQUIRED') return true;
-      if (lc === 'PENDING_REVIEW' || lc === 'VERIFIED' || lc === 'SATISFIED_UNVERIFIED') return false;
-      return ['OVERDUE', 'EXPIRED', 'MISSING', 'PENDING'].includes(st);
-    });
+    const filtered = scoped.filter((r) => isRequirementActionRequired(r));
     return sortRequirementsAttentionOrder(filtered, rowExpiry).slice(0, 8);
   }, [propertyId, requirements]);
 

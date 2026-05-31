@@ -436,6 +436,25 @@ def test_compute_client_portal_requirement_stats_buckets():
     assert c["overdue"] == 2
 
 
+def test_compute_client_portal_requirement_stats_excludes_satisfied_pending_from_missing():
+    from services.requirement_client_runtime_surface import compute_client_portal_requirement_stats
+
+    rows = [
+        {"status": "PENDING", "requirement_satisfied": True, "missing_required_document": False},
+        {
+            "status": "PENDING",
+            "truth_presentation_stage": "assessment_recorded",
+            "governance_family": "SELF_CERTIFIED",
+            "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+        },
+        {"status": "PENDING"},
+        {"status": "MISSING"},
+    ]
+    c = compute_client_portal_requirement_stats(rows)
+    assert c["pending"] == 3
+    assert c["missing_evidence"] == 2
+
+
 def test_client_portal_surface_visible_excludes_hidden_overdue_from_portal_slice():
     from services.requirement_client_runtime_surface import (
         client_portal_surface_visible_row,

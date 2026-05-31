@@ -1,4 +1,4 @@
-import { buildNeedsAttentionSubset, requirementAttentionStatusRank } from './propertyDocumentsMatrix';
+import { buildNeedsAttentionSubset, isRequirementActionRequired, requirementAttentionStatusRank } from './propertyDocumentsMatrix';
 
 function req(id, status, extra = {}) {
   return {
@@ -36,7 +36,6 @@ describe('buildNeedsAttentionSubset', () => {
       'expired',
       'missing-high',
       'expiring',
-      'followup',
       'incomplete',
     ]);
   });
@@ -77,6 +76,39 @@ describe('buildNeedsAttentionSubset', () => {
     ];
     const out = buildNeedsAttentionSubset(rows, (r) => r.due_date, 8);
     expect(out.items.map((r) => r.requirement_id)).toEqual(['bad']);
+  });
+
+  it('excludes satisfied non-document requirements still marked PENDING at engine level', () => {
+    const rows = [
+      req('legionella', 'PENDING', {
+        requirement_code: 'legionella',
+        requirement_satisfied: true,
+        requirement_attention_eligible: false,
+        missing_required_document: false,
+        client_lifecycle_state: 'SATISFIED_UNVERIFIED',
+        truth_presentation_stage: 'assessment_recorded',
+      }),
+      req('smoke', 'PENDING', {
+        requirement_code: 'smoke_heat_alarms',
+        requirement_satisfied: true,
+        requirement_attention_eligible: false,
+        missing_required_document: false,
+        client_lifecycle_state: 'SATISFIED_UNVERIFIED',
+        truth_presentation_stage: 'declaration_recorded',
+      }),
+      req('gas', 'PENDING', {
+        requirement_code: 'gas_safety',
+        requirement_satisfied: true,
+        requirement_attention_eligible: false,
+        missing_required_document: false,
+        evidence_doc_id: 'doc-gas',
+        client_lifecycle_state: 'VERIFIED',
+      }),
+      req('open', 'MISSING', { requirement_code: 'eicr' }),
+    ];
+    const out = buildNeedsAttentionSubset(rows, (r) => r.due_date, 8);
+    expect(out.items.map((r) => r.requirement_id)).toEqual(['open']);
+    expect(rows.filter((r) => isRequirementActionRequired(r)).map((r) => r.requirement_id)).toEqual(['open']);
   });
 });
 
