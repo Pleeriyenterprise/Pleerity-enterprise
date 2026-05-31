@@ -567,6 +567,55 @@ async def test_legionella_evidence_resolution_external_assessment_schema():
 
 
 @pytest.mark.asyncio
+async def test_evidence_resolution_reopen_context_prefills_satisfied_legionella():
+    enriched = {
+        "requirement_id": "rleg",
+        "property_id": "p1",
+        "client_id": "c1",
+        "requirement_type": "legionella",
+        "requirement_code": "legionella",
+        "truth_presentation_stage": "assessment_recorded",
+        "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+        "evidence_authority": {"primary_evidence_record_id": "cer_leg_1", "state": "UPLOADED_UNCONFIRMED"},
+        "registry_metadata": {},
+    }
+    cer = {
+        "evidence_record_id": "cer_leg_1",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_payload": {
+            "declaration_statement": "Prior legionella assessment",
+            "structured_fields": {
+                "assessment_date": {"answer": "2024-06-01"},
+                "actions_required": {"answer": False},
+            },
+        },
+    }
+    db = MagicMock()
+    db.requirements.find_one = AsyncMock(return_value=dict(enriched))
+    db.compliance_evidence_records.find_one = AsyncMock(return_value=cer)
+    with patch.object(route.database, "get_db", return_value=db), patch(
+        "services.requirement_client_runtime_surface.filter_requirement_rows_for_client_runtime_surfaces",
+        new_callable=AsyncMock,
+        return_value=[enriched],
+    ), patch(
+        "services.requirement_truth.enrich_requirements_for_client",
+        new_callable=AsyncMock,
+        return_value=([enriched], {}),
+    ):
+        out = await route.get_evidence_resolution(
+            property_id="p1",
+            requirement_id="rleg",
+            request=_req(),
+            user={"client_id": "c1"},
+        )
+    rc = out.get("reopen_context")
+    assert rc is not None
+    assert rc.get("reopen_reason") == "prior_submission_update"
+    assert rc.get("declaration_statement") == "Prior legionella assessment"
+    assert rc["structured_fields_prefill"]["assessment_date"]["answer"] == "2024-06-01"
+
+
+@pytest.mark.asyncio
 async def test_lead_testing_evidence_resolution_external_assessment_schema():
     db = MagicMock()
     db.requirements.find_one = AsyncMock(

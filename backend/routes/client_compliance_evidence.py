@@ -228,19 +228,16 @@ async def get_evidence_resolution(
 
     reopen_context = None
     try:
-        from services.cer_actionability_presentation import build_reopen_prefill_from_record
+        from services.cer_actionability_presentation import build_reopen_context_for_requirement
 
-        stage = str(enriched.get("truth_presentation_stage") or "").strip()
         ea = enriched.get("evidence_authority") if isinstance(enriched.get("evidence_authority"), dict) else {}
         eid = str(ea.get("primary_evidence_record_id") or "").strip()
-        if eid and stage in ("followup_required", "operational_incomplete"):
+        if eid:
             rec = await db.compliance_evidence_records.find_one(
                 {"evidence_record_id": eid, "client_id": client_id},
                 {"_id": 0},
             )
-            if rec:
-                reopen_context = build_reopen_prefill_from_record(rec)
-                reopen_context["truth_presentation_stage"] = stage
+            reopen_context = build_reopen_context_for_requirement(enriched, evidence_record=rec)
     except Exception:
         reopen_context = None
 

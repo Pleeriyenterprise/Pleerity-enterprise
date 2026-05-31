@@ -447,14 +447,28 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             )
         from services.catalog_compliance import _days_to_expiry, _requirement_numeric_score
         from services.requirement_truth import enrich_requirements_for_client
+        from services.requirement_satisfaction_service import row_counts_as_missing_evidence
 
         requirements, _fb_pres = await enrich_requirements_for_client(db, client_id, requirements)
+        kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
         matrix = []
         for r_raw in requirements:
             r = project_requirement_row_client_runtime(r_raw)
             due_raw = r.get("due_date")
             days = _days_to_expiry(due_raw)
             cs = (r.get("status") or "PENDING")
+            s = str(cs).upper()
+            if s in ("OVERDUE", "EXPIRED"):
+                kpis["overdue"] += 1
+            elif s == "EXPIRING_SOON" and (days or 0) <= 30:
+                kpis["expiring_30"] += 1
+            elif s in ("PENDING", "MISSING"):
+                if row_counts_as_missing_evidence(r_raw):
+                    kpis["missing"] += 1
+                else:
+                    kpis["compliant"] += 1
+            else:
+                kpis["compliant"] += 1
             rd = r_raw.get("requirement_display") if isinstance(r_raw.get("requirement_display"), dict) else {}
             legacy_title = r.get("description") or r.get("requirement_type")
             from services.catalog_compliance import _client_matrix_presentation_fields
@@ -480,22 +494,6 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             property_score = None
         else:
             property_score = round(sum(m["numeric_score"] for m in matrix) / len(matrix))
-        kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
-        for m in matrix:
-            s = (m.get("status") or "PENDING").upper()
-            if s in ("OVERDUE", "EXPIRED"):
-                kpis["overdue"] += 1
-            elif s == "EXPIRING_SOON" and (m.get("days_to_expiry") or 0) <= 30:
-                kpis["expiring_30"] += 1
-            elif s in ("PENDING", "MISSING"):
-                from services.requirement_satisfaction_service import row_counts_as_missing_evidence
-
-                if row_counts_as_missing_evidence(r_raw):
-                    kpis["missing"] += 1
-                else:
-                    kpis["compliant"] += 1
-            else:
-                kpis["compliant"] += 1
         response = {
             "property_id": property_id,
             "property_name": prop.get("nickname") or prop.get("address_line_1") or property_id,

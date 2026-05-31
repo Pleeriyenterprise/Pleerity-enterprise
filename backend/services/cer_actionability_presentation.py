@@ -259,7 +259,7 @@ def resolve_existing_submission_banner_copy(requirement: Dict[str, Any]) -> Opti
 
 
 def build_reopen_prefill_from_record(record: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract structured pre-fill payload from an existing CER for follow-up reopen."""
+    """Extract structured pre-fill payload from an existing CER for modal reopen."""
     if not isinstance(record, dict):
         return {}
     mode = str(record.get("evidence_mode") or "").strip().upper()
@@ -288,4 +288,30 @@ def build_reopen_prefill_from_record(record: Dict[str, Any]) -> Dict[str, Any]:
             if isinstance(val, dict):
                 prefill[key] = dict(val)
         out["checklist_answers_prefill"] = prefill
+    return out
+
+
+def build_reopen_context_for_requirement(
+    requirement: Dict[str, Any],
+    *,
+    evidence_record: Optional[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """
+    Build guided-evidence modal prefill from the primary CER.
+
+    Used for follow-up reopen and voluntary updates/renewals when a prior
+    structured submission exists on file.
+    """
+    if not isinstance(evidence_record, dict) or not str(evidence_record.get("evidence_record_id") or "").strip():
+        return None
+    out = build_reopen_prefill_from_record(evidence_record)
+    if not str(out.get("evidence_mode") or "").strip():
+        return None
+    stage = str(requirement.get("truth_presentation_stage") or "").strip()
+    if stage:
+        out["truth_presentation_stage"] = stage
+    if stage in ("followup_required", "operational_incomplete"):
+        out["reopen_reason"] = "follow_up_update"
+    else:
+        out["reopen_reason"] = "prior_submission_update"
     return out

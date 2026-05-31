@@ -2,6 +2,7 @@ import pytest
 
 from services.cer_actionability_presentation import (
     apply_actionability_cta_override,
+    build_reopen_context_for_requirement,
     build_reopen_prefill_from_record,
     component_guidance_lines,
     resolve_actionability_primary_cta_label,
@@ -90,6 +91,51 @@ def test_reopen_prefill_structured():
     pre = build_reopen_prefill_from_record(rec)
     assert pre["evidence_mode"] == "STRUCTURED_DECLARATION"
     assert pre["structured_fields_prefill"]["actions_required"]["answer"] is True
+
+
+def test_reopen_context_prior_submission_when_assessment_recorded():
+    requirement = {
+        "requirement_type": "legionella",
+        "truth_presentation_stage": "assessment_recorded",
+    }
+    rec = {
+        "evidence_record_id": "cer_leg",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_payload": {
+            "declaration_statement": "Legionella assessment on file",
+            "structured_fields": {
+                "assessment_date": {"answer": "2024-06-01"},
+                "actions_required": {"answer": False},
+            },
+        },
+    }
+    ctx = build_reopen_context_for_requirement(requirement, evidence_record=rec)
+    assert ctx is not None
+    assert ctx["reopen_reason"] == "prior_submission_update"
+    assert ctx["truth_presentation_stage"] == "assessment_recorded"
+    assert ctx["structured_fields_prefill"]["assessment_date"]["answer"] == "2024-06-01"
+
+
+def test_reopen_context_follow_up_when_operational_incomplete():
+    requirement = {
+        "requirement_type": "smoke_heat_alarms",
+        "truth_presentation_stage": "operational_incomplete",
+    }
+    rec = {
+        "evidence_record_id": "cer_smoke",
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "evidence_payload": {
+            "declaration_statement": "Partial",
+            "structured_fields": {"co_alarm": {"answer": False}},
+        },
+    }
+    ctx = build_reopen_context_for_requirement(requirement, evidence_record=rec)
+    assert ctx is not None
+    assert ctx["reopen_reason"] == "follow_up_update"
+
+
+def test_reopen_context_none_without_primary_record():
+    assert build_reopen_context_for_requirement({"truth_presentation_stage": "assessment_recorded"}, evidence_record=None) is None
 
 
 def test_fire_alarm_operational_incomplete_cta_specific():
