@@ -129,6 +129,28 @@ def test_requirement_guidance_read_only():
     assert guidance["guidance_version"] == GUIDANCE_VERSION
 
 
+def test_requirement_guidance_declaration_incomplete_legacy_without_truth_surface():
+    """Legacy rows without truth_presentation_stage must keep checklist guidance."""
+    req = {
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "evidence_authority": {"state": "MISSING"},
+        "evidence_completeness": {"required_missing_count": 3},
+        "registry_metadata": {
+            "evidence_resolution": {
+                "allowed_evidence_modes": ["STRUCTURED_DECLARATION"],
+                "primary_resolution_workflow": "GUIDED_DECLARATION",
+            }
+        },
+    }
+    guidance = build_requirement_guidance_v1(req)
+    assert guidance["current_progress_state"] == "declaration_incomplete"
+    assert guidance["recommended_next_step"] == "Complete missing checklist fields"
+    assert "3 required field(s)" in guidance["recommended_next_step_reason"]
+    assert guidance["recommended_evidence_mode"] == "STRUCTURED_DECLARATION"
+    assert guidance["likely_intent"] == "complete_declaration"
+    assert guidance["remaining_steps"] == ["Complete required fields", "Submit evidence for review"]
+
+
 def test_rent_ledger_overdue_primary():
     ledger = {
         "ledger_id": "l-1",

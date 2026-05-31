@@ -609,7 +609,27 @@ def build_requirement_guidance_v1(
         recommended_mode = None
         remaining_steps = ["Wait for reviewer decision", "Respond if reviewer requests changes"]
         likely_intent = "await_review"
-    elif stage in ("recorded_on_file", "followup_required", "declaration_incomplete", "platform_verification_pending", "escalation_review"):
+    elif stage == "declaration_incomplete":
+        truth_stage = str(req.get("truth_presentation_stage") or "").strip()
+        if truth_stage == "operational_incomplete":
+            try:
+                from services.cer_governance_presentation import cognition_next_step_for_requirement
+
+                recommended_next_step, recommended_reason, remaining_steps = cognition_next_step_for_requirement(req)
+                recommended_mode = None
+                likely_intent = "operational_closure"
+            except Exception:
+                recommended_next_step = str(req.get("truth_presentation_label") or "Complete remaining compliance steps")
+                recommended_reason = str(req.get("truth_presentation_subline") or "")
+                remaining_steps = []
+                likely_intent = "operational_closure"
+        else:
+            recommended_next_step = "Complete missing checklist fields"
+            recommended_reason = f"{missing} required field(s) must be completed before submission."
+            recommended_mode = strongest or "STRUCTURED_DECLARATION"
+            remaining_steps = ["Complete required fields", "Submit evidence for review"]
+            likely_intent = "complete_declaration"
+    elif stage in ("recorded_on_file", "followup_required", "platform_verification_pending", "escalation_review"):
         try:
             from services.cer_governance_presentation import cognition_next_step_for_requirement
 
@@ -621,12 +641,6 @@ def build_requirement_guidance_v1(
             recommended_reason = str(req.get("truth_presentation_subline") or "")
             remaining_steps = []
             likely_intent = "operational_closure"
-    elif stage == "declaration_incomplete":
-        recommended_next_step = "Complete missing checklist fields"
-        recommended_reason = f"{missing} required field(s) must be completed before submission."
-        recommended_mode = strongest or "STRUCTURED_DECLARATION"
-        remaining_steps = ["Complete required fields", "Submit evidence for review"]
-        likely_intent = "complete_declaration"
     elif uploaded_not_submitted:
         recommended_next_step = _MODE_LABELS.get(strongest or "", "Complete structured form and submit evidence")
         recommended_reason = "Supporting files are saved to your vault only — complete the structured record and submit."
