@@ -28,6 +28,7 @@ import uuid
 import json
 import os
 from urllib.parse import urlparse
+import re
 from fastapi.responses import FileResponse
 from auth import create_access_token
 from config.security_limits import security_limits
@@ -52,6 +53,7 @@ from utils.client_email import (
     canonical_client_email,
     client_email_taken,
     classify_clients_duplicate_key_error,
+    INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE,
 )
 from utils.storage_paths import resolve_data_dir
 from services.billing_presentation import lifecycle_status_label
@@ -164,6 +166,62 @@ class SupportDangerousActionReasonBody(BaseModel):
     """Reason captured for audited high-impact admin actions (support tooling)."""
 
     reason: str = Field(..., min_length=10, max_length=2000)
+
+
+class ChangeLoginEmailBody(BaseModel):
+    """Admin-only change to a client's portal login email (auth_email)."""
+
+    new_email: EmailStr
+    reason: str = Field(..., min_length=10, max_length=2000)
+    send_activation_email: bool = True
+
+
+def _mask_email_for_audit(email: str) -> str:
+    value = (email or "").strip()
+    if "@" not in value:
+        return "***"
+    local, domain = value.split("@", 1)
+    keep = local[: min(3, len(local))]
+    suffix = "***" if len(local) > 3 else "*"
+    return f"{keep}{suffix}@{domain}"
+
+
+async def _auth_email_taken_by_other(db: Any, email: str, exclude_portal_user_id: str) -> bool:
+    canonical = canonical_client_email(email)
+    if not canonical:
+        return False
+    existing = await db.portal_users.find_one(
+        {
+            "auth_email": {"$regex": f"^{re.escape(canonical)}$", "$options": "i"},
+            "portal_user_id": {"$ne": exclude_portal_user_id},
+        },
+        {"_id": 1},
+    )
+    return existing is not None
+
+
+async def _client_email_taken_by_other(db: Any, email: str, exclude_client_id: str) -> bool:
+    canonical = canonical_client_email(email)
+    if not canonical:
+        return False
+    if await db.clients.find_one(
+        {"client_id": {"$ne": exclude_client_id}, "email": canonical},
+        {"_id": 1},
+    ):
+        return True
+    legacy = await db.clients.find_one(
+        {
+            "client_id": {"$ne": exclude_client_id},
+            "$expr": {
+                "$eq": [
+                    {"$toLower": {"$trim": {"input": {"$ifNull": ["$email", ""]}}}},
+                    canonical,
+                ]
+            },
+        },
+        {"_id": 1},
+    )
+    return legacy is not None
 
 
 async def _enforce_admin_job_run_rate(portal_user_id: str) -> None:
@@ -6316,6 +6374,160 @@ async def admin_action_unlock_account(
         },
     )
     return {"success": True, "unlocked_users": len(portal_user_ids)}
+
+
+@router.post("/clients/{client_id}/actions/change-login-email")
+async def admin_action_change_login_email(
+    request: Request,
+    client_id: str,
+    body: ChangeLoginEmailBody = Body(...),
+):
+    """Change a client's portal login email, invalidate sessions, and optionally send setup email."""
+    admin = await admin_route_guard(request)
+    support_reason = ensure_action_reason("change_login_email", body.reason)
+    await enforce_step_up_if_required("change_login_email", request, admin, require_recent_step_up)
+    db = database.get_db()
+
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    portal_user = await db.portal_users.find_one(
+        {"client_id": client_id, "role": UserRole.ROLE_CLIENT_ADMIN.value},
+        {"_id": 0},
+    )
+    if not portal_user:
+        portal_user = await db.portal_users.find_one(
+            {
+                "client_id": client_id,
+                "role": {"$in": [UserRole.ROLE_CLIENT.value, UserRole.ROLE_CLIENT_ADMIN.value]},
+            },
+            {"_id": 0},
+        )
+    if not portal_user:
+        raise HTTPException(status_code=404, detail="Portal user not found")
+
+    old_email = (portal_user.get("auth_email") or "").strip()
+    new_email = canonical_client_email(body.new_email)
+    if not new_email:
+        raise HTTPException(status_code=400, detail="A valid email address is required")
+    if canonical_client_email(old_email) == new_email:
+        raise HTTPException(status_code=400, detail="New email matches the current login email")
+
+    if await _auth_email_taken_by_other(db, new_email, portal_user["portal_user_id"]):
+        raise HTTPException(
+            status_code=400,
+            detail={"error_code": "EMAIL_ALREADY_EXISTS", "message": INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE},
+        )
+    if await _client_email_taken_by_other(db, new_email, client_id):
+        raise HTTPException(
+            status_code=400,
+            detail={"error_code": "EMAIL_ALREADY_EXISTS", "message": INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE},
+        )
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    old_canonical = canonical_client_email(old_email)
+    client_updates: Dict[str, Any] = {"updated_at": now_iso}
+    if canonical_client_email(client.get("email")) == old_canonical or not (client.get("email") or "").strip():
+        client_updates["email"] = new_email
+    if canonical_client_email(client.get("contact_email")) == old_canonical or not (
+        client.get("contact_email") or ""
+    ).strip():
+        client_updates["contact_email"] = new_email
+
+    try:
+        await db.portal_users.update_one(
+            {"portal_user_id": portal_user["portal_user_id"]},
+            {
+                "$set": {"auth_email": new_email, "updated_at": now_iso},
+                "$inc": {"session_version": 1},
+            },
+        )
+        if len(client_updates) > 1:
+            await db.clients.update_one({"client_id": client_id}, {"$set": client_updates})
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=400,
+            detail={"error_code": "EMAIL_ALREADY_EXISTS", "message": INTAKE_EMAIL_ALREADY_EXISTS_MESSAGE},
+        )
+
+    activation_email_sent = False
+    activation_email_error: Optional[str] = None
+    if body.send_activation_email:
+        from auth import generate_secure_token, hash_token
+
+        await db.password_tokens.update_many(
+            {"portal_user_id": portal_user["portal_user_id"], "used_at": None, "revoked_at": None},
+            {"$set": {"revoked_at": now_iso}},
+        )
+        raw_token = generate_secure_token()
+        token_hash = hash_token(raw_token)
+        password_token = PasswordToken(
+            token_hash=token_hash,
+            portal_user_id=portal_user["portal_user_id"],
+            client_id=client_id,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            created_by="ADMIN",
+            send_count=1,
+        )
+        token_doc = password_token.model_dump()
+        for key in ["expires_at", "used_at", "revoked_at", "created_at"]:
+            if token_doc.get(key) and isinstance(token_doc[key], datetime):
+                token_doc[key] = token_doc[key].isoformat()
+        await db.password_tokens.insert_one(token_doc)
+
+        from utils.app_urls import get_app_base_url
+        from services.notification_orchestrator import notification_orchestrator
+
+        base_url = get_app_base_url(for_email_links=True)
+        setup_link = f"{base_url}/set-password?token={raw_token}"
+        idempotency_key = f"admin_change_login_email_{client_id}_{uuid.uuid4()}"
+        try:
+            result = await notification_orchestrator.send(
+                template_key="WELCOME_EMAIL",
+                client_id=client_id,
+                context={
+                    "recipient": new_email,
+                    "setup_link": setup_link,
+                    "client_name": client.get("full_name") or "Customer",
+                    "company_name": "Pleerity Enterprise Ltd",
+                    "tagline": "AI-Driven Solutions & Compliance",
+                },
+                idempotency_key=idempotency_key,
+                event_type="admin_change_login_email",
+            )
+            activation_email_sent = result.outcome in ("sent", "duplicate_ignored")
+            if not activation_email_sent:
+                activation_email_error = (result.error_message or result.block_reason or "Send failed")[:1000]
+        except Exception as exc:
+            logger.error("Change login email activation send failed client_id=%s: %s", client_id, exc)
+            activation_email_error = str(exc)[:1000]
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_id=admin.get("portal_user_id"),
+        actor_role=UserRole.ROLE_ADMIN,
+        client_id=client_id,
+        before_state={"login_email": _mask_email_for_audit(old_email)},
+        after_state={"login_email": _mask_email_for_audit(new_email)},
+        metadata={
+            "action_type": "change_login_email",
+            **normalized_admin_action_metadata("change_login_email", support_reason),
+            "portal_user_id": portal_user.get("portal_user_id"),
+            "session_invalidated": True,
+            "activation_email_sent": activation_email_sent,
+            "activation_email_error": activation_email_error,
+        },
+    )
+
+    return {
+        "success": True,
+        "client_id": client_id,
+        "login_email": new_email,
+        "session_invalidated": True,
+        "activation_email_sent": activation_email_sent,
+        "activation_email_error": activation_email_error,
+    }
 
 
 @router.post("/clients/{client_id}/impersonation/start", dependencies=[Depends(require_owner_or_admin)])

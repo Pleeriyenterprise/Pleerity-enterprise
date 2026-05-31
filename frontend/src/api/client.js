@@ -939,6 +939,8 @@ export const adminAPI = {
   recalculateCompliance: (clientId) => apiClient.post(`/admin/clients/${clientId}/actions/recalculate-compliance`),
   runClientJob: (clientId, job = 'compliance_recalc_client') => apiClient.post(`/admin/clients/${clientId}/actions/run-job`, { job }),
   unlockClientAccount: (clientId, body) => apiClient.post(`/admin/clients/${clientId}/actions/unlock-account`, body),
+  changeClientLoginEmail: (clientId, body, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/actions/change-login-email`, body, config),
   startClientImpersonation: (clientId, ttlMinutes = 30, body, config = {}) =>
     apiClient.post(`/admin/clients/${clientId}/impersonation/start`, body, {
       ...config,

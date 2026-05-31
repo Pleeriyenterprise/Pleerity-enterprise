@@ -14,6 +14,7 @@ const COVERED_ACTIONS = [
   'force_provision',
   'reconcile_subscription_payment_ledger',
   'unlock_account',
+  'change_login_email',
   'retry_agreement_issuance',
   'backfill_evidence_match_batch',
 ];

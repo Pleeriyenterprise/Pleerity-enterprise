@@ -178,5 +178,15 @@
     "requires_step_up": false,
     "affects_multiple_customers": true,
     "irreversible": false
+  },
+  "change_login_email": {
+    "action_id": "change_login_email",
+    "risk_class": "privacy_sensitive",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": true,
+    "affects_multiple_customers": false,
+    "irreversible": false
   }
 }

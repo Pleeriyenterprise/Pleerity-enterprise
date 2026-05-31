@@ -255,6 +255,13 @@ const ACTION_HEALTH_DEFS = [
     expectedEffect: 'Sets client portal users back to ACTIVE and invalidates old sessions via session version bump.',
   },
   {
+    key: 'change_login_email',
+    label: 'Change login email',
+    actionTypes: ['change_login_email'],
+    auditActions: ['ADMIN_ACTION'],
+    expectedEffect: 'Updates portal login email, invalidates active sessions, and optionally sends activation email.',
+  },
+  {
     key: 'impersonation_start',
     label: 'View as user',
     actionTypes: ['impersonation_start'],
@@ -297,6 +304,11 @@ const AdminClientControlPanelPage = () => {
   const [impersonationOpen, setImpersonationOpen] = useState(false);
   const [impersonationReason, setImpersonationReason] = useState('');
   const [impersonationConfirmed, setImpersonationConfirmed] = useState(false);
+  const [changeEmailOpen, setChangeEmailOpen] = useState(false);
+  const [changeEmailValue, setChangeEmailValue] = useState('');
+  const [changeEmailReason, setChangeEmailReason] = useState('');
+  const [changeEmailConfirmed, setChangeEmailConfirmed] = useState(false);
+  const [changeEmailSendActivation, setChangeEmailSendActivation] = useState(true);
 
   const loadPanel = useCallback(async () => {
     if (!clientId) return;
@@ -602,6 +614,62 @@ const AdminClientControlPanelPage = () => {
       setImpersonationOpen(false);
       setImpersonationReason('');
       setImpersonationConfirmed(false);
+    }
+  };
+
+  const submitChangeLoginEmail = async () => {
+    if (!clientId) return;
+    const trimmedEmail = String(changeEmailValue || '').trim().toLowerCase();
+    const trimmedReason = String(changeEmailReason || '').trim();
+    if (!trimmedEmail.includes('@')) {
+      toast.error('Enter a valid email address.');
+      return;
+    }
+    if (trimmedReason.length < MIN_DANGEROUS_ACTION_REASON) {
+      toast.error(`Enter a reason (at least ${MIN_DANGEROUS_ACTION_REASON} characters) for the audit log.`);
+      return;
+    }
+    if (!changeEmailConfirmed) {
+      toast.error('Confirm you have verified the new login email before continuing.');
+      return;
+    }
+    setIsBusy(true);
+    try {
+      const res = await stepUp.request((headers) =>
+        adminAPI.changeClientLoginEmail(
+          clientId,
+          {
+            new_email: trimmedEmail,
+            reason: trimmedReason,
+            send_activation_email: changeEmailSendActivation,
+          },
+          { headers },
+        ),
+      );
+      toast.success(res?.data?.activation_email_sent
+        ? 'Login email updated and activation email sent'
+        : 'Login email updated');
+      setChangeEmailOpen(false);
+      setChangeEmailValue('');
+      setChangeEmailReason('');
+      setChangeEmailConfirmed(false);
+      setChangeEmailSendActivation(true);
+      await loadPanel();
+    } catch (err) {
+      if (err?.message === 'step_up_cancelled') {
+        /* user closed password confirmation */
+      } else {
+        const raw = err?.response?.data?.detail;
+        const msg =
+          typeof raw === 'string'
+            ? raw
+            : raw && typeof raw === 'object'
+              ? raw.message || raw.error_code || 'Failed to change login email'
+              : err?.message || 'Failed to change login email';
+        toast.error(typeof msg === 'string' ? msg : 'Failed to change login email');
+      }
+    } finally {
+      setIsBusy(false);
     }
   };
 
@@ -966,6 +1034,23 @@ const AdminClientControlPanelPage = () => {
           type="button"
               disabled={isBusy || loading}
           onClick={() => {
+            setChangeEmailValue('');
+            setChangeEmailReason('');
+            setChangeEmailConfirmed(false);
+            setChangeEmailSendActivation(true);
+            setChangeEmailOpen(true);
+          }}
+          className="px-3 py-2 text-sm rounded-lg bg-amber-50 text-amber-950 border border-amber-300 hover:bg-amber-100 disabled:opacity-50"
+            >
+              Change login email
+          <span className={`ml-2 rounded border px-1.5 py-0.5 text-[10px] ${getGovernanceRiskBadgeClass('change_login_email')}`}>
+            governed
+          </span>
+            </button>
+            <button
+          type="button"
+              disabled={isBusy || loading}
+          onClick={() => {
             setImpersonationReason('');
             setImpersonationConfirmed(false);
             setImpersonationOpen(true);
@@ -976,6 +1061,7 @@ const AdminClientControlPanelPage = () => {
             </button>
           </div>
       <p className="text-xs text-amber-900">{getGovernanceWarning('unlock_account')}</p>
+      <p className="text-xs text-amber-900">{getGovernanceWarning('change_login_email')}</p>
         </div>
   );
 
@@ -986,7 +1072,7 @@ const AdminClientControlPanelPage = () => {
           <p className="text-xs font-medium text-gray-500 mb-1">Identity</p>
           <Row label="Name" value={identity?.name} />
           <Row label="CRN" value={identity?.crn} />
-          <Row label="Email" value={identity?.email} />
+          <Row label="Login email" value={identity?.email} />
           <Row label="Phone" value={identity?.phone} />
           <Row label="Plan" value={identity?.plan} />
           <Row label="Subscription status" value={identity?.status} />
@@ -1852,6 +1938,124 @@ const AdminClientControlPanelPage = () => {
                 onClick={() => startImpersonation(impersonationReason, impersonationConfirmed)}
               >
                 {isBusy ? 'Starting…' : 'Confirm and start'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {changeEmailOpen ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => {
+            if (!isBusy) {
+              setChangeEmailOpen(false);
+              setChangeEmailValue('');
+              setChangeEmailReason('');
+              setChangeEmailConfirmed(false);
+              setChangeEmailSendActivation(true);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && !isBusy) {
+              setChangeEmailOpen(false);
+              setChangeEmailValue('');
+              setChangeEmailReason('');
+              setChangeEmailConfirmed(false);
+              setChangeEmailSendActivation(true);
+            }
+          }}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-login-email-dialog-title"
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-5 space-y-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <h2 id="change-login-email-dialog-title" className="text-lg font-semibold text-midnight-blue">
+              Change login email
+            </h2>
+            <p className="text-sm text-gray-700">{getGovernanceConfirmationWording('change_login_email')}</p>
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
+              Current login: <span className="font-semibold">{maskEmail(identity?.email)}</span>. Active sessions will be
+              invalidated immediately.
+            </div>
+            <div>
+              <label htmlFor="change-login-email-input" className="text-xs font-medium text-gray-700">
+                New login email
+              </label>
+              <input
+                id="change-login-email-input"
+                data-testid="change-login-email-input"
+                type="email"
+                autoComplete="off"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                value={changeEmailValue}
+                onChange={(e) => setChangeEmailValue(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="change-login-email-reason" className="text-xs font-medium text-gray-700">
+                Reason for audit log (minimum {MIN_DANGEROUS_ACTION_REASON} characters)
+              </label>
+              <textarea
+                id="change-login-email-reason"
+                data-testid="change-login-email-reason-input"
+                className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[88px]"
+                value={changeEmailReason}
+                onChange={(e) => setChangeEmailReason(e.target.value)}
+              />
+            </div>
+            <label className="flex items-start gap-2 text-xs text-gray-700">
+              <input
+                type="checkbox"
+                data-testid="change-login-email-send-activation"
+                checked={changeEmailSendActivation}
+                onChange={(e) => setChangeEmailSendActivation(Boolean(e.target.checked))}
+              />
+              <span>Send activation / password setup email to the new address</span>
+            </label>
+            <label className="flex items-start gap-2 text-xs text-gray-700">
+              <input
+                type="checkbox"
+                data-testid="change-login-email-confirm-checkbox"
+                checked={changeEmailConfirmed}
+                onChange={(e) => setChangeEmailConfirmed(Boolean(e.target.checked))}
+              />
+              <span>I confirm the new email is correct and I understand this change is audited.</span>
+            </label>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                className="px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-800 hover:bg-gray-50"
+                disabled={isBusy}
+                onClick={() => {
+                  if (!isBusy) {
+                    setChangeEmailOpen(false);
+                    setChangeEmailValue('');
+                    setChangeEmailReason('');
+                    setChangeEmailConfirmed(false);
+                    setChangeEmailSendActivation(true);
+                  }
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-3 py-2 text-sm rounded-lg bg-amber-700 text-white hover:bg-amber-800 disabled:opacity-50"
+                disabled={
+                  isBusy
+                  || !changeEmailConfirmed
+                  || changeEmailReason.trim().length < MIN_DANGEROUS_ACTION_REASON
+                  || !changeEmailValue.trim().includes('@')
+                }
+                data-testid="change-login-email-confirm"
+                onClick={submitChangeLoginEmail}
+              >
+                {isBusy ? 'Updating…' : 'Confirm change'}
               </button>
             </div>
           </div>
