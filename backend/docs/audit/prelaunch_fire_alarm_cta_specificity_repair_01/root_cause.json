@@ -1,6 +1,6 @@
 {
   "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
-  "verified_at": "20260531T151237Z",
+  "verified_at": "20260531T153228Z",
   "root_cause": "CTA_PRECEDENCE_FAILURE",
   "summary": "resolve_take_action_envelope runs in enrich_requirement_dict before evidence_completeness and attach_cer_governance_presentation. resolve_actionability_primary_cta_label therefore sees no truth_presentation_stage or missing_components and returns None; guided primary falls back to generic Add compliance evidence. Component guidance works because it is computed later from the fully enriched row.",
   "ordering_in_enrich_requirement_dict": [

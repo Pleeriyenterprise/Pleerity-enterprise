@@ -1,5 +1,17 @@
 {
   "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
-  "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"]\")\n",
-  "pass": false
+  "verified_at": "20260531T153234Z",
+  "screenshots": {
+    "property_compliance_before": "docs\\audit\\prelaunch_fire_alarm_cta_specificity_repair_01\\screenshots\\01_property_compliance_before.png",
+    "guided_modal_after": "docs\\audit\\prelaunch_fire_alarm_cta_specificity_repair_01\\screenshots\\02_guided_modal_after.png"
+  },
+  "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+  "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+  "label_additional_action": false,
+  "cta_complete_smoke": true,
+  "cta_generic_add": false,
+  "modal_banner_present": false,
+  "modal_component_guidance_visible": false,
+  "modal_no_queue_review_wording": true,
+  "pass": true
 }

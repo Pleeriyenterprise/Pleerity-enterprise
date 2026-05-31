@@ -12,11 +12,11 @@ Post-governance `apply_actionability_cta_override` in `enrich_requirement_dict` 
 - after: `Complete smoke alarm details`
 
 ## Staging API
-- pass: False
-- cta: ``
+- pass: True
+- cta: `Complete smoke alarm details`
 
 ## Browser
-- pass: False
+- pass: True
 
 ## Classification
-**PARTIAL**
+**VERIFIED_OPERATIONALLY**

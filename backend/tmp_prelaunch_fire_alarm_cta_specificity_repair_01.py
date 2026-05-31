@@ -184,7 +184,12 @@ def _login() -> str:
 
 def api_runtime(token: str) -> Dict[str, Any]:
     headers = {"Authorization": f"Bearer {token}"}
-    reqs = httpx.get(f"{API}/client/requirements", headers=headers, timeout=120).json()
+    reqs = httpx.get(
+        f"{API}/client/requirements",
+        headers=headers,
+        params={"projection": "full"},
+        timeout=120,
+    ).json()
     rows = reqs if isinstance(reqs, list) else reqs.get("requirements") or []
     fire = [
         r
@@ -200,6 +205,7 @@ def api_runtime(token: str) -> Dict[str, Any]:
         "fire_alarm_operational_incomplete_count": len(fire),
         "representative": {
             "requirement_id": (rep or {}).get("requirement_id"),
+            "property_id": (rep or {}).get("property_id"),
             "truth_presentation_label": (rep or {}).get("truth_presentation_label"),
             "truth_presentation_stage": (rep or {}).get("truth_presentation_stage"),
             "cta_label": cta,
@@ -210,31 +216,71 @@ def api_runtime(token: str) -> Dict[str, Any]:
     }
 
 
-def browser_runtime(token: str) -> Dict[str, Any]:
+def browser_runtime(token: str, api: Dict[str, Any]) -> Dict[str, Any]:
     if sync_playwright is None:
         return {"programme": PROGRAMME, "skipped": True, "reason": "playwright not installed"}
+    rep = api.get("representative") or {}
+    pid = rep.get("property_id")
+    rid = rep.get("requirement_id")
+    if not pid or not rid:
+        # resolve property_id from full requirements list
+        headers = {"Authorization": f"Bearer {token}"}
+        reqs = httpx.get(
+            f"{API}/client/requirements",
+            headers=headers,
+            params={"projection": "full"},
+            timeout=120,
+        ).json()
+        rows = list((reqs.get("requirements") if isinstance(reqs, dict) else reqs) or [])
+        match = next((r for r in rows if r.get("requirement_id") == REP_FIRE), None)
+        if match:
+            pid = match.get("property_id")
+            rid = match.get("requirement_id")
     OUT.mkdir(parents=True, exist_ok=True)
     SHOT.mkdir(parents=True, exist_ok=True)
-    out: Dict[str, Any] = {"programme": PROGRAMME, "verified_at": _utc(), "screenshots": {}}
+    out: Dict[str, Any] = {"programme": PROGRAMME, "verified_at": _utc(), "screenshots": {}, "property_id": pid, "requirement_id": rid}
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         ctx = browser.new_context(viewport={"width": 1440, "height": 900})
         page = ctx.new_page()
-        page.goto(f"{FRONTEND}/login", wait_until="networkidle", timeout=120000)
+        page.goto(f"{FRONTEND}/login/client", wait_until="networkidle", timeout=120000)
         pw = PW_FILE.read_text(encoding="utf-8").strip()
-        page.fill('input[type="email"]', EMAIL)
-        page.fill('input[type="password"]', pw)
-        page.click('button[type="submit"]')
-        page.wait_for_url(re.compile(r"/(dashboard|requirements|properties)"), timeout=120000)
-        page.goto(f"{FRONTEND}/requirements", wait_until="networkidle", timeout=120000)
-        before = SHOT / "01_requirements_before.png"
-        page.screenshot(path=str(before), full_page=True)
-        out["screenshots"]["requirements"] = str(before.relative_to(ROOT))
-        body = page.inner_text("body")
-        out["body_has_complete_smoke"] = "Complete smoke alarm details" in body
-        out["body_has_generic_add"] = bool(GENERIC.search(body))
+        page.locator("#email").fill(EMAIL)
+        page.locator("#password").fill(pw)
+        page.locator('button[type="submit"]').click()
+        page.wait_for_url(re.compile(r"/(today|dashboard|requirements|properties|app/)"), timeout=120000)
+        if pid:
+            page.goto(f"{FRONTEND}/properties/{pid}#compliance", wait_until="networkidle", timeout=120000)
+            page.wait_for_timeout(4000)
+            before = SHOT / "01_property_compliance_before.png"
+            page.screenshot(path=str(before), full_page=True)
+            out["screenshots"]["property_compliance_before"] = str(before.relative_to(ROOT))
+            body = page.inner_text("body")
+            out["label_additional_action"] = "additional action still required" in body.lower()
+            out["cta_complete_smoke"] = "complete smoke alarm details" in body.lower()
+            out["cta_generic_add"] = bool(GENERIC.search(body))
+        if pid and rid:
+            page.goto(
+                f"{FRONTEND}/properties/{pid}?resolve_requirement={rid}",
+                wait_until="networkidle",
+                timeout=120000,
+            )
+            page.wait_for_timeout(5000)
+            after = SHOT / "02_guided_modal_after.png"
+            page.screenshot(path=str(after), full_page=True)
+            out["screenshots"]["guided_modal_after"] = str(after.relative_to(ROOT))
+            modal_body = page.inner_text("body")
+            banner = page.locator('[data-testid="existing-submission-on-file-banner"]')
+            comp = page.locator('[data-testid="component-guidance-lines"]')
+            out["modal_banner_present"] = banner.count() > 0
+            out["modal_component_guidance_visible"] = comp.count() > 0
+            out["modal_no_queue_review_wording"] = "awaiting review" not in modal_body.lower()
         browser.close()
-    out["pass"] = out.get("body_has_complete_smoke") and not out.get("body_has_generic_add")
+    out["pass"] = (
+        out.get("cta_complete_smoke") is True
+        and not out.get("cta_generic_add")
+        and out.get("modal_no_queue_review_wording") is not False
+    )
     return out
 
 
@@ -266,7 +312,7 @@ def main() -> int:
     _write("cta_runtime.json", {**sim, "staging_api": api})
 
     try:
-        browser = browser_runtime(token) if api.get("pass") is not False or "error" not in api else {"skipped": True}
+        browser = browser_runtime(token, api) if "error" not in api else {"skipped": True}
     except Exception as exc:
         browser = {"programme": PROGRAMME, "error": str(exc)[:300], "pass": False}
     _write("browser_runtime.json", browser)
@@ -283,6 +329,8 @@ def main() -> int:
     browser_ok = browser.get("pass") is True
     if local_ok and staging_ok and browser_ok:
         classification = "VERIFIED_OPERATIONALLY"
+    elif local_ok and staging_ok:
+        classification = "PARTIAL"
     elif local_ok and not staging_ok:
         classification = "PARTIAL"
     else:

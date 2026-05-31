@@ -1,6 +1,6 @@
 {
   "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
-  "verified_at": "20260531T151237Z",
+  "verified_at": "20260531T153228Z",
   "staging_simulation": {
     "before_cta": "Add compliance evidence",
     "specific_resolver": "Complete smoke alarm details",
@@ -33,16 +33,28 @@
   "all_regression_pass": true,
   "staging_api": {
     "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
-    "verified_at": "20260531T151243Z",
-    "fire_alarm_operational_incomplete_count": 0,
+    "verified_at": "20260531T153234Z",
+    "fire_alarm_operational_incomplete_count": 6,
     "representative": {
-      "requirement_id": null,
-      "truth_presentation_label": null,
-      "truth_presentation_stage": null,
-      "cta_label": "",
-      "evidence_completeness": null,
+      "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "truth_presentation_label": "Additional action still required",
+      "truth_presentation_stage": "operational_incomplete",
+      "cta_label": "Complete smoke alarm details",
+      "evidence_completeness": {
+        "evaluated": true,
+        "is_complete": false,
+        "summary_label": "Incomplete: smoke alarm evidence missing",
+        "missing_components": [
+          {
+            "key": "smoke_alarm",
+            "label": "Smoke alarm compliance"
+          }
+        ],
+        "required_missing_count": 1
+      },
       "missing_actions": null
     },
-    "pass": false
+    "pass": true
   }
 }

@@ -1,6 +1,6 @@
 {
   "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
-  "verified_at": "20260531T151237Z",
+  "verified_at": "20260531T153228Z",
   "precedence_order": [
     "component-specific CTA (_resolve_missing_component_cta)",
     "follow-up-specific CTA (legionella/lead/fire-risk)",

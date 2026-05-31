@@ -1,10 +1,8 @@
 {
   "programme": "PRELAUNCH-FIRE-ALARM-CTA-SPECIFICITY-REPAIR-01",
-  "primary": "PARTIAL",
-  "secondary": [
-    "CTA_DRIFT"
-  ],
+  "primary": "VERIFIED_OPERATIONALLY",
+  "secondary": [],
   "local_repair": true,
-  "staging_api": false,
-  "browser": false
+  "staging_api": true,
+  "browser": true
 }
