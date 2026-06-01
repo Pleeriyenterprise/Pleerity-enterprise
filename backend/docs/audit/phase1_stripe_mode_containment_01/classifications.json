@@ -1,0 +1,17 @@
+{
+  "programme": "PHASE-1-STRIPE-MODE-CONTAINMENT-01",
+  "classification": "PARTIAL",
+  "prior_classification": "STRIPE_ENVIRONMENT_GOVERNANCE_GAP",
+  "verified_at": "2026-06-01T18:00:00+00:00",
+  "gates": {
+    "customer_safe_blocking": true,
+    "upgrade_downgrade_preflight": true,
+    "ops_inventory_endpoint": true,
+    "new_writes_persist_stripe_mode": true,
+    "resolve_stripe_context": true,
+    "legacy_full_removal": false,
+    "live_staging_inventory_run": false,
+    "backfill_existing_rows": false
+  },
+  "note": "PARTIAL until staging ops inventory run and remaining legacy callers (intake_draft, jobs, clearform) converged in Phase 2"
+}

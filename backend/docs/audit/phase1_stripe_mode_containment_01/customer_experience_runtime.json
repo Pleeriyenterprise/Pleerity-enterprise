@@ -1,0 +1,8 @@
+{
+  "customer_message": "Your billing record needs to be refreshed before plan changes can continue.",
+  "http_status": 409,
+  "error_code": "STRIPE_SUBSCRIPTION_MODE_DRIFT",
+  "never_exposed": ["sub_ ids", "livemode", "Stripe internal exception text"],
+  "frontend": "BillingPage.js extracts detail.message from structured 409",
+  "no_hard_500_on_drift": true
+}

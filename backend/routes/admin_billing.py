@@ -52,6 +52,13 @@ from services.subscription_payment_ledger_service import (
     PAYMENT_EVIDENCE_STRIPE_EVENT_TYPES,
     reconcile_client_subscription_payment_ledger,
 )
+from services.stripe_mode_containment_service import (
+    StripeModeDriftError,
+    billing_mode_fields_for_write,
+    build_stripe_mode_inventory,
+    record_stripe_mode_drift,
+    resolve_stripe_context,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin/billing", tags=["admin-billing"], dependencies=[Depends(admin_route_guard)])
@@ -871,7 +878,14 @@ async def sync_client_billing(request: Request, client_id: str):
                 "message": "Client has no Stripe customer ID. Cannot sync.",
                 "has_stripe_customer": False,
             }
-        
+
+        await resolve_stripe_context(
+            client_id=client_id,
+            billing=billing_before,
+            operation="admin_billing_sync",
+            require_preflight=True,
+        )
+
         # Fetch from Stripe
         try:
             customer = stripe.Customer.retrieve(stripe_customer_id)
@@ -906,6 +920,7 @@ async def sync_client_billing(request: Request, client_id: str):
         billing_update = {
             "client_id": client_id,
             "stripe_customer_id": stripe_customer_id,
+            **billing_mode_fields_for_write(),
             "updated_at": now_sync,
             "billing_last_synced_at": now_sync,
         }
@@ -1087,6 +1102,9 @@ async def sync_client_billing(request: Request, client_id: str):
         
     except HTTPException:
         raise
+    except StripeModeDriftError as drift:
+        await record_stripe_mode_drift(drift, actor_id=admin.get("portal_user_id"), actor_role="ADMIN")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=drift.to_admin_detail())
     except stripe.error.StripeError as e:
         logger.error(f"Stripe error during sync: {e}")
         raise HTTPException(
@@ -1141,7 +1159,15 @@ async def create_billing_portal_link(request: Request, client_id: str):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Client has no Stripe customer ID"
             )
-        
+
+        billing_full = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+        await resolve_stripe_context(
+            client_id=client_id,
+            billing=billing_full,
+            operation="admin_billing_portal_link",
+            require_preflight=True,
+        )
+
         # Get return URL (public frontend base)
         from utils.public_app_url import get_public_app_url
         base_url = get_public_app_url(for_email_links=False)
@@ -2165,4 +2191,14 @@ async def get_job_status(request: Request):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get job status"
         )
+
+
+@router.get("/stripe-mode-inventory")
+async def get_stripe_mode_inventory(
+    request: Request,
+    limit: int = Query(500, ge=1, le=2000),
+):
+    """Read-only Stripe mode drift inventory — no automatic repair."""
+    await admin_route_guard(request)
+    return await build_stripe_mode_inventory(limit=limit)
 

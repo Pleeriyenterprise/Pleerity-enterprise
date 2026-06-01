@@ -24,6 +24,13 @@ from services.billing_reconciliation_service import (
     clear_billing_reconciliation_needed,
     mark_billing_reconciliation_needed,
 )
+from services.stripe_mode_containment_service import (
+    StripeModeDriftError,
+    billing_mode_fields_for_write,
+    resolve_stripe_context,
+    validate_stripe_subscription_mode,
+)
+from services.stripe_mode_authority import configure_stripe_sdk, get_stripe_mode
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +45,33 @@ def stripe_subscription_to_dict(subscription: Any) -> Dict[str, Any]:
     return dict(subscription)
 
 
-def retrieve_stripe_subscription_dict(subscription_id: str) -> Dict[str, Any]:
-    """Always fetch full subscription from Stripe (expanded prices for plan resolution)."""
+def retrieve_stripe_subscription_dict(
+    subscription_id: str,
+    *,
+    stored_mode: Optional[str] = None,
+    trusted_mode: Optional[str] = None,
+    client_id: Optional[str] = None,
+    operation: str = "subscription_sync",
+) -> Dict[str, Any]:
+    """Fetch full subscription from Stripe API (preflight on persisted mode first)."""
+    resolve_stripe_context(
+        client_id=client_id,
+        operation=operation,
+        legacy_caller="billing_stripe_sync_service.retrieve_stripe_subscription_dict",
+    )
+    deployment_mode = get_stripe_mode()
+    validate_stripe_subscription_mode(
+        subscription_id,
+        deployment_mode,
+        stored_mode=stored_mode,
+        trusted_mode=trusted_mode,
+        client_id=client_id,
+        operation=operation,
+    )
     if not (getattr(stripe, "api_key", None) or "").strip():
-        key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
-        if not key:
-            raise RuntimeError("STRIPE_SECRET_KEY or STRIPE_API_KEY is not set")
-        stripe.api_key = key
+        from services.stripe_mode_authority import configure_stripe_sdk
+
+        configure_stripe_sdk()
     sub = stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"])
     return stripe_subscription_to_dict(sub)
 
@@ -168,6 +195,7 @@ async def persist_subscription_billing_from_stripe(
     billing_update: Dict[str, Any] = {
         "stripe_customer_id": stripe_customer_id,
         "stripe_subscription_id": stripe_subscription_id,
+        **billing_mode_fields_for_write(),
         "subscription_status": subscription_status.upper(),
         "entitlement_status": entitlement_status.value,
         "cancel_at_period_end": sub_d.get("cancel_at_period_end", False),
@@ -275,7 +303,15 @@ async def sync_client_billing_from_stripe_subscription_id(
     increment_entitlements_version: int = 0,
 ) -> Dict[str, Any]:
     """Retrieve subscription from Stripe API and persist (for admin backfill / repair)."""
-    sub_d = retrieve_stripe_subscription_dict(stripe_subscription_id)
+    db = database.get_db()
+    billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "stripe_mode": 1})
+    stored_mode = (billing or {}).get("stripe_mode")
+    sub_d = retrieve_stripe_subscription_dict(
+        stripe_subscription_id,
+        stored_mode=stored_mode,
+        client_id=client_id,
+        operation="admin_subscription_sync",
+    )
     return await persist_subscription_billing_from_stripe(
         client_id,
         sub_d,

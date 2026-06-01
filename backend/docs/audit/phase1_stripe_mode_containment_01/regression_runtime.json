@@ -1,0 +1,11 @@
+{
+  "pytest": {
+    "test_stripe_mode_containment.py": "11 passed",
+    "test_commercial_entitlement_governance.py": "13 passed"
+  },
+  "legacy_paths_instrumented_not_removed": [
+    "routes/billing.py portal (now uses resolve_stripe_context)",
+    "billing_stripe_sync_service.retrieve (preflight + legacy_caller log)",
+    "intake_draft_service (pending Phase 2)"
+  ]
+}

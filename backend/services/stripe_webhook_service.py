@@ -45,6 +45,7 @@ from services.billing_stripe_sync_service import (
     persist_subscription_billing_from_stripe,
     stripe_subscription_to_dict,
 )
+from services.stripe_mode_containment_service import billing_mode_fields_for_write
 from services.subscription_lifecycle_service import (
     sync_subscription_lifecycle,
     grace_period_days,
@@ -259,6 +260,7 @@ class StripeWebhookService:
         event_record = {
             "event_id": event_id,
             "type": event_type,
+            "livemode": event.get("livemode"),
             "created": datetime.now(timezone.utc),
             "processed_at": None,
             "status": "PROCESSING",
@@ -679,10 +681,13 @@ class StripeWebhookService:
         period_start_dt = period_start_from_stripe_subscription_dict(_sub_period)
         anchor_dt = period_start_from_stripe_unix(subscription.get("billing_cycle_anchor"))
         now_sync = datetime.now(timezone.utc)
+        event_livemode = event.get("livemode")
+        checkout_mode = "live" if event_livemode else "test" if event_livemode is False else None
         billing_record = {
             "client_id": client_id,
             "stripe_customer_id": stripe_customer_id,
             "stripe_subscription_id": stripe_subscription_id,
+            **billing_mode_fields_for_write(checkout_mode),
             "current_plan_code": plan_code.value,
             "subscription_status": subscription_status.upper(),
             "entitlement_status": entitlement_status.value,
@@ -1549,7 +1554,14 @@ class StripeWebhookService:
         old_status = billing.get("subscription_status")
 
         try:
-            sub_d = retrieve_stripe_subscription_dict(stripe_subscription_id)
+            trusted = "live" if event.get("livemode") else "test"
+            sub_d = retrieve_stripe_subscription_dict(
+                stripe_subscription_id,
+                trusted_mode=trusted,
+                client_id=client_id,
+                stored_mode=billing.get("stripe_mode"),
+                operation="webhook_subscription_updated",
+            )
         except Exception as e:
             logger.exception(
                 "subscription webhook: Stripe.Subscription.retrieve failed subscription_id=%s: %s",
@@ -1935,7 +1947,14 @@ class StripeWebhookService:
         had_dunning = bool(billing.get("payment_failed_at") or billing.get("grace_period_ends_at"))
 
         try:
-            sub_d = retrieve_stripe_subscription_dict(subscription_id)
+            trusted = "live" if event.get("livemode") else "test"
+            sub_d = retrieve_stripe_subscription_dict(
+                subscription_id,
+                trusted_mode=trusted,
+                client_id=client_id,
+                stored_mode=billing.get("stripe_mode") if billing else None,
+                operation="webhook_invoice_paid",
+            )
         except Exception as e:
             logger.exception(
                 "invoice.paid: Stripe.Subscription.retrieve failed subscription_id=%s err=%s",

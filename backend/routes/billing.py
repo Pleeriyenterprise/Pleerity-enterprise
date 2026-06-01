@@ -12,6 +12,12 @@ from typing import Optional
 from database import database
 from services.stripe_service import stripe_service
 from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingError, StripeModeMismatchError
+from services.stripe_mode_containment_service import (
+    StripeModeDriftError,
+    record_stripe_mode_drift,
+    resolve_stripe_context,
+    validate_portal_billing_preflight,
+)
 from middleware import client_route_guard
 from middleware.step_up_auth import require_recent_step_up
 from utils.audit import create_audit_log
@@ -83,6 +89,12 @@ async def create_checkout(request: Request, body: CheckoutRequest):
             origin_url=origin
         )
         return result
+    except StripeModeDriftError as drift:
+        await record_stripe_mode_drift(drift, actor_id=user.get("portal_user_id"), actor_role=user.get("role", "CLIENT"))
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=drift.to_customer_detail(),
+        )
     except StripeModeMismatchError as e:
         logger.warning("Checkout Stripe mode mismatch: %s", e)
         raise HTTPException(
@@ -207,10 +219,15 @@ async def create_billing_portal(request: Request):
         origin = f"{scheme}://{host}"
     
     try:
+        await resolve_stripe_context(
+            client_id=client_id,
+            billing=billing,
+            operation="billing_portal",
+            legacy_caller="routes.billing.create_billing_portal",
+            require_preflight=True,
+        )
         import stripe
-        import os
-        stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
-        
+
         portal_session = stripe.billing_portal.Session.create(
             customer=billing.get("stripe_customer_id"),
             return_url=f"{origin}/settings/billing",
@@ -219,6 +236,13 @@ async def create_billing_portal(request: Request):
         return {
             "portal_url": portal_session.url,
         }
+
+    except StripeModeDriftError as drift:
+        await record_stripe_mode_drift(drift, actor_id=user.get("portal_user_id"), actor_role=user.get("role", "CLIENT"))
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=drift.to_customer_detail(),
+        )
         
     except Exception as e:
         logger.error(f"Failed to create billing portal: {e}")

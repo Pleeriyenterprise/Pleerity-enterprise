@@ -413,6 +413,9 @@ async def build_commercial_entitlement_assessment(client_id: str) -> Dict[str, A
     access = derive_customer_access_state(signals)
     governance = signals.get("active_governance")
     drift = await detect_entitlement_drift(client_id)
+    from services.stripe_mode_containment_service import assess_billing_stripe_mode_drift
+
+    billing_mode_drift = await assess_billing_stripe_mode_drift(client_id)
     return {
         "found": True,
         "client_id": client_id,
@@ -429,6 +432,7 @@ async def build_commercial_entitlement_assessment(client_id: str) -> Dict[str, A
             access_policy=(governance or {}).get("access_policy"),
         ),
         "drift": drift,
+        "billing_mode_drift": billing_mode_drift,
         "executable_actions": _derive_executable_actions(signals, governance),
         "completion_rule": (
             "Commercial exceptions require explicit authority, scope, duration, audit, and customer impact — "

@@ -1,0 +1,4 @@
+- Run `GET /api/admin/billing/stripe-mode-inventory` on staging/production and save live `drift_inventory.json` snapshot.
+- Backfill `stripe_mode` on legacy `client_billing` rows (Phase 2 — not automatic in Phase 1).
+- Converge remaining legacy Stripe callers: `intake_draft_service`, `services/jobs.py`, Clearform routes.
+- After backfill + ops proof, re-run upgrade on affected client to confirm graceful block OR success.

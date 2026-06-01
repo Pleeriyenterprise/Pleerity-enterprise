@@ -44,6 +44,15 @@ from services.stripe_mode_authority import (
     configure_stripe_sdk,
     get_stripe_mode,
 )
+from services.stripe_mode_containment_service import (
+    StripeModeDriftError,
+    billing_mode_fields_for_write,
+    handle_stripe_api_drift_safe,
+    record_stripe_mode_drift,
+    resolve_stripe_context,
+    validate_portal_billing_preflight,
+    validate_stripe_subscription_mode,
+)
 from utils.audit import create_audit_log
 from models import AuditAction
 from services.subscription_lifecycle_service import sync_subscription_lifecycle
@@ -268,6 +277,7 @@ class StripeService:
                 "checkout_url": session.url,
                 "amount_total": session.amount_total,
                 "currency": session.currency,
+                **billing_mode_fields_for_write(mode),
             }
             if pilot_invite_doc:
                 from services.pilot_invite_service import discount_config_from_doc
@@ -319,6 +329,8 @@ class StripeService:
           so the user lands on "Confirm plan change" for the chosen plan, not the generic portal home.
         """
         db = database.get_db()
+        deployment_mode = get_stripe_mode()
+        configure_stripe_sdk(mode=deployment_mode)
 
         # Get current billing info
         billing = await db.client_billing.find_one(
@@ -344,7 +356,12 @@ class StripeService:
         stripe_customer_id = billing.get("stripe_customer_id")
         stripe_subscription_id = billing.get("stripe_subscription_id")
         if not stripe_subscription_id:
-            # Should not happen if they have stripe_customer_id from our flow; fallback to portal home
+            await resolve_stripe_context(
+                client_id=client_id,
+                billing=billing,
+                operation="billing_portal",
+                require_preflight=True,
+            )
             portal_session = stripe.billing_portal.Session.create(
                 customer=stripe_customer_id,
                 return_url=f"{origin_url.rstrip('/')}/settings/billing",
@@ -355,6 +372,17 @@ class StripeService:
                 "current_plan": billing.get("current_plan_code"),
                 "target_plan": new_plan_code,
             }
+
+        validate_stripe_subscription_mode(
+            stripe_subscription_id,
+            deployment_mode,
+            stored_mode=billing.get("stripe_mode"),
+            client_id=client_id,
+            operation="upgrade_downgrade",
+        )
+        validate_portal_billing_preflight(
+            billing, deployment_mode, client_id=client_id, operation="upgrade_downgrade"
+        )
 
         # Resolve new plan and its Stripe price
         mode = _get_stripe_mode()
@@ -411,7 +439,16 @@ class StripeService:
                 "target_plan": new_plan_code,
             }
 
+        except StripeModeDriftError:
+            raise
         except stripe.error.StripeError as e:
+            from services.stripe_mode_containment_service import classify_stripe_api_error_for_drift
+
+            if classify_stripe_api_error_for_drift(e):
+                drift_err = await handle_stripe_api_drift_safe(
+                    e, client_id=client_id, operation="upgrade_downgrade"
+                )
+                raise drift_err from e
             logger.error("Stripe upgrade portal error for client %s: %s", client_id, e)
             err_msg = str(e).strip()
             # Stripe returns this when Customer Portal has "subscription plan changes" disabled

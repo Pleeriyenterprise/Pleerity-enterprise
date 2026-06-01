@@ -1,0 +1,9 @@
+{
+  "commercial_entitlement_assessment": {
+    "billing_mode_drift_field": true,
+    "does_not_suspend_from_drift_alone": true,
+    "entitlement_note": "Billing mode drift does not invalidate platform governance alone"
+  },
+  "drift_audit_collection": "stripe_mode_drift_events",
+  "drift_metrics_collection": "stripe_mode_drift_metrics"
+}

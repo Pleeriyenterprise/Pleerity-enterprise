@@ -1,0 +1,18 @@
+{
+  "endpoint": "GET /api/admin/billing/stripe-mode-inventory",
+  "read_only": true,
+  "note": "Run against deployment with MONGO_URL to populate live counts",
+  "inventory_schema": {
+    "summary": [
+      "missing_stripe_mode",
+      "mode_mismatch",
+      "mixed_customer_subscription",
+      "critical",
+      "high",
+      "orphaned_checkout_sessions_missing_mode",
+      "pending_checkout_sessions_wrong_mode"
+    ],
+    "affected_billing_rows": "client_id, findings, risk_severity, recommended_recovery_action"
+  },
+  "implementation": "services/stripe_mode_containment_service.build_stripe_mode_inventory"
+}

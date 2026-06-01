@@ -1,0 +1,9 @@
+{
+  "programme": "PHASE-1-STRIPE-MODE-CONTAINMENT-01",
+  "prior_classification": "STRIPE_ENVIRONMENT_GOVERNANCE_GAP",
+  "incident_mechanism": "MIXED_MODE_DATA_DRIFT",
+  "root_cause": "Deployment-global STRIPE_MODE used to call Stripe API against persisted subscription/customer IDs with no stripe_mode on billing rows",
+  "containment_strategy": "Preflight on persisted stripe_mode before retrieve; customer-safe 409; ops read-only inventory; new writes persist mode",
+  "upgrade_path": "POST /api/billing/checkout → stripe_service.create_upgrade_session → validate_stripe_subscription_mode before Subscription.retrieve",
+  "no_automatic_migration": true
+}

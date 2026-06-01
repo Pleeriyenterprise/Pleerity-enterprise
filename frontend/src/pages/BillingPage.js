@@ -599,7 +599,13 @@ const BillingPage = () => {
         return;
       }
       console.error('Plan change error:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to start plan change';
+      const detail = error.response?.data?.detail;
+      const errorMessage =
+        typeof detail === 'object' && detail?.message
+          ? detail.message
+          : typeof detail === 'string'
+            ? detail
+            : 'Failed to start plan change';
       toast.error(errorMessage);
       setUpgrading(null);
     }

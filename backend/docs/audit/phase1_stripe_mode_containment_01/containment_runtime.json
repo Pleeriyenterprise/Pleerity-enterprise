@@ -1,0 +1,23 @@
+{
+  "verified_at": "2026-06-01T18:00:00+00:00",
+  "preflight": {
+    "validate_stripe_subscription_mode": true,
+    "validate_stripe_customer_mode": true,
+    "validate_checkout_session_mode": true,
+    "validate_portal_billing_preflight": true,
+    "validate_webhook_event_mode": true,
+    "trusted_mode_webhook_path": true
+  },
+  "wired_operations": [
+    "upgrade_downgrade",
+    "billing_portal_client",
+    "admin_billing_sync",
+    "admin_billing_portal_link",
+    "subscription_sync_retrieve",
+    "checkout_creation",
+    "webhook_persistence"
+  ],
+  "resolve_stripe_context": true,
+  "legacy_instrumentation": true,
+  "pytest": "tests/test_stripe_mode_containment.py — 11 passed"
+}
