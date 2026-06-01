@@ -47,6 +47,19 @@ def test_validate_subscription_missing_mode_blocks():
     assert exc.value.customer_message == CUSTOMER_BILLING_REFRESH_MESSAGE
 
 
+def test_validate_subscription_mode_unverified_blocks():
+    with pytest.raises(StripeModeDriftError) as exc:
+        validate_stripe_subscription_mode(
+            "sub_x",
+            "live",
+            stored_mode="live",
+            verification_status="MODE_UNVERIFIED",
+            confidence="unknown",
+            client_id="c1",
+        )
+    assert exc.value.recovery_action == "MODE_UNVERIFIED"
+
+
 def test_validate_subscription_trusted_mode_for_webhook():
     out = validate_stripe_subscription_mode(
         "sub_x", "live", stored_mode=None, trusted_mode="live", client_id="c1", operation="webhook"
@@ -125,3 +138,40 @@ async def test_assess_billing_mode_drift_missing_mode(monkeypatch):
     assert out["drift_detected"] is True
     assert out["severity"] == "high"
     assert "entitlement_note" in out
+
+
+@pytest.mark.asyncio
+async def test_retrieve_stripe_subscription_dict_awaits_resolve_context(monkeypatch):
+    """Regression: sync callers must not discard resolve_stripe_context coroutine."""
+    called = {"resolve": False, "retrieve": False}
+
+    async def fake_resolve(**_kwargs):
+        called["resolve"] = True
+        return {"deployment_mode": "live", "secret_key_configured": True}
+
+    def fake_retrieve(sub_id, **kwargs):
+        called["retrieve"] = True
+        return {"id": sub_id, "status": "active", "items": {"data": []}}
+
+    monkeypatch.setenv("STRIPE_MODE", "live")
+    monkeypatch.setenv("STRIPE_SECRET_KEY_LIVE", "sk_live_containment_test")
+    monkeypatch.setattr(
+        "services.billing_stripe_sync_service.resolve_stripe_context",
+        fake_resolve,
+    )
+    monkeypatch.setattr(
+        "services.billing_stripe_sync_service.stripe.Subscription.retrieve",
+        fake_retrieve,
+    )
+
+    from services.billing_stripe_sync_service import retrieve_stripe_subscription_dict
+
+    out = await retrieve_stripe_subscription_dict(
+        "sub_test",
+        stored_mode="live",
+        client_id="c1",
+        operation="test",
+    )
+    assert called["resolve"] is True
+    assert called["retrieve"] is True
+    assert out["id"] == "sub_test"

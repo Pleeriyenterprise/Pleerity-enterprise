@@ -432,7 +432,9 @@ async def ensure_subscription_checkout_invoice_pdf(
     from services.plan_registry import plan_registry
 
     session_dict: Dict[str, Any] = dict(session) if isinstance(session, dict) else {}
-    stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+    from services.stripe_mode_authority import configure_stripe_sdk
+
+    configure_stripe_sdk()
     if stripe.api_key:
         try:
             full = stripe.checkout.Session.retrieve(
@@ -639,7 +641,9 @@ def _fallback_checkout_lines_from_subscription(
         subscription_line_description,
     )
 
-    stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+    from services.stripe_mode_authority import configure_stripe_sdk
+
+    configure_stripe_sdk()
     if not stripe.api_key or not subscription_id:
         return [], []
     try:
@@ -728,7 +732,9 @@ async def regenerate_subscription_checkout_invoice_pdf_for_client(
 
     period_start: Optional[datetime] = None
     period_end: Optional[datetime] = None
-    stripe.api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
+    from services.stripe_mode_authority import configure_stripe_sdk
+
+    configure_stripe_sdk()
     sub_id = (billing or {}).get("stripe_subscription_id")
     if sub_id and stripe.api_key:
         try:

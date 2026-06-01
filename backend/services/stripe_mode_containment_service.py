@@ -40,6 +40,10 @@ ALL_DRIFT_CODES = frozenset(
 COL_DRIFT_METRICS = "stripe_mode_drift_metrics"
 COL_DRIFT_EVENTS = "stripe_mode_drift_events"
 
+MODE_UNVERIFIED = "MODE_UNVERIFIED"
+CONFIDENCE_UNKNOWN = "unknown"
+CONFIDENCE_AUTHORITATIVE = "authoritative"
+
 
 class StripeModeDriftError(Exception):
     """Operational drift — customer-safe; never expose Stripe internals."""
@@ -108,12 +112,33 @@ def classify_stripe_api_error_for_drift(exc: Exception) -> Optional[str]:
     return None
 
 
+def _assert_not_mode_unverified(
+    *,
+    verification_status: Optional[str] = None,
+    confidence: Optional[str] = None,
+    client_id: Optional[str] = None,
+    operation: str = "subscription_access",
+) -> None:
+    status = (verification_status or "").strip()
+    conf = (confidence or "").strip().lower()
+    if status == MODE_UNVERIFIED or conf == CONFIDENCE_UNKNOWN:
+        raise StripeModeDriftError(
+            STRIPE_SUBSCRIPTION_MODE_DRIFT,
+            admin_reason="mode_unverified_governance",
+            client_id=client_id,
+            operation=operation,
+            recovery_action="MODE_UNVERIFIED",
+        )
+
+
 def validate_stripe_subscription_mode(
     stripe_subscription_id: Optional[str],
     deployment_mode: str,
     *,
     stored_mode: Optional[str] = None,
     trusted_mode: Optional[str] = None,
+    verification_status: Optional[str] = None,
+    confidence: Optional[str] = None,
     client_id: Optional[str] = None,
     operation: str = "subscription_access",
 ) -> Dict[str, Any]:
@@ -128,6 +153,13 @@ def validate_stripe_subscription_mode(
     dep = normalize_persisted_mode(deployment_mode) or get_stripe_mode()
     persisted = normalize_persisted_mode(stored_mode)
     trusted = normalize_persisted_mode(trusted_mode)
+
+    _assert_not_mode_unverified(
+        verification_status=verification_status,
+        confidence=confidence,
+        client_id=client_id,
+        operation=operation,
+    )
 
     if persisted is None and trusted and trusted == dep:
         return {"ok": True, "stripe_mode": trusted, "trusted": True}
@@ -236,10 +268,14 @@ def validate_portal_billing_preflight(
             operation=operation,
             recovery_action="admin_billing_refresh",
         )
+    verification_status = billing.get("stripe_mode_verification_status")
+    confidence = billing.get("stripe_mode_confidence")
     validate_stripe_customer_mode(
         billing.get("stripe_customer_id"),
         dep,
         stored_mode=stored_customer_mode,
+        verification_status=verification_status,
+        confidence=confidence,
         client_id=client_id,
         operation=operation,
     )
@@ -247,6 +283,8 @@ def validate_portal_billing_preflight(
         billing.get("stripe_subscription_id"),
         dep,
         stored_mode=stored_sub_mode,
+        verification_status=verification_status,
+        confidence=confidence,
         client_id=client_id,
         operation=operation,
     )
@@ -456,6 +494,22 @@ async def assess_billing_stripe_mode_drift(client_id: str) -> Dict[str, Any]:
         if severity not in ("critical",):
             severity = "high"
 
+    remediation_code = None
+    remediation_path = None
+    if issues:
+        try:
+            from services.stripe_mode_backfill_service import (
+                classify_remediation,
+                resolve_authoritative_mode,
+            )
+
+            resolution = await resolve_authoritative_mode(client_id, billing=billing)
+            remediation_code, _, remediation_path = classify_remediation(
+                billing, resolution, deployment_mode=deployment_mode
+            )
+        except Exception:
+            remediation_code = "MODE_UNVERIFIED"
+
     return {
         "found": True,
         "client_id": client_id,
@@ -464,6 +518,8 @@ async def assess_billing_stripe_mode_drift(client_id: str) -> Dict[str, Any]:
         "deployment_mode": deployment_mode,
         "stored_stripe_mode": stored_mode,
         "issues": issues,
+        "remediation_code": remediation_code,
+        "recommended_remediation_path": remediation_path,
         "recovery_action": "admin_billing_refresh" if issues else None,
         "entitlement_note": (
             "Billing mode drift does not invalidate platform governance alone; "
@@ -518,8 +574,13 @@ def _classify_billing_row(
     }
 
 
-async def build_stripe_mode_inventory(*, limit: int = 500) -> Dict[str, Any]:
+async def build_stripe_mode_inventory(*, limit: int = 500, expanded: bool = False) -> Dict[str, Any]:
     """Read-only ops inventory — no automatic repair."""
+    if expanded:
+        from services.stripe_mode_backfill_service import build_expanded_stripe_mode_inventory
+
+        return await build_expanded_stripe_mode_inventory(limit=limit)
+
     db = database.get_db()
     deployment_mode = get_stripe_mode()
     now = _now()

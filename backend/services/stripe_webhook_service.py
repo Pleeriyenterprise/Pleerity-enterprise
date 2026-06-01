@@ -257,10 +257,13 @@ class StripeWebhookService:
             return True, "Already processed", {"event_id": event_id}
         
         # Step 3: Record event
+        deployment_mode = get_stripe_mode()
         event_record = {
             "event_id": event_id,
             "type": event_type,
             "livemode": event.get("livemode"),
+            "environment_source": deployment_mode,
+            "event_verification_status": "webhook_livemode_authoritative",
             "created": datetime.now(timezone.utc),
             "processed_at": None,
             "status": "PROCESSING",
@@ -1555,7 +1558,7 @@ class StripeWebhookService:
 
         try:
             trusted = "live" if event.get("livemode") else "test"
-            sub_d = retrieve_stripe_subscription_dict(
+            sub_d = await retrieve_stripe_subscription_dict(
                 stripe_subscription_id,
                 trusted_mode=trusted,
                 client_id=client_id,
@@ -1948,7 +1951,7 @@ class StripeWebhookService:
 
         try:
             trusted = "live" if event.get("livemode") else "test"
-            sub_d = retrieve_stripe_subscription_dict(
+            sub_d = await retrieve_stripe_subscription_dict(
                 subscription_id,
                 trusted_mode=trusted,
                 client_id=client_id,

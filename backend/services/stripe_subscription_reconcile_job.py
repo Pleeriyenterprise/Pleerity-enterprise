@@ -17,8 +17,11 @@ from services.billing_reconciliation_service import clear_billing_reconciliation
 logger = logging.getLogger(__name__)
 
 
+from services.stripe_mode_authority import configure_stripe_sdk
+
+
 async def reconcile_all_stripe_subscriptions() -> Dict[str, Any]:
-    key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
+    key = configure_stripe_sdk()
     if not key:
         return {"reconciled": 0, "errors": 0, "attempted": 0, "skipped": "no_stripe_key"}
 

@@ -108,7 +108,9 @@ async def create_subscription_checkout(
         
         plan_details = CLEARFORM_PLANS[plan]
         
-        stripe.api_key = os.getenv("STRIPE_API_KEY")
+        from services.stripe_mode_authority import configure_stripe_sdk
+
+        configure_stripe_sdk()
         from utils.app_urls import get_app_base_url
 
         frontend_url = get_app_base_url(for_email_links=False)
@@ -199,7 +201,9 @@ async def cancel_subscription(user = Depends(get_current_clearform_user)):
         if not subscription:
             raise HTTPException(status_code=404, detail="No active subscription found")
         
-        stripe.api_key = os.getenv("STRIPE_API_KEY")
+        from services.stripe_mode_authority import configure_stripe_sdk
+
+        configure_stripe_sdk()
         
         # Cancel at period end (user keeps access until billing period ends)
         if subscription.get("stripe_subscription_id"):
@@ -250,7 +254,9 @@ async def get_billing_portal(user = Depends(get_current_clearform_user)):
         if not user_data.get("stripe_customer_id"):
             raise HTTPException(status_code=400, detail="No billing account found")
         
-        stripe.api_key = os.getenv("STRIPE_API_KEY")
+        from services.stripe_mode_authority import configure_stripe_sdk
+
+        configure_stripe_sdk()
         from utils.app_urls import get_app_base_url
 
         frontend_url = get_app_base_url(for_email_links=False)

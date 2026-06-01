@@ -311,7 +311,7 @@ def test_invoice_paid_updates_last_payment_and_enabled_canonical(
     with (
         patch(
             "services.stripe_webhook_service.retrieve_stripe_subscription_dict",
-            return_value=sub_d,
+            new=AsyncMock(return_value=sub_d),
         ),
         patch("services.stripe_webhook_service.stripe.Invoice.retrieve", return_value=inv_obj),
     ):
@@ -359,7 +359,7 @@ def test_customer_subscription_updated_persists_stripe_truth(
     )
     with patch(
         "services.stripe_webhook_service.retrieve_stripe_subscription_dict",
-        return_value=sub_d,
+        new=AsyncMock(return_value=sub_d),
     ):
         r = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body)
     assert r.status_code == 200
@@ -491,7 +491,7 @@ def test_invoice_paid_renewal_email_context_duplicate_idempotency(
     with (
         patch(
             "services.stripe_webhook_service.retrieve_stripe_subscription_dict",
-            return_value=sub_d,
+            new=AsyncMock(return_value=sub_d),
         ),
         patch("services.stripe_webhook_service.stripe.Invoice.retrieve", return_value=inv_obj),
         patch(
@@ -544,7 +544,7 @@ def test_duplicate_webhook_delivery_same_event_id_is_idempotent(
     inv_obj = MagicMock()
     inv_obj.to_dict = lambda: {"id": inv_id, "lines": {"data": []}, "status_transitions": {"paid_at": paid_at}}
     with (
-        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", return_value=sub_d),
+        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", new=AsyncMock(return_value=sub_d)),
         patch("services.stripe_webhook_service.stripe.Invoice.retrieve", return_value=inv_obj),
     ):
         r1 = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body)
@@ -576,7 +576,7 @@ def test_sibling_invoice_events_do_not_duplicate_transition_side_effects(
         "data": {"object": {"id": inv_id, "customer": iter26_ids["cus"], "subscription": iter26_ids["sub"], "amount_paid": 1900, "currency": "gbp", "status": "paid", "billing_reason": "subscription_cycle", "status_transitions": {"paid_at": paid_at}}},
     }
     with (
-        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", return_value=sub_d),
+        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", new=AsyncMock(return_value=sub_d)),
         patch("services.stripe_webhook_service.stripe.Invoice.retrieve", return_value=inv_obj),
     ):
         r1 = client.post(STRIPE_WEBHOOK_PATH_PRIMARY, json=body_paid)
@@ -598,7 +598,7 @@ def test_out_of_order_payment_failed_after_paid_is_ignored_for_same_invoice(
     inv_obj = MagicMock()
     inv_obj.to_dict = lambda: {"id": inv_id, "lines": {"data": []}, "status_transitions": {"paid_at": paid_at}}
     with (
-        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", return_value=sub_d),
+        patch("services.stripe_webhook_service.retrieve_stripe_subscription_dict", new=AsyncMock(return_value=sub_d)),
         patch("services.stripe_webhook_service.stripe.Invoice.retrieve", return_value=inv_obj),
     ):
         rp = client.post(

@@ -11,14 +11,16 @@ from database import database
 from services.order_service import create_order, get_order, transition_order_state
 from services.order_workflow import OrderStatus
 import logging
-import os
 import stripe
+from services.stripe_mode_authority import configure_stripe_sdk
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
-# Initialize Stripe
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+try:
+    configure_stripe_sdk()
+except Exception:
+    pass
 
 
 class CreateOrderRequest(BaseModel):

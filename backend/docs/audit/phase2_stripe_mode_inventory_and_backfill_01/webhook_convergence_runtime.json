@@ -1,0 +1,9 @@
+{
+  "generated_at": "2026-06-01T19:15:36.795489+00:00",
+  "persisted_fields": [
+    "livemode",
+    "environment_source",
+    "event_verification_status"
+  ],
+  "authority": "webhook livemode mismatch blocked at ingress"
+}

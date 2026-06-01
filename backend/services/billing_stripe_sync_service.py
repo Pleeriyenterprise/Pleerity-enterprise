@@ -30,7 +30,6 @@ from services.stripe_mode_containment_service import (
     resolve_stripe_context,
     validate_stripe_subscription_mode,
 )
-from services.stripe_mode_authority import configure_stripe_sdk, get_stripe_mode
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ def stripe_subscription_to_dict(subscription: Any) -> Dict[str, Any]:
     return dict(subscription)
 
 
-def retrieve_stripe_subscription_dict(
+async def retrieve_stripe_subscription_dict(
     subscription_id: str,
     *,
     stored_mode: Optional[str] = None,
@@ -54,12 +53,12 @@ def retrieve_stripe_subscription_dict(
     operation: str = "subscription_sync",
 ) -> Dict[str, Any]:
     """Fetch full subscription from Stripe API (preflight on persisted mode first)."""
-    resolve_stripe_context(
+    ctx = await resolve_stripe_context(
         client_id=client_id,
         operation=operation,
         legacy_caller="billing_stripe_sync_service.retrieve_stripe_subscription_dict",
     )
-    deployment_mode = get_stripe_mode()
+    deployment_mode = ctx["deployment_mode"]
     validate_stripe_subscription_mode(
         subscription_id,
         deployment_mode,
@@ -68,10 +67,6 @@ def retrieve_stripe_subscription_dict(
         client_id=client_id,
         operation=operation,
     )
-    if not (getattr(stripe, "api_key", None) or "").strip():
-        from services.stripe_mode_authority import configure_stripe_sdk
-
-        configure_stripe_sdk()
     sub = stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"])
     return stripe_subscription_to_dict(sub)
 
@@ -306,7 +301,7 @@ async def sync_client_billing_from_stripe_subscription_id(
     db = database.get_db()
     billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "stripe_mode": 1})
     stored_mode = (billing or {}).get("stripe_mode")
-    sub_d = retrieve_stripe_subscription_dict(
+    sub_d = await retrieve_stripe_subscription_dict(
         stripe_subscription_id,
         stored_mode=stored_mode,
         client_id=client_id,

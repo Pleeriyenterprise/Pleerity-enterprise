@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-06-01T19:15:36.703019+00:00",
+  "legacy_caller_findings": [],
+  "convergence_targets": [
+    {
+      "file": "services/intake_draft_service.py",
+      "uses_resolve_stripe_context": false,
+      "uses_configure_stripe_sdk": true,
+      "raw_stripe_secret_key": false
+    },
+    {
+      "file": "services/jobs.py",
+      "uses_resolve_stripe_context": false,
+      "uses_configure_stripe_sdk": true,
+      "raw_stripe_secret_key": false
+    },
+    {
+      "file": "clearform/routes/subscriptions.py",
+      "uses_resolve_stripe_context": false,
+      "uses_configure_stripe_sdk": true,
+      "raw_stripe_secret_key": false
+    },
+    {
+      "file": "routes/admin_billing.py",
+      "uses_resolve_stripe_context": true,
+      "uses_configure_stripe_sdk": true,
+      "raw_stripe_secret_key": true
+    }
+  ],
+  "legacy_caller_count": 0,
+  "operational_unconverged": []
+}

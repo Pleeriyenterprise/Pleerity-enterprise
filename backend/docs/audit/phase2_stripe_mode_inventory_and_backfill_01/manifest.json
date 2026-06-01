@@ -1,0 +1,8 @@
+{
+  "marker": "PHASE-2-STRIPE-MODE-INVENTORY-AND-BACKFILL-01",
+  "generated_at": "2026-06-01T19:15:12.685347+00:00",
+  "artifacts": [
+    "staging_drift_inventory.json",
+    "legacy_stripe_caller_audit.json"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-06-01T19:15:36.794488+00:00",
+  "governance": "MODE_UNVERIFIED blocks plan changes with customer-safe messaging",
+  "customer_message": "Your billing record needs to be refreshed before plan changes can continue.",
+  "staging_summary": {
+    "missing_stripe_mode": 33,
+    "mixed_customer_subscription_mode": 0,
+    "test_rows_in_live": 0,
+    "live_rows_in_test": 0,
+    "orphaned_checkout_sessions": 50,
+    "webhook_mode_conflicts": 0,
+    "unknown_mode_rows": 0,
+    "legacy_unclassified_rows": 0
+  }
+}

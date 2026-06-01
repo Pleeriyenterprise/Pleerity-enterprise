@@ -2197,8 +2197,97 @@ async def get_job_status(request: Request):
 async def get_stripe_mode_inventory(
     request: Request,
     limit: int = Query(500, ge=1, le=2000),
+    expanded: bool = Query(True, description="Phase 2 expanded categories"),
 ):
     """Read-only Stripe mode drift inventory — no automatic repair."""
     await admin_route_guard(request)
-    return await build_stripe_mode_inventory(limit=limit)
+    return await build_stripe_mode_inventory(limit=limit, expanded=expanded)
+
+
+class StripeModeBackfillBody(BaseModel):
+    client_id: Optional[str] = None
+    limit: int = Field(default=100, ge=1, le=500)
+    dry_run: bool = True
+    admin_mode: Optional[str] = Field(
+        default=None, description="Explicit admin remediation mode (live|test)"
+    )
+
+
+class StripeModeAdminRemediateBody(BaseModel):
+    stripe_mode: str = Field(..., description="Explicit authoritative mode: live or test")
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
+@router.get("/stripe-mode-remediation/{client_id}")
+async def get_stripe_mode_remediation(
+    request: Request,
+    client_id: str,
+):
+    """Admin remediation guidance — no destructive mutation."""
+    await admin_route_guard(request)
+    from services.stripe_mode_backfill_service import get_remediation_guidance
+
+    return await get_remediation_guidance(client_id)
+
+
+@router.post("/stripe-mode-backfill")
+async def post_stripe_mode_backfill(
+    request: Request,
+    body: StripeModeBackfillBody,
+):
+    """Safe backfill dry-run or execute (authoritative confidence only)."""
+    await admin_route_guard(request)
+    from services.stripe_mode_backfill_service import (
+        backfill_client_billing_mode,
+        run_backfill_batch,
+    )
+
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or "admin"
+
+    if body.client_id:
+        return await backfill_client_billing_mode(
+            body.client_id,
+            dry_run=body.dry_run,
+            admin_actor=actor if not body.dry_run else None,
+            admin_mode=body.admin_mode if not body.dry_run else None,
+        )
+    return await run_backfill_batch(
+        limit=body.limit,
+        dry_run=body.dry_run,
+        admin_actor=actor if not body.dry_run else None,
+    )
+
+
+@router.post("/stripe-mode-remediation/{client_id}/admin-set-mode")
+async def post_stripe_mode_admin_remediate(
+    request: Request,
+    client_id: str,
+    body: StripeModeAdminRemediateBody,
+):
+    """Explicit admin remediation — sets authoritative mode with audit trail."""
+    await admin_route_guard(request)
+    from services.stripe_mode_backfill_service import backfill_client_billing_mode
+
+    mode = body.stripe_mode.strip().lower()
+    if mode not in ("live", "test"):
+        raise HTTPException(status_code=400, detail="stripe_mode must be live or test")
+
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or "admin"
+    return await backfill_client_billing_mode(
+        client_id,
+        dry_run=False,
+        admin_actor=actor,
+        admin_mode=mode,
+    )
+
+
+@router.get("/stripe-mode-legacy-callers")
+async def get_stripe_mode_legacy_callers(request: Request):
+    """Static audit of legacy Stripe caller convergence."""
+    await admin_route_guard(request)
+    from services.stripe_mode_backfill_service import audit_legacy_stripe_callers
+
+    return audit_legacy_stripe_callers()
 

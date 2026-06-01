@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-06-01T19:15:36.794488+00:00",
+  "remediation_codes": [
+    "REGENERATE_CHECKOUT_REQUIRED",
+    "INVALID_SUBSCRIPTION_REFERENCE",
+    "LEGACY_TEST_SUBSCRIPTION",
+    "MODE_UNVERIFIED",
+    "PORTAL_RELINK_REQUIRED",
+    "CUSTOMER_RECONCILIATION_REQUIRED"
+  ],
+  "admin_endpoints": [
+    "GET /api/admin/billing/stripe-mode-remediation/{client_id}",
+    "POST /api/admin/billing/stripe-mode-backfill",
+    "POST /api/admin/billing/stripe-mode-remediation/{client_id}/admin-set-mode"
+  ]
+}

@@ -1074,14 +1074,14 @@ async def create_checkout_session(
         }
     """
     import stripe
-    import os
 
-    api_key = (os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY") or "").strip()
-    if not api_key or api_key == "sk_test_emergent":
+    from services.stripe_mode_authority import configure_stripe_sdk, get_stripe_mode
+
+    secret = configure_stripe_sdk()
+    if not secret:
         raise ValueError(
-            "Stripe is not configured. Set STRIPE_SECRET_KEY or STRIPE_API_KEY to a valid Stripe secret key."
+            "Stripe is not configured. Set STRIPE_SECRET_KEY_TEST/LIVE or align STRIPE_MODE."
         )
-    stripe.api_key = api_key
     
     # Validate draft is ready
     draft = await get_draft(draft_id)

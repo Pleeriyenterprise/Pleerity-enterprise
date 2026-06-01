@@ -133,7 +133,9 @@ async def handle_checkout_completed(session):
         stripe_sub_id = session.get("subscription")
         
         # Get subscription details from Stripe
-        stripe.api_key = os.getenv("STRIPE_API_KEY")
+        from services.stripe_mode_authority import configure_stripe_sdk
+
+        configure_stripe_sdk()
         stripe_sub = stripe.Subscription.retrieve(stripe_sub_id)
         
         # Create subscription record
@@ -226,7 +228,9 @@ async def handle_invoice_paid(invoice):
     )
     
     # Get updated period from Stripe
-    stripe.api_key = os.getenv("STRIPE_API_KEY")
+    from services.stripe_mode_authority import configure_stripe_sdk
+
+    configure_stripe_sdk()
     stripe_sub = stripe.Subscription.retrieve(subscription_id)
     
     # Update subscription period

@@ -1757,12 +1757,13 @@ class JobScheduler:
         )
         from services.billing_period_utils import normalize_stored_period_end_for_api
         from services.notification_orchestrator import notification_orchestrator
+        from services.stripe_mode_authority import configure_stripe_sdk, get_stripe_mode
+        from services.stripe_mode_containment_service import normalize_persisted_mode
         from utils.app_urls import get_app_base_url
 
         now = datetime.now(timezone.utc)
         frontend_url = get_app_base_url(for_email_links=True)
         billing_url = f"{frontend_url.rstrip('/')}/settings/billing"
-        stripe_key = (os.environ.get("STRIPE_SECRET_KEY") or os.environ.get("STRIPE_API_KEY") or "").strip()
 
         transitioned = await apply_post_grace_transitions(now)
 
@@ -1862,9 +1863,10 @@ class JobScheduler:
 
             charge_auto = True
             sub_id = billing.get("stripe_subscription_id")
-            if sub_id and stripe_key:
+            if sub_id:
                 try:
-                    stripe.api_key = stripe_key
+                    row_mode = normalize_persisted_mode(billing.get("stripe_mode")) or get_stripe_mode()
+                    configure_stripe_sdk(mode=row_mode)
                     sub = stripe.Subscription.retrieve(sub_id)
                     charge_auto = sub.get("collection_method") == "charge_automatically"
                 except Exception:

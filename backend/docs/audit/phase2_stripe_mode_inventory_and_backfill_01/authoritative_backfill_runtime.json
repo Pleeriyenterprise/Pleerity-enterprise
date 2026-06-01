@@ -1,0 +1,807 @@
+{
+  "generated_at": "2026-06-01T19:15:35.636904+00:00",
+  "dry_run": true,
+  "limit": 100,
+  "summary": {
+    "verified": 0,
+    "unverified": 33,
+    "skipped": 0
+  },
+  "results": [
+    {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:24.455735+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:24.691064+00:00"
+      }
+    },
+    {
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:24.772133+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:25.024620+00:00"
+      }
+    },
+    {
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:25.121562+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:25.377077+00:00"
+      }
+    },
+    {
+      "client_id": "a032036f-70a3-4fe5-b629-d9ce9c104165",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "a032036f-70a3-4fe5-b629-d9ce9c104165",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:25.457332+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:25.706954+00:00"
+      }
+    },
+    {
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:25.799375+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:26.053770+00:00"
+      }
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:26.133998+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:26.384810+00:00"
+      }
+    },
+    {
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:26.475681+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:26.742451+00:00"
+      }
+    },
+    {
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:26.824460+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:27.066667+00:00"
+      }
+    },
+    {
+      "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:27.144706+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:27.386635+00:00"
+      }
+    },
+    {
+      "client_id": "27d048c3-6113-4a83-b5ef-2811cb12c1eb",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "27d048c3-6113-4a83-b5ef-2811cb12c1eb",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:27.475292+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:27.714315+00:00"
+      }
+    },
+    {
+      "client_id": "26fbbc0b-7422-45f5-8ff6-852270b99721",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "26fbbc0b-7422-45f5-8ff6-852270b99721",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:27.797280+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:28.058521+00:00"
+      }
+    },
+    {
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:28.141826+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:28.405671+00:00"
+      }
+    },
+    {
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:28.484828+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:28.743451+00:00"
+      }
+    },
+    {
+      "client_id": "422e2785-f168-416b-95e8-9149454fbc1c",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "422e2785-f168-416b-95e8-9149454fbc1c",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:28.824741+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:29.082616+00:00"
+      }
+    },
+    {
+      "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:29.173793+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:29.424647+00:00"
+      }
+    },
+    {
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:29.506559+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:29.754296+00:00"
+      }
+    },
+    {
+      "client_id": "9a7c8f82-7b28-4237-8a30-dc882a94fb5d",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "9a7c8f82-7b28-4237-8a30-dc882a94fb5d",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:29.834888+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:30.121522+00:00"
+      }
+    },
+    {
+      "client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:30.267469+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:30.518372+00:00"
+      }
+    },
+    {
+      "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:30.598518+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:30.856207+00:00"
+      }
+    },
+    {
+      "client_id": "921716dc-b0e0-4284-9d0a-4acd140fa6ff",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "921716dc-b0e0-4284-9d0a-4acd140fa6ff",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:30.941017+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:31.176254+00:00"
+      }
+    },
+    {
+      "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:31.257711+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:31.524981+00:00"
+      }
+    },
+    {
+      "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:31.614301+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:31.870725+00:00"
+      }
+    },
+    {
+      "client_id": "86fbd659-851d-457e-bcb7-080ef7dfe0c8",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "86fbd659-851d-457e-bcb7-080ef7dfe0c8",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:31.946494+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:32.204127+00:00"
+      }
+    },
+    {
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:32.289145+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:32.537026+00:00"
+      }
+    },
+    {
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:32.640039+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:32.892182+00:00"
+      }
+    },
+    {
+      "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:32.965059+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:33.241038+00:00"
+      }
+    },
+    {
+      "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:33.324137+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:33.589287+00:00"
+      }
+    },
+    {
+      "client_id": "412c72a9-f840-4fb2-9a8d-d04e7ad9d85a",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "412c72a9-f840-4fb2-9a8d-d04e7ad9d85a",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:33.666971+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:33.937825+00:00"
+      }
+    },
+    {
+      "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:34.024285+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:34.342771+00:00"
+      }
+    },
+    {
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:34.424455+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:34.647697+00:00"
+      }
+    },
+    {
+      "client_id": "6aa7906f-ed85-4367-8ca4-6ef1bb76668f",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "6aa7906f-ed85-4367-8ca4-6ef1bb76668f",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:34.721132+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:34.987067+00:00"
+      }
+    },
+    {
+      "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:35.071098+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:35.298564+00:00"
+      }
+    },
+    {
+      "client_id": "1e15cd2f-ee89-4905-aa96-1735f3ff99cc",
+      "dry_run": true,
+      "resolution": {
+        "client_id": "1e15cd2f-ee89-4905-aa96-1735f3ff99cc",
+        "found": true,
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:35.394018+00:00",
+        "inferred_mode_source": "unknown",
+        "remediation_code": "MODE_UNVERIFIED",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Run authoritative backfill or admin remediation; do not guess mode from ID prefix.",
+        "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+      },
+      "action": "mark_mode_unverified",
+      "would_write": {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_mode_confidence": "unknown",
+        "stripe_mode_verification_source": "unknown",
+        "stripe_mode_last_checked_at": "2026-06-01 19:15:35.636904+00:00"
+      }
+    }
+  ],
+  "truncated": false,
+  "total_processed": 33,
+  "environment": "staging"
+}
