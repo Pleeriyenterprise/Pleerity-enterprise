@@ -1,18 +1,17 @@
-# Watchlist — onboarding recovery orchestration
+# Watchlist — PRELAUNCH onboarding recovery closeout
 
-## Before production sign-off
+**Classification:** `VERIFIED_OPERATIONALLY`
 
-- [ ] Staging browser proof: admin execute + customer email + continuation landing
-- [ ] Stripe webhook completes after continuation checkout
-- [ ] No duplicate subscription created on recovery retry
-- [ ] Fleet metrics endpoint returns sensible counters after test runs
+## Post-closeout (ops, non-blocking)
 
-## Known limits
+- Complete manual Stripe payment on a yopmail recovery checkout to prove paid → webhook → provisioning → portal activation on staging.
+- Optional: dedicated `ONBOARDING_RECOVERY_EMAIL` notification template (`requires_provisioned: false`) to avoid reliance on `ADMIN_MANUAL` + event_type bypass.
+- Branded recovery email template (currently `ADMIN_MANUAL` HTML body from recovery notification service).
 
-- Fleet metrics mix global counters with recent-event sampling (30-day window).
-- `VERIFIED_OPERATIONALLY` requires staging evidence — unit tests alone are insufficient.
+## Verified (no action)
 
-## Do not regress
-
-- Recover onboarding override alone does **not** constitute recovery complete.
-- Recovery execute requires step-up, reason, and confirmation token.
+- Governed execute (step-up + confirmation + reason)
+- Pre-provisioning recovery email delivery
+- Secure continuation landing
+- Promo preservation via invite code / eligibility override
+- Duplicate recovery guard

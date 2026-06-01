@@ -583,7 +583,7 @@ def run_browser_capture(
                 page.fill("#password", admin_password)
                 page.get_by_role("button", name=re.compile(r"sign in as admin", re.I)).click(timeout=30000)
                 page.wait_for_timeout(4000)
-                panel_url = f"{FE}/admin/clients/{cid}/control-panel"
+                panel_url = f"{FE}/admin/clients/{cid}"
                 page.goto(panel_url, wait_until="networkidle", timeout=90000)
                 path_admin = SCREENSHOTS / "admin_recovery_panel.png"
                 page.screenshot(path=str(path_admin), full_page=True)

@@ -1,14 +1,16 @@
 {
-  "classifications": {
-    "PAYMENT_ABANDONED": "regenerate_payment | resume_onboarding",
-    "EXPIRED_CHECKOUT": "regenerate_payment | resume_onboarding",
-    "PROMO_REDEMPTION_FAILED": "regenerate_payment | resume_onboarding",
-    "FIRST_TIME_RESTRICTION_COLLISION": "regenerate_payment | resume_onboarding (+ optional waiver)",
-    "ACTIVATION_INCOMPLETE": "resend_activation",
-    "PARTIAL_PROVISIONING": "manual_escalation",
-    "SUBSCRIPTION_DRIFT": "manual_escalation",
-    "DUPLICATE_RECOVERY_RISK": "blocked",
-    "RECOVERY_ALREADY_ACTIVE": "blocked"
+  "programme": "PRELAUNCH-ONBOARDING-CONTINUATION-RECOVERY-ORCHESTRATION-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "status": "VERIFIED_OPERATIONALLY",
+  "scenarios": {
+    "A": true,
+    "B": true,
+    "C": true,
+    "D": true,
+    "E": true
   },
-  "run_id": "20260601T071622Z"
+  "closed_at": "2026-06-01T09:08:03.105502+00:00",
+  "commits": ["b97f00b2", "fccdf0ca", "cb34f5f3"],
+  "admin_ui_route": "/admin/clients/{clientId}",
+  "email_policy_fix": "ONBOARDING_RECOVERY_EVENT_TYPES bypass on ADMIN_MANUAL requires_provisioned"
 }

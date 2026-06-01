@@ -1,0 +1,176 @@
+{
+  "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+  "customer_reference": null,
+  "stripe_customer_id": null,
+  "stripe_subscription_id": null,
+  "latest_checkout_session_id": null,
+  "first_regenerate": {
+    "status": 200,
+    "ok": true,
+    "body": {
+      "ok": true,
+      "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+      "classification": "PAYMENT_ABANDONED",
+      "execution": {
+        "mode": "regenerate_payment",
+        "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1nN3zBN5eIC4F7z7RpBXjZ8hkRfYUJnhHitUdnJaLaWf9U1lT0oyLYIIE#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+        "session_id": "cs_live_b1nN3zBN5eIC4F7z7RpBXjZ8hkRfYUJnhHitUdnJaLaWf9U1lT0oyLYIIE",
+        "email_sent": false,
+        "email_result": {},
+        "waiver_applied": false,
+        "waiver_override_id": null,
+        "promo_preserved": false,
+        "continuation_delivered": true
+      },
+      "assessment": {
+        "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+        "found": true,
+        "is_stranded": true,
+        "classification": "RECOVERY_ALREADY_ACTIVE",
+        "risk": "low",
+        "strategy": {
+          "recommended_mode": null,
+          "available_modes": [],
+          "execution_available": false,
+          "phase": 2,
+          "note": "A recovery checkout link was sent recently. Wait for customer action or allow the link to expire before regenerating.",
+          "executable_modes": []
+        },
+        "customer_continuation_mode": null,
+        "eligibility": {
+          "eligible": false,
+          "reason": "A recovery checkout link is still active. Customer should use the existing link first."
+        },
+        "recommendation": {
+          "blockage_summary": "A recovery checkout link was sent recently and may still be valid.",
+          "recommended_action": "Wait for customer action or confirm the prior link expired before regenerating.",
+          "expected_customer_outcome": "Customer should use the existing payment link if still valid.",
+          "operational_impact": "Avoid stacking multiple active checkout sessions."
+        },
+        "state_summary": {
+          "customer_reference": "PLE-CVP-2026-000036",
+          "onboarding_status": "INTAKE_PENDING",
+          "provisioning_status": null,
+          "subscription_status": "PENDING",
+          "lifecycle_status": "pending_payment",
+          "billing_lifecycle_state": null,
+          "password_set": null,
+          "checkout_link_sent_at": "2026-06-01T09:07:34.509000",
+          "checkout_fresh": true,
+          "paid_or_active": false,
+          "activation_email_sent": false
+        },
+        "recovery_history": {
+          "attempts": [
+            {
+              "type": "checkout_link_sent",
+              "at": "2026-06-01T09:07:34.509000",
+              "session_id": "cs_live_b1nN3zBN5eIC4F7z7RpBXjZ8hkRfYUJnhHitUdnJaLaWf9U1lT0oyLYIIE",
+              "fresh": true
+            }
+          ],
+          "recovery_attempt_count": 1,
+          "last_checkout_sent_at": "2026-06-01T09:07:34.509000",
+          "last_recovery_checkout_id": "cs_live_b1nN3zBN5eIC4F7z7RpBXjZ8hkRfYUJnhHitUdnJaLaWf9U1lT0oyLYIIE"
+        },
+        "indicators": {
+          "stranded_onboarding": true,
+          "payment_failed": false,
+          "provisioning_failed": false,
+          "incomplete_redemption": false,
+          "retry_blocked": false,
+          "override_active": false,
+          "first_time_consumed": false,
+          "badges": [
+            "intake_pending"
+          ],
+          "recoverable_count": 0,
+          "first_time_bypass_active": false
+        },
+        "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
+        "phase": 2,
+        "execution_available": false,
+        "executable_modes": [],
+        "observability": {
+          "found": true,
+          "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+          "completion": {
+            "status": "continuation_delivered_awaiting_action",
+            "message": "Continuation was delivered; awaiting customer payment or activation.",
+            "paid_or_active": false,
+            "password_set": false,
+            "continuation_delivered_at": "2026-06-01T09:06:42.669000",
+            "last_recovery_at": "2026-06-01T09:07:34.630000",
+            "last_recovery_mode": "regenerate_payment"
+          },
+          "events": [
+            {
+              "event_id": "8c23a172-89b2-4654-9138-dc65a9aaccd8",
+              "event_type": "continuation_delivered",
+              "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+              "mode": "regenerate_payment",
+              "classification": "PAYMENT_ABANDONED",
+              "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+              "continuation_delivered": true,
+              "email_sent": false,
+              "created_at": "2026-06-01T09:07:34.869155+00:00",
+              "metadata": {
+                "action_id": "onboarding_recovery_execute",
+                "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 operational closeout recovery proof",
+                "ip_address": "92.40.47.97",
+                "execution_summary": {
+                  "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1nN3zBN5eIC4F7z7RpBXjZ8hkRfYUJnhHitUdnJaLaWf9U1lT0oyLYIIE#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                  "session_id": "cs_live_b1nN3zBN5eIC4F7z7RpBXjZ8hkRfYUJnhHitUdnJaLaWf9U1lT0oyLYIIE",
+                  "waiver_applied": false,
+                  "promo_preserved": false
+                }
+              }
+            },
+            {
+              "event_id": "af6e195c-fae4-4a40-9c57-5566b816c07a",
+              "event_type": "continuation_delivered",
+              "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+              "mode": "resume_onboarding",
+              "classification": "PAYMENT_ABANDONED",
+              "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+              "continuation_delivered": true,
+              "email_sent": true,
+              "created_at": "2026-06-01T09:06:43.345502+00:00",
+              "metadata": {
+                "action_id": "onboarding_recovery_execute",
+                "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 operational closeout recovery proof",
+                "ip_address": "92.40.47.97",
+                "execution_summary": {
+                  "continuation_url": "https://pleerityenterprise.co.uk/onboarding/continue?token=02GIPJiGqid37DuZWPJ9fK23WmklnKODLNMDfWWT5UU",
+                  "waiver_applied": false
+                }
+              }
+            }
+          ],
+          "delivery": {
+            "continuation_delivered_at": "2026-06-01T09:06:42.669000",
+            "last_recovery_at": "2026-06-01T09:07:34.630000",
+            "last_recovery_mode": "regenerate_payment",
+            "last_recovery_classification": "PAYMENT_ABANDONED",
+            "recovery_attempt_count": 2,
+            "last_recovery_checkout_id": "cs_live_b1nN3zBN5eIC4F7z7RpBXjZ8hkRfYUJnhHitUdnJaLaWf9U1lT0oyLYIIE"
+          }
+        }
+      }
+    }
+  },
+  "assessment_before_duplicate": "RECOVERY_ALREADY_ACTIVE",
+  "duplicate_execute": {
+    "status": 400,
+    "ok": false,
+    "body": {
+      "detail": {
+        "error_code": "NOT_ELIGIBLE",
+        "message": "A recovery checkout link is still active. Customer should use the existing link first."
+      }
+    }
+  },
+  "assessment_after_duplicate": "RECOVERY_ALREADY_ACTIVE",
+  "duplicate_blocked": true,
+  "single_crn_preserved": false
+}

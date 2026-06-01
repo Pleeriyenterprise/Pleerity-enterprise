@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "auth_method": "localStorage_token_injection",
+  "panel_url": "https://pleerityenterprise.co.uk/admin/clients/5ac41f8d-061d-4cae-8928-8036141d4a8e",
+  "screenshot": "admin_recovery_panel.png",
+  "recovery_ui_markers_found": [
+    "recovery",
+    "PAYMENT",
+    "Stranded"
+  ],
+  "body_preview": "ADMIN CONSOLE\nDashboard\nOverview\nAnalytics\nExecutive Overview\nReporting\nSystem Health\nCompliance Engine\nPolicy Registry\nRegistry Preview & Simulation\nRegistry Publish Queue\nAction Links\nOperations\nCRM\nClients\nLead Management\n1\nRisk Check Leads\nTalent Pool\nPartnership Enquiries\nContact Enquiries\nOrders Pipeline\nProducts & Billing\nContent & Experience\nSupport\nSystem\nAI Assistant\nAsk anything\nA\n\nAdmin\n\naigbochievictory@gmail.com\n\nType at least 2 characters. Matches name, email, company, CRN, property, order ref, Stripe customer/subscription id.\n\n9+\nLogout\n4 open P0/P1 incidents\nView incidents \u2192\nClient Control Panel\nLIVE\n\nOne place for identity, billing, compliance, and operations. Read-only tabs and collapsibles show snapshots only; operational and high-impact sections run server actions when you click a button.\n\nProduction account\n\nLive organisation \u2014 permanent client deletion follows strict checks; prefer archive / suspend for access control.\n\nOverview\nCompliance\nOperations\nBilling\nActivity & Audit\nPromo & Recovery Controls\nOnboarding, promo eligibility, waivers, and redemption recovery \u2014 available before successful provisioning.\nSTRANDED ONBOARDING\nINTAKE PENDING\nREAD-ONLY DIAGNOSTICS\n\nSnapshot fields and collapsible summaries below do not execute changes until you use an action section.\n\nRead-only diagnostic - if customer-visible state conflicts with this snapshot after refresh, escalate.\n\nCOMPLIANCE STATUS\n\nAT RISK\nGaps or exposure need follow-up.\nRisk level\nHigh urgency: o"
+}

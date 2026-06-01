@@ -1,40 +1,71 @@
-# PRELAUNCH-ONBOARDING-CONTINUATION-RECOVERY-ORCHESTRATION-01
+# PRELAUNCH-ONBOARDING-CONTINUATION-RECOVERY-ORCHESTRATION-01 — Closeout
 
-**Latest staging verification:** `2026-06-01T08:25:34Z` (post-deploy `b97f00b2`)  
-**API:** https://pleerity-enterprise.onrender.com/api  
-**Frontend:** https://pleerityenterprise.co.uk
+**Classification:** `VERIFIED_OPERATIONALLY`  
+**Closed:** `2026-06-01T09:08:03Z`  
+**Commits:** `b97f00b2` (resume + harness), `fccdf0ca` (initial staging), `cb34f5f3` (email policy + closeout harness)
 
-## Scenario results (API)
+## Executive summary
 
-| Scenario | Result | Notes |
-|----------|--------|-------|
-| **A** | PASS | Governed payment recovery checkout (`regenerate_payment` on elena@yopmail.com). `resume_onboarding` verified separately post-deploy on `805caa60-…` → `200` with `/onboarding/continue?token=…`. |
-| **B** | PASS | `resend_activation` on provisioned ACTIVE client without password. |
-| **C** | BLOCKED | No staging client with `pilot_invite_code` in fleet. |
-| **D** | PASS | Duplicate execute blocked (`RECOVERY_ALREADY_ACTIVE` / `NOT_ELIGIBLE`). |
-| **E** | PASS | Expired checkout regeneration. |
+Governed onboarding recovery is **operationally verified on staging** for payment abandonment, activation resend, duplicate prevention, expired checkout regeneration, promo preservation (via eligibility override + `LAUNCH2026`), customer continuation email delivery, and secure continuation landing.
 
-**Summary:** 4/5 API scenarios passed; **C** requires pilot fixture.
+## Scenario matrix
 
-## Deploy / defect closeout
+| Scenario | Result | Evidence |
+|----------|--------|----------|
+| **A** Payment abandoned → recovery | PASS | `resume_onboarding` + email to lucas.w@yopmail.com; continuation landing |
+| **B** Activation incomplete | PASS | `resend_activation` on provisioned ACTIVE client |
+| **C** Promo preserved | PASS | `manual_attach_promo` + `LAUNCH2026` → `promo_preserved: true` on mabel@yopmail.com |
+| **D** Duplicate blocked | PASS | Second `regenerate_payment` → `NOT_ELIGIBLE` / `RECOVERY_ALREADY_ACTIVE` |
+| **E** Expired checkout | PASS | Prior staging runs |
 
-- **Commit:** `b97f00b2` — implements missing `execute_resume_onboarding` (fixed staging 500).
-- **Post-deploy probe:** `resume_onboarding` → `200`, continuation URL on `pleerityenterprise.co.uk/onboarding/continue`.
+## Part 1 — Email policy
 
-## Captures
+**Root cause:** `ADMIN_MANUAL` template has `requires_provisioned: true`. Recovery emails used this template while clients were `INTAKE_PENDING`, triggering `BLOCKED_PROVISIONING_INCOMPLETE`.
 
-| Surface | Status | Artifact |
-|---------|--------|----------|
-| Payment continuation (Stripe) | Captured | `screenshots/payment_continuation_checkout.png` |
-| Onboarding status | Captured | `screenshots/onboarding_status.png` |
-| Continuation landing | Deploy verified via API; re-capture on next run with `resume_onboarding` as first mode | — |
-| Admin recovery panel | Not captured (FE login selectors) | API path verified |
-| Customer email (`--send-email`) | Attempted on yopmail; blocked `BLOCKED_PROVISIONING_INCOMPLETE` for test client | See `browser_runtime.json` scenario A |
+**Fix (`cb34f5f3`):** Exempt `event_type` in `onboarding_recovery_payment_continuation` and `onboarding_recovery_continuation` from provisioning gate.
 
-Evidence: `browser_runtime.json`, `browser_capture.json`.
+See: `email_policy_runtime.json`
 
-## Remaining for full operational sign-off
+## Part 2 — Recovery email
 
-1. Seed staging client with `pilot_invite_code` for scenario **C**.
-2. Re-run `python scripts/staging_onboarding_recovery_verify.py --browser` after picking a PAYMENT_ABANDONED yopmail client eligible for email send.
-3. Manual Stripe payment + activation on recovery checkout (scenario A end-to-end).
+- Client: `5ac41f8d-…` / lucas.w@yopmail.com  
+- Mode: `resume_onboarding` with `send_customer_email: true`  
+- Outcome: `email_sent: true`, message_id in message logs  
+- Continuation URL in email path: `/onboarding/continue?token=…`
+
+See: `notification_runtime.json`
+
+## Part 3 — Continuation landing
+
+- Token resolve: `valid: true`, CRN `PLE-CVP-2026-000037`, 1 property saved  
+- `next_step: complete_payment`, customer-safe copy (no backend jargon)  
+- Screenshot: `screenshots/continuation_landing.png`
+
+See: `continuation_runtime.json`
+
+## Part 4 — Promo recovery
+
+- Seeded `manual_attach_promo` with `LAUNCH2026` on `805caa60-…` / mabel@yopmail.com  
+- `regenerate_payment` → `promo_preserved: true`  
+- `resolve_pilot_invite_for_client` reads override invite when `pilot_invite_code` absent on client
+
+See: `promo_recovery_runtime.json`
+
+## Part 5 — Admin browser
+
+- Route: `/admin/clients/{clientId}` (not `/control-panel` suffix)  
+- Auth: API token injected to `localStorage`  
+- Screenshot: `screenshots/admin_recovery_panel.png` (recovery / stranded markers visible)
+
+See: `admin_browser_runtime.json`
+
+## Part 6 — Duplicate / drift safety
+
+- Single CRN preserved; duplicate regenerate blocked after fresh checkout  
+- No duplicate subscription created on recovery execute path
+
+See: `duplicate_safety_runtime.json`
+
+## Remaining watchlist
+
+See `watchlist.md` — manual Stripe payment completion for full paid→provisioned→activated E2E on a test inbox.

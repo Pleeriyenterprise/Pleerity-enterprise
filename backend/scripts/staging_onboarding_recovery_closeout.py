@@ -19,6 +19,7 @@ import httpx
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs/audit/prelaunch_onboarding_recovery_orchestration_01"
 SCREENSHOTS = OUT / "screenshots"
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from staging_onboarding_recovery_verify import (  # noqa: E402
@@ -114,7 +115,21 @@ def _duplicate_safety(
 ) -> Dict[str, Any]:
     client = _get(http, f"/admin/clients/{client_id}", admin_token)
     body = client.get("body") if isinstance(client.get("body"), dict) else {}
-    assess = _get(http, f"/admin/clients/{client_id}/onboarding-recovery/assessment", admin_token)
+    assess0 = _get(http, f"/admin/clients/{client_id}/onboarding-recovery/assessment", admin_token)
+    ab0 = assess0.get("body") if isinstance(assess0.get("body"), dict) else {}
+    first_exec: Optional[Dict[str, Any]] = None
+    if ab0.get("classification") != "RECOVERY_ALREADY_ACTIVE" and ab0.get("eligibility", {}).get("eligible"):
+        first_exec = _execute(
+            http,
+            admin_token,
+            step_up,
+            {"client_id": client_id},
+            "regenerate_payment",
+            dry_run=False,
+            send_email=False,
+        )
+    assess1 = _get(http, f"/admin/clients/{client_id}/onboarding-recovery/assessment", admin_token)
+    ab1 = assess1.get("body") if isinstance(assess1.get("body"), dict) else {}
     dup_exec = _execute(
         http,
         admin_token,
@@ -124,16 +139,27 @@ def _duplicate_safety(
         dry_run=False,
         send_email=False,
     )
+    detail = dup_exec.get("body") or {}
+    err = detail.get("detail") if isinstance(detail, dict) else {}
+    err_code = err.get("error_code") if isinstance(err, dict) else None
+    assess2 = _get(http, f"/admin/clients/{client_id}/onboarding-recovery/assessment", admin_token)
+    ab2 = assess2.get("body") if isinstance(assess2.get("body"), dict) else {}
+    blocked = (
+        dup_exec.get("status") == 400
+        and err_code in ("NOT_ELIGIBLE", "RECOVERY_CHECKOUT_STILL_FRESH")
+    ) or ab1.get("classification") == "RECOVERY_ALREADY_ACTIVE" or ab2.get("classification") == "RECOVERY_ALREADY_ACTIVE"
     return {
         "client_id": client_id,
         "customer_reference": body.get("customer_reference"),
         "stripe_customer_id": body.get("stripe_customer_id"),
         "stripe_subscription_id": body.get("stripe_subscription_id"),
         "latest_checkout_session_id": body.get("latest_checkout_session_id"),
-        "assessment_classification": (assess.get("body") or {}).get("classification"),
+        "first_regenerate": first_exec,
+        "assessment_before_duplicate": ab1.get("classification"),
         "duplicate_execute": dup_exec,
-        "duplicate_blocked": dup_exec.get("status") == 400
-        or (assess.get("body") or {}).get("classification") == "RECOVERY_ALREADY_ACTIVE",
+        "assessment_after_duplicate": ab2.get("classification"),
+        "duplicate_blocked": blocked,
+        "single_crn_preserved": bool(body.get("customer_reference")),
     }
 
 
@@ -164,10 +190,10 @@ def _list_pilot_invite_code(http: httpx.Client, admin_token: str) -> Optional[st
     if not r["ok"]:
         r = _get(http, "/admin/pilot-invites?limit=20", admin_token)
     body = r.get("body") if isinstance(r.get("body"), dict) else {}
-    items = body.get("items") or body.get("codes") or body.get("invites") or []
+    items = body.get("invite_codes") or body.get("items") or body.get("codes") or []
     for row in items:
         code = (row.get("code") or "").strip()
-        if code:
+        if code and (row.get("status") or "active").lower() in ("active", "published", ""):
             return code
     return None
 
@@ -198,23 +224,25 @@ def _run_browser_continuation(url: str) -> Dict[str, Any]:
     }
 
 
-def _run_admin_panel(client_id: str, email: str, password: str) -> Dict[str, Any]:
+def _run_admin_panel(client_id: str, admin_token: str, user: Dict[str, Any]) -> Dict[str, Any]:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         return {"ok": False, "error": "playwright not installed"}
 
     SCREENSHOTS.mkdir(parents=True, exist_ok=True)
-    panel_url = f"{FE}/admin/clients/{client_id}/control-panel"
-    login_url = f"{FE}/login/admin"
+    panel_url = f"{FE}/admin/clients/{client_id}"
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1400, "height": 1000})
-        page.goto(login_url, wait_until="networkidle", timeout=120000)
-        page.fill("#email", email)
-        page.fill("#password", password)
-        page.get_by_role("button", name=re.compile(r"sign in as admin", re.I)).click(timeout=30000)
-        page.wait_for_timeout(5000)
+        page.goto(f"{FE}/login/admin", wait_until="domcontentloaded", timeout=120000)
+        page.evaluate(
+            """([token, userJson]) => {
+                localStorage.setItem('auth_token', token);
+                localStorage.setItem('user', userJson);
+            }""",
+            [admin_token, json.dumps(user)],
+        )
         page.goto(panel_url, wait_until="networkidle", timeout=120000)
         page.wait_for_timeout(3000)
         visible = page.inner_text("body")[:5000]
@@ -224,14 +252,17 @@ def _run_admin_panel(client_id: str, email: str, password: str) -> Dict[str, Any
     markers = [
         "onboarding recovery",
         "recovery",
+        "PAYMENT_ABANDONED",
         "PAYMENT",
         "resume",
         "regenerate",
+        "Stranded",
+        "continuation",
     ]
     found = [m for m in markers if m.lower() in visible.lower()]
     return {
         "ok": True,
-        "login_url": login_url,
+        "auth_method": "localStorage_token_injection",
         "panel_url": panel_url,
         "screenshot": str(shot.name),
         "recovery_ui_markers_found": found,
@@ -271,7 +302,15 @@ def main() -> int:
     verify_mod.REASON = CLOSEOUT_REASON
 
     email, password = _load_admin_password()
-    admin_token = _login_admin(email, password)
+    login_resp = httpx.post(
+        f"{API}/auth/admin/login",
+        json={"email": email, "password": password},
+        timeout=120,
+    )
+    login_resp.raise_for_status()
+    login_body = login_resp.json()
+    admin_token = login_body["access_token"]
+    admin_user = login_body.get("user") or {}
     step_up = _step_up(admin_token, password)
 
     results: Dict[str, Any] = {"started_at": _utc(), "programme": MARKER}
@@ -317,7 +356,9 @@ def main() -> int:
         # Part 4 — promo
         promo: Dict[str, Any] = {}
         invite_code = _list_pilot_invite_code(http, admin_token)
-        promo_sub = _pick_unused(enriched, "PAYMENT_ABANDONED", "EXPIRED_CHECKOUT", used=used)
+        promo_sub = _find_yopmail_payment_abandoned(enriched, used)
+        if not promo_sub:
+            promo_sub = _pick_unused(enriched, "PAYMENT_ABANDONED", "EXPIRED_CHECKOUT", used=used)
         if invite_code and promo_sub:
             used.add(promo_sub["client_id"])
             promo["invite_code"] = invite_code
@@ -345,7 +386,9 @@ def main() -> int:
         # Part 5 — admin browser (use recovery subject or activation subject)
         admin_client = (sub or {}).get("client_id") or (_find_activation_subject(enriched) or {}).get("client_id")
         admin_browser = (
-            _run_admin_panel(admin_client, email, password) if admin_client else {"ok": False, "error": "no client"}
+            _run_admin_panel(admin_client, admin_token, admin_user)
+            if admin_client
+            else {"ok": False, "error": "no client"}
         )
         results["admin_browser"] = admin_browser
         _write("admin_browser_runtime.json", admin_browser)

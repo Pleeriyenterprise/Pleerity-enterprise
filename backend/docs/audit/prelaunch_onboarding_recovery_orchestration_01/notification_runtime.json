@@ -1,12 +1,179 @@
 {
-  "templates": [
-    "ADMIN_MANUAL",
-    "WELCOME_EMAIL"
+  "subject": {
+    "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+    "email": "lucas@yopmail.com",
+    "customer_reference": "PLE-CVP-2026-000036",
+    "classification": "PAYMENT_ABANDONED",
+    "eligible": true,
+    "executable_modes": [
+      "regenerate_payment",
+      "resume_onboarding"
+    ],
+    "checkout_fresh": false,
+    "paid_or_active": false,
+    "password_set": null
+  },
+  "execute": {
+    "status": 200,
+    "ok": true,
+    "body": {
+      "ok": true,
+      "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+      "classification": "PAYMENT_ABANDONED",
+      "execution": {
+        "mode": "resume_onboarding",
+        "continuation_url": "https://pleerityenterprise.co.uk/onboarding/continue?token=02GIPJiGqid37DuZWPJ9fK23WmklnKODLNMDfWWT5UU",
+        "continuation_token_id": "7ecbe419-c93b-4eee-b05c-3dd5c15cfd26",
+        "email_sent": true,
+        "email_result": {
+          "email_sent": true,
+          "outcome": "sent",
+          "block_reason": null,
+          "message_id": "9412a09a-8e91-402f-bad9-ae98dec9ae7c"
+        },
+        "waiver_applied": false,
+        "waiver_override_id": null,
+        "continuation_delivered": true
+      },
+      "assessment": {
+        "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+        "found": true,
+        "is_stranded": true,
+        "classification": "PAYMENT_ABANDONED",
+        "risk": "low",
+        "strategy": {
+          "recommended_mode": "regenerate_payment",
+          "available_modes": [
+            "regenerate_payment",
+            "resume_onboarding"
+          ],
+          "execution_available": true,
+          "phase": 2,
+          "executable_modes": [
+            "regenerate_payment",
+            "resume_onboarding"
+          ]
+        },
+        "customer_continuation_mode": "secure_payment_checkout",
+        "eligibility": {
+          "eligible": true,
+          "reason": null
+        },
+        "recommendation": {
+          "blockage_summary": "Customer reference PLE-CVP-2026-000036 completed intake but has not paid.",
+          "recommended_action": "Generate a new secure checkout link and send continuation guidance (Phase 2).",
+          "expected_customer_outcome": "Customer receives an email with a link to complete subscription payment.",
+          "operational_impact": "Preserves intake and property setup; does not create a duplicate account."
+        },
+        "state_summary": {
+          "customer_reference": "PLE-CVP-2026-000036",
+          "onboarding_status": "INTAKE_PENDING",
+          "provisioning_status": null,
+          "subscription_status": "PENDING",
+          "lifecycle_status": "pending_payment",
+          "billing_lifecycle_state": null,
+          "password_set": null,
+          "checkout_link_sent_at": null,
+          "checkout_fresh": false,
+          "paid_or_active": false,
+          "activation_email_sent": false
+        },
+        "recovery_history": {
+          "attempts": [],
+          "recovery_attempt_count": 0,
+          "last_checkout_sent_at": null,
+          "last_recovery_checkout_id": null
+        },
+        "indicators": {
+          "stranded_onboarding": true,
+          "payment_failed": false,
+          "provisioning_failed": false,
+          "incomplete_redemption": false,
+          "retry_blocked": false,
+          "override_active": false,
+          "first_time_consumed": false,
+          "badges": [
+            "intake_pending"
+          ],
+          "recoverable_count": 0,
+          "first_time_bypass_active": false
+        },
+        "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
+        "phase": 2,
+        "execution_available": true,
+        "executable_modes": [
+          "regenerate_payment",
+          "resume_onboarding"
+        ],
+        "observability": {
+          "found": true,
+          "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+          "completion": {
+            "status": "continuation_delivered_awaiting_action",
+            "message": "Continuation was delivered; awaiting customer payment or activation.",
+            "paid_or_active": false,
+            "password_set": false,
+            "continuation_delivered_at": "2026-06-01T09:06:42.669000",
+            "last_recovery_at": "2026-06-01T09:06:42.791000",
+            "last_recovery_mode": "resume_onboarding"
+          },
+          "events": [
+            {
+              "event_id": "af6e195c-fae4-4a40-9c57-5566b816c07a",
+              "event_type": "continuation_delivered",
+              "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+              "mode": "resume_onboarding",
+              "classification": "PAYMENT_ABANDONED",
+              "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+              "continuation_delivered": true,
+              "email_sent": true,
+              "created_at": "2026-06-01T09:06:43.345502+00:00",
+              "metadata": {
+                "action_id": "onboarding_recovery_execute",
+                "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 operational closeout recovery proof",
+                "ip_address": "92.40.47.97",
+                "execution_summary": {
+                  "continuation_url": "https://pleerityenterprise.co.uk/onboarding/continue?token=02GIPJiGqid37DuZWPJ9fK23WmklnKODLNMDfWWT5UU",
+                  "waiver_applied": false
+                }
+              }
+            }
+          ],
+          "delivery": {
+            "continuation_delivered_at": "2026-06-01T09:06:42.669000",
+            "last_recovery_at": "2026-06-01T09:06:42.791000",
+            "last_recovery_mode": "resume_onboarding",
+            "last_recovery_classification": "PAYMENT_ABANDONED",
+            "recovery_attempt_count": 1,
+            "last_recovery_checkout_id": null
+          }
+        }
+      }
+    }
+  },
+  "continuation_url": "https://pleerityenterprise.co.uk/onboarding/continue?token=02GIPJiGqid37DuZWPJ9fK23WmklnKODLNMDfWWT5UU",
+  "email_sent": true,
+  "email_result": {
+    "email_sent": true,
+    "outcome": "sent",
+    "block_reason": null,
+    "message_id": "9412a09a-8e91-402f-bad9-ae98dec9ae7c"
+  },
+  "message_logs": [
+    {
+      "message_id": "9412a09a-8e91-402f-bad9-ae98dec9ae7c",
+      "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+      "recipient": "lucas@yopmail.com",
+      "template_key": "ADMIN_MANUAL",
+      "channel": "EMAIL",
+      "status": "DELIVERED",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T09:06:42.071000",
+      "postmark_message_id": "a8bfedee-a916-4694-abdb-4a2b4416842a",
+      "provider_message_id": "a8bfedee-a916-4694-abdb-4a2b4416842a",
+      "sent_at": "2026-06-01T09:06:42.413000",
+      "delivered_at": "2026-06-01T09:06:43Z"
+    }
   ],
-  "events": [
-    "onboarding_recovery_payment_continuation",
-    "onboarding_recovery_continuation",
-    "onboarding_recovery_activation"
-  ],
-  "run_id": "20260601T071622Z"
+  "message_log_sent": true
 }

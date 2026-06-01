@@ -1,0 +1,30 @@
+{
+  "programme": "PRELAUNCH-ONBOARDING-CONTINUATION-RECOVERY-ORCHESTRATION-01",
+  "audited_at": "2026-06-01T09:02:49.136193+00:00",
+  "block_observed": "BLOCKED_PROVISIONING_INCOMPLETE",
+  "root_cause": {
+    "template_key": "ADMIN_MANUAL",
+    "requires_provisioned": true,
+    "gating_location": "notification_orchestrator._apply_gating",
+    "mechanism": "ADMIN_MANUAL requires onboarding_status == PROVISIONED; recovery emails use this template while clients are INTAKE_PENDING / unpaid."
+  },
+  "recovery_event_types_exempted": [
+    "onboarding_recovery_continuation",
+    "onboarding_recovery_payment_continuation"
+  ],
+  "fix_applied": "Skip requires_provisioned when event_type is onboarding_recovery_payment_continuation or onboarding_recovery_continuation.",
+  "activation_email_note": "resend_activation uses WELCOME_EMAIL which correctly requires PROVISIONED.",
+  "policy_rule": {
+    "allowed_when": [
+      "intake exists (client record)",
+      "customer_reference present for governed recovery",
+      "recipient email present",
+      "recovery token or checkout session created by execute",
+      "event_type in ONBOARDING_RECOVERY_EVENT_TYPES"
+    ],
+    "must_not_require": "full provisioning completion for pre-payment continuation"
+  },
+  "incorrectly_treated_as_post_provisioning": true,
+  "safe_recovery_category_needed": false,
+  "recommendation": "Use event_type bypass (implemented); optional future ONBOARDING_RECOVERY_EMAIL template with requires_provisioned=false."
+}
