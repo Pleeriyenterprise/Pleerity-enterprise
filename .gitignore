@@ -37,6 +37,7 @@ dist
 *token.json*
 *credentials.json*
 .ops_verify_temp_pw.txt
+.staging_mongo_url
 
 # Logs and debug files
 npm-debug.log*

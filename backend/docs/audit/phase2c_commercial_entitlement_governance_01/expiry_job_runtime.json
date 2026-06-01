@@ -1,0 +1,12 @@
+{
+  "pass": false,
+  "blocked_by": "fixture_not_inserted",
+  "manual_job_run_staging_api": {
+    "ok": true,
+    "expired_count": 0,
+    "note": "Job executes on staging; expired_count=0 without backdated active row"
+  },
+  "job2_idempotent": {
+    "note": "not_run \u2014 fixture prerequisite missing"
+  }
+}

@@ -1,105 +1,56 @@
-# Phase 2C — Commercial Entitlement Governance Closeout
+# Phase 2C — Commercial Entitlement Expiry Closeout
 
-## Classification
-**PARTIAL**
+**Programme:** `PHASE-2C-COMMERCIAL-ENTITLEMENT-EXPIRY-CLOSEOUT-01`  
+**Classification:** `EXPIRY_GOVERNANCE_DRIFT`  
+**Verified at:** 2026-06-01T16:08:23Z  
+**Implementation commits:** `93745c7c`, `d21b15bc`, `3316e8d8`
 
-## Deploy continuity
-- API version: `93745c7c50b07281626605b555f7c61d092f3d5b`
-- Frontend CommercialEntitlementControls: `True`
-- Commercial entitlement routes: `{'reachable': True, 'status': 404}`
-- Expiry job registered: `True`
+## Summary
 
-## Client exercised
-`rent_ops_verify_01_7bbe8f8b`
+Deploy continuity and API regression gates **pass** on staging (`rent_ops_verify_01_7bbe8f8b`). Expiry transition, access recalculation after expiry, review-due proof, and expiry audit/metrics **cannot be verified** without staging `MONGO_URL` to insert a backdated active governance row. Classification remains below `VERIFIED_OPERATIONALLY` until that proof runs.
 
-## Scenarios
-{
-  "impact_preview": {
-    "passed": true,
-    "preview": {
-      "customer_impact": "Your access has been temporarily extended until 2026-06-08.",
-      "access_impact": "Full operational access preserved.",
-      "billing_impact": "Billing continues unless otherwise stated.",
-      "expiry_behaviour": "Exception ends on 2026-06-08 unless reviewed earlier.",
-      "stripe_impact": "Platform authoritative in v1; Stripe reconciliation is lightweight and non-destructive.",
-      "operational_continuity": "Existing compliance records and evidence remain accessible."
-    },
-    "copy_issues": []
-  },
-  "grace_extension": {
-    "passed": true,
-    "execute": {
-      "status": 200,
-      "governance_id": "235fabc7-92f7-46ef-8980-b3c79f7940a6"
-    }
-  },
-  "duplicate_active_exception": {
-    "passed": true,
-    "status": 400,
-    "error_code": "ACTIVE_EXCEPTION_EXISTS"
-  },
-  "resume_after_grace": {
-    "passed": true,
-    "status": 200
-  },
-  "billing_suspension": {
-    "passed": true,
-    "continuity": "Existing compliance records and evidence remain accessible."
-  },
-  "sponsored_access": {
-    "passed": true,
-    "duplicate_blocked": true,
-    "sponsor_required_on_empty": true
-  },
-  "retention_continuity": {
-    "passed": true
-  },
-  "duplicate_subscription_advisory": {
-    "passed": true,
-    "drift_probe": {
-      "found": true,
-      "drift_detected": false,
-      "stored_canonical_entitlement_state": "SUSPENDED",
-      "derived_canonical_entitlement_state": "SUSPENDED",
-      "governance_expired": false,
-      "active_governance_id": null,
-      "stripe_reconciliation_status": null
-    },
-    "note": "Advisory duplicate subscription risk surfaced via assessment/drift (v1 does not mutate Stripe)"
-  },
-  "expiry_governance": {
-    "passed": false,
-    "job_run": {
-      "ok": true,
-      "status": 200,
-      "body": {
-        "success": true,
-        "job": "commercial_entitlement_expiry",
-        "message": "Job commercial_entitlement_expiry completed",
-        "result": {
-          "processed_limit": 200,
-          "expired_count": 0,
-          "expired": [],
-          "review_due_governance_ids": []
-        }
-      }
-    },
-    "job_executed": true,
-    "note": "Full expiry transition requires STAGING MONGO_URL backdate; job execution verified via admin API."
-  }
-}
+## Part 1 — Deploy continuity (PASS)
 
-## Browser
-{
-  "client_id": "rent_ops_verify_01_7bbe8f8b",
-  "controls_visible": true,
-  "impact_preview_visible": true,
-  "screenshots": [
-    "commercial_controls_billing_tab.png",
-    "commercial_impact_preview_dialog.png"
-  ],
-  "ok": true
-}
+| Check | Result |
+|-------|--------|
+| `/api/version` includes `3316e8d8` | `3316e8d8742fbc70a347a14f4d5c7689906ef6a6` |
+| `commercial_entitlement_expiry` in `JOB_RUNNERS` | Yes (invalid-job probe) |
+| APScheduler 04:10 UTC | Listed; `next_run`: `2026-06-02T04:10:00+00:00` |
+| Manual job run | 200; `expired_count: 0` (no backdated row) |
+| Indexes on staging cluster | Blocked without `MONGO_URL` |
 
-## Regression
-exit_code=0
+Artifact: `deploy_continuity_expiry.json`
+
+## Part 2 — Staging DB fixture (BLOCKED)
+
+`STAGING_MONGO_URL` / `.staging_mongo_url` not available in closeout runner. Fixture insert requires direct staging Mongo access (same cluster as Render).
+
+Artifact: `expiry_fixture_runtime.json`
+
+## Parts 3–6 — Expiry job, access, review, audit (BLOCKED)
+
+Dependent on Part 2. Staging API job executes but cannot expire without past-expiry active row.
+
+Artifacts: `expiry_job_runtime.json`, `access_recalculation_runtime.json`, `review_governance_runtime.json`, `audit_metrics_expiry_runtime.json`
+
+## Part 7 — Regression (PASS)
+
+Re-ran via staging API: grace, duplicate block (suspend path), sponsored access, impact preview customer copy, Stripe lightweight wording.
+
+Pytest: `test_commercial_entitlement_governance.py` 13 passed; `test_commercial_entitlement_expiry_integration.py` skipped (no local Mongo).
+
+Artifact: `regression_expiry_runtime.json`
+
+## Reach VERIFIED_OPERATIONALLY
+
+1. Create gitignored `backend/docs/audit/phase2c_commercial_entitlement_governance_01/.staging_mongo_url` with staging Atlas URI (or export `STAGING_MONGO_URL`).
+2. Run:
+   ```bash
+   cd backend
+   python scripts/staging_commercial_entitlement_expiry_closeout.py --client-id rent_ops_verify_01_7bbe8f8b
+   ```
+3. Confirm gates: `expired_count >= 1`, row `active` → `expired`, `commercial_expired` audit, access recalc, idempotent second job, review-due for sponsored fixture.
+
+## Harness
+
+`backend/scripts/staging_commercial_entitlement_expiry_closeout.py`

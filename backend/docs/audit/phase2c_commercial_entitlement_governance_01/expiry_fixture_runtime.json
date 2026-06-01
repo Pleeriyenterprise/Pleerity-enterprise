@@ -1,0 +1,5 @@
+{
+  "pass": false,
+  "error": "STAGING_MONGO_URL not set \u2014 set STAGING_MONGO_URL or --mongo-url-file",
+  "client_id": "rent_ops_verify_01_7bbe8f8b"
+}

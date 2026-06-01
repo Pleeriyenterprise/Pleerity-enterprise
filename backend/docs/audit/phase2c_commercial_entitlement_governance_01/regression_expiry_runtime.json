@@ -1,0 +1,21 @@
+{
+  "scenarios": {
+    "grace_extension": {
+      "passed": true
+    },
+    "duplicate_blocked": {
+      "passed": true
+    },
+    "customer_copy": {
+      "passed": true
+    },
+    "stripe_lightweight": {
+      "passed": true
+    },
+    "sponsored_access": {
+      "passed": true
+    }
+  },
+  "verified_at": "2026-06-01T16:07:53.218662+00:00",
+  "pass": true
+}

@@ -1,12 +1,21 @@
 {
-  "programme": "PHASE-2C-COMMERCIAL-ENTITLEMENT-GOVERNANCE-CLOSEOUT-01",
-  "classification": "PARTIAL",
-  "implementation_commit": "93745c7c50b07281626605b555f7c61d092f3d5b",
-  "verified_at": "2026-06-01T15:39:51.443548+00:00",
+  "programme": "PHASE-2C-COMMERCIAL-ENTITLEMENT-EXPIRY-CLOSEOUT-01",
+  "classification": "EXPIRY_GOVERNANCE_DRIFT",
+  "implementation_commits": [
+    "93745c7c",
+    "d21b15bc",
+    "3316e8d8"
+  ],
+  "verified_at": "2026-06-01T16:08:23.341389+00:00",
+  "prior_classification": "PARTIAL",
   "gates": {
-    "deploy_continuity": true,
-    "api_harness": 8,
-    "browser_proof": true,
-    "regression": true
-  }
+    "deploy_continuity_expiry": true,
+    "expiry_fixture_staging_db": false,
+    "expiry_job_transition": false,
+    "access_recalculation": false,
+    "review_governance": false,
+    "audit_metrics_expiry": false,
+    "regression_expiry_api": true
+  },
+  "blocker": "STAGING_MONGO_URL not available in closeout runner environment"
 }

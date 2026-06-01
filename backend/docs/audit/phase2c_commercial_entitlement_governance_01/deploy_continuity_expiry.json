@@ -1,0 +1,47 @@
+{
+  "verified_at": "2026-06-01T16:07:45.456863+00:00",
+  "expected_sha_prefixes": [
+    "3316e8d8",
+    "93745c7c",
+    "d21b15bc"
+  ],
+  "api_version": {
+    "commit_sha": "3316e8d8742fbc70a347a14f4d5c7689906ef6a6",
+    "environment": "production"
+  },
+  "commit_sha": "3316e8d8742fbc70a347a14f4d5c7689906ef6a6",
+  "commit_matches": true,
+  "in_job_runners": true,
+  "scheduler_job": {
+    "id": "commercial_entitlement_expiry",
+    "name": "Commercial entitlement expiry enforcement",
+    "next_run": "2026-06-02T04:10:00+00:00"
+  },
+  "scheduler_listed": true,
+  "manual_job_run": {
+    "ok": true,
+    "status": 200,
+    "body": {
+      "success": true,
+      "job": "commercial_entitlement_expiry",
+      "message": "Job commercial_entitlement_expiry completed",
+      "result": {
+        "processed_limit": 200,
+        "expired_count": 0,
+        "expired": [],
+        "review_due_governance_ids": []
+      }
+    }
+  },
+  "indexes": {
+    "note": "verified via motor when MONGO_URL available"
+  },
+  "source_code_scheduler": {
+    "file": "server.py",
+    "job_id": "commercial_entitlement_expiry",
+    "cron": "04:10 UTC",
+    "CronTrigger": "hour=4, minute=10, timezone=UTC",
+    "commit": "3316e8d8"
+  },
+  "pass": true
+}

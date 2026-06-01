@@ -1,6 +1,2 @@
-# Watchlist — Phase 2C Commercial Entitlement Closeout
-
-- **Expiry transition proof:** Re-run closeout with `STAGING_MONGO_URL` (or local `.env` pointing at staging) and `--use-db-expiry` to backdate `entitlement_expiry_at`, then confirm `commercial_expired` audit event and `has_active_exception=false`.
-- **Scheduler cron:** Deploy commit including `server.py` `commercial_entitlement_expiry` daily schedule (04:10 UTC); staging scheduler sample did not yet list this job id pre-deploy.
-- **VERIFIED_OPERATIONALLY:** Blocked only on full expiry transition proof; API harness, browser, deploy SHA, duplicate prevention, customer copy, and job manual-run all passed at closeout.
-- **Optional:** Migrate legacy pilot waiver buttons to Commercial Controls when ops sign off.
+- **BLOCKER:** Provide staging `MONGO_URL` via `STAGING_MONGO_URL` env or gitignored `phase2c_commercial_entitlement_governance_01/.staging_mongo_url`, then re-run `staging_commercial_entitlement_expiry_closeout.py` to prove expiry transition and upgrade to `VERIFIED_OPERATIONALLY`.
+- Index proof on `commercial_entitlement_governance` / `commercial_entitlement_audit` runs automatically when Mongo URL is supplied (same closeout harness).
