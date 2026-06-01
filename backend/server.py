@@ -569,6 +569,20 @@ async def lifespan(app: FastAPI):
             coalesce=True,
             max_instances=1,
         )
+
+        # Commercial entitlement governance expiry — daily
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
+            CronTrigger(hour=4, minute=10, timezone=SCHEDULER_TIMEZONE),
+            id="commercial_entitlement_expiry",
+            name="Commercial entitlement expiry enforcement",
+            replace_existing=True,
+            args=["commercial_entitlement_expiry"],
+            kwargs={"run_type": "schedule"},
+            misfire_grace_time=300,
+            coalesce=True,
+            max_instances=1,
+        )
         
         # Pending verification digest daily at 9:30 AM UTC (counts only, no PII)
         scheduler.add_job(
