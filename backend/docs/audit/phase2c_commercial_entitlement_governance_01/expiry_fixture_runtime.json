@@ -1,5 +1,17 @@
 {
-  "pass": false,
-  "error": "STAGING_MONGO_URL not set \u2014 set STAGING_MONGO_URL or --mongo-url-file",
-  "client_id": "rent_ops_verify_01_7bbe8f8b"
+  "pass": true,
+  "fixture": {
+    "governance_id": "97d20706-64ad-4bf6-b9d0-db385863b0c0",
+    "entitlement_expiry_at": "2026-06-01T15:00:10.255429+00:00",
+    "active_row_count": 1,
+    "access_before": {
+      "canonical_entitlement_state": "ENABLED",
+      "governance_applied": true,
+      "governance_state": "GRACE_PERIOD",
+      "effective_access_reason": "Grace period until 2026-06-01",
+      "access_policy": "full_access"
+    },
+    "effective_access_reason": "Grace period until 2026-06-01",
+    "cleared_prior_active": 0
+  }
 }

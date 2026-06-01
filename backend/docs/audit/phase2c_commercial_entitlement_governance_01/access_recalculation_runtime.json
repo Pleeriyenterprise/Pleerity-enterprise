@@ -1,5 +1,12 @@
 {
-  "pass": false,
-  "blocked_by": "expiry_transition_not_proven",
-  "programme": "PHASE-2C-COMMERCIAL-ENTITLEMENT-EXPIRY-CLOSEOUT-01"
+  "pass": true,
+  "has_active_exception": false,
+  "access": {
+    "canonical_entitlement_state": "SUSPENDED",
+    "governance_applied": false,
+    "effective_access_reason": null,
+    "access_policy": "full_access"
+  },
+  "canonical_on_client": "SUSPENDED",
+  "compliance_preserved_note": "Billing suspension copy asserts records remain; expiry clears governance mirrors only"
 }

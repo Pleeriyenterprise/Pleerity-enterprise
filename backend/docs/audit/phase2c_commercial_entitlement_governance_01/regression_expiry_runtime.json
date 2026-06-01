@@ -12,10 +12,15 @@
     "stripe_lightweight": {
       "passed": true
     },
-    "sponsored_access": {
+    "billing_suspension": {
       "passed": true
+    },
+    "sponsored_access": {
+      "passed": true,
+      "rate_limited": false,
+      "status": 200
     }
   },
-  "verified_at": "2026-06-01T16:07:53.218662+00:00",
+  "verified_at": "2026-06-01T17:00:17.652364+00:00",
   "pass": true
 }

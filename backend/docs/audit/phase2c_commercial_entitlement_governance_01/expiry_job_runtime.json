@@ -1,12 +1,24 @@
 {
-  "pass": false,
-  "blocked_by": "fixture_not_inserted",
-  "manual_job_run_staging_api": {
+  "pass": true,
+  "job1": {
     "ok": true,
-    "expired_count": 0,
-    "note": "Job executes on staging; expired_count=0 without backdated active row"
+    "execution": "local_staging_mongo",
+    "expired_count": 1,
+    "expired": [
+      {
+        "client_id": "rent_ops_verify_01_7bbe8f8b",
+        "governance_id": "97d20706-64ad-4bf6-b9d0-db385863b0c0",
+        "expired": true
+      }
+    ],
+    "unrelated_expired": []
+  },
+  "row_after": {
+    "status": "expired",
+    "expired_at": "2026-06-01T17:00:11.009272+00:00"
   },
   "job2_idempotent": {
-    "note": "not_run \u2014 fixture prerequisite missing"
+    "expired_count": 0,
+    "pass": true
   }
 }

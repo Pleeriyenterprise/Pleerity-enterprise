@@ -1,2 +1,2 @@
-- **BLOCKER:** Provide staging `MONGO_URL` via `STAGING_MONGO_URL` env or gitignored `phase2c_commercial_entitlement_governance_01/.staging_mongo_url`, then re-run `staging_commercial_entitlement_expiry_closeout.py` to prove expiry transition and upgrade to `VERIFIED_OPERATIONALLY`.
-- Index proof on `commercial_entitlement_governance` / `commercial_entitlement_audit` runs automatically when Mongo URL is supplied (same closeout harness).
+- Monitor admin portfolio job rate limits during repeated closeout runs; prefer single harness invocation per session.
+- Optional: re-probe `POST /admin/jobs/run` for `commercial_entitlement_expiry` when rate limit window clears (handler already proven via local staging Mongo execution).

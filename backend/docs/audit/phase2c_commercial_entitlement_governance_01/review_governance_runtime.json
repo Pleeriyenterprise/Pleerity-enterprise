@@ -1,5 +1,48 @@
 {
-  "pass": false,
-  "blocked_by": "fixture_not_inserted",
-  "programme": "PHASE-2C-COMMERCIAL-ENTITLEMENT-EXPIRY-CLOSEOUT-01"
+  "pass": true,
+  "review_due_ids": [
+    "c97c4048-723a-458f-a410-306c1b445107"
+  ],
+  "review_events": [
+    {
+      "event_id": "01004189-f294-4989-9575-d24bb7404844",
+      "event_type": "commercial_review_due",
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "governance_id": "c97c4048-723a-458f-a410-306c1b445107",
+      "action": null,
+      "actor_id": "system_expiry",
+      "created_at": "2026-06-01T17:00:15.531529+00:00",
+      "metadata": {
+        "review_at": "2026-06-01T16:00:15.364088+00:00"
+      }
+    },
+    {
+      "event_id": "21c88d14-885e-49c8-82c2-1c4e88a90e19",
+      "event_type": "commercial_review_due",
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "governance_id": "d00750bf-f10e-4aa8-b4d2-db1a50ef10c6",
+      "action": null,
+      "actor_id": "system_expiry",
+      "created_at": "2026-06-01T16:54:13.071611+00:00",
+      "metadata": {
+        "review_at": "2026-06-01T15:54:10.260577+00:00"
+      }
+    },
+    {
+      "event_id": "2321b8b4-42fb-4db2-bb82-5ee78d58420b",
+      "event_type": "commercial_review_due",
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "governance_id": "f1109cb2-b0ac-4b3f-aeb0-6658f3a27424",
+      "action": null,
+      "actor_id": "system_expiry",
+      "created_at": "2026-06-01T16:33:02.195285+00:00",
+      "metadata": {
+        "review_at": "2026-06-01T15:32:59.590857+00:00"
+      }
+    }
+  ],
+  "fixture": {
+    "governance_id": "c97c4048-723a-458f-a410-306c1b445107",
+    "entitlement_review_at": "2026-06-01T16:00:15.364088+00:00"
+  }
 }

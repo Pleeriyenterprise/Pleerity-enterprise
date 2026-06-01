@@ -1,5 +1,67 @@
 {
-  "pass": false,
-  "blocked_by": "expiry_event_not_proven",
-  "programme": "PHASE-2C-COMMERCIAL-ENTITLEMENT-EXPIRY-CLOSEOUT-01"
+  "pass": true,
+  "expiry_events": [
+    {
+      "event_id": "6e06c820-c38b-4eb1-9a60-c05791bc5820",
+      "event_type": "commercial_expired",
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "governance_id": "97d20706-64ad-4bf6-b9d0-db385863b0c0",
+      "action": "revoke_commercial_exception",
+      "actor_id": "system_expiry",
+      "created_at": "2026-06-01T17:00:11.339233+00:00",
+      "metadata": {
+        "reason": "entitlement_expiry"
+      }
+    },
+    {
+      "event_id": "87a5077a-4e7d-4397-8392-c31edd808b7f",
+      "event_type": "commercial_expired",
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "governance_id": "ceee06e3-e1d1-4c0e-929c-3684261532f0",
+      "action": "revoke_commercial_exception",
+      "actor_id": "system_expiry",
+      "created_at": "2026-06-01T16:54:09.814398+00:00",
+      "metadata": {
+        "reason": "entitlement_expiry"
+      }
+    },
+    {
+      "event_id": "28be71a0-472c-466d-8a60-2c06f374d5c3",
+      "event_type": "commercial_expired",
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "governance_id": "2214b4df-e7aa-4ce3-a3a9-0dce88419524",
+      "action": "revoke_commercial_exception",
+      "actor_id": "system_expiry",
+      "created_at": "2026-06-01T16:32:51.035471+00:00",
+      "metadata": {
+        "reason": "entitlement_expiry"
+      }
+    },
+    {
+      "event_id": "cb9e3be5-5e68-41ab-9f55-d76847f01fee",
+      "event_type": "commercial_expired",
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "governance_id": "9d4c7236-73f0-42c3-ac2c-bd9984d70c28",
+      "action": "revoke_commercial_exception",
+      "actor_id": "system_expiry",
+      "created_at": "2026-06-01T16:30:19.670629+00:00",
+      "metadata": {
+        "reason": "entitlement_expiry"
+      }
+    }
+  ],
+  "metrics_global": {
+    "scope": "global",
+    "client_id": "global",
+    "event_count": 60,
+    "grace_issued": 12,
+    "last_event_at": "2026-06-01T17:00:11.425633+00:00",
+    "last_metric": "expiry_actions",
+    "commercial_revoked": 28,
+    "suspension_issued": 6,
+    "sponsorship_issued": 6,
+    "retention_saves": 4,
+    "expiry_actions": 4
+  },
+  "expiry_actions_count": 4
 }

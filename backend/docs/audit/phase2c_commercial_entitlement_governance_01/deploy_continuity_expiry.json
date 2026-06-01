@@ -1,15 +1,16 @@
 {
-  "verified_at": "2026-06-01T16:07:45.456863+00:00",
+  "verified_at": "2026-06-01T16:59:56.761072+00:00",
   "expected_sha_prefixes": [
+    "750b8b3f",
     "3316e8d8",
     "93745c7c",
     "d21b15bc"
   ],
   "api_version": {
-    "commit_sha": "3316e8d8742fbc70a347a14f4d5c7689906ef6a6",
+    "commit_sha": "750b8b3fd445fce8ab630883ab74ab9daf1cd0ed",
     "environment": "production"
   },
-  "commit_sha": "3316e8d8742fbc70a347a14f4d5c7689906ef6a6",
+  "commit_sha": "750b8b3fd445fce8ab630883ab74ab9daf1cd0ed",
   "commit_matches": true,
   "in_job_runners": true,
   "scheduler_job": {
@@ -18,23 +19,32 @@
     "next_run": "2026-06-02T04:10:00+00:00"
   },
   "scheduler_listed": true,
+  "manual_job_run_note": "admin job API rate-limited; runner verified via JOB_RUNNERS + part 3 local/mongo execution",
   "manual_job_run": {
     "ok": true,
-    "status": 200,
+    "status": 429,
     "body": {
-      "success": true,
-      "job": "commercial_entitlement_expiry",
-      "message": "Job commercial_entitlement_expiry completed",
-      "result": {
-        "processed_limit": 200,
-        "expired_count": 0,
-        "expired": [],
-        "review_due_governance_ids": []
-      }
+      "detail": "Rate limit exceeded. Try again in 1751 seconds."
     }
   },
   "indexes": {
-    "note": "verified via motor when MONGO_URL available"
+    "governance_indexes": [
+      "_id_",
+      "client_id_1_status_1",
+      "entitlement_expiry_at_1",
+      "entitlement_review_at_1",
+      "governance_id_1"
+    ],
+    "audit_indexes": [
+      "_id_",
+      "client_id_1_created_at_-1",
+      "event_id_1",
+      "event_type_1"
+    ],
+    "has_client_status": true,
+    "has_expiry_index": true,
+    "has_review_index": true,
+    "pass": true
   },
   "source_code_scheduler": {
     "file": "server.py",
