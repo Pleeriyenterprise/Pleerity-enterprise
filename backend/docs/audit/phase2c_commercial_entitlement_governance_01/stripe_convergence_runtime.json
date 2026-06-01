@@ -1,5 +1,14 @@
 {
-  "status": "pending_staging_capture",
-  "philosophy": "lightweight_v1_platform_authoritative",
-  "service": "commercial_entitlement_stripe_convergence_service"
+  "drift": {
+    "found": true,
+    "drift_detected": false,
+    "stored_canonical_entitlement_state": "SUSPENDED",
+    "derived_canonical_entitlement_state": "SUSPENDED",
+    "governance_expired": false,
+    "active_governance_id": null,
+    "stripe_reconciliation_status": null
+  },
+  "platform_authoritative": true,
+  "stripe_action_plan_expected": "reconcile_lightweight_v1 or sync_canonical_entitlement_to_client",
+  "no_aggressive_stripe_mutation": true
 }

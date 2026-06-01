@@ -1,7 +1,10 @@
 {
-  "status": "pending",
-  "admin_route": "/admin/clients/{clientId}",
-  "tab": "billing",
-  "component": "CommercialEntitlementControls",
-  "scenarios": ["A_grace_extension", "B_billing_suspension", "C_sponsored_access", "D_grace_expiry", "E_retention_continuity", "F_duplicate_subscription_prevention"]
+  "client_id": "rent_ops_verify_01_7bbe8f8b",
+  "controls_visible": true,
+  "impact_preview_visible": true,
+  "screenshots": [
+    "commercial_controls_billing_tab.png",
+    "commercial_impact_preview_dialog.png"
+  ],
+  "ok": true
 }

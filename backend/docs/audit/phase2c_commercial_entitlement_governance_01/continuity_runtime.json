@@ -1,4 +1,18 @@
 {
-  "status": "pending_staging_capture",
-  "access_policies": ["full_access", "operational_read_only", "restricted_uploads", "restricted_operations", "suspended"]
+  "impact_preview": {
+    "passed": true,
+    "preview": {
+      "customer_impact": "Your access has been temporarily extended until 2026-06-08.",
+      "access_impact": "Full operational access preserved.",
+      "billing_impact": "Billing continues unless otherwise stated.",
+      "expiry_behaviour": "Exception ends on 2026-06-08 unless reviewed earlier.",
+      "stripe_impact": "Platform authoritative in v1; Stripe reconciliation is lightweight and non-destructive.",
+      "operational_continuity": "Existing compliance records and evidence remain accessible."
+    },
+    "copy_issues": []
+  },
+  "billing_suspension": {
+    "passed": true,
+    "continuity": "Existing compliance records and evidence remain accessible."
+  }
 }

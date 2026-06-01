@@ -1,5 +1,171 @@
 {
-  "status": "pending_staging_capture",
-  "service": "commercial_entitlement_service",
-  "bridge_function": "derive_customer_access_state"
+  "deploy": {
+    "verified_at": "2026-06-01T15:37:11.320830+00:00",
+    "expected_sha_prefixes": [
+      "93745c7c",
+      "a836cf4c"
+    ],
+    "api_version": {
+      "commit_sha": "93745c7c50b07281626605b555f7c61d092f3d5b",
+      "environment": "production"
+    },
+    "commit_sha": "93745c7c50b07281626605b555f7c61d092f3d5b",
+    "commit_matches": true,
+    "commit_note": null,
+    "frontend_bundle": "/static/js/main.55b8d886.js",
+    "frontend_markers": {
+      "CommercialEntitlementControls": false,
+      "commercial-entitlement-controls": true,
+      "commercial_entitlement_execute": true
+    },
+    "frontend_markers_ok": true,
+    "commercial_entitlement_route": {
+      "reachable": true,
+      "status": 404
+    },
+    "scheduler_jobs_sample": [
+      "compliance_recalc_worker",
+      "risk_signal_regen_worker",
+      "scheduled_admin_communications",
+      "notification_retry_worker",
+      "scheduler_heartbeat",
+      "sla_watchdog",
+      "queued_order_processing",
+      "notification_failure_spike_monitor",
+      "generation_auto_retry_processing",
+      "compliance_recalc_sla_monitor",
+      "order_delivery_processing",
+      "sla_monitoring",
+      "abandoned_intake_detection",
+      "lead_followup_processing",
+      "delivery_reconciliation",
+      "risk_signal_regen_alert_monitor",
+      "lead_sla_check",
+      "stuck_order_detection",
+      "work_order_sla_breach_job",
+      "scheduled_reports"
+    ],
+    "commercial_entitlement_expiry_scheduled": false,
+    "expiry_job_registered_in_runners": true,
+    "expiry_job_run_probe": {
+      "ok": true,
+      "status": 200,
+      "body_preview": "{'success': True, 'job': 'commercial_entitlement_expiry', 'message': 'Job commercial_entitlement_expiry completed', 'result': {'processed_limit': 200, 'expired_count': 0, 'expired': [], 'review_due_governance_ids': []}}"
+    },
+    "pass": true
+  },
+  "api_harness": {
+    "client_id": "rent_ops_verify_01_7bbe8f8b",
+    "scenarios": {
+      "impact_preview": {
+        "passed": true,
+        "preview": {
+          "customer_impact": "Your access has been temporarily extended until 2026-06-08.",
+          "access_impact": "Full operational access preserved.",
+          "billing_impact": "Billing continues unless otherwise stated.",
+          "expiry_behaviour": "Exception ends on 2026-06-08 unless reviewed earlier.",
+          "stripe_impact": "Platform authoritative in v1; Stripe reconciliation is lightweight and non-destructive.",
+          "operational_continuity": "Existing compliance records and evidence remain accessible."
+        },
+        "copy_issues": []
+      },
+      "grace_extension": {
+        "passed": true,
+        "execute": {
+          "status": 200,
+          "governance_id": "235fabc7-92f7-46ef-8980-b3c79f7940a6"
+        }
+      },
+      "duplicate_active_exception": {
+        "passed": true,
+        "status": 400,
+        "error_code": "ACTIVE_EXCEPTION_EXISTS"
+      },
+      "resume_after_grace": {
+        "passed": true,
+        "status": 200
+      },
+      "billing_suspension": {
+        "passed": true,
+        "continuity": "Existing compliance records and evidence remain accessible."
+      },
+      "sponsored_access": {
+        "passed": true,
+        "duplicate_blocked": true,
+        "sponsor_required_on_empty": true
+      },
+      "retention_continuity": {
+        "passed": true
+      },
+      "duplicate_subscription_advisory": {
+        "passed": true,
+        "drift_probe": {
+          "found": true,
+          "drift_detected": false,
+          "stored_canonical_entitlement_state": "SUSPENDED",
+          "derived_canonical_entitlement_state": "SUSPENDED",
+          "governance_expired": false,
+          "active_governance_id": null,
+          "stripe_reconciliation_status": null
+        },
+        "note": "Advisory duplicate subscription risk surfaced via assessment/drift (v1 does not mutate Stripe)"
+      },
+      "expiry_governance": {
+        "passed": false,
+        "job_run": {
+          "ok": true,
+          "status": 200,
+          "body": {
+            "success": true,
+            "job": "commercial_entitlement_expiry",
+            "message": "Job commercial_entitlement_expiry completed",
+            "result": {
+              "processed_limit": 200,
+              "expired_count": 0,
+              "expired": [],
+              "review_due_governance_ids": []
+            }
+          }
+        },
+        "job_executed": true,
+        "note": "Full expiry transition requires STAGING MONGO_URL backdate; job execution verified via admin API."
+      }
+    },
+    "audit_metrics": {
+      "audit_events_count": 30,
+      "metrics_global_keys": [
+        "scope",
+        "client_id",
+        "event_count",
+        "grace_issued",
+        "last_event_at",
+        "last_metric",
+        "commercial_revoked",
+        "suspension_issued",
+        "sponsorship_issued",
+        "retention_saves"
+      ],
+      "passed": true
+    },
+    "stripe_reconciliation": {
+      "drift": {
+        "found": true,
+        "drift_detected": false,
+        "stored_canonical_entitlement_state": "SUSPENDED",
+        "derived_canonical_entitlement_state": "SUSPENDED",
+        "governance_expired": false,
+        "active_governance_id": null,
+        "stripe_reconciliation_status": null
+      },
+      "platform_authoritative": true,
+      "stripe_action_plan_expected": "reconcile_lightweight_v1 or sync_canonical_entitlement_to_client",
+      "no_aggressive_stripe_mutation": true
+    },
+    "summary": {
+      "scenario_passed": 8,
+      "verified_at": "2026-06-01T15:38:48.448561+00:00"
+    }
+  },
+  "client_id": "rent_ops_verify_01_7bbe8f8b",
+  "classification": "PARTIAL"
 }

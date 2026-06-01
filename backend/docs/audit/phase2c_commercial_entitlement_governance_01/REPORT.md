@@ -1,35 +1,105 @@
-# Phase 2C — Commercial Entitlement Governance
+# Phase 2C — Commercial Entitlement Governance Closeout
 
-## Status
-**IMPLEMENTED_PENDING_OPERATIONAL_VERIFICATION**
+## Classification
+**PARTIAL**
 
-Backend services, admin API, Commercial Controls UI, regression tests, and expiry job hook are in place. Staging browser proof (scenarios A–F) is required before `VERIFIED_OPERATIONALLY`.
+## Deploy continuity
+- API version: `93745c7c50b07281626605b555f7c61d092f3d5b`
+- Frontend CommercialEntitlementControls: `True`
+- Commercial entitlement routes: `{'reachable': True, 'status': 404}`
+- Expiry job registered: `True`
 
-## Delivered components
+## Client exercised
+`rent_ops_verify_01_7bbe8f8b`
 
-| Part | Artifact |
-|------|----------|
-| 1 | `services/commercial_entitlement_service.py` |
-| 5 | `services/commercial_entitlement_execution_service.py` |
-| 6 | `services/commercial_entitlement_stripe_convergence_service.py` |
-| 7 | `services/commercial_entitlement_notification_service.py` |
-| 8 | `routes/admin_commercial_entitlement.py` + `CommercialEntitlementControls.jsx` |
-| 10 | `services/commercial_entitlement_expiry_service.py` + `commercial_entitlement_expiry` job |
-| 11 | `services/commercial_entitlement_observability_service.py` |
-| 12 | `tests/test_commercial_entitlement_governance.py` |
+## Scenarios
+{
+  "impact_preview": {
+    "passed": true,
+    "preview": {
+      "customer_impact": "Your access has been temporarily extended until 2026-06-08.",
+      "access_impact": "Full operational access preserved.",
+      "billing_impact": "Billing continues unless otherwise stated.",
+      "expiry_behaviour": "Exception ends on 2026-06-08 unless reviewed earlier.",
+      "stripe_impact": "Platform authoritative in v1; Stripe reconciliation is lightweight and non-destructive.",
+      "operational_continuity": "Existing compliance records and evidence remain accessible."
+    },
+    "copy_issues": []
+  },
+  "grace_extension": {
+    "passed": true,
+    "execute": {
+      "status": 200,
+      "governance_id": "235fabc7-92f7-46ef-8980-b3c79f7940a6"
+    }
+  },
+  "duplicate_active_exception": {
+    "passed": true,
+    "status": 400,
+    "error_code": "ACTIVE_EXCEPTION_EXISTS"
+  },
+  "resume_after_grace": {
+    "passed": true,
+    "status": 200
+  },
+  "billing_suspension": {
+    "passed": true,
+    "continuity": "Existing compliance records and evidence remain accessible."
+  },
+  "sponsored_access": {
+    "passed": true,
+    "duplicate_blocked": true,
+    "sponsor_required_on_empty": true
+  },
+  "retention_continuity": {
+    "passed": true
+  },
+  "duplicate_subscription_advisory": {
+    "passed": true,
+    "drift_probe": {
+      "found": true,
+      "drift_detected": false,
+      "stored_canonical_entitlement_state": "SUSPENDED",
+      "derived_canonical_entitlement_state": "SUSPENDED",
+      "governance_expired": false,
+      "active_governance_id": null,
+      "stripe_reconciliation_status": null
+    },
+    "note": "Advisory duplicate subscription risk surfaced via assessment/drift (v1 does not mutate Stripe)"
+  },
+  "expiry_governance": {
+    "passed": false,
+    "job_run": {
+      "ok": true,
+      "status": 200,
+      "body": {
+        "success": true,
+        "job": "commercial_entitlement_expiry",
+        "message": "Job commercial_entitlement_expiry completed",
+        "result": {
+          "processed_limit": 200,
+          "expired_count": 0,
+          "expired": [],
+          "review_due_governance_ids": []
+        }
+      }
+    },
+    "job_executed": true,
+    "note": "Full expiry transition requires STAGING MONGO_URL backdate; job execution verified via admin API."
+  }
+}
 
-## Governance rules enforced in code
+## Browser
+{
+  "client_id": "rent_ops_verify_01_7bbe8f8b",
+  "controls_visible": true,
+  "impact_preview_visible": true,
+  "screenshots": [
+    "commercial_controls_billing_tab.png",
+    "commercial_impact_preview_dialog.png"
+  ],
+  "ok": true
+}
 
-1. `derive_customer_access_state()` is the sole bridge from commercial governance to canonical access bands.
-2. Stripe reconciliation is lightweight (`reconcile_stripe_vs_platform_state`, no aggressive subscription mutation).
-3. One active row per client (`prevent_duplicate_active_exception`).
-4. `access_policy` preserves compliance/evidence continuity on billing suspension.
-5. Sponsored access requires sponsor reference + duration/expiry; review flagged on expiry job.
-6. `derive_customer_impact_preview()` mandatory before execute (API + admin dialog).
-
-## Next steps
-
-1. Deploy backend + frontend to staging.
-2. `python scripts/staging_commercial_entitlement_verify.py --client-id <id> --write-audit`
-3. Exercise Commercial Controls on `/admin/clients/{id}` (Billing tab).
-4. Update `browser_runtime.json` and set `classifications.json` to `VERIFIED_OPERATIONALLY` when proof is complete.
+## Regression
+exit_code=0

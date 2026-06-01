@@ -1,4 +1,19 @@
 {
-  "status": "pending_staging_capture",
-  "collections": ["commercial_entitlement_audit", "commercial_entitlement_metrics"]
+  "audit_metrics": {
+    "audit_events_count": 30,
+    "metrics_global_keys": [
+      "scope",
+      "client_id",
+      "event_count",
+      "grace_issued",
+      "last_event_at",
+      "last_metric",
+      "commercial_revoked",
+      "suspension_issued",
+      "sponsorship_issued",
+      "retention_saves"
+    ],
+    "passed": true
+  },
+  "observability_note": "audit_events and metrics updated on execute"
 }
