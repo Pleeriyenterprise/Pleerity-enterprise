@@ -1,0 +1,14 @@
+{
+  "programme": "STRIPE-ENVIRONMENT-CONVERGENCE-AUDIT-01",
+  "classification": "STRIPE_ENVIRONMENT_GOVERNANCE_GAP",
+  "incident_mechanism": "MIXED_MODE_DATA_DRIFT",
+  "severity": "high",
+  "hotfix_safe": false,
+  "full_convergence_repair_required": true,
+  "verified_at": "2026-06-01T17:15:00+00:00",
+  "summary": "Platform STRIPE_MODE selects a single global Stripe SDK key; billing records store subscription/customer IDs without stripe_mode. Upgrade flow retrieves persisted sub_* IDs using the active deployment key, producing live-key vs test-object errors when modes diverge.",
+  "related_docs": [
+    "backend/docs/STRIPE_MODE_GOVERNANCE.md",
+    "backend/services/stripe_mode_authority.py"
+  ]
+}
