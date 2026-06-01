@@ -3,7 +3,8 @@
   "api": "https://pleerity-enterprise.onrender.com/api",
   "frontend": "https://pleerityenterprise.co.uk",
   "dry_run": false,
-  "started_at": "2026-06-01T07:49:10.879767+00:00",
+  "send_customer_email": true,
+  "started_at": "2026-06-01T08:21:48.724420+00:00",
   "scenarios": {
     "E": {
       "scenario": "E",
@@ -11,8 +12,8 @@
       "notes": "expired checkout allows new session",
       "evidence": {
         "subject": {
-          "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
-          "email": "user@example.com",
+          "client_id": "rent_ops_verify_01_7bbe8f8b",
+          "email": null,
           "customer_reference": null,
           "classification": "EXPIRED_CHECKOUT",
           "eligible": true,
@@ -21,19 +22,19 @@
           ],
           "checkout_fresh": false,
           "paid_or_active": false,
-          "password_set": null
+          "password_set": false
         },
         "execute": {
           "status": 200,
           "ok": true,
           "body": {
             "ok": true,
-            "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+            "client_id": "rent_ops_verify_01_7bbe8f8b",
             "classification": "EXPIRED_CHECKOUT",
             "execution": {
               "mode": "regenerate_payment",
-              "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
-              "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+              "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+              "session_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h",
               "email_sent": false,
               "email_result": {},
               "waiver_applied": false,
@@ -42,7 +43,7 @@
               "continuation_delivered": true
             },
             "assessment": {
-              "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+              "client_id": "rent_ops_verify_01_7bbe8f8b",
               "found": true,
               "is_stranded": true,
               "classification": "RECOVERY_ALREADY_ACTIVE",
@@ -68,13 +69,13 @@
               },
               "state_summary": {
                 "customer_reference": null,
-                "onboarding_status": "INTAKE_PENDING",
+                "onboarding_status": null,
                 "provisioning_status": null,
-                "subscription_status": "PENDING",
+                "subscription_status": null,
                 "lifecycle_status": null,
                 "billing_lifecycle_state": null,
-                "password_set": null,
-                "checkout_link_sent_at": "2026-06-01T07:52:53.531000",
+                "password_set": false,
+                "checkout_link_sent_at": "2026-06-01T08:25:29.212000",
                 "checkout_fresh": true,
                 "paid_or_active": false,
                 "activation_email_sent": false
@@ -83,17 +84,17 @@
                 "attempts": [
                   {
                     "type": "checkout_link_sent",
-                    "at": "2026-06-01T07:52:53.531000",
-                    "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+                    "at": "2026-06-01T08:25:29.212000",
+                    "session_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h",
                     "fresh": true
                   }
                 ],
                 "recovery_attempt_count": 1,
-                "last_checkout_sent_at": "2026-06-01T07:52:53.531000",
-                "last_recovery_checkout_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM"
+                "last_checkout_sent_at": "2026-06-01T08:25:29.212000",
+                "last_recovery_checkout_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h"
               },
               "indicators": {
-                "stranded_onboarding": true,
+                "stranded_onboarding": false,
                 "payment_failed": false,
                 "provisioning_failed": false,
                 "incomplete_redemption": false,
@@ -101,7 +102,7 @@
                 "override_active": false,
                 "first_time_consumed": false,
                 "badges": [
-                  "intake_pending"
+                  "no_subscription"
                 ],
                 "recoverable_count": 0,
                 "first_time_bypass_active": false
@@ -112,34 +113,56 @@
               "executable_modes": [],
               "observability": {
                 "found": true,
-                "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+                "client_id": "rent_ops_verify_01_7bbe8f8b",
                 "completion": {
                   "status": "recovery_in_progress",
                   "message": "Recovery was initiated; continuation outcome not yet confirmed.",
                   "paid_or_active": false,
                   "password_set": false,
                   "continuation_delivered_at": null,
-                  "last_recovery_at": "2026-06-01T07:52:53.650000",
+                  "last_recovery_at": "2026-06-01T08:25:29.331000",
                   "last_recovery_mode": "regenerate_payment"
                 },
                 "events": [
                   {
-                    "event_id": "11fc73be-a5da-4652-bd0a-81ee8ebcb9b7",
+                    "event_id": "a508ffed-6d3b-43c1-ac55-837b7ea32908",
                     "event_type": "continuation_delivered",
-                    "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+                    "client_id": "rent_ops_verify_01_7bbe8f8b",
                     "mode": "regenerate_payment",
                     "classification": "EXPIRED_CHECKOUT",
                     "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
                     "continuation_delivered": true,
                     "email_sent": false,
-                    "created_at": "2026-06-01T07:52:53.886465+00:00",
+                    "created_at": "2026-06-01T08:25:29.566215+00:00",
                     "metadata": {
                       "action_id": "onboarding_recovery_execute",
                       "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
                       "ip_address": "92.40.47.97",
                       "execution_summary": {
-                        "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
-                        "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+                        "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                        "session_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h",
+                        "waiver_applied": false,
+                        "promo_preserved": false
+                      }
+                    }
+                  },
+                  {
+                    "event_id": "5175847e-1555-4187-a2d7-df1be758e1ed",
+                    "event_type": "continuation_delivered",
+                    "client_id": "rent_ops_verify_01_7bbe8f8b",
+                    "mode": "regenerate_payment",
+                    "classification": "PAYMENT_ABANDONED",
+                    "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                    "continuation_delivered": true,
+                    "email_sent": false,
+                    "created_at": "2026-06-01T07:31:08.388303+00:00",
+                    "metadata": {
+                      "action_id": "onboarding_recovery_execute",
+                      "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                      "ip_address": "92.40.47.97",
+                      "execution_summary": {
+                        "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1vP57stduLp5mRtDvPyw9zDICGTab9PuWYB4HoLtwyQwV8XMMokxhNEDO#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                        "session_id": "cs_live_b1vP57stduLp5mRtDvPyw9zDICGTab9PuWYB4HoLtwyQwV8XMMokxhNEDO",
                         "waiver_applied": false,
                         "promo_preserved": false
                       }
@@ -148,18 +171,18 @@
                 ],
                 "delivery": {
                   "continuation_delivered_at": null,
-                  "last_recovery_at": "2026-06-01T07:52:53.650000",
+                  "last_recovery_at": "2026-06-01T08:25:29.331000",
                   "last_recovery_mode": "regenerate_payment",
                   "last_recovery_classification": "EXPIRED_CHECKOUT",
-                  "recovery_attempt_count": 1,
-                  "last_recovery_checkout_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM"
+                  "recovery_attempt_count": 2,
+                  "last_recovery_checkout_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h"
                 }
               }
             }
           }
         }
       },
-      "verified_at": "2026-06-01T07:52:59.669956+00:00"
+      "verified_at": "2026-06-01T08:25:34.440531+00:00"
     },
     "A": {
       "scenario": "A",
@@ -167,34 +190,22 @@
       "notes": "intake complete \u2192 governed recovery execute \u2192 continuation/checkout path",
       "evidence": {
         "subject": {
-          "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
-          "email": "vic@yopmail.com",
-          "customer_reference": "PLE-CVP-2026-000044",
-          "classification": "PAYMENT_ABANDONED",
+          "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+          "email": "elena@yopmail.com",
+          "customer_reference": "PLE-CVP-2026-000038",
+          "classification": "EXPIRED_CHECKOUT",
           "eligible": true,
           "executable_modes": [
-            "regenerate_payment",
-            "resume_onboarding"
+            "regenerate_payment"
           ],
           "checkout_fresh": false,
           "paid_or_active": false,
           "password_set": null
         },
         "modes_attempted": [
-          "resume_onboarding",
           "regenerate_payment"
         ],
         "executions": [
-          {
-            "mode": "resume_onboarding",
-            "result": {
-              "status": 500,
-              "ok": false,
-              "body": {
-                "detail": "Internal server error"
-              }
-            }
-          },
           {
             "mode": "regenerate_payment",
             "result": {
@@ -202,21 +213,26 @@
               "ok": true,
               "body": {
                 "ok": true,
-                "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
-                "classification": "PAYMENT_ABANDONED",
+                "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+                "classification": "EXPIRED_CHECKOUT",
                 "execution": {
                   "mode": "regenerate_payment",
-                  "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
-                  "session_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP",
+                  "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                  "session_id": "cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN",
                   "email_sent": false,
-                  "email_result": {},
+                  "email_result": {
+                    "email_sent": false,
+                    "outcome": "blocked",
+                    "block_reason": "BLOCKED_PROVISIONING_INCOMPLETE",
+                    "message_id": null
+                  },
                   "waiver_applied": false,
                   "waiver_override_id": null,
                   "promo_preserved": false,
-                  "continuation_delivered": true
+                  "continuation_delivered": false
                 },
                 "assessment": {
-                  "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                  "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
                   "found": true,
                   "is_stranded": true,
                   "classification": "RECOVERY_ALREADY_ACTIVE",
@@ -241,14 +257,14 @@
                     "operational_impact": "Avoid stacking multiple active checkout sessions."
                   },
                   "state_summary": {
-                    "customer_reference": "PLE-CVP-2026-000044",
+                    "customer_reference": "PLE-CVP-2026-000038",
                     "onboarding_status": "INTAKE_PENDING",
                     "provisioning_status": null,
                     "subscription_status": "PENDING",
                     "lifecycle_status": "pending_payment",
                     "billing_lifecycle_state": null,
                     "password_set": null,
-                    "checkout_link_sent_at": "2026-06-01T07:53:08.323000",
+                    "checkout_link_sent_at": "2026-06-01T08:25:38.257000",
                     "checkout_fresh": true,
                     "paid_or_active": false,
                     "activation_email_sent": false
@@ -257,14 +273,20 @@
                     "attempts": [
                       {
                         "type": "checkout_link_sent",
-                        "at": "2026-06-01T07:53:08.323000",
-                        "session_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP",
+                        "at": "2026-06-01T08:25:38.257000",
+                        "session_id": "cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN",
                         "fresh": true
+                      },
+                      {
+                        "type": "eligibility_override",
+                        "override_type": "recover_onboarding",
+                        "at": "2026-05-31T13:00:34.657000",
+                        "reason_preview": "Recover onboarding"
                       }
                     ],
-                    "recovery_attempt_count": 1,
-                    "last_checkout_sent_at": "2026-06-01T07:53:08.323000",
-                    "last_recovery_checkout_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP"
+                    "recovery_attempt_count": 2,
+                    "last_checkout_sent_at": "2026-06-01T08:25:38.257000",
+                    "last_recovery_checkout_id": "cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN"
                   },
                   "indicators": {
                     "stranded_onboarding": true,
@@ -276,11 +298,11 @@
                     "first_time_consumed": false,
                     "badges": [
                       "override_active",
-                      "first_time_bypass",
+                      "waiver_active",
                       "intake_pending"
                     ],
                     "recoverable_count": 0,
-                    "first_time_bypass_active": true
+                    "first_time_bypass_active": false
                   },
                   "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
                   "phase": 2,
@@ -288,34 +310,56 @@
                   "executable_modes": [],
                   "observability": {
                     "found": true,
-                    "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                    "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
                     "completion": {
                       "status": "recovery_in_progress",
                       "message": "Recovery was initiated; continuation outcome not yet confirmed.",
                       "paid_or_active": false,
                       "password_set": false,
                       "continuation_delivered_at": null,
-                      "last_recovery_at": "2026-06-01T07:53:08.444000",
+                      "last_recovery_at": "2026-06-01T08:25:38.377000",
                       "last_recovery_mode": "regenerate_payment"
                     },
                     "events": [
                       {
-                        "event_id": "4a734bff-c54c-4de5-9346-6dc6db29fcaa",
-                        "event_type": "continuation_delivered",
-                        "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                        "event_id": "9fef910b-8350-4f30-b4d9-973cb4c47098",
+                        "event_type": "continuation_failed",
+                        "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
                         "mode": "regenerate_payment",
-                        "classification": "PAYMENT_ABANDONED",
+                        "classification": "EXPIRED_CHECKOUT",
                         "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
-                        "continuation_delivered": true,
+                        "continuation_delivered": false,
                         "email_sent": false,
-                        "created_at": "2026-06-01T07:53:08.692925+00:00",
+                        "created_at": "2026-06-01T08:25:39.876064+00:00",
                         "metadata": {
                           "action_id": "onboarding_recovery_execute",
                           "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
                           "ip_address": "92.40.47.97",
                           "execution_summary": {
-                            "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
-                            "session_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP",
+                            "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                            "session_id": "cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN",
+                            "waiver_applied": false,
+                            "promo_preserved": false
+                          }
+                        }
+                      },
+                      {
+                        "event_id": "c6dbf487-2039-4cbc-8d33-a6dcb4eb30b9",
+                        "event_type": "continuation_delivered",
+                        "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+                        "mode": "regenerate_payment",
+                        "classification": "EXPIRED_CHECKOUT",
+                        "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                        "continuation_delivered": true,
+                        "email_sent": false,
+                        "created_at": "2026-06-01T07:31:18.351045+00:00",
+                        "metadata": {
+                          "action_id": "onboarding_recovery_execute",
+                          "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                          "ip_address": "92.40.47.97",
+                          "execution_summary": {
+                            "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1GZn6EERho4HQAM9XBJWfXI90ouJ4OmFr10Vk027kXArjwviIX0mESqRA#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                            "session_id": "cs_live_b1GZn6EERho4HQAM9XBJWfXI90ouJ4OmFr10Vk027kXArjwviIX0mESqRA",
                             "waiver_applied": false,
                             "promo_preserved": false
                           }
@@ -324,11 +368,11 @@
                     ],
                     "delivery": {
                       "continuation_delivered_at": null,
-                      "last_recovery_at": "2026-06-01T07:53:08.444000",
+                      "last_recovery_at": "2026-06-01T08:25:38.377000",
                       "last_recovery_mode": "regenerate_payment",
-                      "last_recovery_classification": "PAYMENT_ABANDONED",
-                      "recovery_attempt_count": 1,
-                      "last_recovery_checkout_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP"
+                      "last_recovery_classification": "EXPIRED_CHECKOUT",
+                      "recovery_attempt_count": 2,
+                      "last_recovery_checkout_id": "cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN"
                     }
                   }
                 }
@@ -337,40 +381,62 @@
           }
         ],
         "successful_mode": "regenerate_payment",
-        "continuation_url": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+        "continuation_url": "https://checkout.stripe.com/c/pay/cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
         "observability": {
           "status": 200,
           "ok": true,
           "body": {
             "found": true,
-            "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+            "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
             "completion": {
               "status": "recovery_in_progress",
               "message": "Recovery was initiated; continuation outcome not yet confirmed.",
               "paid_or_active": false,
               "password_set": false,
               "continuation_delivered_at": null,
-              "last_recovery_at": "2026-06-01T07:53:08.444000",
+              "last_recovery_at": "2026-06-01T08:25:38.377000",
               "last_recovery_mode": "regenerate_payment"
             },
             "events": [
               {
-                "event_id": "4a734bff-c54c-4de5-9346-6dc6db29fcaa",
-                "event_type": "continuation_delivered",
-                "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                "event_id": "9fef910b-8350-4f30-b4d9-973cb4c47098",
+                "event_type": "continuation_failed",
+                "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
                 "mode": "regenerate_payment",
-                "classification": "PAYMENT_ABANDONED",
+                "classification": "EXPIRED_CHECKOUT",
                 "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
-                "continuation_delivered": true,
+                "continuation_delivered": false,
                 "email_sent": false,
-                "created_at": "2026-06-01T07:53:08.692925+00:00",
+                "created_at": "2026-06-01T08:25:39.876064+00:00",
                 "metadata": {
                   "action_id": "onboarding_recovery_execute",
                   "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
                   "ip_address": "92.40.47.97",
                   "execution_summary": {
-                    "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
-                    "session_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP",
+                    "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                    "session_id": "cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN",
+                    "waiver_applied": false,
+                    "promo_preserved": false
+                  }
+                }
+              },
+              {
+                "event_id": "c6dbf487-2039-4cbc-8d33-a6dcb4eb30b9",
+                "event_type": "continuation_delivered",
+                "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+                "mode": "regenerate_payment",
+                "classification": "EXPIRED_CHECKOUT",
+                "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                "continuation_delivered": true,
+                "email_sent": false,
+                "created_at": "2026-06-01T07:31:18.351045+00:00",
+                "metadata": {
+                  "action_id": "onboarding_recovery_execute",
+                  "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                  "ip_address": "92.40.47.97",
+                  "execution_summary": {
+                    "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1GZn6EERho4HQAM9XBJWfXI90ouJ4OmFr10Vk027kXArjwviIX0mESqRA#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                    "session_id": "cs_live_b1GZn6EERho4HQAM9XBJWfXI90ouJ4OmFr10Vk027kXArjwviIX0mESqRA",
                     "waiver_applied": false,
                     "promo_preserved": false
                   }
@@ -379,16 +445,16 @@
             ],
             "delivery": {
               "continuation_delivered_at": null,
-              "last_recovery_at": "2026-06-01T07:53:08.444000",
+              "last_recovery_at": "2026-06-01T08:25:38.377000",
               "last_recovery_mode": "regenerate_payment",
-              "last_recovery_classification": "PAYMENT_ABANDONED",
-              "recovery_attempt_count": 1,
-              "last_recovery_checkout_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP"
+              "last_recovery_classification": "EXPIRED_CHECKOUT",
+              "recovery_attempt_count": 2,
+              "last_recovery_checkout_id": "cs_live_b14phXSftjQ4icS4ah9ohteOXAV5voYTEfdCEPiPGfoKlbnA8DU0WZARzN"
             }
           }
         }
       },
-      "verified_at": "2026-06-01T07:53:17.219737+00:00"
+      "verified_at": "2026-06-01T08:25:48.341361+00:00"
     },
     "B": {
       "scenario": "B",
@@ -496,10 +562,27 @@
                   "paid_or_active": true,
                   "password_set": false,
                   "continuation_delivered_at": null,
-                  "last_recovery_at": "2026-06-01T07:53:21.038000",
+                  "last_recovery_at": "2026-06-01T08:25:52.200000",
                   "last_recovery_mode": "resend_activation"
                 },
                 "events": [
+                  {
+                    "event_id": "b477c47f-b008-4068-8090-6298b7187883",
+                    "event_type": "continuation_delivered",
+                    "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                    "mode": "resend_activation",
+                    "classification": "ACTIVATION_INCOMPLETE",
+                    "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                    "continuation_delivered": true,
+                    "email_sent": false,
+                    "created_at": "2026-06-01T08:25:52.439757+00:00",
+                    "metadata": {
+                      "action_id": "onboarding_recovery_execute",
+                      "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                      "ip_address": "92.40.47.97",
+                      "execution_summary": {}
+                    }
+                  },
                   {
                     "event_id": "28749053-9289-49f2-aee1-fb55c094169c",
                     "event_type": "recovery_outcome_detected",
@@ -535,10 +618,10 @@
                 ],
                 "delivery": {
                   "continuation_delivered_at": null,
-                  "last_recovery_at": "2026-06-01T07:53:21.038000",
+                  "last_recovery_at": "2026-06-01T08:25:52.200000",
                   "last_recovery_mode": "resend_activation",
                   "last_recovery_classification": "ACTIVATION_INCOMPLETE",
-                  "recovery_attempt_count": 1,
+                  "recovery_attempt_count": 2,
                   "last_recovery_checkout_id": null
                 }
               }
@@ -622,10 +705,27 @@
                 "paid_or_active": true,
                 "password_set": false,
                 "continuation_delivered_at": null,
-                "last_recovery_at": "2026-06-01T07:53:21.038000",
+                "last_recovery_at": "2026-06-01T08:25:52.200000",
                 "last_recovery_mode": "resend_activation"
               },
               "events": [
+                {
+                  "event_id": "b477c47f-b008-4068-8090-6298b7187883",
+                  "event_type": "continuation_delivered",
+                  "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                  "mode": "resend_activation",
+                  "classification": "ACTIVATION_INCOMPLETE",
+                  "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                  "continuation_delivered": true,
+                  "email_sent": false,
+                  "created_at": "2026-06-01T08:25:52.439757+00:00",
+                  "metadata": {
+                    "action_id": "onboarding_recovery_execute",
+                    "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                    "ip_address": "92.40.47.97",
+                    "execution_summary": {}
+                  }
+                },
                 {
                   "event_id": "28749053-9289-49f2-aee1-fb55c094169c",
                   "event_type": "recovery_outcome_detected",
@@ -661,10 +761,10 @@
               ],
               "delivery": {
                 "continuation_delivered_at": null,
-                "last_recovery_at": "2026-06-01T07:53:21.038000",
+                "last_recovery_at": "2026-06-01T08:25:52.200000",
                 "last_recovery_mode": "resend_activation",
                 "last_recovery_classification": "ACTIVATION_INCOMPLETE",
-                "recovery_attempt_count": 1,
+                "recovery_attempt_count": 2,
                 "last_recovery_checkout_id": null
               }
             }
@@ -682,10 +782,27 @@
               "paid_or_active": true,
               "password_set": false,
               "continuation_delivered_at": null,
-              "last_recovery_at": "2026-06-01T07:53:21.038000",
+              "last_recovery_at": "2026-06-01T08:25:52.200000",
               "last_recovery_mode": "resend_activation"
             },
             "events": [
+              {
+                "event_id": "b477c47f-b008-4068-8090-6298b7187883",
+                "event_type": "continuation_delivered",
+                "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                "mode": "resend_activation",
+                "classification": "ACTIVATION_INCOMPLETE",
+                "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                "continuation_delivered": true,
+                "email_sent": false,
+                "created_at": "2026-06-01T08:25:52.439757+00:00",
+                "metadata": {
+                  "action_id": "onboarding_recovery_execute",
+                  "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                  "ip_address": "92.40.47.97",
+                  "execution_summary": {}
+                }
+              },
               {
                 "event_id": "28749053-9289-49f2-aee1-fb55c094169c",
                 "event_type": "recovery_outcome_detected",
@@ -721,16 +838,16 @@
             ],
             "delivery": {
               "continuation_delivered_at": null,
-              "last_recovery_at": "2026-06-01T07:53:21.038000",
+              "last_recovery_at": "2026-06-01T08:25:52.200000",
               "last_recovery_mode": "resend_activation",
               "last_recovery_classification": "ACTIVATION_INCOMPLETE",
-              "recovery_attempt_count": 1,
+              "recovery_attempt_count": 2,
               "last_recovery_checkout_id": null
             }
           }
         }
       },
-      "verified_at": "2026-06-01T07:53:33.963299+00:00"
+      "verified_at": "2026-06-01T08:26:05.635048+00:00"
     },
     "C": {
       "scenario": "C",
@@ -740,19 +857,19 @@
         "subject": null,
         "staging_fixture_missing": "No staging client with pilot_invite_code; promo preservation requires pilot fixture."
       },
-      "verified_at": "2026-06-01T07:53:46.200308+00:00"
+      "verified_at": "2026-06-01T08:26:19.249922+00:00"
     },
     "D": {
       "scenario": "D",
       "passed": true,
       "notes": "fresh checkout blocks duplicate regenerate or classification RECOVERY_ALREADY_ACTIVE",
       "evidence": {
-        "duplicate_target_client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+        "duplicate_target_client_id": "rent_ops_verify_01_7bbe8f8b",
         "assessment_before_duplicate": {
           "status": 200,
           "ok": true,
           "body": {
-            "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+            "client_id": "rent_ops_verify_01_7bbe8f8b",
             "found": true,
             "is_stranded": true,
             "classification": "RECOVERY_ALREADY_ACTIVE",
@@ -778,13 +895,13 @@
             },
             "state_summary": {
               "customer_reference": null,
-              "onboarding_status": "INTAKE_PENDING",
+              "onboarding_status": null,
               "provisioning_status": null,
-              "subscription_status": "PENDING",
+              "subscription_status": null,
               "lifecycle_status": null,
               "billing_lifecycle_state": null,
-              "password_set": null,
-              "checkout_link_sent_at": "2026-06-01T07:52:53.531000",
+              "password_set": false,
+              "checkout_link_sent_at": "2026-06-01T08:25:29.212000",
               "checkout_fresh": true,
               "paid_or_active": false,
               "activation_email_sent": false
@@ -793,17 +910,17 @@
               "attempts": [
                 {
                   "type": "checkout_link_sent",
-                  "at": "2026-06-01T07:52:53.531000",
-                  "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+                  "at": "2026-06-01T08:25:29.212000",
+                  "session_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h",
                   "fresh": true
                 }
               ],
               "recovery_attempt_count": 1,
-              "last_checkout_sent_at": "2026-06-01T07:52:53.531000",
-              "last_recovery_checkout_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM"
+              "last_checkout_sent_at": "2026-06-01T08:25:29.212000",
+              "last_recovery_checkout_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h"
             },
             "indicators": {
-              "stranded_onboarding": true,
+              "stranded_onboarding": false,
               "payment_failed": false,
               "provisioning_failed": false,
               "incomplete_redemption": false,
@@ -811,7 +928,7 @@
               "override_active": false,
               "first_time_consumed": false,
               "badges": [
-                "intake_pending"
+                "no_subscription"
               ],
               "recoverable_count": 0,
               "first_time_bypass_active": false
@@ -822,34 +939,56 @@
             "executable_modes": [],
             "observability": {
               "found": true,
-              "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+              "client_id": "rent_ops_verify_01_7bbe8f8b",
               "completion": {
                 "status": "recovery_in_progress",
                 "message": "Recovery was initiated; continuation outcome not yet confirmed.",
                 "paid_or_active": false,
                 "password_set": false,
                 "continuation_delivered_at": null,
-                "last_recovery_at": "2026-06-01T07:52:53.650000",
+                "last_recovery_at": "2026-06-01T08:25:29.331000",
                 "last_recovery_mode": "regenerate_payment"
               },
               "events": [
                 {
-                  "event_id": "11fc73be-a5da-4652-bd0a-81ee8ebcb9b7",
+                  "event_id": "a508ffed-6d3b-43c1-ac55-837b7ea32908",
                   "event_type": "continuation_delivered",
-                  "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+                  "client_id": "rent_ops_verify_01_7bbe8f8b",
                   "mode": "regenerate_payment",
                   "classification": "EXPIRED_CHECKOUT",
                   "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
                   "continuation_delivered": true,
                   "email_sent": false,
-                  "created_at": "2026-06-01T07:52:53.886465+00:00",
+                  "created_at": "2026-06-01T08:25:29.566215+00:00",
                   "metadata": {
                     "action_id": "onboarding_recovery_execute",
                     "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
                     "ip_address": "92.40.47.97",
                     "execution_summary": {
-                      "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
-                      "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+                      "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                      "session_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h",
+                      "waiver_applied": false,
+                      "promo_preserved": false
+                    }
+                  }
+                },
+                {
+                  "event_id": "5175847e-1555-4187-a2d7-df1be758e1ed",
+                  "event_type": "continuation_delivered",
+                  "client_id": "rent_ops_verify_01_7bbe8f8b",
+                  "mode": "regenerate_payment",
+                  "classification": "PAYMENT_ABANDONED",
+                  "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                  "continuation_delivered": true,
+                  "email_sent": false,
+                  "created_at": "2026-06-01T07:31:08.388303+00:00",
+                  "metadata": {
+                    "action_id": "onboarding_recovery_execute",
+                    "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                    "ip_address": "92.40.47.97",
+                    "execution_summary": {
+                      "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1vP57stduLp5mRtDvPyw9zDICGTab9PuWYB4HoLtwyQwV8XMMokxhNEDO#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                      "session_id": "cs_live_b1vP57stduLp5mRtDvPyw9zDICGTab9PuWYB4HoLtwyQwV8XMMokxhNEDO",
                       "waiver_applied": false,
                       "promo_preserved": false
                     }
@@ -858,17 +997,17 @@
               ],
               "delivery": {
                 "continuation_delivered_at": null,
-                "last_recovery_at": "2026-06-01T07:52:53.650000",
+                "last_recovery_at": "2026-06-01T08:25:29.331000",
                 "last_recovery_mode": "regenerate_payment",
                 "last_recovery_classification": "EXPIRED_CHECKOUT",
-                "recovery_attempt_count": 1,
-                "last_recovery_checkout_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM"
+                "recovery_attempt_count": 2,
+                "last_recovery_checkout_id": "cs_live_b1Iqx43JqrIfMg6gd9UILczSMAcb9WcloNxBPVYD9pIK3tLoychAq6Cy6h"
               }
             }
           }
         },
         "subject": {
-          "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+          "client_id": "rent_ops_verify_01_7bbe8f8b",
           "email": null,
           "customer_reference": null,
           "classification": "RECOVERY_ALREADY_ACTIVE",
@@ -876,11 +1015,11 @@
           "executable_modes": [],
           "checkout_fresh": true,
           "paid_or_active": false,
-          "password_set": null
+          "password_set": false
         },
         "blocked_by_classification": true
       },
-      "verified_at": "2026-06-01T07:53:53.712489+00:00"
+      "verified_at": "2026-06-01T08:26:26.332838+00:00"
     }
   },
   "candidate_count": 43,
@@ -889,10 +1028,12 @@
       "client_id": "rent_ops_verify_01_7bbe8f8b",
       "email": null,
       "customer_reference": null,
-      "classification": "RECOVERY_ALREADY_ACTIVE",
-      "eligible": false,
-      "executable_modes": [],
-      "checkout_fresh": true,
+      "classification": "EXPIRED_CHECKOUT",
+      "eligible": true,
+      "executable_modes": [
+        "regenerate_payment"
+      ],
+      "checkout_fresh": false,
       "paid_or_active": false,
       "password_set": false
     },
@@ -900,13 +1041,10 @@
       "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
       "email": "vic@yopmail.com",
       "customer_reference": "PLE-CVP-2026-000044",
-      "classification": "PAYMENT_ABANDONED",
-      "eligible": true,
-      "executable_modes": [
-        "regenerate_payment",
-        "resume_onboarding"
-      ],
-      "checkout_fresh": false,
+      "classification": "RECOVERY_ALREADY_ACTIVE",
+      "eligible": false,
+      "executable_modes": [],
+      "checkout_fresh": true,
       "paid_or_active": false,
       "password_set": null
     },
@@ -914,10 +1052,12 @@
       "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
       "email": "elena@yopmail.com",
       "customer_reference": "PLE-CVP-2026-000038",
-      "classification": "RECOVERY_ALREADY_ACTIVE",
-      "eligible": false,
-      "executable_modes": [],
-      "checkout_fresh": true,
+      "classification": "EXPIRED_CHECKOUT",
+      "eligible": true,
+      "executable_modes": [
+        "regenerate_payment"
+      ],
+      "checkout_fresh": false,
       "paid_or_active": false,
       "password_set": null
     },
@@ -994,11 +1134,11 @@
     "ok": true,
     "body": {
       "period_days": 7,
-      "cutoff_at": "2026-05-25T07:53:53.830716+00:00",
+      "cutoff_at": "2026-05-25T08:26:26.394075+00:00",
       "counters": {
         "recovery_initiated": 0,
-        "continuation_delivered": 5,
-        "continuation_failed": 0,
+        "continuation_delivered": 8,
+        "continuation_failed": 2,
         "payment_checkout_regenerated": 0,
         "activation_resent": 0,
         "recovery_outcome_paid": 1,
@@ -1010,128 +1150,30 @@
         "activation_completion_rate": null
       },
       "recent_events_by_type": {
-        "continuation_delivered": 5,
-        "recovery_outcome_detected": 1
+        "continuation_delivered": 8,
+        "recovery_outcome_detected": 1,
+        "continuation_failed": 1
       },
-      "recent_event_count": 6
+      "recent_event_count": 10
     }
   },
   "message_logs_sample": [
     {
-      "message_id": "5b5dfa4d-4391-419a-8e2b-958f2d04bad4",
-      "client_id": null,
-      "recipient": "info@pleerityenterprise.co.uk",
-      "template_key": "INTERNAL_ALERT",
+      "message_id": "3e91288b-c7ea-4937-bcf5-d18b87968fbe",
+      "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+      "recipient": null,
+      "template_key": "ADMIN_MANUAL",
       "channel": "EMAIL",
-      "status": "DELIVERED",
+      "status": "BLOCKED_PROVISIONING_INCOMPLETE",
       "attempt_count": 1,
-      "created_at": "2026-06-01T07:50:17.025000",
-      "postmark_message_id": "924ea998-dc0f-45e0-9ab3-cd63a125d814",
-      "provider_message_id": "924ea998-dc0f-45e0-9ab3-cd63a125d814",
-      "sent_at": "2026-06-01T07:50:17.631000",
-      "delivered_at": "2026-06-01T07:50:19Z"
-    },
-    {
-      "message_id": "f67f8604-39ee-4648-acf2-7a828e763329",
-      "client_id": null,
-      "recipient": "info@pleerityenterprise.co.uk",
-      "template_key": "INTERNAL_ALERT",
-      "channel": "EMAIL",
-      "status": "DELIVERED",
-      "attempt_count": 1,
-      "created_at": "2026-06-01T07:28:02.159000",
-      "postmark_message_id": "9f5d486a-1977-4b94-bc7e-18b79951d93f",
-      "provider_message_id": "9f5d486a-1977-4b94-bc7e-18b79951d93f",
-      "sent_at": "2026-06-01T07:28:02.781000",
-      "delivered_at": "2026-06-01T07:28:04Z"
-    },
-    {
-      "message_id": "7c15d822-70a4-4641-bf71-2f15b3de9211",
-      "client_id": null,
-      "recipient": "info@pleerityenterprise.co.uk",
-      "template_key": "INTERNAL_ALERT",
-      "channel": "EMAIL",
-      "status": "SENT",
-      "attempt_count": 1,
-      "created_at": "2026-06-01T07:22:23.063000",
-      "postmark_message_id": "e3dcf7ce-c088-4b35-95fd-6575fcd78733",
-      "provider_message_id": "e3dcf7ce-c088-4b35-95fd-6575fcd78733",
-      "sent_at": "2026-06-01T07:22:23.743000"
-    },
-    {
-      "message_id": "ffaa2e61-d36d-47e9-b0ba-6a7b3b0e1477",
-      "client_id": null,
-      "recipient": "info@pleerityenterprise.co.uk",
-      "template_key": "INTERNAL_ALERT",
-      "channel": "EMAIL",
-      "status": "DELIVERED",
-      "attempt_count": 1,
-      "created_at": "2026-06-01T06:50:04.339000",
-      "postmark_message_id": "dd3df0df-2bc1-4765-ba84-1484062c269f",
-      "provider_message_id": "dd3df0df-2bc1-4765-ba84-1484062c269f",
-      "sent_at": "2026-06-01T06:50:04.978000",
-      "delivered_at": "2026-06-01T06:50:06Z"
-    },
-    {
-      "message_id": "77ba0bce-2233-47c9-a871-597e23389abc",
-      "client_id": null,
-      "recipient": "info@pleerityenterprise.co.uk",
-      "template_key": "INTERNAL_ALERT",
-      "channel": "EMAIL",
-      "status": "DELIVERED",
-      "attempt_count": 1,
-      "created_at": "2026-06-01T06:48:13.724000",
-      "postmark_message_id": "75c19bf3-f09f-4a8f-a100-6634ae2de8ae",
-      "provider_message_id": "75c19bf3-f09f-4a8f-a100-6634ae2de8ae",
-      "sent_at": "2026-06-01T06:48:14.342000",
-      "delivered_at": "2026-06-01T06:48:15Z"
-    },
-    {
-      "message_id": "c14e696e-084f-4a77-84d8-df8d33f5e58c",
-      "client_id": null,
-      "recipient": "info@pleerityenterprise.co.uk",
-      "template_key": "INTERNAL_ALERT",
-      "channel": "EMAIL",
-      "status": "SENT",
-      "attempt_count": 1,
-      "created_at": "2026-06-01T06:42:36.212000",
-      "postmark_message_id": "377ce3e8-87c8-4d64-84f3-3410d9d8666c",
-      "provider_message_id": "377ce3e8-87c8-4d64-84f3-3410d9d8666c",
-      "sent_at": "2026-06-01T06:42:36.962000"
-    },
-    {
-      "message_id": "dd009709-2e56-4a4d-95af-4a59dea5f5ec",
-      "client_id": null,
-      "recipient": "info@pleerityenterprise.co.uk",
-      "template_key": "INTERNAL_ALERT",
-      "channel": "EMAIL",
-      "status": "DELIVERED",
-      "attempt_count": 1,
-      "created_at": "2026-06-01T06:30:07.810000",
-      "postmark_message_id": "33b8c012-f4f4-4b35-915c-cb2b3d9a71c5",
-      "provider_message_id": "33b8c012-f4f4-4b35-915c-cb2b3d9a71c5",
-      "sent_at": "2026-06-01T06:30:08.505000",
-      "delivered_at": "2026-06-01T06:30:10Z"
-    },
-    {
-      "message_id": "c5e03182-5b10-4565-ad22-b31a5b8000e6",
-      "client_id": null,
-      "recipient": "info@pleerityenterprise.co.uk",
-      "template_key": "COMPLIANCE_SLA_ALERT",
-      "channel": "EMAIL",
-      "status": "DELIVERED",
-      "attempt_count": 1,
-      "created_at": "2026-06-01T03:26:23.585000",
-      "postmark_message_id": "fafac63e-7a30-432c-a79b-f7eeaa3c4b0d",
-      "provider_message_id": "fafac63e-7a30-432c-a79b-f7eeaa3c4b0d",
-      "sent_at": "2026-06-01T03:26:24.044000",
-      "delivered_at": "2026-06-01T03:26:25Z"
+      "error_message": null,
+      "created_at": "2026-06-01T08:25:39.089000"
     }
   ],
   "summary": {
     "passed": 4,
     "total": 5,
     "all_passed": false,
-    "completed_at": "2026-06-01T07:53:56.178786+00:00"
+    "completed_at": "2026-06-01T08:26:28.748704+00:00"
   }
 }
