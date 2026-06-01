@@ -262,6 +262,102 @@ async def execute_regenerate_payment(
     }
 
 
+async def execute_resume_onboarding(
+    *,
+    client_id: str,
+    signals: Dict[str, Any],
+    classification: Optional[str],
+    reason: str,
+    actor: Dict[str, Any],
+    send_customer_email: bool,
+    apply_recovery_waiver: bool,
+) -> Dict[str, Any]:
+    client = signals["client"]
+    if _is_paid_or_active(client, signals.get("billing")):
+        raise OnboardingRecoveryExecutionError(
+            "CLIENT_ALREADY_ACTIVE",
+            "Client already has an active subscription; onboarding resume is not allowed.",
+        )
+    if _checkout_is_fresh(client) and classification != "EXPIRED_CHECKOUT":
+        raise OnboardingRecoveryExecutionError(
+            "RECOVERY_CHECKOUT_STILL_FRESH",
+            "A checkout link was sent recently. Wait for expiry or confirm the customer cannot use it.",
+        )
+
+    db = database.get_db()
+    waiver = None
+    if apply_recovery_waiver:
+        waiver = await _apply_recovery_waiver_if_requested(
+            client_id=client_id,
+            client=client,
+            reason=reason,
+            actor=actor,
+        )
+
+    actor_id = (actor.get("id") or actor.get("portal_user_id") or "admin").strip()
+    try:
+        link = await create_secure_continuation_link(
+            client_id=client_id,
+            classification=classification,
+            created_by=f"admin_onboarding_recovery:{actor_id}",
+            recovery_mode=MODE_RESUME_ONBOARDING,
+        )
+    except OnboardingContinuationError as exc:
+        raise OnboardingRecoveryExecutionError(exc.code, exc.message, exc.status_code) from exc
+
+    continuation_url = link["continuation_url"]
+    continuation_token_id = link["continuation_token_id"]
+    properties_count = await db.properties.count_documents({"client_id": client_id})
+
+    customer_email = (client.get("email") or client.get("contact_email") or "").strip() or None
+    email_sent = False
+    email_result: Dict[str, Any] = {}
+    if send_customer_email and customer_email:
+        from services.onboarding_recovery_notification_service import send_recovery_continuation_email
+
+        email_result = await send_recovery_continuation_email(
+            client_id=client_id,
+            recipient=customer_email,
+            continuation_url=continuation_url,
+            customer_reference=(client.get("customer_reference") or "N/A"),
+            properties_count=properties_count,
+            continuation_token_id=continuation_token_id,
+        )
+        email_sent = bool(email_result.get("email_sent"))
+        if email_sent:
+            await db.clients.update_one(
+                {"client_id": client_id},
+                {"$set": {"continuation_delivered_at": datetime.now(timezone.utc)}},
+            )
+
+    await _record_recovery_client_update(
+        db,
+        client_id=client_id,
+        mode=MODE_RESUME_ONBOARDING,
+        classification=classification,
+        extra_set={
+            "recovery_checkout_context": {
+                "classification": classification,
+                "source": "resume_onboarding",
+                "continuation_token_id": continuation_token_id,
+            },
+        },
+    )
+
+    continuation_delivered = email_sent or (not send_customer_email and bool(continuation_url))
+
+    return {
+        "mode": MODE_RESUME_ONBOARDING,
+        "continuation_url": continuation_url,
+        "continuation_token_id": continuation_token_id,
+        "email_sent": email_sent,
+        "email_result": email_result,
+        "waiver_applied": bool(waiver),
+        "waiver_override_id": (waiver or {}).get("override_id"),
+        "continuation_delivered": continuation_delivered,
+    }
+
+
 async def execute_resend_activation(
     *,
     client_id: str,

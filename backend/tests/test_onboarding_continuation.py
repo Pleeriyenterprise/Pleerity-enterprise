@@ -137,6 +137,47 @@ async def test_expired_token_rejected():
 
 
 @pytest.mark.asyncio
+async def test_execute_resume_onboarding_delivers_continuation_url():
+    from services.onboarding_recovery_execution_service import execute_resume_onboarding
+
+    client = {
+        "client_id": "c-resume",
+        "email": "resume@yopmail.com",
+        "customer_reference": "PLE-CVP-2026-000099",
+        "billing_plan": "PLAN_1_SOLO",
+        "onboarding_status": OnboardingStatus.INTAKE_PENDING.value,
+        "subscription_status": "PENDING",
+    }
+    signals = {"client": client, "billing": None}
+
+    tokens_col = MagicMock()
+    tokens_col.insert_one = AsyncMock()
+    tokens_col.update_many = AsyncMock(return_value=MagicMock(modified_count=0))
+    mock_db = MagicMock()
+    mock_db.clients.find_one = AsyncMock(return_value=client)
+    mock_db.clients.update_one = AsyncMock()
+    mock_db.properties.count_documents = AsyncMock(return_value=1)
+    mock_db.__getitem__ = lambda _db, key: tokens_col if key == "onboarding_continuation_tokens" else MagicMock()
+
+    with patch("services.onboarding_continuation_service.database.get_db", return_value=mock_db):
+        with patch("services.onboarding_recovery_execution_service.database.get_db", return_value=mock_db):
+            with patch("auth.generate_secure_token", return_value="d" * 48):
+                with patch("utils.app_urls.get_app_base_url", return_value="https://app.example.com"):
+                    result = await execute_resume_onboarding(
+                        client_id="c-resume",
+                        signals=signals,
+                        classification="PAYMENT_ABANDONED",
+                        reason="test resume onboarding",
+                        actor={"id": "admin-1"},
+                        send_customer_email=False,
+                        apply_recovery_waiver=False,
+                    )
+    assert result["mode"] == "resume_onboarding"
+    assert "onboarding/continue?token=" in result["continuation_url"]
+    assert result["continuation_delivered"] is True
+
+
+@pytest.mark.asyncio
 async def test_expire_old_tokens():
     tokens_col = MagicMock()
     tokens_col.update_many = AsyncMock(return_value=MagicMock(modified_count=2))

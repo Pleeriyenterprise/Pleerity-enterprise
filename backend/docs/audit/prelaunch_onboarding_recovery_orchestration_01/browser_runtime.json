@@ -1,0 +1,1137 @@
+{
+  "programme": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "frontend": "https://pleerityenterprise.co.uk",
+  "dry_run": false,
+  "started_at": "2026-06-01T07:49:10.879767+00:00",
+  "scenarios": {
+    "E": {
+      "scenario": "E",
+      "passed": true,
+      "notes": "expired checkout allows new session",
+      "evidence": {
+        "subject": {
+          "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+          "email": "user@example.com",
+          "customer_reference": null,
+          "classification": "EXPIRED_CHECKOUT",
+          "eligible": true,
+          "executable_modes": [
+            "regenerate_payment"
+          ],
+          "checkout_fresh": false,
+          "paid_or_active": false,
+          "password_set": null
+        },
+        "execute": {
+          "status": 200,
+          "ok": true,
+          "body": {
+            "ok": true,
+            "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+            "classification": "EXPIRED_CHECKOUT",
+            "execution": {
+              "mode": "regenerate_payment",
+              "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+              "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+              "email_sent": false,
+              "email_result": {},
+              "waiver_applied": false,
+              "waiver_override_id": null,
+              "promo_preserved": false,
+              "continuation_delivered": true
+            },
+            "assessment": {
+              "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+              "found": true,
+              "is_stranded": true,
+              "classification": "RECOVERY_ALREADY_ACTIVE",
+              "risk": "low",
+              "strategy": {
+                "recommended_mode": null,
+                "available_modes": [],
+                "execution_available": false,
+                "phase": 2,
+                "note": "A recovery checkout link was sent recently. Wait for customer action or allow the link to expire before regenerating.",
+                "executable_modes": []
+              },
+              "customer_continuation_mode": null,
+              "eligibility": {
+                "eligible": false,
+                "reason": "A recovery checkout link is still active. Customer should use the existing link first."
+              },
+              "recommendation": {
+                "blockage_summary": "A recovery checkout link was sent recently and may still be valid.",
+                "recommended_action": "Wait for customer action or confirm the prior link expired before regenerating.",
+                "expected_customer_outcome": "Customer should use the existing payment link if still valid.",
+                "operational_impact": "Avoid stacking multiple active checkout sessions."
+              },
+              "state_summary": {
+                "customer_reference": null,
+                "onboarding_status": "INTAKE_PENDING",
+                "provisioning_status": null,
+                "subscription_status": "PENDING",
+                "lifecycle_status": null,
+                "billing_lifecycle_state": null,
+                "password_set": null,
+                "checkout_link_sent_at": "2026-06-01T07:52:53.531000",
+                "checkout_fresh": true,
+                "paid_or_active": false,
+                "activation_email_sent": false
+              },
+              "recovery_history": {
+                "attempts": [
+                  {
+                    "type": "checkout_link_sent",
+                    "at": "2026-06-01T07:52:53.531000",
+                    "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+                    "fresh": true
+                  }
+                ],
+                "recovery_attempt_count": 1,
+                "last_checkout_sent_at": "2026-06-01T07:52:53.531000",
+                "last_recovery_checkout_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM"
+              },
+              "indicators": {
+                "stranded_onboarding": true,
+                "payment_failed": false,
+                "provisioning_failed": false,
+                "incomplete_redemption": false,
+                "retry_blocked": false,
+                "override_active": false,
+                "first_time_consumed": false,
+                "badges": [
+                  "intake_pending"
+                ],
+                "recoverable_count": 0,
+                "first_time_bypass_active": false
+              },
+              "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
+              "phase": 2,
+              "execution_available": false,
+              "executable_modes": [],
+              "observability": {
+                "found": true,
+                "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+                "completion": {
+                  "status": "recovery_in_progress",
+                  "message": "Recovery was initiated; continuation outcome not yet confirmed.",
+                  "paid_or_active": false,
+                  "password_set": false,
+                  "continuation_delivered_at": null,
+                  "last_recovery_at": "2026-06-01T07:52:53.650000",
+                  "last_recovery_mode": "regenerate_payment"
+                },
+                "events": [
+                  {
+                    "event_id": "11fc73be-a5da-4652-bd0a-81ee8ebcb9b7",
+                    "event_type": "continuation_delivered",
+                    "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+                    "mode": "regenerate_payment",
+                    "classification": "EXPIRED_CHECKOUT",
+                    "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                    "continuation_delivered": true,
+                    "email_sent": false,
+                    "created_at": "2026-06-01T07:52:53.886465+00:00",
+                    "metadata": {
+                      "action_id": "onboarding_recovery_execute",
+                      "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                      "ip_address": "92.40.47.97",
+                      "execution_summary": {
+                        "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                        "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+                        "waiver_applied": false,
+                        "promo_preserved": false
+                      }
+                    }
+                  }
+                ],
+                "delivery": {
+                  "continuation_delivered_at": null,
+                  "last_recovery_at": "2026-06-01T07:52:53.650000",
+                  "last_recovery_mode": "regenerate_payment",
+                  "last_recovery_classification": "EXPIRED_CHECKOUT",
+                  "recovery_attempt_count": 1,
+                  "last_recovery_checkout_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM"
+                }
+              }
+            }
+          }
+        }
+      },
+      "verified_at": "2026-06-01T07:52:59.669956+00:00"
+    },
+    "A": {
+      "scenario": "A",
+      "passed": true,
+      "notes": "intake complete \u2192 governed recovery execute \u2192 continuation/checkout path",
+      "evidence": {
+        "subject": {
+          "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+          "email": "vic@yopmail.com",
+          "customer_reference": "PLE-CVP-2026-000044",
+          "classification": "PAYMENT_ABANDONED",
+          "eligible": true,
+          "executable_modes": [
+            "regenerate_payment",
+            "resume_onboarding"
+          ],
+          "checkout_fresh": false,
+          "paid_or_active": false,
+          "password_set": null
+        },
+        "modes_attempted": [
+          "resume_onboarding",
+          "regenerate_payment"
+        ],
+        "executions": [
+          {
+            "mode": "resume_onboarding",
+            "result": {
+              "status": 500,
+              "ok": false,
+              "body": {
+                "detail": "Internal server error"
+              }
+            }
+          },
+          {
+            "mode": "regenerate_payment",
+            "result": {
+              "status": 200,
+              "ok": true,
+              "body": {
+                "ok": true,
+                "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                "classification": "PAYMENT_ABANDONED",
+                "execution": {
+                  "mode": "regenerate_payment",
+                  "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                  "session_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP",
+                  "email_sent": false,
+                  "email_result": {},
+                  "waiver_applied": false,
+                  "waiver_override_id": null,
+                  "promo_preserved": false,
+                  "continuation_delivered": true
+                },
+                "assessment": {
+                  "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                  "found": true,
+                  "is_stranded": true,
+                  "classification": "RECOVERY_ALREADY_ACTIVE",
+                  "risk": "low",
+                  "strategy": {
+                    "recommended_mode": null,
+                    "available_modes": [],
+                    "execution_available": false,
+                    "phase": 2,
+                    "note": "A recovery checkout link was sent recently. Wait for customer action or allow the link to expire before regenerating.",
+                    "executable_modes": []
+                  },
+                  "customer_continuation_mode": null,
+                  "eligibility": {
+                    "eligible": false,
+                    "reason": "A recovery checkout link is still active. Customer should use the existing link first."
+                  },
+                  "recommendation": {
+                    "blockage_summary": "A recovery checkout link was sent recently and may still be valid.",
+                    "recommended_action": "Wait for customer action or confirm the prior link expired before regenerating.",
+                    "expected_customer_outcome": "Customer should use the existing payment link if still valid.",
+                    "operational_impact": "Avoid stacking multiple active checkout sessions."
+                  },
+                  "state_summary": {
+                    "customer_reference": "PLE-CVP-2026-000044",
+                    "onboarding_status": "INTAKE_PENDING",
+                    "provisioning_status": null,
+                    "subscription_status": "PENDING",
+                    "lifecycle_status": "pending_payment",
+                    "billing_lifecycle_state": null,
+                    "password_set": null,
+                    "checkout_link_sent_at": "2026-06-01T07:53:08.323000",
+                    "checkout_fresh": true,
+                    "paid_or_active": false,
+                    "activation_email_sent": false
+                  },
+                  "recovery_history": {
+                    "attempts": [
+                      {
+                        "type": "checkout_link_sent",
+                        "at": "2026-06-01T07:53:08.323000",
+                        "session_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP",
+                        "fresh": true
+                      }
+                    ],
+                    "recovery_attempt_count": 1,
+                    "last_checkout_sent_at": "2026-06-01T07:53:08.323000",
+                    "last_recovery_checkout_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP"
+                  },
+                  "indicators": {
+                    "stranded_onboarding": true,
+                    "payment_failed": false,
+                    "provisioning_failed": false,
+                    "incomplete_redemption": false,
+                    "retry_blocked": false,
+                    "override_active": true,
+                    "first_time_consumed": false,
+                    "badges": [
+                      "override_active",
+                      "first_time_bypass",
+                      "intake_pending"
+                    ],
+                    "recoverable_count": 0,
+                    "first_time_bypass_active": true
+                  },
+                  "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
+                  "phase": 2,
+                  "execution_available": false,
+                  "executable_modes": [],
+                  "observability": {
+                    "found": true,
+                    "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                    "completion": {
+                      "status": "recovery_in_progress",
+                      "message": "Recovery was initiated; continuation outcome not yet confirmed.",
+                      "paid_or_active": false,
+                      "password_set": false,
+                      "continuation_delivered_at": null,
+                      "last_recovery_at": "2026-06-01T07:53:08.444000",
+                      "last_recovery_mode": "regenerate_payment"
+                    },
+                    "events": [
+                      {
+                        "event_id": "4a734bff-c54c-4de5-9346-6dc6db29fcaa",
+                        "event_type": "continuation_delivered",
+                        "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                        "mode": "regenerate_payment",
+                        "classification": "PAYMENT_ABANDONED",
+                        "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                        "continuation_delivered": true,
+                        "email_sent": false,
+                        "created_at": "2026-06-01T07:53:08.692925+00:00",
+                        "metadata": {
+                          "action_id": "onboarding_recovery_execute",
+                          "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                          "ip_address": "92.40.47.97",
+                          "execution_summary": {
+                            "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                            "session_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP",
+                            "waiver_applied": false,
+                            "promo_preserved": false
+                          }
+                        }
+                      }
+                    ],
+                    "delivery": {
+                      "continuation_delivered_at": null,
+                      "last_recovery_at": "2026-06-01T07:53:08.444000",
+                      "last_recovery_mode": "regenerate_payment",
+                      "last_recovery_classification": "PAYMENT_ABANDONED",
+                      "recovery_attempt_count": 1,
+                      "last_recovery_checkout_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "successful_mode": "regenerate_payment",
+        "continuation_url": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+        "observability": {
+          "status": 200,
+          "ok": true,
+          "body": {
+            "found": true,
+            "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+            "completion": {
+              "status": "recovery_in_progress",
+              "message": "Recovery was initiated; continuation outcome not yet confirmed.",
+              "paid_or_active": false,
+              "password_set": false,
+              "continuation_delivered_at": null,
+              "last_recovery_at": "2026-06-01T07:53:08.444000",
+              "last_recovery_mode": "regenerate_payment"
+            },
+            "events": [
+              {
+                "event_id": "4a734bff-c54c-4de5-9346-6dc6db29fcaa",
+                "event_type": "continuation_delivered",
+                "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+                "mode": "regenerate_payment",
+                "classification": "PAYMENT_ABANDONED",
+                "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                "continuation_delivered": true,
+                "email_sent": false,
+                "created_at": "2026-06-01T07:53:08.692925+00:00",
+                "metadata": {
+                  "action_id": "onboarding_recovery_execute",
+                  "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                  "ip_address": "92.40.47.97",
+                  "execution_summary": {
+                    "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                    "session_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP",
+                    "waiver_applied": false,
+                    "promo_preserved": false
+                  }
+                }
+              }
+            ],
+            "delivery": {
+              "continuation_delivered_at": null,
+              "last_recovery_at": "2026-06-01T07:53:08.444000",
+              "last_recovery_mode": "regenerate_payment",
+              "last_recovery_classification": "PAYMENT_ABANDONED",
+              "recovery_attempt_count": 1,
+              "last_recovery_checkout_id": "cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP"
+            }
+          }
+        }
+      },
+      "verified_at": "2026-06-01T07:53:17.219737+00:00"
+    },
+    "B": {
+      "scenario": "B",
+      "passed": true,
+      "notes": "paid \u2192 activation incomplete \u2192 resend activation",
+      "evidence": {
+        "subject": {
+          "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+          "email": "johnsmith@yahoo.com",
+          "customer_reference": "PLE-CVP-2026-000010",
+          "classification": "ACTIVATION_INCOMPLETE",
+          "eligible": true,
+          "executable_modes": [
+            "resend_activation"
+          ],
+          "checkout_fresh": false,
+          "paid_or_active": true,
+          "password_set": false
+        },
+        "execute": {
+          "status": 200,
+          "ok": true,
+          "body": {
+            "ok": true,
+            "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+            "classification": "ACTIVATION_INCOMPLETE",
+            "execution": {
+              "mode": "resend_activation",
+              "email_sent": false,
+              "email_result": {},
+              "setup_link_domain": "pleerityenterprise.co.uk",
+              "continuation_delivered": true
+            },
+            "assessment": {
+              "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+              "found": true,
+              "is_stranded": true,
+              "classification": "ACTIVATION_INCOMPLETE",
+              "risk": "low",
+              "strategy": {
+                "recommended_mode": "resend_activation",
+                "available_modes": [
+                  "resend_activation"
+                ],
+                "execution_available": true,
+                "phase": 2,
+                "executable_modes": [
+                  "resend_activation"
+                ]
+              },
+              "customer_continuation_mode": "portal_activation",
+              "eligibility": {
+                "eligible": true,
+                "reason": null
+              },
+              "recommendation": {
+                "blockage_summary": "Subscription is active but portal activation is incomplete.",
+                "recommended_action": "Resend activation and password setup email.",
+                "expected_customer_outcome": "Customer receives activation email and can set a password.",
+                "operational_impact": "No payment regeneration required."
+              },
+              "state_summary": {
+                "customer_reference": "PLE-CVP-2026-000010",
+                "onboarding_status": "PROVISIONED",
+                "provisioning_status": "COMPLETED",
+                "subscription_status": "ACTIVE",
+                "lifecycle_status": "pending_payment",
+                "billing_lifecycle_state": "active",
+                "password_set": false,
+                "checkout_link_sent_at": null,
+                "checkout_fresh": false,
+                "paid_or_active": true,
+                "activation_email_sent": true
+              },
+              "recovery_history": {
+                "attempts": [],
+                "recovery_attempt_count": 0,
+                "last_checkout_sent_at": null,
+                "last_recovery_checkout_id": null
+              },
+              "indicators": {
+                "stranded_onboarding": false,
+                "payment_failed": false,
+                "provisioning_failed": false,
+                "incomplete_redemption": false,
+                "retry_blocked": false,
+                "override_active": false,
+                "first_time_consumed": false,
+                "badges": [],
+                "recoverable_count": 0,
+                "first_time_bypass_active": false
+              },
+              "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
+              "phase": 2,
+              "execution_available": true,
+              "executable_modes": [
+                "resend_activation"
+              ],
+              "observability": {
+                "found": true,
+                "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                "completion": {
+                  "status": "payment_recovered_pending_activation",
+                  "message": "Payment is active; portal activation may still be required.",
+                  "paid_or_active": true,
+                  "password_set": false,
+                  "continuation_delivered_at": null,
+                  "last_recovery_at": "2026-06-01T07:53:21.038000",
+                  "last_recovery_mode": "resend_activation"
+                },
+                "events": [
+                  {
+                    "event_id": "28749053-9289-49f2-aee1-fb55c094169c",
+                    "event_type": "recovery_outcome_detected",
+                    "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                    "mode": null,
+                    "classification": "ACTIVATION_INCOMPLETE",
+                    "actor_id": null,
+                    "continuation_delivered": null,
+                    "email_sent": null,
+                    "created_at": "2026-06-01T07:53:23.054302+00:00",
+                    "metadata": {
+                      "outcome_status": "payment_recovered_pending_activation",
+                      "outcome_key": "outcome:payment_recovered_pending_activation"
+                    }
+                  },
+                  {
+                    "event_id": "12d1882f-1f75-4d0f-9119-4f821c1b6111",
+                    "event_type": "continuation_delivered",
+                    "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                    "mode": "resend_activation",
+                    "classification": "ACTIVATION_INCOMPLETE",
+                    "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                    "continuation_delivered": true,
+                    "email_sent": false,
+                    "created_at": "2026-06-01T07:53:21.275463+00:00",
+                    "metadata": {
+                      "action_id": "onboarding_recovery_execute",
+                      "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                      "ip_address": "92.40.47.97",
+                      "execution_summary": {}
+                    }
+                  }
+                ],
+                "delivery": {
+                  "continuation_delivered_at": null,
+                  "last_recovery_at": "2026-06-01T07:53:21.038000",
+                  "last_recovery_mode": "resend_activation",
+                  "last_recovery_classification": "ACTIVATION_INCOMPLETE",
+                  "recovery_attempt_count": 1,
+                  "last_recovery_checkout_id": null
+                }
+              }
+            }
+          }
+        },
+        "assessment_after": {
+          "status": 200,
+          "ok": true,
+          "body": {
+            "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+            "found": true,
+            "is_stranded": true,
+            "classification": "ACTIVATION_INCOMPLETE",
+            "risk": "low",
+            "strategy": {
+              "recommended_mode": "resend_activation",
+              "available_modes": [
+                "resend_activation"
+              ],
+              "execution_available": true,
+              "phase": 2,
+              "executable_modes": [
+                "resend_activation"
+              ]
+            },
+            "customer_continuation_mode": "portal_activation",
+            "eligibility": {
+              "eligible": true,
+              "reason": null
+            },
+            "recommendation": {
+              "blockage_summary": "Subscription is active but portal activation is incomplete.",
+              "recommended_action": "Resend activation and password setup email.",
+              "expected_customer_outcome": "Customer receives activation email and can set a password.",
+              "operational_impact": "No payment regeneration required."
+            },
+            "state_summary": {
+              "customer_reference": "PLE-CVP-2026-000010",
+              "onboarding_status": "PROVISIONED",
+              "provisioning_status": "COMPLETED",
+              "subscription_status": "ACTIVE",
+              "lifecycle_status": "pending_payment",
+              "billing_lifecycle_state": "active",
+              "password_set": false,
+              "checkout_link_sent_at": null,
+              "checkout_fresh": false,
+              "paid_or_active": true,
+              "activation_email_sent": true
+            },
+            "recovery_history": {
+              "attempts": [],
+              "recovery_attempt_count": 0,
+              "last_checkout_sent_at": null,
+              "last_recovery_checkout_id": null
+            },
+            "indicators": {
+              "stranded_onboarding": false,
+              "payment_failed": false,
+              "provisioning_failed": false,
+              "incomplete_redemption": false,
+              "retry_blocked": false,
+              "override_active": false,
+              "first_time_consumed": false,
+              "badges": [],
+              "recoverable_count": 0,
+              "first_time_bypass_active": false
+            },
+            "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
+            "phase": 2,
+            "execution_available": true,
+            "executable_modes": [
+              "resend_activation"
+            ],
+            "observability": {
+              "found": true,
+              "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+              "completion": {
+                "status": "payment_recovered_pending_activation",
+                "message": "Payment is active; portal activation may still be required.",
+                "paid_or_active": true,
+                "password_set": false,
+                "continuation_delivered_at": null,
+                "last_recovery_at": "2026-06-01T07:53:21.038000",
+                "last_recovery_mode": "resend_activation"
+              },
+              "events": [
+                {
+                  "event_id": "28749053-9289-49f2-aee1-fb55c094169c",
+                  "event_type": "recovery_outcome_detected",
+                  "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                  "mode": null,
+                  "classification": "ACTIVATION_INCOMPLETE",
+                  "actor_id": null,
+                  "continuation_delivered": null,
+                  "email_sent": null,
+                  "created_at": "2026-06-01T07:53:23.054302+00:00",
+                  "metadata": {
+                    "outcome_status": "payment_recovered_pending_activation",
+                    "outcome_key": "outcome:payment_recovered_pending_activation"
+                  }
+                },
+                {
+                  "event_id": "12d1882f-1f75-4d0f-9119-4f821c1b6111",
+                  "event_type": "continuation_delivered",
+                  "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                  "mode": "resend_activation",
+                  "classification": "ACTIVATION_INCOMPLETE",
+                  "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                  "continuation_delivered": true,
+                  "email_sent": false,
+                  "created_at": "2026-06-01T07:53:21.275463+00:00",
+                  "metadata": {
+                    "action_id": "onboarding_recovery_execute",
+                    "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                    "ip_address": "92.40.47.97",
+                    "execution_summary": {}
+                  }
+                }
+              ],
+              "delivery": {
+                "continuation_delivered_at": null,
+                "last_recovery_at": "2026-06-01T07:53:21.038000",
+                "last_recovery_mode": "resend_activation",
+                "last_recovery_classification": "ACTIVATION_INCOMPLETE",
+                "recovery_attempt_count": 1,
+                "last_recovery_checkout_id": null
+              }
+            }
+          }
+        },
+        "observability": {
+          "status": 200,
+          "ok": true,
+          "body": {
+            "found": true,
+            "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+            "completion": {
+              "status": "payment_recovered_pending_activation",
+              "message": "Payment is active; portal activation may still be required.",
+              "paid_or_active": true,
+              "password_set": false,
+              "continuation_delivered_at": null,
+              "last_recovery_at": "2026-06-01T07:53:21.038000",
+              "last_recovery_mode": "resend_activation"
+            },
+            "events": [
+              {
+                "event_id": "28749053-9289-49f2-aee1-fb55c094169c",
+                "event_type": "recovery_outcome_detected",
+                "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                "mode": null,
+                "classification": "ACTIVATION_INCOMPLETE",
+                "actor_id": null,
+                "continuation_delivered": null,
+                "email_sent": null,
+                "created_at": "2026-06-01T07:53:23.054302+00:00",
+                "metadata": {
+                  "outcome_status": "payment_recovered_pending_activation",
+                  "outcome_key": "outcome:payment_recovered_pending_activation"
+                }
+              },
+              {
+                "event_id": "12d1882f-1f75-4d0f-9119-4f821c1b6111",
+                "event_type": "continuation_delivered",
+                "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+                "mode": "resend_activation",
+                "classification": "ACTIVATION_INCOMPLETE",
+                "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                "continuation_delivered": true,
+                "email_sent": false,
+                "created_at": "2026-06-01T07:53:21.275463+00:00",
+                "metadata": {
+                  "action_id": "onboarding_recovery_execute",
+                  "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                  "ip_address": "92.40.47.97",
+                  "execution_summary": {}
+                }
+              }
+            ],
+            "delivery": {
+              "continuation_delivered_at": null,
+              "last_recovery_at": "2026-06-01T07:53:21.038000",
+              "last_recovery_mode": "resend_activation",
+              "last_recovery_classification": "ACTIVATION_INCOMPLETE",
+              "recovery_attempt_count": 1,
+              "last_recovery_checkout_id": null
+            }
+          }
+        }
+      },
+      "verified_at": "2026-06-01T07:53:33.963299+00:00"
+    },
+    "C": {
+      "scenario": "C",
+      "passed": false,
+      "notes": "promo eligibility preserved on checkout when pilot_invite_code set",
+      "evidence": {
+        "subject": null,
+        "staging_fixture_missing": "No staging client with pilot_invite_code; promo preservation requires pilot fixture."
+      },
+      "verified_at": "2026-06-01T07:53:46.200308+00:00"
+    },
+    "D": {
+      "scenario": "D",
+      "passed": true,
+      "notes": "fresh checkout blocks duplicate regenerate or classification RECOVERY_ALREADY_ACTIVE",
+      "evidence": {
+        "duplicate_target_client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+        "assessment_before_duplicate": {
+          "status": 200,
+          "ok": true,
+          "body": {
+            "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+            "found": true,
+            "is_stranded": true,
+            "classification": "RECOVERY_ALREADY_ACTIVE",
+            "risk": "low",
+            "strategy": {
+              "recommended_mode": null,
+              "available_modes": [],
+              "execution_available": false,
+              "phase": 2,
+              "note": "A recovery checkout link was sent recently. Wait for customer action or allow the link to expire before regenerating.",
+              "executable_modes": []
+            },
+            "customer_continuation_mode": null,
+            "eligibility": {
+              "eligible": false,
+              "reason": "A recovery checkout link is still active. Customer should use the existing link first."
+            },
+            "recommendation": {
+              "blockage_summary": "A recovery checkout link was sent recently and may still be valid.",
+              "recommended_action": "Wait for customer action or confirm the prior link expired before regenerating.",
+              "expected_customer_outcome": "Customer should use the existing payment link if still valid.",
+              "operational_impact": "Avoid stacking multiple active checkout sessions."
+            },
+            "state_summary": {
+              "customer_reference": null,
+              "onboarding_status": "INTAKE_PENDING",
+              "provisioning_status": null,
+              "subscription_status": "PENDING",
+              "lifecycle_status": null,
+              "billing_lifecycle_state": null,
+              "password_set": null,
+              "checkout_link_sent_at": "2026-06-01T07:52:53.531000",
+              "checkout_fresh": true,
+              "paid_or_active": false,
+              "activation_email_sent": false
+            },
+            "recovery_history": {
+              "attempts": [
+                {
+                  "type": "checkout_link_sent",
+                  "at": "2026-06-01T07:52:53.531000",
+                  "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+                  "fresh": true
+                }
+              ],
+              "recovery_attempt_count": 1,
+              "last_checkout_sent_at": "2026-06-01T07:52:53.531000",
+              "last_recovery_checkout_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM"
+            },
+            "indicators": {
+              "stranded_onboarding": true,
+              "payment_failed": false,
+              "provisioning_failed": false,
+              "incomplete_redemption": false,
+              "retry_blocked": false,
+              "override_active": false,
+              "first_time_consumed": false,
+              "badges": [
+                "intake_pending"
+              ],
+              "recoverable_count": 0,
+              "first_time_bypass_active": false
+            },
+            "completion_rule": "Recovery is complete only when the customer has a valid, observable continuation path \u2014 not when internal state mutation succeeds.",
+            "phase": 2,
+            "execution_available": false,
+            "executable_modes": [],
+            "observability": {
+              "found": true,
+              "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+              "completion": {
+                "status": "recovery_in_progress",
+                "message": "Recovery was initiated; continuation outcome not yet confirmed.",
+                "paid_or_active": false,
+                "password_set": false,
+                "continuation_delivered_at": null,
+                "last_recovery_at": "2026-06-01T07:52:53.650000",
+                "last_recovery_mode": "regenerate_payment"
+              },
+              "events": [
+                {
+                  "event_id": "11fc73be-a5da-4652-bd0a-81ee8ebcb9b7",
+                  "event_type": "continuation_delivered",
+                  "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+                  "mode": "regenerate_payment",
+                  "classification": "EXPIRED_CHECKOUT",
+                  "actor_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                  "continuation_delivered": true,
+                  "email_sent": false,
+                  "created_at": "2026-06-01T07:52:53.886465+00:00",
+                  "metadata": {
+                    "action_id": "onboarding_recovery_execute",
+                    "reason_preview": "PRELAUNCH-ONBOARDING-RECOVERY-STAGING-VERIFY-01 governed recovery staging verification execute",
+                    "ip_address": "92.40.47.97",
+                    "execution_summary": {
+                      "checkout_url": "https://checkout.stripe.com/c/pay/cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+                      "session_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM",
+                      "waiver_applied": false,
+                      "promo_preserved": false
+                    }
+                  }
+                }
+              ],
+              "delivery": {
+                "continuation_delivered_at": null,
+                "last_recovery_at": "2026-06-01T07:52:53.650000",
+                "last_recovery_mode": "regenerate_payment",
+                "last_recovery_classification": "EXPIRED_CHECKOUT",
+                "recovery_attempt_count": 1,
+                "last_recovery_checkout_id": "cs_live_b1s4Fjxuh6HJl07YSRiFs46ObzQbMDF9QsH88eaEeADRsqcW1VsJn5VCxM"
+              }
+            }
+          }
+        },
+        "subject": {
+          "client_id": "20bc2fec-a724-4280-860f-ced9e7f3d3fa",
+          "email": null,
+          "customer_reference": null,
+          "classification": "RECOVERY_ALREADY_ACTIVE",
+          "eligible": false,
+          "executable_modes": [],
+          "checkout_fresh": true,
+          "paid_or_active": false,
+          "password_set": null
+        },
+        "blocked_by_classification": true
+      },
+      "verified_at": "2026-06-01T07:53:53.712489+00:00"
+    }
+  },
+  "candidate_count": 43,
+  "candidates_sample": [
+    {
+      "client_id": "rent_ops_verify_01_7bbe8f8b",
+      "email": null,
+      "customer_reference": null,
+      "classification": "RECOVERY_ALREADY_ACTIVE",
+      "eligible": false,
+      "executable_modes": [],
+      "checkout_fresh": true,
+      "paid_or_active": false,
+      "password_set": false
+    },
+    {
+      "client_id": "4009e752-74e9-4949-a971-1e25ea8678a8",
+      "email": "vic@yopmail.com",
+      "customer_reference": "PLE-CVP-2026-000044",
+      "classification": "PAYMENT_ABANDONED",
+      "eligible": true,
+      "executable_modes": [
+        "regenerate_payment",
+        "resume_onboarding"
+      ],
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "b8705b33-c380-461e-89f4-9eba727ea00a",
+      "email": "elena@yopmail.com",
+      "customer_reference": "PLE-CVP-2026-000038",
+      "classification": "RECOVERY_ALREADY_ACTIVE",
+      "eligible": false,
+      "executable_modes": [],
+      "checkout_fresh": true,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "5ac41f8d-061d-4cae-8928-8036141d4a8e",
+      "email": "lucas.w@yopmail.com",
+      "customer_reference": "PLE-CVP-2026-000037",
+      "classification": "PAYMENT_ABANDONED",
+      "eligible": true,
+      "executable_modes": [
+        "regenerate_payment",
+        "resume_onboarding"
+      ],
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "3edc554b-97c0-474b-aece-4fc0098d38b2",
+      "email": "lucas@yopmail.com",
+      "customer_reference": "PLE-CVP-2026-000036",
+      "classification": "PAYMENT_ABANDONED",
+      "eligible": true,
+      "executable_modes": [
+        "regenerate_payment",
+        "resume_onboarding"
+      ],
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "13682ea0-9f56-4d84-8e6c-b5c19910f477",
+      "email": "drpane@gmail.com",
+      "customer_reference": "PLE-CVP-2026-000032",
+      "classification": "PAYMENT_ABANDONED",
+      "eligible": true,
+      "executable_modes": [
+        "regenerate_payment",
+        "resume_onboarding"
+      ],
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "805caa60-a8ab-49f3-ad4d-79a5e206de12",
+      "email": "mabel@yopmail.com",
+      "customer_reference": "PLE-CVP-2026-000030",
+      "classification": "PAYMENT_ABANDONED",
+      "eligible": true,
+      "executable_modes": [
+        "regenerate_payment",
+        "resume_onboarding"
+      ],
+      "checkout_fresh": false,
+      "paid_or_active": false,
+      "password_set": null
+    },
+    {
+      "client_id": "9a7c8f82-7b28-4237-8a30-dc882a94fb5d",
+      "email": "thomasw@gmail.com",
+      "customer_reference": "PLE-CVP-2026-000008",
+      "classification": "DUPLICATE_RECOVERY_RISK",
+      "eligible": false,
+      "executable_modes": [],
+      "checkout_fresh": false,
+      "paid_or_active": true,
+      "password_set": null
+    }
+  ],
+  "fleet_metrics": {
+    "status": 200,
+    "ok": true,
+    "body": {
+      "period_days": 7,
+      "cutoff_at": "2026-05-25T07:53:53.830716+00:00",
+      "counters": {
+        "recovery_initiated": 0,
+        "continuation_delivered": 5,
+        "continuation_failed": 0,
+        "payment_checkout_regenerated": 0,
+        "activation_resent": 0,
+        "recovery_outcome_paid": 1,
+        "recovery_outcome_activated": 0
+      },
+      "rates": {
+        "continuation_delivery_rate": null,
+        "payment_recovery_rate": null,
+        "activation_completion_rate": null
+      },
+      "recent_events_by_type": {
+        "continuation_delivered": 5,
+        "recovery_outcome_detected": 1
+      },
+      "recent_event_count": 6
+    }
+  },
+  "message_logs_sample": [
+    {
+      "message_id": "5b5dfa4d-4391-419a-8e2b-958f2d04bad4",
+      "client_id": null,
+      "recipient": "info@pleerityenterprise.co.uk",
+      "template_key": "INTERNAL_ALERT",
+      "channel": "EMAIL",
+      "status": "DELIVERED",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T07:50:17.025000",
+      "postmark_message_id": "924ea998-dc0f-45e0-9ab3-cd63a125d814",
+      "provider_message_id": "924ea998-dc0f-45e0-9ab3-cd63a125d814",
+      "sent_at": "2026-06-01T07:50:17.631000",
+      "delivered_at": "2026-06-01T07:50:19Z"
+    },
+    {
+      "message_id": "f67f8604-39ee-4648-acf2-7a828e763329",
+      "client_id": null,
+      "recipient": "info@pleerityenterprise.co.uk",
+      "template_key": "INTERNAL_ALERT",
+      "channel": "EMAIL",
+      "status": "DELIVERED",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T07:28:02.159000",
+      "postmark_message_id": "9f5d486a-1977-4b94-bc7e-18b79951d93f",
+      "provider_message_id": "9f5d486a-1977-4b94-bc7e-18b79951d93f",
+      "sent_at": "2026-06-01T07:28:02.781000",
+      "delivered_at": "2026-06-01T07:28:04Z"
+    },
+    {
+      "message_id": "7c15d822-70a4-4641-bf71-2f15b3de9211",
+      "client_id": null,
+      "recipient": "info@pleerityenterprise.co.uk",
+      "template_key": "INTERNAL_ALERT",
+      "channel": "EMAIL",
+      "status": "SENT",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T07:22:23.063000",
+      "postmark_message_id": "e3dcf7ce-c088-4b35-95fd-6575fcd78733",
+      "provider_message_id": "e3dcf7ce-c088-4b35-95fd-6575fcd78733",
+      "sent_at": "2026-06-01T07:22:23.743000"
+    },
+    {
+      "message_id": "ffaa2e61-d36d-47e9-b0ba-6a7b3b0e1477",
+      "client_id": null,
+      "recipient": "info@pleerityenterprise.co.uk",
+      "template_key": "INTERNAL_ALERT",
+      "channel": "EMAIL",
+      "status": "DELIVERED",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T06:50:04.339000",
+      "postmark_message_id": "dd3df0df-2bc1-4765-ba84-1484062c269f",
+      "provider_message_id": "dd3df0df-2bc1-4765-ba84-1484062c269f",
+      "sent_at": "2026-06-01T06:50:04.978000",
+      "delivered_at": "2026-06-01T06:50:06Z"
+    },
+    {
+      "message_id": "77ba0bce-2233-47c9-a871-597e23389abc",
+      "client_id": null,
+      "recipient": "info@pleerityenterprise.co.uk",
+      "template_key": "INTERNAL_ALERT",
+      "channel": "EMAIL",
+      "status": "DELIVERED",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T06:48:13.724000",
+      "postmark_message_id": "75c19bf3-f09f-4a8f-a100-6634ae2de8ae",
+      "provider_message_id": "75c19bf3-f09f-4a8f-a100-6634ae2de8ae",
+      "sent_at": "2026-06-01T06:48:14.342000",
+      "delivered_at": "2026-06-01T06:48:15Z"
+    },
+    {
+      "message_id": "c14e696e-084f-4a77-84d8-df8d33f5e58c",
+      "client_id": null,
+      "recipient": "info@pleerityenterprise.co.uk",
+      "template_key": "INTERNAL_ALERT",
+      "channel": "EMAIL",
+      "status": "SENT",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T06:42:36.212000",
+      "postmark_message_id": "377ce3e8-87c8-4d64-84f3-3410d9d8666c",
+      "provider_message_id": "377ce3e8-87c8-4d64-84f3-3410d9d8666c",
+      "sent_at": "2026-06-01T06:42:36.962000"
+    },
+    {
+      "message_id": "dd009709-2e56-4a4d-95af-4a59dea5f5ec",
+      "client_id": null,
+      "recipient": "info@pleerityenterprise.co.uk",
+      "template_key": "INTERNAL_ALERT",
+      "channel": "EMAIL",
+      "status": "DELIVERED",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T06:30:07.810000",
+      "postmark_message_id": "33b8c012-f4f4-4b35-915c-cb2b3d9a71c5",
+      "provider_message_id": "33b8c012-f4f4-4b35-915c-cb2b3d9a71c5",
+      "sent_at": "2026-06-01T06:30:08.505000",
+      "delivered_at": "2026-06-01T06:30:10Z"
+    },
+    {
+      "message_id": "c5e03182-5b10-4565-ad22-b31a5b8000e6",
+      "client_id": null,
+      "recipient": "info@pleerityenterprise.co.uk",
+      "template_key": "COMPLIANCE_SLA_ALERT",
+      "channel": "EMAIL",
+      "status": "DELIVERED",
+      "attempt_count": 1,
+      "created_at": "2026-06-01T03:26:23.585000",
+      "postmark_message_id": "fafac63e-7a30-432c-a79b-f7eeaa3c4b0d",
+      "provider_message_id": "fafac63e-7a30-432c-a79b-f7eeaa3c4b0d",
+      "sent_at": "2026-06-01T03:26:24.044000",
+      "delivered_at": "2026-06-01T03:26:25Z"
+    }
+  ],
+  "summary": {
+    "passed": 4,
+    "total": 5,
+    "all_passed": false,
+    "completed_at": "2026-06-01T07:53:56.178786+00:00"
+  }
+}

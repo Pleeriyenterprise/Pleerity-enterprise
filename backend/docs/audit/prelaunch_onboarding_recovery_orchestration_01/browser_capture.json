@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "screenshots": [
+    "payment_continuation_checkout.png",
+    "onboarding_status.png"
+  ],
+  "captured": {
+    "payment_continuation": "https://checkout.stripe.com/c/pay/cs_live_b14QRPlBgmNprzjzji3JDx4K22qne3hHmWRgQWzub9AeV3YwiCCTWNJYEP#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5aaWxzYFowNFdrN19gRkM1SjBqdGFQf2hfbX9hXTNucWZmcWFBYVFTd0lRZmxQSmhzRFVHSjQ8U3dRVzJ2a3M8cH90fzd%2FaTBWN11dNXBzTDAyYWNCblJ0YmFnMFZwRDU1NlZ1a25%2FS2EnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ2hwaXFsWmxxYGgnKSdga2RnaWBVaWRmYG1qaWFgd3YnP3F3cGB4JSUl",
+    "admin_control_panel_error": "Locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator(\"button[type=\\\"submit\\\"]\").first\n",
+    "onboarding_status": "https://pleerityenterprise.co.uk/onboarding-status?client_id=4009e752-74e9-4949-a971-1e25ea8678a8"
+  }
+}
