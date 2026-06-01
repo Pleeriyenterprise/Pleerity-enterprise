@@ -82,6 +82,72 @@ async def test_welcome_blocked_before_provisioned_returns_403_and_audit():
 
 
 @pytest.mark.asyncio
+async def test_onboarding_recovery_email_allowed_pre_provisioning():
+    """ADMIN_MANUAL + onboarding_recovery_* event types bypass requires_provisioned."""
+    from services.notification_orchestrator import notification_orchestrator
+
+    db = MagicMock()
+    db.notification_templates.find_one = AsyncMock(
+        return_value={
+            "template_key": "ADMIN_MANUAL",
+            "channel": "EMAIL",
+            "email_template_alias": "admin-manual",
+            "requires_provisioned": True,
+            "requires_active_subscription": False,
+            "requires_entitlement_enabled": False,
+            "plan_required_feature_key": None,
+            "email_category": "internal",
+            "is_active": True,
+        }
+    )
+    db.clients.find_one = AsyncMock(
+        return_value={
+            "client_id": "c1",
+            "email": "resume@yopmail.com",
+            "customer_reference": "PLE-CVP-2026-000099",
+            "onboarding_status": "INTAKE_PENDING",
+            "subscription_status": "PENDING",
+            "entitlement_status": None,
+        }
+    )
+    db.notification_preferences.find_one = AsyncMock(return_value=None)
+    db.message_logs.find_one = AsyncMock(return_value=None)
+    db.message_logs.count_documents = AsyncMock(return_value=0)
+    db.message_logs.insert_one = AsyncMock()
+    db.message_logs.update_one = AsyncMock()
+    db.email_templates.find_one = AsyncMock(
+        return_value={
+            "subject": "Continue",
+            "html_body": "{{message}}",
+            "text_body": "{{message}}",
+        }
+    )
+    _attach_branding_db_mocks(db)
+
+    from services.notification_orchestrator import NotificationResult
+
+    with patch("services.notification_orchestrator.database.get_db", return_value=db):
+        with patch(
+            "services.notification_orchestrator.NotificationOrchestrator._send_email",
+            new_callable=AsyncMock,
+            return_value=NotificationResult(outcome="sent", message_id="m1"),
+        ):
+            result = await notification_orchestrator.send(
+                template_key="ADMIN_MANUAL",
+                client_id="c1",
+                context={
+                    "recipient": "resume@yopmail.com",
+                    "subject": "Continue onboarding",
+                    "message": "<html><body>Continue</body></html>",
+                },
+                idempotency_key="onboarding_recovery_continuation_c1_tok",
+                event_type="onboarding_recovery_continuation",
+            )
+    assert result.outcome == "sent"
+    assert result.block_reason is None
+
+
+@pytest.mark.asyncio
 async def test_billing_email_allowed_pre_provisioning():
     """SUBSCRIPTION_CONFIRMED or PAYMENT_FAILED can be sent when client not yet PROVISIONED."""
     from services.notification_orchestrator import notification_orchestrator

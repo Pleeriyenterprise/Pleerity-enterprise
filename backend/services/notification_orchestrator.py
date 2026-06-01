@@ -20,6 +20,15 @@ from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
 
+# Governed onboarding recovery sends via ADMIN_MANUAL; template requires_provisioned must not
+# block pre-provisioning payment/continuation emails (intake complete, payment not yet done).
+ONBOARDING_RECOVERY_EVENT_TYPES = frozenset(
+    {
+        "onboarding_recovery_payment_continuation",
+        "onboarding_recovery_continuation",
+    }
+)
+
 
 def _normalized_idempotency_key(idempotency_key: Optional[str]) -> Optional[str]:
     """
@@ -503,14 +512,15 @@ class NotificationOrchestrator:
         db = database.get_db()
 
         if template.get("requires_provisioned"):
-            if client.get("onboarding_status") != "PROVISIONED":
+            recovery_continuation = (event_type or "") in ONBOARDING_RECOVERY_EVENT_TYPES
+            if not recovery_continuation and client.get("onboarding_status") != "PROVISIONED":
                 await self._write_blocked_log(
                     db, client_id, template_key, channel, "BLOCKED_PROVISIONING_INCOMPLETE", None, None, context, None,
                 )
                 await create_audit_log(
                     action=AuditAction.NOTIFICATION_BLOCKED_PROVISIONING_INCOMPLETE,
                     client_id=client_id,
-                    metadata={"template_key": template_key},
+                    metadata={"template_key": template_key, "event_type": event_type},
                 )
                 return NotificationResult(
                     outcome="blocked",

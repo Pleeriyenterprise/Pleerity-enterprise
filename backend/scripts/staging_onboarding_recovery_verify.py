@@ -578,21 +578,10 @@ def run_browser_capture(
         cid = (ev_a.get("subject") or {}).get("client_id")
         if cid and admin_email and admin_password:
             try:
-                page.goto(f"{FE}/admin/login", wait_until="domcontentloaded", timeout=90000)
-                for sel in (
-                    'input[type="email"]',
-                    'input[name="email"]',
-                    "#email",
-                    'input[autocomplete="email"]',
-                ):
-                    if page.locator(sel).count():
-                        page.fill(sel, admin_email)
-                        break
-                for sel in ('input[type="password"]', "#password"):
-                    if page.locator(sel).count():
-                        page.fill(sel, admin_password)
-                        break
-                page.locator('button[type="submit"]').first.click(timeout=15000)
+                page.goto(f"{FE}/login/admin", wait_until="networkidle", timeout=90000)
+                page.fill("#email", admin_email)
+                page.fill("#password", admin_password)
+                page.get_by_role("button", name=re.compile(r"sign in as admin", re.I)).click(timeout=30000)
                 page.wait_for_timeout(4000)
                 panel_url = f"{FE}/admin/clients/{cid}/control-panel"
                 page.goto(panel_url, wait_until="networkidle", timeout=90000)

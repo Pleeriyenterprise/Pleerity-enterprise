@@ -82,6 +82,24 @@ def validate_mode_for_classification(mode: str, classification: Optional[str]) -
 async def resolve_pilot_invite_for_client(client: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     code = (client.get("pilot_invite_code") or "").strip().upper()
     if not code:
+        from services.pilot_redemption_eligibility_service import (
+            EligibilityOverrideType,
+            find_active_overrides,
+        )
+
+        overrides = await find_active_overrides(
+            email=client.get("email") or client.get("contact_email"),
+            client_id=client.get("client_id"),
+            override_types=[
+                EligibilityOverrideType.MANUAL_ATTACH_PROMO.value,
+                EligibilityOverrideType.ALLOW_PROMO_RETRY.value,
+            ],
+        )
+        for row in overrides:
+            code = (row.get("invite_code") or "").strip().upper()
+            if code:
+                break
+    if not code:
         return None
     from services.pilot_invite_service import get_invite_code
 
