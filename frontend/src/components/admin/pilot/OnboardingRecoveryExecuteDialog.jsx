@@ -37,7 +37,9 @@ export default function OnboardingRecoveryExecuteDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const showWaiverOption = classification === 'FIRST_TIME_RESTRICTION_COLLISION';
+  const showWaiverOption =
+    classification === 'FIRST_TIME_RESTRICTION_COLLISION' &&
+    (mode === 'regenerate_payment' || mode === 'resume_onboarding');
   const showPromoOption = mode === 'regenerate_payment';
 
   useEffect(() => {
@@ -83,8 +85,9 @@ export default function OnboardingRecoveryExecuteDialog({
           <DialogHeader>
             <DialogTitle>Run {recoveryModeLabel(mode)}</DialogTitle>
             <DialogDescription>
-              Delivers a customer continuation path (email and/or secure link). Recovery is not complete until the
-              customer can act.
+              {mode === 'resume_onboarding'
+                ? 'Sends a secure continuation link so the customer can resume saved intake progress — not a restart.'
+                : 'Delivers a customer continuation path (email and/or secure link). Recovery is not complete until the customer can act.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2 text-sm">

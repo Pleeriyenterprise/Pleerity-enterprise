@@ -69,6 +69,7 @@ import ContractorDashboardPage from './pages/contractor/ContractorDashboardPage'
 import JobPage from './pages/contractor/JobPage';
 import IntakePage from './pages/IntakePage';
 import OnboardingStatusPage from './pages/OnboardingStatusPage';
+import OnboardingContinuePage from './pages/OnboardingContinuePage';
 import AdminBlogPage from './pages/AdminBlogPage';
 
 // Checkout success redirect component
@@ -364,6 +365,7 @@ function App() {
               <Route path="/contractor" element={<ContractorDashboardPage />} />
               <Route path="/intake/start" element={<IntakePage />} />
               <Route path="/onboarding-status" element={<OnboardingStatusPage />} />
+              <Route path="/onboarding/continue" element={<OnboardingContinuePage />} />
               <Route path="/checkout/success" element={<CheckoutSuccessRedirect />} />
               <Route path="/checkout/cancel" element={<Navigate to="/intake/start" replace />} />
 

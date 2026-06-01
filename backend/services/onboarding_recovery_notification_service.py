@@ -82,6 +82,77 @@ async def send_recovery_payment_email(
     }
 
 
+def build_recovery_continuation_email_html(*, continuation_url: str, customer_reference: str, properties_count: int) -> str:
+    ref_block = ""
+    if customer_reference and customer_reference != "N/A":
+        ref_block = f"""
+                    <p style="margin: 0 0 12px 0; font-size: 14px; color: #64748b;">Your Customer Reference</p>
+                    <p style="margin: 0 0 20px 0;"><span style="background-color: {_BRAND_ACCENT}; color: white; padding: 6px 14px; border-radius: 6px; font-family: monospace; font-size: 14px;">{customer_reference}</span></p>"""
+    saved = f"{properties_count} propert{'y' if properties_count == 1 else 'ies'}" if properties_count else "your setup"
+    return f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f1f5f9;">
+    <div style="max-width: 560px; margin: 0 auto; padding: 24px 16px;">
+        <div style="background-color: {_BRAND_PRIMARY}; padding: 24px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Compliance Vault Pro</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">Continue your onboarding</p>
+        </div>
+        <div style="background-color: #ffffff; padding: 28px 24px; border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px;">
+            <p style="margin: 0 0 16px 0; font-size: 16px; color: #334155;">We saved {saved} from your previous session. Use the secure link below to pick up where you left off.</p>
+            {ref_block}
+            <p style="margin: 0 0 20px 0;">
+                <a href="{continuation_url}" style="display: inline-block; background-color: {_BRAND_ACCENT}; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Continue onboarding</a>
+            </p>
+            <p style="margin: 0; font-size: 12px; color: #94a3b8; word-break: break-all;"><a href="{continuation_url}" style="color: {_BRAND_ACCENT};">{continuation_url}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0 16px 0;" />
+            <p style="margin: 0; font-size: 13px; color: #64748b;">If you need help, contact our support team.</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+
+async def send_recovery_continuation_email(
+    *,
+    client_id: str,
+    recipient: str,
+    continuation_url: str,
+    customer_reference: str,
+    properties_count: int,
+    continuation_token_id: str,
+) -> Dict[str, Any]:
+    from services.notification_orchestrator import notification_orchestrator
+
+    html = build_recovery_continuation_email_html(
+        continuation_url=continuation_url,
+        customer_reference=customer_reference or "N/A",
+        properties_count=properties_count,
+    )
+    idempotency_key = f"onboarding_recovery_continuation_{client_id}_{continuation_token_id}"
+    result = await notification_orchestrator.send(
+        template_key=TEMPLATE_KEY,
+        client_id=client_id,
+        context={
+            "recipient": recipient.strip(),
+            "client_name": "there",
+            "subject": "Continue your Compliance Vault Pro onboarding",
+            "message": html,
+            "customer_reference": customer_reference or "",
+        },
+        idempotency_key=idempotency_key,
+        event_type="onboarding_recovery_continuation",
+    )
+    sent = result.outcome in ("sent", "duplicate_ignored")
+    return {
+        "email_sent": sent,
+        "outcome": result.outcome,
+        "block_reason": result.block_reason,
+        "message_id": getattr(result, "message_id", None),
+    }
+
+
 async def send_recovery_activation_email(
     *,
     client_id: str,

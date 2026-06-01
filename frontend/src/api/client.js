@@ -474,6 +474,12 @@ export const intakeAPI = {
     apiClient.get('/risk-check/lead-from-token', { params: { lead_token: leadToken } })
 };
 
+export const onboardingContinuationAPI = {
+  resolveContinuation: (token) =>
+    apiClient.get('/onboarding/continuation/resolve', { params: { token } }),
+  startContinuationCheckout: (body) => apiClient.post('/onboarding/continuation/checkout', body),
+};
+
 export const clientAPI = {
   getDashboard: (params = {}) => apiClient.get('/client/dashboard', { params }),
   /** Month-to-date ROI-style metrics; fetch separately so main dashboard is not blocked. */

@@ -51,7 +51,7 @@ async def execute_onboarding_recovery_route(
     body: OnboardingRecoveryExecuteBody,
 ) -> dict:
     """
-    Governed onboarding recovery execution (Phase 2): payment checkout regeneration or activation resend.
+    Governed onboarding recovery execution: resume continuation link, payment checkout, or activation resend.
     Requires step-up, support reason, and delivers customer continuation when configured.
     """
     user = await admin_route_guard(request)

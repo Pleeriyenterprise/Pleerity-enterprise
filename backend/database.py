@@ -743,6 +743,9 @@ class Database:
             await self.db.contractor_portal_accounts.create_index("contractor_id", unique=True)
             await self.db.contractor_portal_accounts.create_index("status")
             await self.db.password_tokens.create_index([("purpose", 1), ("metadata.contractor_id", 1), ("expires_at", -1)])
+            await self.db.onboarding_continuation_tokens.create_index("token_hash", unique=True)
+            await self.db.onboarding_continuation_tokens.create_index("continuation_token_id", unique=True)
+            await self.db.onboarding_continuation_tokens.create_index([("client_id", 1), ("created_at", -1)])
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored.
             # Drop legacy unique index (phone_e164, purpose) if present; it causes DuplicateKeyError

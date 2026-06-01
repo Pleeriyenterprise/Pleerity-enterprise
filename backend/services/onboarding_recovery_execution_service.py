@@ -13,9 +13,15 @@ from services.onboarding_recovery_notification_service import (
     send_recovery_activation_email,
     send_recovery_payment_email,
 )
+from services.onboarding_continuation_service import (
+    OnboardingContinuationError,
+    create_secure_continuation_link,
+    derive_customer_next_step,
+)
 from services.onboarding_recovery_service import (
     MODE_REGENERATE_PAYMENT,
     MODE_RESEND_ACTIVATION,
+    MODE_RESUME_ONBOARDING,
     _checkout_is_fresh,
     _is_paid_or_active,
     build_onboarding_recovery_assessment,
@@ -28,10 +34,20 @@ from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
 
-EXECUTABLE_MODES = frozenset({MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION})
+EXECUTABLE_MODES = frozenset(
+    {MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION, MODE_RESUME_ONBOARDING}
+)
 
 _MODE_CLASSIFICATIONS: Dict[str, frozenset] = {
     MODE_REGENERATE_PAYMENT: frozenset(
+        {
+            "PAYMENT_ABANDONED",
+            "EXPIRED_CHECKOUT",
+            "PROMO_REDEMPTION_FAILED",
+            "FIRST_TIME_RESTRICTION_COLLISION",
+        }
+    ),
+    MODE_RESUME_ONBOARDING: frozenset(
         {
             "PAYMENT_ABANDONED",
             "EXPIRED_CHECKOUT",
@@ -55,7 +71,7 @@ def validate_mode_for_classification(mode: str, classification: Optional[str]) -
     if mode not in EXECUTABLE_MODES:
         raise OnboardingRecoveryExecutionError(
             "MODE_NOT_SUPPORTED",
-            f"Recovery mode '{mode}' is not executable in Phase 2.",
+            f"Recovery mode '{mode}' is not executable.",
         )
     allowed = _MODE_CLASSIFICATIONS.get(mode, frozenset())
     if classification not in allowed:
@@ -413,11 +429,21 @@ async def execute_onboarding_recovery(
             preserve_promo_eligibility=preserve_promo_eligibility,
             apply_recovery_waiver=apply_recovery_waiver,
         )
+    elif mode == MODE_RESUME_ONBOARDING:
+        result = await execute_resume_onboarding(
+            client_id=client_id,
+            signals=signals,
+            classification=classification,
+            reason=reason,
+            actor=actor,
+            send_customer_email=send_customer_email,
+            apply_recovery_waiver=apply_recovery_waiver,
+        )
     elif mode == MODE_RESEND_ACTIVATION:
         if apply_recovery_waiver:
             raise OnboardingRecoveryExecutionError(
                 "WAIVER_NOT_APPLICABLE",
-                "Recovery waiver applies only to payment regeneration.",
+                "Recovery waiver applies only to payment or continuation recovery.",
             )
         result = await execute_resend_activation(
             client_id=client_id,
