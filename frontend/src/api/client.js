@@ -1220,6 +1220,8 @@ export const adminAPI = {
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/operational-profile`),
   getPilotAccountRedemptions: (clientId, params = {}) =>
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/redemptions`, { params }),
+  getOnboardingRecoveryAssessment: (clientId) =>
+    apiClient.get(`/admin/clients/${encodeURIComponent(clientId)}/onboarding-recovery/assessment`),
   getPilotLifecycleHistory: (clientId, params = {}) =>
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/history`, { params }),
   reconcilePilotLifecycleAccount: (clientId) =>

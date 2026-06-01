@@ -7,6 +7,8 @@ import { shouldShowRecoveryPanel } from '../../../utils/pilotRedemptionAdmin';
 import PilotRecoveryIndicatorBadges from './PilotRecoveryIndicatorBadges';
 import PromoRecoveryStateSummary from './PromoRecoveryStateSummary';
 import PilotRedemptionRecoverySection from './PilotRedemptionRecoverySection';
+import OnboardingRecoveryAssessmentPanel from './OnboardingRecoveryAssessmentPanel';
+import { shouldShowOnboardingRecoveryAssessment } from '../../../utils/onboardingRecoveryAdmin';
 
 /**
  * First-class promo & recovery surface for Client Control Panel.
@@ -31,6 +33,7 @@ export default function ClientPromoRecoveryControls({
     inviteMetadata,
     latestRedemption,
     strandedCount,
+    onboardingRecoveryAssessment,
   } = usePilotAccountRecovery(clientId, { enabled });
 
   const visible = shouldShowRecoveryPanel({
@@ -38,7 +41,7 @@ export default function ClientPromoRecoveryControls({
     redemptions,
     eligibilityOverrides,
     inviteMetadata,
-  });
+  }) || shouldShowOnboardingRecoveryAssessment(onboardingRecoveryAssessment);
 
   const defaultOpen = useMemo(
     () =>
@@ -46,9 +49,10 @@ export default function ClientPromoRecoveryControls({
         indicators?.stranded_onboarding ||
           indicators?.payment_failed ||
           indicators?.provisioning_failed ||
-          indicators?.retry_blocked,
+          indicators?.retry_blocked ||
+          onboardingRecoveryAssessment?.is_stranded,
       ),
-    [indicators],
+    [indicators, onboardingRecoveryAssessment],
   );
 
   const [open, setOpen] = useState(defaultOpen);
@@ -101,6 +105,11 @@ export default function ClientPromoRecoveryControls({
 
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t border-amber-100/80">
+          <OnboardingRecoveryAssessmentPanel
+            assessment={onboardingRecoveryAssessment}
+            loading={loading && !onboardingRecoveryAssessment}
+            error={null}
+          />
           <PilotRecoveryIndicatorBadges indicators={indicators} />
           <PromoRecoveryStateSummary
             inviteMetadata={inviteMetadata}

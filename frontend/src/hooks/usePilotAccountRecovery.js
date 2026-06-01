@@ -15,8 +15,14 @@ export function usePilotAccountRecovery(clientId, { enabled = true } = {}) {
     setLoading(true);
     setError(null);
     try {
-      const res = await adminAPI.getPilotAccountRedemptions(clientId, { limit: 100 });
-      setBundle(res.data || null);
+      const [promoRes, assessmentRes] = await Promise.all([
+        adminAPI.getPilotAccountRedemptions(clientId, { limit: 100 }),
+        adminAPI.getOnboardingRecoveryAssessment(clientId).catch(() => ({ data: null })),
+      ]);
+      setBundle({
+        ...(promoRes.data || {}),
+        onboarding_recovery_assessment: assessmentRes.data || null,
+      });
     } catch (e) {
       setError(apiErrorMessage(e, 'Failed to load promo recovery data'));
       setBundle(null);
@@ -42,5 +48,6 @@ export function usePilotAccountRecovery(clientId, { enabled = true } = {}) {
     indicators: bundle?.indicators || {},
     inviteMetadata: bundle?.invite_metadata || {},
     strandedCount: bundle?.indicators?.recoverable_count ?? 0,
+    onboardingRecoveryAssessment: bundle?.onboarding_recovery_assessment || null,
   };
 }

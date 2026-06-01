@@ -358,7 +358,9 @@ export default function PilotRedemptionRecoverySection({
         data-testid="recover-onboarding-btn"
         onClick={() =>
           setOverrideDialog({
-            title: 'Recover onboarding',
+            title: 'Recover onboarding (internal waiver only)',
+            description:
+              'Creates an auditable recover_onboarding eligibility override. This does NOT send customer continuation email or payment links. Use the recovery assessment above for the recommended path.',
             defaultOverrideType: 'recover_onboarding',
             defaultScope: 'client_id',
           })
