@@ -1236,6 +1236,21 @@ export const adminAPI = {
     ),
   getOnboardingRecoveryFleetMetrics: (params = {}) =>
     apiClient.get('/admin/clients/onboarding-recovery/fleet-metrics', { params }),
+  getCommercialEntitlementAssessment: (clientId) =>
+    apiClient.get(`/admin/clients/${encodeURIComponent(clientId)}/commercial-entitlement/assessment`),
+  getCommercialEntitlementObservability: (clientId) =>
+    apiClient.get(`/admin/clients/${encodeURIComponent(clientId)}/commercial-entitlement/observability`),
+  previewCommercialEntitlementImpact: (clientId, body) =>
+    apiClient.post(
+      `/admin/clients/${encodeURIComponent(clientId)}/commercial-entitlement/impact-preview`,
+      body,
+    ),
+  executeCommercialEntitlement: (clientId, body, config = {}) =>
+    apiClient.post(
+      `/admin/clients/${encodeURIComponent(clientId)}/commercial-entitlement/execute`,
+      body,
+      config,
+    ),
   getPilotLifecycleHistory: (clientId, params = {}) =>
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/history`, { params }),
   reconcilePilotLifecycleAccount: (clientId) =>

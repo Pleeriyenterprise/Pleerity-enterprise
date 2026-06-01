@@ -1,0 +1,5 @@
+{
+  "status": "pending_staging_capture",
+  "service": "commercial_entitlement_service",
+  "bridge_function": "derive_customer_access_state"
+}

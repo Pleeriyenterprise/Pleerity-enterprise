@@ -198,5 +198,15 @@
     "requires_step_up": true,
     "affects_multiple_customers": false,
     "irreversible": false
+  },
+  "commercial_entitlement_execute": {
+    "action_id": "commercial_entitlement_execute",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_billing",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": true,
+    "affects_multiple_customers": false,
+    "irreversible": false
   }
 }

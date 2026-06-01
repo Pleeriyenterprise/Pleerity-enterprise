@@ -1,0 +1,4 @@
+{
+  "status": "pending_staging_capture",
+  "collections": ["commercial_entitlement_audit", "commercial_entitlement_metrics"]
+}

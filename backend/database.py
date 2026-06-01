@@ -750,6 +750,23 @@ class Database:
             await self.db.onboarding_recovery_audit.create_index("event_id", unique=True)
             await self.db.onboarding_recovery_audit.create_index("event_type")
             await self.db.onboarding_recovery_metrics.create_index("scope", unique=True)
+            await self.db.commercial_entitlement_governance.create_index(
+                [("client_id", 1), ("status", 1)]
+            )
+            await self.db.commercial_entitlement_governance.create_index("entitlement_expiry_at")
+            await self.db.commercial_entitlement_governance.create_index("entitlement_review_at")
+            try:
+                await self.db.commercial_entitlement_governance.create_index(
+                    "governance_id", unique=True
+                )
+            except Exception:
+                pass
+            await self.db.commercial_entitlement_audit.create_index(
+                [("client_id", 1), ("created_at", -1)]
+            )
+            await self.db.commercial_entitlement_audit.create_index("event_id", unique=True)
+            await self.db.commercial_entitlement_audit.create_index("event_type")
+            await self.db.commercial_entitlement_metrics.create_index("scope", unique=True)
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored.
             # Drop legacy unique index (phone_e164, purpose) if present; it causes DuplicateKeyError

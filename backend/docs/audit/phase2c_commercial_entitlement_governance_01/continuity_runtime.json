@@ -1,0 +1,4 @@
+{
+  "status": "pending_staging_capture",
+  "access_policies": ["full_access", "operational_read_only", "restricted_uploads", "restricted_operations", "suspended"]
+}

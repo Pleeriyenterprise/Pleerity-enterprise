@@ -1591,6 +1591,23 @@ async def run_operational_recovery_processing():
         raise
 
 
+async def run_commercial_entitlement_expiry():
+    """Expire stale commercial governance rows and flag review-due sponsorships."""
+    try:
+        from services.commercial_entitlement_expiry_service import process_commercial_entitlement_expiry
+
+        result = await process_commercial_entitlement_expiry()
+        logger.info(
+            "Commercial entitlement expiry job: expired=%s review_due=%s",
+            result.get("expired_count"),
+            len(result.get("review_due_governance_ids") or []),
+        )
+        return result
+    except Exception as e:
+        logger.error("Commercial entitlement expiry job failed: %s", e)
+        raise
+
+
 # Map scheduler job id -> run function (for admin manual run)
 JOB_RUNNERS = {
     "daily_reminders": run_daily_reminders,
@@ -1643,4 +1660,5 @@ JOB_RUNNERS = {
     "workflow_nudge_processing": run_workflow_nudge_processing,
     "operational_recovery_processing": run_operational_recovery_processing,
     "pilot_lifecycle_reconcile": run_pilot_lifecycle_reconcile,
+    "commercial_entitlement_expiry": run_commercial_entitlement_expiry,
 }

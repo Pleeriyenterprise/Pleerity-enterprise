@@ -1,0 +1,5 @@
+{
+  "programme": "PHASE-2C-COMMERCIAL-ENTITLEMENT-GOVERNANCE-REFINED-01",
+  "problem": "Commercial exceptions (grace, billing pause, sponsorship, waivers) were fragmented across pilot lifecycle overrides without single active governance, impact preview, or platform-authoritative Stripe posture.",
+  "resolution": "Unified commercial_entitlement_governance collection with execution, expiry, observability, and admin Commercial Controls."
+}

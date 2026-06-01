@@ -29,6 +29,13 @@ ONBOARDING_RECOVERY_EVENT_TYPES = frozenset(
     }
 )
 
+# Governed commercial entitlement continuity — may send before full provisioning.
+COMMERCIAL_ENTITLEMENT_EVENT_TYPES = frozenset(
+    {
+        "commercial_entitlement_continuity",
+    }
+)
+
 
 def _normalized_idempotency_key(idempotency_key: Optional[str]) -> Optional[str]:
     """
@@ -513,7 +520,12 @@ class NotificationOrchestrator:
 
         if template.get("requires_provisioned"):
             recovery_continuation = (event_type or "") in ONBOARDING_RECOVERY_EVENT_TYPES
-            if not recovery_continuation and client.get("onboarding_status") != "PROVISIONED":
+            commercial_continuity = (event_type or "") in COMMERCIAL_ENTITLEMENT_EVENT_TYPES
+            if (
+                not recovery_continuation
+                and not commercial_continuity
+                and client.get("onboarding_status") != "PROVISIONED"
+            ):
                 await self._write_blocked_log(
                     db, client_id, template_key, channel, "BLOCKED_PROVISIONING_INCOMPLETE", None, None, context, None,
                 )

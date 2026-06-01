@@ -1,0 +1,15 @@
+{
+  "programme": "PHASE-2C-COMMERCIAL-ENTITLEMENT-GOVERNANCE-REFINED-01",
+  "classification": "IMPLEMENTED_PENDING_OPERATIONAL_VERIFICATION",
+  "verified_operationally_requires": [
+    "governance_state_operational",
+    "stripe_platform_convergence_verified",
+    "expiry_enforcement_operational",
+    "customer_continuity_preserved",
+    "duplicate_prevention_verified",
+    "sponsored_governance_enforced",
+    "no_hidden_overrides",
+    "browser_runtime_proof_complete"
+  ],
+  "note": "Run staging_commercial_entitlement_verify.py and complete browser scenarios before elevating to VERIFIED_OPERATIONALLY"
+}

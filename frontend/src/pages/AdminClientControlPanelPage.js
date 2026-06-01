@@ -13,6 +13,7 @@ import {
 import api, { adminAPI, openBlobApiResponse } from '../api/client';
 import AdminPaymentHistoryTable from '../components/admin/AdminPaymentHistoryTable';
 import ClientPromoRecoveryControls from '../components/admin/pilot/ClientPromoRecoveryControls';
+import CommercialEntitlementControls from '../components/admin/commercial/CommercialEntitlementControls';
 import { useAuth } from '../contexts/AuthContext';
 import { useStepUpApi } from '../hooks/useStepUpApi';
 import {
@@ -1513,7 +1514,13 @@ const AdminClientControlPanelPage = () => {
         ) : (
           <Row label="Reconciliation required" value="No" />
         )}
+        {data?.effective_access_reason ? (
+          <Row label="Effective access reason" value={data.effective_access_reason} />
+        ) : null}
       </SectionCard>
+      {canManagePilotRecovery && clientId ? (
+        <CommercialEntitlementControls clientId={clientId} enabled={!loading} />
+      ) : null}
       <CollapsibleBlock
         title="Payment history & receipts"
         subtitle={`${receiptRows.length} in view (filtered total ${receiptsMeta.count ?? receiptRows.length})`}

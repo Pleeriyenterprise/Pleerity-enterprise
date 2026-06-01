@@ -1,0 +1,13 @@
+{
+  "pytest_module": "tests/test_commercial_entitlement_governance.py",
+  "last_run": "pending_ci",
+  "cases": [
+    "duplicate_prevention",
+    "expiry_enforcement",
+    "stripe_drift_detection",
+    "customer_safe_copy",
+    "sponsored_expiry_enforcement",
+    "continuity_preservation",
+    "access_policy_enforcement"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "status": "pending",
+  "admin_route": "/admin/clients/{clientId}",
+  "tab": "billing",
+  "component": "CommercialEntitlementControls",
+  "scenarios": ["A_grace_extension", "B_billing_suspension", "C_sponsored_access", "D_grace_expiry", "E_retention_continuity", "F_duplicate_subscription_prevention"]
+}
