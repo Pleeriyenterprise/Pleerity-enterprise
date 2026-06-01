@@ -57,6 +57,7 @@ def test_validate_subscription_mode_unverified_blocks():
             confidence="unknown",
             client_id="c1",
         )
+    assert exc.value.error_code == STRIPE_SUBSCRIPTION_MODE_DRIFT
     assert exc.value.recovery_action == "MODE_UNVERIFIED"
 
 
@@ -84,6 +85,7 @@ def test_validate_customer_mode_unverified_blocks():
             confidence="unknown",
             client_id="c1",
         )
+    assert exc.value.error_code == STRIPE_CUSTOMER_MODE_DRIFT
     assert exc.value.recovery_action == "MODE_UNVERIFIED"
 
 
@@ -101,6 +103,7 @@ def test_validate_portal_preflight_passes_verification_kwargs_to_customer():
             "live",
             client_id="c1",
         )
+    assert exc.value.error_code == STRIPE_CUSTOMER_MODE_DRIFT
     assert exc.value.recovery_action == "MODE_UNVERIFIED"
 
 

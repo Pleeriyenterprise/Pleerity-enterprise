@@ -114,6 +114,7 @@ def classify_stripe_api_error_for_drift(exc: Exception) -> Optional[str]:
 
 def _assert_not_mode_unverified(
     *,
+    error_code: str = STRIPE_SUBSCRIPTION_MODE_DRIFT,
     verification_status: Optional[str] = None,
     confidence: Optional[str] = None,
     client_id: Optional[str] = None,
@@ -123,7 +124,7 @@ def _assert_not_mode_unverified(
     conf = (confidence or "").strip().lower()
     if status == MODE_UNVERIFIED or conf == CONFIDENCE_UNKNOWN:
         raise StripeModeDriftError(
-            STRIPE_SUBSCRIPTION_MODE_DRIFT,
+            error_code,
             admin_reason="mode_unverified_governance",
             client_id=client_id,
             operation=operation,
@@ -200,6 +201,7 @@ def validate_stripe_customer_mode(
     persisted = normalize_persisted_mode(stored_mode)
 
     _assert_not_mode_unverified(
+        error_code=STRIPE_CUSTOMER_MODE_DRIFT,
         verification_status=verification_status,
         confidence=confidence,
         client_id=client_id,
