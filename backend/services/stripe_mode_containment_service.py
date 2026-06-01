@@ -187,6 +187,8 @@ def validate_stripe_customer_mode(
     deployment_mode: str,
     *,
     stored_mode: Optional[str] = None,
+    verification_status: Optional[str] = None,
+    confidence: Optional[str] = None,
     client_id: Optional[str] = None,
     operation: str = "customer_access",
 ) -> Dict[str, Any]:
@@ -196,6 +198,13 @@ def validate_stripe_customer_mode(
 
     dep = normalize_persisted_mode(deployment_mode) or get_stripe_mode()
     persisted = normalize_persisted_mode(stored_mode)
+
+    _assert_not_mode_unverified(
+        verification_status=verification_status,
+        confidence=confidence,
+        client_id=client_id,
+        operation=operation,
+    )
 
     if persisted is None:
         raise StripeModeDriftError(

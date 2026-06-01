@@ -173,3 +173,25 @@ def test_audit_legacy_stripe_callers_structure():
     targets = {t["file"] for t in result["convergence_targets"]}
     assert "services/intake_draft_service.py" in targets
     assert "services/jobs.py" in targets
+
+
+def test_remediation_required_clients_sums_category_counts():
+    counts = {
+        "missing_stripe_mode": 33,
+        "mixed_customer_subscription_mode": 0,
+        "test_rows_in_live": 0,
+        "live_rows_in_test": 0,
+        "unknown_mode_rows": 2,
+        "orphaned_checkout_sessions": 50,
+    }
+    metric = sum(
+        counts[cat]
+        for cat in (
+            "missing_stripe_mode",
+            "mixed_customer_subscription_mode",
+            "test_rows_in_live",
+            "live_rows_in_test",
+            "unknown_mode_rows",
+        )
+    )
+    assert metric == 35

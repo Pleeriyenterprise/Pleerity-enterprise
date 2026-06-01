@@ -674,7 +674,7 @@ async def build_expanded_stripe_mode_inventory(*, limit: int = 500) -> Dict[str,
         ),
         "mixed_mode_risk_count": counts["mixed_customer_subscription_mode"],
         "remediation_required_clients": sum(
-            1
+            counts[cat]
             for cat in (
                 "missing_stripe_mode",
                 "mixed_customer_subscription_mode",
@@ -682,7 +682,6 @@ async def build_expanded_stripe_mode_inventory(*, limit: int = 500) -> Dict[str,
                 "live_rows_in_test",
                 "unknown_mode_rows",
             )
-            for _ in [1]
         ),
     }
 

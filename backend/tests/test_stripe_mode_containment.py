@@ -74,6 +74,36 @@ def test_validate_customer_mode_drift():
     assert exc.value.error_code == STRIPE_CUSTOMER_MODE_DRIFT
 
 
+def test_validate_customer_mode_unverified_blocks():
+    with pytest.raises(StripeModeDriftError) as exc:
+        validate_stripe_customer_mode(
+            "cus_x",
+            "live",
+            stored_mode="live",
+            verification_status="MODE_UNVERIFIED",
+            confidence="unknown",
+            client_id="c1",
+        )
+    assert exc.value.recovery_action == "MODE_UNVERIFIED"
+
+
+def test_validate_portal_preflight_passes_verification_kwargs_to_customer():
+    with pytest.raises(StripeModeDriftError) as exc:
+        validate_portal_billing_preflight(
+            {
+                "stripe_customer_id": "cus_x",
+                "stripe_subscription_id": "sub_x",
+                "stripe_customer_mode": "live",
+                "stripe_mode": "live",
+                "stripe_mode_verification_status": "MODE_UNVERIFIED",
+                "stripe_mode_confidence": "unknown",
+            },
+            "live",
+            client_id="c1",
+        )
+    assert exc.value.recovery_action == "MODE_UNVERIFIED"
+
+
 def test_validate_checkout_mode_drift():
     with pytest.raises(StripeModeDriftError) as exc:
         validate_checkout_session_mode("test", "live", client_id="c1")
