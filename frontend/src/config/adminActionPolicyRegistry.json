@@ -188,5 +188,15 @@
     "requires_step_up": true,
     "affects_multiple_customers": false,
     "irreversible": false
+  },
+  "onboarding_recovery_execute": {
+    "action_id": "onboarding_recovery_execute",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_onboarding",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": true,
+    "affects_multiple_customers": false,
+    "irreversible": false
   }
 }

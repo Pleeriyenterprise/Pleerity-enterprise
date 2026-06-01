@@ -1222,6 +1222,12 @@ export const adminAPI = {
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/redemptions`, { params }),
   getOnboardingRecoveryAssessment: (clientId) =>
     apiClient.get(`/admin/clients/${encodeURIComponent(clientId)}/onboarding-recovery/assessment`),
+  executeOnboardingRecovery: (clientId, body, config = {}) =>
+    apiClient.post(
+      `/admin/clients/${encodeURIComponent(clientId)}/onboarding-recovery/execute`,
+      body,
+      config,
+    ),
   getPilotLifecycleHistory: (clientId, params = {}) =>
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/history`, { params }),
   reconcilePilotLifecycleAccount: (clientId) =>

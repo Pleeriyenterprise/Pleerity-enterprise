@@ -8,6 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from models import OnboardingStatus, PasswordStatus
+from services.onboarding_recovery_execution_service import (
+    OnboardingRecoveryExecutionError,
+    validate_mode_for_classification,
+)
 from services.onboarding_recovery_service import (
     CLASS_ACTIVATION_INCOMPLETE,
     CLASS_EXPIRED_CHECKOUT,
@@ -20,6 +24,8 @@ from services.onboarding_recovery_service import (
     MODE_RESEND_ACTIVATION,
     build_onboarding_recovery_assessment,
     classify_recovery_state,
+    derive_executable_modes,
+    derive_execution_availability,
     derive_recovery_recommendation_copy,
     derive_recovery_strategy,
     validate_recovery_eligibility,
@@ -137,8 +143,23 @@ def test_not_stranded_returns_none():
 def test_strategy_recommends_regenerate_payment_for_abandoned():
     strategy = derive_recovery_strategy(CLASS_PAYMENT_ABANDONED, _signals())
     assert strategy["recommended_mode"] == MODE_REGENERATE_PAYMENT
-    assert strategy["execution_available"] is False
-    assert strategy["phase"] == 1
+    assert strategy["phase"] == 2
+
+
+def test_executable_modes_when_eligible():
+    strategy = derive_recovery_strategy(CLASS_PAYMENT_ABANDONED, _signals())
+    eligibility = {"eligible": True, "reason": None}
+    modes = derive_executable_modes(CLASS_PAYMENT_ABANDONED, strategy, eligibility)
+    assert MODE_REGENERATE_PAYMENT in modes
+    available, phase = derive_execution_availability(CLASS_PAYMENT_ABANDONED, strategy, eligibility)
+    assert available is True
+    assert phase == 2
+
+
+def test_validate_mode_for_classification_rejects_mismatch():
+    with pytest.raises(OnboardingRecoveryExecutionError) as exc:
+        validate_mode_for_classification(MODE_RESEND_ACTIVATION, CLASS_PAYMENT_ABANDONED)
+    assert exc.value.code == "MODE_CLASSIFICATION_MISMATCH"
 
 
 def test_strategy_recommends_activation_resend():
@@ -198,5 +219,6 @@ async def test_build_assessment_integrates_promo_context():
     assert assessment["found"] is True
     assert assessment["classification"] == CLASS_PAYMENT_ABANDONED
     assert assessment["strategy"]["recommended_mode"] == MODE_REGENERATE_PAYMENT
-    assert assessment["execution_available"] is False
+    assert assessment["execution_available"] is True
+    assert MODE_REGENERATE_PAYMENT in assessment["strategy"]["executable_modes"]
     assert "blockage_summary" in assessment["recommendation"]

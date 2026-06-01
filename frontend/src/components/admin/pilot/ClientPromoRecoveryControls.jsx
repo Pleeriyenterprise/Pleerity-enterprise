@@ -109,6 +109,10 @@ export default function ClientPromoRecoveryControls({
             assessment={onboardingRecoveryAssessment}
             loading={loading && !onboardingRecoveryAssessment}
             error={null}
+            clientId={clientId}
+            onExecuted={async () => {
+              await reload();
+            }}
           />
           <PilotRecoveryIndicatorBadges indicators={indicators} />
           <PromoRecoveryStateSummary

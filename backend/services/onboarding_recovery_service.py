@@ -165,17 +165,61 @@ def classify_recovery_state(signals: Dict[str, Any]) -> Optional[str]:
     return CLASS_UNKNOWN_RECOVERY_STATE
 
 
+EXECUTABLE_MODES_PHASE2 = frozenset({MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION})
+
+_MODE_CLASSIFICATIONS_ALLOWED: Dict[str, frozenset] = {
+    MODE_REGENERATE_PAYMENT: frozenset(
+        {
+            CLASS_PAYMENT_ABANDONED,
+            CLASS_EXPIRED_CHECKOUT,
+            CLASS_PROMO_REDEMPTION_FAILED,
+            CLASS_FIRST_TIME_RESTRICTION_COLLISION,
+        }
+    ),
+    MODE_RESEND_ACTIVATION: frozenset({CLASS_ACTIVATION_INCOMPLETE}),
+}
+
+
+def derive_executable_modes(
+    classification: Optional[str],
+    strategy: Dict[str, Any],
+    eligibility: Dict[str, Any],
+) -> List[str]:
+    if not classification or not eligibility.get("eligible"):
+        return []
+    seen: List[str] = []
+    for mode in list(strategy.get("available_modes") or []) + [strategy.get("recommended_mode")]:
+        if not mode or mode in seen:
+            continue
+        if mode not in EXECUTABLE_MODES_PHASE2:
+            continue
+        if classification not in _MODE_CLASSIFICATIONS_ALLOWED.get(mode, frozenset()):
+            continue
+        seen.append(mode)
+    return seen
+
+
+def derive_execution_availability(
+    classification: Optional[str],
+    strategy: Dict[str, Any],
+    eligibility: Dict[str, Any],
+) -> Tuple[bool, int]:
+    """Whether governed execution (Phase 2) is available for this assessment."""
+    executable = derive_executable_modes(classification, strategy, eligibility)
+    return bool(executable), 2
+
+
 def derive_recovery_strategy(
     classification: Optional[str],
     signals: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Recommended recovery mode and Phase 1 availability (assessment-only execution)."""
+    """Recommended recovery mode; execution flags are set in build_onboarding_recovery_assessment."""
     if not classification:
         return {
             "recommended_mode": None,
             "available_modes": [],
             "execution_available": False,
-            "phase": 1,
+            "phase": 2,
         }
 
     mode_map: Dict[str, Tuple[str, List[str]]] = {
@@ -202,14 +246,14 @@ def derive_recovery_strategy(
             "recommended_mode": None,
             "available_modes": [],
             "execution_available": False,
-            "phase": 1,
+            "phase": 2,
             "note": "A recovery checkout link was sent recently. Wait for customer action or allow the link to expire before regenerating.",
         }
     return {
         "recommended_mode": recommended,
         "available_modes": available,
         "execution_available": False,
-        "phase": 1,
+        "phase": 2,
     }
 
 
@@ -314,7 +358,7 @@ def derive_recovery_recommendation_copy(
         },
         CLASS_ACTIVATION_INCOMPLETE: {
             "blockage_summary": "Subscription is active but portal activation is incomplete.",
-            "recommended_action": "Resend activation and password setup flow (Phase 2).",
+            "recommended_action": "Resend activation and password setup email.",
             "expected_customer_outcome": "Customer receives activation email and can set a password.",
             "operational_impact": "No payment regeneration required.",
         },
@@ -492,6 +536,15 @@ async def build_onboarding_recovery_assessment(client_id: str) -> Dict[str, Any]
     risk = derive_recovery_risk(classification, signals)
     continuation_mode = derive_customer_continuation_mode(classification, strategy)
     eligibility = validate_recovery_eligibility(classification, signals)
+    execution_available, phase = derive_execution_availability(classification, strategy, eligibility)
+    executable_modes = derive_executable_modes(classification, strategy, eligibility)
+    strategy = {
+        **strategy,
+        "execution_available": execution_available,
+        "executable_modes": executable_modes,
+        "phase": phase,
+    }
+
     recommendation = derive_recovery_recommendation_copy(classification, signals, strategy)
 
     client = signals.get("client") or {}
@@ -527,6 +580,7 @@ async def build_onboarding_recovery_assessment(client_id: str) -> Dict[str, Any]
             "Recovery is complete only when the customer has a valid, observable continuation path — "
             "not when internal state mutation succeeds."
         ),
-        "phase": 1,
-        "execution_available": False,
+        "phase": phase,
+        "execution_available": execution_available,
+        "executable_modes": executable_modes,
     }
