@@ -165,10 +165,20 @@ def classify_recovery_state(signals: Dict[str, Any]) -> Optional[str]:
     return CLASS_UNKNOWN_RECOVERY_STATE
 
 
-EXECUTABLE_MODES_PHASE2 = frozenset({MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION})
+EXECUTABLE_MODES_PHASE2 = frozenset(
+    {MODE_REGENERATE_PAYMENT, MODE_RESEND_ACTIVATION, MODE_RESUME_ONBOARDING}
+)
 
 _MODE_CLASSIFICATIONS_ALLOWED: Dict[str, frozenset] = {
     MODE_REGENERATE_PAYMENT: frozenset(
+        {
+            CLASS_PAYMENT_ABANDONED,
+            CLASS_EXPIRED_CHECKOUT,
+            CLASS_PROMO_REDEMPTION_FAILED,
+            CLASS_FIRST_TIME_RESTRICTION_COLLISION,
+        }
+    ),
+    MODE_RESUME_ONBOARDING: frozenset(
         {
             CLASS_PAYMENT_ABANDONED,
             CLASS_EXPIRED_CHECKOUT,
@@ -550,6 +560,31 @@ async def build_onboarding_recovery_assessment(client_id: str) -> Dict[str, Any]
     client = signals.get("client") or {}
     portal_user = signals.get("portal_user") or {}
 
+    from services.onboarding_recovery_observability_service import get_client_onboarding_recovery_observability
+
+    observability = await get_client_onboarding_recovery_observability(client_id)
+    recovery_history = signals.get("recovery_history") or {}
+    governed_events = observability.get("events") or []
+    if governed_events:
+        merged_attempts = list(recovery_history.get("attempts") or [])
+        for ev in governed_events[:10]:
+            merged_attempts.insert(
+                0,
+                {
+                    "type": "governed_recovery",
+                    "event_type": ev.get("event_type"),
+                    "mode": ev.get("mode"),
+                    "at": ev.get("created_at"),
+                    "continuation_delivered": ev.get("continuation_delivered"),
+                    "email_sent": ev.get("email_sent"),
+                },
+            )
+        recovery_history = {
+            **recovery_history,
+            "attempts": merged_attempts,
+            "governed_event_count": len(governed_events),
+        }
+
     return {
         "client_id": client_id,
         "found": True,
@@ -583,4 +618,5 @@ async def build_onboarding_recovery_assessment(client_id: str) -> Dict[str, Any]
         "phase": phase,
         "execution_available": execution_available,
         "executable_modes": executable_modes,
+        "observability": observability if observability.get("found") else None,
     }

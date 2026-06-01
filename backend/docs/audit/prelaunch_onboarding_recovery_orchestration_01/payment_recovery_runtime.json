@@ -1,0 +1,14 @@
+{
+  "execution_modes": [
+    "regenerate_payment",
+    "resume_onboarding + continuation checkout"
+  ],
+  "governance_fields": [
+    "recovery_checkout_context",
+    "recovery_origin_reference",
+    "recovery_attempt_count",
+    "last_recovery_checkout_id",
+    "continuation_delivered_at"
+  ],
+  "run_id": "20260601T071622Z"
+}

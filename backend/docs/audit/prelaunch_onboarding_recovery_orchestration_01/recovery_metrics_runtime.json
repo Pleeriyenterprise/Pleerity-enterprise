@@ -1,0 +1,12 @@
+{
+  "collections": [
+    "onboarding_recovery_audit",
+    "onboarding_recovery_metrics"
+  ],
+  "admin_route": "GET /api/admin/clients/onboarding-recovery/fleet-metrics",
+  "audit_actions": [
+    "ONBOARDING_RECOVERY_EXECUTED",
+    "ONBOARDING_RECOVERY_CONTINUATION_RECORDED"
+  ],
+  "run_id": "20260601T071622Z"
+}

@@ -309,6 +309,25 @@ async def create_continuation_checkout(
         {"$set": {"checkout_session_id": session_id, "checkout_created_at": now.isoformat()}},
     )
 
+    try:
+        from services.onboarding_recovery_observability_service import (
+            EVENT_CONTINUATION_CHECKOUT,
+            record_onboarding_recovery_event,
+        )
+
+        await record_onboarding_recovery_event(
+            event_type=EVENT_CONTINUATION_CHECKOUT,
+            client_id=client_id,
+            classification=doc.get("classification"),
+            metadata={
+                "continuation_token_id": doc.get("continuation_token_id"),
+                "session_id": session_id,
+                "source": "customer_continuation_landing",
+            },
+        )
+    except Exception as exc:
+        logger.warning("continuation checkout observability failed client_id=%s: %s", client_id, exc)
+
     return {
         "checkout_url": checkout_url,
         "session_id": session_id,

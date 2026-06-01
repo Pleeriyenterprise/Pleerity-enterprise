@@ -210,12 +210,23 @@ async def test_build_assessment_integrates_promo_context():
         "redemptions": [],
         "waiver_history": [],
     }
+    obs_payload = {
+        "found": True,
+        "client_id": "c1",
+        "completion": {"status": "no_governed_recovery", "message": "—"},
+        "events": [],
+        "delivery": {},
+    }
     with patch("services.onboarding_recovery_service.database.get_db", return_value=mock_db):
         with patch(
             "services.onboarding_recovery_service.get_account_promo_recovery_context",
             new=AsyncMock(return_value=promo_context),
         ):
-            assessment = await build_onboarding_recovery_assessment("c1")
+            with patch(
+                "services.onboarding_recovery_observability_service.get_client_onboarding_recovery_observability",
+                new=AsyncMock(return_value=obs_payload),
+            ):
+                assessment = await build_onboarding_recovery_assessment("c1")
     assert assessment["found"] is True
     assert assessment["classification"] == CLASS_PAYMENT_ABANDONED
     assert assessment["strategy"]["recommended_mode"] == MODE_REGENERATE_PAYMENT

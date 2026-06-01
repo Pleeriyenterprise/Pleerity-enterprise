@@ -7,6 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from middleware import admin_route_guard, require_owner_or_admin
+from services.onboarding_recovery_observability_service import (
+    get_client_onboarding_recovery_observability,
+    get_fleet_onboarding_recovery_metrics,
+)
 from middleware.step_up_auth import require_recent_step_up
 from services.admin_action_governance import enforce_governed_admin_action
 from services.onboarding_recovery_execution_service import (
@@ -25,11 +29,26 @@ router = APIRouter(
 
 
 class OnboardingRecoveryExecuteBody(BaseModel):
-    mode: str = Field(..., description="regenerate_payment | resend_activation")
+    mode: str = Field(..., description="resume_onboarding | regenerate_payment | resend_activation")
     reason: str = Field(..., min_length=10)
     send_customer_email: bool = True
     preserve_promo_eligibility: bool = True
     apply_recovery_waiver: bool = False
+
+
+@router.get("/onboarding-recovery/fleet-metrics", dependencies=[Depends(require_owner_or_admin)])
+async def get_onboarding_recovery_fleet_metrics(days: int = 30) -> dict:
+    """Fleet-level onboarding recovery counters and derived rates (Phase 4)."""
+    return await get_fleet_onboarding_recovery_metrics(days=days)
+
+
+@router.get("/{client_id}/onboarding-recovery/observability")
+async def get_onboarding_recovery_observability(client_id: str) -> dict:
+    """Per-client recovery audit trail, delivery status, and completion detection."""
+    payload = await get_client_onboarding_recovery_observability(client_id)
+    if not payload.get("found"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+    return payload
 
 
 @router.get("/{client_id}/onboarding-recovery/assessment")

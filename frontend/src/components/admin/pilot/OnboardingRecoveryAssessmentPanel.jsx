@@ -158,6 +158,30 @@ export default function OnboardingRecoveryAssessmentPanel({
           </>
         )}
 
+        {assessment.observability?.completion && (
+          <div className="rounded-md border border-slate-200 bg-white p-3 space-y-1" data-testid="recovery-observability-completion">
+            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Recovery completion</p>
+            <p className="text-sm text-gray-800">{assessment.observability.completion.message}</p>
+            <p className="text-xs text-gray-500">
+              Status: <span className="font-mono">{assessment.observability.completion.status}</span>
+            </p>
+            {assessment.observability.events?.length > 0 && (
+              <ul className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                {assessment.observability.events.slice(0, 5).map((ev) => (
+                  <li key={ev.event_id} className="text-xs text-gray-600 border-t border-slate-100 pt-1">
+                    <span className="font-medium">{ev.event_type}</span>
+                    {ev.mode ? ` · ${ev.mode}` : ''}
+                    {ev.continuation_delivered != null
+                      ? ` · delivered: ${ev.continuation_delivered ? 'yes' : 'no'}`
+                      : ''}
+                    <span className="block text-gray-400">{ev.created_at}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         <div className="rounded-md border border-slate-200 bg-white p-3 space-y-0">
           <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">Continuation status</p>
           <SummaryRow label="Payment status" value={state.subscription_status || state.billing_lifecycle_state || '—'} testId="recovery-payment-status" />
@@ -182,8 +206,8 @@ export default function OnboardingRecoveryAssessmentPanel({
 
         {classification && (
           <p className="text-xs text-gray-600" data-testid="recovery-phase-note">
-            The legacy &quot;Recover onboarding&quot; override below grants an internal waiver only — it does not send
-            customer continuation. Use the actions above for governed recovery.
+            Governed recovery actions above are audited. Recovery is complete only when the customer has an observable
+            continuation path — not when internal state changes alone.
           </p>
         )}
       </div>

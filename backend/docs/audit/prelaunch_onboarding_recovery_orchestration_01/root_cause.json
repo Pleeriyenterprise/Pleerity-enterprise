@@ -1,0 +1,6 @@
+{
+  "programme": "PRELAUNCH-ONBOARDING-CONTINUATION-RECOVERY-ORCHESTRATION-01",
+  "run_id": "20260601T071622Z",
+  "problem": "Hidden recover_onboarding override mutated state without customer continuation.",
+  "resolution": "Governed orchestration with assessment, execution modes, continuation links, and observability."
+}

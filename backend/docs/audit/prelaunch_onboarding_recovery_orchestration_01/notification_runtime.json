@@ -1,0 +1,12 @@
+{
+  "templates": [
+    "ADMIN_MANUAL",
+    "WELCOME_EMAIL"
+  ],
+  "events": [
+    "onboarding_recovery_payment_continuation",
+    "onboarding_recovery_continuation",
+    "onboarding_recovery_activation"
+  ],
+  "run_id": "20260601T071622Z"
+}

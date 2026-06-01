@@ -1234,6 +1234,8 @@ export const adminAPI = {
       body,
       config,
     ),
+  getOnboardingRecoveryFleetMetrics: (params = {}) =>
+    apiClient.get('/admin/clients/onboarding-recovery/fleet-metrics', { params }),
   getPilotLifecycleHistory: (clientId, params = {}) =>
     apiClient.get(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/history`, { params }),
   reconcilePilotLifecycleAccount: (clientId) =>

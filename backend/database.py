@@ -746,6 +746,10 @@ class Database:
             await self.db.onboarding_continuation_tokens.create_index("token_hash", unique=True)
             await self.db.onboarding_continuation_tokens.create_index("continuation_token_id", unique=True)
             await self.db.onboarding_continuation_tokens.create_index([("client_id", 1), ("created_at", -1)])
+            await self.db.onboarding_recovery_audit.create_index([("client_id", 1), ("created_at", -1)])
+            await self.db.onboarding_recovery_audit.create_index("event_id", unique=True)
+            await self.db.onboarding_recovery_audit.create_index("event_type")
+            await self.db.onboarding_recovery_metrics.create_index("scope", unique=True)
 
             # OTP codes - one active per (phone_hash, purpose); no raw phone stored.
             # Drop legacy unique index (phone_e164, purpose) if present; it causes DuplicateKeyError

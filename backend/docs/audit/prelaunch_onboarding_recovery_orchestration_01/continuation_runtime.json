@@ -1,0 +1,13 @@
+{
+  "modes": [
+    "resume_onboarding",
+    "regenerate_payment",
+    "resend_activation"
+  ],
+  "public_routes": [
+    "GET /api/onboarding/continuation/resolve",
+    "POST /api/onboarding/continuation/checkout"
+  ],
+  "landing_route": "/onboarding/continue",
+  "run_id": "20260601T071622Z"
+}

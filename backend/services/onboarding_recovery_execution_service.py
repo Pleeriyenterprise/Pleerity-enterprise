@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
 from database import database
-from models import AuditAction, OnboardingStatus, PasswordToken
+from models import OnboardingStatus, PasswordToken
 from services.onboarding_recovery_notification_service import (
     send_recovery_activation_email,
     send_recovery_payment_email,
@@ -30,8 +30,6 @@ from services.onboarding_recovery_service import (
     validate_recovery_eligibility,
 )
 from services.plan_registry import StripeModeMismatchError
-from utils.audit import create_audit_log
-
 logger = logging.getLogger(__name__)
 
 EXECUTABLE_MODES = frozenset(
@@ -455,23 +453,46 @@ async def execute_onboarding_recovery(
     else:
         raise OnboardingRecoveryExecutionError("MODE_NOT_SUPPORTED", f"Unknown mode: {mode}")
 
-    await create_audit_log(
-        action=AuditAction.ADMIN_ACTION,
-        actor_id=actor_id,
+    from services.onboarding_recovery_observability_service import (
+        EVENT_CONTINUATION_DELIVERED,
+        EVENT_CONTINUATION_FAILED,
+        EVENT_RECOVERY_EXECUTED,
+        record_onboarding_recovery_event,
+        reconcile_recovery_outcome,
+    )
+
+    event_type = EVENT_RECOVERY_EXECUTED
+    if result.get("continuation_delivered"):
+        event_type = EVENT_CONTINUATION_DELIVERED
+    elif result.get("email_sent") is False and send_customer_email:
+        event_type = EVENT_CONTINUATION_FAILED
+
+    await record_onboarding_recovery_event(
+        event_type=event_type,
         client_id=client_id,
-        resource_type="onboarding_recovery",
-        resource_id=client_id,
+        mode=mode,
+        classification=classification,
+        actor_id=actor_id,
+        continuation_delivered=result.get("continuation_delivered"),
+        email_sent=result.get("email_sent"),
         metadata={
             "action_id": "onboarding_recovery_execute",
-            "mode": mode,
-            "classification": classification,
-            "continuation_delivered": result.get("continuation_delivered"),
-            "email_sent": result.get("email_sent"),
             "reason_preview": reason[:200],
+            "ip_address": ip_address,
+            "execution_summary": {
+                k: result.get(k)
+                for k in (
+                    "checkout_url",
+                    "session_id",
+                    "continuation_url",
+                    "waiver_applied",
+                    "promo_preserved",
+                )
+                if result.get(k) is not None
+            },
         },
-        reason_code="onboarding_recovery_execute",
-        ip_address=ip_address,
     )
+    await reconcile_recovery_outcome(client_id)
 
     assessment = await build_onboarding_recovery_assessment(client_id)
     return {

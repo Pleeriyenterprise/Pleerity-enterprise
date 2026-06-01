@@ -1,0 +1,14 @@
+{
+  "classifications": {
+    "PAYMENT_ABANDONED": "regenerate_payment | resume_onboarding",
+    "EXPIRED_CHECKOUT": "regenerate_payment | resume_onboarding",
+    "PROMO_REDEMPTION_FAILED": "regenerate_payment | resume_onboarding",
+    "FIRST_TIME_RESTRICTION_COLLISION": "regenerate_payment | resume_onboarding (+ optional waiver)",
+    "ACTIVATION_INCOMPLETE": "resend_activation",
+    "PARTIAL_PROVISIONING": "manual_escalation",
+    "SUBSCRIPTION_DRIFT": "manual_escalation",
+    "DUPLICATE_RECOVERY_RISK": "blocked",
+    "RECOVERY_ALREADY_ACTIVE": "blocked"
+  },
+  "run_id": "20260601T071622Z"
+}
