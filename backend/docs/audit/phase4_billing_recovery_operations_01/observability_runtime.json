@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-06-02T07:47:02.561735+00:00",
+  "generated_at": "2026-06-02T08:54:35.907245+00:00",
   "staging_metrics": {
     "status": 200,
     "body": {
-      "generated_at": "2026-06-02T07:46:51.265331+00:00",
-      "active_recovery_count": 1,
+      "generated_at": "2026-06-02T08:54:24.035039+00:00",
+      "active_recovery_count": 55,
       "resolved_count": 0,
-      "total_cases": 1,
+      "total_cases": 55,
       "recovery_completion_rate": 0.0,
-      "unresolved_backlog": 1,
+      "unresolved_backlog": 55,
       "events": {
-        "recovery_started": 1
+        "recovery_started": 55
       }
     }
   },

@@ -1,7 +1,7 @@
 {
   "marker": "PHASE-4-BILLING-RECOVERY-OPERATIONS-01",
-  "generated_at": "2026-06-02T07:47:02.563757+00:00",
-  "classification": "CLIENT_REMEDIATION_REQUIRED",
+  "generated_at": "2026-06-02T08:54:35.908244+00:00",
+  "classification": "RECOVERY_CONVERGENCE_DRIFT",
   "gates": {
     "recovery_layer": true,
     "deploy_continuity": true,
@@ -9,6 +9,6 @@
     "guided_flows": true,
     "support_ux": true,
     "regression_pass": true,
-    "staging_api": false
+    "staging_api": true
   }
 }
