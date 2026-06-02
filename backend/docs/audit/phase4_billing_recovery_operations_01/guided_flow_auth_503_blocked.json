@@ -1,7 +1,20 @@
 {
   "marker": "PHASE-4-BILLING-RECOVERY-GUIDED-FLOW-CLOSEOUT-01",
-  "generated_at": "2026-06-02T10:07:00+01:00",
+  "generated_at": "2026-06-02T10:10:00+00:00",
   "classification_at_block": "RECOVERY_CONVERGENCE_DRIFT",
+  "auth_health_check": {
+    "endpoint": "POST /api/auth/admin/login",
+    "attempts": 5,
+    "results": [
+      {"try": 1, "status": 503},
+      {"try": 2, "status": 503},
+      {"try": 3, "status": 503},
+      {"try": 4, "status": 503},
+      {"try": 5, "status": 503}
+    ],
+    "healthy": false,
+    "note": "API /version returned 200 during same window; login path specifically unavailable."
+  },
   "blocker": {
     "type": "external_runtime_availability",
     "endpoint": "POST /api/auth/admin/login",
@@ -9,13 +22,20 @@
     "message": "Service Unavailable while attempting guided flow admin authentication."
   },
   "impact": {
+    "guided_flow_closeout_executed": false,
     "guided_browser_runtime_proof_completed": false,
     "reason": "Admin authentication unavailable; guided actions requiring authenticated admin context cannot run."
   },
+  "prior_known_good": {
+    "recovery_dashboard_status": 200,
+    "recovery_metrics_status": 200,
+    "recovery_orphaned_checkouts_status": 200,
+    "regression_tests_local": "16 passed (last known)"
+  },
   "next_actions": [
-    "Wait for admin auth health recovery.",
-    "Re-run backend/scripts/phase4_billing_recovery_guided_flow_closeout_01.py.",
-    "Run python -m pytest backend/tests/test_billing_recovery_operations.py -q.",
+    "Wait for admin auth health recovery (POST /api/auth/admin/login -> 200).",
+    "Re-run: python backend/scripts/phase4_billing_recovery_guided_flow_closeout_01.py",
+    "Re-run: python -m pytest backend/tests/test_billing_recovery_operations.py -q",
     "Refresh phase4 audit artifacts and reclassify only from completed runtime gates."
   ]
 }
