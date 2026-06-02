@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-06-02T05:34:48.619201+00:00",
+  "blocked_plan_change_message": "Your billing record needs to be refreshed before plan changes can continue.",
+  "regeneration_message": "We need to refresh your billing record before plan changes can continue. Use the secure payment link we provide to complete checkout \u2014 your account and reference number stay the same.",
+  "forbidden_in_customer_ui": [
+    "livemode",
+    "test mode",
+    "sk_",
+    "webhook",
+    "STRIPE_"
+  ],
+  "source": "services/stripe_mode_containment_service.CUSTOMER_BILLING_REFRESH_MESSAGE"
+}

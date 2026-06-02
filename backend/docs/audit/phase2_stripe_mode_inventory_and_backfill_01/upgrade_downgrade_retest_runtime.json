@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-06-02T05:35:29.619414+00:00",
+  "scenarios": {
+    "still_unverified": {
+      "passed": true,
+      "no_stripe_jargon": true
+    },
+    "admin_set_mode_client": {
+      "passed": false,
+      "error_code": "STRIPE_CUSTOMER_MODE_DRIFT",
+      "note": "preflight may still fail if deployment_mode mismatches stored mode"
+    }
+  },
+  "pass": true
+}

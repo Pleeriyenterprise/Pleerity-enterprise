@@ -1,0 +1,6 @@
+{
+  "completed": false,
+  "blocked": true,
+  "note": "PRODUCTION_MONGO_URL not set \u2014 gate remains blocked",
+  "generated_at": "2026-06-02T05:35:22.043418+00:00"
+}

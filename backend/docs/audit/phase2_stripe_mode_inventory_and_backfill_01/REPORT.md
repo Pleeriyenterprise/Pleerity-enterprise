@@ -1,110 +1,93 @@
-# PHASE-2-STRIPE-MODE-REMEDIATION-CLOSEOUT-01
+# Stripe mode governance — Phase 2 inventory, remediation & Phase 3 client remediation
 
-**Programme:** PHASE-2-STRIPE-MODE-INVENTORY-AND-BACKFILL-01  
-**Closeout run:** 2026-06-02  
-**Classification:** `MODE_UNVERIFIED_BACKLOG`  
+**Latest closeout:** PHASE-3-STRIPE-MODE-CLIENT-REMEDIATION-01 (2026-06-02)  
+**Classification:** `CLIENT_REMEDIATION_REQUIRED`  
 **Prior:** `MODE_UNVERIFIED_BACKLOG`
 
-## Summary
+## Phase 3 summary
 
-Operational closeout executed against staging (admin API + Mongo). Production inventory blocked (no production Mongo credentials supplied). Deploy continuity **PASS** — staging API at `76731d1b` with all Phase 2 admin endpoints reachable.
+Client-by-client remediation worklist generated for **33** staging billing rows. All classified **`REGENERATE_CHECKOUT_REQUIRED`** (no webhook evidence, checkout sessions lack persisted `stripe_mode`). **50** orphaned checkout sessions classified **`requires_regeneration`** (pending, missing mode). No bulk mode assignment performed.
 
-Safe backfill dry-run found **1** row with authoritative resolution path via API; **32** rows marked `MODE_UNVERIFIED` on execute (containment only, no silent mode guess). Staging billing rows remain without authoritative `stripe_mode` until admin remediation or webhook/checkout evidence exists.
+One **admin-set-mode** proof executed via staging API (`backfill_authoritative_mode`, `stripe_mode=test`). Deploy must include `admin_verified` source + `$unset` of `MODE_UNVERIFIED` for preflight to pass after remediation (commit pending deploy).
 
-## Part 1 — Deploy continuity
+## Phase 3 — Client remediation worklist
+
+| Recommended action | Count |
+|--------------------|------:|
+| REGENERATE_CHECKOUT_REQUIRED | 33 |
+
+Per client (redacted): subscription/customer IDs present, checkout sessions exist but **without** authoritative `stripe_mode`, **no** webhook livemode evidence, `MODE_UNVERIFIED` containment active.
+
+Artifact: `client_remediation_worklist.json`
+
+## Remediation policy
+
+Admin-set-mode allowed only with manual Stripe dashboard verification, webhook/checkout evidence, or documented admin confirmation — **never** deployment mode alone or ID prefix.
+
+Artifact: `remediation_policy.json`
+
+## Regenerate checkout flow
+
+Documented safe path via `POST /api/billing/checkout` — persists `stripe_mode` on new `checkout_sessions`, preserves client/CRN, no duplicate subscription automation.
+
+Artifact: `regenerate_checkout_runtime.json`
+
+## Admin-set-mode (single-client proof)
 
 | Check | Result |
 |-------|--------|
-| Commit SHA | `76731d1b` (matches Phase 2 + bugfix prefixes) |
-| Source files | All present |
-| Admin endpoints | 200 on inventory, backfill, legacy-callers |
-| **Pass** | Yes |
+| API POST admin-set-mode | 200 |
+| action | `backfill_authoritative_mode` |
+| stripe_mode | `test` |
+| confidence | `authoritative` |
+| reason required | yes |
 
-Artifact: `deploy_continuity.json`
+Artifact: `admin_set_mode_runtime.json`
 
-## Part 2 — Staging inventory (admin API)
+## Orphaned checkouts
 
-| Category | Count |
-|----------|------:|
-| missing_stripe_mode | 33 |
-| MODE_UNVERIFIED (inferred) | 33 |
-| mixed_customer_subscription_mode | 0 |
-| orphaned_checkout_sessions | 50 |
-| webhook_mode_conflicts | 0 |
-| remediation_required_clients | 33 |
-| authoritative_mode_coverage | 0% |
+| Classification | Count |
+|----------------|------:|
+| requires_regeneration | 50 |
 
-Deployment mode reported by API: `live` (staging Render runtime).
+No automatic deletion.
 
-Artifact: `staging_inventory_runtime.json` (identifiers redacted)
+Artifact: `orphaned_checkout_runtime.json`
 
-## Part 3 — Production inventory
-
-**Blocked** — `PRODUCTION_MONGO_URL` not provided.
-
-Artifact: `production_drift_inventory.json` (blocked stub)
-
-## Part 4 — Authoritative backfill
-
-| Phase | verified | unverified |
-|-------|----------|------------|
-| Dry-run (API) | 1 | 32 |
-| Execute (API + local) | 0 | 32 |
-
-No ambiguous or conflicting rows received authoritative `stripe_mode` writes. Unverifiable rows persisted `MODE_UNVERIFIED` containment fields only.
-
-Artifact: `authoritative_backfill_runtime.json` (client IDs redacted)
-
-## Part 5 — MODE_UNVERIFIED remediation
-
-Sample classifications: **MODE_UNVERIFIED** → `ADMIN_SET_MODE_REQUIRED` (explicit admin action; no auto-repair).
-
-Artifact: `mode_unverified_remediation_runtime.json`
-
-## Part 6 — Upgrade/downgrade retest
+## Upgrade/downgrade retest
 
 | Scenario | Result |
 |----------|--------|
-| A — Verified synthetic row | Pass (preflight ok) |
-| B — MODE_UNVERIFIED synthetic | Pass (customer-safe block) |
-| B — DB unverified row | Pass (refresh message) |
-| C — DB authoritative row | No row in staging DB |
-| D — Mixed-mode | No row in staging DB |
+| Still MODE_UNVERIFIED row | Pass (customer-safe block) |
+| Admin-set-mode client preflight | Fail until deploy includes MODE_UNVERIFIED unset fix |
 
-Artifact: `upgrade_downgrade_runtime.json`
+Artifact: `upgrade_downgrade_retest_runtime.json`
 
-## Part 7 — Legacy caller recheck
+## Customer copy
 
-`legacy_caller_count`: **0** — operational paths converged to `configure_stripe_sdk`.
+Blocked: *"Your billing record needs to be refreshed before plan changes can continue."*
 
-Artifact: `legacy_caller_runtime.json`
+Regeneration copy documented without Stripe jargon.
 
-## Part 8 — Webhook convergence
+Artifact: `customer_copy_runtime.json`
 
-Recent `stripe_events` sampled: legacy events lack `environment_source` / `event_verification_status` (pre-Phase-2). **1** billing row now has `stripe_mode` after backfill execute. New webhook writes will persist full fields post-deploy.
+## Production inventory
 
-Artifact: `webhook_convergence_runtime.json`
+**Blocked** — `PRODUCTION_MONGO_URL` not provided.
 
-## Part 9 — Commercial entitlement alignment
-
-Assessment surfaces `billing_mode_drift`, `remediation_code: MODE_UNVERIFIED`, entitlement note — **no access suspension from drift alone**.
-
-Artifact: `commercial_entitlement_alignment_runtime.json`
-
-## Regression
-
-25 tests passed (`test_stripe_mode_containment.py`, `test_stripe_mode_backfill.py`).
+Artifact: `production_inventory_status.json`
 
 ## Path to VERIFIED_OPERATIONALLY
 
-1. Run production inventory (`--production-mongo-url`)
-2. Admin remediate backlog (webhook evidence, checkout regen, or explicit `admin-set-mode`)
-3. Re-run backfill execute after authoritative evidence exists
-4. Re-test upgrade/downgrade on remediated clients
-5. Confirm new webhook events persist `environment_source` + `event_verification_status`
+1. Production inventory (`--production-mongo-url`)
+2. Deploy Phase 3 code (`admin_verified`, worklist service, MODE_UNVERIFIED unset on authoritative write)
+3. Remediate clients via regenerate checkout or verified admin-set-mode
+4. Re-run upgrade/downgrade retest on remediated + unverified samples
+5. Confirm authoritative_mode_coverage > 0
 
 ## Implementation commits
 
 - `a06c082d` — Phase 1 containment
-- `b41fdcf6` — Phase 2 inventory/backfill governance
-- `1d20d42d`, `76731d1b` — Phase 2 bugfixes
+- `b41fdcf6` — Phase 2 inventory/backfill
+- `35e68d7f` — Phase 2 remediation closeout
+- Phase 3 — client remediation service + closeout (this commit)

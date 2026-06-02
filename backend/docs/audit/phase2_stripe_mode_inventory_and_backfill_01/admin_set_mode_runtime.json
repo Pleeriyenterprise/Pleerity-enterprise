@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "status": 200,
+  "action": "backfill_authoritative_mode",
+  "verification_source": "admin_remediation",
+  "stripe_mode": "test",
+  "confidence": "authoritative",
+  "reason_required": true,
+  "client_id_redacted": "80f83edd\u2026"
+}

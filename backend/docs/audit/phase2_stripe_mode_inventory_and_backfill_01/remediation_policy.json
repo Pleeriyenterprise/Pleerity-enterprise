@@ -1,0 +1,24 @@
+{
+  "version": "phase3_stripe_mode_client_remediation_01",
+  "admin_set_mode_allowed_when": [
+    "Stripe subscription or customer manually verified in the correct Stripe dashboard (test vs live)",
+    "Webhook livemode evidence exists for the client or subscription",
+    "Checkout session with persisted stripe_mode exists for the client",
+    "Admin documents source of truth in remediation reason (min 10 chars)"
+  ],
+  "admin_set_mode_forbidden": [
+    "Deployment STRIPE_MODE alone",
+    "Object ID prefix (sub_, cus_, cs_)",
+    "Assumption from current app environment without Stripe dashboard confirmation",
+    "Bulk assignment across clients",
+    "Automatic subscription migration, cancellation, or recreation"
+  ],
+  "regenerate_checkout_when": [
+    "MODE_UNVERIFIED with active subscription intent",
+    "No authoritative webhook or checkout evidence",
+    "Invalid or stale subscription reference after admin review"
+  ],
+  "customer_safe_message": "Your billing record needs to be refreshed before plan changes can continue.",
+  "regeneration_customer_copy": "We need to refresh your billing record before plan changes can continue. Use the secure payment link we provide to complete checkout \u2014 your account and reference number stay the same.",
+  "generated_at": "2026-06-02T05:34:48.614348+00:00"
+}

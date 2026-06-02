@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-06-02T05:34:48.614348+00:00",
+  "endpoint": "POST /api/billing/checkout",
+  "preflight": "validate_portal_billing_preflight / upgrade preflight via stripe_service",
+  "stripe_mode_persistence": "checkout_sessions.stripe_mode set on insert (stripe_service)",
+  "preserves": [
+    "client_id",
+    "customer_reference (CRN on clients row)",
+    "client_billing row"
+  ],
+  "forbidden": [
+    "duplicate_subscription_automatic_creation",
+    "silent_mode_from_deployment_only",
+    "delete_client_billing_row"
+  ],
+  "steps": [
+    "Admin confirms MODE_UNVERIFIED and REGENERATE_CHECKOUT_REQUIRED classification",
+    "Customer sees billing refresh message (no Stripe jargon)",
+    "Admin or customer triggers POST /api/billing/checkout with target plan",
+    "resolve_stripe_context + configure_stripe_sdk use deployment STRIPE_MODE for new session only",
+    "New checkout_sessions row persists stripe_mode from billing_mode_fields_for_write",
+    "Webhook checkout.session.completed provides authoritative livemode evidence",
+    "Optional admin-set-mode only after dashboard verification if webhook delayed"
+  ],
+  "customer_copy": "We need to refresh your billing record before plan changes can continue. Use the secure payment link we provide to complete checkout \u2014 your account and reference number stay the same."
+}

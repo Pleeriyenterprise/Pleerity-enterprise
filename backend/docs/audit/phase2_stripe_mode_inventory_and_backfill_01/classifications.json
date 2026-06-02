@@ -1,14 +1,13 @@
 {
-  "marker": "PHASE-2-STRIPE-MODE-REMEDIATION-CLOSEOUT-01",
-  "generated_at": "2026-06-02T05:18:25.465473+00:00",
-  "classification": "MODE_UNVERIFIED_BACKLOG",
+  "marker": "PHASE-3-STRIPE-MODE-CLIENT-REMEDIATION-01",
+  "generated_at": "2026-06-02T05:35:37.966669+00:00",
+  "classification": "CLIENT_REMEDIATION_REQUIRED",
   "prior_classification": "MODE_UNVERIFIED_BACKLOG",
   "gates": {
-    "deploy_commit_matches": true,
-    "staging_inventory": true,
+    "worklist_generated": true,
     "production_inventory": false,
-    "legacy_caller_count": 0,
-    "regression_pass": true,
-    "backfill_verified_writes": 0
+    "admin_set_mode_ok": true,
+    "upgrade_downgrade_retest": true,
+    "regression_pass": true
   }
 }

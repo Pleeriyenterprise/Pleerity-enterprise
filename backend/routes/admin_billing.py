@@ -2275,12 +2275,29 @@ async def post_stripe_mode_admin_remediate(
 
     admin = getattr(request.state, "admin_user", None) or {}
     actor = admin.get("email") or admin.get("admin_id") or "admin"
-    return await backfill_client_billing_mode(
+    result = await backfill_client_billing_mode(
         client_id,
         dry_run=False,
         admin_actor=actor,
         admin_mode=mode,
     )
+    try:
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role="ROLE_ADMIN",
+            actor_id=actor,
+            client_id=client_id,
+            metadata={
+                "action_type": "STRIPE_MODE_ADMIN_SET_MODE",
+                "stripe_mode": mode,
+                "reason": body.reason,
+                "verification_source": "admin_verified",
+                "backfill_action": result.get("action"),
+            },
+        )
+    except Exception:
+        pass
+    return result
 
 
 @router.get("/stripe-mode-legacy-callers")

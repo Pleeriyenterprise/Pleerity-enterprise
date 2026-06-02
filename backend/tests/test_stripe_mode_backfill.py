@@ -164,6 +164,23 @@ def test_classify_missing_mode_regenerate_checkout():
     assert code in (REMEDIATION_REGENERATE_CHECKOUT, "VERIFIED_OPERATIONALLY")
 
 
+@pytest.mark.asyncio
+async def test_admin_set_mode_uses_admin_verified_source():
+    from services.stripe_mode_backfill_service import (
+        VERIFICATION_SOURCE_ADMIN_VERIFIED,
+        resolve_authoritative_mode,
+    )
+
+    result = await resolve_authoritative_mode(
+        "c_admin",
+        billing={"client_id": "c_admin", "stripe_subscription_id": "sub_x"},
+        admin_mode="test",
+        admin_actor="admin@test.com",
+    )
+    assert result["stripe_mode_verification_source"] == VERIFICATION_SOURCE_ADMIN_VERIFIED
+    assert result["stripe_mode_confidence"] == "authoritative"
+
+
 def test_audit_legacy_stripe_callers_structure():
     from services.stripe_mode_backfill_service import audit_legacy_stripe_callers
 

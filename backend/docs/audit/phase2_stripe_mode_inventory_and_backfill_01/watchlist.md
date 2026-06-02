@@ -1,30 +1,38 @@
-# Phase 2 remediation closeout watchlist
+# Stripe mode governance watchlist
 
-## Blocking VERIFIED_OPERATIONALLY
+## Phase 3 — CLIENT_REMEDIATION_REQUIRED
 
-- [ ] **Production inventory** — run `phase2_stripe_mode_remediation_closeout.py --production-mongo-url $PROD_URL`
-- [ ] **33 staging clients** — missing authoritative `stripe_mode`; classified `MODE_UNVERIFIED` / `ADMIN_SET_MODE_REQUIRED`
-- [ ] **Authoritative backfill** — 0 verified writes on execute; 1 row showed API dry-run resolution — investigate webhook/checkout evidence for that client
-- [ ] **50 orphaned checkout sessions** — regenerate checkout in deployment mode where still pending
+### Per-client backlog (33)
 
-## Post-remediation verification
+- [ ] Each client: review `client_remediation_worklist.json` row
+- [ ] Default action: **REGENERATE_CHECKOUT_REQUIRED** (no webhook/checkout mode evidence)
+- [ ] Use **admin-set-mode** only after manual Stripe dashboard verification (`remediation_policy.json`)
+- [ ] Do **not** bulk assign live/test from deployment mode
 
-- [ ] Re-test upgrade/downgrade on at least one admin-remediated client (live authoritative row)
-- [ ] Confirm new `stripe_events` rows include `environment_source` and `event_verification_status`
-- [ ] Re-run inventory; target `authoritative_mode_coverage` > 0
+### Orphaned checkouts (50)
 
-## Operational notes
+- [ ] All classified `requires_regeneration` — pending sessions missing `stripe_mode`
+- [ ] Regenerate or expire via operational process — **no auto-delete**
 
-- Staging API deploy at `76731d1b` — Phase 2 endpoints live
-- Backfill execute safely marked 32 rows `MODE_UNVERIFIED` (no subscription mutation)
-- Do not use ID-prefix inference for mode
-- Use `POST .../admin-set-mode` only with explicit admin verification
+### Deploy
+
+- [ ] Deploy Phase 3: `stripe_mode_client_remediation_service.py`, `admin_verified` source, MODE_UNVERIFIED unset on authoritative write
+- [ ] Re-run `phase3_stripe_mode_client_remediation_closeout.py --test-admin-set-mode` after deploy
+
+### Production gate
+
+- [ ] `PRODUCTION_MONGO_URL` → re-run closeout with `--production-mongo-url`
+
+### Verification
+
+- [ ] One admin-set-mode + one regenerated checkout + one still-unverified upgrade/downgrade retest
+- [ ] Target `authoritative_mode_coverage` > 0 after remediation batch
 
 ## Harness
 
 ```bash
 cd backend
-python scripts/phase2_stripe_mode_remediation_closeout.py \
+python scripts/phase3_stripe_mode_client_remediation_closeout.py \
   --mongo-url "$MONGO_URL" --db-name pleerity_staging \
-  --execute-backfill
+  --test-admin-set-mode
 ```

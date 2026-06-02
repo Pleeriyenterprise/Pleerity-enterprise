@@ -30,6 +30,7 @@ VERIFICATION_SOURCE_CHECKOUT = "checkout_session"
 VERIFICATION_SOURCE_DEPLOYMENT = "deployment_at_creation"
 VERIFICATION_SOURCE_STRIPE_API = "stripe_api_verify"
 VERIFICATION_SOURCE_ADMIN = "admin_remediation"
+VERIFICATION_SOURCE_ADMIN_VERIFIED = "admin_verified"
 
 CONFIDENCE_AUTHORITATIVE = "authoritative"
 CONFIDENCE_UNKNOWN = "unknown"
@@ -315,11 +316,11 @@ async def resolve_authoritative_mode(
                 "client_id": client_id,
                 "found": True,
                 "stripe_mode": mode,
-                "stripe_mode_verification_source": VERIFICATION_SOURCE_ADMIN,
+                "stripe_mode_verification_source": VERIFICATION_SOURCE_ADMIN_VERIFIED,
                 "stripe_mode_confidence": CONFIDENCE_AUTHORITATIVE,
                 "stripe_mode_verified_at": now,
                 "stripe_mode_last_checked_at": now,
-                "inferred_mode_source": "admin_remediation",
+                "inferred_mode_source": "admin_verified",
                 "admin_actor": admin_actor,
             }
 
@@ -418,7 +419,13 @@ async def backfill_client_billing_mode(
     result["action"] = "backfill_authoritative_mode"
     result["would_write"] = write_doc
     if not dry_run:
-        await db.client_billing.update_one({"client_id": client_id}, {"$set": write_doc})
+        await db.client_billing.update_one(
+            {"client_id": client_id},
+            {
+                "$set": write_doc,
+                "$unset": {"stripe_mode_verification_status": ""},
+            },
+        )
         await _record_backfill_audit(
             client_id=client_id,
             action="backfill_authoritative_mode",
