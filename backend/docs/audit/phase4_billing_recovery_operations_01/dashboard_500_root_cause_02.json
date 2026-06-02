@@ -1,0 +1,30 @@
+{
+  "marker": "PHASE-4-BILLING-RECOVERY-DASHBOARD-RUNTIME-500-02",
+  "generated_at": "2026-06-02T08:30:00+00:00",
+  "endpoint": "GET /api/admin/billing/recovery/dashboard",
+  "observed_runtime": {
+    "dashboard_status": 500,
+    "metrics_status": 200,
+    "orphaned_status": 200
+  },
+  "root_cause": {
+    "failing_service": "services.billing_recovery_service",
+    "failing_function": "_enrich_case_row",
+    "failing_line": "client_label fallback used client_id[:8] without type normalization",
+    "failing_row_shape": {
+      "client_id_type": "ObjectId (legacy row)",
+      "example_redacted": "ObjectId('***')"
+    },
+    "failure_class": "TypeError",
+    "stack_trace": [
+      "File \"routes/admin_billing.py\", in get_billing_recovery_dashboard",
+      "  return await build_recovery_dashboard(limit=limit)",
+      "File \"services/billing_recovery_service.py\", in build_recovery_dashboard",
+      "  enriched = await _enrich_case_row(cid, case)",
+      "File \"services/billing_recovery_service.py\", in _enrich_case_row",
+      "  \"client_label\": (client or {}).get(\"full_name\") or client_id[:8],",
+      "TypeError: 'ObjectId' object is not subscriptable"
+    ]
+  },
+  "scope_note": "Metrics and orphaned endpoints bypass this enrichment path, explaining 200 on those routes while dashboard fails."
+}

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from bson import ObjectId
 
 from services.billing_recovery_state_machine import (
     STATE_CHECKOUT_REGENERATED,
@@ -379,3 +380,39 @@ async def test_dashboard_serialization_safety_generated_at_iso():
     # verify top-level runtime payload remains JSON-safe
     assert "T" in payload["generated_at"]
     assert payload["generated_at"].endswith("+00:00")
+
+
+@pytest.mark.asyncio
+async def test_dashboard_legacy_objectid_client_id_shape_no_500():
+    legacy_client_id = ObjectId()
+    mock_db = MagicMock()
+    mock_db.client_billing.find.return_value = _AsyncCursor([{"client_id": legacy_client_id}])
+    _wire_recovery_collections(mock_db, remediated_rows=[], active_count=1, metrics_doc=None)
+
+    with patch("services.billing_recovery_service.database.get_db", return_value=mock_db):
+        with patch("services.stripe_mode_authority.get_stripe_mode", return_value="test"):
+            with patch(
+                "services.billing_recovery_service._get_or_create_case",
+                new=AsyncMock(
+                    return_value={
+                        "client_id": legacy_client_id,
+                        "recovery_state": "MODE_UNVERIFIED",
+                        "recommended_action": "REGENERATE_CHECKOUT_REQUIRED",
+                    }
+                ),
+            ):
+                mock_db.client_billing.find_one = AsyncMock(
+                    return_value={"client_id": legacy_client_id, "stripe_subscription_id": None}
+                )
+                mock_db.clients.find_one = AsyncMock(return_value={})
+                mock_db.stripe_events.find_one = AsyncMock(return_value=None)
+                mock_db.checkout_sessions.find_one = AsyncMock(return_value=None)
+                with patch(
+                    "services.billing_recovery_service.classify_orphaned_checkout_sessions",
+                    new=AsyncMock(return_value={"summary": {}, "categories": {"requires_regeneration": []}}),
+                ):
+                    payload = await build_recovery_dashboard(limit=20)
+
+    row = payload["sections"]["mode_unverified_clients"][0]
+    assert isinstance(row["client_id"], str)
+    assert len(row["client_label"]) > 0

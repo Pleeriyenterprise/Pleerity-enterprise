@@ -144,10 +144,17 @@ def _recovery_age_days(case: Dict[str, Any]) -> Optional[int]:
     started = case.get("recovery_started_at")
     if not started:
         return None
-    if isinstance(started, str):
-        started = datetime.fromisoformat(started.replace("Z", "+00:00"))
-    delta = _now() - started
-    return max(0, delta.days)
+    try:
+        if isinstance(started, str):
+            started = datetime.fromisoformat(started.replace("Z", "+00:00"))
+        if isinstance(started, datetime) and started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        if not isinstance(started, datetime):
+            return None
+        delta = _now() - started
+        return max(0, delta.days)
+    except Exception:
+        return None
 
 
 async def _enrich_case_row(client_id: str, case: Dict[str, Any]) -> Dict[str, Any]:
@@ -155,7 +162,8 @@ async def _enrich_case_row(client_id: str, case: Dict[str, Any]) -> Dict[str, An
     billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0}) or {}
     client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "email": 1, "customer_reference": 1, "full_name": 1})
 
-    sub_id = (billing.get("stripe_subscription_id") or "").strip()
+    client_id_text = str(client_id) if client_id is not None else ""
+    sub_id = str(billing.get("stripe_subscription_id") or "").strip()
     wh = await db.stripe_events.find_one(
         {"$or": [{"related_client_id": client_id}, {"related_subscription_id": sub_id}]},
         {"_id": 0, "created": 1},
@@ -164,8 +172,8 @@ async def _enrich_case_row(client_id: str, case: Dict[str, Any]) -> Dict[str, An
     ch = await db.checkout_sessions.find_one({"client_id": client_id}, {"_id": 0, "created_at": 1}, sort=[("created_at", -1)])
 
     return {
-        "client_id": client_id,
-        "client_label": (client or {}).get("full_name") or client_id[:8],
+        "client_id": client_id_text,
+        "client_label": (client or {}).get("full_name") or client_id_text[:8] or "unknown",
         "crn": (client or {}).get("customer_reference"),
         "remediation_code": case.get("remediation_code"),
         "operational_risk": case.get("operational_risk"),
@@ -210,17 +218,22 @@ async def build_recovery_dashboard(*, limit: int = 200) -> Dict[str, Any]:
         {"_id": 0, "client_id": 1},
     ).limit(limit)
 
+    skipped_rows = 0
     async for row in billing_cursor:
         cid = row.get("client_id")
         if not cid:
             continue
-        case = await _get_or_create_case(cid)
-        enriched = await _enrich_case_row(cid, case)
-        state = case.get("recovery_state")
-        if state in (STATE_MODE_UNVERIFIED, STATE_RECOVERY_REQUIRED):
-            sections["mode_unverified_clients"].append(enriched)
-        if case.get("recommended_action") == "REGENERATE_CHECKOUT_REQUIRED":
-            sections["pending_regeneration"].append(enriched)
+        try:
+            case = await _get_or_create_case(cid)
+            enriched = await _enrich_case_row(cid, case)
+            state = case.get("recovery_state")
+            if state in (STATE_MODE_UNVERIFIED, STATE_RECOVERY_REQUIRED):
+                sections["mode_unverified_clients"].append(enriched)
+            if case.get("recommended_action") == "REGENERATE_CHECKOUT_REQUIRED":
+                sections["pending_regeneration"].append(enriched)
+        except Exception as exc:
+            skipped_rows += 1
+            logger.warning("billing_recovery dashboard skipped row client_id=%s error=%s", str(cid)[:24], exc)
 
     remediated = db[COL_RECOVERY_CASES].find(
         {"recovery_state": STATE_RECOVERY_RESOLVED},
@@ -229,9 +242,17 @@ async def build_recovery_dashboard(*, limit: int = 200) -> Dict[str, Any]:
     async for case in remediated:
         cid = case.get("client_id")
         if cid:
-            sections["recently_remediated"].append(await _enrich_case_row(cid, case))
+            try:
+                sections["recently_remediated"].append(await _enrich_case_row(cid, case))
+            except Exception as exc:
+                skipped_rows += 1
+                logger.warning("billing_recovery dashboard skipped remediated row client_id=%s error=%s", str(cid)[:24], exc)
 
-    orphans = await classify_orphaned_checkout_sessions(limit=100)
+    try:
+        orphans = await classify_orphaned_checkout_sessions(limit=100)
+    except Exception as exc:
+        logger.warning("billing_recovery orphan classification failed: %s", exc)
+        orphans = {"summary": {}, "categories": {"requires_regeneration": []}}
     sections["orphaned_checkout_sessions"] = orphans.get("categories", {}).get("requires_regeneration", [])[:50]
 
     metrics = await db[COL_RECOVERY_METRICS].find_one({"scope": "global"}, {"_id": 0})
@@ -245,7 +266,8 @@ async def build_recovery_dashboard(*, limit: int = 200) -> Dict[str, Any]:
             "mode_unverified_count": len(sections["mode_unverified_clients"]),
             "pending_regeneration_count": len(sections["pending_regeneration"]),
             "orphaned_checkout_count": orphans.get("summary", {}).get("requires_regeneration", 0),
-            "metrics": metrics.get("events") if metrics else {},
+            "metrics": metrics.get("events") if isinstance(metrics, dict) else {},
+            "skipped_rows": skipped_rows,
         }
     ]
 
