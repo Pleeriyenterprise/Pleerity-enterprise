@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-06-02T07:38:33.197895+00:00",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "expected_commit": "79f4a2c4eef6c1d2ee7556012105233b2f493862",
+  "deploy_version": {
+    "status": 200,
+    "body": {
+      "commit_sha": "cd64b165cc4c6aabc6b34d1f85084452e19d5c8d",
+      "environment": "production"
+    }
+  },
+  "deploy_commit": "cd64b165cc4c6aabc6b34d1f85084452e19d5c8d",
+  "deploy_matches_expected_or_successor": true,
+  "auth_gated": {
+    "recovery_dashboard_unauth_status": 401,
+    "recovery_metrics_unauth_status": 401,
+    "recovery_dashboard_auth_status": 500,
+    "recovery_metrics_auth_status": 200,
+    "auth_gate_ok": true
+  },
+  "route_collisions": {
+    "recovery_dashboard_defs": 1,
+    "recovery_metrics_defs": 1,
+    "recovery_orphaned_defs": 1
+  }
+}

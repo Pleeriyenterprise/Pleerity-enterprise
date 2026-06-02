@@ -180,7 +180,7 @@ async def _enrich_case_row(client_id: str, case: Dict[str, Any]) -> Dict[str, An
         "last_webhook": wh.get("created") if wh else None,
         "last_recovery_action": case.get("last_recovery_action"),
         "recovery_age_days": _recovery_age_days(case),
-        "customer_safe_message": CONTAINMENT_MSG,
+        "customer_safe_message": CUSTOMER_BILLING_REFRESH_MESSAGE,
     }
 
 

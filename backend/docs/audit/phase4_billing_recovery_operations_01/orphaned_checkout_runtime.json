@@ -1,9 +1,311 @@
 {
-  "generated_at": "2026-06-02T06:47:02.597040+00:00",
+  "generated_at": "2026-06-02T07:38:33.202674+00:00",
   "staging": {
-    "status": 404,
+    "status": 200,
     "body": {
-      "detail": "Not Found"
+      "generated_at": "2026-06-02T07:38:24.088413+00:00",
+      "deployment_mode": "live",
+      "read_only": true,
+      "no_automatic_deletion": true,
+      "summary": {
+        "expired_abandoned_checkout": 0,
+        "linked_client_no_subscription": 0,
+        "duplicate_checkout": 0,
+        "recovery_checkout": 0,
+        "safe_to_ignore": 0,
+        "requires_regeneration": 40
+      },
+      "categories": {
+        "expired_abandoned_checkout": [],
+        "linked_client_no_subscription": [],
+        "duplicate_checkout": [],
+        "recovery_checkout": [],
+        "safe_to_ignore": [],
+        "requires_regeneration": [
+          {
+            "session_id_redacted": "cs_test_\u20260c29e1",
+            "client_id_redacted": "04ceda9f\u20261313d663",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026dc7050",
+            "client_id_redacted": "412c72a9\u20267be1a070",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20261194f7",
+            "client_id_redacted": "a032036f\u2026374dcce5",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026c24614",
+            "client_id_redacted": "6a614499\u2026f9e3d96f",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u202695d540",
+            "client_id_redacted": "20bc2fec\u20267a25cc07",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026d7c599",
+            "client_id_redacted": "33017032\u2026cb08a02a",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u202618cec1",
+            "client_id_redacted": "1af75ae2\u20266436c4c3",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026edfe16",
+            "client_id_redacted": "35401744\u20264e4c1a14",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u202642c7fd",
+            "client_id_redacted": "9a7c8f82\u2026bba1d13e",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20267e68de",
+            "client_id_redacted": "6fd5ac4c\u2026da46e699",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026b4a808",
+            "client_id_redacted": "616258a5\u2026eb35e780",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20262a5149",
+            "client_id_redacted": "35401744\u20264e4c1a14",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_live_\u20265475bc",
+            "client_id_redacted": "2c972bea\u20266bb57281",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026ce6fcb",
+            "client_id_redacted": "921716dc\u2026e1b0e61b",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u202631bce1",
+            "client_id_redacted": "10b2ddba\u2026099bf6a8",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026ebd6ce",
+            "client_id_redacted": "412c72a9\u20267be1a070",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026f0b6f2",
+            "client_id_redacted": "38907123\u2026e8789dfc",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u202664833e",
+            "client_id_redacted": "eaa14a69\u2026a253bce9",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026ca66e0",
+            "client_id_redacted": "80f83edd\u2026a23e4098",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20264e8da5",
+            "client_id_redacted": "959eed26\u20261732646f",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026ea0bf8",
+            "client_id_redacted": "13682ea0\u202617ea652b",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u202613970a",
+            "client_id_redacted": "86fbd659\u202600d2a3c7",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20263b60d5",
+            "client_id_redacted": "24e15552\u2026d1343afc",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20263d5221",
+            "client_id_redacted": "43805332\u202662f29a38",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20260ddd9a",
+            "client_id_redacted": "5db7bba1\u2026b2125044",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20263e8afa",
+            "client_id_redacted": "422e2785\u2026a0aa5fa3",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20268b1586",
+            "client_id_redacted": "2c972bea\u20266bb57281",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026f02461",
+            "client_id_redacted": "ec0b091b\u2026a9e14342",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20267f275e",
+            "client_id_redacted": "ce8d3b56\u20260e68ad9d",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20263d19e1",
+            "client_id_redacted": "fc635d44\u20261be05fc2",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20264ceaf5",
+            "client_id_redacted": "9a7c8f82\u2026bba1d13e",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20264955b0",
+            "client_id_redacted": "27d048c3\u2026ce0a8f92",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026d1451f",
+            "client_id_redacted": "26fbbc0b\u2026359aed0c",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026fbe6f4",
+            "client_id_redacted": "f68d4f4b\u202634a5aab8",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u20269a6b50",
+            "client_id_redacted": "94fd6021\u20262ed9777d",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u202667f99b",
+            "client_id_redacted": "6bcc43c0\u20265b311a79",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u202600809b",
+            "client_id_redacted": "6bcc43c0\u20265b311a79",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026bf9d15",
+            "client_id_redacted": "6aa7906f\u2026e302539e",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_test_\u2026487d0c",
+            "client_id_redacted": "e1eeb81d\u202669f207fa",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          },
+          {
+            "session_id_redacted": "cs_live_\u2026dc33e4",
+            "client_id_redacted": "1e15cd2f\u2026bdb62a7e",
+            "status": "pending",
+            "stripe_mode": null,
+            "classification": "requires_regeneration"
+          }
+        ]
+      },
+      "total_classified": 40
     }
-  }
+  },
+  "no_automatic_deletion": true
 }

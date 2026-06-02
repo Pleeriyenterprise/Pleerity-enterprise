@@ -1,0 +1,26 @@
+{
+  "marker": "PHASE-4-BILLING-RECOVERY-DASHBOARD-RUNTIME-500-01",
+  "generated_at": "2026-06-02T08:00:00+00:00",
+  "endpoint": "GET /api/admin/billing/recovery/dashboard",
+  "symptom": {
+    "authenticated_status": 500,
+    "metrics_endpoint_status": 200,
+    "unauthenticated_dashboard_status": 401
+  },
+  "root_cause": {
+    "failing_function": "services.billing_recovery_service._enrich_case_row",
+    "failing_symbol": "CONTAINMENT_MSG",
+    "error_type": "NameError",
+    "why_dashboard_only": "build_recovery_dashboard invokes _enrich_case_row for each candidate client, while metrics endpoint does not call this path.",
+    "failing_payload_assumption": "Assumed a containment message alias existed, but only CUSTOMER_BILLING_REFRESH_MESSAGE is defined/imported."
+  },
+  "data_trigger": {
+    "trigger_condition": "Any dashboard row requiring _enrich_case_row execution",
+    "empty_data_behavior": "No crash when there are no candidate rows",
+    "mode_unverified_behavior": "Crashes on first MODE_UNVERIFIED/enriched row before response serialization"
+  },
+  "fix_summary": {
+    "targeted_change": "Replace undefined CONTAINMENT_MSG with CUSTOMER_BILLING_REFRESH_MESSAGE in _enrich_case_row.",
+    "scope": "No new billing architecture or feature expansion."
+  }
+}

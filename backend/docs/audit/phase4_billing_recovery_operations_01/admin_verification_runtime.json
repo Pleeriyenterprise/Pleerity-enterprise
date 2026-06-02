@@ -1,5 +1,8 @@
 {
-  "generated_at": "2026-06-02T06:47:02.594957+00:00",
+  "generated_at": "2026-06-02T07:38:33.202674+00:00",
   "route": "POST /admin/billing/recovery/clients/{id}/admin-set-mode",
-  "requires_step_up": true
+  "requires_reason": true,
+  "requires_confirmation": true,
+  "requires_step_up": true,
+  "recovery_state_target": "ADMIN_VERIFIED"
 }

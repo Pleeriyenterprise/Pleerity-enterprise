@@ -1,9 +1,10 @@
 {
   "marker": "PHASE-4-BILLING-RECOVERY-OPERATIONS-01",
-  "generated_at": "2026-06-02T06:47:02.605129+00:00",
+  "generated_at": "2026-06-02T07:38:33.202674+00:00",
   "classification": "CLIENT_REMEDIATION_REQUIRED",
   "gates": {
     "recovery_layer": true,
+    "deploy_continuity": true,
     "state_machine": true,
     "guided_flows": true,
     "support_ux": true,

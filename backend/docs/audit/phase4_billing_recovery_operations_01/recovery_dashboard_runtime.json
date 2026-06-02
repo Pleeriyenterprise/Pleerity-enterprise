@@ -1,17 +1,35 @@
 {
-  "generated_at": "2026-06-02T06:47:02.572846+00:00",
+  "generated_at": "2026-06-02T07:38:33.198911+00:00",
   "code_checks": {
     "recovery_dashboard_route": true,
+    "recovery_metrics_route": true,
+    "recovery_orphaned_route": true,
+    "recovery_regenerate_route": true,
+    "recovery_admin_set_mode_route": true,
+    "recovery_portal_relink_route": true,
+    "recovery_closeout_route": true,
+    "recovery_bulk_resend_route": true,
     "recovery_state_machine": true,
     "recovery_service": true,
     "frontend_recovery_tab": true,
-    "tests_file": true
-  },
-  "staging": {
-    "status": 404,
-    "body": {
-      "detail": "Not Found"
+    "frontend_recovery_panel": true,
+    "tests_file": true,
+    "policy_registry_recovery_entries": true,
+    "route_collision_scan": {
+      "recovery_dashboard_defs": 1,
+      "recovery_metrics_defs": 1,
+      "recovery_orphaned_defs": 1
     }
   },
-  "mongo": null
+  "staging": {
+    "status": 500,
+    "body": {
+      "detail": "Internal server error"
+    }
+  },
+  "mongo": null,
+  "ui_capture": {
+    "status": "not_captured_in_closeout_script",
+    "preferred_route": "/admin/billing?tab=recovery"
+  }
 }

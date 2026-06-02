@@ -1,6 +1,6 @@
 # PHASE-4-BILLING-RECOVERY-OPERATIONS-01 — REPORT
 
-Generated: 2026-06-02T06:47:02.607147+00:00
+Generated: 2026-06-02T07:38:33.202674+00:00
 
 ## Summary
 
@@ -19,7 +19,7 @@ Operational billing recovery layer inside Admin Billing (`?tab=recovery`).
 | Guided remediation routes | True |
 | Frontend recovery tab | True |
 | Regression tests | exit 0 |
-| Staging API dashboard | 404 |
+| Staging API dashboard | 500 |
 
 ## Not VERIFIED_OPERATIONALLY until
 

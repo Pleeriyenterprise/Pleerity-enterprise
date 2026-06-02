@@ -1,10 +1,22 @@
 {
-  "generated_at": "2026-06-02T06:47:02.603112+00:00",
+  "generated_at": "2026-06-02T07:38:33.202674+00:00",
   "staging_metrics": {
-    "status": 404,
+    "status": 200,
     "body": {
-      "detail": "Not Found"
+      "generated_at": "2026-06-02T07:38:22.799977+00:00",
+      "active_recovery_count": 1,
+      "resolved_count": 0,
+      "total_cases": 1,
+      "recovery_completion_rate": 0.0,
+      "unresolved_backlog": 1,
+      "events": {
+        "recovery_started": 1
+      }
     }
   },
-  "mongo_metrics": null
+  "mongo_metrics": null,
+  "collections": [
+    "billing_recovery_audit",
+    "billing_recovery_metrics"
+  ]
 }

@@ -18,6 +18,7 @@ from services.billing_recovery_state_machine import (
 )
 from services.billing_recovery_service import (
     BULK_MAX_BATCH,
+    build_recovery_dashboard,
     bulk_resend_continuation,
 )
 
@@ -223,3 +224,158 @@ async def test_continuation_email_rate_limit_blocks_at_three():
     assert result["sent"] is False
     assert result["reason"] == "rate_limited"
     send_mock.assert_not_called()
+
+
+class _AsyncCursor:
+    def __init__(self, rows):
+        self._rows = rows
+        self._limit = None
+
+    def limit(self, n):
+        self._limit = n
+        return self
+
+    def sort(self, *_args, **_kwargs):
+        return self
+
+    def __aiter__(self):
+        rows = self._rows[: self._limit] if self._limit is not None else self._rows
+
+        async def _gen():
+            for r in rows:
+                yield r
+
+        return _gen()
+
+
+def _wire_recovery_collections(mock_db, *, remediated_rows=None, active_count=0, metrics_doc=None):
+    case_col = MagicMock()
+    case_col.find.return_value = _AsyncCursor(remediated_rows or [])
+    case_col.count_documents = AsyncMock(return_value=active_count)
+    metrics_col = MagicMock()
+    metrics_col.find_one = AsyncMock(return_value=metrics_doc)
+    mapping = {
+        "billing_recovery_cases": case_col,
+        "billing_recovery_metrics": metrics_col,
+    }
+    mock_db.__getitem__.side_effect = lambda name: mapping[name]
+
+
+@pytest.mark.asyncio
+async def test_dashboard_empty_data_safe():
+    mock_db = MagicMock()
+    mock_db.client_billing.find.return_value = _AsyncCursor([])
+    _wire_recovery_collections(mock_db, remediated_rows=[], active_count=0, metrics_doc=None)
+
+    with patch("services.billing_recovery_service.database.get_db", return_value=mock_db):
+        with patch("services.stripe_mode_authority.get_stripe_mode", return_value="test"):
+            with patch(
+                "services.billing_recovery_service.classify_orphaned_checkout_sessions",
+                new=AsyncMock(return_value={"summary": {}, "categories": {"requires_regeneration": []}}),
+            ):
+                payload = await build_recovery_dashboard(limit=20)
+
+    assert payload["summary"]["mode_unverified_clients"] == 0
+    assert payload["summary"]["pending_regeneration"] == 0
+    assert payload["deployment_mode"] == "test"
+
+
+@pytest.mark.asyncio
+async def test_dashboard_mode_unverified_and_missing_optionals():
+    mock_db = MagicMock()
+    mock_db.client_billing.find.return_value = _AsyncCursor([{"client_id": "client_12345678"}])
+    _wire_recovery_collections(
+        mock_db,
+        remediated_rows=[],
+        active_count=1,
+        metrics_doc={"events": {"recovery_started": 2}},
+    )
+
+    with patch("services.billing_recovery_service.database.get_db", return_value=mock_db):
+        with patch("services.stripe_mode_authority.get_stripe_mode", return_value="live"):
+            with patch(
+                "services.billing_recovery_service._get_or_create_case",
+                new=AsyncMock(
+                    return_value={
+                        "client_id": "client_12345678",
+                        "recovery_state": "MODE_UNVERIFIED",
+                        "remediation_code": "MODE_UNVERIFIED",
+                        "operational_risk": "high",
+                        "recommended_action": "REGENERATE_CHECKOUT_REQUIRED",
+                        "escalation_state": "normal",
+                        "last_recovery_action": "case_opened",
+                    }
+                ),
+            ):
+                with patch(
+                    "services.billing_recovery_service._enrich_case_row",
+                    new=AsyncMock(
+                        return_value={
+                            "client_id": "client_12345678",
+                            "client_label": "client_12",
+                            "crn": None,
+                            "remediation_code": "MODE_UNVERIFIED",
+                            "operational_risk": "high",
+                            "billing_status": None,
+                            "entitlement_status": None,
+                            "recommended_action": "REGENERATE_CHECKOUT_REQUIRED",
+                            "recovery_state": "MODE_UNVERIFIED",
+                            "owner": None,
+                            "assigned_at": None,
+                            "escalation_state": "normal",
+                            "last_checkout": None,
+                            "last_webhook": None,
+                            "last_recovery_action": "case_opened",
+                            "recovery_age_days": 0,
+                            "customer_safe_message": "Your billing access needs to be refreshed.",
+                        }
+                    ),
+                ):
+                    with patch(
+                        "services.billing_recovery_service.classify_orphaned_checkout_sessions",
+                        new=AsyncMock(return_value={"summary": {"requires_regeneration": 0}, "categories": {"requires_regeneration": []}}),
+                    ):
+                        payload = await build_recovery_dashboard(limit=20)
+
+    assert payload["summary"]["mode_unverified_clients"] == 1
+    assert payload["summary"]["pending_regeneration"] == 1
+    assert payload["sections"]["drift_metrics_summary"][0]["metrics"]["recovery_started"] == 2
+
+
+@pytest.mark.asyncio
+async def test_dashboard_includes_orphaned_checkout_categories():
+    mock_db = MagicMock()
+    mock_db.client_billing.find.return_value = _AsyncCursor([])
+    _wire_recovery_collections(mock_db, remediated_rows=[], active_count=0, metrics_doc=None)
+
+    orphan_rows = [
+        {"session_id_redacted": "cs_xxx", "classification": "requires_regeneration"},
+        {"session_id_redacted": "cs_yyy", "classification": "requires_regeneration"},
+    ]
+    with patch("services.billing_recovery_service.database.get_db", return_value=mock_db):
+        with patch("services.stripe_mode_authority.get_stripe_mode", return_value="test"):
+            with patch(
+                "services.billing_recovery_service.classify_orphaned_checkout_sessions",
+                new=AsyncMock(return_value={"summary": {"requires_regeneration": 2}, "categories": {"requires_regeneration": orphan_rows}}),
+            ):
+                payload = await build_recovery_dashboard(limit=20)
+
+    assert len(payload["sections"]["orphaned_checkout_sessions"]) == 2
+    assert payload["sections"]["drift_metrics_summary"][0]["orphaned_checkout_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_dashboard_serialization_safety_generated_at_iso():
+    mock_db = MagicMock()
+    mock_db.client_billing.find.return_value = _AsyncCursor([])
+    _wire_recovery_collections(mock_db, remediated_rows=[], active_count=0, metrics_doc=None)
+    with patch("services.billing_recovery_service.database.get_db", return_value=mock_db):
+        with patch("services.stripe_mode_authority.get_stripe_mode", return_value="test"):
+            with patch(
+                "services.billing_recovery_service.classify_orphaned_checkout_sessions",
+                new=AsyncMock(return_value={"summary": {}, "categories": {"requires_regeneration": []}}),
+            ):
+                payload = await build_recovery_dashboard(limit=20)
+    # verify top-level runtime payload remains JSON-safe
+    assert "T" in payload["generated_at"]
+    assert payload["generated_at"].endswith("+00:00")

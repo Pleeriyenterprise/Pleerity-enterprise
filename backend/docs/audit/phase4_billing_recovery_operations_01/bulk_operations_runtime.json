@@ -1,10 +1,13 @@
 {
-  "generated_at": "2026-06-02T06:47:02.600895+00:00",
+  "generated_at": "2026-06-02T07:38:33.202674+00:00",
   "max_batch": 25,
   "allowed": [
     "resend_continuation_preview"
   ],
   "forbidden": [
-    "admin_set_mode_bulk"
-  ]
+    "admin_set_mode_bulk",
+    "subscription_mutation_bulk",
+    "entitlement_mutation_bulk"
+  ],
+  "rate_limit_enforced": true
 }

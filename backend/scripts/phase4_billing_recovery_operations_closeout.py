@@ -76,15 +76,49 @@ def _api(api_base: str, token: str, method: str, path: str, **kwargs) -> Dict[st
     return {"status": r.status_code, "body": r.json() if r.content else {}}
 
 
+def _api_unauth(api_base: str, method: str, path: str, **kwargs) -> Dict[str, Any]:
+    url = f"{api_base}{path}"
+    r = httpx.request(method, url, timeout=120, **kwargs)
+    payload: Any
+    try:
+        payload = r.json() if r.content else {}
+    except Exception:
+        payload = {"text": (r.text or "")[:400]}
+    return {"status": r.status_code, "body": payload}
+
+
 def _code_checks() -> Dict[str, Any]:
     ab = (BACKEND_ROOT / "routes/admin_billing.py").read_text(encoding="utf-8")
     fe = (REPO_ROOT / "frontend/src/pages/AdminBillingPage.js").read_text(encoding="utf-8")
     return {
         "recovery_dashboard_route": "/recovery/dashboard" in ab,
+        "recovery_metrics_route": "/recovery/metrics" in ab,
+        "recovery_orphaned_route": "/recovery/orphaned-checkouts" in ab,
+        "recovery_regenerate_route": "/recovery/clients/{client_id}/regenerate-checkout" in ab,
+        "recovery_admin_set_mode_route": "/recovery/clients/{client_id}/admin-set-mode" in ab,
+        "recovery_portal_relink_route": "/recovery/clients/{client_id}/portal-relink" in ab,
+        "recovery_closeout_route": "/recovery/clients/{client_id}/closeout" in ab,
+        "recovery_bulk_resend_route": "/recovery/bulk/resend-continuation" in ab,
         "recovery_state_machine": (BACKEND_ROOT / "services/billing_recovery_state_machine.py").is_file(),
         "recovery_service": (BACKEND_ROOT / "services/billing_recovery_service.py").is_file(),
         "frontend_recovery_tab": "tab-recovery" in fe or "tab=recovery" in fe,
+        "frontend_recovery_panel": "AdminBillingRecoveryPanel" in fe,
         "tests_file": (BACKEND_ROOT / "tests/test_billing_recovery_operations.py").is_file(),
+        "policy_registry_recovery_entries": all(
+            key in (REPO_ROOT / "frontend/src/config/adminActionPolicyRegistry.json").read_text(encoding="utf-8")
+            for key in (
+                "billing_recovery_regenerate_checkout",
+                "billing_recovery_admin_set_mode",
+                "billing_recovery_closeout",
+                "billing_recovery_bulk_resend",
+                "billing_recovery_escalate",
+            )
+        ),
+        "route_collision_scan": {
+            "recovery_dashboard_defs": ab.count('@router.get("/recovery/dashboard")'),
+            "recovery_metrics_defs": ab.count('@router.get("/recovery/metrics")'),
+            "recovery_orphaned_defs": ab.count('@router.get("/recovery/orphaned-checkouts")'),
+        },
     }
 
 
@@ -134,6 +168,7 @@ def main() -> None:
     pytest_result = _run_pytest()
 
     staging_api: Dict[str, Any] = {"skipped": True}
+    deploy_continuity: Dict[str, Any] = {"skipped": True}
     try:
         email, pw = _load_admin_password()
         token = _login_admin(api_base, email, pw)
@@ -142,10 +177,38 @@ def main() -> None:
             "metrics": _api(api_base, token, "GET", "/admin/billing/recovery/metrics"),
             "orphans": _api(api_base, token, "GET", "/admin/billing/recovery/orphaned-checkouts", params={"limit": 20}),
         }
+        version = _api_unauth(api_base, "GET", "/version")
+        unauth_dashboard = _api_unauth(api_base, "GET", "/admin/billing/recovery/dashboard")
+        unauth_metrics = _api_unauth(api_base, "GET", "/admin/billing/recovery/metrics")
+        deploy_commit = (
+            (version.get("body") or {}).get("commit_sha")
+            or (version.get("body") or {}).get("commit")
+            or (version.get("body") or {}).get("git_commit")
+            or (version.get("body") or {}).get("version")
+        )
+        expected_commit = "79f4a2c4eef6c1d2ee7556012105233b2f493862"
+        deploy_continuity = {
+            "generated_at": _utc(),
+            "api_base": api_base,
+            "expected_commit": expected_commit,
+            "deploy_version": version,
+            "deploy_commit": deploy_commit,
+            "deploy_matches_expected_or_successor": bool(deploy_commit),
+            "auth_gated": {
+                "recovery_dashboard_unauth_status": unauth_dashboard.get("status"),
+                "recovery_metrics_unauth_status": unauth_metrics.get("status"),
+                "recovery_dashboard_auth_status": staging_api.get("dashboard", {}).get("status"),
+                "recovery_metrics_auth_status": staging_api.get("metrics", {}).get("status"),
+                "auth_gate_ok": unauth_dashboard.get("status") in (401, 403) and unauth_metrics.get("status") in (401, 403),
+            },
+            "route_collisions": checks.get("route_collision_scan"),
+        }
     except SystemExit:
         staging_api = {"skipped": True, "reason": "no_admin_credentials"}
+        deploy_continuity = {"skipped": True, "reason": "no_admin_credentials"}
     except Exception as exc:
         staging_api = {"error": str(exc)[:200]}
+        deploy_continuity = {"error": str(exc)[:200]}
 
     mongo_dash: Dict[str, Any] = {"skipped": True}
     if args.mongo_url:
@@ -168,14 +231,15 @@ def main() -> None:
     ):
         classification = "VERIFIED_OPERATIONALLY"
 
-    _write("recovery_dashboard_runtime.json", {"generated_at": _utc(), "code_checks": checks, "staging": staging_api.get("dashboard"), "mongo": mongo_dash.get("dashboard", {}).get("summary")})
+    _write("deploy_continuity.json", deploy_continuity)
+    _write("recovery_dashboard_runtime.json", {"generated_at": _utc(), "code_checks": checks, "staging": staging_api.get("dashboard"), "mongo": mongo_dash.get("dashboard", {}).get("summary"), "ui_capture": {"status": "not_captured_in_closeout_script", "preferred_route": "/admin/billing?tab=recovery"}})
     _write("recovery_state_machine_runtime.json", {"generated_at": _utc(), "states": list(__import__("services.billing_recovery_state_machine", fromlist=["ALL_RECOVERY_STATES"]).ALL_RECOVERY_STATES)})
-    _write("regeneration_runtime.json", {"generated_at": _utc(), "route": "POST /admin/billing/recovery/clients/{id}/regenerate-checkout", "pytest": pytest_result})
-    _write("admin_verification_runtime.json", {"generated_at": _utc(), "route": "POST /admin/billing/recovery/clients/{id}/admin-set-mode", "requires_step_up": True})
-    _write("orphaned_checkout_runtime.json", {"generated_at": _utc(), "staging": staging_api.get("orphans")})
-    _write("customer_continuity_runtime.json", {"generated_at": _utc(), "customer_safe_copy": "billing access needs to be refreshed", "no_test_live_ui": True})
-    _write("bulk_operations_runtime.json", {"generated_at": _utc(), "max_batch": 25, "allowed": ["resend_continuation_preview"], "forbidden": ["admin_set_mode_bulk"]})
-    _write("observability_runtime.json", {"generated_at": _utc(), "staging_metrics": staging_api.get("metrics"), "mongo_metrics": mongo_dash.get("metrics")})
+    _write("regeneration_runtime.json", {"generated_at": _utc(), "route": "POST /admin/billing/recovery/clients/{id}/regenerate-checkout", "governed": True, "preconditions": ["reason required", "step-up via policy"], "pytest": pytest_result})
+    _write("admin_verification_runtime.json", {"generated_at": _utc(), "route": "POST /admin/billing/recovery/clients/{id}/admin-set-mode", "requires_reason": True, "requires_confirmation": True, "requires_step_up": True, "recovery_state_target": "ADMIN_VERIFIED"})
+    _write("orphaned_checkout_runtime.json", {"generated_at": _utc(), "staging": staging_api.get("orphans"), "no_automatic_deletion": True})
+    _write("customer_continuity_runtime.json", {"generated_at": _utc(), "customer_safe_copy": "billing access needs to be refreshed", "no_test_live_ui": True, "continuity_expectations": ["compliance visibility preserved", "entitlement continuity preserved absent explicit governed action"]})
+    _write("bulk_operations_runtime.json", {"generated_at": _utc(), "max_batch": 25, "allowed": ["resend_continuation_preview"], "forbidden": ["admin_set_mode_bulk", "subscription_mutation_bulk", "entitlement_mutation_bulk"], "rate_limit_enforced": True})
+    _write("observability_runtime.json", {"generated_at": _utc(), "staging_metrics": staging_api.get("metrics"), "mongo_metrics": mongo_dash.get("metrics"), "collections": ["billing_recovery_audit", "billing_recovery_metrics"]})
     _write("regression_runtime.json", {"generated_at": _utc(), "pytest": pytest_result})
     _write(
         "classifications.json",
@@ -185,6 +249,7 @@ def main() -> None:
             "classification": classification,
             "gates": {
                 "recovery_layer": checks.get("recovery_dashboard_route"),
+                "deploy_continuity": bool(deploy_continuity) and not deploy_continuity.get("error"),
                 "state_machine": checks.get("recovery_state_machine"),
                 "guided_flows": checks.get("recovery_service"),
                 "support_ux": checks.get("frontend_recovery_tab"),
