@@ -34,8 +34,23 @@ def _write(name: str, data: Dict[str, Any]) -> None:
 
 
 def _load_admin_creds() -> tuple[str, str]:
-    email = (os.getenv("STAGING_ADMIN_EMAIL") or os.getenv("ADMIN_EMAIL") or "").strip()
-    pw = (os.getenv("STAGING_ADMIN_PASSWORD") or os.getenv("ADMIN_PASSWORD") or "").strip()
+    secrets_only = os.getenv("STAGING_ADMIN_SECRETS_ONLY", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    email = (os.getenv("STAGING_ADMIN_EMAIL") or "").strip()
+    pw = (os.getenv("STAGING_ADMIN_PASSWORD") or "").strip()
+    if secrets_only:
+        if not email or not pw:
+            raise SystemExit(
+                "STAGING_ADMIN_EMAIL and STAGING_ADMIN_PASSWORD must be set (secrets-only mode)."
+            )
+        return email, pw
+    if not pw:
+        pw = (os.getenv("ADMIN_PASSWORD") or "").strip()
+    if not email:
+        email = (os.getenv("ADMIN_EMAIL") or "").strip()
     if not pw:
         for rel in (
             "docs/audit/ops_verify_01_6fd5ac4c_d35a58ae/.ops_verify_admin_pw.txt",

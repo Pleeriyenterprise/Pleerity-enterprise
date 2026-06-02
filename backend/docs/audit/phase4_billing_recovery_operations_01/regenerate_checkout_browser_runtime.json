@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-06-02T10:41:52.213201+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "executed": true,
+  "before_case_status": 200,
+  "regen_status": 500,
+  "after_case_status": 200,
+  "checkout_generated": false,
+  "state_after": "RECOVERY_REQUIRED",
+  "customer_email_path": null
+}

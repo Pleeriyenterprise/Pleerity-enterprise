@@ -1,14 +1,17 @@
 {
-  "marker": "PHASE-4-BILLING-RECOVERY-OPERATIONS-01",
-  "generated_at": "2026-06-02T08:54:35.908244+00:00",
+  "marker": "PHASE-4-BILLING-RECOVERY-GUIDED-FLOW-CLOSEOUT-01",
+  "generated_at": "2026-06-02T10:42:31.241009+00:00",
   "classification": "RECOVERY_CONVERGENCE_DRIFT",
   "gates": {
-    "recovery_layer": true,
-    "deploy_continuity": true,
-    "state_machine": true,
-    "guided_flows": true,
-    "support_ux": true,
-    "regression_pass": true,
-    "staging_api": true
+    "browser_surface": true,
+    "regenerate_flow": true,
+    "admin_set_mode_flow": true,
+    "bulk_resend_flow": true,
+    "orphaned_flow": true,
+    "closeout_flow": true,
+    "customer_copy_safe": true,
+    "observability": true,
+    "regression": true,
+    "browser_screenshot_captured": false
   }
 }

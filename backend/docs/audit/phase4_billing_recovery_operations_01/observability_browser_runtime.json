@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-06-02T10:42:24.441035+00:00",
+  "metrics_status": 200,
+  "active_recovery_count": 55,
+  "unresolved_backlog": 55,
+  "events": {
+    "recovery_started": 55
+  },
+  "audit_metrics_expected": [
+    "billing_recovery_audit",
+    "billing_recovery_metrics"
+  ]
+}

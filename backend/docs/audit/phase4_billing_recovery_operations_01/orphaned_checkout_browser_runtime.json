@@ -1,0 +1,19 @@
+{
+  "generated_at": "2026-06-02T10:42:16.737436+00:00",
+  "status": 200,
+  "summary": {
+    "expired_abandoned_checkout": 0,
+    "linked_client_no_subscription": 0,
+    "duplicate_checkout": 0,
+    "recovery_checkout": 0,
+    "safe_to_ignore": 0,
+    "requires_regeneration": 50
+  },
+  "no_automatic_deletion": true,
+  "governed_actions_expected": [
+    "regenerate",
+    "resend",
+    "escalate",
+    "operational_archive_if_available"
+  ]
+}

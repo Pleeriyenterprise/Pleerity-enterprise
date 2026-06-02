@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-06-02T10:41:52.184374+00:00",
+  "route": "/admin/billing?tab=recovery",
+  "dashboard_status": 200,
+  "metrics_status": 200,
+  "orphans_status": 200,
+  "sections_present": {
+    "mode_unverified_clients": true,
+    "orphaned_checkout_sessions": true,
+    "pending_regeneration": true,
+    "recently_remediated": true,
+    "drift_metrics_summary": true
+  },
+  "mode_unverified_count": 32,
+  "no_duplicate_dashboard_detected": true,
+  "screenshot": {
+    "file": "recovery_dashboard_browser.png",
+    "captured": false,
+    "note": "No browser automation executed in this script; API-backed surface proof captured."
+  }
+}
