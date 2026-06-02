@@ -1,0 +1,17 @@
+{
+  "audit_id": "PHASE-4-BILLING-RECOVERY-REGENERATE-CHECKOUT-POST-FIX-01",
+  "verified_at": "2026-06-02T16:10:00+00:00",
+  "deployed_commit_sha": "c71ef8a81fd3373414ba263da6e21f2db0469239",
+  "endpoint": "POST /api/admin/billing/recovery/clients/{client_id}/regenerate-checkout",
+  "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+  "http_status": 200,
+  "regeneration_path": "deployment_checkout",
+  "checkout_generated": true,
+  "prior_failure": {
+    "commit_sha": "5e789bceacd9caf33df6322f8992167dda50d004",
+    "http_status": 500,
+    "detail": "Your billing record needs to be refreshed before plan changes can continue."
+  },
+  "fix_commit": "c71ef8a81fd3373414ba263da6e21f2db0469239",
+  "fix_summary": "MODE_UNVERIFIED regenerate uses deployment checkout; governed Stripe drift maps to 4xx instead of generic 500."
+}

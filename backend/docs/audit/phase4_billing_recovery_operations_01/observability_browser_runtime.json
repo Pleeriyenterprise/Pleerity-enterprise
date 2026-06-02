@@ -1,10 +1,15 @@
 {
-  "generated_at": "2026-06-02T10:42:24.441035+00:00",
+  "generated_at": "2026-06-02T16:05:36.731334+00:00",
   "metrics_status": 200,
-  "active_recovery_count": 55,
-  "unresolved_backlog": 55,
+  "active_recovery_count": 54,
+  "unresolved_backlog": 54,
   "events": {
-    "recovery_started": 55
+    "recovery_started": 55,
+    "recovery_transition": 6,
+    "admin_verified": 1,
+    "bulk_resend_continuation": 1,
+    "recovery_completed": 1,
+    "regeneration_sent": 1
   },
   "audit_metrics_expected": [
     "billing_recovery_audit",
