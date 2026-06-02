@@ -1,0 +1,14 @@
+{
+  "programme": "REVIEW-ASSURANCE-POST-DEPLOY-CLEANUP-01",
+  "classification": "PARTIAL",
+  "verified_at": "2026-06-02T21:37:52.068076+00:00",
+  "gates": {
+    "deploy": false,
+    "legacy": true,
+    "queues": true,
+    "regression": true,
+    "browser": true
+  },
+  "prior_programme": "REVIEW-ASSURANCE-SIMPLIFICATION-01",
+  "prior_commit": "acc8cbd3"
+}

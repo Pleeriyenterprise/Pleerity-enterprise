@@ -399,9 +399,9 @@ def cognition_next_step_for_requirement(requirement: Dict[str, Any]) -> Tuple[st
         )
     if stage == "org_verification_pending":
         return (
-            "Organisation review pending",
-            subline or "Your organisation admin can verify this record when required.",
-            ["Organisation admin verification"],
+            "Recorded on file",
+            subline or "Self-recorded declaration — timestamped and auditable.",
+            [],
         )
     if stage == "escalation_review":
         return (

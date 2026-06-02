@@ -1,0 +1,30 @@
+{
+  "programme": "REVIEW-ASSURANCE-POST-DEPLOY-CLEANUP-01",
+  "verified_at": "2026-06-02T21:34:34.155042+00:00",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "expected_commit_prefix": "acc8cbd3",
+  "api_version": {
+    "commit_sha": "acc8cbd3ce66b05894e606c5a6bedb6270a03275",
+    "environment": "production"
+  },
+  "commit_sha": "acc8cbd3ce66b05894e606c5a6bedb6270a03275",
+  "commit_at_least_expected": true,
+  "main_js_url": "https://pleerityenterprise.co.uk/static/js/main.8a38fc79.js",
+  "bundle_positive_markers": {
+    "Recorded on file": true,
+    "requirement-modal-assurance-section": true,
+    "compliance-review-deprecated": true,
+    "Self-recorded declaration": true
+  },
+  "bundle_negative_markers": {
+    "orgComplianceReviewOperator": false,
+    "RequirementModalOperatorReviewSection": false,
+    "org-review-open-": false,
+    "organisation review in progress": true,
+    "Submission on file \u2014 organisation review": false,
+    "organisation review pending": false
+  },
+  "nav_compliance_review_in_portal_tabs": false,
+  "pass": false
+}

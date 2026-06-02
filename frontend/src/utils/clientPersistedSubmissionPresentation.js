@@ -57,7 +57,7 @@ export function resolveClientRequirementLifecycleForPresentation(row) {
   if (isQueueBackedReview(row)) {
     const owner = String(row?.review_owner || '');
     let label = 'Platform verification pending';
-    if (owner === 'org_admin') label = 'Organisation review pending';
+    if (owner === 'org_admin') label = 'Recorded on file';
     if (owner === 'platform_admin_escalation') label = 'Escalated for platform review';
     return {
       ...base,
@@ -99,7 +99,7 @@ export function submissionAwaitingReviewSubline(row) {
     return 'Document submitted — Pleerity verification in progress.';
   }
   if (owner === 'org_admin') {
-    return 'Your organisation admin can verify this record when required.';
+    return 'Self-recorded declaration — timestamped and auditable.';
   }
   return null;
 }
@@ -173,7 +173,7 @@ export function resolveExistingSubmissionBannerCopy(row) {
 
   if (queueBacked && owner) {
     if (owner === 'platform_admin') return 'Submission on file — platform verification in progress.';
-    if (owner === 'org_admin') return 'Submission on file — organisation review in progress.';
+    if (owner === 'org_admin') return 'Submission on file — recorded on file.';
     if (owner === 'platform_admin_escalation') return 'Submission on file — escalated for platform review.';
     return 'Submission on file — awaiting review.';
   }

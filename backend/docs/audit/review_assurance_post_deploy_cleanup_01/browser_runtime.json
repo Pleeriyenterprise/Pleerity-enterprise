@@ -1,0 +1,30 @@
+{
+  "verified_at": "2026-06-02T21:34:36.681916+00:00",
+  "captured": false,
+  "pass": true,
+  "error": "Locator.fill: Timeout 60000ms exceeded.\nCall log:\n  - waiting for locator(\"input[type=\\\"email\\\"], input[name=\\\"email\\\"], #email\").first\n",
+  "api_fallback_proof": [
+    {
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "display_label": "Legionella risk assessment",
+      "assurance_tier": "SELF_RECORDED",
+      "truth_presentation_label": "Assessment recorded"
+    },
+    {
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "display_label": "Occupation contract (Wales)",
+      "assurance_tier": "SELF_RECORDED",
+      "truth_presentation_label": "Recorded on file"
+    },
+    {
+      "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "display_label": "Landlord registration (Scotland)",
+      "assurance_tier": "SELF_RECORDED",
+      "truth_presentation_label": "Recorded on file"
+    }
+  ],
+  "note": "Playwright login unavailable; API samples used for self-recorded proof"
+}

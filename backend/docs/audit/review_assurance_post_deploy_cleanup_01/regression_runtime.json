@@ -1,0 +1,38 @@
+{
+  "verified_at": "2026-06-02T21:36:42.542025+00:00",
+  "checks": {
+    "today": {
+      "status": 200,
+      "ok": true
+    },
+    "command_center": {
+      "status": 200,
+      "ok": true
+    },
+    "escalation_queue": {
+      "status": 200,
+      "ok": true
+    },
+    "document_verification": {
+      "status": 200,
+      "ok": true
+    },
+    "requirements_count": 49,
+    "assurance_tier_in_requirements_list": {
+      "ok": true,
+      "sample_tiers": [
+        "SELF_RECORDED",
+        "VERIFIED_DOCUMENT"
+      ]
+    },
+    "requirement_detail_hydration": {
+      "status": 200,
+      "ok": true,
+      "has_assurance_tier": true
+    },
+    "deeplink_shape": "/properties/9786b4ea-3523-4665-9849-db93745d457d?resolve_requirement=9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+    "today_optional": true,
+    "pass": true
+  },
+  "pass": true
+}

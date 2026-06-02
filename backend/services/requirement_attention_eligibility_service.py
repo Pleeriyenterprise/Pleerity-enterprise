@@ -160,8 +160,10 @@ def derive_attention_reason(
         return "rejected"
     if truth_stage == "escalation_review" or str(row.get("review_owner") or "") == "platform_admin_escalation":
         return "escalation_review"
-    if truth_stage in ("platform_verification_pending", "org_verification_pending"):
+    if truth_stage == "platform_verification_pending":
         return truth_stage
+    if truth_stage == "org_verification_pending":
+        return "declaration_recorded"
     if _is_expired(row, now=ref):
         return "expired"
     from services.requirement_satisfaction_service import legacy_due_date_blocks_renewal_attention

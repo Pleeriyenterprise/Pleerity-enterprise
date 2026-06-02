@@ -1,0 +1,25 @@
+{
+  "verified_at": "2026-06-02T21:35:11.141479+00:00",
+  "org_queue": {
+    "status": 200,
+    "total": 0,
+    "deprecated": true,
+    "self_recorded_in_org_queue": 0
+  },
+  "escalation_queue": {
+    "status": 200,
+    "total": 4,
+    "sample_ids": [
+      "79bed7c7-0559-4519-97c2-f443507fe337",
+      "4b72c19f-dc54-44f8-b189-49ee583b3972",
+      "1ac862db-df7d-4778-8da8-ebfe1935b44d",
+      "cfb04b08-4265-4893-89e2-70369db7e5e3"
+    ]
+  },
+  "document_verification_queue": {
+    "status": 200,
+    "count": 0
+  },
+  "self_recorded_queue_backed": 0,
+  "pass": true
+}

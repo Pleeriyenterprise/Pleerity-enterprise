@@ -1,0 +1,91 @@
+{
+  "verified_at": "2026-06-02T21:34:38.979629+00:00",
+  "pass": true,
+  "org_queue": {
+    "status": 200,
+    "total": 0,
+    "deprecated": true,
+    "items": []
+  },
+  "requirements_scanned": 49,
+  "legacy_audit": {
+    "counts": {
+      "harmless_historical": 49,
+      "migratable": 0,
+      "operationally_dangerous": 0,
+      "orphaned": 0
+    },
+    "samples": {
+      "harmless_historical": [
+        {
+          "requirement_id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+          "requirement_type": "portable_appliance_test",
+          "raw_review_owner": null,
+          "raw_governance_family": "PLATFORM_VERIFIED",
+          "raw_truth_stage": "action_required"
+        },
+        {
+          "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+          "requirement_type": "gas_safety",
+          "raw_review_owner": null,
+          "raw_governance_family": "PLATFORM_VERIFIED",
+          "raw_truth_stage": "action_required"
+        },
+        {
+          "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+          "requirement_type": "eicr",
+          "raw_review_owner": null,
+          "raw_governance_family": "PLATFORM_VERIFIED",
+          "raw_truth_stage": "action_required"
+        },
+        {
+          "requirement_id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+          "requirement_type": "epc",
+          "raw_review_owner": null,
+          "raw_governance_family": "PLATFORM_VERIFIED",
+          "raw_truth_stage": "action_required"
+        },
+        {
+          "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+          "requirement_type": "legionella",
+          "raw_review_owner": null,
+          "raw_governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+          "raw_truth_stage": "action_required"
+        }
+      ],
+      "migratable": [],
+      "operationally_dangerous": [],
+      "orphaned": []
+    },
+    "forbidden_phrase_hits_in_enriched_copy": [],
+    "pass": true
+  },
+  "api_surface_counts": {
+    "ORG_ADMIN_REVIEWED_family": 0,
+    "review_owner_org_admin": 0,
+    "org_verification_stage": 0
+  },
+  "self_recorded_samples": [
+    {
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "display_label": "Legionella risk assessment",
+      "assurance_tier": "SELF_RECORDED",
+      "truth_presentation_label": "Assessment recorded"
+    },
+    {
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "display_label": "Occupation contract (Wales)",
+      "assurance_tier": "SELF_RECORDED",
+      "truth_presentation_label": "Recorded on file"
+    },
+    {
+      "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "display_label": "Landlord registration (Scotland)",
+      "assurance_tier": "SELF_RECORDED",
+      "truth_presentation_label": "Recorded on file"
+    }
+  ]
+}

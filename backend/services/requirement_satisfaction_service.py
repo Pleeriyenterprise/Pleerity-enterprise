@@ -211,7 +211,11 @@ def derive_requirement_resolution_status(row: Dict[str, Any]) -> str:
         return RESOLUTION_NOT_APPLICABLE
 
     truth_stage = str(r.get("truth_presentation_stage") or "").lower()
-    if truth_stage in ("platform_verification_pending", "org_verification_pending") or lifecycle == PENDING_REVIEW:
+    if truth_stage == "platform_verification_pending":
+        return RESOLUTION_AWAITING_REVIEW
+    if truth_stage == "org_verification_pending":
+        return RESOLUTION_RESOLVED if is_requirement_satisfied(r) else RESOLUTION_AWAITING_REVIEW
+    if lifecycle == PENDING_REVIEW:
         return RESOLUTION_AWAITING_REVIEW
     if truth_stage in ("followup_required", "operational_incomplete"):
         eligible, reason, _ = is_requirement_attention_eligible(r)

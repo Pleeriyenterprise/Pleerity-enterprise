@@ -63,7 +63,7 @@ export function resolveTruthPresentationSubline(row) {
 export function isQueueBackedReview(row) {
   if (row?.queue_backed_review === true) return true;
   const owner = String(row?.review_owner || '').trim();
-  return owner === 'platform_admin' || owner === 'platform_admin_escalation' || owner === 'org_admin';
+  return owner === 'platform_admin' || owner === 'platform_admin_escalation';
 }
 
 /**

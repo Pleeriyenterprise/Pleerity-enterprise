@@ -145,7 +145,7 @@ export function workflowAwareMissingEvidenceLabel(row) {
   if (requirementHasPersistedClientSubmission(row) && isSubmissionAwaitingReview(row)) {
     if (wf === 'GUIDED_DECLARATION') {
       if (isRightToRentMixedEvidencePendingReview(row)) return rightToRentPendingReviewEvidenceLine();
-      return 'Organisation review pending';
+      return 'Recorded on file';
     }
     if (wf === 'TENANT_DELIVERY') return 'Delivery record on file';
     if (wf === 'REGISTRATION_TRACKING') return 'Registration details recorded';

@@ -11,7 +11,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from services.cer_governance_presentation import GF_ORG  # deprecated alias of GF_SELF
 from services.compliance_evidence_record_service import VERIFICATION_PENDING, batch_list_evidence_records_for_requirements
 from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 from services.requirement_truth import enrich_requirements_for_client
