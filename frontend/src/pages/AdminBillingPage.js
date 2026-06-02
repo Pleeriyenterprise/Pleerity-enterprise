@@ -34,6 +34,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import AdminPendingPaymentsPage from './AdminPendingPaymentsPage';
+import AdminBillingRecoveryPanel from '../components/admin/AdminBillingRecoveryPanel';
 import AdminPaymentHistoryTable from '../components/admin/AdminPaymentHistoryTable';
 import AdminClientSupportSearch from '../components/admin/AdminClientSupportSearch';
 import {
@@ -606,7 +607,7 @@ const AdminBillingPage = () => {
             <button
               onClick={() => setSearchParams((p) => { const next = new URLSearchParams(p); next.delete('tab'); return next; })}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                tab !== 'pending-payments' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
+                tab !== 'pending-payments' && tab !== 'recovery' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
               }`}
               data-testid="tab-overview"
             >
@@ -622,6 +623,16 @@ const AdminBillingPage = () => {
               <Clock className="w-4 h-4" />
               Pending Payments
             </button>
+            <button
+              onClick={() => setSearchParams((p) => { const next = new URLSearchParams(p); next.set('tab', 'recovery'); return next; })}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+                tab === 'recovery' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
+              }`}
+              data-testid="tab-recovery"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Recovery
+            </button>
           </div>
         </div>
       </header>
@@ -629,6 +640,8 @@ const AdminBillingPage = () => {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {tab === 'pending-payments' ? (
           <AdminPendingPaymentsPage embedded />
+        ) : tab === 'recovery' ? (
+          <AdminBillingRecoveryPanel embedded />
         ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Search & Results */}

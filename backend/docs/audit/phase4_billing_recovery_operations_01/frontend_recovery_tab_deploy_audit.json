@@ -1,0 +1,71 @@
+{
+  "audit_id": "PHASE-4-FRONTEND-RECOVERY-TAB-DEPLOY-AUDIT-01",
+  "generated_at": "2026-06-02T17:00:00+00:00",
+  "backend_deployed_commit": "c71ef8a81fd3373414ba263da6e21f2db0469239",
+  "frontend_audit_commit_at_probe": "23402941",
+  "classification": "code_not_committed",
+  "summary": "Phase 4 Recovery UI existed locally but was never pushed to origin/main. Deployed bundles (pleerityenterprise.co.uk and pleerity-enterprise.vercel.app) share the same main.*.js hash and omit recovery markers.",
+  "findings": {
+    "admin_billing_page": {
+      "origin_main_has_recovery_tab": false,
+      "local_worktree_has_recovery_tab": true,
+      "local_diff_lines": "import AdminBillingRecoveryPanel; Recovery tab button (data-testid=tab-recovery); conditional render tab=recovery"
+    },
+    "admin_billing_recovery_panel": {
+      "origin_main_tracked": false,
+      "local_worktree": "frontend/src/components/admin/AdminBillingRecoveryPanel.js (untracked new file)"
+    },
+    "admin_action_policy_registry": {
+      "billing_recovery_*_policies_on_origin_main": true,
+      "note": "Backend recovery API and policy registry were committed; frontend shell integration was not."
+    },
+    "feature_flags": {
+      "recovery_tab_gated_by_flag": false,
+      "evidence": "No feature flag checks in AdminBillingPage recovery tab branch"
+    },
+    "routing": {
+      "route": "/admin/billing?tab=recovery",
+      "mechanism": "URLSearchParams tab=recovery inside existing AdminBillingPage (no new route)"
+    },
+    "role_permission_gate": {
+      "blocks_tab_render": false,
+      "note": "Missing tab is build omission, not runtime permission hide"
+    },
+    "deployed_bundle_probe": {
+      "pleerityenterprise.co.uk": {
+        "main_js": "https://pleerityenterprise.co.uk/static/js/main.fcfba6f9.js",
+        "tab_recovery": false,
+        "billing_recovery_panel": false,
+        "tab_pending_payments": true
+      },
+      "pleerity-enterprise.vercel.app": {
+        "main_js": "https://pleerity-enterprise.vercel.app/static/js/main.fcfba6f9.js",
+        "tab_recovery": false,
+        "billing_recovery_panel": false,
+        "tab_pending_payments": true,
+        "same_hash_as_production": true
+      }
+    },
+    "vercel": {
+      "vercel_json_in_repo": false,
+      "inferred_deploy": "Auto-deploy from GitHub main (frontend root); stale bundle because recovery UI never merged"
+    }
+  },
+  "remediation": {
+    "action": "commit_and_push",
+    "files": [
+      "frontend/src/pages/AdminBillingPage.js",
+      "frontend/src/components/admin/AdminBillingRecoveryPanel.js"
+    ],
+    "expected_after_deploy": [
+      "tab-recovery in main.*.js",
+      "billing-recovery-panel visible at /admin/billing?tab=recovery"
+    ]
+  },
+  "ruled_out": [
+    "wrong_vercel_project_only",
+    "feature_flag_hidden",
+    "role_permission_gate",
+    "duplicate_billing_dashboard_route"
+  ]
+}
