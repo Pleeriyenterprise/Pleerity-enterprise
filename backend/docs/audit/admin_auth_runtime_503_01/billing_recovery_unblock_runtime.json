@@ -1,0 +1,9 @@
+{
+  "dashboard_with_invalid_token": {
+    "endpoint": "/api/admin/billing/recovery/dashboard",
+    "status_code": 401,
+    "result": "protected"
+  },
+  "unblock_expectation": "Once valid admin auth is supplied, billing recovery routes are no longer readiness-blocked by startup 503 gate after DB-ready stage.",
+  "status": "partially_verified"
+}

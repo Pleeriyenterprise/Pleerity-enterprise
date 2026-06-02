@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-06-02T10:40:23.507378+00:00",
+  "endpoint": "/api/admin/billing/recovery/dashboard",
+  "status_code": 200,
+  "authenticated": true,
+  "readiness_block_observed": false,
+  "result": "pass",
+  "has_dashboard_sections": true,
+  "detail": null,
+  "invalid_admin_login_control": {
+    "status_code": 401,
+    "detail": "Invalid credentials",
+    "result": "pass"
+  },
+  "invalid_bearer_control": {
+    "status_code": 401,
+    "detail": "Not authenticated",
+    "result": "pass"
+  }
+}

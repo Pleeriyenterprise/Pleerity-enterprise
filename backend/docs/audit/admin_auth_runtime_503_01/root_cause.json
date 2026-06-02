@@ -1,0 +1,16 @@
+{
+  "audit_id": "ADMIN-AUTH-RUNTIME-503-DIAGNOSTIC-01",
+  "commit_local": "864e8c0c",
+  "root_cause": {
+    "summary": "Startup readiness middleware blocked auth routes while db_ready remained false until full heavy startup completion.",
+    "failing_component": "backend/server.py::_startup_readiness_gate and lifespan heavy-startup sequencing",
+    "failure_mode": "auth routes returned 503 'Service is starting; retry shortly.' before auth logic executed",
+    "trigger": "deferred startup path where non-critical initialization work delayed readiness publication"
+  },
+  "constraints_respected": [
+    "no auth redesign",
+    "no auth bypass",
+    "critical DB failure still blocks readiness",
+    "protected routes unchanged"
+  ]
+}

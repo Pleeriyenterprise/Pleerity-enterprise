@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-06-02T10:25:51.694334+00:00",
+  "valid_customer_login": {
+    "result": "skipped",
+    "reason": "no approved customer credentials in environment"
+  },
+  "invalid_customer_login_control": {
+    "status_code": 401,
+    "result": "pass",
+    "detail": "Invalid credentials"
+  }
+}

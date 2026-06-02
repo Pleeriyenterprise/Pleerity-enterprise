@@ -1,0 +1,33 @@
+{
+  "invalid_admin_login": {
+    "endpoint": "/api/auth/admin/login",
+    "status_code": 401,
+    "body": {
+      "detail": "Invalid credentials"
+    },
+    "result": "pass"
+  },
+  "invalid_customer_login": {
+    "endpoint": "/api/auth/login",
+    "status_code": 401,
+    "body": {
+      "detail": "Invalid credentials"
+    },
+    "result": "pass"
+  },
+  "valid_admin_login": {
+    "result": "skipped",
+    "reason": "No approved valid admin credentials available from environment/secure source in this run context."
+  },
+  "protected_route_guard": {
+    "endpoint": "/api/admin/billing/recovery/dashboard",
+    "auth": "Bearer invalid",
+    "status_code": 401,
+    "result": "pass"
+  },
+  "customer_valid_login": {
+    "result": "skipped",
+    "reason": "No approved customer credentials available from environment/secure source in this run context."
+  },
+  "regression_note": "Invalid admin/customer probes return 401 (not 503), indicating readiness gate no longer blocks auth once DB-ready."
+}

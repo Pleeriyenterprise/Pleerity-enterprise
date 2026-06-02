@@ -205,127 +205,138 @@ async def lifespan(app: FastAPI):
     )
     _sched_flag = [False]
 
+    def _set_startup_stage(stage: str, error: str = "") -> None:
+        app.state.startup_stage = stage
+        app.state.startup_last_error = (error or "")[:256]
+
     async def _heavy_startup():
+        _set_startup_stage("db_connecting")
         await database.connect()
+        # Core readiness: auth/runtime routes may proceed once DB connectivity is verified.
+        app.state.db_ready = True
+        _set_startup_stage("db_ready")
 
-        # Document vault + intake storage: log effective paths (must match Render disk + env)
-        try:
-            from routes.documents import DOCUMENT_STORAGE_PATH as _doc_vault
-            from utils.storage_paths import (
-                build_storage_health_report,
-                is_production_env,
-                is_unix_tmp_ephemeral_path,
-            )
+        if True:
+            _set_startup_stage("post_db_initialization")
 
-            _doc_vault.mkdir(parents=True, exist_ok=True)
-            _resolved = _doc_vault.resolve()
-            _report = build_storage_health_report()
-            logger.info(
-                "Storage layout: DATA_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
-                _report["DATA_DIR"]["path"],
-                _report["DATA_DIR"]["exists"],
-                _report["DATA_DIR"]["writable"],
-                _report["DATA_DIR"]["ephemeral_unix_tmp"],
-                _report["DATA_DIR"]["deploy_runtime_fallback"],
-            )
-            logger.info(
-                "Storage layout: DOCUMENT_STORAGE_PATH path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
-                _report["DOCUMENT_STORAGE_PATH"]["path"],
-                _report["DOCUMENT_STORAGE_PATH"]["exists"],
-                _report["DOCUMENT_STORAGE_PATH"]["writable"],
-                _report["DOCUMENT_STORAGE_PATH"]["ephemeral_unix_tmp"],
-                _report["DOCUMENT_STORAGE_PATH"]["deploy_runtime_fallback"],
-            )
-            logger.info(
-                "Storage layout: INTAKE_UPLOAD_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
-                _report["INTAKE_UPLOAD_DIR"]["path"],
-                _report["INTAKE_UPLOAD_DIR"]["exists"],
-                _report["INTAKE_UPLOAD_DIR"]["writable"],
-                _report["INTAKE_UPLOAD_DIR"]["ephemeral_unix_tmp"],
-                _report["INTAKE_UPLOAD_DIR"]["deploy_runtime_fallback"],
-            )
-            logger.info(
-                "Storage layout: INTAKE_QUARANTINE_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
-                _report["INTAKE_QUARANTINE_DIR"]["path"],
-                _report["INTAKE_QUARANTINE_DIR"]["exists"],
-                _report["INTAKE_QUARANTINE_DIR"]["writable"],
-                _report["INTAKE_QUARANTINE_DIR"]["ephemeral_unix_tmp"],
-                _report["INTAKE_QUARANTINE_DIR"]["deploy_runtime_fallback"],
-            )
-            logger.info("Storage env overrides set: %s", _report.get("env"))
-            if is_production_env() and is_unix_tmp_ephemeral_path(_resolved):
-                msg = (
-                    "DOCUMENT_STORAGE_PATH resolves under /tmp in production; uploaded files will be lost on restart. "
-                    "Mount a persistent volume and set DATA_DIR and DOCUMENT_STORAGE_PATH under that mount "
-                    "(see render.yaml disk + env example)."
-                )
-                logger.critical(msg)
-                raise RuntimeError(msg)
-        except RuntimeError:
-            raise
-        except Exception as _vault_log_err:
-            logger.warning("Document vault startup check failed: %s", _vault_log_err)
-        
-        # Alerting: warn if admin incident emails are not configured (ops visibility)
-        _alert_emails = (os.environ.get("ADMIN_ALERT_EMAILS") or os.environ.get("OPS_ALERT_EMAIL") or "").strip()
-        if not _alert_emails:
-            logger.warning(
-                "ADMIN_ALERT_EMAILS and OPS_ALERT_EMAIL are not set. Admin incident alerts will not be sent. "
-                "Set one of these environment variables for production."
-            )
-        
-        # Stripe mode authority: STRIPE_MODE + mode-specific keys (no cross-mode fallback)
-        try:
-            from services.stripe_mode_authority import log_startup_stripe_health
-
-            log_startup_stripe_health()
-        except Exception as e:
-            logger.warning("Stripe config check failed: %s", e)
-        
-        try:
-            from utils.app_urls import get_app_base_url, get_api_base_url
-        
-            logger.info("APP_BASE_URL (resolved): %s", get_app_base_url(for_email_links=False))
-            logger.info("API_BASE_URL (resolved): %s", get_api_base_url())
-        except Exception as e:
-            logger.warning("URL resolution log failed: %s", e)
-        
-        # Idempotent OWNER bootstrap: when BOOTSTRAP_ENABLED=true OR when email+password env are set (Render)
-        bootstrap_enabled = os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true"
-        bootstrap_email = (os.environ.get("BOOTSTRAP_OWNER_EMAIL") or "").strip()
-        bootstrap_password = (os.environ.get("BOOTSTRAP_OWNER_PASSWORD") or "").strip()
-        if bootstrap_enabled or (bootstrap_email and bootstrap_password):
+            # Document vault + intake storage: log effective paths (must match Render disk + env)
             try:
-                from services.owner_bootstrap import run_bootstrap_owner
-                result = await run_bootstrap_owner()
-                logger.info("Bootstrap owner: %s - %s", result.get("action"), result.get("message"))
-            except Exception as e:
-                logger.warning("Bootstrap owner failed: %s", e)
+                from routes.documents import DOCUMENT_STORAGE_PATH as _doc_vault
+                from utils.storage_paths import (
+                    build_storage_health_report,
+                    is_production_env,
+                    is_unix_tmp_ephemeral_path,
+                )
+
+                _doc_vault.mkdir(parents=True, exist_ok=True)
+                _resolved = _doc_vault.resolve()
+                _report = build_storage_health_report()
+                logger.info(
+                    "Storage layout: DATA_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
+                    _report["DATA_DIR"]["path"],
+                    _report["DATA_DIR"]["exists"],
+                    _report["DATA_DIR"]["writable"],
+                    _report["DATA_DIR"]["ephemeral_unix_tmp"],
+                    _report["DATA_DIR"]["deploy_runtime_fallback"],
+                )
+                logger.info(
+                    "Storage layout: DOCUMENT_STORAGE_PATH path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
+                    _report["DOCUMENT_STORAGE_PATH"]["path"],
+                    _report["DOCUMENT_STORAGE_PATH"]["exists"],
+                    _report["DOCUMENT_STORAGE_PATH"]["writable"],
+                    _report["DOCUMENT_STORAGE_PATH"]["ephemeral_unix_tmp"],
+                    _report["DOCUMENT_STORAGE_PATH"]["deploy_runtime_fallback"],
+                )
+                logger.info(
+                    "Storage layout: INTAKE_UPLOAD_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
+                    _report["INTAKE_UPLOAD_DIR"]["path"],
+                    _report["INTAKE_UPLOAD_DIR"]["exists"],
+                    _report["INTAKE_UPLOAD_DIR"]["writable"],
+                    _report["INTAKE_UPLOAD_DIR"]["ephemeral_unix_tmp"],
+                    _report["INTAKE_UPLOAD_DIR"]["deploy_runtime_fallback"],
+                )
+                logger.info(
+                    "Storage layout: INTAKE_QUARANTINE_DIR path=%s exists=%s writable=%s ephemeral_tmp=%s runtime_fallback=%s",
+                    _report["INTAKE_QUARANTINE_DIR"]["path"],
+                    _report["INTAKE_QUARANTINE_DIR"]["exists"],
+                    _report["INTAKE_QUARANTINE_DIR"]["writable"],
+                    _report["INTAKE_QUARANTINE_DIR"]["ephemeral_unix_tmp"],
+                    _report["INTAKE_QUARANTINE_DIR"]["deploy_runtime_fallback"],
+                )
+                logger.info("Storage env overrides set: %s", _report.get("env"))
+                if is_production_env() and is_unix_tmp_ephemeral_path(_resolved):
+                    msg = (
+                        "DOCUMENT_STORAGE_PATH resolves under /tmp in production; uploaded files will be lost on restart. "
+                        "Mount a persistent volume and set DATA_DIR and DOCUMENT_STORAGE_PATH under that mount "
+                        "(see render.yaml disk + env example)."
+                    )
+                    logger.critical(msg)
+                    raise RuntimeError(msg)
+            except RuntimeError:
+                raise
+            except Exception as _vault_log_err:
+                logger.warning("Document vault startup check failed: %s", _vault_log_err)
         
-        # Create consent indexes
-        try:
-            from services.consent_service import ensure_consent_indexes
-            await ensure_consent_indexes()
-            logger.info("Consent indexes created")
-        except Exception as e:
-            logger.error(f"Failed to create consent indexes: {e}")
+            # Alerting: warn if admin incident emails are not configured (ops visibility)
+            _alert_emails = (os.environ.get("ADMIN_ALERT_EMAILS") or os.environ.get("OPS_ALERT_EMAIL") or "").strip()
+            if not _alert_emails:
+                logger.warning(
+                    "ADMIN_ALERT_EMAILS and OPS_ALERT_EMAIL are not set. Admin incident alerts will not be sent. "
+                    "Set one of these environment variables for production."
+                )
+        
+            # Stripe mode authority: STRIPE_MODE + mode-specific keys (no cross-mode fallback)
+            try:
+                from services.stripe_mode_authority import log_startup_stripe_health
 
-        # Command Centre / unified tasks (overrides + activity log)
-        try:
-            from services.client_task_state_service import ensure_client_task_indexes
+                log_startup_stripe_health()
+            except Exception as e:
+                logger.warning("Stripe config check failed: %s", e)
+        
+            try:
+                from utils.app_urls import get_app_base_url, get_api_base_url
+            
+                logger.info("APP_BASE_URL (resolved): %s", get_app_base_url(for_email_links=False))
+                logger.info("API_BASE_URL (resolved): %s", get_api_base_url())
+            except Exception as e:
+                logger.warning("URL resolution log failed: %s", e)
+        
+            # Idempotent OWNER bootstrap: when BOOTSTRAP_ENABLED=true OR when email+password env are set (Render)
+            bootstrap_enabled = os.environ.get("BOOTSTRAP_ENABLED", "").strip().lower() == "true"
+            bootstrap_email = (os.environ.get("BOOTSTRAP_OWNER_EMAIL") or "").strip()
+            bootstrap_password = (os.environ.get("BOOTSTRAP_OWNER_PASSWORD") or "").strip()
+            if bootstrap_enabled or (bootstrap_email and bootstrap_password):
+                try:
+                    from services.owner_bootstrap import run_bootstrap_owner
+                    result = await run_bootstrap_owner()
+                    logger.info("Bootstrap owner: %s - %s", result.get("action"), result.get("message"))
+                except Exception as e:
+                    logger.warning("Bootstrap owner failed: %s", e)
+        
+            # Create consent indexes
+            try:
+                from services.consent_service import ensure_consent_indexes
+                await ensure_consent_indexes()
+                logger.info("Consent indexes created")
+            except Exception as e:
+                logger.error(f"Failed to create consent indexes: {e}")
 
-            await ensure_client_task_indexes()
-            logger.info("Client task (Command Centre) indexes created")
-        except Exception as e:
-            logger.error("Failed to create client task indexes: %s", e)
+            # Command Centre / unified tasks (overrides + activity log)
+            try:
+                from services.client_task_state_service import ensure_client_task_indexes
 
-        try:
-            from services.compliance_evidence_record_service import ensure_compliance_evidence_indexes
+                await ensure_client_task_indexes()
+                logger.info("Client task (Command Centre) indexes created")
+            except Exception as e:
+                logger.error("Failed to create client task indexes: %s", e)
 
-            await ensure_compliance_evidence_indexes(database.get_db())
-            logger.info("Compliance evidence record indexes created")
-        except Exception as e:
-            logger.error("Failed to create compliance evidence indexes: %s", e)
+            try:
+                from services.compliance_evidence_record_service import ensure_compliance_evidence_indexes
+
+                await ensure_compliance_evidence_indexes(database.get_db())
+                logger.info("Compliance evidence record indexes created")
+            except Exception as e:
+                logger.error("Failed to create compliance evidence indexes: %s", e)
         
         # Create CMS indexes
         try:
@@ -1119,6 +1130,7 @@ async def lifespan(app: FastAPI):
             logger.info("Scheduler resumed; jobs will execute at scheduled times.")
         except Exception as e:
             logger.exception("Background job scheduler failed to start: %s. API will run without scheduled jobs.", e)
+        _set_startup_stage("ready")
     if _render_defer:
         logger.info(
             "Render hosting detected: deferring Mongo/indexes/seeds/scheduler until after PORT bind "
@@ -1128,21 +1140,50 @@ async def lifespan(app: FastAPI):
         )
         app.state.db_ready = False
         app.state.startup_failed = False
+        app.state.startup_degraded = False
+        app.state.startup_stage = "pending"
+        app.state.startup_last_error = ""
 
         async def _render_heavy_bg():
             try:
                 await _heavy_startup()
-                app.state.db_ready = True
                 logger.info("RENDER: heavy startup complete")
-            except Exception:
-                app.state.startup_failed = True
-                app.state.db_ready = False
-                logger.exception("RENDER: heavy startup failed")
+            except Exception as startup_exc:
+                if getattr(app.state, "db_ready", False):
+                    app.state.startup_degraded = True
+                    _set_startup_stage("degraded", str(startup_exc))
+                    logger.exception(
+                        "RENDER: post-DB startup degraded; API remains available: %s",
+                        startup_exc,
+                    )
+                else:
+                    app.state.startup_failed = True
+                    app.state.db_ready = False
+                    _set_startup_stage("failed", str(startup_exc))
+                    logger.exception("RENDER: heavy startup failed")
 
         app.state._render_startup_task = asyncio.create_task(_render_heavy_bg())
     else:
-        await _heavy_startup()
-        app.state.db_ready = True
+        app.state.startup_failed = False
+        app.state.startup_degraded = False
+        app.state.startup_stage = "pending"
+        app.state.startup_last_error = ""
+        app.state.db_ready = False
+        try:
+            await _heavy_startup()
+        except Exception as startup_exc:
+            if getattr(app.state, "db_ready", False):
+                app.state.startup_degraded = True
+                _set_startup_stage("degraded", str(startup_exc))
+                logger.exception(
+                    "Startup degraded after DB readiness; API remains available: %s",
+                    startup_exc,
+                )
+            else:
+                app.state.startup_failed = True
+                app.state.db_ready = False
+                _set_startup_stage("failed", str(startup_exc))
+                raise
 
     yield
 
@@ -1475,6 +1516,11 @@ async def health_check(request: Request):
             content={
                 "status": "starting",
                 "environment": os.getenv("ENVIRONMENT", "development"),
+                "readiness": {
+                    "stage": getattr(request.app.state, "startup_stage", "pending"),
+                    "degraded": bool(getattr(request.app.state, "startup_degraded", False)),
+                    "last_error": getattr(request.app.state, "startup_last_error", "") or None,
+                },
             },
         )
     if getattr(request.app.state, "startup_failed", False):
@@ -1483,11 +1529,31 @@ async def health_check(request: Request):
             content={
                 "status": "unhealthy",
                 "environment": os.getenv("ENVIRONMENT", "development"),
+                "readiness": {
+                    "stage": getattr(request.app.state, "startup_stage", "failed"),
+                    "degraded": bool(getattr(request.app.state, "startup_degraded", False)),
+                    "last_error": getattr(request.app.state, "startup_last_error", "") or None,
+                },
             },
         )
+    if getattr(request.app.state, "startup_degraded", False):
+        return {
+            "status": "degraded",
+            "environment": os.getenv("ENVIRONMENT", "development"),
+            "readiness": {
+                "stage": getattr(request.app.state, "startup_stage", "degraded"),
+                "degraded": True,
+                "last_error": getattr(request.app.state, "startup_last_error", "") or None,
+            },
+        }
     return {
         "status": "healthy",
         "environment": os.getenv("ENVIRONMENT", "development"),
+        "readiness": {
+            "stage": getattr(request.app.state, "startup_stage", "ready"),
+            "degraded": False,
+            "last_error": None,
+        },
     }
 
 

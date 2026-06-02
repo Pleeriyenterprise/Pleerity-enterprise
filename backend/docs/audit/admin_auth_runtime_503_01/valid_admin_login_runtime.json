@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-06-02T10:39:48.468945+00:00",
+  "endpoint": "/api/auth/admin/login",
+  "status_code": 200,
+  "token_issued": true,
+  "readiness_block_observed": false,
+  "degraded_auth_path": false,
+  "result": "pass",
+  "detail": null,
+  "health_status_code": 200,
+  "health_status": "healthy"
+}

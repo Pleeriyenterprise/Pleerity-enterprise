@@ -1,0 +1,22 @@
+{
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "probes_utc": "2026-06-02T09:49:00Z",
+  "version": {
+    "status_code": 200,
+    "body": {
+      "commit_sha": "864e8c0c21d6f8060f94e1d1e718f4ba6a571174",
+      "environment": "production"
+    }
+  },
+  "health": {
+    "status_code": 200,
+    "body": {
+      "status": "healthy",
+      "environment": "production"
+    }
+  },
+  "notes": [
+    "Staging currently reports healthy.",
+    "Environment credentials for positive-login probe were not provided in this workspace session."
+  ]
+}

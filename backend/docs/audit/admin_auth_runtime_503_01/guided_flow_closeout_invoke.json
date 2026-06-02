@@ -1,0 +1,7 @@
+{
+  "generated_at": "2026-06-02T10:42:31.308901+00:00",
+  "exit_code": 0,
+  "result": "pass",
+  "stdout_tail": "{\n  \"classification\": \"RECOVERY_CONVERGENCE_DRIFT\",\n  \"commit_sha\": \"864e8c0c21d6f8060f94e1d1e718f4ba6a571174\",\n  \"dashboard\": 200\n}\n",
+  "stderr_tail": ""
+}
