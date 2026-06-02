@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-06-02T16:55:39.919265+00:00",
+  "generated_at": "2026-06-02T17:06:22.731737+00:00",
   "status": 200,
   "summary": {
     "expired_abandoned_checkout": 0,
     "linked_client_no_subscription": 0,
-    "duplicate_checkout": 3,
+    "duplicate_checkout": 4,
     "recovery_checkout": 0,
     "safe_to_ignore": 0,
     "requires_regeneration": 50

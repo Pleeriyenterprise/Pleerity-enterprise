@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-06-02T16:55:29.170485+00:00",
-  "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+  "generated_at": "2026-06-02T17:06:10.736625+00:00",
+  "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
   "executed": true,
-  "status": 500,
-  "response_detail": "Internal server error",
-  "state_after": "CUSTOMER_PENDING"
+  "status": 200,
+  "response_detail": null,
+  "state_after": "ADMIN_VERIFIED"
 }

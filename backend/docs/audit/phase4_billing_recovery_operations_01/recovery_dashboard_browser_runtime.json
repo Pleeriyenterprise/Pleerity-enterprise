@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-02T16:55:15.183649+00:00",
+  "generated_at": "2026-06-02T17:05:56.522788+00:00",
   "route": "/admin/billing?tab=recovery",
   "dashboard_status": 200,
   "metrics_status": 200,
@@ -11,7 +11,7 @@
     "recently_remediated": true,
     "drift_metrics_summary": true
   },
-  "mode_unverified_count": 28,
+  "mode_unverified_count": 26,
   "no_duplicate_dashboard_detected": true,
   "screenshot": {
     "file": "recovery_dashboard_browser.png",

@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-06-02T16:55:48.858234+00:00",
+  "generated_at": "2026-06-02T17:06:31.024641+00:00",
   "metrics_status": 200,
-  "active_recovery_count": 52,
-  "unresolved_backlog": 52,
+  "active_recovery_count": 51,
+  "unresolved_backlog": 51,
   "events": {
     "recovery_started": 55,
-    "recovery_transition": 14,
+    "recovery_transition": 18,
     "admin_verified": 1,
-    "bulk_resend_continuation": 3,
-    "recovery_completed": 3,
-    "regeneration_sent": 3
+    "bulk_resend_continuation": 4,
+    "recovery_completed": 4,
+    "regeneration_sent": 4
   },
   "audit_metrics_expected": [
     "billing_recovery_audit",
