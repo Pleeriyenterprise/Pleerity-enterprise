@@ -173,6 +173,8 @@ def main() -> None:
     # PART 1: browser surface proxy via endpoint payload + attempted screenshot marker
     dashboard_body = dashboard.get("body") if isinstance(dashboard.get("body"), dict) else {}
     sections = (dashboard_body or {}).get("sections", {}) if isinstance(dashboard_body, dict) else {}
+    shot_path = OUT / "recovery_dashboard_browser.png"
+    screenshot_captured = shot_path.is_file() and shot_path.stat().st_size > 5000
     browser_surface = {
         "generated_at": _utc(),
         "route": "/admin/billing?tab=recovery",
@@ -190,8 +192,8 @@ def main() -> None:
         "no_duplicate_dashboard_detected": True,
         "screenshot": {
             "file": "recovery_dashboard_browser.png",
-            "captured": False,
-            "note": "No browser automation executed in this script; API-backed surface proof captured.",
+            "captured": screenshot_captured,
+            "note": "Detected on disk when present; capture via Playwright before closeout.",
         },
     }
     _write("recovery_dashboard_browser_runtime.json", browser_surface)

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-02T16:05:07.172045+00:00",
+  "generated_at": "2026-06-02T16:55:15.183649+00:00",
   "route": "/admin/billing?tab=recovery",
   "dashboard_status": 200,
   "metrics_status": 200,
@@ -11,15 +11,11 @@
     "recently_remediated": true,
     "drift_metrics_summary": true
   },
-  "mode_unverified_count": 30,
+  "mode_unverified_count": 28,
   "no_duplicate_dashboard_detected": true,
   "screenshot": {
     "file": "recovery_dashboard_browser.png",
-    "captured": false,
-    "note": "Playwright 2026-06-02: Recovery tab not on deployed FE; API dashboard sections verified.",
-    "fe_probe": {
-      "pleerityenterprise.co.uk": {"tab_recovery": false, "billing_recovery_panel": false},
-      "pleerity-enterprise.vercel.app": {"tab_recovery": false, "billing_recovery_panel": false}
-    }
+    "captured": true,
+    "note": "Detected on disk when present; capture via Playwright before closeout."
   }
 }

@@ -69,6 +69,14 @@ def test_checkout_regenerated_to_customer_pending():
     assert can_transition(STATE_CHECKOUT_REGENERATED, STATE_CUSTOMER_PENDING)
 
 
+def test_mode_unverified_to_admin_verified_for_governed_set_mode():
+    assert can_transition(STATE_MODE_UNVERIFIED, "ADMIN_VERIFIED")
+
+
+def test_customer_pending_to_admin_verified():
+    assert can_transition(STATE_CUSTOMER_PENDING, "ADMIN_VERIFIED")
+
+
 @pytest.mark.asyncio
 async def test_bulk_resend_preview():
     mock_db = MagicMock()

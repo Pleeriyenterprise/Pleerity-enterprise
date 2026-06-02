@@ -2498,33 +2498,41 @@ async def post_billing_recovery_admin_set_mode(
     if not body.verification_source.strip():
         raise HTTPException(status_code=400, detail="verification_source is required")
 
-    result = await backfill_client_billing_mode(
-        client_id,
-        dry_run=False,
-        admin_actor=actor,
-        admin_mode=mode,
-    )
-    await create_audit_log(
-        action=AuditAction.ADMIN_ACTION,
-        actor_role="ROLE_ADMIN",
-        actor_id=actor,
-        client_id=client_id,
-        metadata={
-            "action_type": "BILLING_RECOVERY_ADMIN_SET_MODE",
-            "stripe_mode": mode,
-            "reason": body.reason,
-            "verification_source": body.verification_source.strip(),
-            "backfill_action": result.get("action"),
-        },
-    )
-    return await admin_verified_recovery(
-        client_id,
-        stripe_mode=mode,
-        reason=body.reason,
-        verification_source=body.verification_source.strip(),
-        actor_id=actor,
-        backfill_result=result,
-    )
+    from services.billing_recovery_state_machine import BillingRecoveryTransitionError
+
+    try:
+        result = await backfill_client_billing_mode(
+            client_id,
+            dry_run=False,
+            admin_actor=actor,
+            admin_mode=mode,
+        )
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role="ROLE_ADMIN",
+            actor_id=actor,
+            client_id=client_id,
+            metadata={
+                "action_type": "BILLING_RECOVERY_ADMIN_SET_MODE",
+                "stripe_mode": mode,
+                "reason": body.reason,
+                "verification_source": body.verification_source.strip(),
+                "backfill_action": result.get("action"),
+            },
+        )
+        return await admin_verified_recovery(
+            client_id,
+            stripe_mode=mode,
+            reason=body.reason,
+            verification_source=body.verification_source.strip(),
+            actor_id=actor,
+            backfill_result=result,
+        )
+    except BillingRecoveryTransitionError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail="Recovery state does not allow admin verification for this client.",
+        ) from exc
 
 
 @router.post("/recovery/clients/{client_id}/portal-relink")

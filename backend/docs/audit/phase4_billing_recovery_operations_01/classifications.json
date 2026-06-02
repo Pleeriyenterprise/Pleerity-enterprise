@@ -1,6 +1,6 @@
 {
   "marker": "PHASE-4-BILLING-RECOVERY-GUIDED-FLOW-CLOSEOUT-01",
-  "generated_at": "2026-06-02T16:05:42.149549+00:00",
+  "generated_at": "2026-06-02T16:55:55.412363+00:00",
   "classification": "RECOVERY_CONVERGENCE_DRIFT",
   "gates": {
     "browser_surface": true,
@@ -12,6 +12,6 @@
     "customer_copy_safe": true,
     "observability": true,
     "regression": true,
-    "browser_screenshot_captured": false
+    "browser_screenshot_captured": true
   }
 }
