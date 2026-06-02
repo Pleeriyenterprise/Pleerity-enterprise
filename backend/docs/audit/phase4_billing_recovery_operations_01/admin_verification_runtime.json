@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-02T07:38:33.202674+00:00",
+  "generated_at": "2026-06-02T07:47:02.550453+00:00",
   "route": "POST /admin/billing/recovery/clients/{id}/admin-set-mode",
   "requires_reason": true,
   "requires_confirmation": true,
