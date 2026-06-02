@@ -1,12 +1,12 @@
 # REVIEW-ASSURANCE-POST-DEPLOY-CLEANUP-01
 
-**Classification:** `PARTIAL`  
-**Verified at:** 2026-06-02T21:37:52.069168+00:00
+**Classification:** `VERIFIED_OPERATIONALLY`  
+**Verified at:** 2026-06-02T21:52:44.435385+00:00
 
 ## Deploy verification
 
-- API commit: `acc8cbd3ce66`
-- Commit at/after `acc8cbd3`: `True`
+- API commit: `c6732f0fe7f4`
+- Commit at/after `c6732f0f`: `True`
 - FE bundle markers: {"Recorded on file": true, "requirement-modal-assurance-section": true, "compliance-review-deprecated": true, "Self-recorded declaration": true}
 
 ## Legacy org-review cleanup
@@ -21,8 +21,8 @@
 
 ## Browser
 
-- Captured: `False`
-- Screenshots: `[]`
+- Captured: `True`
+- Screenshots: `['01_self_recorded_requirement_modal.png', '02_org_queue_deprecated_page.png', '03_requirements_list.png']`
 
 ## Regression
 

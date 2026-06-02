@@ -1,16 +1,16 @@
 {
   "programme": "REVIEW-ASSURANCE-POST-DEPLOY-CLEANUP-01",
-  "verified_at": "2026-06-02T21:34:34.155042+00:00",
+  "verified_at": "2026-06-02T21:50:51.476865+00:00",
   "api_base": "https://pleerity-enterprise.onrender.com/api",
   "frontend_url": "https://pleerityenterprise.co.uk",
-  "expected_commit_prefix": "acc8cbd3",
+  "expected_commit_prefix": "c6732f0f",
   "api_version": {
-    "commit_sha": "acc8cbd3ce66b05894e606c5a6bedb6270a03275",
+    "commit_sha": "c6732f0fe7f49b1e647be7bbee2da48b8ff0ed7a",
     "environment": "production"
   },
-  "commit_sha": "acc8cbd3ce66b05894e606c5a6bedb6270a03275",
+  "commit_sha": "c6732f0fe7f49b1e647be7bbee2da48b8ff0ed7a",
   "commit_at_least_expected": true,
-  "main_js_url": "https://pleerityenterprise.co.uk/static/js/main.8a38fc79.js",
+  "main_js_url": "https://pleerityenterprise.co.uk/static/js/main.b2c3eab8.js",
   "bundle_positive_markers": {
     "Recorded on file": true,
     "requirement-modal-assurance-section": true,
@@ -21,10 +21,10 @@
     "orgComplianceReviewOperator": false,
     "RequirementModalOperatorReviewSection": false,
     "org-review-open-": false,
-    "organisation review in progress": true,
+    "organisation review in progress": false,
     "Submission on file \u2014 organisation review": false,
     "organisation review pending": false
   },
   "nav_compliance_review_in_portal_tabs": false,
-  "pass": false
+  "pass": true
 }

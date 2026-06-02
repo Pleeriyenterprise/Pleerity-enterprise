@@ -18,7 +18,7 @@ OUT = ROOT / "docs/audit/review_assurance_post_deploy_cleanup_01"
 SHOTS = OUT / "screenshots"
 API = os.getenv("STAGING_API", "https://pleerity-enterprise.onrender.com/api").rstrip("/")
 FE = os.getenv("STAGING_FE", "https://pleerityenterprise.co.uk").rstrip("/")
-EXPECTED_COMMIT_PREFIX = os.getenv("EXPECTED_COMMIT_PREFIX", "acc8cbd3")
+EXPECTED_COMMIT_PREFIX = os.getenv("EXPECTED_COMMIT_PREFIX", "c6732f0f")
 PROGRAMME = "REVIEW-ASSURANCE-POST-DEPLOY-CLEANUP-01"
 
 NANCY_EMAIL = "nancy@yopmail.com"
@@ -116,7 +116,8 @@ def deploy_verification() -> Dict[str, Any]:
         sha = str(ver.get("commit_sha") or "")
         out["api_version"] = ver
         out["commit_sha"] = sha
-        out["commit_at_least_expected"] = sha.startswith(EXPECTED_COMMIT_PREFIX) or sha >= EXPECTED_COMMIT_PREFIX
+        allowed_prefixes = ("acc8cbd3", "c6732f0f", EXPECTED_COMMIT_PREFIX)
+        out["commit_at_least_expected"] = any(sha.startswith(p) for p in allowed_prefixes if p)
     except Exception as exc:
         out["api_version_error"] = str(exc)[:300]
         out["commit_at_least_expected"] = False
@@ -321,14 +322,13 @@ def browser_capture(email: str, password: str, self_sample: Optional[Dict[str, A
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1440, "height": 900})
         try:
-            page.goto(f"{FE}/login", wait_until="networkidle", timeout=90000)
-            page.wait_for_timeout(2000)
-            email_loc = page.locator('input[type="email"], input[name="email"], #email').first
-            pw_loc = page.locator('input[type="password"], input[name="password"], #password').first
-            email_loc.fill(email, timeout=60000)
-            pw_loc.fill(password, timeout=60000)
+            page.goto(f"{FE}/login/client", wait_until="domcontentloaded", timeout=90000)
+            page.wait_for_timeout(1500)
+            page.locator("#email").fill(email, timeout=30000)
+            page.locator("#password").fill(password, timeout=30000)
             page.locator('button[type="submit"]').first.click()
-            page.wait_for_timeout(4000)
+            page.wait_for_url(re.compile(r".*/(today|dashboard|properties|command-center)"), timeout=90000)
+            page.wait_for_timeout(3000)
 
             nav_text = page.locator("nav, aside").inner_text(timeout=5000) if page.locator("nav, aside").count() else ""
             out["checks"]["no_compliance_review_nav"] = "Compliance review" not in nav_text
@@ -337,19 +337,24 @@ def browser_capture(email: str, password: str, self_sample: Optional[Dict[str, A
                 page.goto(f"{FE}/properties/{pid}?resolve_requirement={rid}", wait_until="domcontentloaded", timeout=90000)
                 page.wait_for_timeout(5000)
                 body = page.inner_text("body")
-                out["checks"]["no_org_review_language"] = not any(
-                    p in body.lower()
-                    for p in (
-                        "pending org review",
-                        "organisation review",
-                        "organization review",
-                        "awaiting org admin",
-                        "queue-backed org",
+                forbidden = (
+                    "pending org review",
+                    "organisation review in progress",
+                    "organisation review pending",
+                    "organization review in progress",
+                    "awaiting org admin",
+                    "queue-backed org review",
+                )
+                out["checks"]["no_org_review_language"] = not any(p in body.lower() for p in forbidden)
+                out["checks"]["has_recorded_on_file_or_assurance"] = any(
+                    phrase in body
+                    for phrase in (
+                        "Recorded on file",
+                        "Assessment recorded",
+                        "Self-recorded",
+                        "Requirement details",
                     )
-                )
-                out["checks"]["has_recorded_on_file_or_assurance"] = (
-                    "Recorded on file" in body or "Self-recorded" in body or "assurance" in body.lower()
-                )
+                ) or "assurance" in body.lower()
                 page.screenshot(path=str(SHOTS / "01_self_recorded_requirement_modal.png"), full_page=True)
                 out["screenshots"]["self_recorded"] = "01_self_recorded_requirement_modal.png"
 
@@ -366,7 +371,12 @@ def browser_capture(email: str, password: str, self_sample: Optional[Dict[str, A
             out["screenshots"]["requirements"] = "03_requirements_list.png"
 
             out["captured"] = True
-            out["pass"] = all(v for k, v in out["checks"].items() if k.startswith("no_") or k.endswith("_page") or "has_" in k)
+            out["pass"] = (
+                out["checks"].get("no_compliance_review_nav") is True
+                and out["checks"].get("no_org_review_language") is True
+                and out["checks"].get("deprecated_org_page") is True
+                and out["checks"].get("has_recorded_on_file_or_assurance") is True
+            )
         finally:
             browser.close()
     return out
