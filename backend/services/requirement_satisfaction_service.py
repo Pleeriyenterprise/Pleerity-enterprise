@@ -291,6 +291,17 @@ def reconcile_client_lifecycle_with_satisfaction(row: Dict[str, Any]) -> Dict[st
     return out
 
 
+def portal_renewal_countdown_eligible(row: Dict[str, Any]) -> bool:
+    """
+    Requirements portal may show days-overdue / days-left only when renewal/expiry
+    attention is authoritative — not from stale estimated calendar drift alone.
+    """
+    eligible, attention_reason, _ = is_requirement_attention_eligible(row)
+    if not eligible:
+        return False
+    return attention_reason in ("expired", "renewal_due")
+
+
 def attach_satisfaction_fields(row: Dict[str, Any]) -> Dict[str, Any]:
     """Attach convergence fields for all client surfaces."""
     r = dict(row or {})
@@ -308,6 +319,7 @@ def attach_satisfaction_fields(row: Dict[str, Any]) -> Dict[str, Any]:
         "requirement_attention_eligible": eligible,
         "requirement_attention_reason": attention_reason,
         "requirement_attention_suppression": suppression,
+        "portal_renewal_countdown_eligible": portal_renewal_countdown_eligible(r),
         "document_gap": gaps["document_gap"],
         "requirement_gap": gaps["requirement_gap"],
     }

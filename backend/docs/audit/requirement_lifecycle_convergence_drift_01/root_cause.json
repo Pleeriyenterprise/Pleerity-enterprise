@@ -1,0 +1,51 @@
+{
+  "programme": "REQUIREMENT-LIFECYCLE-CONVERGENCE-DRIFT-01",
+  "verified_at": "20260602T000000Z",
+  "findings": {
+    "A_assessment_recorded_with_overdue": {
+      "cause": "derive_attention_reason evaluated legacy _is_expired (status OVERDUE + due_date) before satisfied truth; derive_client_lifecycle_fields returned ACTION_REQUIRED from STATUS:OVERDUE before DECLARATION_RECORDED; RequirementsPage rendered daysUntil from due_date without attention gating.",
+      "contradicting_fields": [
+        "status=OVERDUE vs truth_presentation_stage=assessment_recorded",
+        "client_lifecycle_state=ACTION_REQUIRED vs requirement_satisfied",
+        "portal overdue chip vs requirement_attention_eligible"
+      ],
+      "fix": [
+        "requirement_attention_eligibility_service._is_expired respects legacy_due_date_blocks_renewal_attention",
+        "client_requirement_lifecycle defers stale calendar OVERDUE; satisfied paths before evidence_state MISSING",
+        "portal_renewal_countdown_eligible + RequirementsPage gate"
+      ]
+    },
+    "B_field_convergence": {
+      "requirement_satisfied": "False when attention eligible from stale expired",
+      "lifecycle_state": "ACTION_REQUIRED from early OVERDUE branch",
+      "verification_state": "assessment_recorded / evidence on file",
+      "attention_eligibility": "True from expired before fix",
+      "overdue_status": "Legacy computed OVERDUE from estimated renewal date",
+      "renewal_due": "Estimated date treated as authoritative expiry in _is_expired"
+    },
+    "C_escalation_queue_absence": {
+      "cause": "Escalated rows use review_owner=platform_admin_escalation and appear on GET /api/admin/compliance-evidence/escalation-queue, not org /operations/compliance-review or pending-verification document queue.",
+      "org_queue_filter": "matches_org_review_queue excludes platform_admin_escalation",
+      "not_a_missing_index_bug": "Wrong queue surface expectation"
+    },
+    "D_queue_filters": {
+      "escalated_rows": "escalation-queue only (admin)",
+      "org_admin_review": "GF_ORG + org_admin",
+      "platform_review": "GF_PLATFORM_VER document verification",
+      "declaration_only": "CER-backed; not in document pending-verification"
+    },
+    "E_overdue_ignores": {
+      "pending_verification": "Partially \u2014 escalation now precedes expired",
+      "satisfied_unverified": "Now suppressed via legacy_due_date_blocks",
+      "declaration_authority": "non_document_evidence_on_file + no effective_expiry"
+    }
+  },
+  "post_fix_probe": {
+    "legionella": {
+      "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+      "requirement_attention_eligible": false,
+      "portal_renewal_countdown_eligible": false,
+      "requirement_satisfied": true
+    }
+  }
+}

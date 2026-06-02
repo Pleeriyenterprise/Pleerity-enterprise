@@ -81,6 +81,23 @@ def test_action_required_extraction_pending():
     assert out["client_lifecycle_state"] == ACTION_REQUIRED
 
 
+def test_stale_overdue_deferred_for_non_document_assessment():
+    out = derive_client_lifecycle_fields(
+        _base_row(
+            status="OVERDUE",
+            due_date="2026-05-16T00:00:00+00:00",
+            evidence_authority={
+                "version": 1,
+                "state": EA_UPLOADED_UNCONFIRMED,
+                "primary_evidence_record_id": "cer1",
+            },
+            semantic_state="DECLARATION_RECORDED",
+            governance_family="PLATFORM_OVERSIGHT_OPTIONAL",
+        )
+    )
+    assert out["client_lifecycle_state"] == SATISFIED_UNVERIFIED
+
+
 def test_v2_review_pending_linked_doc(monkeypatch):
     monkeypatch.setattr(
         "services.client_requirement_lifecycle.is_feature_evidence_review_v2",

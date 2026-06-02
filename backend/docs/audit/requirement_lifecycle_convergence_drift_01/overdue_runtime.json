@@ -1,0 +1,12 @@
+{
+  "programme": "REQUIREMENT-LIFECYCLE-CONVERGENCE-DRIFT-01",
+  "verified_at": "2026-06-02T00:00:00+00:00",
+  "scenario_17_days": {
+    "interpretation": "When estimated renewal date (e.g. 2026-05-16) is past reference date (2026-06-02) but assessment is on file without authoritative effective_expiry, calendar overdue is stale drift \u2014 not legal overdue panic.",
+    "genuine_overdue": "document_upload_required + legacy_due_date_blocks_renewal_attention + expired attention_reason",
+    "post_fix_legionella": {
+      "attention_reason": null,
+      "portal_renewal_countdown_eligible": false
+    }
+  }
+}

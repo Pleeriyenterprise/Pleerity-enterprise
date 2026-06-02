@@ -1,0 +1,15 @@
+{
+  "programme": "REQUIREMENT-LIFECYCLE-CONVERGENCE-DRIFT-01",
+  "note": "Deploy required for production UI proof; local unit probes pass.",
+  "api_probe": {
+    "login_status": 200,
+    "requirements_status": 200,
+    "contradiction_count": 0,
+    "contradictions_sample": []
+  },
+  "ui_gates": [
+    "portal_renewal_countdown_eligible on API row",
+    "RequirementsPage showRenewalCountdown",
+    "requirementPreActionFallback skips stale OVERDUE copy"
+  ]
+}

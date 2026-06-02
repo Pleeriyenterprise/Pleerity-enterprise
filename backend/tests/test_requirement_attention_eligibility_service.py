@@ -86,3 +86,68 @@ def test_infer_gaps_empty_for_satisfied_verified():
     row = _verified_gas_row()
     gaps = infer_compliance_gaps_for_requirement(row, property_doc=None)
     assert gaps == []
+
+
+def test_assessment_recorded_suppresses_stale_estimated_overdue():
+    """Legionella-style: assessment on file + legacy OVERDUE from estimated renewal must not panic."""
+    row = {
+        "requirement_id": "r-leg-overdue",
+        "requirement_type": "legionella",
+        "requirement_code": "legionella",
+        "status": "OVERDUE",
+        "due_date": "2026-05-16T00:00:00+00:00",
+        "truth_presentation_stage": "assessment_recorded",
+        "truth_presentation_label": "Assessment recorded",
+        "semantic_state": "DECLARATION_RECORDED",
+        "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+        "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+        "evidence_authority": {
+            "version": 1,
+            "state": "MISSING",
+            "primary_evidence_record_id": "cer-leg-1",
+        },
+        "primary_evidence_record_id": "cer-leg-1",
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "take_action": {"suppressed": True, "primary": None},
+    }
+    now = datetime(2026, 6, 2, tzinfo=timezone.utc)
+    eligible, reason, suppression = is_requirement_attention_eligible(row, now=now)
+    assert eligible is False
+    assert reason is None
+    assert suppression is not None
+
+
+def test_escalation_review_preempts_stale_calendar_expired():
+    row = {
+        "requirement_id": "r-hmo-esc",
+        "requirement_type": "hmo_licence",
+        "status": "OVERDUE",
+        "due_date": "2025-01-01T00:00:00+00:00",
+        "truth_presentation_stage": "escalation_review",
+        "truth_presentation_label": "Escalated for platform review",
+        "review_owner": "platform_admin_escalation",
+        "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+        "evidence_authority": {"version": 1, "state": "VERIFIED_CURRENT"},
+        "client_lifecycle_state": "PENDING_REVIEW",
+    }
+    now = datetime(2026, 6, 2, tzinfo=timezone.utc)
+    eligible, reason, _ = is_requirement_attention_eligible(row, now=now)
+    assert eligible is True
+    assert reason == "escalation_review"
+
+
+def test_document_overdue_with_legacy_due_still_expired():
+    row = {
+        "requirement_id": "r-epc",
+        "requirement_type": "epc",
+        "status": "OVERDUE",
+        "due_date": "2025-01-01T00:00:00+00:00",
+        "governance_family": "PLATFORM_VERIFICATION",
+        "document_upload_required": True,
+        "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+        "evidence_authority": {"version": 1, "state": "MISSING"},
+    }
+    now = datetime(2026, 6, 2, tzinfo=timezone.utc)
+    eligible, reason, _ = is_requirement_attention_eligible(row, now=now)
+    assert eligible is True
+    assert reason == "expired"

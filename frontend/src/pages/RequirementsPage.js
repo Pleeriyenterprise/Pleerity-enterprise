@@ -440,7 +440,12 @@ const RequirementsPage = () => {
     const takeActionResolved = sem.cta;
     const statusConfig = getStatusConfig(req, sem);
     const StatusIcon = statusConfig.icon;
-    const daysUntil = getDaysUntilDue(req.due_date);
+    const showRenewalCountdown =
+      req.portal_renewal_countdown_eligible === true ||
+      (req.portal_renewal_countdown_eligible !== false &&
+        req.requirement_attention_eligible === true &&
+        ['expired', 'renewal_due'].includes(String(req.requirement_attention_reason || '')));
+    const daysUntil = showRenewalCountdown ? getDaysUntilDue(req.due_date) : null;
     const docCount = documentCountByRequirementId[req.requirement_id] || 0;
     const hasDocs = docCount > 0;
     const reqClass = String(req.compliance_requirement_class || req.requirement_class || '').toUpperCase();
@@ -466,7 +471,13 @@ const RequirementsPage = () => {
         return 'This item is not applicable for this property under current settings.';
       }
       const st = String(req.status || '').toUpperCase();
-      if (st === 'OVERDUE') return 'This requirement is overdue and affects compliance status for this property.';
+      if (
+        st === 'OVERDUE' &&
+        req.requirement_attention_eligible === true &&
+        ['expired', 'renewal_due'].includes(String(req.requirement_attention_reason || ''))
+      ) {
+        return 'This requirement is overdue and affects compliance status for this property.';
+      }
       if (st === 'PENDING_VERIFICATION' || st === 'AWAITING_VERIFICATION')
         return 'Document received—confirming dates moves this requirement toward verified compliance.';
       if (st === 'PENDING' || st === 'MISSING')

@@ -8,6 +8,7 @@ from services.requirement_satisfaction_service import (
     attach_satisfaction_fields,
     derive_missing_document_status,
     is_requirement_satisfied,
+    portal_renewal_countdown_eligible,
     reconcile_client_lifecycle_with_satisfaction,
     summarize_client_compliance_diagnostics,
 )
@@ -78,6 +79,23 @@ def test_admin_diagnostics_split():
     assert diag["missing_required_documents"] == 1
     assert diag["requirements_unresolved"] == 1
     assert diag["satisfied_by_declaration"] >= 1
+
+
+def test_portal_renewal_countdown_suppressed_for_assessment_on_file_overdue():
+    row = {
+        "requirement_type": "legionella",
+        "status": "OVERDUE",
+        "due_date": "2026-05-16T00:00:00+00:00",
+        "truth_presentation_stage": "assessment_recorded",
+        "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+        "primary_evidence_record_id": "cer_test",
+        "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+        "evidence_authority": {"version": 1, "state": "MISSING", "primary_evidence_record_id": "cer_test"},
+    }
+    fields = attach_satisfaction_fields(row)
+    assert fields["portal_renewal_countdown_eligible"] is False
+    assert fields["requirement_attention_eligible"] is False
+    assert portal_renewal_countdown_eligible(row) is False
 
 
 def test_legionella_assessment_on_file_not_renewal_due_from_legacy_calendar():

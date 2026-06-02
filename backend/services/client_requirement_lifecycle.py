@@ -188,10 +188,38 @@ def derive_client_lifecycle_fields(
         reasons.append(f"DOC_REVIEW_STATE:{st}")
         return pack(PENDING_REVIEW, "Evidence submitted — review pending", reasons)
 
+    # --- SATISFIED_UNVERIFIED before legacy urgency (non-document / declaration paths) ---
+    if compliance_state == "ACCEPTED_UNVERIFIED":
+        reasons.append("COMPLIANCE_ACCEPTED_UNVERIFIED")
+        return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
+    if linked_primary_document:
+        ers = effective_evidence_review_state(linked_primary_document)
+        if ers == EvidenceReviewState.ACCEPTED_UNVERIFIED.value:
+            reasons.append("DOC_ACCEPTED_UNVERIFIED")
+            return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
+    if ea == EA_UPLOADED_UNCONFIRMED:
+        reasons.append("EA_UPLOADED_UNCONFIRMED")
+        return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
+    if semantic == "DECLARATION_RECORDED":
+        reasons.append("SEMANTIC_DECLARATION_RECORDED")
+        return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
+
     # --- ACTION_REQUIRED (user-facing urgency) ---
     if status in ("OVERDUE", "EXPIRED", "FAILED", "MISSING", "MISSING_EVIDENCE", "NEEDS_REVIEW"):
-        reasons.append(f"STATUS:{status}")
-        return pack(ACTION_REQUIRED, "Action required", reasons)
+        if status in ("OVERDUE", "EXPIRED"):
+            from services.requirement_satisfaction_service import (
+                document_upload_required,
+                legacy_due_date_blocks_renewal_attention,
+            )
+
+            if not legacy_due_date_blocks_renewal_attention(row) and not document_upload_required(row):
+                reasons.append("STALE_CALENDAR_OVERDUE_DEFERRED")
+            else:
+                reasons.append(f"STATUS:{status}")
+                return pack(ACTION_REQUIRED, "Action required", reasons)
+        else:
+            reasons.append(f"STATUS:{status}")
+            return pack(ACTION_REQUIRED, "Action required", reasons)
     if ea in (EA_MISSING, EA_REJECTED, EA_MISMATCH_FLAGGED):
         reasons.append(f"EA:{ea}")
         return pack(ACTION_REQUIRED, "Action required", reasons)
@@ -226,20 +254,6 @@ def derive_client_lifecycle_fields(
         return pack(VERIFIED, "Verified", reasons)
 
     # --- SATISFIED_UNVERIFIED (on file, not fully verified) ---
-    if compliance_state == "ACCEPTED_UNVERIFIED":
-        reasons.append("COMPLIANCE_ACCEPTED_UNVERIFIED")
-        return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
-    if linked_primary_document:
-        ers = effective_evidence_review_state(linked_primary_document)
-        if ers == EvidenceReviewState.ACCEPTED_UNVERIFIED.value:
-            reasons.append("DOC_ACCEPTED_UNVERIFIED")
-            return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
-    if ea == EA_UPLOADED_UNCONFIRMED:
-        reasons.append("EA_UPLOADED_UNCONFIRMED")
-        return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
-    if semantic == "DECLARATION_RECORDED":
-        reasons.append("SEMANTIC_DECLARATION_RECORDED")
-        return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
     if canon == "tenancy_agreement" and ta_text and not _tenancy_action_required(ta_text):
         reasons.append("TENANCY_AGREEMENT_ON_FILE")
         return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)

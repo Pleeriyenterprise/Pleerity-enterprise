@@ -1,0 +1,24 @@
+{
+  "programme": "REQUIREMENT-LIFECYCLE-CONVERGENCE-DRIFT-01",
+  "escalation_row": {
+    "matches_escalation_queue": true,
+    "matches_org_review_queue": false,
+    "attention": {
+      "eligible": true,
+      "attention_reason": "escalation_review",
+      "suppression_reason": null,
+      "truth_presentation_stage": "escalation_review",
+      "semantic_state": null,
+      "authority_state": "VERIFIED_CURRENT",
+      "authority_synced": true,
+      "legacy_status": "OVERDUE",
+      "take_action_suppressed": false,
+      "effective_expiry_date": null
+    }
+  },
+  "admin_surfaces": {
+    "escalation": "/admin/compliance-evidence/escalation-queue",
+    "org_review": "/operations/compliance-review",
+    "document_pending": "/api/admin/documents/pending-verification"
+  }
+}

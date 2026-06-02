@@ -1,0 +1,7 @@
+{
+  "programme": "REQUIREMENT-LIFECYCLE-CONVERGENCE-DRIFT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "drift_type": "LIFECYCLE_CONVERGENCE_DRIFT",
+  "resolved_in_code": true,
+  "production_ui_proof": true
+}

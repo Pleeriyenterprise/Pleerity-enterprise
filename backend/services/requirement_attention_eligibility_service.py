@@ -106,14 +106,38 @@ def _expiring_within_window(
 
 
 def _is_expired(requirement: Dict[str, Any], *, now: datetime) -> bool:
+    """
+    True when an authoritative expiry demands attention.
+
+    Legacy `status=OVERDUE` and system-estimated `due_date` alone must not
+    override non-document assessment-on-file truth (see legacy_due_date_blocks).
+    """
     ea = requirement.get("evidence_authority") if isinstance(requirement.get("evidence_authority"), dict) else {}
     st = str(authority_state(requirement) or ea.get("state") or "").upper()
     if st == EA_VERIFIED_EXPIRED:
         return True
+
+    eff_auth = ea.get("effective_expiry_date")
+    if eff_auth:
+        dt_auth = _parse_due_date(eff_auth)
+        if dt_auth is not None and dt_auth < now.date():
+            return True
+
+    from services.requirement_satisfaction_service import legacy_due_date_blocks_renewal_attention
+
+    if not legacy_due_date_blocks_renewal_attention(requirement):
+        truth_stage = str(requirement.get("truth_presentation_stage") or "").lower()
+        if truth_stage in SATISFIED_TRUTH_STAGES:
+            return False
+        sem = str(requirement.get("semantic_state") or "").upper()
+        if sem in SATISFIED_SEMANTIC_STATES:
+            return False
+        return False
+
     status = str(requirement.get("status") or "").upper()
     if status in ("OVERDUE", "EXPIRED"):
         return True
-    eff = ea.get("effective_expiry_date") or requirement.get("due_date") or requirement.get("expiry_date")
+    eff = requirement.get("due_date") or requirement.get("expiry_date")
     dt = _parse_due_date(eff)
     if dt is not None and dt < now.date():
         return True
@@ -133,6 +157,12 @@ def derive_attention_reason(
     ea_st = str(authority_state(row) or ea.get("state") or "").upper()
     truth_stage = str(row.get("truth_presentation_stage") or "").lower()
 
+    if ea_st == EA_REJECTED:
+        return "rejected"
+    if truth_stage == "escalation_review" or str(row.get("review_owner") or "") == "platform_admin_escalation":
+        return "escalation_review"
+    if truth_stage in ("platform_verification_pending", "org_verification_pending"):
+        return truth_stage
     if _is_expired(row, now=ref):
         return "expired"
     from services.requirement_satisfaction_service import legacy_due_date_blocks_renewal_attention
@@ -140,12 +170,6 @@ def derive_attention_reason(
     allow_legacy_due = legacy_due_date_blocks_renewal_attention(row)
     if _expiring_within_window(row, now=ref, expiring_window_days=expiring_window_days, allow_legacy_due_date=allow_legacy_due):
         return "renewal_due"
-    if ea_st == EA_REJECTED:
-        return "rejected"
-    if truth_stage in ("platform_verification_pending", "org_verification_pending"):
-        return truth_stage
-    if truth_stage == "escalation_review" or str(row.get("review_owner") or "") == "platform_admin_escalation":
-        return "escalation_review"
     if truth_stage in ("followup_required", "operational_incomplete"):
         return truth_stage
     if truth_stage == "action_required" or truth_stage == "collect_evidence":

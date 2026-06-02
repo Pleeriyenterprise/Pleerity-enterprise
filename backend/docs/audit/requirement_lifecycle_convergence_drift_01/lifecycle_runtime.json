@@ -1,0 +1,48 @@
+{
+  "programme": "REQUIREMENT-LIFECYCLE-CONVERGENCE-DRIFT-01",
+  "rules_enforced": {
+    "DECLARATION_RECORDED": "SATISFIED_UNVERIFIED lifecycle; no missing-doc panic when document_upload_required false",
+    "SATISFIED_UNVERIFIED": "suppresses renewal countdown when not attention eligible",
+    "PLATFORM_REVIEW_REQUIRED": "PENDING_REVIEW lifecycle via reconcile",
+    "VERIFIED": "unchanged \u2014 EA_VERIFIED_CURRENT / truth verified"
+  },
+  "legionella_probe": {
+    "requirement_id": "audit-leg-overdue",
+    "requirement_type": "legionella",
+    "requirement_code": "legionella",
+    "status": "OVERDUE",
+    "due_date": "2026-05-16T00:00:00+00:00",
+    "truth_presentation_stage": "assessment_recorded",
+    "truth_presentation_label": "Assessment recorded",
+    "semantic_state": "DECLARATION_RECORDED",
+    "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+    "primary_evidence_record_id": "cer-audit-leg",
+    "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+    "evidence_authority": {
+      "version": 1,
+      "state": "MISSING",
+      "primary_evidence_record_id": "cer-audit-leg"
+    },
+    "take_action": {
+      "suppressed": true,
+      "primary": null
+    },
+    "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+    "client_lifecycle_label": "Evidence recorded",
+    "client_lifecycle_reason_codes": [
+      "SEMANTIC_DECLARATION_RECORDED"
+    ],
+    "document_upload_required": false,
+    "missing_required_document": false,
+    "requirement_satisfied": true,
+    "satisfaction_source": "accepted_declaration",
+    "missing_document_status": "NOT_REQUIRED",
+    "requirement_resolution_status": "RESOLVED",
+    "requirement_attention_eligible": false,
+    "requirement_attention_reason": null,
+    "requirement_attention_suppression": "take_action_suppressed",
+    "portal_renewal_countdown_eligible": false,
+    "document_gap": false,
+    "requirement_gap": false
+  }
+}

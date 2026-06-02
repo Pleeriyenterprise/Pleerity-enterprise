@@ -1,0 +1,11 @@
+{
+  "programme": "REQUIREMENT-LIFECYCLE-CONVERGENCE-DRIFT-01",
+  "pytest": "tests/test_requirement_attention_eligibility_service.py tests/test_requirement_satisfaction_service.py tests/test_client_requirement_lifecycle.py",
+  "surfaces_regression_scope": [
+    "Today attention via is_requirement_attention_eligible",
+    "Command Centre priority stream",
+    "requirement counts via attach_satisfaction_fields",
+    "declaration-only flows",
+    "escalation-queue ownership"
+  ]
+}
