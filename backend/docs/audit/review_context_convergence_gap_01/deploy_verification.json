@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-06-02T18:09:23.243249+00:00",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "main_js": "https://pleerityenterprise.co.uk/static/js/main.c8065875.js",
+  "fix_commit_expected": "a659ff7d",
+  "bundle_markers": {
+    "resolve_requirement": true,
+    "review-context-banner": true,
+    "initialFocusSubmission": true,
+    "requirement-submission-inspect-panel": true,
+    "org-review-open-": true,
+    "property-compliance-panel": true
+  },
+  "deployed": true
+}

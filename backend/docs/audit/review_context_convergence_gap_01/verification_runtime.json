@@ -1,6 +1,10 @@
 {
-  "generated_at": "2026-06-02T17:42:52.114760+00:00",
-  "queue_verify_reject_contract": "POST /api/client/compliance-evidence/{property_id}/requirements/{requirement_id}/records/{evidence_record_id}/verification",
-  "evidence_record_id_source": "review_queue_service.build_queue_row_payload",
-  "note": "Queue inline Verify/Reject uses row evidence_record_id; deeplink fix hydrates visual context before action."
+  "generated_at": "2026-06-02T18:15:00+00:00",
+  "live_verify_reject_executed": false,
+  "reason": "org-review-queue returned 0 items for ROLE_CLIENT_ADMIN probe account (nancy@yopmail.com)",
+  "queue_api_status": 200,
+  "queue_count_before": 0,
+  "prior_operational_proof": "backend/docs/audit/phase2b_org_review_queue_closeout_01/org_queue_runtime.json",
+  "verify_reject_contract": "POST /api/client/properties/{property_id}/requirements/{requirement_id}/compliance-evidence/{evidence_record_id}/verification",
+  "decisions_supported": ["VERIFY", "REJECT"]
 }

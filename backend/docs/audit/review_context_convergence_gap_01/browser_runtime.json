@@ -1,6 +1,27 @@
 {
-  "generated_at": "2026-06-02T17:42:52.116763+00:00",
-  "captured": false,
-  "note": "Run Playwright with ROLE_CLIENT_ADMIN after FE deploy",
-  "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#email\")\n"
+  "marker": "REVIEW-CONTEXT-CONVERGENCE-FINAL-VERIFICATION-01",
+  "generated_at": "2026-06-02T18:15:00+00:00",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "client_org_admin": "nancy@yopmail.com",
+  "captured": true,
+  "mode": "deeplink_hydration_proof",
+  "note": "Org review queue empty at probe time (0 rows). Deeplink hydration proven on EICR requirement with existing CER.",
+  "deeplink_used": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?resolve_requirement=216ed196-883b-42a2-9011-39918534d32d",
+  "screenshots": {
+    "01_queue": "screenshots/01_queue.png",
+    "02_deeplink_navigation": "screenshots/02_deeplink.png",
+    "03_requirement_modal": "screenshots/03_requirement_modal.png",
+    "04_submission_inspect_panel": "screenshots/04_submission_inspect.png",
+    "05_review_context_banner": "screenshots/05_review_banner.png",
+    "06_persistence_tab_switch": "screenshots/06_persistence_tab_switch.png"
+  },
+  "checks": {
+    "queue_page": true,
+    "queue_row_visible": false,
+    "compliance_tab_focused": true,
+    "review_context_banner": true,
+    "requirement_intel_modal": true,
+    "submission_inspect_panel": true,
+    "pending_review_label_in_modal": true
+  }
 }

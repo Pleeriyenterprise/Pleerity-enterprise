@@ -1,4 +1,10 @@
 {
-  "generated_at": "2026-06-02T17:42:52.114760+00:00",
-  "post_resolution": "list_org_review_queue excludes non-PENDING CER"
+  "generated_at": "2026-06-02T18:15:00+00:00",
+  "live_queue_convergence_proven": false,
+  "queue_count_at_probe": 0,
+  "note": "Cannot prove row removal post-Verify/Reject without pending rows. Historical proof: phase2b closeout (verify then queue excludes resolved CER).",
+  "historical_reference": {
+    "audit": "phase2b_org_review_queue_closeout_01",
+    "org_queue_pass": true
+  }
 }

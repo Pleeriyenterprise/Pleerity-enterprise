@@ -1,4 +1,5 @@
 # Watchlist
 
-- [ ] Re-run browser closeout after FE deploy
-- [ ] Spot-check Verify/Reject removes queue row
+- [x] FE deploy contains review context markers
+- [ ] Browser proof
+- [ ] Verify/Reject convergence

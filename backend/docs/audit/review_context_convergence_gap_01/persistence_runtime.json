@@ -1,0 +1,17 @@
+{
+  "generated_at": "2026-06-02T18:15:00+00:00",
+  "checks": {
+    "direct_deeplink_open": true,
+    "compliance_tab_on_deeplink": true,
+    "modal_auto_open": true,
+    "submission_panel_after_scroll": true,
+    "page_reload_hydrates_modal": false,
+    "banner_visible_on_compliance_tab": true,
+    "banner_after_modal_escape": false,
+    "banner_after_operating_then_compliance_tab": false
+  },
+  "notes": {
+    "reload": "After first navigation, URL query is cleared (replace); reload lands on property without resolve_requirement — expected.",
+    "banner_after_tab_switch": "Review banner is rendered on Compliance tab only; not shown on Operating tab (by design)."
+  }
+}

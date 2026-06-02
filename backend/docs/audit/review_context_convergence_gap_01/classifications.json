@@ -1,11 +1,15 @@
 {
-  "marker": "REVIEW-CONTEXT-CONVERGENCE-GAP-01",
-  "generated_at": "2026-06-02T17:43:32.004106+00:00",
+  "marker": "REVIEW-CONTEXT-CONVERGENCE-FINAL-VERIFICATION-01",
+  "generated_at": "2026-06-02T18:10:06.417345+00:00",
   "classification": "PARTIAL",
   "gates": {
-    "review_queue_backend": true,
-    "frontend_unit_tests_documented": true,
+    "deploy_bundle": true,
     "browser_proof": false,
-    "submission_panel_visible": false
-  }
+    "submission_panel": false,
+    "review_banner": false,
+    "verify_reject_convergence": null,
+    "persistence_deeplink": false,
+    "regression_backend": true
+  },
+  "fix_commit": "a659ff7d"
 }
