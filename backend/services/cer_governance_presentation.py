@@ -11,10 +11,15 @@ from typing import Any, Dict, List, Optional, Tuple
 from services.requirement_code_registry import normalize_requirement_code
 
 GF_SELF = "SELF_CERTIFIED"
-GF_ORG = "ORG_ADMIN_REVIEWED"
+# Deprecated alias — ORG_ADMIN_REVIEWED removed (REVIEW-ASSURANCE-SIMPLIFICATION-01).
+GF_ORG = GF_SELF
 GF_PLATFORM_OPT = "PLATFORM_OVERSIGHT_OPTIONAL"
 GF_PLATFORM_VER = "PLATFORM_VERIFIED"
 GF_ESCALATION = "ESCALATION_REVIEW_ONLY"
+
+ASSURANCE_SELF_RECORDED = "SELF_RECORDED"
+ASSURANCE_PLATFORM_REVIEWED = "PLATFORM_REVIEWED"
+ASSURANCE_VERIFIED_DOCUMENT = "VERIFIED_DOCUMENT"
 
 DOCUMENT_PRIMARY_CODES = frozenset(
     {
@@ -50,51 +55,51 @@ _GOVERNANCE_META: Dict[str, Dict[str, Any]] = {
         "operational_completion_mode": "tenant_delivery_record_guard",
     },
     "right_to_rent": {
-        "governance_family": GF_ORG,
-        "review_authority": "org_admin",
-        "review_visibility": "org_admin_queue",
-        "operational_completion_mode": "declaration_recorded_plus_org_verify_optional",
+        "governance_family": GF_SELF,
+        "review_authority": "automated_governance_guards",
+        "review_visibility": "none",
+        "operational_completion_mode": "declaration_recorded_self_assurance",
     },
     "deposit_pi": {
-        "governance_family": GF_ORG,
-        "review_authority": "org_admin",
-        "review_visibility": "org_admin_queue",
-        "operational_completion_mode": "declaration_recorded_plus_org_verify_optional",
+        "governance_family": GF_SELF,
+        "review_authority": "automated_governance_guards",
+        "review_visibility": "none",
+        "operational_completion_mode": "declaration_recorded_self_assurance",
     },
     "wales_occupation_contract": {
-        "governance_family": GF_ORG,
-        "review_authority": "org_admin",
-        "review_visibility": "org_admin_queue",
-        "operational_completion_mode": "declaration_recorded_plus_org_verify_optional",
+        "governance_family": GF_SELF,
+        "review_authority": "automated_governance_guards",
+        "review_visibility": "none",
+        "operational_completion_mode": "declaration_recorded_self_assurance",
     },
     "tenancy_agreement": {
-        "governance_family": GF_ORG,
-        "review_authority": "org_admin",
-        "review_visibility": "org_admin_queue",
-        "operational_completion_mode": "declaration_recorded_plus_org_verify_optional",
+        "governance_family": GF_SELF,
+        "review_authority": "automated_governance_guards",
+        "review_visibility": "none",
+        "operational_completion_mode": "declaration_recorded_self_assurance",
     },
     "landlord_registration": {
-        "governance_family": GF_ORG,
-        "review_authority": "org_admin",
-        "review_visibility": "org_admin_queue",
+        "governance_family": GF_SELF,
+        "review_authority": "automated_governance_guards",
+        "review_visibility": "none",
         "operational_completion_mode": "registration_tracking_record_guard",
     },
     "scotland_landlord_registration": {
-        "governance_family": GF_ORG,
-        "review_authority": "org_admin",
-        "review_visibility": "org_admin_queue",
+        "governance_family": GF_SELF,
+        "review_authority": "automated_governance_guards",
+        "review_visibility": "none",
         "operational_completion_mode": "registration_tracking_record_guard",
     },
     "landlord_registration_ni": {
-        "governance_family": GF_ORG,
-        "review_authority": "org_admin",
-        "review_visibility": "org_admin_queue",
+        "governance_family": GF_SELF,
+        "review_authority": "automated_governance_guards",
+        "review_visibility": "none",
         "operational_completion_mode": "registration_tracking_record_guard",
     },
     "rent_smart_wales": {
-        "governance_family": GF_ORG,
-        "review_authority": "org_admin",
-        "review_visibility": "org_admin_queue",
+        "governance_family": GF_SELF,
+        "review_authority": "automated_governance_guards",
+        "review_visibility": "none",
         "operational_completion_mode": "registration_tracking_record_guard",
     },
     "legionella": {
@@ -226,35 +231,30 @@ def _followup_unresolved(req: Dict[str, Any], ea: Dict[str, Any]) -> bool:
     return reason in FOLLOWUP_STATE_REASONS or "followup" in reason or "follow_up" in reason
 
 
-def _org_review_pending(req: Dict[str, Any], ea: Dict[str, Any], meta: Dict[str, Any]) -> bool:
-    """
-    Org queue eligibility from governance truth — never lifecycle state alone.
-    Requires ORG family, org_admin_queue visibility, persisted submission, and
-    pending non-document verification signals on evidence authority.
-    """
-    if str(meta.get("governance_family") or "") != GF_ORG:
-        return False
-    if str(meta.get("review_visibility") or "") != "org_admin_queue":
-        return False
-    if not _has_persisted_submission(req):
-        return False
-    if _is_escalation_active(req, ea):
-        return False
-    if str(ea.get("state") or "").upper() in ("VERIFIED_CURRENT", "EA_VERIFIED_CURRENT"):
-        return False
-    ndvs = str(ea.get("non_document_verification_status") or "").upper()
-    if ndvs == "PENDING_REVIEW":
-        return True
-    if int(ea.get("pending_non_document_evidence_count") or 0) > 0:
-        return True
-    return False
+def derive_assurance_tier(
+    requirement: Dict[str, Any],
+    meta: Dict[str, Any],
+    truth: Dict[str, Any],
+) -> str:
+    """Authoritative three-tier assurance model for client surfaces."""
+    stage = str(truth.get("truth_presentation_stage") or "")
+    family = str(meta.get("governance_family") or "")
+    owner = str(truth.get("review_owner") or "")
+    if family == GF_PLATFORM_VER:
+        return ASSURANCE_VERIFIED_DOCUMENT
+    if owner in ("platform_admin", "platform_admin_escalation") or stage in (
+        "escalation_review",
+        "platform_verification_pending",
+    ):
+        return ASSURANCE_PLATFORM_REVIEWED
+    return ASSURANCE_SELF_RECORDED
 
 
 def _converge_queue_presentation_fields(truth: Dict[str, Any]) -> Dict[str, Any]:
     """Repair orphan queue presentation: queue-backed semantics require a review owner."""
     owner = truth.get("review_owner")
     qbr = truth.get("queue_backed_review") is True
-    allowed_owners = ("platform_admin", "platform_admin_escalation", "org_admin")
+    allowed_owners = ("platform_admin", "platform_admin_escalation")
     if qbr and not owner:
         truth = {**truth, "queue_backed_review": False}
     elif owner in allowed_owners and not qbr:
@@ -301,13 +301,6 @@ def derive_truth_presentation(
         stage = "platform_verification_pending"
         label = "Platform verification pending"
         subline = "Our team will verify your uploaded certificate."
-    elif _org_review_pending(requirement, ea, meta):
-        review_owner = "org_admin"
-        stale_owner = "org_admin"
-        stage = "org_verification_pending"
-        label = "Organisation review pending"
-        subline = "Your organisation admin can verify this record when required."
-        tier_supplement = "Record on file — organisation verification optional"
     elif incomplete:
         stage = "operational_incomplete"
         label = "Additional action still required"
@@ -321,13 +314,9 @@ def derive_truth_presentation(
         tier_supplement = "Remediation or follow-up may remain open"
     elif has_sub and family == GF_SELF:
         stage = "declaration_recorded"
-        label = "Declaration recorded"
-        subline = "Your submission is recorded. No platform review is required for this obligation."
-    elif has_sub and family == GF_ORG:
-        stage = "evidence_recorded"
-        label = "Evidence recorded"
-        subline = "Recorded for compliance tracking; not platform certificate verification."
-        tier_supplement = "Organisation verification optional"
+        label = "Recorded on file"
+        subline = "Self-recorded declaration — auditable and timestamped; no independent reviewer required."
+        tier_supplement = "Awaiting renewal when applicable"
     elif has_sub and family == GF_PLATFORM_OPT:
         stage = "assessment_recorded"
         label = "Assessment recorded"
@@ -343,9 +332,7 @@ def derive_truth_presentation(
         stage = "action_required"
         label = "Action required"
 
-    if review_owner is None and stale_owner is None and family == GF_ORG and has_sub:
-        stale_owner = None
-    elif review_owner is None and has_sub and family in (GF_SELF, GF_PLATFORM_OPT) and not followup and not incomplete:
+    if review_owner is None and has_sub and family in (GF_SELF, GF_PLATFORM_OPT) and not followup and not incomplete:
         stale_owner = None
 
     return _converge_queue_presentation_fields(
@@ -356,7 +343,7 @@ def derive_truth_presentation(
             "truth_presentation_tier_supplement": tier_supplement,
             "review_owner": review_owner,
             "stale_owner": stale_owner,
-            "queue_backed_review": review_owner in ("platform_admin", "platform_admin_escalation", "org_admin"),
+            "queue_backed_review": review_owner in ("platform_admin", "platform_admin_escalation"),
         }
     )
 
@@ -367,7 +354,9 @@ def attach_cer_governance_presentation(requirement: Dict[str, Any]) -> Dict[str,
     ea = requirement.get("evidence_authority") if isinstance(requirement.get("evidence_authority"), dict) else {}
     semantic = ea.get("semantic_state") or requirement.get("semantic_state")
     truth = derive_truth_presentation(requirement, meta)
+    assurance_tier = derive_assurance_tier(requirement, meta, truth)
     return {
+        "assurance_tier": assurance_tier,
         "governance_family": meta.get("governance_family"),
         "review_authority": meta.get("review_authority"),
         "review_visibility": meta.get("review_visibility"),
@@ -389,7 +378,7 @@ def stale_allowed_for_requirement(requirement: Dict[str, Any]) -> bool:
             requirement,
             requirement.get("evidence_authority") if isinstance(requirement.get("evidence_authority"), dict) else {},
         ) or _components_incomplete(requirement)
-    return gov in ("platform_admin", "platform_admin_escalation", "org_admin")
+    return gov in ("platform_admin", "platform_admin_escalation")
 
 
 def cognition_next_step_for_requirement(requirement: Dict[str, Any]) -> Tuple[str, str, List[str]]:
@@ -460,12 +449,6 @@ def cognition_next_step_for_requirement(requirement: Dict[str, Any]) -> Tuple[st
             "Assessment on file — check follow-up items",
             subline or "Review any open follow-up actions.",
             ["Complete follow-up if shown"],
-        )
-    if stage == "evidence_recorded" and owner == "org_admin":
-        return (
-            "Evidence recorded",
-            subline or "Organisation admin may verify when required.",
-            ["Optional: organisation admin verification"],
         )
     if stage == "supporting_upload_only":
         return (

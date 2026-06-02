@@ -1,6 +1,6 @@
 import pytest
 
-from services.cer_governance_presentation import GF_ORG, attach_cer_governance_presentation
+from services.cer_governance_presentation import attach_cer_governance_presentation
 from services.review_queue_service import (
     audit_orphan_queue_states,
     build_queue_row_payload,
@@ -22,18 +22,9 @@ def _org_pending():
     }
 
 
-def test_org_review_pending_governance_fields():
-    fields = attach_cer_governance_presentation(_org_pending())
-    assert fields["governance_family"] == GF_ORG
-    assert fields["truth_presentation_label"] == "Organisation review pending"
-    assert fields["review_owner"] == "org_admin"
-    assert fields["queue_backed_review"] is True
-    assert fields["truth_presentation_stage"] == "org_verification_pending"
-
-
-def test_org_queue_inclusion_requires_governance_invariant():
+def test_org_queue_inclusion_removed():
     row = {**_org_pending(), **attach_cer_governance_presentation(_org_pending())}
-    assert matches_org_review_queue(row) is True
+    assert matches_org_review_queue(row) is False
 
 
 def test_self_certified_not_in_org_queue():
@@ -55,14 +46,16 @@ def test_escalation_queue_inclusion():
     assert matches_escalation_queue(row) is True
 
 
-def test_orphan_queue_state_detection():
+def test_orphan_stale_org_owner_detected():
     orphans = audit_orphan_queue_states(
         [
             {"requirement_id": "a", "queue_backed_review": True, "review_owner": None},
-            {"requirement_id": "b", "queue_backed_review": False, "review_owner": "org_admin"},
+            {"requirement_id": "b", "review_owner": "org_admin", "queue_backed_review": False},
         ]
     )
-    assert len(orphans) == 2
+    issues = {o["issue"] for o in orphans}
+    assert "queue_backed_without_owner" in issues
+    assert "stale_org_review_owner" in issues
 
 
 def test_queue_row_payload_deeplink():
@@ -70,10 +63,10 @@ def test_queue_row_payload_deeplink():
         "requirement_id": "rid",
         "property_id": "pid",
         "requirement_type": "right_to_rent",
-        "truth_presentation_label": "Organisation review pending",
-        "governance_family": GF_ORG,
-        "review_owner": "org_admin",
-        "queue_backed_review": True,
+        "truth_presentation_label": "Recorded on file",
+        "governance_family": "SELF_CERTIFIED",
+        "review_owner": None,
+        "queue_backed_review": False,
     }
     payload = build_queue_row_payload(req, property_label="Test Property", cer_record={"evidence_record_id": "cer_x"})
     assert payload["review_deeplink"] == "/properties/pid?resolve_requirement=rid"

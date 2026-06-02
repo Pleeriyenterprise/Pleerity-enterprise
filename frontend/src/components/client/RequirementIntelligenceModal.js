@@ -8,12 +8,8 @@ import {
   isViewExistingSubmissionCta,
   pickLatestComplianceEvidenceRecord,
 } from '../../utils/complianceEvidenceSubmissionView';
-import {
-  cerAwaitingOrgVerification,
-  pickPendingOrgReviewCer,
-  requirementEligibleForOrgOperatorReview,
-} from '../../utils/orgComplianceReviewOperator';
-import RequirementModalOperatorReviewSection from './RequirementModalOperatorReviewSection';
+import RequirementModalAssuranceSection from './RequirementModalAssuranceSection';
+import { ASSURANCE_SELF_RECORDED, resolveAssuranceTier } from '../../utils/assurancePresentation';
 import { requirementHasPersistedClientSubmission } from '../../utils/clientPersistedSubmissionPresentation';
 import { Button } from '../ui/button';
 import { requirementLabel } from '../../domain/presentDomain';
@@ -83,8 +79,7 @@ function tenantSafeTriggerExplanation(merged) {
  *   onMarkNotApplicable?: (merged: Record<string, unknown>) => void,
  *   addressForMailto?: string | null,
  *   initialFocusSubmission?: boolean,
- *   enableOperatorReview?: boolean,
- *   onReviewResolved?: () => void | Promise<void>,
+ *   showAssuranceContext?: boolean,
  * }} props
  */
 export default function RequirementIntelligenceModal({
@@ -100,8 +95,7 @@ export default function RequirementIntelligenceModal({
   onMarkNotApplicable,
   addressForMailto = null,
   initialFocusSubmission = false,
-  enableOperatorReview = false,
-  onReviewResolved,
+  showAssuranceContext = false,
 }) {
   const { openGuidedEvidence } = useGuidedEvidenceModal();
   const submissionPanelRef = useRef(null);
@@ -170,8 +164,7 @@ export default function RequirementIntelligenceModal({
       .then((res) => {
         if (cancelled) return;
         const records = res?.data?.evidence_records;
-        const pending = pickPendingOrgReviewCer(records);
-        const latest = pending || pickLatestComplianceEvidenceRecord(records);
+        const latest = pickLatestComplianceEvidenceRecord(records);
         setLatestCer(latest);
         setHasSubmission(Boolean(latest));
       })
@@ -308,14 +301,8 @@ export default function RequirementIntelligenceModal({
     resolved.primary_route &&
     String(resolved.primary_route).split('?')[0] !== '/documents';
 
-  const showOperatorReview = Boolean(
-    enableOperatorReview &&
-      merged &&
-      (requirementEligibleForOrgOperatorReview(merged) ||
-        String(merged.truth_presentation_stage || '').toLowerCase() === 'org_verification_pending') &&
-      hasSubmission &&
-      latestCer &&
-      cerAwaitingOrgVerification(latestCer),
+  const showAssurancePanel = Boolean(
+    showAssuranceContext && merged && hasSubmission && resolveAssuranceTier(merged) === ASSURANCE_SELF_RECORDED,
   );
 
   if (!open) return null;
@@ -483,17 +470,8 @@ export default function RequirementIntelligenceModal({
 
               <ConditionStandardOperationalInspectPanel requirement={merged} />
 
-              {showOperatorReview ? (
-                <RequirementModalOperatorReviewSection
-                  merged={merged}
-                  latestCer={latestCer}
-                  propertyId={pid}
-                  requirementId={rid}
-                  onResolved={async () => {
-                    await onReviewResolved?.();
-                    onClose();
-                  }}
-                />
+              {showAssurancePanel ? (
+                <RequirementModalAssuranceSection merged={merged} latestCer={latestCer} />
               ) : null}
 
               {pid && rid && hasSubmission && !isConditionStandardWorkflowHint(merged?.workflow_class, merged) ? (
@@ -501,8 +479,8 @@ export default function RequirementIntelligenceModal({
                   ref={submissionPanelRef}
                   propertyId={pid}
                   requirementId={rid}
-                  operatorPresentation={showOperatorReview}
-                  panelTitle={showOperatorReview ? 'Submission under review' : 'Your submission'}
+                  operatorPresentation={showAssurancePanel}
+                  panelTitle="Submission on file"
                 />
               ) : null}
 

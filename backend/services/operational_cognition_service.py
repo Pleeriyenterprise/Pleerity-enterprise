@@ -455,7 +455,6 @@ def _workflow_stage(req: Dict[str, Any]) -> str:
         if req.get("queue_backed_review") is True or req.get("review_owner") in (
             "platform_admin",
             "platform_admin_escalation",
-            "org_admin",
         ):
             return "awaiting_review"
         if _has_persisted_submission(req):
@@ -778,8 +777,6 @@ def build_envelope_for_requirement(req: Dict[str, Any]) -> Dict[str, Any]:
             stale_msg = "Platform verification has been pending for an extended period."
         elif owner == "platform_admin_escalation":
             stale_msg = "Escalated review has been pending for an extended period."
-        elif owner == "org_admin":
-            stale_msg = "Organisation review has been pending for an extended period."
         blockers.append(
             {
                 "code": "STALE_REVIEW",

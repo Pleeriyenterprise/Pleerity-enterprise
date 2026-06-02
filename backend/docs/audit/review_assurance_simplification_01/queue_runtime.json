@@ -1,0 +1,20 @@
+{
+  "verified_at": "2026-06-02T21:06:17.846266+00:00",
+  "matches_org_review_queue_legacy": false,
+  "matches_org_review_queue_self_enriched": false,
+  "matches_escalation_queue_esc": true,
+  "orphan_audit": [
+    {
+      "requirement_id": "legacy-org",
+      "issue": "stale_org_review_owner",
+      "governance_family": "ORG_ADMIN_REVIEWED",
+      "review_owner": "org_admin"
+    },
+    {
+      "requirement_id": "x",
+      "issue": "queue_backed_without_owner",
+      "governance_family": ""
+    }
+  ],
+  "pass": true
+}

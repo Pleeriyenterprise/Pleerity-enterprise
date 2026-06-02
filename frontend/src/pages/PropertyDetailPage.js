@@ -145,7 +145,6 @@ import {
 import { propertyPageJurisdictionBanners } from '../utils/jurisdictionUiPolicy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
 import { parsePropertyReviewContextDeeplink } from '../utils/propertyReviewContextDeeplink';
-import { requirementEligibleForOrgOperatorReview } from '../utils/orgComplianceReviewOperator';
 import PropertyOccupancyTenancyPanel from '../components/property/PropertyOccupancyTenancyPanel';
 import { PropertyFinancialSnapshotCard } from '../components/rent/PropertyFinancialSnapshotCard';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
@@ -4345,23 +4344,7 @@ export default function PropertyDetailPage() {
         requirementId={requirementIntelRow ? String(rowReqId(requirementIntelRow)) : null}
         seedRequirement={requirementIntelRow}
         initialFocusSubmission={requirementIntelFocusSubmission}
-        enableOperatorReview={
-          Boolean(
-            reviewContextBanner &&
-              !reviewContextBanner.missing &&
-              requirementIntelRow &&
-              String(authUser?.role || '').toUpperCase() === 'ROLE_CLIENT_ADMIN' &&
-              (requirementEligibleForOrgOperatorReview(requirementIntelRow) ||
-                String(requirementIntelRow.truth_presentation_stage || '').toLowerCase() ===
-                  'org_verification_pending'),
-          )
-        }
-        onReviewResolved={async () => {
-          setRequirementIntelRow(null);
-          setRequirementIntelFocusSubmission(false);
-          setReviewContextBanner(null);
-          await fetchData();
-        }}
+        showAssuranceContext={Boolean(reviewContextBanner && !reviewContextBanner.missing && requirementIntelRow)}
         propertyLabel={property ? getPropertyDisplayName(property) : null}
         onClose={() => {
           setRequirementIntelRow(null);

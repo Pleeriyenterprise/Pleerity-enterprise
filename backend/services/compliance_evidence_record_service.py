@@ -1262,7 +1262,8 @@ def non_document_record_satisfies_policy(
     policy: Dict[str, Any],
     is_critical_obligation: bool,
 ) -> bool:
-    if str(record.get("verification_status") or "").upper() != VERIFICATION_VERIFIED:
+    vs = str(record.get("verification_status") or "").upper()
+    if vs not in (VERIFICATION_VERIFIED, VERIFICATION_PENDING):
         return False
     mode = str(record.get("evidence_mode") or "").upper()
     allowed = set(str(x).upper() for x in (policy.get("allowed_evidence_modes") or []) if x)
@@ -1270,6 +1271,14 @@ def non_document_record_satisfies_policy(
         return False
     if mode == EVIDENCE_MODE_DOCUMENT_UPLOAD:
         return False
+    if vs == VERIFICATION_PENDING:
+        from services.cer_governance_presentation import GF_SELF, resolve_governance_meta
+
+        meta = resolve_governance_meta(requirement)
+        if str(meta.get("governance_family") or "") != GF_SELF:
+            return False
+        if mode != EVIDENCE_MODE_STRUCTURED_DECLARATION:
+            return False
     level = str(record.get("evidence_confidence_level") or "").upper()
     if level == CONFIDENCE_HIGH:
         return True

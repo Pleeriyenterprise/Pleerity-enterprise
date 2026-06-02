@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from services.cer_governance_presentation import (
     DOCUMENT_PRIMARY_CODES,
-    GF_ORG,
     GF_PLATFORM_OPT,
     GF_PLATFORM_VER,
     GF_SELF,
@@ -82,7 +81,7 @@ def legacy_due_date_blocks_renewal_attention(row: Dict[str, Any]) -> bool:
     return bool(ea.get("effective_expiry_date") or row.get("expiry_date"))
 
 
-_NON_DOCUMENT_GOVERNANCE_FAMILIES = frozenset({GF_SELF, GF_ORG, GF_PLATFORM_OPT})
+_NON_DOCUMENT_GOVERNANCE_FAMILIES = frozenset({GF_SELF, GF_PLATFORM_OPT})
 
 
 def document_upload_required(row: Dict[str, Any]) -> bool:
@@ -158,19 +157,15 @@ def derive_satisfaction_source(row: Dict[str, Any]) -> str:
     if truth_stage == "declaration_recorded" or sem == "DECLARATION_RECORDED":
         if family == "SELF_CERTIFIED":
             return SOURCE_SELF_CERTIFIED
-        if family == "ORG_ADMIN_REVIEWED":
-            return SOURCE_ORG_REVIEW
         return SOURCE_ACCEPTED_DECLARATION
     if truth_stage in ("evidence_recorded", "assessment_recorded", "recorded_on_file"):
-        if family == "SELF_CERTIFIED":
+        if family in ("SELF_CERTIFIED", "ORG_ADMIN_REVIEWED"):
             return SOURCE_SELF_CERTIFIED
-        if family == "ORG_ADMIN_REVIEWED":
-            return SOURCE_ORG_REVIEW
         if document_upload_required(r):
             return SOURCE_VERIFIED_DOCUMENT if bool(r.get("document_id") or r.get("evidence_doc_id")) else SOURCE_ACCEPTED_DECLARATION
         return SOURCE_ACCEPTED_DECLARATION
-    if truth_stage in ("platform_verification_pending", "org_verification_pending") or ea_st == EA_PENDING_ADMIN_REVIEW:
-        return SOURCE_PLATFORM_VERIFICATION if family == GF_PLATFORM_VER else SOURCE_ORG_REVIEW
+    if truth_stage in ("platform_verification_pending",) or ea_st == EA_PENDING_ADMIN_REVIEW:
+        return SOURCE_PLATFORM_VERIFICATION if family == GF_PLATFORM_VER else SOURCE_UNRESOLVED
     if truth_stage in ("followup_required", "operational_incomplete"):
         return SOURCE_FOLLOW_UP_CLOSURE if is_requirement_satisfied(r) else SOURCE_UNRESOLVED
     if str(r.get("operational_completion_mode") or "").endswith("contractor"):
@@ -261,7 +256,7 @@ def reconcile_client_lifecycle_with_satisfaction(row: Dict[str, Any]) -> Dict[st
     ea_st = _status_upper(authority_state(r))
 
     if eligible:
-        if attention_reason in ("platform_verification_pending", "org_verification_pending", "review_pending"):
+        if attention_reason in ("platform_verification_pending", "review_pending"):
             if lifecycle != PENDING_REVIEW:
                 out["client_lifecycle_state"] = PENDING_REVIEW
                 out.setdefault("client_lifecycle_reason_codes", list(r.get("client_lifecycle_reason_codes") or []))

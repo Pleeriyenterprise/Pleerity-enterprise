@@ -1,0 +1,34 @@
+{
+  "programme": "REVIEW-ASSURANCE-SIMPLIFICATION-01",
+  "verified_at": "2026-06-02T21:06:17.846266+00:00",
+  "tiers": {
+    "SELF_RECORDED": {
+      "sample": {
+        "requirement_type": "right_to_rent",
+        "assurance_tier": "SELF_RECORDED",
+        "truth_presentation_stage": "declaration_recorded",
+        "truth_presentation_label": "Recorded on file",
+        "queue_backed_review": false,
+        "review_owner": null
+      },
+      "pass": true
+    },
+    "PLATFORM_REVIEWED": {
+      "sample": {
+        "assurance_tier": "VERIFIED_DOCUMENT",
+        "review_owner": "platform_admin_escalation",
+        "matches_escalation_queue": true
+      },
+      "pass": true
+    },
+    "VERIFIED_DOCUMENT": {
+      "sample": {
+        "assurance_tier": "VERIFIED_DOCUMENT",
+        "truth_presentation_stage": "platform_verification_pending"
+      },
+      "pass": true
+    }
+  },
+  "legacy_org_row_matches_queue": false,
+  "derive_assurance_tier_self": "SELF_RECORDED"
+}

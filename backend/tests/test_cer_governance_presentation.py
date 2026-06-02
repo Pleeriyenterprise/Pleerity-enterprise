@@ -70,7 +70,7 @@ def test_gas_platform_verification_pending():
     assert fields["queue_backed_review"] is True
 
 
-def test_org_review_pending_queue_backed():
+def test_right_to_rent_self_recorded_not_org_queue():
     row = {
         "requirement_type": "right_to_rent",
         "client_lifecycle_state": "SATISFIED_UNVERIFIED",
@@ -81,9 +81,11 @@ def test_org_review_pending_queue_backed():
         },
     }
     fields = attach_cer_governance_presentation(row)
-    assert fields["truth_presentation_label"] == "Organisation review pending"
-    assert fields["review_owner"] == "org_admin"
-    assert fields["queue_backed_review"] is True
+    assert fields["governance_family"] == GF_SELF
+    assert fields["truth_presentation_label"] == "Recorded on file"
+    assert fields["review_owner"] is None
+    assert fields["queue_backed_review"] is False
+    assert fields["assurance_tier"] == "SELF_RECORDED"
 
 
 def test_stale_not_allowed_without_review_owner():
@@ -100,5 +102,5 @@ def test_stale_not_allowed_declaration_recorded():
     }
     fields = attach_cer_governance_presentation(row)
     merged = {**row, **fields}
-    assert fields["truth_presentation_label"] == "Declaration recorded"
+    assert fields["truth_presentation_label"] == "Recorded on file"
     assert stale_allowed_for_requirement(merged) is False

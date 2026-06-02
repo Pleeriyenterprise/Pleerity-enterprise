@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from services.cer_governance_presentation import GF_ORG
+from services.cer_governance_presentation import GF_ORG  # deprecated alias of GF_SELF
 from services.compliance_evidence_record_service import VERIFICATION_PENDING, batch_list_evidence_records_for_requirements
 from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 from services.requirement_truth import enrich_requirements_for_client
@@ -29,14 +29,9 @@ def is_org_reviewer_role(role: str) -> bool:
 
 
 def matches_org_review_queue(row: Dict[str, Any]) -> bool:
-    """Mandatory governance invariant for org queue inclusion."""
-    if str(row.get("governance_family") or "") != GF_ORG:
-        return False
-    if row.get("queue_backed_review") is not True:
-        return False
-    if str(row.get("review_owner") or "") != ORG_REVIEW_OWNER:
-        return False
-    return True
+    """Deprecated — org review queue removed (REVIEW-ASSURANCE-SIMPLIFICATION-01)."""
+    _ = row  # audit callers still pass rows for orphan detection
+    return False
 
 
 def matches_escalation_queue(row: Dict[str, Any]) -> bool:
@@ -132,20 +127,21 @@ def audit_orphan_queue_states(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]
                     "governance_family": family,
                 }
             )
+        elif owner == ORG_REVIEW_OWNER:
+            orphans.append(
+                {
+                    "requirement_id": row.get("requirement_id"),
+                    "issue": "stale_org_review_owner",
+                    "governance_family": family,
+                    "review_owner": owner,
+                }
+            )
         elif owner and not qbr:
             orphans.append(
                 {
                     "requirement_id": row.get("requirement_id"),
                     "issue": "review_owner_without_queue_backed",
                     "review_owner": owner,
-                }
-            )
-        elif qbr and owner == ORG_REVIEW_OWNER and family != GF_ORG:
-            orphans.append(
-                {
-                    "requirement_id": row.get("requirement_id"),
-                    "issue": "org_owner_non_org_family",
-                    "governance_family": family,
                 }
             )
     return orphans
@@ -213,10 +209,12 @@ async def list_org_review_queue(
     orphans = audit_orphan_queue_states(enriched)
     return {
         "queue_type": "org_admin_review",
+        "deprecated": True,
+        "deprecation_reason": "REVIEW-ASSURANCE-SIMPLIFICATION-01 — org review removed; use PLATFORM_REVIEWED escalation queue",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "items": rows,
         "total": len(rows),
-        "governance_invariant": "governance_family+review_owner+queue_backed_review",
+        "governance_invariant": "deprecated_always_empty",
         "orphan_queue_states": orphans,
     }
 

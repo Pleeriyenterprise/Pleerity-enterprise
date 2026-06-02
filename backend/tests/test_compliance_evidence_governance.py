@@ -83,6 +83,23 @@ def test_low_non_document_never_satisfies_critical_even_if_verified():
     ) is False
 
 
+def test_pending_declaration_satisfies_self_recorded_assurance():
+    req = {"requirement_type": "right_to_rent", "registry_metadata": {}}
+    policy = {
+        "allowed_evidence_modes": ["STRUCTURED_DECLARATION"],
+        "allow_medium_non_document_satisfaction": True,
+        "allow_low_non_document_satisfaction": False,
+    }
+    rec = {
+        "evidence_mode": "STRUCTURED_DECLARATION",
+        "verification_status": "PENDING_REVIEW",
+        "evidence_confidence_level": "MEDIUM",
+    }
+    assert non_document_record_satisfies_policy(
+        record=rec, requirement=req, policy=policy, is_critical_obligation=False
+    ) is True
+
+
 def test_medium_non_document_satisfies_non_critical_without_registry_flag():
     req = {"requirement_type": "smoke_heat_alarms", "registry_metadata": {}}
     assert is_critical_safety_or_legal_obligation(req) is False

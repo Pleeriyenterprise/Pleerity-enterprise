@@ -243,8 +243,6 @@ def resolve_existing_submission_banner_copy(requirement: Dict[str, Any]) -> Opti
     if queue_backed and review_owner:
         if review_owner == "platform_admin":
             return "Submission on file — platform verification in progress."
-        if review_owner == "org_admin":
-            return "Submission on file — organisation review in progress."
         if review_owner == "platform_admin_escalation":
             return "Submission on file — escalated for platform review."
         return "Submission on file — awaiting review."

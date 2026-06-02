@@ -1,0 +1,24 @@
+{
+  "verified_at": "2026-06-02T21:06:17.846266+00:00",
+  "backend_tests": [
+    "test_review_assurance_simplification.py",
+    "test_review_queue_service.py",
+    "test_cer_governance_presentation.py"
+  ],
+  "frontend_tests": [
+    "RequirementIntelligenceModal.test.js"
+  ],
+  "endpoints_preserved": [
+    "POST /compliance-evidence/{id}/verification",
+    "GET /admin/compliance-evidence/escalation-queue",
+    "GET /client/compliance-evidence/org-review-queue (deprecated empty)"
+  ],
+  "surfaces_checked": [
+    "Today",
+    "Command Centre",
+    "escalation queue",
+    "document verification queue",
+    "requirement modal hydration"
+  ],
+  "pass": true
+}

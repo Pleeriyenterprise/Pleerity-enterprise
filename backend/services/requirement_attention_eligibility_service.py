@@ -42,7 +42,6 @@ ATTENTION_TRUTH_STAGES = frozenset(
         "operational_incomplete",
         "followup_required",
         "platform_verification_pending",
-        "org_verification_pending",
         "escalation_review",
         "collect_evidence",
     }
@@ -180,7 +179,7 @@ def derive_attention_reason(
     if sem in ("COMPLETENESS_PENDING", "FOLLOWUP_REQUIRED", "FOLLOW_UP_REQUIRED"):
         return "follow_up_required"
     ndvs = str(ea.get("non_document_verification_status") or "").upper()
-    if ndvs == "PENDING_REVIEW" and str(row.get("review_owner") or "") in ("org_admin", "platform_admin"):
+    if ndvs == "PENDING_REVIEW" and str(row.get("review_owner") or "") == "platform_admin":
         return "review_pending"
     window = int(
         expiring_window_days

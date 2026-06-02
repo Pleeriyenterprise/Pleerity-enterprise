@@ -1,0 +1,40 @@
+{
+  "programme": "REVIEW-ASSURANCE-SIMPLIFICATION-01",
+  "verified_at": "20260602T210617Z",
+  "dependency_audit": {
+    "ORG_REVIEWED_removed": "GF_ORG aliased to GF_SELF; org_verification_pending stage no longer emitted",
+    "org_review_queue": "matches_org_review_queue always False; list_org_review_queue deprecated empty",
+    "org_admin_review_ownership": "review_owner org_admin stripped in _converge_queue_presentation_fields",
+    "ROLE_CLIENT_ADMIN": "is_org_reviewer_role retained for route guard only; queue empty",
+    "convergence_map": {
+      "former_org_review_declarations": "SELF_RECORDED \u2014 declaration_recorded, no queue_backed_review",
+      "regulated_escalated": "PLATFORM_REVIEWED \u2014 platform_admin_escalation queue",
+      "certificates": "VERIFIED_DOCUMENT \u2014 platform_admin document verification"
+    },
+    "obsolete_surfaces": [
+      "ClientOrgComplianceReviewPage operator queue",
+      "RequirementModalOperatorReviewSection Verify/Reject",
+      "orgComplianceReviewOperator",
+      "Compliance review nav item"
+    ],
+    "retained": [
+      "admin escalation queue",
+      "platform document verification",
+      "compliance-evidence verification endpoints",
+      "RequirementIntelligenceModal + assurance panel"
+    ]
+  },
+  "flows_requiring_independent_review": [
+    "PLATFORM_VERIFIED document certificates",
+    "platform_admin_escalation flagged submissions",
+    "manual_review_flag / mismatch escalations"
+  ],
+  "flows_self_recorded": [
+    "right_to_rent",
+    "deposit_pi",
+    "landlord_registration_ni",
+    "smoke_heat_alarms",
+    "how_to_rent",
+    "tenancy_agreement"
+  ]
+}

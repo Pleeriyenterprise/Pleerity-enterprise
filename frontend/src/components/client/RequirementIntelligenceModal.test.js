@@ -15,9 +15,9 @@ jest.mock('../../api/client', () => ({
   },
 }));
 
-jest.mock('./RequirementModalOperatorReviewSection', () => ({
+jest.mock('./RequirementModalAssuranceSection', () => ({
   __esModule: true,
-  default: () => <section data-testid="requirement-modal-operator-review" />,
+  default: () => <section data-testid="requirement-modal-assurance-section" />,
 }));
 
 jest.mock('./RequirementSubmissionInspectPanel', () => {
@@ -27,7 +27,7 @@ jest.mock('./RequirementSubmissionInspectPanel', () => {
     default: React.forwardRef(function MockPanel(props, ref) {
       return (
         <section ref={ref} data-testid="requirement-submission-inspect-panel">
-          <h3>Your submission</h3>
+          <h3>{props.panelTitle || 'Your submission'}</h3>
           <p data-testid="submission-inspect-content">Persisted declaration text</p>
         </section>
       );
@@ -55,7 +55,8 @@ describe('RequirementIntelligenceModal', () => {
         requirement: {
           requirement_id: 'req-sub',
           property_id: 'prop-sub',
-          display_label: 'Smoke alarms',
+          display_label: 'Right to rent',
+          requirement_type: 'right_to_rent',
           workflow_status: 'PENDING_REVIEW',
           compliance_state: 'PENDING',
           take_action: {
@@ -79,7 +80,11 @@ describe('RequirementIntelligenceModal', () => {
         <RequirementIntelligenceModal
           open
           requirementId="req-sub"
-          seedRequirement={null}
+          seedRequirement={{
+            property_id: 'prop-sub',
+            requirement_id: 'req-sub',
+            primary_evidence_record_id: 'cer_1',
+          }}
           onClose={noop}
           onNavigate={noop}
         />,
@@ -89,7 +94,7 @@ describe('RequirementIntelligenceModal', () => {
     await waitFor(() => {
       expect(screen.getByTestId('requirement-submission-inspect-panel')).toBeInTheDocument();
     });
-    expect(screen.getByText('Your submission')).toBeInTheDocument();
+    expect(screen.getByText('Submission on file')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('requirement-intel-view-submission'));
     expect(scrollIntoView).toHaveBeenCalled();
   });
@@ -267,7 +272,7 @@ describe('RequirementIntelligenceModal', () => {
     expect(screen.getByTestId('requirement-intel-primary-cta')).toHaveTextContent('Record declaration');
   });
 
-  it('shows operator review section when enabled and CER pending', async () => {
+  it('shows assurance section for self-recorded review context', async () => {
     clientAPI.listComplianceEvidence.mockResolvedValue({
       data: {
         evidence_records: [
@@ -275,7 +280,6 @@ describe('RequirementIntelligenceModal', () => {
             evidence_record_id: 'cer-op',
             evidence_mode: 'STRUCTURED_DECLARATION',
             verification_status: 'PENDING_REVIEW',
-            evidence_confidence_level: 'MEDIUM',
           },
         ],
       },
@@ -286,11 +290,9 @@ describe('RequirementIntelligenceModal', () => {
           requirement_id: 'req-op',
           property_id: 'prop-op',
           display_label: 'Landlord registration',
-          governance_family: 'ORG_ADMIN_REVIEWED',
-          queue_backed_review: true,
-          review_owner: 'org_admin',
-          truth_presentation_stage: 'org_verification_pending',
-          truth_presentation_label: 'Organisation review pending',
+          assurance_tier: 'SELF_RECORDED',
+          governance_family: 'SELF_CERTIFIED',
+          truth_presentation_stage: 'declaration_recorded',
           take_action: { primary: { label: 'View submission', handler: 'guided_evidence' }, supporting_external_links: [] },
         },
         active_compliance_job: null,
@@ -302,8 +304,13 @@ describe('RequirementIntelligenceModal', () => {
         <RequirementIntelligenceModal
           open
           requirementId="req-op"
-          seedRequirement={null}
-          enableOperatorReview
+          seedRequirement={{
+            property_id: 'prop-op',
+            requirement_id: 'req-op',
+            assurance_tier: 'SELF_RECORDED',
+            primary_evidence_record_id: 'cer-op',
+          }}
+          showAssuranceContext
           onClose={noop}
           onNavigate={noop}
         />,
@@ -311,7 +318,7 @@ describe('RequirementIntelligenceModal', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('requirement-modal-operator-review')).toBeInTheDocument();
+      expect(screen.getByTestId('requirement-modal-assurance-section')).toBeInTheDocument();
     });
   });
 });

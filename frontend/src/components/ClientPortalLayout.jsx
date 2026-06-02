@@ -55,7 +55,6 @@ const OPERATIONS_CHILDREN = [
   { path: '/operations/risk-signals', label: 'Risk signals', icon: TrendingUp, feature: 'predictive_maintenance' },
   { path: '/operations/rent', label: 'Rent Operations', icon: PoundSterling, feature: 'rent_operations' },
   { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },
-  { path: '/operations/compliance-review', label: 'Compliance review', icon: FileCheck, orgReviewerOnly: true },
 ];
 
 /** Top-level client portal nav tabs (feature-gated entries may be filtered at render). Exported for tests. */

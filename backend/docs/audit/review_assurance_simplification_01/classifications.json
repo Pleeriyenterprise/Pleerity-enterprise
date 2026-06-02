@@ -1,0 +1,12 @@
+{
+  "programme": "REVIEW-ASSURANCE-SIMPLIFICATION-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "verified_at": "2026-06-02T21:06:17.846266+00:00",
+  "criteria": {
+    "org_review_removed": true,
+    "assurance_tiers": true,
+    "lifecycle_coherent": true,
+    "browser_proof": "unit_tests_only"
+  },
+  "notes": "Staging browser capture deferred; org queue empty on probe accounts."
+}

@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-02T21:06:17.846266+00:00",
+  "self_recorded": {
+    "attention_eligible": [
+      true,
+      "platform_verification_pending",
+      null
+    ],
+    "requirement_satisfied": false,
+    "client_lifecycle_state": null,
+    "truth_presentation_label": "Recorded on file"
+  },
+  "pass": true
+}

@@ -1,0 +1,13 @@
+{
+  "verified_at": "2026-06-02T21:06:17.846266+00:00",
+  "mode": "unit_and_local_probe",
+  "flows": {
+    "self_recorded_modal": "RequirementIntelligenceModal showAssurancePanel when showAssuranceContext + hasSubmission + SELF_RECORDED",
+    "platform_reviewed": "Escalation queue + assurance tier PLATFORM_REVIEWED",
+    "verified_document": "gas_safety platform_verification_pending",
+    "org_queue_ui": "ClientOrgComplianceReviewPage deprecation banner; nav removed",
+    "operator_verify_reject": "removed from modal"
+  },
+  "frontend_tests": "RequirementIntelligenceModal.test.js \u2014 6 passed",
+  "staging_browser": "deferred \u2014 org queue historically empty on staging"
+}
