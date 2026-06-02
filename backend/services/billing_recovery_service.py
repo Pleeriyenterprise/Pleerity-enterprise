@@ -31,13 +31,19 @@ from services.stripe_mode_client_remediation_service import (
 )
 from services.stripe_mode_containment_service import (
     CUSTOMER_BILLING_REFRESH_MESSAGE,
+    MODE_UNVERIFIED as CONTAINMENT_MODE_UNVERIFIED,
+    StripeModeDriftError,
+    normalize_persisted_mode,
     resolve_stripe_context,
 )
 from services.stripe_mode_backfill_service import (
+    REMEDIATION_MODE_UNVERIFIED,
+    REMEDIATION_REGENERATE_CHECKOUT,
     classify_remediation,
     get_remediation_guidance,
     resolve_authoritative_mode,
 )
+from services.stripe_mode_authority import get_stripe_mode
 from utils.audit import create_audit_log
 
 logger = logging.getLogger(__name__)
@@ -47,6 +53,40 @@ COL_RECOVERY_AUDIT = "billing_recovery_audit"
 COL_RECOVERY_METRICS = "billing_recovery_metrics"
 
 CUSTOMER_CONTINUATION_SUBJECT = "Complete your secure billing continuation"
+
+
+class BillingRecoveryRegenerationError(Exception):
+    """Governed regeneration failure — safe for HTTP 4xx mapping (never raw Stripe)."""
+
+    def __init__(self, message: str, *, status_code: int = 409, error_code: str = "recovery_regeneration_blocked"):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.error_code = error_code
+
+
+def _requires_deployment_checkout_regeneration(
+    billing: Optional[Dict[str, Any]],
+    case: Optional[Dict[str, Any]],
+) -> bool:
+    """Use deployment-mode Checkout (not upgrade/portal preflight) for drift / MODE_UNVERIFIED rows."""
+    if not billing:
+        return True
+    verification = (billing.get("stripe_mode_verification_status") or "").strip()
+    if verification == CONTAINMENT_MODE_UNVERIFIED:
+        return True
+    remediation = (case or {}).get("remediation_code") or ""
+    if remediation in (REMEDIATION_MODE_UNVERIFIED, REMEDIATION_REGENERATE_CHECKOUT):
+        return True
+    dep = normalize_persisted_mode(get_stripe_mode())
+    stored = normalize_persisted_mode(billing.get("stripe_mode"))
+    if billing.get("stripe_subscription_id") and stored is None:
+        return True
+    if stored and dep and stored != dep:
+        return True
+    return False
+
+
 CUSTOMER_CONTINUATION_BODY = (
     "Your billing access needs to be refreshed before plan changes can continue. "
     "Please use the secure link below to complete your billing continuation. "
@@ -378,19 +418,52 @@ async def regenerate_checkout_for_recovery(
         {"$set": {"status": "superseded", "superseded_at": _now(), "superseded_by": "billing_recovery"}},
     )
 
-    stripe_svc = StripeService()
-    result = await stripe_svc.create_upgrade_session(
-        client_id=client_id,
-        new_plan_code=plan_code,
-        origin_url=origin_url,
+    billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+    client = await db.clients.find_one(
+        {"client_id": client_id},
+        {"_id": 0, "email": 1, "contact_email": 1, "customer_reference": 1},
     )
+    stripe_svc = StripeService()
+    use_deployment_checkout = _requires_deployment_checkout_regeneration(billing, case)
+    try:
+        if use_deployment_checkout:
+            customer_email = (client or {}).get("email") or (client or {}).get("contact_email")
+            result = await stripe_svc.create_checkout_session(
+                client_id=client_id,
+                plan_code=plan_code,
+                origin_url=origin_url,
+                customer_email=customer_email,
+                customer_reference=(client or {}).get("customer_reference"),
+            )
+            result["regeneration_path"] = "deployment_checkout"
+        else:
+            result = await stripe_svc.create_upgrade_session(
+                client_id=client_id,
+                new_plan_code=plan_code,
+                origin_url=origin_url,
+            )
+            result["regeneration_path"] = "upgrade_session"
+    except StripeModeDriftError as drift:
+        raise BillingRecoveryRegenerationError(
+            drift.customer_message,
+            status_code=409,
+            error_code=drift.error_code,
+        ) from drift
+
+    session_id = result.get("session_id") or ""
+    if not session_id and not result.get("checkout_url") and not result.get("portal_url"):
+        raise BillingRecoveryRegenerationError(
+            CUSTOMER_BILLING_REFRESH_MESSAGE,
+            status_code=422,
+            error_code="checkout_not_created",
+        )
 
     await transition_case(
         client_id,
         target_state=STATE_CHECKOUT_REGENERATED,
         action="regenerate_checkout",
         actor_id=actor_id,
-        idempotency_key=idempotency_key or f"regen:{client_id}:{result.get('session_id', '')}",
+        idempotency_key=idempotency_key or f"regen:{client_id}:{session_id}",
     )
     await transition_case(
         client_id,
@@ -401,14 +474,19 @@ async def regenerate_checkout_for_recovery(
     )
 
     email_result = None
-    if send_email and result.get("checkout_url"):
-        email_result = await _send_continuation_email(client_id, result["checkout_url"], actor_id=actor_id)
+    checkout_url = result.get("checkout_url") or result.get("portal_url")
+    if send_email and checkout_url:
+        email_result = await _send_continuation_email(client_id, checkout_url, actor_id=actor_id)
 
     await _record_audit(
         client_id=client_id,
         action_type="regeneration_sent",
         actor_id=actor_id,
-        metadata={"session_id": result.get("session_id"), "send_email": send_email},
+        metadata={
+            "session_id": session_id,
+            "send_email": send_email,
+            "regeneration_path": result.get("regeneration_path"),
+        },
     )
     return {
         "checkout": result,

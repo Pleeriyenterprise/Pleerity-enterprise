@@ -1,0 +1,34 @@
+{
+  "audit_id": "PHASE-4-BILLING-RECOVERY-REGENERATE-CHECKOUT-500-01",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "reproduced_at": "2026-06-02T10:50:00+00:00",
+  "endpoint": "POST /api/admin/billing/recovery/clients/{client_id}/regenerate-checkout",
+  "http_status": 500,
+  "response_detail": "Your billing record needs to be refreshed before plan changes can continue.",
+  "root_cause": {
+    "summary": "Recovery regenerate called StripeService.create_upgrade_session for a MODE_UNVERIFIED client; upgrade/portal preflight raised StripeModeDriftError and the route mapped all exceptions to HTTP 500.",
+    "failing_function": "billing_recovery_service.regenerate_checkout_for_recovery → stripe_service.create_upgrade_session → validate_portal_billing_preflight / validate_stripe_subscription_mode",
+    "failure_category": "stripe_mode_preflight_on_wrong_path",
+    "not_caused_by": [
+      "missing confirmation/reason policy",
+      "serialization",
+      "notification failure",
+      "duplicate subscription guard false positive"
+    ],
+    "client_context_at_probe": {
+      "recovery_state": "RECOVERY_RESOLVED",
+      "remediation_code": "MODE_UNVERIFIED",
+      "case_note": "Prior guided closeout mutated state; billing row still MODE_UNVERIFIED remediation"
+    }
+  },
+  "fix_direction": {
+    "summary": "For MODE_UNVERIFIED / regenerate-checkout remediation, use deployment-mode create_checkout_session instead of upgrade preflight; map governed drift to 409/422 instead of 500.",
+    "preserve": [
+      "CRN/client on checkout metadata",
+      "stripe_mode on checkout_sessions write",
+      "supersede stale pending sessions",
+      "state machine transitions after successful checkout creation",
+      "audit regeneration_sent"
+    ]
+  }
+}

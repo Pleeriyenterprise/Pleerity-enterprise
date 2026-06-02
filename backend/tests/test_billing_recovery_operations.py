@@ -11,6 +11,7 @@ from services.billing_recovery_state_machine import (
     STATE_CHECKOUT_REGENERATED,
     STATE_CUSTOMER_PENDING,
     STATE_MODE_UNVERIFIED,
+    STATE_RECOVERY_REQUIRED,
     STATE_RECOVERY_RESOLVED,
     BillingRecoveryTransitionError,
     can_transition,
@@ -111,22 +112,31 @@ async def test_regenerate_supersedes_pending_checkouts():
     mock_db.billing_recovery_cases.insert_one = AsyncMock()
     mock_db.billing_recovery_audit.insert_one = AsyncMock()
     mock_db.billing_recovery_metrics.update_one = AsyncMock()
-    mock_db.client_billing.find_one = AsyncMock(return_value={"client_id": "c1"})
+    mock_db.client_billing.find_one = AsyncMock(
+        return_value={"client_id": "c1", "stripe_mode_verification_status": "MODE_UNVERIFIED"}
+    )
     mock_db.clients.find_one = AsyncMock(return_value={"client_id": "c1", "email": "a@b.com"})
     mock_db.stripe_events.find_one = AsyncMock(return_value=None)
     mock_db.checkout_sessions.find_one = AsyncMock(return_value=None)
 
     mock_stripe = MagicMock()
-    mock_stripe.create_upgrade_session = AsyncMock(
+    mock_stripe.create_checkout_session = AsyncMock(
         return_value={"session_id": "cs_test", "checkout_url": "https://checkout.example"}
     )
+    mock_stripe.create_upgrade_session = AsyncMock()
 
     with patch("services.billing_recovery_service.database.get_db", return_value=mock_db):
         with patch("services.billing_recovery_service.create_audit_log", new=AsyncMock()):
             with patch("services.billing_recovery_service.resolve_stripe_context", new=AsyncMock()):
                 with patch(
                     "services.billing_recovery_service._get_or_create_case",
-                    new=AsyncMock(return_value={"client_id": "c1", "recovery_state": STATE_MODE_UNVERIFIED}),
+                    new=AsyncMock(
+                        return_value={
+                            "client_id": "c1",
+                            "recovery_state": STATE_MODE_UNVERIFIED,
+                            "remediation_code": "MODE_UNVERIFIED",
+                        }
+                    ),
                 ):
                     with patch("services.stripe_service.StripeService", return_value=mock_stripe):
                         with patch(
@@ -142,6 +152,8 @@ async def test_regenerate_supersedes_pending_checkouts():
                             )
     mock_db.checkout_sessions.update_many.assert_awaited()
     assert result["checkout"]["session_id"] == "cs_test"
+    mock_stripe.create_checkout_session.assert_awaited_once()
+    mock_stripe.create_upgrade_session.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -163,13 +175,15 @@ async def test_regenerate_prepares_state_before_stripe_side_effects():
     mock_db.billing_recovery_cases.insert_one = AsyncMock()
     mock_db.billing_recovery_audit.insert_one = AsyncMock()
     mock_db.billing_recovery_metrics.update_one = AsyncMock()
-    mock_db.client_billing.find_one = AsyncMock(return_value={"client_id": "c1"})
+    mock_db.client_billing.find_one = AsyncMock(
+        return_value={"client_id": "c1", "stripe_mode_verification_status": "MODE_UNVERIFIED"}
+    )
     mock_db.clients.find_one = AsyncMock(return_value={"client_id": "c1", "email": "a@b.com"})
     mock_db.stripe_events.find_one = AsyncMock(return_value=None)
     mock_db.checkout_sessions.find_one = AsyncMock(return_value=None)
 
     mock_stripe = MagicMock()
-    mock_stripe.create_upgrade_session = AsyncMock(
+    mock_stripe.create_checkout_session = AsyncMock(
         return_value={"session_id": "cs_test", "checkout_url": "https://checkout.example"}
     )
 
@@ -184,7 +198,13 @@ async def test_regenerate_prepares_state_before_stripe_side_effects():
             with patch("services.billing_recovery_service.resolve_stripe_context", new=AsyncMock()):
                 with patch(
                     "services.billing_recovery_service._get_or_create_case",
-                    new=AsyncMock(return_value={"client_id": "c1", "recovery_state": STATE_MODE_UNVERIFIED}),
+                    new=AsyncMock(
+                        return_value={
+                            "client_id": "c1",
+                            "recovery_state": STATE_MODE_UNVERIFIED,
+                            "remediation_code": "MODE_UNVERIFIED",
+                        }
+                    ),
                 ):
                     with patch("services.stripe_service.StripeService", return_value=mock_stripe):
                         with patch(
@@ -202,6 +222,76 @@ async def test_regenerate_prepares_state_before_stripe_side_effects():
     assert call_states[0] == "RECOVERY_REQUIRED"
     assert call_states[1] == STATE_CHECKOUT_REGENERATED
     assert call_states[2] == STATE_CUSTOMER_PENDING
+
+
+@pytest.mark.asyncio
+async def test_regenerate_mode_unverified_billing_row_uses_deployment_checkout():
+    """Reproduces staging 500: upgrade preflight on MODE_UNVERIFIED must use deployment Checkout."""
+    from services.billing_recovery_service import regenerate_checkout_for_recovery
+
+    mock_db = MagicMock()
+    mock_db.checkout_sessions.update_many = AsyncMock(return_value=MagicMock(modified_count=1))
+    mock_db.billing_recovery_cases.find_one = AsyncMock(
+        return_value={
+            "client_id": "c1",
+            "recovery_state": STATE_RECOVERY_REQUIRED,
+            "remediation_code": "MODE_UNVERIFIED",
+        }
+    )
+    mock_db.billing_recovery_cases.update_one = AsyncMock()
+    mock_db.billing_recovery_cases.insert_one = AsyncMock()
+    mock_db.billing_recovery_audit.insert_one = AsyncMock()
+    mock_db.billing_recovery_metrics.update_one = AsyncMock()
+    mock_db.client_billing.find_one = AsyncMock(
+        return_value={
+            "client_id": "c1",
+            "stripe_mode_verification_status": "MODE_UNVERIFIED",
+            "stripe_subscription_id": "sub_test_legacy",
+            "stripe_customer_id": "cus_test_legacy",
+        }
+    )
+    mock_db.clients.find_one = AsyncMock(
+        return_value={"client_id": "c1", "email": "client@example.com", "customer_reference": "CRN-TEST"}
+    )
+
+    mock_stripe = MagicMock()
+    mock_stripe.create_checkout_session = AsyncMock(
+        return_value={"session_id": "cs_recovery", "checkout_url": "https://checkout.example/recovery"}
+    )
+    mock_stripe.create_upgrade_session = AsyncMock(
+        side_effect=Exception("upgrade preflight should not run")
+    )
+
+    with patch("services.billing_recovery_service.database.get_db", return_value=mock_db):
+        with patch("services.billing_recovery_service.create_audit_log", new=AsyncMock()):
+            with patch("services.billing_recovery_service.resolve_stripe_context", new=AsyncMock()):
+                with patch(
+                    "services.billing_recovery_service._get_or_create_case",
+                    new=AsyncMock(
+                        return_value={
+                            "client_id": "c1",
+                            "recovery_state": STATE_RECOVERY_REQUIRED,
+                            "remediation_code": "MODE_UNVERIFIED",
+                        }
+                    ),
+                ):
+                    with patch("services.stripe_service.StripeService", return_value=mock_stripe):
+                        with patch(
+                            "services.billing_recovery_service.transition_case",
+                            new=AsyncMock(side_effect=lambda cid, **kw: {"recovery_state": kw["target_state"]}),
+                        ):
+                            result = await regenerate_checkout_for_recovery(
+                                "c1",
+                                plan_code="PLAN_2_PORTFOLIO",
+                                actor_id="admin@test",
+                                origin_url="https://app.example/admin/billing",
+                                send_email=False,
+                            )
+
+    mock_stripe.create_checkout_session.assert_awaited_once()
+    mock_stripe.create_upgrade_session.assert_not_awaited()
+    assert result["checkout"]["session_id"] == "cs_recovery"
+    assert result["checkout"]["regeneration_path"] == "deployment_checkout"
 
 
 @pytest.mark.asyncio

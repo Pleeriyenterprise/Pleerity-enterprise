@@ -2445,8 +2445,29 @@ async def post_billing_recovery_regenerate_checkout(
             send_email=body.send_email,
         )
     except Exception as exc:
+        from services.billing_recovery_service import BillingRecoveryRegenerationError
+        from services.billing_recovery_state_machine import BillingRecoveryTransitionError
+        from services.stripe_mode_containment_service import StripeModeDriftError
+        from services.plan_registry import StripeModeMismatchError
+
+        if isinstance(exc, BillingRecoveryRegenerationError):
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        if isinstance(exc, BillingRecoveryTransitionError):
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        if isinstance(exc, StripeModeDriftError):
+            raise HTTPException(status_code=409, detail=exc.customer_message) from exc
+        if isinstance(exc, StripeModeMismatchError):
+            raise HTTPException(
+                status_code=422,
+                detail="Billing configuration is not ready for this plan. Contact support.",
+            ) from exc
+        if isinstance(exc, ValueError):
+            raise HTTPException(status_code=422, detail=str(exc)[:200]) from exc
         logger.exception("recovery regenerate checkout failed client_id=%s", client_id)
-        raise HTTPException(status_code=500, detail=str(exc)[:200]) from exc
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to regenerate checkout. Contact support.",
+        ) from exc
 
 
 @router.post("/recovery/clients/{client_id}/admin-set-mode")
