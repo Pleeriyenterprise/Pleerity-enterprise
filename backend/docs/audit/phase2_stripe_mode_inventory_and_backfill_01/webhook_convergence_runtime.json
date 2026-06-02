@@ -1,9 +1,12 @@
 {
-  "generated_at": "2026-06-01T19:15:36.795489+00:00",
-  "persisted_fields": [
-    "livemode",
-    "environment_source",
-    "event_verification_status"
-  ],
-  "authority": "webhook livemode mismatch blocked at ingress"
+  "generated_at": "2026-06-02T05:14:36.444381+00:00",
+  "recent_events_sampled": 20,
+  "events_with_livemode": 0,
+  "events_with_environment_source": 0,
+  "events_with_verification_status": 0,
+  "billing_rows_with_stripe_mode": 1,
+  "checkout_sessions_with_stripe_mode": 0,
+  "webhook_mismatch_blocked": "assert_stripe_object_mode at webhook ingress (Phase 1)",
+  "pass": false,
+  "note": "New fields appear on events processed after Phase 2 deploy; legacy events may lack environment_source"
 }

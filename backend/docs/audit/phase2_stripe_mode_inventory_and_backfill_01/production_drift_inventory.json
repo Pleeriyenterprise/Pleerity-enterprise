@@ -1,18 +1,6 @@
 {
-  "generated_at": "2026-06-01T19:05:30.511966+00:00",
-  "environment": "production",
+  "completed": false,
   "execution": "blocked",
-  "read_only": true,
-  "note": "Production Mongo URL not supplied for this closeout run. Re-run with --production-mongo-url when credentials are available.",
-  "summary": {
-    "missing_stripe_mode": null,
-    "mixed_customer_subscription_mode": null,
-    "test_rows_in_live": null,
-    "live_rows_in_test": null,
-    "orphaned_checkout_sessions": null,
-    "webhook_mode_conflicts": null,
-    "unknown_mode_rows": null,
-    "legacy_unclassified_rows": null
-  },
-  "required_action": "Run phase2_stripe_mode_inventory_closeout.py --production-mongo-url $PRODUCTION_MONGO_URL"
+  "note": "Set PRODUCTION_MONGO_URL or --production-mongo-url",
+  "generated_at": "2026-06-02T05:12:36.225750+00:00"
 }

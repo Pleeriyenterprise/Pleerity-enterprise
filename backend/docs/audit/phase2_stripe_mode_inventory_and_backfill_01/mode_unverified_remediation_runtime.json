@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-06-02T05:14:08.035969+00:00",
+  "samples": [
+    {
+      "client_id_redacted": "80f83edd\u2026a23e4098",
+      "remediation_code": "MODE_UNVERIFIED",
+      "recommended_admin_action": "ADMIN_SET_MODE_REQUIRED",
+      "operational_risk": "high",
+      "confidence": "unknown"
+    },
+    {
+      "client_id_redacted": "616258a5\u2026eb35e780",
+      "remediation_code": "MODE_UNVERIFIED",
+      "recommended_admin_action": "ADMIN_SET_MODE_REQUIRED",
+      "operational_risk": "high",
+      "confidence": "unknown"
+    },
+    {
+      "client_id_redacted": "ec0b091b\u2026a9e14342",
+      "remediation_code": "MODE_UNVERIFIED",
+      "recommended_admin_action": "ADMIN_SET_MODE_REQUIRED",
+      "operational_risk": "high",
+      "confidence": "unknown"
+    },
+    {
+      "client_id_redacted": "a032036f\u2026374dcce5",
+      "remediation_code": "MODE_UNVERIFIED",
+      "recommended_admin_action": "ADMIN_SET_MODE_REQUIRED",
+      "operational_risk": "high",
+      "confidence": "unknown"
+    },
+    {
+      "client_id_redacted": "43805332\u202662f29a38",
+      "remediation_code": "MODE_UNVERIFIED",
+      "recommended_admin_action": "ADMIN_SET_MODE_REQUIRED",
+      "operational_risk": "high",
+      "confidence": "unknown"
+    }
+  ],
+  "classification_counts": {
+    "MODE_UNVERIFIED": 5
+  }
+}

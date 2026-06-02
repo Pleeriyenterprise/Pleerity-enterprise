@@ -1,17 +1,14 @@
 {
-  "marker": "PHASE-2-STRIPE-MODE-INVENTORY-AND-BACKFILL-01",
-  "generated_at": "2026-06-01T19:15:44.466541+00:00",
+  "marker": "PHASE-2-STRIPE-MODE-REMEDIATION-CLOSEOUT-01",
+  "generated_at": "2026-06-02T05:18:25.465473+00:00",
   "classification": "MODE_UNVERIFIED_BACKLOG",
+  "prior_classification": "MODE_UNVERIFIED_BACKLOG",
   "gates": {
+    "deploy_commit_matches": true,
     "staging_inventory": true,
     "production_inventory": false,
-    "regression_pass": true,
     "legacy_caller_count": 0,
-    "authoritative_mode_coverage": 0.0,
-    "backfill_dry_run": {
-      "verified": 0,
-      "unverified": 33,
-      "skipped": 0
-    }
+    "regression_pass": true,
+    "backfill_verified_writes": 0
   }
 }

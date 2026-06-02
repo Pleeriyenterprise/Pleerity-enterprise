@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-06-02T05:14:38.994967+00:00",
+  "assessments": [
+    {
+      "client_id_redacted": "80f83edd\u2026a23e4098",
+      "drift_detected": true,
+      "remediation_code": "MODE_UNVERIFIED",
+      "entitlement_note": "Billing mode drift does not invalidate platform governance alone; Stripe billing operations are blocked until refresh.",
+      "access_suspended_from_drift_only": false,
+      "has_remediation_path": true
+    }
+  ],
+  "pass": false,
+  "governance": "Drift surfaces remediation; does not suspend entitlement from drift alone"
+}

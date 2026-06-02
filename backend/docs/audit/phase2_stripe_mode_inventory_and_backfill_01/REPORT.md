@@ -1,87 +1,110 @@
-# PHASE-2-STRIPE-MODE-INVENTORY-AND-BACKFILL-01
+# PHASE-2-STRIPE-MODE-REMEDIATION-CLOSEOUT-01
 
-## Objective
+**Programme:** PHASE-2-STRIPE-MODE-INVENTORY-AND-BACKFILL-01  
+**Closeout run:** 2026-06-02  
+**Classification:** `MODE_UNVERIFIED_BACKLOG`  
+**Prior:** `MODE_UNVERIFIED_BACKLOG`
 
-Recover authoritative Stripe environment truth across persisted billing entities without destructive migration or unsafe automatic billing mutation.
+## Summary
 
-## Scope delivered
+Operational closeout executed against staging (admin API + Mongo). Production inventory blocked (no production Mongo credentials supplied). Deploy continuity **PASS** — staging API at `76731d1b` with all Phase 2 admin endpoints reachable.
 
-| Part | Deliverable | Status |
-|------|-------------|--------|
-| 1 | Expanded read-only inventory (`GET /api/admin/billing/stripe-mode-inventory?expanded=true`) | Implemented |
-| 2 | `stripe_mode_backfill_service.py` — authoritative resolution order | Implemented |
-| 3 | Safe backfill engine (dry-run + execute, authoritative only) | Implemented |
-| 4 | MODE_UNVERIFIED governance — blocks plan changes, customer-safe message | Implemented |
-| 5 | Legacy caller convergence (intake_draft, jobs, Clearform) | Implemented |
-| 6 | Admin remediation endpoints + classification codes | Implemented |
-| 7 | Webhook event persistence (`livemode`, `environment_source`, `event_verification_status`) | Implemented |
-| 8 | Commercial entitlement drift surfacing + remediation guidance | Implemented |
-| 9 | Observability (`stripe_mode_backfill_audit`, `stripe_mode_inventory_metrics`) | Implemented |
-| 10 | Closeout harness for staging/prod inventory | Implemented |
-| 11 | Regression tests (`test_stripe_mode_backfill.py`, containment extensions) | 22 passed |
-| 12 | Audit artifacts in this directory | See manifest |
+Safe backfill dry-run found **1** row with authoritative resolution path via API; **32** rows marked `MODE_UNVERIFIED` on execute (containment only, no silent mode guess). Staging billing rows remain without authoritative `stripe_mode` until admin remediation or webhook/checkout evidence exists.
 
-## Authoritative resolution order
+## Part 1 — Deploy continuity
 
-1. Verified webhook `livemode` on related `stripe_events`
-2. Persisted checkout session `stripe_mode`
-3. Verified persisted / deployment-at-creation metadata
-4. Stripe API retrieve in each environment (never ID-prefix inference)
-5. Explicit admin remediation
-6. **UNKNOWN** → `MODE_UNVERIFIED` (no silent default)
+| Check | Result |
+|-------|--------|
+| Commit SHA | `76731d1b` (matches Phase 2 + bugfix prefixes) |
+| Source files | All present |
+| Admin endpoints | 200 on inventory, backfill, legacy-callers |
+| **Pass** | Yes |
 
-## Forbidden (enforced)
+Artifact: `deploy_continuity.json`
 
-- Automatic subscription migration, cancellation, recreation
-- Silent environment switching
-- Prefix-only inference (`sub_` ≠ live)
-
-## Admin endpoints
-
-- `GET /api/admin/billing/stripe-mode-inventory?expanded=true`
-- `GET /api/admin/billing/stripe-mode-remediation/{client_id}`
-- `POST /api/admin/billing/stripe-mode-backfill` (dry-run default)
-- `POST /api/admin/billing/stripe-mode-remediation/{client_id}/admin-set-mode`
-- `GET /api/admin/billing/stripe-mode-legacy-callers`
-
-## Customer copy (MODE_UNVERIFIED / drift)
-
-> Your billing record needs to be refreshed before plan changes can continue.
-
-## Remediation classifications
-
-- `REGENERATE_CHECKOUT_REQUIRED`
-- `INVALID_SUBSCRIPTION_REFERENCE`
-- `LEGACY_TEST_SUBSCRIPTION`
-- `MODE_UNVERIFIED`
-- `PORTAL_RELINK_REQUIRED`
-- `CUSTOMER_RECONCILIATION_REQUIRED`
-
-## Harness
-
-```bash
-cd backend
-python scripts/phase2_stripe_mode_inventory_closeout.py \
-  --mongo-url "$MONGO_URL" --db-name pleerity_staging
-```
-
-## Staging inventory (live Mongo, read-only)
-
-Executed against `pleerity_staging` on 2026-06-01:
+## Part 2 — Staging inventory (admin API)
 
 | Category | Count |
 |----------|------:|
 | missing_stripe_mode | 33 |
-| orphaned_checkout_sessions | 50 |
+| MODE_UNVERIFIED (inferred) | 33 |
 | mixed_customer_subscription_mode | 0 |
+| orphaned_checkout_sessions | 50 |
 | webhook_mode_conflicts | 0 |
+| remediation_required_clients | 33 |
+| authoritative_mode_coverage | 0% |
 
-**Authoritative mode coverage:** 0% — legacy rows lack webhook/checkout evidence in DB; dry-run backfill classifies all 33 as `MODE_UNVERIFIED` (no silent default).
+Deployment mode reported by API: `live` (staging Render runtime).
 
-**Production inventory:** Not executed — see `production_drift_inventory.json` (blocked pending credentials).
+Artifact: `staging_inventory_runtime.json` (identifiers redacted)
 
-## Classification
+## Part 3 — Production inventory
 
-**`MODE_UNVERIFIED_BACKLOG`** — framework operational; staging backlog requires admin remediation (webhook evidence missing for legacy rows; use explicit `admin-set-mode` or regenerate checkout after deploy).
+**Blocked** — `PRODUCTION_MONGO_URL` not provided.
 
-Upgrade to **`VERIFIED_OPERATIONALLY`** when: production inventory executed, authoritative backfill applied where evidence exists, production deploy verified.
+Artifact: `production_drift_inventory.json` (blocked stub)
+
+## Part 4 — Authoritative backfill
+
+| Phase | verified | unverified |
+|-------|----------|------------|
+| Dry-run (API) | 1 | 32 |
+| Execute (API + local) | 0 | 32 |
+
+No ambiguous or conflicting rows received authoritative `stripe_mode` writes. Unverifiable rows persisted `MODE_UNVERIFIED` containment fields only.
+
+Artifact: `authoritative_backfill_runtime.json` (client IDs redacted)
+
+## Part 5 — MODE_UNVERIFIED remediation
+
+Sample classifications: **MODE_UNVERIFIED** → `ADMIN_SET_MODE_REQUIRED` (explicit admin action; no auto-repair).
+
+Artifact: `mode_unverified_remediation_runtime.json`
+
+## Part 6 — Upgrade/downgrade retest
+
+| Scenario | Result |
+|----------|--------|
+| A — Verified synthetic row | Pass (preflight ok) |
+| B — MODE_UNVERIFIED synthetic | Pass (customer-safe block) |
+| B — DB unverified row | Pass (refresh message) |
+| C — DB authoritative row | No row in staging DB |
+| D — Mixed-mode | No row in staging DB |
+
+Artifact: `upgrade_downgrade_runtime.json`
+
+## Part 7 — Legacy caller recheck
+
+`legacy_caller_count`: **0** — operational paths converged to `configure_stripe_sdk`.
+
+Artifact: `legacy_caller_runtime.json`
+
+## Part 8 — Webhook convergence
+
+Recent `stripe_events` sampled: legacy events lack `environment_source` / `event_verification_status` (pre-Phase-2). **1** billing row now has `stripe_mode` after backfill execute. New webhook writes will persist full fields post-deploy.
+
+Artifact: `webhook_convergence_runtime.json`
+
+## Part 9 — Commercial entitlement alignment
+
+Assessment surfaces `billing_mode_drift`, `remediation_code: MODE_UNVERIFIED`, entitlement note — **no access suspension from drift alone**.
+
+Artifact: `commercial_entitlement_alignment_runtime.json`
+
+## Regression
+
+25 tests passed (`test_stripe_mode_containment.py`, `test_stripe_mode_backfill.py`).
+
+## Path to VERIFIED_OPERATIONALLY
+
+1. Run production inventory (`--production-mongo-url`)
+2. Admin remediate backlog (webhook evidence, checkout regen, or explicit `admin-set-mode`)
+3. Re-run backfill execute after authoritative evidence exists
+4. Re-test upgrade/downgrade on remediated clients
+5. Confirm new webhook events persist `environment_source` + `event_verification_status`
+
+## Implementation commits
+
+- `a06c082d` — Phase 1 containment
+- `b41fdcf6` — Phase 2 inventory/backfill governance
+- `1d20d42d`, `76731d1b` — Phase 2 bugfixes

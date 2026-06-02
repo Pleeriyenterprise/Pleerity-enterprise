@@ -1,0 +1,730 @@
+{
+  "generated_at": "2026-06-02T05:12:22.487830+00:00",
+  "deployment_mode": "live",
+  "read_only": true,
+  "summary": {
+    "missing_stripe_mode": 33,
+    "mixed_customer_subscription_mode": 0,
+    "test_rows_in_live": 0,
+    "live_rows_in_test": 0,
+    "orphaned_checkout_sessions": 50,
+    "webhook_mode_conflicts": 0,
+    "unknown_mode_rows": 0,
+    "legacy_unclassified_rows": 0
+  },
+  "metrics": {
+    "authoritative_mode_coverage": 0.0,
+    "unknown_mode_percentage": 0.0,
+    "mixed_mode_risk_count": 0,
+    "remediation_required_clients": 33
+  },
+  "categories": {
+    "missing_stripe_mode": [
+      {
+        "client_id": "80f83edd\u2026a23e4098",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T34\u2026fcd00d38",
+          "stripe_customer_id": "cus_U173\u2026ab101fe2"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "616258a5\u2026eb35e780",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T43\u2026beb4f07b",
+          "stripe_customer_id": "cus_U284\u2026fb0596c7"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "ec0b091b\u2026a9e14342",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T53\u2026f3b8d06e",
+          "stripe_customer_id": "cus_U3A8\u2026de1a6894"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "a032036f\u2026374dcce5",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T3J\u2026364d37b9",
+          "stripe_customer_id": "cus_U1Ly\u202621743bcc"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "43805332\u202662f29a38",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T45\u2026201b38f2",
+          "stripe_customer_id": "cus_U2AG\u2026a12d0000"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "6fd5ac4c\u2026da46e699",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TI7\u2026612694e0",
+          "stripe_customer_id": "cus_UGeQ\u2026ba96d840"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "6a614499\u2026f9e3d96f",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T3H\u2026268c3f1c",
+          "stripe_customer_id": "cus_U1Jt\u20260633c7df"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "33017032\u2026cb08a02a",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T53\u2026846fa20a",
+          "stripe_customer_id": "cus_U3A1\u2026dfbdf6a7"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "1af75ae2\u20266436c4c3",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T33\u2026c357e23c",
+          "stripe_customer_id": "cus_U16A\u2026d7d1bc46"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "27d048c3\u2026ce0a8f92",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T3Q\u20260077cd17",
+          "stripe_customer_id": "cus_U1TF\u202631f43bf9"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "26fbbc0b\u2026359aed0c",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TBW\u202606788628",
+          "stripe_customer_id": "cus_U9q8\u202609b07037"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "959eed26\u20261732646f",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T3N\u202651fe7038",
+          "stripe_customer_id": "cus_U1QH\u2026e7e940db"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "eaa14a69\u2026a253bce9",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TO1\u20267fdd69ab",
+          "stripe_customer_id": "cus_UMkm\u2026fa046620"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "422e2785\u2026a0aa5fa3",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T35\u202683d647a7",
+          "stripe_customer_id": "cus_U183\u2026527d765b"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "f68d4f4b\u202634a5aab8",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TCk\u2026fb1f9f6b",
+          "stripe_customer_id": "cus_UB6l\u20263d492627"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "10b2ddba\u2026099bf6a8",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T5Y\u20266b2e8a5b",
+          "stripe_customer_id": "cus_U3fR\u2026c18cc46b"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "9a7c8f82\u2026bba1d13e",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T2c\u2026d09ea0ae",
+          "stripe_customer_id": "cus_U0dx\u202645eaa2a2"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "04ceda9f\u20261313d663",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T32\u2026a36df4dc",
+          "stripe_customer_id": "cus_U14e\u2026d437a764"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "94fd6021\u20262ed9777d",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TT4\u2026568c4804",
+          "stripe_customer_id": "cus_URyO\u20266e0f1c5c"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "921716dc\u2026e1b0e61b",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T36\u20260a4a406e",
+          "stripe_customer_id": "cus_U18I\u2026dea26aed"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "24e15552\u2026d1343afc",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T37\u2026e1adf86d",
+          "stripe_customer_id": "cus_U19O\u2026d6f1b602"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "35401744\u20264e4c1a14",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T54\u20261cc7a782",
+          "stripe_customer_id": "cus_U3B1\u2026ed1b2b8a"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "86fbd659\u202600d2a3c7",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T2X\u202674cf9f2b",
+          "stripe_customer_id": "cus_U0Yz\u202664b897fb"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "2c972bea\u20266bb57281",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T3H\u2026fbdc6a08",
+          "stripe_customer_id": "cus_U1Ka\u20264e4a3bd0"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "5db7bba1\u2026b2125044",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TMn\u20263c71a5ad",
+          "stripe_customer_id": "cus_ULUw\u20265d00376a"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "fc635d44\u20261be05fc2",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T35\u20266a186def",
+          "stripe_customer_id": "cus_U17N\u20265e3ee777"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "ce8d3b56\u20260e68ad9d",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TCT\u2026efa1aa43",
+          "stripe_customer_id": "cus_UApc\u20266b6e7e78"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "412c72a9\u20267be1a070",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1T2T\u20266a4d2d35",
+          "stripe_customer_id": "cus_U0Ug\u2026eb5ba50c"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "38907123\u2026e8789dfc",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TFb\u20262a66a4d2",
+          "stripe_customer_id": "cus_UE3s\u202628f1ba04"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "6bcc43c0\u20265b311a79",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TXS\u2026eb4781ff",
+          "stripe_customer_id": "cus_UWVa\u20269e95a83f"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "6aa7906f\u2026e302539e",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TXT\u2026774f9fcb",
+          "stripe_customer_id": "cus_UWWU\u20260f6c144d"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "e1eeb81d\u202669f207fa",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TXT\u20269800b99a",
+          "stripe_customer_id": "cus_UWWf\u2026b49fd405"
+        },
+        "inferred_mode_source": "unknown",
+        "confidence": "unknown",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Admin must verify Stripe environment and apply explicit remediation; plan changes remain blocked with customer-safe messaging.",
+        "remediation_code": "MODE_UNVERIFIED"
+      },
+      {
+        "client_id": "1e15cd2f\u2026bdb62a7e",
+        "billing_identifiers": {
+          "stripe_subscription_id": "sub_1TYu\u202647624f11",
+          "stripe_customer_id": "cus_UY0v\u20261ed3a0f0"
+        },
+        "inferred_mode_source": "stripe_api_verify",
+        "confidence": "authoritative",
+        "operational_risk": "high",
+        "recommended_remediation_path": "Backfill authoritative stripe_mode or regenerate checkout if subscription reference is stale.",
+        "remediation_code": "REGENERATE_CHECKOUT_REQUIRED"
+      }
+    ],
+    "mixed_customer_subscription_mode": [],
+    "test_rows_in_live": [],
+    "live_rows_in_test": [],
+    "orphaned_checkout_sessions": [
+      {
+        "session_id": "cs_test_\u20260c29e1de",
+        "client_id": "04ceda9f\u20261313d663",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026dc7050fb",
+        "client_id": "412c72a9\u20267be1a070",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20261194f70b",
+        "client_id": "a032036f\u2026374dcce5",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026c2461403",
+        "client_id": "6a614499\u2026f9e3d96f",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u202695d54089",
+        "client_id": "20bc2fec\u20267a25cc07",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026d7c59940",
+        "client_id": "33017032\u2026cb08a02a",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u202618cec1b0",
+        "client_id": "1af75ae2\u20266436c4c3",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026edfe1647",
+        "client_id": "35401744\u20264e4c1a14",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u202642c7fd1b",
+        "client_id": "9a7c8f82\u2026bba1d13e",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20267e68de6e",
+        "client_id": "6fd5ac4c\u2026da46e699",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026b4a808a7",
+        "client_id": "616258a5\u2026eb35e780",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20262a5149b4",
+        "client_id": "35401744\u20264e4c1a14",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u20265475bcff",
+        "client_id": "2c972bea\u20266bb57281",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026ce6fcb31",
+        "client_id": "921716dc\u2026e1b0e61b",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u202631bce168",
+        "client_id": "10b2ddba\u2026099bf6a8",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026ebd6ce01",
+        "client_id": "412c72a9\u20267be1a070",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026f0b6f24e",
+        "client_id": "38907123\u2026e8789dfc",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u202664833e74",
+        "client_id": "eaa14a69\u2026a253bce9",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026ca66e069",
+        "client_id": "80f83edd\u2026a23e4098",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20264e8da587",
+        "client_id": "959eed26\u20261732646f",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026ea0bf8c8",
+        "client_id": "13682ea0\u202617ea652b",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u202613970aaa",
+        "client_id": "86fbd659\u202600d2a3c7",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20263b60d567",
+        "client_id": "24e15552\u2026d1343afc",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20263d5221e5",
+        "client_id": "43805332\u202662f29a38",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20260ddd9a1e",
+        "client_id": "5db7bba1\u2026b2125044",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20263e8afab7",
+        "client_id": "422e2785\u2026a0aa5fa3",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20268b158670",
+        "client_id": "2c972bea\u20266bb57281",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026f024619d",
+        "client_id": "ec0b091b\u2026a9e14342",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20267f275e9c",
+        "client_id": "ce8d3b56\u20260e68ad9d",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20263d19e12a",
+        "client_id": "fc635d44\u20261be05fc2",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20264ceaf5b1",
+        "client_id": "9a7c8f82\u2026bba1d13e",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20264955b006",
+        "client_id": "27d048c3\u2026ce0a8f92",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026d1451fba",
+        "client_id": "26fbbc0b\u2026359aed0c",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026fbe6f440",
+        "client_id": "f68d4f4b\u202634a5aab8",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u20269a6b5078",
+        "client_id": "94fd6021\u20262ed9777d",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u202667f99b01",
+        "client_id": "6bcc43c0\u20265b311a79",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u202600809bf9",
+        "client_id": "6bcc43c0\u20265b311a79",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026bf9d1572",
+        "client_id": "6aa7906f\u2026e302539e",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_test_\u2026487d0cb7",
+        "client_id": "e1eeb81d\u202669f207fa",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u2026dc33e404",
+        "client_id": "1e15cd2f\u2026bdb62a7e",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u202663ff6e4e",
+        "client_id": "b8705b33\u2026c66dc1a3",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u2026989f9f23",
+        "client_id": "rent_ops\u2026924da8bc",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u2026fbb0500d",
+        "client_id": "b8705b33\u2026c66dc1a3",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u2026dc9fe973",
+        "client_id": "20bc2fec\u20267a25cc07",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u20261f1bb2be",
+        "client_id": "4009e752\u202632d0a131",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u20264f3401c0",
+        "client_id": "rent_ops\u2026924da8bc",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u20269a48bcd6",
+        "client_id": "b8705b33\u2026c66dc1a3",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u20269bb4af81",
+        "client_id": "5ac41f8d\u2026908a8c62",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u2026844673bc",
+        "client_id": "805caa60\u20265abdfe36",
+        "status": "pending",
+        "stripe_mode": null
+      },
+      {
+        "session_id": "cs_live_\u2026f8dd3cb2",
+        "client_id": "3edc554b\u2026f7c05422",
+        "status": "pending",
+        "stripe_mode": null
+      }
+    ],
+    "webhook_mode_conflicts": [],
+    "unknown_mode_rows": [],
+    "legacy_unclassified_rows": []
+  },
+  "total_billing_rows_with_stripe_ids": 33
+}

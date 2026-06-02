@@ -1,0 +1,29 @@
+{
+  "generated_at": "2026-06-02T05:14:33.963796+00:00",
+  "scenarios": {
+    "A_verified_row": {
+      "passed": true,
+      "blocked": false
+    },
+    "B_mode_unverified": {
+      "passed": true,
+      "error_code": "STRIPE_CUSTOMER_MODE_DRIFT",
+      "recovery_action": "MODE_UNVERIFIED",
+      "customer_safe": true
+    },
+    "C_db_verified_preflight": {
+      "passed": false,
+      "error_code": "STRIPE_CUSTOMER_MODE_DRIFT"
+    },
+    "B_db_unverified": {
+      "passed": true,
+      "client_id_redacted": "80f83edd\u2026a23e4098",
+      "message_ok": true
+    },
+    "D_mixed_mode": {
+      "passed": null,
+      "note": "no mixed-mode row in DB"
+    }
+  },
+  "pass": true
+}

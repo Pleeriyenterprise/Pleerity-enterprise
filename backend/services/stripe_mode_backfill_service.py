@@ -797,7 +797,7 @@ async def _record_backfill_audit(
     try:
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
-            actor_role="ADMIN" if admin_actor else "SYSTEM",
+            actor_role="ROLE_ADMIN" if admin_actor else "SYSTEM",
             actor_id=admin_actor or "stripe_mode_backfill",
             client_id=client_id,
             metadata={

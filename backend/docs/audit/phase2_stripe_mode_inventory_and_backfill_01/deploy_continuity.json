@@ -1,0 +1,49 @@
+{
+  "marker": "PHASE-2-STRIPE-MODE-REMEDIATION-CLOSEOUT-01",
+  "verified_at": "2026-06-02T05:11:58.547206+00:00",
+  "expected_sha_prefixes": [
+    "a06c082d",
+    "b41fdcf6",
+    "1d20d42d",
+    "76731d1b"
+  ],
+  "source_files": {
+    "stripe_mode_backfill_service.py": true,
+    "expanded_inventory_endpoint": true,
+    "backfill_endpoint": true,
+    "remediation_endpoint": true,
+    "admin_set_mode_endpoint": true,
+    "legacy_caller_endpoint": true,
+    "webhook_livemode_persistence": true,
+    "mode_unverified_governance": true,
+    "resolve_stripe_context": true
+  },
+  "api_version": {
+    "commit_sha": "76731d1b13612206e56e71da7e99e67ec6b0283b",
+    "environment": "production"
+  },
+  "commit_sha": "76731d1b13612206e56e71da7e99e67ec6b0283b",
+  "commit_matches": true,
+  "admin_endpoints": [
+    {
+      "path": "/admin/billing/stripe-mode-inventory",
+      "status": 200,
+      "reachable": true,
+      "auth_required": false
+    },
+    {
+      "path": "/admin/billing/stripe-mode-backfill",
+      "status": 200,
+      "reachable": true,
+      "auth_required": false
+    },
+    {
+      "path": "/admin/billing/stripe-mode-legacy-callers",
+      "status": 200,
+      "reachable": true,
+      "auth_required": false
+    }
+  ],
+  "endpoints_reachable": true,
+  "pass": true
+}
