@@ -1,0 +1,6 @@
+{
+  "generated_at": "2026-06-02T17:42:52.114760+00:00",
+  "queue_verify_reject_contract": "POST /api/client/compliance-evidence/{property_id}/requirements/{requirement_id}/records/{evidence_record_id}/verification",
+  "evidence_record_id_source": "review_queue_service.build_queue_row_payload",
+  "note": "Queue inline Verify/Reject uses row evidence_record_id; deeplink fix hydrates visual context before action."
+}

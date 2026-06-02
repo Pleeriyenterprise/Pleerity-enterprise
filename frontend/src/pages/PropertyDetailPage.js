@@ -144,6 +144,7 @@ import {
 } from '../utils/jurisdictionComplianceCopy';
 import { propertyPageJurisdictionBanners } from '../utils/jurisdictionUiPolicy';
 import PropertyOperatingHub from '../components/property/PropertyOperatingHub';
+import { parsePropertyReviewContextDeeplink } from '../utils/propertyReviewContextDeeplink';
 import PropertyOccupancyTenancyPanel from '../components/property/PropertyOccupancyTenancyPanel';
 import { PropertyFinancialSnapshotCard } from '../components/rent/PropertyFinancialSnapshotCard';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
@@ -417,6 +418,8 @@ export default function PropertyDetailPage() {
   const [pendingIntelOpen, setPendingIntelOpen] = useState(null);
   /** Deeplink `?tab=evidence&requirement_id=` — settled evidence registry (not operations queue). */
   const [pendingEvidenceFocusReqId, setPendingEvidenceFocusReqId] = useState(null);
+  /** Org review queue `?resolve_requirement=` — compliance tab + submission inspect when missing. */
+  const [reviewContextBanner, setReviewContextBanner] = useState(null);
   const [operatingFeedItems, setOperatingFeedItems] = useState([]);
   const [operatingFeedLoading, setOperatingFeedLoading] = useState(false);
 
@@ -532,6 +535,18 @@ export default function PropertyDetailPage() {
   }, [location.search, propertyId]);
 
   useEffect(() => {
+    if (!propertyId) return;
+    const parsed = parsePropertyReviewContextDeeplink(location.search || '');
+    if (!parsed) return;
+    setReviewContextBanner(null);
+    setActiveTab(TAB_COMPLIANCE);
+    setPendingIntelOpen({
+      requirementId: parsed.requirementId,
+      focusSubmission: parsed.focusSubmission,
+    });
+  }, [location.search, propertyId]);
+
+  useEffect(() => {
     const q = new URLSearchParams(location.search || '');
     if (q.get('tab') !== 'evidence') return;
     if (!propertyId) return;
@@ -550,15 +565,33 @@ export default function PropertyDetailPage() {
   }, [pendingEvidenceFocusReqId, evidenceLoading, evidenceData]);
 
   useEffect(() => {
-    if (!pendingIntelOpen || !propertyId || !requirements.length) return;
+    if (!pendingIntelOpen || !propertyId || loading) return;
     const { requirementId, focusSubmission } = pendingIntelOpen;
-    const row = requirements.find((r) => String(r.requirement_id || r.id || '') === String(requirementId));
+    const rid = String(requirementId || '').trim();
+    if (!rid) return;
+    if (!requirements.length) return;
+    const row = requirements.find((r) => String(r.requirement_id || r.id || '') === rid);
     setPendingIntelOpen(null);
+    const hadResolveParam = Boolean(parsePropertyReviewContextDeeplink(location.search || ''));
     navigate({ pathname: `/properties/${propertyId}`, search: '', hash: location.hash || '' }, { replace: true });
-    if (!row) return;
+    if (!row) {
+      if (hadResolveParam || focusSubmission) {
+        setReviewContextBanner({
+          requirementId: rid,
+          missing: true,
+        });
+      }
+      return;
+    }
+    setReviewContextBanner({
+      requirementId: rid,
+      missing: false,
+      label: row.display_name || row.display_label || row.requirement_type || row.requirement_code || rid,
+      truthLabel: row.truth_presentation_label || null,
+    });
     setRequirementIntelRow(row);
     setRequirementIntelFocusSubmission(Boolean(focusSubmission) || requirementHasPersistedClientSubmission(row));
-  }, [pendingIntelOpen, requirements, propertyId, navigate, location.hash]);
+  }, [pendingIntelOpen, requirements, propertyId, loading, navigate, location.hash, location.search]);
 
   useEffect(() => {
     complianceResolveConsumedRef.current = null;
@@ -1834,6 +1867,28 @@ export default function PropertyDetailPage() {
       {activeTab === TAB_COMPLIANCE && (
         <>
         <div className="space-y-6" data-testid="property-compliance-panel">
+          {reviewContextBanner ? (
+            <Alert
+              variant={reviewContextBanner.missing ? 'destructive' : 'default'}
+              data-testid="review-context-banner"
+            >
+              <AlertDescription>
+                {reviewContextBanner.missing ? (
+                  <>
+                    Review context could not be loaded for this requirement ({reviewContextBanner.requirementId}).
+                    Return to the compliance review queue or refresh this property.
+                  </>
+                ) : (
+                  <>
+                    Reviewing pending submission: <strong>{reviewContextBanner.label}</strong>
+                    {reviewContextBanner.truthLabel ? (
+                      <span className="text-gray-600"> — {reviewContextBanner.truthLabel}</span>
+                    ) : null}
+                  </>
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <Card className="border border-electric-teal/25 bg-electric-teal/[0.06]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-midnight-blue">Compliance priority for this property</CardTitle>

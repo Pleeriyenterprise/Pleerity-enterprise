@@ -1,0 +1,6 @@
+{
+  "generated_at": "2026-06-02T17:42:52.116763+00:00",
+  "captured": false,
+  "note": "Run Playwright with ROLE_CLIENT_ADMIN after FE deploy",
+  "error": "Page.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#email\")\n"
+}

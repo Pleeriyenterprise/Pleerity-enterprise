@@ -147,7 +147,12 @@ export default function ClientOrgComplianceReviewPage() {
                       <TableCell>{row.truth_presentation_label || '—'}</TableCell>
                       <TableCell>{row.review_owner || '—'}</TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => openReview(row)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openReview(row)}
+                          data-testid={`org-review-open-${row.requirement_id}`}
+                        >
                           <Eye className="h-4 w-4 mr-1" />
                           Review submission
                         </Button>

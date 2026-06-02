@@ -1,0 +1,43 @@
+{
+  "audit_id": "REVIEW-CONTEXT-CONVERGENCE-GAP-01",
+  "classification": "REVIEW_CONTEXT_CONVERGENCE_GAP",
+  "generated_at": "2026-06-02T18:00:00+00:00",
+  "summary": "Org compliance review queue generated review_deeplink with resolve_requirement query param, but PropertyDetailPage never consumed it. Reviewers landed on default Operating tab without compliance focus or submission inspect panel.",
+  "flow_trace": {
+    "queue_surface": "GET /api/client/operations/org-review-queue → ClientOrgComplianceReviewPage",
+    "review_action": "navigate(row.review_deeplink)",
+    "deeplink_generated": "/properties/{property_id}?resolve_requirement={requirement_id}",
+    "generator": "backend/services/review_queue_service.py build_queue_row_payload",
+    "frontend_routing": "/properties/:propertyId (PropertyDetailPage)",
+    "expected_consumer": "PropertyDetailPage query param handler",
+    "actual_consumer_before_fix": "none — resolve_requirement ignored",
+    "existing_related_handlers": {
+      "open=resolve&requirement_id": "pendingComplianceResolve → guided/primary CTA",
+      "open=intel&requirement_id&focus=submission": "pendingIntelOpen → RequirementIntelligenceModal",
+      "tab=evidence&requirement_id": "evidence tab focus"
+    }
+  },
+  "findings": {
+    "deeplink_format": "/properties/{pid}?resolve_requirement={rid}",
+    "query_params_passed": ["resolve_requirement"],
+    "resolve_requirement_consumed_before_fix": false,
+    "pending_review_context_dropped": true,
+    "existing_review_panel": "RequirementIntelligenceModal + RequirementSubmissionInspectPanel (not auto-opened)",
+    "verify_reject_from_queue": "uses evidence_record_id on row — correct when queue hydrated",
+    "queue_row_linkage": {
+      "cer": "evidence_record_id from _primary_pending_cer",
+      "requirement": "requirement_id",
+      "property": "property_id",
+      "verification_object": "compliance evidence record with VERIFICATION_PENDING"
+    }
+  },
+  "ruled_out": [
+    "wrong_vercel_project",
+    "feature_flag_hidden_tab",
+    "uncommitted_frontend_code",
+    "duplicate_review_platform_needed"
+  ],
+  "fix_direction": {
+    "summary": "Consume resolve_requirement on PropertyDetailPage; open Compliance tab; hydrate RequirementIntelligenceModal with initialFocusSubmission; show review-context banner; safe empty-state when requirement missing."
+  }
+}

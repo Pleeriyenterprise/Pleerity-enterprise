@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-06-02T17:42:52.113763+00:00",
+  "deeplink_contract": "/properties/{property_id}?resolve_requirement={requirement_id}",
+  "frontend_parser": "parsePropertyReviewContextDeeplink",
+  "property_page_behavior": [
+    "setActiveTab(compliance)",
+    "open RequirementIntelligenceModal with initialFocusSubmission",
+    "review-context-banner when context resolved or missing"
+  ],
+  "unit_tests": "propertyReviewContextDeeplink.test.js, PropertyDetailPage.resolveRequirement.test.js"
+}
