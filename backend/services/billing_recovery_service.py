@@ -338,6 +338,17 @@ async def regenerate_checkout_for_recovery(
     from services.stripe_service import StripeService
     await resolve_stripe_context(client_id=client_id, operation="recovery_regenerate_checkout", require_preflight=False)
 
+    # Ensure transition path is valid before any checkout mutation or Stripe side effects.
+    case = await _get_or_create_case(client_id, actor_id=actor_id)
+    if case.get("recovery_state") == STATE_MODE_UNVERIFIED:
+        await transition_case(
+            client_id,
+            target_state=STATE_RECOVERY_REQUIRED,
+            action="prepare_recovery_regeneration",
+            actor_id=actor_id,
+            idempotency_key=f"prepare_regen:{client_id}",
+        )
+
     db = database.get_db()
     # Mark stale pending sessions as superseded (no delete)
     await db.checkout_sessions.update_many(
@@ -401,7 +412,7 @@ async def _send_continuation_email(client_id: str, checkout_url: str, *, actor_i
             "created_at": {"$gte": since},
         }
     )
-    if recent > 3:
+    if recent >= 3:
         return {"sent": False, "reason": "rate_limited"}
 
     name = client.get("contact_name") or client.get("full_name") or "Valued Customer"
