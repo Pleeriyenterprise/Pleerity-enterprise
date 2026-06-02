@@ -1,0 +1,5 @@
+{
+  "generated_at": "2026-06-02T06:47:02.594957+00:00",
+  "route": "POST /admin/billing/recovery/clients/{id}/admin-set-mode",
+  "requires_step_up": true
+}

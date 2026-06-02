@@ -2308,3 +2308,297 @@ async def get_stripe_mode_legacy_callers(request: Request):
 
     return audit_legacy_stripe_callers()
 
+
+# =============================================================================
+# Billing recovery operations (Phase 4)
+# =============================================================================
+
+
+class RecoveryAssignBody(BaseModel):
+    owner: str = Field(..., min_length=1, max_length=200)
+    operational_notes: Optional[str] = Field(None, max_length=2000)
+
+
+class RecoveryRegenerateBody(BaseModel):
+    plan_code: str = Field(..., description="PLAN_1_SOLO | PLAN_2_PORTFOLIO | PLAN_3_PRO")
+    origin_url: str = Field(..., min_length=8)
+    send_email: bool = False
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
+class RecoveryAdminSetModeBody(BaseModel):
+    stripe_mode: str = Field(..., description="live or test")
+    reason: str = Field(..., min_length=10, max_length=2000)
+    verification_source: str = Field(
+        ...,
+        min_length=3,
+        max_length=120,
+        description="e.g. admin_verified, stripe_dashboard_manual",
+    )
+
+
+class RecoveryCloseoutBody(BaseModel):
+    resolution_summary: str = Field(..., min_length=10, max_length=2000)
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
+class RecoveryEscalationBody(BaseModel):
+    escalation_state: str
+    operational_notes: Optional[str] = Field(None, max_length=2000)
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
+class RecoveryBulkResendBody(BaseModel):
+    client_ids: List[str] = Field(..., min_length=1, max_length=25)
+    preview: bool = True
+    reason: str = Field(..., min_length=10, max_length=2000)
+
+
+@router.get("/recovery/dashboard")
+async def get_billing_recovery_dashboard(
+    request: Request,
+    limit: int = Query(200, ge=1, le=500),
+):
+    """Operational recovery layer — MODE_UNVERIFIED, orphans, pending regeneration."""
+    user = await admin_route_guard(request)
+    from services.billing_recovery_service import build_recovery_dashboard
+
+    _ = user
+    return await build_recovery_dashboard(limit=limit)
+
+
+@router.get("/recovery/metrics")
+async def get_billing_recovery_metrics(request: Request):
+    await admin_route_guard(request)
+    from services.billing_recovery_service import get_recovery_metrics
+
+    return await get_recovery_metrics()
+
+
+@router.get("/recovery/orphaned-checkouts")
+async def get_billing_recovery_orphaned_checkouts(
+    request: Request,
+    limit: int = Query(200, ge=1, le=500),
+):
+    await admin_route_guard(request)
+    from services.stripe_mode_client_remediation_service import classify_orphaned_checkout_sessions
+
+    return await classify_orphaned_checkout_sessions(limit=limit)
+
+
+@router.get("/recovery/clients/{client_id}")
+async def get_billing_recovery_client(request: Request, client_id: str):
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or user.get("email") or "admin"
+    from services.billing_recovery_service import get_recovery_case
+
+    return await get_recovery_case(client_id, actor_id=actor)
+
+
+@router.post("/recovery/clients/{client_id}/assign")
+async def post_billing_recovery_assign(
+    request: Request,
+    client_id: str,
+    body: RecoveryAssignBody,
+):
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or user.get("email") or "admin"
+    from services.billing_recovery_service import assign_recovery_owner
+
+    return await assign_recovery_owner(
+        client_id,
+        owner=body.owner,
+        actor_id=actor,
+        operational_notes=body.operational_notes,
+    )
+
+
+@router.post("/recovery/clients/{client_id}/regenerate-checkout")
+async def post_billing_recovery_regenerate_checkout(
+    request: Request,
+    client_id: str,
+    body: RecoveryRegenerateBody,
+):
+    from services.admin_action_governance import enforce_governed_admin_action
+    from middleware.step_up_auth import require_recent_step_up
+    from services.billing_recovery_service import regenerate_checkout_for_recovery
+
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or user.get("email") or "admin"
+    await enforce_governed_admin_action(
+        request,
+        user,
+        "billing_recovery_regenerate_checkout",
+        reason=body.reason,
+        resource_key=client_id,
+        require_recent_step_up=require_recent_step_up,
+    )
+    try:
+        return await regenerate_checkout_for_recovery(
+            client_id,
+            plan_code=body.plan_code,
+            actor_id=actor,
+            origin_url=body.origin_url,
+            send_email=body.send_email,
+        )
+    except Exception as exc:
+        logger.exception("recovery regenerate checkout failed client_id=%s", client_id)
+        raise HTTPException(status_code=500, detail=str(exc)[:200]) from exc
+
+
+@router.post("/recovery/clients/{client_id}/admin-set-mode")
+async def post_billing_recovery_admin_set_mode(
+    request: Request,
+    client_id: str,
+    body: RecoveryAdminSetModeBody,
+):
+    from services.admin_action_governance import enforce_governed_admin_action
+    from middleware.step_up_auth import require_recent_step_up
+    from services.stripe_mode_backfill_service import backfill_client_billing_mode
+    from services.billing_recovery_service import admin_verified_recovery
+
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or user.get("email") or "admin"
+    await enforce_governed_admin_action(
+        request,
+        user,
+        "billing_recovery_admin_set_mode",
+        reason=body.reason,
+        resource_key=client_id,
+        require_recent_step_up=require_recent_step_up,
+    )
+    mode = body.stripe_mode.strip().lower()
+    if mode not in ("live", "test"):
+        raise HTTPException(status_code=400, detail="stripe_mode must be live or test")
+    if not body.verification_source.strip():
+        raise HTTPException(status_code=400, detail="verification_source is required")
+
+    result = await backfill_client_billing_mode(
+        client_id,
+        dry_run=False,
+        admin_actor=actor,
+        admin_mode=mode,
+    )
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role="ROLE_ADMIN",
+        actor_id=actor,
+        client_id=client_id,
+        metadata={
+            "action_type": "BILLING_RECOVERY_ADMIN_SET_MODE",
+            "stripe_mode": mode,
+            "reason": body.reason,
+            "verification_source": body.verification_source.strip(),
+            "backfill_action": result.get("action"),
+        },
+    )
+    return await admin_verified_recovery(
+        client_id,
+        stripe_mode=mode,
+        reason=body.reason,
+        verification_source=body.verification_source.strip(),
+        actor_id=actor,
+        backfill_result=result,
+    )
+
+
+@router.post("/recovery/clients/{client_id}/portal-relink")
+async def post_billing_recovery_portal_relink(request: Request, client_id: str):
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or user.get("email") or "admin"
+    from services.billing_recovery_service import portal_relink_for_recovery
+
+    result = await portal_relink_for_recovery(client_id, actor_id=actor)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("reason", "portal_relink_failed"))
+    return result
+
+
+@router.post("/recovery/clients/{client_id}/closeout")
+async def post_billing_recovery_closeout(
+    request: Request,
+    client_id: str,
+    body: RecoveryCloseoutBody,
+):
+    from services.admin_action_governance import enforce_governed_admin_action
+    from services.billing_recovery_service import closeout_recovery
+
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or user.get("email") or "admin"
+    await enforce_governed_admin_action(
+        request,
+        user,
+        "billing_recovery_closeout",
+        reason=body.reason,
+        resource_key=client_id,
+    )
+    return await closeout_recovery(
+        client_id,
+        resolution_summary=body.resolution_summary,
+        actor_id=actor,
+    )
+
+
+@router.post("/recovery/clients/{client_id}/escalate")
+async def post_billing_recovery_escalate(
+    request: Request,
+    client_id: str,
+    body: RecoveryEscalationBody,
+):
+    from services.admin_action_governance import enforce_governed_admin_action
+    from services.billing_recovery_service import update_escalation
+
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or user.get("email") or "admin"
+    await enforce_governed_admin_action(
+        request,
+        user,
+        "billing_recovery_escalate",
+        reason=body.reason,
+        resource_key=client_id,
+    )
+    try:
+        return await update_escalation(
+            client_id,
+            escalation_state=body.escalation_state,
+            actor_id=actor,
+            operational_notes=body.operational_notes,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/recovery/bulk/resend-continuation")
+async def post_billing_recovery_bulk_resend(
+    request: Request,
+    body: RecoveryBulkResendBody,
+):
+    from services.admin_action_governance import enforce_governed_admin_action
+    from services.billing_recovery_service import bulk_resend_continuation
+
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or {}
+    actor = admin.get("email") or admin.get("admin_id") or user.get("email") or "admin"
+    await enforce_governed_admin_action(
+        request,
+        user,
+        "billing_recovery_bulk_resend",
+        reason=body.reason,
+        resource_key="bulk",
+    )
+    try:
+        return await bulk_resend_continuation(
+            body.client_ids,
+            actor_id=actor,
+            preview=body.preview,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+

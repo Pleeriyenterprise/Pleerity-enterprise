@@ -208,5 +208,55 @@
     "requires_step_up": true,
     "affects_multiple_customers": false,
     "irreversible": false
+  },
+  "billing_recovery_regenerate_checkout": {
+    "action_id": "billing_recovery_regenerate_checkout",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_billing",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": true,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "billing_recovery_admin_set_mode": {
+    "action_id": "billing_recovery_admin_set_mode",
+    "risk_class": "high_impact_operational",
+    "operator_level": "owner_or_senior_l2",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": true,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "billing_recovery_closeout": {
+    "action_id": "billing_recovery_closeout",
+    "risk_class": "standard_operational",
+    "operator_level": "l2_billing",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
+  },
+  "billing_recovery_bulk_resend": {
+    "action_id": "billing_recovery_bulk_resend",
+    "risk_class": "standard_operational",
+    "operator_level": "l2_billing",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": true,
+    "irreversible": false
+  },
+  "billing_recovery_escalate": {
+    "action_id": "billing_recovery_escalate",
+    "risk_class": "standard_operational",
+    "operator_level": "l2_billing",
+    "requires_reason": true,
+    "requires_confirmation": false,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": false
   }
 }

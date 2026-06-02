@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-06-02T06:47:02.600895+00:00",
+  "max_batch": 25,
+  "allowed": [
+    "resend_continuation_preview"
+  ],
+  "forbidden": [
+    "admin_set_mode_bulk"
+  ]
+}
