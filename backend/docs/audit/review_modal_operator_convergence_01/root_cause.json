@@ -1,0 +1,33 @@
+{
+  "programme": "REVIEW-MODAL-OPERATOR-CONVERGENCE-01",
+  "verified_at": "20260602T195414Z",
+  "workflow_analysis": {
+    "queue_row_actions": [
+      "Review submission (deeplink)",
+      "Verify",
+      "Reject"
+    ],
+    "verification_endpoint": "POST /api/client/properties/{property_id}/requirements/{requirement_id}/compliance-evidence/{evidence_record_id}/verification",
+    "decisions": [
+      "VERIFY",
+      "REJECT"
+    ],
+    "fragmentation_cause": "Verify/Reject only on queue table; hydrated RequirementIntelligenceModal was inspect-only, forcing modal close + queue return.",
+    "context_available_in_modal": [
+      "property_id",
+      "requirement_id",
+      "evidence_record_id via listComplianceEvidence",
+      "truth_presentation_stage/label",
+      "governance_family",
+      "review_owner",
+      "verification_status",
+      "evidence_confidence_level"
+    ],
+    "safe_reuse": "submitOrgComplianceEvidenceVerification shared util \u2014 same API as ClientOrgComplianceReviewPage"
+  },
+  "fix_summary": [
+    "RequirementModalOperatorReviewSection inline in RequirementIntelligenceModal when enableOperatorReview",
+    "PropertyDetailPage enables operator mode from review-context deeplink + ROLE_CLIENT_ADMIN",
+    "Human confidence copy; raw Confidence meta hidden in operator presentation"
+  ]
+}

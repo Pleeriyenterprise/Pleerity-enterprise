@@ -19,6 +19,7 @@ import {
 import { ClipboardCheck, Loader2, Eye, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { submitOrgComplianceEvidenceVerification } from '../utils/orgComplianceReviewOperator';
 
 function formatDate(s) {
   if (!s) return '—';
@@ -74,7 +75,12 @@ export default function ClientOrgComplianceReviewPage() {
     }
     setActingId(`${eid}:${decision}`);
     try {
-      await clientAPI.postComplianceEvidenceVerification(pid, rid, eid, { decision });
+      await submitOrgComplianceEvidenceVerification({
+        propertyId: pid,
+        requirementId: rid,
+        evidenceRecordId: eid,
+        decision,
+      });
       toast.success(decision === 'VERIFY' ? 'Submission verified' : 'Submission rejected');
       await load();
     } catch (e) {

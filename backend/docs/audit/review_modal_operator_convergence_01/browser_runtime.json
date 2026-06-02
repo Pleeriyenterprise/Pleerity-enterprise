@@ -1,0 +1,7 @@
+{
+  "programme": "REVIEW-MODAL-OPERATOR-CONVERGENCE-01",
+  "frontend_tests": "orgComplianceReviewOperator.test.js + RequirementIntelligenceModal operator section test",
+  "screenshots": {},
+  "staging_playwright": "optional \u2014 run review_context_convergence_final_verification_01 after deploy",
+  "org_queue_count": 0
+}

@@ -51,9 +51,10 @@ function formatFieldValue(val) {
 
 /**
  * @param {Record<string, unknown>|null|undefined} record
+ * @param {{ operatorPresentation?: boolean }} [options]
  * @returns {{ sections: Array<{ title: string, rows: Array<{ label: string, value: string }> }>, meta: Array<{ label: string, value: string }> }}
  */
-export function buildComplianceEvidenceRecordDisplay(record) {
+export function buildComplianceEvidenceRecordDisplay(record, options = {}) {
   if (!record || typeof record !== 'object') {
     return { sections: [], meta: [] };
   }
@@ -71,7 +72,7 @@ export function buildComplianceEvidenceRecordDisplay(record) {
   if (vs) meta.push({ label: 'Verification', value: humanizeFieldKey(vs) });
   if (record.verified_at) meta.push({ label: 'Verified at', value: formatFieldValue(record.verified_at) });
   if (record.created_at) meta.push({ label: 'Submitted at', value: formatFieldValue(record.created_at) });
-  if (record.evidence_confidence_level) {
+  if (record.evidence_confidence_level && !options.operatorPresentation) {
     meta.push({ label: 'Confidence', value: humanizeFieldKey(String(record.evidence_confidence_level)) });
   }
 

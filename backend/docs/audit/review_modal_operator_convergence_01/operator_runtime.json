@@ -1,0 +1,16 @@
+{
+  "programme": "REVIEW-MODAL-OPERATOR-CONVERGENCE-01",
+  "components": {
+    "util": "frontend/src/utils/orgComplianceReviewOperator.js",
+    "section": "frontend/src/components/client/RequirementModalOperatorReviewSection.jsx",
+    "modal": "frontend/src/components/client/RequirementIntelligenceModal.js",
+    "property_deeplink": "frontend/src/pages/PropertyDetailPage.js"
+  },
+  "operator_capabilities_in_modal": [
+    "review_context_summary",
+    "verify",
+    "reject_with_confirmation",
+    "submission_inspect_panel",
+    "post_resolve_close_and_refresh"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "programme": "REVIEW-MODAL-OPERATOR-CONVERGENCE-01",
+  "tests_passed": [
+    "orgComplianceReviewOperator.test.js",
+    "RequirementIntelligenceModal.test.js (operator section)",
+    "PropertyDetailPage.resolveRequirement.test.js (unchanged deeplink)"
+  ],
+  "surfaces_untouched": [
+    "escalation_queue",
+    "admin_document_verification",
+    "declaration_submit_flow",
+    "RequirementsPage",
+    "Today",
+    "CommandCentre"
+  ]
+}

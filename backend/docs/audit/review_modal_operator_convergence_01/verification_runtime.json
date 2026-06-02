@@ -1,0 +1,14 @@
+{
+  "programme": "REVIEW-MODAL-OPERATOR-CONVERGENCE-01",
+  "governance": {
+    "same_endpoint_as_queue": true,
+    "role_gate": "ROLE_CLIENT_ADMIN (_admin_like on backend)",
+    "org_only": "requirementEligibleForOrgOperatorReview + pending CER PENDING_REVIEW",
+    "no_parallel_mutation_api": true
+  },
+  "safety": {
+    "acting_state_prevents_double_submit": true,
+    "reject_confirmation_dialog": true,
+    "onReviewResolved_refreshes_property_and_clears_banner": true
+  }
+}

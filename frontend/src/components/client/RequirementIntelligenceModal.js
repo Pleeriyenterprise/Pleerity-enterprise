@@ -8,6 +8,12 @@ import {
   isViewExistingSubmissionCta,
   pickLatestComplianceEvidenceRecord,
 } from '../../utils/complianceEvidenceSubmissionView';
+import {
+  cerAwaitingOrgVerification,
+  pickPendingOrgReviewCer,
+  requirementEligibleForOrgOperatorReview,
+} from '../../utils/orgComplianceReviewOperator';
+import RequirementModalOperatorReviewSection from './RequirementModalOperatorReviewSection';
 import { requirementHasPersistedClientSubmission } from '../../utils/clientPersistedSubmissionPresentation';
 import { Button } from '../ui/button';
 import { requirementLabel } from '../../domain/presentDomain';
@@ -77,6 +83,8 @@ function tenantSafeTriggerExplanation(merged) {
  *   onMarkNotApplicable?: (merged: Record<string, unknown>) => void,
  *   addressForMailto?: string | null,
  *   initialFocusSubmission?: boolean,
+ *   enableOperatorReview?: boolean,
+ *   onReviewResolved?: () => void | Promise<void>,
  * }} props
  */
 export default function RequirementIntelligenceModal({
@@ -92,6 +100,8 @@ export default function RequirementIntelligenceModal({
   onMarkNotApplicable,
   addressForMailto = null,
   initialFocusSubmission = false,
+  enableOperatorReview = false,
+  onReviewResolved,
 }) {
   const { openGuidedEvidence } = useGuidedEvidenceModal();
   const submissionPanelRef = useRef(null);
@@ -100,6 +110,7 @@ export default function RequirementIntelligenceModal({
   const [payload, setPayload] = useState(null);
   const [cerLoading, setCerLoading] = useState(false);
   const [hasSubmission, setHasSubmission] = useState(false);
+  const [latestCer, setLatestCer] = useState(null);
 
   const load = useCallback(() => {
     if (!open || !requirementId) return undefined;
@@ -145,6 +156,7 @@ export default function RequirementIntelligenceModal({
   const loadSubmissionPresence = useCallback(() => {
     if (!open || !pid || !rid) {
       setHasSubmission(false);
+      setLatestCer(null);
       return undefined;
     }
     const seedRow = seedRequirement || payload?.requirement;
@@ -157,11 +169,17 @@ export default function RequirementIntelligenceModal({
       .listComplianceEvidence(pid, rid)
       .then((res) => {
         if (cancelled) return;
-        const latest = pickLatestComplianceEvidenceRecord(res?.data?.evidence_records);
+        const records = res?.data?.evidence_records;
+        const pending = pickPendingOrgReviewCer(records);
+        const latest = pending || pickLatestComplianceEvidenceRecord(records);
+        setLatestCer(latest);
         setHasSubmission(Boolean(latest));
       })
       .catch(() => {
-        if (!cancelled) setHasSubmission(false);
+        if (!cancelled) {
+          setHasSubmission(false);
+          setLatestCer(null);
+        }
       })
       .finally(() => {
         if (!cancelled) setCerLoading(false);
@@ -289,6 +307,16 @@ export default function RequirementIntelligenceModal({
     Boolean(pid && rid) &&
     resolved.primary_route &&
     String(resolved.primary_route).split('?')[0] !== '/documents';
+
+  const showOperatorReview = Boolean(
+    enableOperatorReview &&
+      merged &&
+      (requirementEligibleForOrgOperatorReview(merged) ||
+        String(merged.truth_presentation_stage || '').toLowerCase() === 'org_verification_pending') &&
+      hasSubmission &&
+      latestCer &&
+      cerAwaitingOrgVerification(latestCer),
+  );
 
   if (!open) return null;
 
@@ -455,11 +483,26 @@ export default function RequirementIntelligenceModal({
 
               <ConditionStandardOperationalInspectPanel requirement={merged} />
 
+              {showOperatorReview ? (
+                <RequirementModalOperatorReviewSection
+                  merged={merged}
+                  latestCer={latestCer}
+                  propertyId={pid}
+                  requirementId={rid}
+                  onResolved={async () => {
+                    await onReviewResolved?.();
+                    onClose();
+                  }}
+                />
+              ) : null}
+
               {pid && rid && hasSubmission && !isConditionStandardWorkflowHint(merged?.workflow_class, merged) ? (
                 <RequirementSubmissionInspectPanel
                   ref={submissionPanelRef}
                   propertyId={pid}
                   requirementId={rid}
+                  operatorPresentation={showOperatorReview}
+                  panelTitle={showOperatorReview ? 'Submission under review' : 'Your submission'}
                 />
               ) : null}
 

@@ -15,6 +15,11 @@ jest.mock('../../api/client', () => ({
   },
 }));
 
+jest.mock('./RequirementModalOperatorReviewSection', () => ({
+  __esModule: true,
+  default: () => <section data-testid="requirement-modal-operator-review" />,
+}));
+
 jest.mock('./RequirementSubmissionInspectPanel', () => {
   const React = require('react');
   return {
@@ -260,5 +265,53 @@ describe('RequirementIntelligenceModal', () => {
       'Declaration not recorded — action required',
     );
     expect(screen.getByTestId('requirement-intel-primary-cta')).toHaveTextContent('Record declaration');
+  });
+
+  it('shows operator review section when enabled and CER pending', async () => {
+    clientAPI.listComplianceEvidence.mockResolvedValue({
+      data: {
+        evidence_records: [
+          {
+            evidence_record_id: 'cer-op',
+            evidence_mode: 'STRUCTURED_DECLARATION',
+            verification_status: 'PENDING_REVIEW',
+            evidence_confidence_level: 'MEDIUM',
+          },
+        ],
+      },
+    });
+    clientAPI.getRequirementWorkflow.mockResolvedValue({
+      data: {
+        requirement: {
+          requirement_id: 'req-op',
+          property_id: 'prop-op',
+          display_label: 'Landlord registration',
+          governance_family: 'ORG_ADMIN_REVIEWED',
+          queue_backed_review: true,
+          review_owner: 'org_admin',
+          truth_presentation_stage: 'org_verification_pending',
+          truth_presentation_label: 'Organisation review pending',
+          take_action: { primary: { label: 'View submission', handler: 'guided_evidence' }, supporting_external_links: [] },
+        },
+        active_compliance_job: null,
+      },
+    });
+
+    render(
+      wrap(
+        <RequirementIntelligenceModal
+          open
+          requirementId="req-op"
+          seedRequirement={null}
+          enableOperatorReview
+          onClose={noop}
+          onNavigate={noop}
+        />,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('requirement-modal-operator-review')).toBeInTheDocument();
+    });
   });
 });

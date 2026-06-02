@@ -10,7 +10,7 @@ import {
  * Read-only inspector for the latest non-archived compliance evidence record (TRUST-01).
  */
 const RequirementSubmissionInspectPanel = forwardRef(function RequirementSubmissionInspectPanel(
-  { propertyId, requirementId, className = '' },
+  { propertyId, requirementId, className = '', operatorPresentation = false, panelTitle = 'Your submission' },
   ref,
 ) {
   const [loading, setLoading] = useState(false);
@@ -77,7 +77,10 @@ const RequirementSubmissionInspectPanel = forwardRef(function RequirementSubmiss
     };
   }, [propertyId, requirementId, linkedIds]);
 
-  const display = useMemo(() => buildComplianceEvidenceRecordDisplay(latestRecord), [latestRecord]);
+  const display = useMemo(
+    () => buildComplianceEvidenceRecordDisplay(latestRecord, { operatorPresentation }),
+    [latestRecord, operatorPresentation],
+  );
 
   if (!propertyId || !requirementId) return null;
 
@@ -88,7 +91,7 @@ const RequirementSubmissionInspectPanel = forwardRef(function RequirementSubmiss
       data-testid="requirement-submission-inspect-panel"
       aria-label="Your submission"
     >
-      <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Your submission</h3>
+      <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">{panelTitle}</h3>
       {loading ? (
         <div className="flex items-center gap-2 text-gray-500 text-sm py-2" data-testid="submission-inspect-loading">
           <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden />
