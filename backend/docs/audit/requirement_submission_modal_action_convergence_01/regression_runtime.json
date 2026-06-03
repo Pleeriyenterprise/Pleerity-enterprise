@@ -1,0 +1,17 @@
+{
+  "verified_at": "2026-06-03T19:28:40.816214+00:00",
+  "tests": {
+    "requirementSubmissionModalContext": true,
+    "RequirementIntelligenceModal": true,
+    "requirementModalCtaFocus": "unchanged \u2014 prior convergence retained",
+    "requirementLifecyclePresentation": "unchanged \u2014 row CTA labels retained"
+  },
+  "surfaces": [
+    "Requirements page",
+    "Property detail",
+    "Command Centre",
+    "Today",
+    "Guided evidence resolve modal"
+  ],
+  "pass": true
+}

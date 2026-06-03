@@ -35,6 +35,15 @@ import {
   shouldPreferGuidedEvidenceOverIntelView,
 } from '../../utils/rightToRentTrustPresentation';
 import NextActionHero from '../operational/NextActionHero';
+import RequirementModalContextHero from './RequirementModalContextHero';
+import {
+  MODAL_CONTEXT,
+  resolveModalFooterActions,
+  resolveModalHeroPresentation,
+  resolveRequirementSubmissionModalContext,
+  shouldSuppressViewSubmissionLink,
+} from '../../utils/requirementSubmissionModalContext';
+import { applyLifecycleAwareCtaPresentation } from '../../utils/requirementLifecyclePresentation';
 
 function formatIntelDate(value) {
   if (value == null || value === '') return null;
@@ -188,6 +197,8 @@ export default function RequirementIntelligenceModal({
     const el = submissionPanelRef.current;
     if (!el || typeof el.scrollIntoView !== 'function') return;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.add('modal-cta-focus-highlight');
+    window.setTimeout(() => el.classList.remove('modal-cta-focus-highlight'), 1800);
   }, []);
 
   useEffect(() => {
@@ -213,15 +224,54 @@ export default function RequirementIntelligenceModal({
     if (!merged || typeof merged.take_action !== 'object') return null;
     return projectResolvedRequirementSemantics(merged, { pagePropertyId: merged?.property_id || null });
   }, [merged]);
-  const resolved = useMemo(
+  const resolvedRaw = useMemo(
     () => (merged ? resolvedSemantics?.cta || resolveRequirementAction(merged, {}) : null),
     [merged, resolvedSemantics],
   );
+  const resolved = useMemo(
+    () => (merged && resolvedRaw ? applyLifecycleAwareCtaPresentation(merged, resolvedRaw) : resolvedRaw),
+    [merged, resolvedRaw],
+  );
+  const modalContextState = useMemo(
+    () =>
+      resolveRequirementSubmissionModalContext({
+        merged,
+        hasSubmission,
+        initialFocusSubmission,
+        resolved,
+      }),
+    [merged, hasSubmission, initialFocusSubmission, resolved],
+  );
+  const modalContext = modalContextState.context;
   const statusEvidenceLine = useMemo(() => {
     if (!merged) return statusSummary.evidenceLine;
     const fromSemantics = resolvedSemantics?.evidenceStatusForStatus(merged.status || merged.compliance_state || 'PENDING')?.subline;
     return fromSemantics || statusSummary.evidenceLine;
   }, [merged, resolvedSemantics, statusSummary.evidenceLine]);
+  const heroPresentation = useMemo(
+    () =>
+      resolveModalHeroPresentation({
+        context: modalContext,
+        lifecycle: modalContextState.lifecycle,
+        merged,
+        statusEvidenceLine,
+      }),
+    [modalContext, modalContextState.lifecycle, merged, statusEvidenceLine],
+  );
+  const footerActions = useMemo(
+    () =>
+      resolveModalFooterActions({
+        context: modalContext,
+        resolved,
+        showEditDatesAndApplicability,
+        showUploadSecondary:
+          Boolean(pid && rid) &&
+          resolved?.primary_route &&
+          String(resolved.primary_route).split('?')[0] !== '/documents',
+      }),
+    [modalContext, resolved, showEditDatesAndApplicability, pid, rid],
+  );
+  const suppressViewSubmissionLink = shouldSuppressViewSubmissionLink(modalContext, initialFocusSubmission);
 
   const displayTitle = useMemo(() => {
     if (!merged) return 'Requirement';
@@ -245,21 +295,83 @@ export default function RequirementIntelligenceModal({
   }, [merged]);
 
 
+  const settledEvidencePath = resolveSettledEvidenceNavigationTarget(merged, resolved, pid);
+  const docsView =
+    settledEvidencePath ||
+    (pid && rid ? resolvePropertyEvidenceRegistryPath(pid, rid) : pid ? resolvePropertyEvidenceRegistryPath(pid) : '/documents');
+  const docsUpload =
+    pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid, focus: 'upload' }) : resolveDocumentsPath(pid, { focus: 'upload' });
+
+  const openGuidedForUpdate = useCallback(() => {
+    if (!pid || !rid) return;
+    onClose();
+    openGuidedEvidence({
+      propertyId: pid,
+      requirement: merged || { requirement_id: rid },
+      initialEvidenceMode:
+        latestCer?.evidence_mode ||
+        resolved?.guided_initial_evidence_mode ||
+        guidedMixedEvidenceInitialMode() ||
+        undefined,
+      onSubmitted: () => {
+        loadSubmissionPresence();
+        onEvidenceSubmitted?.();
+      },
+    });
+  }, [
+    pid,
+    rid,
+    merged,
+    latestCer,
+    resolved,
+    onClose,
+    openGuidedEvidence,
+    loadSubmissionPresence,
+    onEvidenceSubmitted,
+  ]);
+
+  const openGuidedForSupportingEvidence = useCallback(() => {
+    if (!pid || !rid) return;
+    onClose();
+    openGuidedEvidence({
+      propertyId: pid,
+      requirement: merged || { requirement_id: rid },
+      initialEvidenceMode:
+        latestCer?.evidence_mode ||
+        resolved?.guided_initial_evidence_mode ||
+        guidedMixedEvidenceInitialMode() ||
+        undefined,
+      initialCtaFocusKey: 'attach_supporting_files',
+      onSubmitted: () => {
+        loadSubmissionPresence();
+        onEvidenceSubmitted?.();
+      },
+    });
+  }, [
+    pid,
+    rid,
+    merged,
+    latestCer,
+    resolved,
+    onClose,
+    openGuidedEvidence,
+    loadSubmissionPresence,
+    onEvidenceSubmitted,
+  ]);
+
   const primaryHandler = () => {
+    if (modalContext === MODAL_CONTEXT.VIEW_SUBMISSION) {
+      openGuidedForUpdate();
+      return;
+    }
+    if (modalContext === MODAL_CONTEXT.VIEW_VERIFIED_EVIDENCE) {
+      onNavigate(settledEvidencePath || docsView);
+      return;
+    }
     if (!resolved) return;
     if (isViewExistingSubmissionCta(resolved) && hasSubmission) {
       if (shouldPreferGuidedEvidenceOverIntelView(merged, resolved) && pid && rid) {
-        onClose();
-        openGuidedEvidence({
-          propertyId: pid,
-          requirement: merged || { requirement_id: rid },
-          initialEvidenceMode:
-            resolved.guided_initial_evidence_mode || guidedMixedEvidenceInitialMode() || undefined,
-          onSubmitted: () => {
-            loadSubmissionPresence();
-            onEvidenceSubmitted?.();
-          },
-        });
+        openGuidedForUpdate();
         return;
       }
       scrollToSubmissionPanel();
@@ -283,18 +395,48 @@ export default function RequirementIntelligenceModal({
       return;
     }
     if (resolved.primary_route) {
-      const settled = resolveSettledEvidenceNavigationTarget(merged, resolved, pid);
-      onNavigate(settled || resolved.primary_route);
-      return;
+      onNavigate(settledEvidencePath || resolved.primary_route);
     }
   };
-  const settledEvidencePath = resolveSettledEvidenceNavigationTarget(merged, resolved, pid);
-  const docsView =
-    settledEvidencePath ||
-    (pid && rid ? resolvePropertyEvidenceRegistryPath(pid, rid) : pid ? resolvePropertyEvidenceRegistryPath(pid) : '/documents');
-  const docsUpload =
-    pid && rid ? resolveDocumentsPath(pid, { requirement_id: rid, focus: 'upload' }) : resolveDocumentsPath(pid, { focus: 'upload' });
-  const primaryLabel = String(resolved?.primary_action_label || '').trim() || 'Take action';
+
+  const handleFooterAction = (key) => {
+    if (key === 'close') {
+      onClose();
+      return;
+    }
+    if (key === 'update_submission') {
+      openGuidedForUpdate();
+      return;
+    }
+    if (key === 'add_supporting_evidence') {
+      if (resolved?.primary_action_handler === 'guided_evidence' && pid && rid) {
+        openGuidedForSupportingEvidence();
+        return;
+      }
+      onNavigate(docsUpload);
+      return;
+    }
+    if (key === 'view_documents') {
+      onNavigate(docsView);
+      return;
+    }
+    if (key === 'view_evidence') {
+      onNavigate(settledEvidencePath || docsView);
+      return;
+    }
+    if (key === 'edit_dates') {
+      onEditDates?.(merged);
+      return;
+    }
+    if (key === 'satisfy') {
+      primaryHandler();
+    }
+  };
+
+  const contextPrimaryLabel =
+    modalContext === MODAL_CONTEXT.SATISFY_REQUIREMENT
+      ? String(resolved?.primary_action_label || '').trim() || 'Take action'
+      : heroPresentation.primaryLabel;
 
   const showUploadSecondary =
     Boolean(pid && rid) &&
@@ -315,6 +457,7 @@ export default function RequirementIntelligenceModal({
         aria-modal="true"
         aria-labelledby="requirement-intel-title"
         data-testid="requirement-intel-dialog"
+        data-modal-context={modalContext}
         data-cer-loading={cerLoading ? 'true' : 'false'}
         data-cer-ready={!cerLoading && hasSubmission ? 'true' : 'false'}
       >
@@ -341,7 +484,17 @@ export default function RequirementIntelligenceModal({
 
           {!loading && !error && merged ? (
             <>
-              <NextActionHero entity={merged} onPrimaryClick={primaryHandler} />
+              {heroPresentation.useServerHero ? (
+                <NextActionHero entity={merged} onPrimaryClick={primaryHandler} />
+              ) : (
+                <RequirementModalContextHero
+                  headline={heroPresentation.headline}
+                  subline={heroPresentation.subline}
+                  primaryLabel={heroPresentation.primaryLabel}
+                  warningMessage={heroPresentation.warningMessage}
+                  onPrimaryClick={primaryHandler}
+                />
+              )}
               <section data-testid="requirement-intel-section-status">
                 <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Status summary</h3>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -417,7 +570,11 @@ export default function RequirementIntelligenceModal({
               <section data-testid="requirement-intel-section-what">
                 <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">What you need to do</h3>
                 <p className="text-gray-800">
-                  Use the primary action below. It matches the current obligation for this property.
+                  {modalContext === MODAL_CONTEXT.VIEW_SUBMISSION
+                    ? 'Your submission is on file. Update it, add supporting evidence, or review the details below.'
+                    : modalContext === MODAL_CONTEXT.VIEW_VERIFIED_EVIDENCE
+                      ? 'This evidence is verified for this requirement. You can view documents or add supporting material if needed.'
+                      : 'Use the primary action below. It matches the current obligation for this property.'}
                 </p>
               </section>
 
@@ -528,32 +685,61 @@ export default function RequirementIntelligenceModal({
                 </div>
               ) : null}
               <div className="flex flex-col sm:flex-row gap-2 sm:justify-end sm:items-center">
-                <Button
-                  type="button"
-                  className="w-full sm:w-auto min-h-11 bg-midnight-blue hover:bg-midnight-blue/90 text-white"
-                  onClick={primaryHandler}
-                  disabled={
-                    !resolved ||
-                    resolved.primary_action_handler === 'guided_evidence_error' ||
-                    (!resolved.primary_route &&
-                      resolved.primary_action_handler !== 'external' &&
-                      resolved.primary_action_handler !== 'guided_evidence')
-                  }
-                  title={
-                    resolved.primary_action_handler === 'guided_evidence_error'
-                      ? 'Guided resolution is unavailable: property or requirement context is missing. Use other actions below or contact support.'
-                      : undefined
-                  }
-                  data-testid="requirement-intel-primary-cta"
-                >
-                  {primaryLabel}
-                </Button>
-                <Button type="button" variant="outline" className="w-full sm:w-auto min-h-11" onClick={onClose}>
-                  Close
-                </Button>
+                {footerActions
+                  .filter((a) => a.variant === 'primary' || a.variant === 'secondary')
+                  .map((action) => (
+                    <Button
+                      key={action.key}
+                      type="button"
+                      className={
+                        action.variant === 'primary'
+                          ? 'w-full sm:w-auto min-h-11 bg-midnight-blue hover:bg-midnight-blue/90 text-white'
+                          : 'w-full sm:w-auto min-h-11'
+                      }
+                      variant={action.variant === 'secondary' ? 'outline' : undefined}
+                      onClick={() => handleFooterAction(action.key)}
+                      disabled={
+                        action.key === 'satisfy' &&
+                        (!resolved ||
+                          resolved.primary_action_handler === 'guided_evidence_error' ||
+                          (!resolved.primary_route &&
+                            resolved.primary_action_handler !== 'external' &&
+                            resolved.primary_action_handler !== 'guided_evidence'))
+                      }
+                      title={
+                        action.key === 'satisfy' && resolved?.primary_action_handler === 'guided_evidence_error'
+                          ? 'Guided resolution is unavailable: property or requirement context is missing. Use other actions below or contact support.'
+                          : undefined
+                      }
+                      data-testid={
+                        action.key === 'satisfy'
+                          ? 'requirement-intel-primary-cta'
+                          : action.key === 'update_submission'
+                            ? 'requirement-intel-update-submission'
+                            : action.key === 'close'
+                              ? undefined
+                              : `requirement-intel-footer-${action.key}`
+                      }
+                    >
+                      {action.key === 'satisfy' ? contextPrimaryLabel : action.label}
+                    </Button>
+                  ))}
               </div>
               <div className="flex flex-wrap gap-x-3 gap-y-2 text-xs text-gray-600 justify-end" data-testid="requirement-intel-secondary-actions">
-                {hasSubmission ? (
+                {footerActions
+                  .filter((a) => a.variant === 'link')
+                  .map((action) => (
+                    <button
+                      key={action.key}
+                      type="button"
+                      className="text-electric-teal hover:underline font-medium"
+                      onClick={() => handleFooterAction(action.key)}
+                      data-testid={`requirement-intel-link-${action.key}`}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                {!suppressViewSubmissionLink && hasSubmission ? (
                   <button
                     type="button"
                     className="text-electric-teal hover:underline font-medium"
@@ -563,28 +749,9 @@ export default function RequirementIntelligenceModal({
                     View submission
                   </button>
                 ) : null}
-                {showUploadSecondary ? (
-                  <button
-                    type="button"
-                    className="text-electric-teal hover:underline font-medium"
-                    onClick={() => onNavigate(docsUpload)}
-                  >
-                    Upload document
-                  </button>
-                ) : null}
                 {onMarkNotApplicable ? (
                   <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => onMarkNotApplicable(merged)}>
                     Record as not applicable
-                  </button>
-                ) : null}
-                {pid ? (
-                  <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => onNavigate(docsView)}>
-                    View documents
-                  </button>
-                ) : null}
-                {showEditDatesAndApplicability && onEditDates ? (
-                  <button type="button" className="text-electric-teal hover:underline font-medium" onClick={() => onEditDates(merged)}>
-                    Edit dates and applicability
                   </button>
                 ) : null}
               </div>

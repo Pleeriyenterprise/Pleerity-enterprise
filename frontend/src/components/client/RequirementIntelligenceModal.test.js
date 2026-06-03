@@ -44,7 +44,7 @@ describe('RequirementIntelligenceModal', () => {
     clientAPI.getDocuments.mockResolvedValue({ data: { documents: [] } });
   });
 
-  it('shows Your submission and View submission when CER exists', async () => {
+  it('shows submission panel and converged actions when CER exists (view submission context)', async () => {
     clientAPI.listComplianceEvidence.mockResolvedValue({
       data: {
         evidence_records: [{ evidence_record_id: 'cer_1', evidence_mode: 'STRUCTURED_DECLARATION' }],
@@ -59,6 +59,7 @@ describe('RequirementIntelligenceModal', () => {
           requirement_type: 'right_to_rent',
           workflow_status: 'PENDING_REVIEW',
           compliance_state: 'PENDING',
+          client_lifecycle_state: 'PENDING_REVIEW',
           take_action: {
             primary: {
               label: 'View submission',
@@ -85,6 +86,7 @@ describe('RequirementIntelligenceModal', () => {
             requirement_id: 'req-sub',
             primary_evidence_record_id: 'cer_1',
           }}
+          initialFocusSubmission
           onClose={noop}
           onNavigate={noop}
         />,
@@ -95,8 +97,10 @@ describe('RequirementIntelligenceModal', () => {
       expect(screen.getByTestId('requirement-submission-inspect-panel')).toBeInTheDocument();
     });
     expect(screen.getByText('Submission on file')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('requirement-intel-view-submission'));
-    expect(scrollIntoView).toHaveBeenCalled();
+    expect(screen.getByTestId('requirement-modal-context-hero-headline')).toHaveTextContent('Awaiting platform review');
+    expect(screen.getByTestId('requirement-intel-update-submission')).toHaveTextContent('Update submission');
+    expect(screen.queryByTestId('requirement-intel-view-submission')).not.toBeInTheDocument();
+    expect(screen.getByTestId('requirement-intel-link-add_supporting_evidence')).toHaveTextContent('Add supporting evidence');
   });
 
   it('renders published why_it_matters, published links, canonical primary CTA, and human workflow labels', async () => {

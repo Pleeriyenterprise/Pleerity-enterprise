@@ -1,0 +1,11 @@
+{
+  "verified_at": "2026-06-03T19:28:40.816214+00:00",
+  "path": "Add supporting evidence \u2192 openGuidedEvidence(initialCtaFocusKey: attach_supporting_files)",
+  "focus_target": "modal-focus-supporting-upload",
+  "upload_source": "supporting_evidence_attachment",
+  "implementation": [
+    "GuidedEvidenceModalContext.initialCtaFocusKey",
+    "ComplianceEvidenceResolveModal pendingCtaFocusKey effect",
+    "requirementModalCtaFocus.focusModalCtaTarget"
+  ]
+}

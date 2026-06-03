@@ -1,0 +1,10 @@
+{
+  "verified_at": "2026-06-03T19:28:40.816214+00:00",
+  "path": "Update submission \u2192 openGuidedEvidence \u2192 ComplianceEvidenceResolveModal",
+  "prefill": "info.reopen_context (structured_fields_prefill, checklist_answers_prefill, evidence_mode)",
+  "audit": "Backend versions replacement via existing POST compliance-evidence \u2014 no silent overwrite",
+  "implementation": [
+    "RequirementIntelligenceModal.openGuidedForUpdate",
+    "ComplianceEvidenceResolveModal reopen_context effect"
+  ]
+}

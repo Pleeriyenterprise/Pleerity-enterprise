@@ -12,6 +12,7 @@ export function GuidedEvidenceModalProvider({ children }) {
   const [requirement, setRequirement] = useState(null);
   const [onSubmittedCb, setOnSubmittedCb] = useState(null);
   const [initialEvidenceMode, setInitialEvidenceMode] = useState(null);
+  const [initialCtaFocusKey, setInitialCtaFocusKey] = useState(null);
 
   const openGuidedEvidence = useCallback((payload) => {
     if (!payload || typeof payload !== 'object') return;
@@ -24,6 +25,8 @@ export function GuidedEvidenceModalProvider({ children }) {
     setOnSubmittedCb(() => (typeof payload.onSubmitted === 'function' ? payload.onSubmitted : null));
     const init = payload.initialEvidenceMode || payload.initial_evidence_mode;
     setInitialEvidenceMode(init ? String(init) : null);
+    const focusKey = payload.initialCtaFocusKey || payload.initial_cta_focus_key;
+    setInitialCtaFocusKey(focusKey ? String(focusKey) : null);
     setOpen(true);
   }, []);
 
@@ -33,6 +36,7 @@ export function GuidedEvidenceModalProvider({ children }) {
       setRequirement(null);
       setOnSubmittedCb(null);
       setInitialEvidenceMode(null);
+      setInitialCtaFocusKey(null);
     }
   }, []);
 
@@ -47,6 +51,7 @@ export function GuidedEvidenceModalProvider({ children }) {
         propertyId={propertyId}
         requirement={requirement}
         initialEvidenceMode={initialEvidenceMode}
+        initialCtaFocusKey={initialCtaFocusKey}
         onSubmitted={() => {
           onSubmittedCb?.();
         }}

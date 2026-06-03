@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-06-03T19:28:40.816214+00:00",
+  "mode": "unit_tests_and_mapping",
+  "scenarios_required": [
+    "Legionella self-recorded submission",
+    "Smoke/CO contractor confirmation",
+    "Gas safety verified document",
+    "Platform review pending item"
+  ],
+  "captured_in_unit_tests": [
+    "view_submission hero + footer convergence",
+    "suppress duplicate View submission",
+    "Update submission + Add supporting evidence links"
+  ],
+  "post_deploy_note": "Playwright capture on staging recommended for full browser proof"
+}

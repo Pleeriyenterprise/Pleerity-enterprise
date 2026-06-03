@@ -1,0 +1,19 @@
+{
+  "verified_at": "2026-06-03T19:28:40.816214+00:00",
+  "presentation_by_context": {
+    "view_submission_SATISFIED_UNVERIFIED": {
+      "headline": "Submission recorded",
+      "subline": "Your record is on file. You can update it or add supporting evidence."
+    },
+    "view_submission_PENDING_REVIEW": {
+      "headline": "Awaiting platform review",
+      "subline": "Your submission is waiting for review."
+    },
+    "view_verified_evidence": {
+      "headline": "Evidence verified",
+      "subline": "This evidence is accepted for this requirement."
+    },
+    "satisfy_requirement": "NextActionHero (server operational_cognition)"
+  },
+  "component": "frontend/src/components/client/RequirementModalContextHero.jsx"
+}

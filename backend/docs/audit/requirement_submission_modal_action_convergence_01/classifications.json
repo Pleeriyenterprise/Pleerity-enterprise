@@ -1,0 +1,13 @@
+{
+  "programme": "REQUIREMENT-SUBMISSION-MODAL-ACTION-CONVERGENCE-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "verified_at": "2026-06-03T19:28:40.816214+00:00",
+  "browser_proof": "unit_and_mapping",
+  "criteria": {
+    "no_duplicate_view_submission_in_view_modal": true,
+    "no_stale_unsatisfied_hero": true,
+    "update_path_routes": true,
+    "supporting_evidence_focus": true,
+    "regression_tests_pass": true
+  }
+}

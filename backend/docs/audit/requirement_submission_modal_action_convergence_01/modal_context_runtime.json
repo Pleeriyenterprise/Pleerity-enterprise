@@ -1,0 +1,38 @@
+{
+  "verified_at": "2026-06-03T19:28:40.816214+00:00",
+  "contexts": [
+    "satisfy_requirement",
+    "view_submission",
+    "view_verified_evidence"
+  ],
+  "action_intents": [
+    "update_submission",
+    "add_supporting_evidence"
+  ],
+  "implementation": "frontend/src/utils/requirementSubmissionModalContext.js",
+  "modal_attribute": "data-modal-context on requirement-intel-dialog",
+  "rules": {
+    "view_submission": {
+      "primary": "Update submission",
+      "secondary": [
+        "Add supporting evidence",
+        "View documents",
+        "Edit dates and applicability"
+      ],
+      "suppress": [
+        "View submission duplicate",
+        "stale Record/Add hero"
+      ]
+    },
+    "view_verified_evidence": {
+      "primary": "View evidence",
+      "secondary": [
+        "Add supporting evidence",
+        "View documents"
+      ]
+    },
+    "satisfy_requirement": {
+      "primary": "Server take_action / NextActionHero"
+    }
+  }
+}

@@ -50,6 +50,7 @@ export default function ComplianceEvidenceResolveModal({
   propertyId,
   requirement,
   initialEvidenceMode = null,
+  initialCtaFocusKey = null,
   onSubmitted,
 }) {
   const rid = requirement?.requirement_id;
@@ -137,6 +138,11 @@ export default function ComplianceEvidenceResolveModal({
     const list = (info.allowed_evidence_modes || []).filter((m) => m && m !== 'DOCUMENT_UPLOAD');
     if (list.includes(im)) setSelectedMode(im);
   }, [open, loading, initialEvidenceMode, info]);
+
+  useEffect(() => {
+    if (!open || loading || !initialCtaFocusKey || submitSummaryRecord) return undefined;
+    setPendingCtaFocusKey(String(initialCtaFocusKey).trim());
+  }, [open, loading, initialCtaFocusKey, submitSummaryRecord]);
 
   useEffect(() => {
     if (!open || loading || !info?.reopen_context) return;

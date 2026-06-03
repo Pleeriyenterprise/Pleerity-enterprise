@@ -1,0 +1,30 @@
+{
+  "programme": "REQUIREMENT-SUBMISSION-MODAL-ACTION-CONVERGENCE-01",
+  "verified_at": "2026-06-03T19:28:40.816214+00:00",
+  "trace": [
+    "RequirementsPage row CTA \u2192 executeRequirementPrimaryCta \u2192 openRequirementIntel(scrollToSubmission: true)",
+    "RequirementIntelligenceModal initialFocusSubmission \u2192 modal context resolution",
+    "resolveRequirementSubmissionModalContext \u2192 hero/footer convergence",
+    "Update submission \u2192 GuidedEvidenceModalContext + ComplianceEvidenceResolveModal (reopen_context prefill)",
+    "Add supporting evidence \u2192 initialCtaFocusKey attach_supporting_files"
+  ],
+  "root_causes": {
+    "modal_knows_view_intent": "Partially \u2014 initialFocusSubmission passed but not used to override hero/footer; resolved CTA reused verbatim",
+    "stale_primary_cta": "NextActionHero and footer used server operational_cognition / raw take_action without view_submission context",
+    "duplicate_view_submission": "Footer always rendered View submission link when hasSubmission, even when opened from View submission",
+    "supporting_evidence_routing": "No initialCtaFocusKey from intel modal; supporting upload only in guided resolve modal",
+    "update_path": "Exists via ComplianceEvidenceResolveModal reopen_context prefill \u2014 wired from Update submission CTA"
+  },
+  "fix": [
+    "requirementSubmissionModalContext.js context model",
+    "RequirementModalContextHero replaces stale NextActionHero in view contexts",
+    "Context-aware footer actions; suppress duplicate View submission",
+    "GuidedEvidenceModalContext initialCtaFocusKey for supporting evidence focus"
+  ],
+  "out_of_scope": [
+    "lifecycle authority",
+    "assurance-tier governance",
+    "scoring",
+    "duplicate submission systems"
+  ]
+}
