@@ -3190,7 +3190,7 @@ const ClientDashboard = () => {
                         {headlineScoreShowsOutOf100(p.property_score ?? p.score, p.score_status) ? '/100' : ''}
                       </td>
                       <td className="p-3 whitespace-nowrap">
-                        {st === 'calculating' || p.compliance_score_pending
+                        {p.score_status === 'calculating' || p.compliance_score_pending
                           ? 'Updating…'
                           : formatRiskLabel(p.risk_level)}
                       </td>
