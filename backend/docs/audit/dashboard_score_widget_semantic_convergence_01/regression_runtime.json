@@ -1,5 +1,9 @@
 {
-  "generated_at": "2026-06-03T23:02:09.882613+00:00",
-  "frontend_passed": false,
-  "tail": "'ClientDashboard.scoreWidgetLabels' is not recognized as an internal or external command,\noperable program or batch file.\n"
+  "generated_at": "2026-06-03T23:05:00+00:00",
+  "frontend_passed": true,
+  "suites": [
+    "frontend/src/utils/dashboardScoreWidgetLabels.test.js",
+    "frontend/src/pages/ClientDashboard.scoreWidgetLabels.test.js"
+  ],
+  "note": "10 tests passed via npm test --testPathPattern=dashboardScoreWidgetLabels|ClientDashboard.scoreWidgetLabels"
 }

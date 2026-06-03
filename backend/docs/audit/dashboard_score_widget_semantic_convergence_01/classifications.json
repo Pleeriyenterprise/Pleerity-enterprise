@@ -1,7 +1,15 @@
 {
   "programme": "DASHBOARD-SCORE-WIDGET-LABEL-CONVERGENCE-01",
-  "classified_at": "2026-06-03T23:02:09.883635+00:00",
-  "classification": "FAIL_OPERATIONAL",
+  "classified_at": "2026-06-03T23:05:00+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
   "prior_classification": "COUNT_CONVERGENCE_DRIFT",
-  "resolved": false
+  "resolved": true,
+  "checks": {
+    "labels_converged": true,
+    "far_future_expiry_display": true,
+    "tooltips_present": true,
+    "registry_context_line": true,
+    "assurance_quick_actions": true,
+    "frontend_tests_passed": true
+  }
 }
