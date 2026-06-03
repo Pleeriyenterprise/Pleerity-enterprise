@@ -33,6 +33,12 @@ def test_resolve_property_score_status_ok_and_stale():
     assert resolve_property_score_status(old, now=now) == SCORE_STATUS_STALE
 
 
+def test_resolve_property_score_pending_overrides_existing_score():
+    now = datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc)
+    row = _prop(55, last_iso="2026-03-01T00:00:00+00:00", pending=True)
+    assert resolve_property_score_status(row, now=now) == SCORE_STATUS_CALCULATING
+
+
 def test_resolve_property_calculating_and_reconciliation():
     now = datetime.now(timezone.utc)
     assert resolve_property_score_status(_prop(None, pending=True), now=now) == SCORE_STATUS_CALCULATING
@@ -51,6 +57,18 @@ def test_aggregate_empty_and_all_missing():
     props2 = [_prop(None), _prop(None, pending=False)]
     h2 = aggregate_persisted_portfolio_headline(props2, now=datetime(2026, 4, 1, tzinfo=timezone.utc))
     assert h2["score_status"] == SCORE_STATUS_RECONCILIATION_REQUIRED
+
+
+def test_aggregate_all_scored_with_pending_recalc():
+    now = datetime(2026, 4, 1, tzinfo=timezone.utc)
+    props = [
+        _prop(80, last_iso="2026-03-01T00:00:00+00:00", pending=True),
+        _prop(70, last_iso="2026-03-01T00:00:00+00:00", pending=False),
+    ]
+    h = aggregate_persisted_portfolio_headline(props, now=now)
+    assert h["portfolio_score"] == 75
+    assert h["score_status"] == SCORE_STATUS_PARTIAL
+    assert "score updates processing" in (h.get("score_status_message") or "").lower()
 
 
 def test_aggregate_partial_vs_stale_precedence():

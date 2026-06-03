@@ -18,7 +18,7 @@ from services.compliance_score import (
     property_persisted_score_row_status,
     build_portfolio_override_outputs,
 )
-from services.scoring_semantics_v1 import attach_semantics_contract
+from services.scoring_semantics_v1 import attach_semantics_contract, SCORE_STATUS_CALCULATING
 from services.score_cognition_service import portfolio_property_cognition_fields
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -120,7 +120,9 @@ async def get_compliance_summary(request: Request):
             persisted = row.get("compliance_score")
             preview_matrix = p.get("score")
             st = property_persisted_score_row_status(row)
-            if row.get("risk_level") is not None:
+            if st == SCORE_STATUS_CALCULATING:
+                risk_out = None
+            elif row.get("risk_level") is not None:
                 risk_out = row.get("risk_level")
             elif persisted is not None:
                 risk_out = score_to_risk_level(int(round(float(persisted))))
@@ -300,7 +302,9 @@ async def get_compliance_summary(request: Request):
         name = prop.get("nickname") or prop.get("address_line_1") or pid
         persisted = prop.get("compliance_score")
         st = property_persisted_score_row_status(prop)
-        if prop.get("risk_level") is not None:
+        if st == SCORE_STATUS_CALCULATING:
+            risk_out = None
+        elif prop.get("risk_level") is not None:
             risk_out = prop.get("risk_level")
         elif persisted is not None:
             risk_out = score_to_risk_level(int(round(float(persisted))))

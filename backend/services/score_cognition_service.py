@@ -79,7 +79,7 @@ def build_property_score_cognition_line(
     Never returns bare 'No open gaps' when score is low without explanation.
     """
     if property_row.get("compliance_score_pending"):
-        return "Score updating — refresh shortly"
+        return "Score updating — recent compliance changes are being processed"
 
     overdue = _int_field(property_row, "overdue_count")
     exp = _int_field(property_row, "expiring_30_count", "expiring_soon_count")

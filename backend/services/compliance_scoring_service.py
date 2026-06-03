@@ -19,7 +19,9 @@ from utils.risk_bands import score_to_grade_color_message, score_to_risk_level
 from services.scoring_semantics_v1 import (
     attach_semantics_contract,
     resolve_property_score_status,
+    resolve_property_score_status_message,
     SCORE_AUTHORITY_PERSISTED_HEADLINE,
+    SCORE_STATUS_CALCULATING,
     SCORE_STATUS_RECONCILIATION_REQUIRED,
 )
 
@@ -408,12 +410,26 @@ def _merge_live_compliance_with_persisted_headline(
         except (TypeError, ValueError):
             score_int = None
         if score_int is not None:
-            g, c, m = score_to_grade_color_message(score_int)
-            authoritative["score"] = score_int
-            authoritative["score_status"] = resolve_property_score_status(prop)
-            authoritative["grade"] = g
-            authoritative["color"] = c
-            authoritative["message"] = m
+            st = resolve_property_score_status(prop)
+            if st == SCORE_STATUS_CALCULATING:
+                authoritative["score"] = score_int
+                authoritative["score_status"] = st
+                authoritative["grade"] = None
+                authoritative["color"] = "gray"
+                authoritative["message"] = resolve_property_score_status_message(prop, score_status=st) or (
+                    "Your latest changes are saved. The property score updates after the next background calculation."
+                )
+                authoritative["score_status_message"] = authoritative["message"]
+            else:
+                g, c, m = score_to_grade_color_message(score_int)
+                authoritative["score"] = score_int
+                authoritative["score_status"] = st
+                authoritative["grade"] = g
+                authoritative["color"] = c
+                authoritative["message"] = m
+                msg = resolve_property_score_status_message(prop, score_status=st)
+                if msg:
+                    authoritative["score_status_message"] = msg
         else:
             authoritative["score"] = None
             authoritative["score_status"] = SCORE_STATUS_RECONCILIATION_REQUIRED
@@ -433,9 +449,9 @@ def _merge_live_compliance_with_persisted_headline(
             if st == "calculating"
             else "Compliance score is not yet available; reconciliation may be required."
         )
-    if prop.get("risk_level") is not None:
+    if prop.get("risk_level") is not None and authoritative.get("score_status") != SCORE_STATUS_CALCULATING:
         authoritative["risk_level"] = prop.get("risk_level")
-    elif authoritative.get("score") is not None:
+    elif authoritative.get("score") is not None and authoritative.get("score_status") != SCORE_STATUS_CALCULATING:
         authoritative["risk_level"] = score_to_risk_level(int(authoritative["score"]))
     if prop.get("compliance_bucket_breakdown"):
         authoritative["bucket_breakdown"] = prop.get("compliance_bucket_breakdown")

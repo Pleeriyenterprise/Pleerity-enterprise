@@ -186,8 +186,8 @@ function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs) {
     }
     return p.score_cognition_line;
   }
-  if (p?.compliance_score_pending || p?.score_status === 'pending_recalc') {
-    return 'Score updating — refresh shortly';
+  if (p?.compliance_score_pending || p?.score_status === 'pending_recalc' || p?.score_status === 'calculating') {
+    return 'Score updating — recent compliance changes are being processed';
   }
   const overdue = Number(p.overdue_count ?? 0);
   const exp = Number(p.expiring_30_count ?? p.expiring_soon_count ?? 0);
@@ -3189,7 +3189,11 @@ const ClientDashboard = () => {
                         {headlineScoreDisplayForDashboard(p.property_score ?? p.score, p.score_status)}
                         {headlineScoreShowsOutOf100(p.property_score ?? p.score, p.score_status) ? '/100' : ''}
                       </td>
-                      <td className="p-3 whitespace-nowrap">{formatRiskLabel(p.risk_level)}</td>
+                      <td className="p-3 whitespace-nowrap">
+                        {st === 'calculating' || p.compliance_score_pending
+                          ? 'Updating…'
+                          : formatRiskLabel(p.risk_level)}
+                      </td>
                       <td className="p-3">{p.overdue_count ?? 0}</td>
                       <td className="p-3">{p.expiring_30_count ?? p.expiring_soon_count ?? 0}</td>
                       <td className="p-3">{p.missing_count ?? 0}</td>
@@ -3386,7 +3390,7 @@ const ClientDashboard = () => {
                                 {headlineScoreDisplayForDashboard(score, st)}
                                 {headlineScoreShowsOutOf100(score, st) ? '/100' : ''}
                               </span>
-                              {p.risk_level ? (
+                              {p.risk_level && st !== 'calculating' && !p.compliance_score_pending ? (
                                 <span className="text-gray-600"> · {formatRiskLabel(p.risk_level)}</span>
                               ) : null}
                             </p>
@@ -3427,7 +3431,11 @@ const ClientDashboard = () => {
                                     {headlineScoreShowsOutOf100(score, st) ? '/100' : ''}
                                   </div>
                                   <div className="text-xs text-gray-600">
-                                    {p.risk_level ? formatRiskLabel(p.risk_level) : KPI_NO_DATA}
+                                    {st === 'calculating' || p.compliance_score_pending
+                                      ? 'Updating…'
+                                      : p.risk_level
+                                        ? formatRiskLabel(p.risk_level)
+                                        : KPI_NO_DATA}
                                   </div>
                                 </td>
                                 <td className="p-3 text-gray-700">{gaps}</td>

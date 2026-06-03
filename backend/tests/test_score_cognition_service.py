@@ -33,7 +33,7 @@ def test_blocker_kpis_take_precedence():
 
 def test_pending_score_shows_updating():
     row = {"compliance_score_pending": True, "property_score": 55}
-    assert "updating" in build_property_score_cognition_line(row).lower()
+    assert build_property_score_cognition_line(row) == "Score updating — recent compliance changes are being processed"
 
 
 def test_risk_explanation_for_platform_review():

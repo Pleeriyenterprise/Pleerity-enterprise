@@ -1,0 +1,25 @@
+{
+  "verified_at": "2026-06-03T21:07:05.608584+00:00",
+  "with_enqueue": [
+    "document upload/verify/delete (fanout)",
+    "CER create + platform/org verification (propagate_requirement_evidence_outcome)",
+    "evidence review V2 verify",
+    "patch_requirement, mark_not_applicable, reopen",
+    "property create/update, requirements sync",
+    "tenant delivery gap sync, provisioning, governed rules",
+    "lazy backfill, admin manual recalc, expiry rollover job",
+    "stale authority read-path refresh (NEW)"
+  ],
+  "sync_recalc_no_queue": [
+    "compliance_outcome_engine.apply_outcome",
+    "admin validate fix=true"
+  ],
+  "gaps_closed": [
+    "duplicate suppression now re-marks compliance_score_pending",
+    "authority read refresh now enqueues per property"
+  ],
+  "residual_risks": [
+    "activation gate may defer enqueue (governed; propagation_notice)",
+    "same correlation_id replay after DONE does not auto-regenerate without new correlation"
+  ]
+}

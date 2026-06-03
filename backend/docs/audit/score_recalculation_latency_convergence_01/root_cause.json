@@ -1,0 +1,27 @@
+{
+  "programme": "SCORE-RECALCULATION-LATENCY-CONVERGENCE-01",
+  "verified_at": "2026-06-03T21:07:05.608584+00:00",
+  "prior_programme": "PROPERTY-COMPLIANCE-SCORE-CONVERGENCE-DRIFT-01 (PARTIAL @ 0b7ed60c)",
+  "propagation_flow": {
+    "mutation": "evidence/declaration/verify \u2192 authority sync \u2192 enqueue_compliance_recalc",
+    "queue": "compliance_recalc_queue (PENDING \u2192 RUNNING \u2192 DONE)",
+    "worker": "job_runner.run_compliance_recalc_worker (~15s schedule)",
+    "persist": "recalculate_and_persist \u2192 compliance_score_pending=false",
+    "read_models": "portfolio/compliance-score APIs + score_cognition_service"
+  },
+  "root_causes": [
+    "resolve_property_score_status returned ok/stale when score existed even if compliance_score_pending=true",
+    "duplicate enqueue suppression did not re-mark compliance_score_pending on property",
+    "portfolio aggregate ignored pending recalc when all properties had persisted scores",
+    "stale risk_level and grade shown during async window on property/portfolio surfaces",
+    "read-path authority refresh (client_applicability_coherence) synced authority without enqueue"
+  ],
+  "stale_snapshot_window": "From mutation until worker completes recalculate_and_persist (typically seconds\u2013minutes)",
+  "fixes": [
+    "pending dominates property score_status (calculating)",
+    "duplicate enqueue re-sets compliance_score_pending for PENDING/RUNNING/FAILED jobs",
+    "portfolio partial + pending message when recalc in flight",
+    "suppress stale risk labels when calculating; show Updating\u2026",
+    "enqueue recalc after stale authority read-path refresh"
+  ]
+}

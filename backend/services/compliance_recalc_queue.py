@@ -46,6 +46,9 @@ STATUS_DONE = "DONE"
 STATUS_FAILED = "FAILED"
 STATUS_DEAD = "DEAD"
 
+# Duplicate enqueue: still mark property pending while worker has not finished.
+_DUPLICATE_PENDING_MARK_STATUSES = frozenset({STATUS_PENDING, STATUS_RUNNING, STATUS_FAILED})
+
 ACTOR_CLIENT = "CLIENT"
 ACTOR_ADMIN = "ADMIN"
 ACTOR_SYSTEM = "SYSTEM"
@@ -186,6 +189,12 @@ async def enqueue_compliance_recalc(
                         duplicate_suppression_reason=reason,
                     ),
                 )
+                existing_status = (existing or {}).get("status")
+                if existing_status in _DUPLICATE_PENDING_MARK_STATUSES:
+                    await db.properties.update_one(
+                        {"property_id": property_id},
+                        {"$set": {"compliance_score_pending": True}},
+                    )
                 branch = (False, reason)
             else:
                 await db.properties.update_one(

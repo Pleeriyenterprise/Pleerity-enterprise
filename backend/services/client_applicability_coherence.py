@@ -449,12 +449,62 @@ def reconcile_legionella_operational_applicability(row: Dict[str, Any]) -> Dict[
     return out
 
 
+def condition_standard_pilot_applicability_reconciliation_eligible(row: Dict[str, Any]) -> bool:
+    """Pilot-materialised condition-standard rows must present as REQUIRED on client surfaces."""
+    if not isinstance(row, dict):
+        return False
+    raw = str(row.get("requirement_code") or row.get("requirement_type") or "").strip()
+    canon = normalize_requirement_code(raw) or raw.lower().replace(" ", "_")
+    if canon not in ("fitness_for_human_habitation", "repairing_standard"):
+        return False
+    if row.get("client_surface_visible") is False:
+        return False
+    if str(row.get("requirement_generation_source") or "") != "condition_standard_pilot_ops":
+        return False
+    read = resolve_applicability_read_model(row)
+    pipeline = str(read.get("pipeline_applicability_state") or "").strip().upper()
+    eff = str(read.get("effective_applicability_state") or "").strip().upper()
+    row_app = row_applicability_for_client_coherence(row)
+    app_state = str(row.get("applicability_state") or row_app or "").strip().upper()
+    return pipeline in ("NOT_REQUIRED", "UNKNOWN", "") or eff in ("NOT_REQUIRED", "UNKNOWN", "") or app_state in (
+        "NOT_REQUIRED",
+        "UNKNOWN",
+        "",
+    )
+
+
+def reconcile_condition_standard_pilot_applicability(row: Dict[str, Any]) -> Dict[str, Any]:
+    if not condition_standard_pilot_applicability_reconciliation_eligible(row):
+        return row
+    out = dict(row)
+    read = resolve_applicability_read_model(out)
+    prior = {
+        "applicability": out.get("applicability"),
+        "applicability_state": out.get("applicability_state"),
+        "effective_applicability_state": read.get("effective_applicability_state"),
+        "pipeline_applicability_state": read.get("pipeline_applicability_state"),
+    }
+    out["applicability"] = "REQUIRED"
+    out["applicability_state"] = "REQUIRED"
+    out["effective_applicability_state"] = "REQUIRED"
+    prov = out.get("applicability_provenance")
+    prov = dict(prov) if isinstance(prov, dict) else {}
+    prov["effective_applicability_state"] = "REQUIRED"
+    prov["operational_applicability_reconciliation"] = {
+        "source": "condition_standard_pilot_applicability",
+        "prior": prior,
+    }
+    out["applicability_provenance"] = prov
+    return out
+
+
 def apply_client_applicability_presentation_overlay(row: Dict[str, Any]) -> Dict[str, Any]:
     """
     Client read-model only: align effective applicability presentation with row truth
     when pipeline snapshot is stale for a surfaced obligation.
     """
-    out = reconcile_legionella_operational_applicability(dict(row))
+    out = reconcile_condition_standard_pilot_applicability(dict(row))
+    out = reconcile_legionella_operational_applicability(out)
     out = reconcile_wales_occupation_operational_applicability(out)
     out = reconcile_scotland_landlord_registration_operational_applicability(out)
     out = reconcile_rent_smart_wales_operational_applicability(out)
@@ -500,6 +550,42 @@ async def refresh_stale_authority_for_client_requirements(
         refreshed_ids.append(rid)
     if not refreshed_ids:
         return requirements
+    property_ids = {
+        str(row.get("property_id") or "").strip()
+        for row in requirements
+        if str(row.get("requirement_id") or "") in refreshed_ids and str(row.get("property_id") or "").strip()
+    }
+    client_ids = {
+        str(row.get("client_id") or "").strip()
+        for row in requirements
+        if str(row.get("requirement_id") or "") in refreshed_ids and str(row.get("client_id") or "").strip()
+    }
+    if property_ids and len(client_ids) == 1:
+        client_id = next(iter(client_ids))
+        from services.compliance_recalc_queue import (
+            ACTOR_SYSTEM,
+            TRIGGER_DOC_STATUS_CHANGED,
+            enqueue_compliance_recalc,
+        )
+
+        for pid in sorted(property_ids):
+            try:
+                await enqueue_compliance_recalc(
+                    property_id=pid,
+                    client_id=client_id,
+                    trigger_reason=TRIGGER_DOC_STATUS_CHANGED,
+                    actor_type=ACTOR_SYSTEM,
+                    actor_id=None,
+                    correlation_id=f"AUTHORITY_READ_REFRESH:{pid}",
+                )
+            except Exception as exc:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "refresh_stale_authority: recalc enqueue failed property_id=%s: %s",
+                    pid,
+                    exc,
+                )
     reloaded: Dict[str, Dict[str, Any]] = {}
     async for doc in db.requirements.find(
         {"requirement_id": {"$in": refreshed_ids}},

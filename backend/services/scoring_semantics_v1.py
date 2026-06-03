@@ -95,17 +95,38 @@ def resolve_property_score_status(prop: Dict[str, Any], *, now: Optional[datetim
     Precedence: unavailable inputs are handled at portfolio layer; here property row only.
     ``unknown`` is reserved for future explicit suppression flags — not emitted unless
     ``compliance_headline_status_override`` == ``unknown`` (integration/tests only).
+
+    ``compliance_score_pending`` dominates an existing persisted score: the numeric headline
+    is a stale snapshot until the recalc worker completes.
     """
     override = prop.get("compliance_headline_status_override")
     if override == SCORE_STATUS_UNKNOWN:
         return SCORE_STATUS_UNKNOWN
+    if prop.get("compliance_score_pending"):
+        return SCORE_STATUS_CALCULATING
     if prop.get("compliance_score") is not None:
         if is_property_score_stale(prop, now=now):
             return SCORE_STATUS_STALE
         return SCORE_STATUS_OK
-    if prop.get("compliance_score_pending"):
-        return SCORE_STATUS_CALCULATING
     return SCORE_STATUS_RECONCILIATION_REQUIRED
+
+
+def resolve_property_score_status_message(prop: Dict[str, Any], *, score_status: Optional[str] = None) -> Optional[str]:
+    """Client-visible explanation for property headline score status."""
+    st = score_status or resolve_property_score_status(prop)
+    if st == SCORE_STATUS_CALCULATING:
+        if prop.get("compliance_score") is not None:
+            return (
+                "Your latest changes are saved. The property score updates after the next background calculation."
+            )
+        return "Compliance score is being calculated for this property."
+    if st == SCORE_STATUS_RECONCILIATION_REQUIRED:
+        return "Compliance score is not yet available; reconciliation may be required."
+    if st == SCORE_STATUS_STALE:
+        return (
+            f"Stored compliance score is older than {STALE_SCORE_MAX_AGE_DAYS} days; refresh is recommended."
+        )
+    return None
 
 
 def refine_portfolio_score_status(
@@ -199,6 +220,7 @@ def aggregate_persisted_portfolio_headline(
                 "properties_with_stale_persisted_score": 0,
             },
         }
+    pending_count = sum(1 for p in properties if bool(p.get("compliance_score_pending")))
     vals = [float(p["compliance_score"]) for p in with_score]
     avg = round(sum(vals) / len(vals))
     rl = score_to_risk_level(avg)
@@ -209,6 +231,14 @@ def aggregate_persisted_portfolio_headline(
         if missing
         else None
     )
+    if pending_count > 0:
+        pending_msg = (
+            f"{pending_count} propert{'ies' if pending_count != 1 else 'y'} "
+            "have score updates processing after recent changes."
+        )
+        msg = f"{msg} {pending_msg}".strip() if msg else pending_msg
+        if base == SCORE_STATUS_OK and missing == 0:
+            base = SCORE_STATUS_PARTIAL
     refined = refine_portfolio_score_status(base, has_missing=missing > 0, any_stale_among_scored=any_stale and missing == 0)
     if refined == SCORE_STATUS_STALE:
         msg = (msg + " " if msg else "") + (

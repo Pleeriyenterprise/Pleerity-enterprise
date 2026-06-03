@@ -16,7 +16,7 @@ const BLOCKED_NUMERIC = new Set(['unavailable', 'reconciliation_required', 'unkn
 export function headlineScoreDisplayForDashboard(score, scoreStatus) {
   const st = scoreStatus || '';
   if (BLOCKED_NUMERIC.has(st)) return SCORING_HEADLINE_NO_DATA;
-  if (st === 'calculating') return 'Calculating…';
+  if (st === 'calculating') return 'Updating…';
   if (score == null || score === '' || (typeof score === 'number' && Number.isNaN(score))) {
     return SCORING_HEADLINE_NO_DATA;
   }

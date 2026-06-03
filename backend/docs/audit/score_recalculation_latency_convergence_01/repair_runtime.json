@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-06-03T21:07:05.608584+00:00",
+  "tooling": {
+    "admin_recalc": "POST /api/admin/.../actions/recalculate-compliance",
+    "validate_repair": "POST validate-compliance-score fix=true \u2192 recalculate_and_persist",
+    "reconciliation_batch": "compliance_score_reconciliation_service",
+    "queue_monitor": "GET compliance-recalc-status, compliance-sla",
+    "scheduled_batch": "run_compliance_recalc_enqueue_property"
+  },
+  "properties": [
+    "audited",
+    "idempotent enqueue",
+    "tenant-scoped",
+    "correlation_id dedupe"
+  ]
+}

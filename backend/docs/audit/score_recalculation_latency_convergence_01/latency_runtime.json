@@ -1,0 +1,11 @@
+{
+  "verified_at": "2026-06-03T21:07:05.608584+00:00",
+  "targets": {
+    "queue_worker_schedule_seconds": 15,
+    "acceptable_recalc_completion": "< 2 minutes under normal load",
+    "degraded": "2\u201310 minutes with backlog",
+    "operationally_dangerous": "> 10 minutes or pending flag stuck true"
+  },
+  "classification": "acceptable_architecture_degraded_ux_without_pending_honesty",
+  "note": "Latency not re-profiled on staging in this slice; UX convergence is primary remediation."
+}

@@ -118,6 +118,8 @@ async def test_enqueue_compliance_recalc_duplicate_pending(monkeypatch):
     db.compliance_recalc_queue.insert_one = AsyncMock(side_effect=DuplicateKeyError("E11000"))
     db.compliance_recalc_queue.find_one = AsyncMock(return_value={"status": STATUS_PENDING})
     db.compliance_recalc_queue.update_one = AsyncMock()
+    db.properties = MagicMock()
+    db.properties.update_one = AsyncMock()
 
     monkeypatch.setattr(qmod.database, "get_db", lambda: db)
 
@@ -138,6 +140,7 @@ async def test_enqueue_compliance_recalc_duplicate_pending(monkeypatch):
     assert res.correlation_id == "dup-corr"
     assert bool(res) is False
     db.compliance_recalc_queue.update_one.assert_awaited()
+    db.properties.update_one.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -149,12 +152,15 @@ async def test_enqueue_compliance_recalc_duplicate_running(monkeypatch):
     db.compliance_recalc_queue.insert_one = AsyncMock(side_effect=DuplicateKeyError("E11000"))
     db.compliance_recalc_queue.find_one = AsyncMock(return_value={"status": STATUS_RUNNING})
     db.compliance_recalc_queue.update_one = AsyncMock()
+    db.properties = MagicMock()
+    db.properties.update_one = AsyncMock()
 
     monkeypatch.setattr(qmod.database, "get_db", lambda: db)
     monkeypatch.setattr("services.risk_signal_regen_queue.enqueue_risk_signal_regen", AsyncMock())
 
     res = await enqueue_compliance_recalc("p1", "c1", "T", "SYSTEM", correlation_id="x")
     assert res.duplicate_suppression_reason == "already_running"
+    db.properties.update_one.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -166,12 +172,15 @@ async def test_enqueue_compliance_recalc_duplicate_failed_retry(monkeypatch):
     db.compliance_recalc_queue.insert_one = AsyncMock(side_effect=DuplicateKeyError("E11000"))
     db.compliance_recalc_queue.find_one = AsyncMock(return_value={"status": STATUS_FAILED})
     db.compliance_recalc_queue.update_one = AsyncMock()
+    db.properties = MagicMock()
+    db.properties.update_one = AsyncMock()
 
     monkeypatch.setattr(qmod.database, "get_db", lambda: db)
     monkeypatch.setattr("services.risk_signal_regen_queue.enqueue_risk_signal_regen", AsyncMock())
 
     res = await enqueue_compliance_recalc("p1", "c1", "T", "SYSTEM", correlation_id="x")
     assert res.duplicate_suppression_reason == "retry_requeued"
+    db.properties.update_one.assert_awaited()
 
 
 def test_health_summary_determinism():
