@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-06-03T16:32:12.006251+00:00",
+  "verified_at": "2026-06-03T17:17:44.184440+00:00",
   "stripe_mode": "live",
   "plans": [
     {
@@ -49,15 +49,15 @@
       "monthly_fingerprint": {
         "present": true,
         "starts_with_price_": true,
-        "sha256_prefix_8": "1358f55e",
-        "last_6_chars": "hJv239",
-        "duplicate_group_id": "1358f55e"
+        "sha256_prefix_8": "ab844bf9",
+        "last_6_chars": "mumLiD",
+        "duplicate_group_id": "ab844bf9"
       },
       "onboarding_env_var_read": "STRIPE_LIVE_PRICE_PLAN_3_PRO_ONBOARDING",
       "onboarding_fingerprint": {
         "present": true,
-        "sha256_prefix_8": "ab844bf9",
-        "last_6_chars": "mumLiD"
+        "sha256_prefix_8": "7a091969",
+        "last_6_chars": "AWrBG5"
       },
       "resolved_price_source": "os.environ[STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY] direct read (no legacy fallback)",
       "monthly_onboarding_selection": "subscription uses *_MONTHLY; onboarding fee uses *_ONBOARDING when set"

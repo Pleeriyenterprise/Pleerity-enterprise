@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-06-03T16:32:08.791104+00:00",
+  "verified_at": "2026-06-03T17:17:40.548040+00:00",
   "deployment_stripe_mode": "live",
   "stripe_mode": "live",
   "monthly_env_vars": {
@@ -26,9 +26,9 @@
       "role": "subscription_monthly",
       "present": true,
       "starts_with_price_": true,
-      "last_6_chars": "hJv239",
-      "sha256_prefix_8": "1358f55e",
-      "duplicate_group_id": "1358f55e"
+      "last_6_chars": "mumLiD",
+      "sha256_prefix_8": "ab844bf9",
+      "duplicate_group_id": "ab844bf9"
     }
   },
   "onboarding_env_vars": {
@@ -55,24 +55,12 @@
       "role": "onboarding",
       "present": true,
       "starts_with_price_": true,
-      "last_6_chars": "mumLiD",
-      "sha256_prefix_8": "ab844bf9",
-      "duplicate_group_id": "ab844bf9"
+      "last_6_chars": "AWrBG5",
+      "sha256_prefix_8": "7a091969",
+      "duplicate_group_id": "7a091969"
     }
   },
-  "duplicate_monthly_groups": [
-    {
-      "group_id": "1358f55e",
-      "env_vars": [
-        "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
-        "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY"
-      ],
-      "plan_codes": [
-        "PLAN_2_PORTFOLIO",
-        "PLAN_3_PRO"
-      ]
-    }
-  ],
-  "duplicate_detected": true,
-  "load_error": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STRIPE_{mode}_PRICE_*_MONTHLY value."
+  "duplicate_monthly_groups": [],
+  "duplicate_detected": false,
+  "load_error": null
 }

@@ -1,6 +1,6 @@
 {
   "marker": "BILLING-STRIPE-RUNTIME-FINGERPRINT-VERIFY-01",
-  "generated_at": "2026-06-03T16:32:38.559273+00:00",
-  "classification": "STRIPE_PRICE_CONFIG_DRIFT",
-  "root_cause": "DUPLICATE_VALUES_CONFIRMED"
+  "generated_at": "2026-06-03T17:18:12.919947+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "root_cause": "VERIFIED_OPERATIONALLY"
 }

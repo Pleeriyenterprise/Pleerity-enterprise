@@ -1,12 +1,8 @@
 {
-  "verified_at": "2026-06-03T16:32:12.008251+00:00",
-  "classification": "DUPLICATE_VALUES_CONFIRMED",
+  "verified_at": "2026-06-03T17:17:44.186610+00:00",
+  "classification": "CODE_RESOLUTION_BUG",
   "remediation_steps": [
-    "On Render backend API service (pleerity-enterprise), confirm STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY is distinct from STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY (\u00a379 vs \u00a339 monthly).",
-    "Solo monthly already distinct at runtime (group 66fe742a); Portfolio+Pro still share group 1358f55e.",
-    "After env correction: Manual Deploy or restart backend to refresh process env and _STRIPE_PRICE_CACHE.",
-    "Re-run GET /api/admin/billing/stripe-price-env-fingerprint \u2014 expect three unique duplicate_group_id values.",
-    "Do not weaken duplicate-price guard in plan_registry._load_stripe_prices_for_mode."
+    "Investigate code path or service targeting per classification."
   ],
   "mutations_allowed": false,
   "guard_weakening_allowed": false

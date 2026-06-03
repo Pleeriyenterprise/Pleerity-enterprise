@@ -1,14 +1,15 @@
 {
-  "verified_at": "2026-06-03T16:32:07.113832+00:00",
+  "verified_at": "2026-06-03T17:17:38.308838+00:00",
   "programme": "BILLING-STRIPE-RUNTIME-FINGERPRINT-VERIFY-01",
   "min_commit_prefix": "5f5613c2",
   "api_base": "https://pleerity-enterprise.onrender.com/api",
   "frontend_origin": "https://pleerityenterprise.co.uk",
   "version_endpoint": {
     "status": 200,
-    "commit_sha": "5f5613c25b0cd071260e49e70d09c3190147146d",
+    "commit_sha": "579e207716498220c21b996a5a3a4bd6468c39fc",
     "environment": "production"
   },
   "commit_at_or_after_min": true,
+  "note": "579e2077 is successor to 5f5613c2 (audit verify commit); redeploy after STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY env correction confirmed live.",
   "pass": true
 }

@@ -1,0 +1,114 @@
+{
+  "verified_at": "2026-06-03T17:18:01.466005+00:00",
+  "checkout": {
+    "PLAN_1_SOLO": {
+      "status": 200,
+      "error_code": null,
+      "message_prefix": "",
+      "requested_plan_code": "PLAN_1_SOLO",
+      "checkout_context": "plan_change",
+      "plan_change_path": "deployment_checkout"
+    },
+    "PLAN_2_PORTFOLIO": {
+      "status": 200,
+      "error_code": null,
+      "message_prefix": "",
+      "requested_plan_code": "PLAN_2_PORTFOLIO",
+      "checkout_context": "plan_change",
+      "plan_change_path": "deployment_checkout"
+    },
+    "PLAN_3_PRO": {
+      "status": 200,
+      "error_code": null,
+      "message_prefix": "",
+      "requested_plan_code": "PLAN_3_PRO",
+      "checkout_context": "plan_change",
+      "plan_change_path": "deployment_checkout"
+    }
+  },
+  "stripe_price_display": {
+    "PLAN_1_SOLO": {
+      "display_name": "Solo",
+      "expected_gbp": 19,
+      "match": true,
+      "method": "playwright_hosted_checkout"
+    },
+    "PLAN_2_PORTFOLIO": {
+      "display_name": "Portfolio",
+      "expected_gbp": 39,
+      "match": true,
+      "method": "playwright_hosted_checkout"
+    },
+    "PLAN_3_PRO": {
+      "display_name": "Professional",
+      "expected_gbp": 79,
+      "match": true,
+      "method": "playwright_hosted_checkout"
+    }
+  },
+  "cancel_back_urls": {
+    "PLAN_1_SOLO": {
+      "cancel_url_billing": true,
+      "not_intake_start": true,
+      "after_back_url": "https://pleerityenterprise.co.uk/login/client?next=%2Fsettings%2Fbilling%3Fcheckout%3Dcancelled",
+      "method": "playwright_back_button"
+    },
+    "PLAN_2_PORTFOLIO": {
+      "cancel_url_billing": true,
+      "not_intake_start": true,
+      "after_back_url": "https://pleerityenterprise.co.uk/login/client?next=%2Fsettings%2Fbilling%3Fcheckout%3Dcancelled",
+      "method": "playwright_back_button"
+    },
+    "PLAN_3_PRO": {
+      "cancel_url_billing": true,
+      "not_intake_start": true,
+      "after_back_url": "https://pleerityenterprise.co.uk/login/client?next=%2Fsettings%2Fbilling%3Fcheckout%3Dcancelled",
+      "method": "playwright_back_button"
+    }
+  },
+  "distinct_checkout_[REDACTED]": 0,
+  "stripe_secret_on_runner": false,
+  "pass": true,
+  "playwright_browser_verify": {
+    "verified_at": "2026-06-03T17:22:26.634881+00:00",
+    "plans": {
+      "PLAN_1_SOLO": {
+        "status": 200,
+        "expected_gbp": 19,
+        "label": "Solo",
+        "shows_expected_amount": true,
+        "shows_wrong_portfolio_only": false,
+        "after_back_url": "https://pleerityenterprise.co.uk/login/client?next=%2Fsettings%2Fbilling%3Fcheckout%3Dcancelled",
+        "returns_to_billing": false,
+        "cancel_target_billing": true,
+        "not_intake_start": true,
+        "pass": true
+      },
+      "PLAN_2_PORTFOLIO": {
+        "status": 200,
+        "expected_gbp": 39,
+        "label": "Portfolio",
+        "shows_expected_amount": true,
+        "shows_wrong_portfolio_only": false,
+        "after_back_url": "https://pleerityenterprise.co.uk/login/client?next=%2Fsettings%2Fbilling%3Fcheckout%3Dcancelled",
+        "returns_to_billing": false,
+        "cancel_target_billing": true,
+        "not_intake_start": true,
+        "pass": true
+      },
+      "PLAN_3_PRO": {
+        "status": 200,
+        "expected_gbp": 79,
+        "label": "Professional",
+        "shows_expected_amount": true,
+        "shows_wrong_portfolio_only": false,
+        "after_back_url": "https://pleerityenterprise.co.uk/login/client?next=%2Fsettings%2Fbilling%3Fcheckout%3Dcancelled",
+        "returns_to_billing": false,
+        "cancel_target_billing": true,
+        "not_intake_start": true,
+        "pass": true
+      }
+    },
+    "pass": true
+  }
+}

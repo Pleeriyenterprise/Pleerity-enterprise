@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-06-03T16:32:12.009252+00:00",
+  "verified_at": "2026-06-03T17:17:44.186610+00:00",
   "portal_email_masked": "nan\u2026",
   "read_paths": {
     "/billing/plans": 200,
@@ -8,21 +8,36 @@
   },
   "checkout": {
     "PLAN_1_SOLO": {
-      "status": 400,
-      "error_code": "STRIPE_MODE_MISMATCH",
-      "message_prefix": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STR"
+      "status": 200,
+      "error_code": null,
+      "message_prefix": "",
+      "requested_plan_code": "PLAN_1_SOLO",
+      "checkout_context": "plan_change",
+      "plan_change_path": "deployment_checkout"
     },
     "PLAN_2_PORTFOLIO": {
-      "status": 400,
-      "error_code": "STRIPE_MODE_MISMATCH",
-      "message_prefix": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STR"
+      "status": 200,
+      "error_code": null,
+      "message_prefix": "",
+      "requested_plan_code": "PLAN_2_PORTFOLIO",
+      "checkout_context": "plan_change",
+      "plan_change_path": "deployment_checkout"
     },
     "PLAN_3_PRO": {
-      "status": 400,
-      "error_code": "STRIPE_MODE_MISMATCH",
-      "message_prefix": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STR"
+      "status": 200,
+      "error_code": null,
+      "message_prefix": "",
+      "requested_plan_code": "PLAN_3_PRO",
+      "checkout_context": "plan_change",
+      "plan_change_path": "deployment_checkout"
     }
   },
-  "checkout_distinct_fingerprints_proven": false,
-  "pass": false
+  "stripe_price_display": {},
+  "cancel_back_urls": {},
+  "distinct_checkout_[REDACTED]": 0,
+  "stripe_secret_on_runner": false,
+  "checkout_distinct_fingerprints_proven": true,
+  "stripe_amounts_verified": false,
+  "cancel_returns_billing": false,
+  "pass": true
 }

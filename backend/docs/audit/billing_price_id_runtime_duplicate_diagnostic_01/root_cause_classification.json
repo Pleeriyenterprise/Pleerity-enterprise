@@ -1,34 +1,14 @@
 {
-  "verified_at": "2026-06-03T16:32:12.007251+00:00",
-  "classification": "DUPLICATE_VALUES_CONFIRMED",
-  "allowed_labels": [
-    "RUNTIME_ENV_STALE_RESTART_REQUIRED",
-    "WRONG_RENDER_SERVICE_CHECKED",
-    "WRONG_ENV_VAR_READ",
-    "LEGACY_FALLBACK_USED",
-    "DUPLICATE_VALUES_CONFIRMED",
-    "CODE_RESOLUTION_BUG",
-    "CACHE_STALE_AFTER_ENV_CHANGE"
-  ],
+  "verified_at": "2026-06-03T17:18:12.919947+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "prior_classification": "DUPLICATE_VALUES_CONFIRMED",
+  "resolution": "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY corrected on Render; backend redeployed.",
   "rationale": [
-    "Runtime os.environ fingerprints show duplicate monthly group(s); fingerprint reads env directly (not price cache).",
-    "Partial distinct: Solo monthly unique; Portfolio and Professional share duplicate_group_id."
+    "Three unique monthly duplicate_group_id values at runtime.",
+    "Professional monthly fingerprint ab844bf9 (last_6 mumLiD) now distinct from Portfolio 1358f55e.",
+    "Checkout 200 for all plans; duplicate guard no longer triggered."
   ],
-  "duplicate_monthly_groups": [
-    {
-      "group_id": "1358f55e",
-      "env_vars": [
-        "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
-        "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY"
-      ],
-      "plan_codes": [
-        "PLAN_2_PORTFOLIO",
-        "PLAN_3_PRO"
-      ]
-    }
-  ],
-  "three_monthly_distinct_at_runtime": false,
-  "legacy_fallback_used": false,
-  "fingerprint_reads_cache": false,
-  "pass": false
+  "duplicate_monthly_groups": [],
+  "three_monthly_distinct_at_runtime": true,
+  "pass": true
 }
