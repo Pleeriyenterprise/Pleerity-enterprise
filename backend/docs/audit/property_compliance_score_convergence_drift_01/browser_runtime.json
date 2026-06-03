@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-03T20:45:08.204612+00:00",
+  "status": "PARTIAL",
+  "note": "Browser proof requires staging login; structural convergence verified via unit tests and API field wiring.",
+  "expected_after_recalc": {
+    "cooper_close_no_gaps": "Where to focus shows assurance explanation not bare No open gaps with Elevated risk",
+    "ali_cave_missing_doc": "1 missing documents when missing_count=1",
+    "quick_actions": "Assurance deficits show awaiting verification not Upload and verify"
+  },
+  "staging": {
+    "api": "https://pleerity-enterprise.onrender.com/api",
+    "frontend": "https://pleerityenterprise.co.uk"
+  }
+}

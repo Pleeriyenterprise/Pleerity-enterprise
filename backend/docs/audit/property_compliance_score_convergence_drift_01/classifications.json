@@ -1,0 +1,11 @@
+{
+  "programme": "PROPERTY-COMPLIANCE-SCORE-CONVERGENCE-DRIFT-01",
+  "verified_at": "2026-06-03T20:45:08.204612+00:00",
+  "classification": "PARTIAL",
+  "rationale": "Code convergence delivered; VERIFIED_OPERATIONALLY requires staging browser proof + post-deploy recalc on affected properties.",
+  "requires_follow_up": [
+    "Trigger compliance recalc on affected portfolio properties post-deploy",
+    "Capture browser proof on Cooper Close / Ali Cave scenario"
+  ],
+  "code_convergence": "COMPLETE"
+}

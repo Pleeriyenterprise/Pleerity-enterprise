@@ -88,6 +88,10 @@ async def calculate_property_compliance(
         {"property_id": property_id},
         {"_id": 0}
     ).to_list(500)
+    from services.requirement_truth import enrich_requirements_for_client
+
+    client_id = str(property_doc.get("client_id") or "")
+    raw_requirements, _ = await enrich_requirements_for_client(db, client_id, list(raw_requirements))
     documents = await db.documents.find(
         {"property_id": property_id},
         {"_id": 0}

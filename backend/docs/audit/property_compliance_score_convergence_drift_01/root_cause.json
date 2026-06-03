@@ -1,0 +1,55 @@
+{
+  "programme": "PROPERTY-COMPLIANCE-SCORE-CONVERGENCE-DRIFT-01",
+  "verified_at": "2026-06-03T20:45:08.204612+00:00",
+  "surfaces_traced": {
+    "property_page": {
+      "compliance_score": "properties.compliance_score via compliance_scoring_service.recalculate_and_persist",
+      "risk_level": "properties.risk_level derived from persisted score",
+      "suggested_next_steps": "compliance_top_next_actions persisted on property"
+    },
+    "dashboard": {
+      "compliance_score_card": "GET /client/compliance-score \u2192 persisted aggregate",
+      "quick_actions": "compliance_top_next_actions aggregated into recommendations",
+      "focus_highest_risk": "buildDashboardComplianceGapsLine + portfolio compliance-summary",
+      "where_to_focus": "score_cognition_line from score_cognition_service"
+    },
+    "portfolio_summary": {
+      "missing_document_counts": "catalog_compliance KPIs (row_counts_as_missing_evidence)",
+      "elevated_risk_labels": "score_to_risk_level on persisted compliance_score"
+    }
+  },
+  "root_causes": [
+    "compliance_scoring_v2 mapped NEEDS_REVIEW authority to 0.5 fraction equivalent to missing evidence",
+    "documentation_completeness bucket counted only VERIFIED docs \u2014 self-recorded satisfied excluded",
+    "top_next_actions copy said Upload and verify for assurance deficits",
+    "buildDashboardComplianceGapsLine returned No open gaps when KPI counts zero despite low score",
+    "scoring path did not enrich requirements with attach_satisfaction_fields before compute",
+    "stale persisted scores until compliance_recalc_queue worker runs after satisfaction changes"
+  ],
+  "competing_read_models": [
+    {
+      "lens": "persisted_v2_score",
+      "source": "Property.compliance_score",
+      "used_for": "headline score/risk"
+    },
+    {
+      "lens": "catalog_matrix_kpis",
+      "source": "catalog_compliance",
+      "used_for": "missing_count, overdue"
+    },
+    {
+      "lens": "gap_line",
+      "source": "buildDashboardComplianceGapsLine",
+      "used_for": "where to focus"
+    }
+  ],
+  "fix": [
+    "compliance_scoring_v2: satisfaction-aware assurance fractions (0.85 self-recorded, 0.80 platform review)",
+    "compliance_scoring_v2: documentation bucket counts satisfied non-blocker obligations",
+    "compliance_scoring_v2: assurance-aware top_next_actions copy",
+    "compliance_scoring_service: enrich_requirements_for_client before scoring",
+    "score_cognition_service: score_cognition_line + score_risk_explanation",
+    "portfolio compliance-summary: expose cognition fields per property",
+    "ClientDashboard: prefer score_cognition_line; assurance quick-action presentation"
+  ]
+}

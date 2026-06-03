@@ -13,7 +13,10 @@ from services.document_status_service import (
     compute_requirement_status,
     pick_evidence_document,
 )
-from services.requirement_evidence_authority import map_authority_to_scoring_status
+from services.requirement_evidence_authority import (
+    EA_PENDING_ADMIN_REVIEW,
+    map_authority_to_scoring_status,
+)
 from services.requirement_truth import (
     CONFIDENCE_ESTIMATED,
     evidence_state_for_documents_list,
@@ -36,6 +39,12 @@ BUCKET_WEIGHTS = {
 
 # Slight discount when legal-core status is driven only by system-estimated dates (no verified evidence).
 ESTIMATED_DATE_LEGAL_CORE_MULTIPLIER = 0.93
+
+# Satisfied-but-unverified assurance bands (not equivalent to missing evidence).
+STATUS_SATISFIED_UNVERIFIED = "SATISFIED_UNVERIFIED"
+STATUS_ASSURANCE_PENDING = "ASSURANCE_PENDING"
+SATISFIED_SELF_RECORDED_FRACTION = 0.85
+SATISFIED_PLATFORM_REVIEW_FRACTION = 0.80
 
 
 # Scoring weights / risk labels: intentionally mirrored EW ↔ Scotland until product defines divergence.
@@ -171,6 +180,62 @@ def _status_fraction_from_doc(
     return fraction, status_result["status"], expiry_date, verified_at, status_result.get("reason_codes") or []
 
 
+def _satisfaction_truth(req: Optional[Dict[str, Any]]) -> Tuple[bool, bool]:
+    if not req:
+        return False, False
+    satisfied = req.get("requirement_satisfied") is True
+    missing_doc = req.get("missing_required_document") is True
+    return satisfied, missing_doc
+
+
+def _satisfaction_aware_assurance_fraction(
+    req: Dict[str, Any],
+) -> Optional[Tuple[float, str]]:
+    """
+    When requirement truth says satisfied with no document gap, map NEEDS_REVIEW authority
+    to modest assurance penalties — not missing-evidence equivalence (0.5).
+    """
+    satisfied, missing_doc = _satisfaction_truth(req)
+    if not satisfied or missing_doc:
+        return None
+
+    truth = str(req.get("truth_presentation_stage") or "").lower()
+    ea = req.get("evidence_authority") or {}
+    ea_st = str(ea.get("state") or "").upper()
+    source = str(req.get("satisfaction_source") or "").lower()
+    has_linked_doc = bool(str(req.get("document_id") or req.get("evidence_doc_id") or "").strip())
+
+    if truth == "platform_verification_pending" or ea_st == EA_PENDING_ADMIN_REVIEW:
+        if has_linked_doc or source == "platform_verification":
+            return SATISFIED_PLATFORM_REVIEW_FRACTION, STATUS_ASSURANCE_PENDING
+    if truth in (
+        "declaration_recorded",
+        "assessment_recorded",
+        "evidence_recorded",
+        "recorded_on_file",
+        "org_verification_pending",
+    ) or source in ("self_certified_record", "accepted_declaration", "platform_verification"):
+        return SATISFIED_SELF_RECORDED_FRACTION, STATUS_SATISFIED_UNVERIFIED
+    if req.get("document_upload_required") is False:
+        return SATISFIED_SELF_RECORDED_FRACTION, STATUS_SATISFIED_UNVERIFIED
+    if has_linked_doc:
+        return SATISFIED_PLATFORM_REVIEW_FRACTION, STATUS_ASSURANCE_PENDING
+    return SATISFIED_SELF_RECORDED_FRACTION, STATUS_SATISFIED_UNVERIFIED
+
+
+def _requirement_counts_as_documented(
+    item: Dict[str, Any],
+    req_row: Optional[Dict[str, Any]],
+) -> bool:
+    if item.get("evidence_state") == "VERIFIED":
+        return True
+    if item.get("status") in ("VALID", "NOT_APPLICABLE", STATUS_SATISFIED_UNVERIFIED, STATUS_ASSURANCE_PENDING):
+        return True
+    if req_row and req_row.get("requirement_satisfied") and not req_row.get("missing_required_document"):
+        return True
+    return False
+
+
 def _status_fraction_from_requirement(
     code: str,
     req: Optional[Dict[str, Any]],
@@ -228,6 +293,16 @@ def _status_fraction_from_requirement(
                 ["DOCUMENT_EXPIRED"],
             )
         if auth_status == "NEEDS_REVIEW":
+            assurance = _satisfaction_aware_assurance_fraction(req)
+            if assurance:
+                frac, status_label = assurance
+                return (
+                    frac,
+                    status_label,
+                    exp_d.isoformat() if exp_d else None,
+                    None,
+                    ["ASSURANCE_CONFIDENCE_PENALTY"],
+                )
             return (
                 STATUS_TO_FRACTION[STATUS_NEEDS_REVIEW],
                 "NEEDS_REVIEW",
@@ -236,6 +311,16 @@ def _status_fraction_from_requirement(
                 ["AUTHORITY_NEEDS_REVIEW"],
             )
         if auth_status == "MISSING":
+            assurance = _satisfaction_aware_assurance_fraction(req)
+            if assurance:
+                frac, status_label = assurance
+                return (
+                    frac,
+                    status_label,
+                    exp_d.isoformat() if exp_d else None,
+                    None,
+                    ["ASSURANCE_CONFIDENCE_PENALTY"],
+                )
             return (0.0, "MISSING", exp_d.isoformat() if exp_d else None, None, ["NO_DOCUMENT_FOUND"])
         if auth_status == "NOT_APPLICABLE":
             return (1.0, "NOT_APPLICABLE", exp_d.isoformat() if exp_d else None, None, [])
@@ -430,16 +515,21 @@ def compute_property_score_v2(
             "date_source": date_source,
             "evidence_state": evidence_state,
             "confidence_state": confidence_state,
+            "requirement_satisfied": bool(req_row.get("requirement_satisfied")) if req_row else False,
+            "missing_required_document": bool(req_row.get("missing_required_document")) if req_row else False,
         })
 
     legal_core_applicable = sum(item["applicable_points"] for item in breakdown)
     legal_core_earned = sum(item["earned_points"] for item in breakdown)
     legal_core_pct = (legal_core_earned / legal_core_applicable * 100.0) if legal_core_applicable > 0 else 100.0
 
-    # Documentation completeness: proportion of applicable obligations with admin-verified evidence only.
+    # Documentation completeness: verified evidence or satisfied non-blocker obligations.
     applicable_count = sum(1 for item in breakdown if item["applies_if"])
     verified_count = sum(
-        1 for item in breakdown if item["applies_if"] and item.get("evidence_state") == "VERIFIED"
+        1
+        for item in breakdown
+        if item["applies_if"]
+        and _requirement_counts_as_documented(item, req_by_code.get(item["requirement_code"]))
     )
     docs_pct = (verified_count / applicable_count * 100.0) if applicable_count else 100.0
     docs_points = round(BUCKET_WEIGHTS["documentation_completeness"] * (docs_pct / 100.0), 2)
@@ -482,10 +572,17 @@ def compute_property_score_v2(
     top_next_actions = []
     for item in top_deficits[:5]:
         lbl = requirement_label(item["requirement_code"], audience="client")
-        if item["status"] in ("MISSING", "MISSING_EVIDENCE", "EXPIRED"):
+        st = item["status"]
+        if st in ("MISSING", "MISSING_EVIDENCE", "EXPIRED"):
             action = f"Upload and verify evidence for {lbl}"
-        elif item["status"] == "EXPIRING_SOON":
+        elif st == "EXPIRING_SOON":
             action = f"Renew {lbl} before expiry"
+        elif st == STATUS_ASSURANCE_PENDING:
+            action = f"Evidence for {lbl} is awaiting platform verification"
+        elif st == STATUS_SATISFIED_UNVERIFIED:
+            action = f"Some evidence for {lbl} is self-recorded or awaiting verification"
+        elif st == "NEEDS_REVIEW":
+            action = f"Review compliance evidence for {lbl}"
         else:
             action = f"Review compliance evidence for {lbl}"
         top_next_actions.append(

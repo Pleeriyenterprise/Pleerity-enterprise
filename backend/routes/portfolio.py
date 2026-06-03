@@ -19,6 +19,7 @@ from services.compliance_score import (
     build_portfolio_override_outputs,
 )
 from services.scoring_semantics_v1 import attach_semantics_contract
+from services.score_cognition_service import portfolio_property_cognition_fields
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 import logging
@@ -146,6 +147,14 @@ async def get_compliance_summary(request: Request):
                     "expiring_soon_count": p.get("expiring_30_count", 0),
                     "expiring_30_count": p.get("expiring_30_count", 0),
                     "missing_count": p.get("missing_count", 0),
+                    **portfolio_property_cognition_fields(
+                        row,
+                        {
+                            "overdue_count": p.get("overdue_count", 0),
+                            "expiring_30_count": p.get("expiring_30_count", 0),
+                            "missing_count": p.get("missing_count", 0),
+                        },
+                    ),
                 }
             )
         override_outputs = await build_portfolio_override_outputs(
@@ -317,6 +326,11 @@ async def get_compliance_summary(request: Request):
                 "last_calculated_at": _plc_out,
                 "overdue_count": overdue_count,
                 "expiring_soon_count": expiring_soon_count,
+                "missing_count": 0,
+                **portfolio_property_cognition_fields(
+                    prop,
+                    {"overdue_count": overdue_count, "expiring_soon_count": expiring_soon_count, "missing_count": 0},
+                ),
             }
         )
     if total_requirements == 0:

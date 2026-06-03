@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-06-03T20:45:08.204612+00:00",
+  "implementation": {
+    "backend": "services/score_cognition_service.py + routes/portfolio.py",
+    "frontend": "frontend/src/pages/ClientDashboard.js buildDashboardComplianceGapsLine"
+  },
+  "fields": [
+    "score_cognition_line",
+    "score_risk_explanation",
+    "compliance_score_pending"
+  ],
+  "rules": [
+    "Prefer API score_cognition_line over local KPI-only gap line",
+    "Assurance quick actions use View not Fix now / Upload"
+  ]
+}

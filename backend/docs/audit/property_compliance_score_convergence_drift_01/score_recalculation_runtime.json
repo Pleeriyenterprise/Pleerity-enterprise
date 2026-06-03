@@ -1,0 +1,27 @@
+{
+  "programme": "PROPERTY-COMPLIANCE-SCORE-CONVERGENCE-DRIFT-01",
+  "verified_at": "2026-06-03T20:45:08.204612+00:00",
+  "persistence": {
+    "fields": [
+      "compliance_score",
+      "compliance_score_pending",
+      "compliance_top_deficits",
+      "compliance_top_next_actions",
+      "compliance_last_calculated_at",
+      "risk_level"
+    ],
+    "write_path": "compliance_scoring_service.recalculate_and_persist"
+  },
+  "triggers": [
+    "document upload/verify/delete",
+    "requirement authority sync",
+    "admin validator repair",
+    "lazy backfill on read",
+    "compliance_recalc_queue worker"
+  ],
+  "stale_snapshot_mitigation": {
+    "compliance_score_pending": "Set true on enqueue; false after recalculate_and_persist",
+    "ui_honesty": "Score updating \u2014 refresh shortly when pending"
+  },
+  "convergence_note": "Scoring now enriches requirements with satisfaction truth before compute; recalc still async via queue"
+}

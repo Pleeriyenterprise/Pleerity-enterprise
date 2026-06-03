@@ -1,0 +1,36 @@
+{
+  "programme": "PROPERTY-COMPLIANCE-SCORE-CONVERGENCE-DRIFT-01",
+  "verified_at": "2026-06-03T20:45:08.204612+00:00",
+  "score_philosophy": "Satisfied \u2260 automatically perfect; satisfied must not appear operationally broken.",
+  "assurance_treatment": {
+    "VERIFIED_DOCUMENT": {
+      "fraction": 1.0,
+      "penalty": "minimal/none",
+      "cognition": "fully satisfied"
+    },
+    "SELF_RECORDED": {
+      "fraction": 0.85,
+      "penalty": "modest confidence only",
+      "cognition": "satisfied \u2014 self-recorded"
+    },
+    "PLATFORM_REVIEW_PENDING": {
+      "fraction": 0.8,
+      "penalty": "provisional review state",
+      "cognition": "not missing document",
+      "requires_linked_evidence": true
+    },
+    "MISSING_REQUIRED_DOCUMENT": {
+      "fraction": 0.0,
+      "penalty": "meaningful blocker"
+    },
+    "EXPIRED_INVALID_REJECTED": {
+      "fraction": "0.0\u20130.1",
+      "penalty": "major operational/legal"
+    }
+  },
+  "cognition_rules": [
+    "No open gaps must not coexist with severe unresolved-risk messaging without explanation",
+    "Where to focus reflects live blocker KPIs first, then assurance explanations",
+    "Quick actions must not say Upload when requirement_satisfied and not missing_required_document"
+  ]
+}

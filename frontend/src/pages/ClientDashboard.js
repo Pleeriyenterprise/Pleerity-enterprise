@@ -177,6 +177,18 @@ const DASHBOARD_FOCUS_PROPERTY_LIMIT = 6;
 
 /** Single-line summary of open compliance gaps (different lens than separate columns in Portfolio summary). */
 function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs) {
+  if (p?.score_cognition_line) {
+    if (showOpenJobs) {
+      const jobs = Number(openJobsMap?.[p.property_id] ?? 0);
+      if (jobs > 0 && !String(p.score_cognition_line).includes('open jobs')) {
+        return `${p.score_cognition_line} · ${jobs} open jobs`;
+      }
+    }
+    return p.score_cognition_line;
+  }
+  if (p?.compliance_score_pending || p?.score_status === 'pending_recalc') {
+    return 'Score updating — refresh shortly';
+  }
   const overdue = Number(p.overdue_count ?? 0);
   const exp = Number(p.expiring_30_count ?? p.expiring_soon_count ?? 0);
   const missing = Number(p.missing_count ?? 0);
@@ -188,8 +200,13 @@ function buildDashboardComplianceGapsLine(p, openJobsMap, showOpenJobs) {
     const jobs = Number(openJobsMap?.[p.property_id] ?? 0);
     if (jobs > 0) parts.push(`${jobs} open jobs`);
   }
-  if (parts.length === 0) return 'No open gaps in this snapshot';
-  return parts.join(' · ');
+  if (parts.length > 0) return parts.join(' · ');
+  if (p?.score_risk_explanation) return p.score_risk_explanation;
+  const score = p?.property_score ?? p?.score;
+  if (score != null && Number(score) < 80) {
+    return 'Score reflects assurance confidence, not active legal breaches';
+  }
+  return 'No open gaps in this snapshot';
 }
 
 /** One-line label for dashboard tasks digest activity feed (matches inbox actions). */
@@ -2810,12 +2827,13 @@ const ClientDashboard = () => {
                     const bestReq = sorted[0] || null;
                     const bestRequirementId = recReqId || normalizeRouteId(bestReq?.requirement_id);
                     const bestPropertyId = recPropertyId || normalizeRouteId(bestReq?.property_id);
+                    const isAssuranceAction = /self-recorded|awaiting (platform )?verification/i.test(actionDisplay);
                     const fixNowPath = buildEntityRoute(
                       {
                         requirement_id: bestRequirementId,
                         property_id: bestPropertyId,
                         work_order_id: normalizeRouteId(rec.work_order_id || rec.related_work_order_id),
-                        mode: 'upload',
+                        mode: isAssuranceAction ? 'view' : 'upload',
                       },
                       '/today'
                     );
@@ -2824,19 +2842,23 @@ const ClientDashboard = () => {
                     <div 
                       key={idx}
                       className={`flex items-start gap-3 p-3 rounded-lg ${
-                          rec.priority === 'high' || rec.priority === 'critical' ? 'bg-red-50 border border-red-100' :
-                        rec.priority === 'medium' ? 'bg-amber-50 border border-amber-100' :
+                          !isAssuranceAction && (rec.priority === 'high' || rec.priority === 'critical') ? 'bg-red-50 border border-red-100' :
+                        !isAssuranceAction && rec.priority === 'medium' ? 'bg-amber-50 border border-amber-100' :
                         'bg-gray-50 border border-gray-100'
                       }`}
                     >
                         <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
-                          rec.priority === 'high' || rec.priority === 'critical' ? 'bg-red-500' :
-                        rec.priority === 'medium' ? 'bg-amber-500' :
+                          !isAssuranceAction && (rec.priority === 'high' || rec.priority === 'critical') ? 'bg-red-500' :
+                        !isAssuranceAction && rec.priority === 'medium' ? 'bg-amber-500' :
                         'bg-gray-400'
                       }`} />
                         <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800">{actionDisplay}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Completing this can help improve your score.</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {isAssuranceAction
+                            ? 'Score reflects assurance confidence — not an active legal breach.'
+                            : 'Completing this can help improve your score.'}
+                        </p>
                       </div>
                         <Button
                           variant="outline"
@@ -2846,7 +2868,7 @@ const ClientDashboard = () => {
                           onClick={(e) => { e.stopPropagation(); if (hasEntityRoute) navigate(fixNowPath); }}
                           data-testid={`quick-action-fix-${idx}`}
                         >
-                          Fix now
+                          {isAssuranceAction ? 'View' : 'Fix now'}
                         </Button>
                     </div>
                     );
