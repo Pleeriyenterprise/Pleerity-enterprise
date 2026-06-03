@@ -1,0 +1,25 @@
+{
+  "verified_at": "2026-06-03T16:15:27.234441+00:00",
+  "duplicate_detected_on_deployment": true,
+  "classification": "DUPLICATE_RENDER_VALUES",
+  "evidence": {
+    "duplicate_monthly_groups": [
+      {
+        "group_id": "inferred_from_api",
+        "env_vars": [
+          "STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY",
+          "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
+          "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY"
+        ],
+        "plan_codes": [
+          "PLAN_1_SOLO",
+          "PLAN_2_PORTFOLIO",
+          "PLAN_3_PRO"
+        ]
+      }
+    ],
+    "load_error": null
+  },
+  "separate_from": "legacy_subscription_drift",
+  "note": "All three monthly env vars share the same fingerprint group_id."
+}

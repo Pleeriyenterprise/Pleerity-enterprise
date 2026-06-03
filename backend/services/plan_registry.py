@@ -26,6 +26,7 @@ Stripe price IDs are loaded from environment variables (mode-prefixed, no hardco
 """
 from enum import Enum
 from typing import Dict, FrozenSet, List, Optional, Tuple, Any
+import hashlib
 import os
 from database import database
 import logging
@@ -193,6 +194,80 @@ def get_stripe_price_mappings(mode: Optional[str] = None) -> Dict[str, Any]:
     if mode not in _STRIPE_PRICE_CACHE:
         _STRIPE_PRICE_CACHE[mode] = _load_stripe_prices_for_mode(mode)
     return _STRIPE_PRICE_CACHE[mode]
+
+
+def _fingerprint_price_value(raw: str) -> Dict[str, Any]:
+    val = (raw or "").strip()
+    if not val:
+        return {
+            "present": False,
+            "starts_with_price_": False,
+            "last_6_chars": "",
+            "sha256_prefix_8": "",
+            "duplicate_group_id": None,
+        }
+    return {
+        "present": True,
+        "starts_with_price_": val.startswith("price_"),
+        "last_6_chars": val[-6:] if len(val) >= 6 else val,
+        "sha256_prefix_8": hashlib.sha256(val.encode()).hexdigest()[:8],
+        "duplicate_group_id": hashlib.sha256(val.encode()).hexdigest()[:8],
+    }
+
+
+def fingerprint_stripe_price_env(mode: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Safe runtime fingerprint of Stripe price env vars (masked).
+    Does not expose full price IDs or secrets.
+    """
+    if mode is None:
+        mode = _get_stripe_mode()
+    prefix = "STRIPE_TEST_PRICE_" if mode == "test" else "STRIPE_LIVE_PRICE_"
+    monthly_vars: Dict[str, Any] = {}
+    onboarding_vars: Dict[str, Any] = {}
+    for plan in PlanCode:
+        monthly_key = f"{prefix}{plan.value}_MONTHLY"
+        onb_key = f"{prefix}{plan.value}_ONBOARDING"
+        monthly_vars[monthly_key] = {
+            "plan_code": plan.value,
+            "role": "subscription_monthly",
+            **_fingerprint_price_value(os.environ.get(monthly_key) or ""),
+        }
+        onboarding_vars[onb_key] = {
+            "plan_code": plan.value,
+            "role": "onboarding",
+            **_fingerprint_price_value(os.environ.get(onb_key) or ""),
+        }
+
+    monthly_groups: Dict[str, List[str]] = {}
+    for key, row in monthly_vars.items():
+        gid = row.get("duplicate_group_id")
+        if gid:
+            monthly_groups.setdefault(gid, []).append(key)
+
+    duplicate_groups = [
+        {"group_id": gid, "env_vars": keys, "plan_codes": [monthly_vars[k]["plan_code"] for k in keys]}
+        for gid, keys in monthly_groups.items()
+        if len(keys) > 1
+    ]
+    duplicate_detected = len(duplicate_groups) > 0
+    load_error: Optional[str] = None
+    try:
+        _STRIPE_PRICE_CACHE.pop(mode, None)
+        _load_stripe_prices_for_mode(mode)
+    except StripeModeMismatchError as exc:
+        load_error = str(exc)[:300]
+    except Exception as exc:
+        load_error = str(exc)[:300]
+
+    return {
+        "stripe_mode": mode,
+        "monthly_env_vars": monthly_vars,
+        "onboarding_env_vars": onboarding_vars,
+        "duplicate_monthly_groups": duplicate_groups,
+        "duplicate_detected": duplicate_detected,
+        "load_error": load_error,
+    }
 
 
 # ============================================================================
@@ -530,7 +605,19 @@ class PlanRegistryService:
     def get_plan(self, plan_code: PlanCode) -> Dict[str, Any]:
         """Get complete plan definition. Stripe price IDs are merged from env (get_stripe_price_mappings)."""
         base = PLAN_DEFINITIONS.get(plan_code, PLAN_DEFINITIONS[PlanCode.PLAN_1_SOLO]).copy()
-        config = get_stripe_price_mappings()
+        try:
+            config = get_stripe_price_mappings()
+        except StripeModeMismatchError as exc:
+            if "Duplicate" not in str(exc):
+                raise
+            logger.warning(
+                "get_plan: duplicate stripe price IDs; static plan metadata only plan=%s",
+                plan_code.value,
+            )
+            base["stripe_subscription_price_id"] = None
+            base["stripe_onboarding_price_id"] = None
+            base["stripe_price_config_degraded"] = True
+            return base
         prices = config["mappings"].get(plan_code.value, {})
         base["stripe_subscription_price_id"] = prices.get("subscription_price_id")
         base["stripe_onboarding_price_id"] = prices.get("onboarding_price_id")

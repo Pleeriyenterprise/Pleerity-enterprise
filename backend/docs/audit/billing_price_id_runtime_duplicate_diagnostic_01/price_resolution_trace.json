@@ -1,0 +1,42 @@
+{
+  "verified_at": "2026-06-03T16:15:27.233436+00:00",
+  "endpoints": {
+    "/api/billing/plans": {
+      "handler": "routes.billing.get_available_plans \u2192 plan_registry.get_all_plans",
+      "stripe_load": "get_stripe_price_mappings()",
+      "on_duplicate": "warning + get_all_plans_for_display (null stripe ids)"
+    },
+    "/api/client/entitlements": {
+      "handler": "routes.client.get_client_entitlements \u2192 get_client_entitlements \u2192 get_plan",
+      "stripe_load": "get_stripe_price_mappings() via get_plan",
+      "on_duplicate": "degraded static metadata (post-fix) or 500 (pre-fix)"
+    },
+    "/api/billing/status": {
+      "handler": "stripe_service.get_subscription_status \u2192 get_plan_by_code_string",
+      "stripe_load": "get_stripe_price_mappings() after optional Stripe sub retrieve",
+      "on_duplicate": "degraded static metadata (post-fix) or 500 (pre-fix)"
+    },
+    "/api/billing/checkout": {
+      "handler": "create_upgrade_session \u2192 create_checkout_session",
+      "stripe_load": "get_stripe_price_mappings(mode) \u2014 duplicate guard enforced",
+      "on_duplicate": "400 STRIPE_MODE_MISMATCH (intentional block)"
+    }
+  },
+  "plan_resolution": [
+    {
+      "plan_code": "PLAN_1_SOLO",
+      "expected_monthly_env": "STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY",
+      "fingerprint": null
+    },
+    {
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "expected_monthly_env": "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
+      "fingerprint": null
+    },
+    {
+      "plan_code": "PLAN_3_PRO",
+      "expected_monthly_env": "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY",
+      "fingerprint": null
+    }
+  ]
+}

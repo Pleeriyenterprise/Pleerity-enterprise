@@ -1,0 +1,12 @@
+{
+  "verified_at": "2026-06-03T16:15:32.248776+00:00",
+  "blocked_by": "DUPLICATE_RENDER_VALUES on deployment",
+  "ui_symptoms": [
+    "Failed to load plan information toast",
+    "Billing page shows empty plan fields",
+    "GET /api/client/entitlements 500",
+    "GET /api/billing/status 500 (when plan_registry.get_plan raises before degradation deploy)"
+  ],
+  "screenshots": "not captured — checkout and plan load blocked until Render env fixed",
+  "pass": false
+}

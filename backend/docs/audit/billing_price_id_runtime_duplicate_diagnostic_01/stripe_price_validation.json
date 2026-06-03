@@ -1,0 +1,7 @@
+{
+  "verified_at": "2026-06-03T16:15:27.234441+00:00",
+  "stripe_mode": "live",
+  "prices": [],
+  "skipped": "no_stripe_secret_on_runner",
+  "pass": null
+}

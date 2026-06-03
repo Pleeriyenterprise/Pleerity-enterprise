@@ -1,0 +1,23 @@
+{
+  "verified_at": "2026-06-03T16:15:21.164358+00:00",
+  "source": "staging_api_inference",
+  "stripe_mode": "live",
+  "duplicate_detected": true,
+  "fingerprint_endpoint_status": 404,
+  "staging_checkout_probe": "STRIPE_MODE_MISMATCH duplicate confirmed",
+  "duplicate_monthly_groups": [
+    {
+      "group_id": "inferred_from_api",
+      "env_vars": [
+        "STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY",
+        "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
+        "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY"
+      ],
+      "plan_codes": [
+        "PLAN_1_SOLO",
+        "PLAN_2_PORTFOLIO",
+        "PLAN_3_PRO"
+      ]
+    }
+  ]
+}

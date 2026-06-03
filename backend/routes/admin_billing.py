@@ -2204,6 +2204,20 @@ async def get_stripe_mode_inventory(
     return await build_stripe_mode_inventory(limit=limit, expanded=expanded)
 
 
+@router.get("/stripe-price-env-fingerprint")
+async def get_stripe_price_env_fingerprint(request: Request):
+    """Read-only masked fingerprint of Stripe price env vars on this deployment."""
+    await admin_route_guard(request)
+    from services.plan_registry import fingerprint_stripe_price_env
+    from services.stripe_mode_authority import get_stripe_mode
+
+    return {
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+        "deployment_stripe_mode": get_stripe_mode(),
+        **fingerprint_stripe_price_env(),
+    }
+
+
 class StripeModeBackfillBody(BaseModel):
     client_id: Optional[str] = None
     limit: int = Field(default=100, ge=1, le=500)

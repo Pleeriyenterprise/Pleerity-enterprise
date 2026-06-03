@@ -1,0 +1,15 @@
+{
+  "verified_at": "2026-06-03T16:15:53.372907+00:00",
+  "suites": {
+    "plan_change_routing": {
+      "exit_code": 0
+    },
+    "containment": {
+      "exit_code": 0
+    },
+    "recovery": {
+      "exit_code": 0
+    }
+  },
+  "pass": true
+}

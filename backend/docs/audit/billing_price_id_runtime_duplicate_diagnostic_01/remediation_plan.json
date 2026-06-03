@@ -1,0 +1,17 @@
+{
+  "verified_at": "2026-06-03T16:15:32.247888+00:00",
+  "duplicate_price_remediation": [
+    "On Render, set STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY, STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY, STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY to three distinct Stripe Price IDs (\u00a319 / \u00a339 / \u00a379 monthly).",
+    "Clear duplicate_group_id collision shown in runtime_price_fingerprint.json.",
+    "Restart/redeploy backend after env change (clears _STRIPE_PRICE_CACHE)."
+  ],
+  "code_remediation_applied": [
+    "get_plan degrades to static metadata on duplicate (entitlements/status read paths).",
+    "checkout still blocks duplicate (guard preserved).",
+    "GET /admin/billing/stripe-price-env-fingerprint for masked audit."
+  ],
+  "legacy_drift_remediation": [
+    "Legacy test subscription on live deployment: use deployment_checkout path; do not mutate subscription.",
+    "billing/status should return degraded sync state, not 500, when plan metadata degraded."
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "verified_at": "2026-06-03T16:15:32.248776+00:00",
+  "endpoints": {
+    "login": 401
+  },
+  "fingerprint_endpoint": 404,
+  "pass": false
+}

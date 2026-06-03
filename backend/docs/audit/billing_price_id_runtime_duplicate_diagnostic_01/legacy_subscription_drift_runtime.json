@@ -1,0 +1,13 @@
+{
+  "verified_at": "2026-06-03T16:15:32.246887+00:00",
+  "client_id": "6aa7906f-ed85-4367-8ca4-6ef1bb76668f",
+  "stripe_subscription_id_masked": null,
+  "stored_stripe_mode": null,
+  "deployment_stripe_mode": null,
+  "remediation_code": "MODE_UNVERIFIED",
+  "classification": "LEGACY_TEST_SUBSCRIPTION_ON_LIVE_DEPLOYMENT",
+  "expected": "Stripe retrieve fails; should not 500 billing read paths after degradation fix",
+  "routes_to_deployment_checkout": true,
+  "separate_from_duplicate_price": true,
+  "pass": true
+}
