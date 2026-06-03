@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-03T09:24:42.173595+00:00",
+  "legacy_subscription_mutated_before_checkout": false,
+  "duplicate_subscription_before_payment": false,
+  "session_metadata_fields": [
+    "client_id",
+    "requested_plan_code",
+    "checkout_context",
+    "stripe_mode",
+    "plan_code"
+  ],
+  "audit": "routes.billing PLAN_CHANGE_REQUESTED logs target_plan",
+  "pass": true
+}

@@ -414,6 +414,23 @@ const BillingPage = () => {
   }, [searchParams]);
 
   useEffect(() => {
+    const checkoutReturn = searchParams.get('checkout');
+    if (!checkoutReturn) return;
+    if (checkoutReturn === 'success') {
+      toast.success('Payment received', {
+        description: 'Your plan change is being confirmed. This may take a moment.',
+      });
+      fetchBillingStatus();
+      refetchEntitlements();
+    } else if (checkoutReturn === 'cancelled') {
+      toast.info('Checkout cancelled', {
+        description: 'No changes were made. You can choose a plan again when ready.',
+      });
+    }
+    navigate('/settings/billing', { replace: true });
+  }, [searchParams, navigate, refetchEntitlements]);
+
+  useEffect(() => {
     if (!billingStatus?.has_subscription) {
       setInvoices([]);
       return;

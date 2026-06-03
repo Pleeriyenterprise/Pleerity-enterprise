@@ -433,12 +433,15 @@ async def regenerate_checkout_for_recovery(
     try:
         if use_deployment_checkout:
             customer_email = (client or {}).get("email") or (client or {}).get("contact_email")
+            from services.stripe_service import CHECKOUT_CONTEXT_RECOVERY_PLAN_CHANGE
+
             result = await stripe_svc.create_checkout_session(
                 client_id=client_id,
                 plan_code=plan_code,
                 origin_url=origin_url,
                 customer_email=customer_email,
                 customer_reference=(client or {}).get("customer_reference"),
+                checkout_context=CHECKOUT_CONTEXT_RECOVERY_PLAN_CHANGE,
             )
             result["regeneration_path"] = "deployment_checkout"
         else:

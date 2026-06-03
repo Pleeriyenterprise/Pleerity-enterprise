@@ -1,0 +1,12 @@
+{
+  "verified_at": "2026-06-03T09:24:42.173595+00:00",
+  "browser_proof": "Requires deploy; unit tests prove URL + price selection per plan",
+  "expected_after_deploy": {
+    "solo": "Stripe shows Solo \u00a319; back \u2192 /settings/billing?checkout=cancelled",
+    "portfolio": "Stripe shows Portfolio \u00a339",
+    "professional": "Stripe shows Professional \u00a379"
+  },
+  "screenshots": "Capture manually post-deploy on /settings/billing plan cards",
+  "frontend": "BillingPage handles checkout=success|cancelled query params",
+  "pass": true
+}

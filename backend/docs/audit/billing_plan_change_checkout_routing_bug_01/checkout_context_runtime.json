@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-03T09:24:42.172476+00:00",
+  "contexts": {
+    "onboarding": "onboarding",
+    "plan_change": "plan_change",
+    "recovery_plan_change": "recovery_plan_change"
+  },
+  "routing": {
+    "A_new_onboarding": "default checkout_context=onboarding \u2192 /checkout/cancel \u2192 intake (frontend)",
+    "B_existing_plan_change": "create_upgrade_session deployment \u2192 checkout_context=plan_change",
+    "C_recovery_regenerate": "regenerate_checkout_for_recovery \u2192 checkout_context=recovery_plan_change"
+  },
+  "pass": true
+}

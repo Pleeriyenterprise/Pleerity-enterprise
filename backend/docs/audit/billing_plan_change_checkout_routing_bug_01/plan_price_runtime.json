@@ -1,0 +1,12 @@
+{
+  "verified_at": "2026-06-03T09:24:42.146593+00:00",
+  "tests": "tests/test_plan_change_checkout_routing.py",
+  "assertions": [
+    "PLAN_1_SOLO \u2192 price_PLAN_1_SOLO_monthly line item",
+    "PLAN_3_PRO \u2192 price_PLAN_3_PRO_monthly (not Portfolio)",
+    "metadata.requested_plan_code matches selection",
+    "checkout_sessions.requested_plan_code + subscription_price_id persisted"
+  ],
+  "duplicate_env_guard": "get_stripe_price_mappings raises StripeModeMismatchError on duplicate subscription price IDs",
+  "pass": true
+}

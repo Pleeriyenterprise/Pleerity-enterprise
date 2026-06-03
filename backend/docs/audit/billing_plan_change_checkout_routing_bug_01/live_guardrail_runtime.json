@@ -1,0 +1,6 @@
+{
+  "verified_at": "2026-06-03T09:24:42.173595+00:00",
+  "test": "test_create_upgrade_session_verified_live_uses_portal_not_deployment_checkout",
+  "expectation": "stored_stripe_mode=live + authoritative \u2192 portal path, not deployment checkout",
+  "pass": true
+}

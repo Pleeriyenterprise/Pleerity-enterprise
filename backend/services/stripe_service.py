@@ -60,6 +60,45 @@ from services.billing_reconciliation_service import mark_billing_reconciliation_
 
 logger = logging.getLogger(__name__)
 
+CHECKOUT_CONTEXT_ONBOARDING = "onboarding"
+CHECKOUT_CONTEXT_PLAN_CHANGE = "plan_change"
+CHECKOUT_CONTEXT_RECOVERY_PLAN_CHANGE = "recovery_plan_change"
+PLAN_CHANGE_CHECKOUT_CONTEXTS = frozenset(
+    {CHECKOUT_CONTEXT_PLAN_CHANGE, CHECKOUT_CONTEXT_RECOVERY_PLAN_CHANGE}
+)
+
+
+def checkout_redirect_urls(base: str, checkout_context: str) -> tuple[str, str]:
+    """Return (success_url, cancel_url) for Stripe Checkout by customer journey."""
+    base = (base or "").strip().rstrip("/")
+    if checkout_context in PLAN_CHANGE_CHECKOUT_CONTEXTS:
+        success = (
+            f"{base}/settings/billing?checkout=success"
+            "&session_id={CHECKOUT_SESSION_ID}"
+        )
+        cancel = f"{base}/settings/billing?checkout=cancelled"
+        return success, cancel
+    success = f"{base}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel = f"{base}/checkout/cancel"
+    return success, cancel
+
+
+def _verify_checkout_subscription_price(session: Any, expected_price_id: str, plan_code: str) -> None:
+    """Ensure Stripe session line item matches the requested plan price (no silent drift)."""
+    line_items = getattr(session, "line_items", None) or {}
+    data = line_items.get("data") if isinstance(line_items, dict) else getattr(line_items, "data", None)
+    if not data:
+        return
+    first = data[0]
+    price_obj = first.get("price") if isinstance(first, dict) else getattr(first, "price", None)
+    actual_id = price_obj.get("id") if isinstance(price_obj, dict) else getattr(price_obj, "id", None)
+    if actual_id and actual_id != expected_price_id:
+        raise ValueError(
+            f"Checkout session price mismatch for {plan_code}: "
+            f"expected {expected_price_id}, Stripe returned {actual_id}"
+        )
+
+
 # Initialize Stripe from STRIPE_MODE authority (no cross-mode fallback)
 try:
     configure_stripe_sdk()
@@ -95,6 +134,7 @@ class StripeService:
         agreement_template_id: Optional[str] = None,
         agreement_template_version_id: Optional[str] = None,
         pilot_invite_doc: Optional[Dict[str, Any]] = None,
+        checkout_context: str = CHECKOUT_CONTEXT_ONBOARDING,
     ) -> Dict[str, Any]:
         """
         Create Stripe checkout session for new subscription.
@@ -160,28 +200,32 @@ class StripeService:
             },
         ]
         
-        # Onboarding (setup) fee — skipped when already paid or pilot policy waives/deferrs
+        # Onboarding (setup) fee — never on existing-customer plan-change checkouts
         billing = await db.client_billing.find_one(
             {"client_id": client_id},
-            {"_id": 0, "onboarding_fee_paid": 1, "onboarding_fee_waived": 1},
+            {
+                "_id": 0,
+                "onboarding_fee_paid": 1,
+                "onboarding_fee_waived": 1,
+                "stripe_subscription_id": 1,
+            },
         )
         already_paid = billing and (
             billing.get("onboarding_fee_paid") is True or billing.get("onboarding_fee_waived") is True
         )
+        plan_change_checkout = checkout_context in PLAN_CHANGE_CHECKOUT_CONTEXTS
         from services.pilot_onboarding_fee import resolve_checkout_onboarding
 
         include_onboarding, _onb_policy, onboarding_meta = resolve_checkout_onboarding(
             pilot_invite_doc=pilot_invite_doc,
             plan_code=plan.value,
-            already_paid=already_paid,
+            already_paid=already_paid or plan_change_checkout,
             onboarding_price_id=onboarding_price_id,
         )
         if include_onboarding and onboarding_price_id:
             line_items.append({"price": onboarding_price_id, "quantity": 1})
-        
-        # Success and cancel URLs (base already stripped trailing slash)
-        success_url = f"{base}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}"
-        cancel_url = f"{base}/checkout/cancel"
+
+        success_url, cancel_url = checkout_redirect_urls(base, checkout_context)
         
         # Founding pilot: live Stripe checkout with configured 100% coupon/promotion (never bypass Stripe).
         pilot_metadata: Dict[str, str] = {}
@@ -204,6 +248,9 @@ class StripeService:
             session_metadata = {
                 "client_id": client_id,  # MANDATORY for webhook
                 "plan_code": plan.value,
+                "requested_plan_code": plan.value,
+                "checkout_context": checkout_context,
+                "stripe_mode": mode,
                 "service": "COMPLIANCE_VAULT_PRO",
                 **({"customer_reference": customer_reference} if customer_reference else {}),
                 **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
@@ -227,6 +274,9 @@ class StripeService:
             subscription_metadata = {
                 "client_id": client_id,
                 "plan_code": plan.value,
+                "requested_plan_code": plan.value,
+                "checkout_context": checkout_context,
+                "stripe_mode": mode,
                 **({"customer_reference": customer_reference} if customer_reference else {}),
                 **({"lead_id": (lead_id or "").strip()[:128]} if (lead_id and (lead_id or "").strip()) else {}),
                 **({"acceptance_id": (acceptance_id or "").strip()[:128]} if (acceptance_id or "").strip() else {}),
@@ -266,12 +316,16 @@ class StripeService:
                 session_params["customer_email"] = customer_email
 
             session = stripe.checkout.Session.create(**session_params)
-            
+            _verify_checkout_subscription_price(session, subscription_price_id, plan.value)
+
             # Record checkout attempt
             checkout_record = {
                 "client_id": client_id,
                 "session_id": session.id,
                 "plan_code": plan.value,
+                "requested_plan_code": plan.value,
+                "checkout_context": checkout_context,
+                "subscription_price_id": subscription_price_id,
                 "status": "pending",
                 "created_at": datetime.now(timezone.utc),
                 "checkout_url": session.url,
@@ -298,6 +352,8 @@ class StripeService:
                 "checkout_url": session.url,
                 "session_id": session.id,
                 "plan_code": plan.value,
+                "requested_plan_code": plan.value,
+                "checkout_context": checkout_context,
                 "plan_name": plan_def["name"],
             }
             
@@ -365,6 +421,7 @@ class StripeService:
                 origin_url=origin_url,
                 customer_email=customer_email,
                 customer_reference=(client or {}).get("customer_reference"),
+                checkout_context=CHECKOUT_CONTEXT_PLAN_CHANGE,
             )
             result["plan_change_path"] = "deployment_checkout"
             return result

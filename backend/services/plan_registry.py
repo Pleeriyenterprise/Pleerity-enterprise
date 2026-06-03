@@ -151,6 +151,13 @@ def _load_stripe_prices_for_mode(mode: str) -> Dict[str, Any]:
             "subscription_price_id": monthly,
             "onboarding_price_id": onb,
         }
+    subscription_price_ids = [mappings[k]["subscription_price_id"] for k in mappings]
+    if len(subscription_price_ids) != len(set(subscription_price_ids)):
+        raise StripeModeMismatchError(
+            f"Duplicate Stripe subscription price IDs detected for {mode} mode. "
+            "Each plan must map to a distinct STRIPE_{mode}_PRICE_*_MONTHLY value.",
+            stripe_mode=mode,
+        )
     subscription_price_to_plan = {
         mappings[k]["subscription_price_id"]: k for k in mappings
     }

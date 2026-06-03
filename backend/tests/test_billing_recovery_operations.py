@@ -297,6 +297,9 @@ async def test_regenerate_mode_unverified_billing_row_uses_deployment_checkout()
                             )
 
     mock_stripe.create_checkout_session.assert_awaited_once()
+    regen_kwargs = mock_stripe.create_checkout_session.call_args.kwargs
+    assert regen_kwargs["plan_code"] == "PLAN_2_PORTFOLIO"
+    assert regen_kwargs["checkout_context"] == "recovery_plan_change"
     mock_stripe.create_upgrade_session.assert_not_awaited()
     assert result["checkout"]["session_id"] == "cs_recovery"
     assert result["checkout"]["regeneration_path"] == "deployment_checkout"
@@ -390,6 +393,8 @@ async def test_create_upgrade_session_mode_unverified_uses_deployment_checkout()
                 )
 
     svc.create_checkout_session.assert_awaited_once()
+    assert svc.create_checkout_session.call_args.kwargs["plan_code"] == "PLAN_2_PORTFOLIO"
+    assert svc.create_checkout_session.call_args.kwargs["checkout_context"] == "plan_change"
     assert result["plan_change_path"] == "deployment_checkout"
     assert result["session_id"] == "cs_plan_change"
 

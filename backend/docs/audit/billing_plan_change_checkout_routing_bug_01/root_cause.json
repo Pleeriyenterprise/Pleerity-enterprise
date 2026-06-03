@@ -1,0 +1,29 @@
+{
+  "verified_at": "2026-06-03T09:24:42.146593+00:00",
+  "programme": "BILLING-PLAN-CHANGE-CHECKOUT-ROUTING-BUG-01",
+  "flow": [
+    "BillingPage.handlePlanChange \u2192 POST /api/billing/checkout { plan_code }",
+    "routes.billing.create_checkout \u2192 stripe_service.create_upgrade_session",
+    "requires_deployment_checkout_for_plan_change \u2192 create_checkout_session",
+    "stripe.checkout.Session.create(line_items, success_url, cancel_url, metadata)"
+  ],
+  "findings": {
+    "cancel_url_wrong": {
+      "cause": "create_checkout_session always used /checkout/cancel; App.js redirects that to /intake/start",
+      "fix": "checkout_context plan_change uses /settings/billing?checkout=cancelled"
+    },
+    "success_url_wrong": {
+      "cause": "Generic /checkout/success redirects to onboarding-status for new customers",
+      "fix": "plan_change uses /settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}"
+    },
+    "portfolio_always_possible": {
+      "cause": "If STRIPE_*_PRICE_*_MONTHLY env vars duplicate the same Stripe price id, every plan shows Portfolio product",
+      "fix": "Duplicate price-id guard in plan_registry; post-create line-item price verification"
+    },
+    "plan_code_not_lost_in_code": {
+      "cause": "plan_code was passed through API correctly; onboarding checkout builder reused without context separation",
+      "note": "No hardcoded Portfolio default in create_upgrade_session deployment path"
+    }
+  },
+  "pass": true
+}

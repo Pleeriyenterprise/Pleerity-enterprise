@@ -1,0 +1,20 @@
+{
+  "verified_at": "2026-06-03T09:24:42.146593+00:00",
+  "onboarding": {
+    "success_url": "https://pleerityenterprise.co.uk/checkout/success?session_id={CHECKOUT_SESSION_ID}",
+    "cancel_url": "https://pleerityenterprise.co.uk/checkout/cancel"
+  },
+  "plan_change": {
+    "success_url": "https://pleerityenterprise.co.uk/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}",
+    "cancel_url": "https://pleerityenterprise.co.uk/settings/billing?checkout=cancelled"
+  },
+  "recovery_plan_change": {
+    "success_url": "https://pleerityenterprise.co.uk/settings/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}",
+    "cancel_url": "https://pleerityenterprise.co.uk/settings/billing?checkout=cancelled"
+  },
+  "must_not_use_for_plan_change": [
+    "/intake/start",
+    "/checkout/cancel"
+  ],
+  "pass": true
+}
