@@ -1,0 +1,12 @@
+{
+  "verified_at": "2026-06-03T18:37:25.096425+00:00",
+  "surface": "AdminBillingPage admin-cancel-subscription-card",
+  "features": [
+    "immediate vs end-of-period radio selection",
+    "reason textarea min 10 chars",
+    "runGovernedAdminMutation + useStepUpApi",
+    "disabled when already cancelled or cancel scheduled"
+  ],
+  "implementation": "frontend/src/pages/AdminBillingPage.js",
+  "pass": true
+}

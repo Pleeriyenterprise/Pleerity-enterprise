@@ -258,5 +258,15 @@
     "requires_step_up": false,
     "affects_multiple_customers": false,
     "irreversible": false
+  },
+  "admin_cancel_subscription": {
+    "action_id": "admin_cancel_subscription",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_billing",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": true,
+    "affects_multiple_customers": false,
+    "irreversible": true
   }
 }

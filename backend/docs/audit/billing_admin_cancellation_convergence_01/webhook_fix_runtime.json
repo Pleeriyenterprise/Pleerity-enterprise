@@ -1,0 +1,7 @@
+{
+  "verified_at": "2026-06-03T18:37:25.093533+00:00",
+  "fix": "payment_failed_lifecycle_sync_failed initialized False; True in except",
+  "file": "backend/services/stripe_webhook_service.py",
+  "test": "test_payment_failed_ops_bridge_lifecycle_sync_flag",
+  "pass": true
+}

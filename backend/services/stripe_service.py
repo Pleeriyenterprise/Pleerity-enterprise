@@ -867,16 +867,23 @@ class StripeService:
         }
     
     async def cancel_subscription(
-        self, 
-        client_id: str, 
-        cancel_immediately: bool = False
+        self,
+        client_id: str,
+        cancel_immediately: bool = False,
+        *,
+        actor_role: str = "CLIENT",
+        actor_id: Optional[str] = None,
+        cancellation_source: str = "client_billing_cancel",
     ) -> Dict[str, Any]:
         """
         Cancel a subscription.
-        
+
         Args:
             client_id: Client ID
             cancel_immediately: If True, cancel now. If False, cancel at period end.
+            actor_role: Audit actor role (CLIENT or ROLE_ADMIN).
+            actor_id: Optional portal user id for audit.
+            cancellation_source: Audit source label for convergence tracing.
         """
         db = database.get_db()
         
@@ -942,13 +949,15 @@ class StripeService:
             # Audit log
             await create_audit_log(
                 action=AuditAction.ADMIN_ACTION,
-                actor_role="CLIENT",
+                actor_role=actor_role,
+                actor_id=actor_id,
                 client_id=client_id,
                 metadata={
                     "action": "subscription_cancellation_requested",
                     "immediate": cancel_immediately,
                     "subscription_id": subscription_id,
-                }
+                    "cancellation_source": cancellation_source,
+                },
             )
             await create_audit_log(
                 action=AuditAction.ADMIN_ACTION,

@@ -1,0 +1,9 @@
+{
+  "verified_at": "2026-06-03T18:37:25.096425+00:00",
+  "events": {
+    "customer.subscription.updated": "cancel_at_period_end persisted",
+    "customer.subscription.deleted": "CANCELLED canonical + feature revoke",
+    "invoice.payment_failed": "ops bridge lifecycle_sync_failed flag fixed"
+  },
+  "pass": true
+}

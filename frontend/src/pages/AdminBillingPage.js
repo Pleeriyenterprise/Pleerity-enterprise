@@ -44,6 +44,8 @@ import {
   getGovernanceRiskBadgeClass,
   getGovernanceWarning,
 } from '../utils/adminActionGovernance';
+import { runGovernedAdminMutation } from '../utils/adminGovernedMutation';
+import { useStepUpApi } from '../hooks/useStepUpApi';
 
 const MIN_VALID_DATE_MS = 946684800000;
 
@@ -119,6 +121,11 @@ const AdminBillingPage = () => {
   }, []);
   const [stripeReconcileRunning, setStripeReconcileRunning] = useState(false);
   const [paymentLedgerReconcileRunning, setPaymentLedgerReconcileRunning] = useState(false);
+  const [showAdminCancelDialog, setShowAdminCancelDialog] = useState(false);
+  const [adminCancelImmediate, setAdminCancelImmediate] = useState(false);
+  const [adminCancelReason, setAdminCancelReason] = useState('');
+  const [adminCancelling, setAdminCancelling] = useState(false);
+  const adminCancelStepUp = useStepUpApi();
 
   // Receipts & invoices (canonical ledger + orders)
   const [receipts, setReceipts] = useState([]);
@@ -421,6 +428,57 @@ const AdminBillingPage = () => {
       toast.error(error.response?.data?.detail || 'Failed to change plan');
     } finally {
       setChangingPlan(false);
+    }
+  };
+
+  const adminSubscriptionStatusUpper = String(
+    billingSnapshot?.subscription_status ||
+      billingSnapshot?.stripe_subscription_status ||
+      billingSnapshot?.subscription_lifecycle?.subscription_status ||
+      '',
+  ).toUpperCase();
+  const adminAlreadyCancelled = ['CANCELED', 'CANCELLED'].includes(adminSubscriptionStatusUpper);
+  const adminCancelScheduled = Boolean(billingSnapshot?.cancel_at_period_end);
+  const adminCanCancelSubscription =
+    Boolean(billingSnapshot?.stripe_subscription_id) && !adminAlreadyCancelled && !adminCancelScheduled;
+
+  const handleAdminCancelSubscription = async () => {
+    if (!selectedClientId) return;
+    const trimmedReason = adminCancelReason.trim();
+    if (trimmedReason.length < 10) {
+      toast.error('Support reason must be at least 10 characters');
+      return;
+    }
+    setAdminCancelling(true);
+    try {
+      await adminCancelStepUp.request(async (stepHeaders) => {
+        await runGovernedAdminMutation({
+          actionId: 'admin_cancel_subscription',
+          reason: trimmedReason,
+          resourceKey: selectedClientId,
+          mutate: async (govHeaders) => {
+            const response = await api.post(
+              `/admin/billing/clients/${selectedClientId}/cancel`,
+              {
+                reason: trimmedReason,
+                cancel_immediately: adminCancelImmediate,
+              },
+              { headers: { ...stepHeaders, ...govHeaders } },
+            );
+            toast.success(response.data?.message || 'Subscription cancellation processed');
+            setShowAdminCancelDialog(false);
+            setAdminCancelReason('');
+            setAdminCancelImmediate(false);
+            await fetchBillingSnapshot(selectedClientId);
+            return response;
+          },
+        });
+      });
+    } catch (error) {
+      if (error?.message === 'step_up_cancelled') return;
+      toast.error(error.response?.data?.detail || error.message || 'Failed to cancel subscription');
+    } finally {
+      setAdminCancelling(false);
     }
   };
 
@@ -1278,6 +1336,56 @@ const AdminBillingPage = () => {
                   </CardContent>
                 </Card>
 
+                <Card data-testid="admin-cancel-subscription-card">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      Cancel Subscription (Support)
+                    </CardTitle>
+                    <CardDescription>
+                      Cancel on the customer&apos;s behalf using the same billing rules as self-service cancellation.
+                      {getGovernanceWarning('admin_cancel_subscription')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {!billingSnapshot.stripe_subscription_id ? (
+                      <p className="text-sm text-gray-500">No active subscription to cancel.</p>
+                    ) : adminAlreadyCancelled ? (
+                      <Alert className="border-gray-200 bg-gray-50">
+                        <AlertDescription>
+                          Subscription is already cancelled. No further cancellation action is available.
+                        </AlertDescription>
+                      </Alert>
+                    ) : adminCancelScheduled ? (
+                      <Alert className="border-amber-200 bg-amber-50">
+                        <AlertDescription>
+                          Cancellation is already scheduled at period end. Access continues until{' '}
+                          {billingSnapshot.current_period_end
+                            ? new Date(billingSnapshot.current_period_end).toLocaleDateString('en-GB')
+                            : 'the billing period ends'}
+                          .
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-600">
+                          Choose end-of-period (customer keeps access until renewal date) or immediate cancellation
+                          (access ends now). A support reason, confirmation, and step-up are required.
+                        </p>
+                        <p className="text-xs text-gray-500">{getGovernanceEscalationGuidance('admin_cancel_subscription')}</p>
+                        <Button
+                          variant="destructive"
+                          onClick={() => setShowAdminCancelDialog(true)}
+                          disabled={!adminCanCancelSubscription}
+                          data-testid="admin-cancel-subscription-btn"
+                        >
+                          Cancel subscription on behalf of client
+                        </Button>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Stripe Details */}
                 <Card data-testid="stripe-info">
                   <CardHeader className="pb-3">
@@ -1778,6 +1886,90 @@ const AdminBillingPage = () => {
           </div>
         </div>
       )}
+
+      {showAdminCancelDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="admin-cancel-modal">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancel subscription on behalf of client</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {getGovernanceConfirmationWording('admin_cancel_subscription')}
+            </p>
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Support reason (min 10 characters)</label>
+                <textarea
+                  value={adminCancelReason}
+                  onChange={(e) => setAdminCancelReason(e.target.value)}
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm min-h-[80px]"
+                  data-testid="admin-cancel-reason"
+                  placeholder="Document why support is cancelling this subscription…"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="adminCancelMode"
+                    checked={!adminCancelImmediate}
+                    onChange={() => setAdminCancelImmediate(false)}
+                    data-testid="admin-cancel-at-period-end"
+                  />
+                  <span>
+                    <span className="font-medium">Cancel at period end</span>
+                    <span className="block text-gray-500 text-xs">
+                      Customer keeps full access until the current billing period ends.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                  <input
+                    type="radio"
+                    name="adminCancelMode"
+                    checked={adminCancelImmediate}
+                    onChange={() => setAdminCancelImmediate(true)}
+                    data-testid="admin-cancel-immediate"
+                  />
+                  <span>
+                    <span className="font-medium text-red-700">Cancel immediately</span>
+                    <span className="block text-gray-500 text-xs">
+                      Ends subscription now and revokes paid access.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAdminCancelDialog(false);
+                  setAdminCancelReason('');
+                  setAdminCancelImmediate(false);
+                }}
+                disabled={adminCancelling}
+              >
+                Close
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleAdminCancelSubscription}
+                disabled={adminCancelling || adminCancelReason.trim().length < 10}
+                data-testid="admin-cancel-confirm-btn"
+              >
+                {adminCancelling ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing…
+                  </>
+                ) : (
+                  'Confirm cancellation'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {adminCancelStepUp.modal}
     </div>
   );
 };

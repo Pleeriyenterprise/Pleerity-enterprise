@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-03T18:37:25.096425+00:00",
+  "cancel_at_period_end": {
+    "lifecycle": "cancel_at_period_end",
+    "canonical_entitlement_state": "ENABLED until period end",
+    "source": "subscription_lifecycle_service (shared with customer cancel)"
+  },
+  "immediate_cancel": {
+    "canonical_entitlement_state": "CANCELLED",
+    "entitlement_status": "DISABLED",
+    "source": "stripe_service.cancel_subscription + sync_subscription_lifecycle"
+  },
+  "pass": true
+}

@@ -2514,9 +2514,11 @@ class StripeWebhookService:
             },
         )
 
+        payment_failed_lifecycle_sync_failed = False
         try:
             await sync_subscription_lifecycle(client_id, bump_version=False)
         except Exception as lc_err:
+            payment_failed_lifecycle_sync_failed = True
             await mark_billing_reconciliation_needed(
                 client_id=client_id,
                 reason="payment_failed_lifecycle_sync_failed",

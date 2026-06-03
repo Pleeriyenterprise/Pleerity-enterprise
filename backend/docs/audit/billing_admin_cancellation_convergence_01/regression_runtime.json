@@ -1,0 +1,26 @@
+{
+  "verified_at": "2026-06-03T18:38:48.618438+00:00",
+  "suites": {
+    "tests/test_billing_recovery_operations.py": {
+      "path": "tests/test_billing_recovery_operations.py",
+      "exit_code": 0,
+      "tail": "ipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n21 passed, 4 warnings in 0.33s\n"
+    },
+    "tests/test_stripe_mode_containment.py": {
+      "path": "tests/test_stripe_mode_containment.py",
+      "exit_code": 0,
+      "tail": "ipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n19 passed, 4 warnings in 0.26s\n"
+    },
+    "tests/test_iteration26_billing_webhooks.py": {
+      "path": "tests/test_iteration26_billing_webhooks.py",
+      "exit_code": 0,
+      "tail": "seModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n4 passed, 21 skipped, 4 warnings in 59.52s\n"
+    },
+    "tests/test_admin_cancel_subscription.py": {
+      "path": "tests/test_admin_cancel_subscription.py",
+      "exit_code": 0,
+      "tail": "hipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n7 passed, 4 warnings in 0.34s\n"
+    }
+  },
+  "pass": true
+}

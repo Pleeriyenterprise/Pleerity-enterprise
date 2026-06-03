@@ -8,6 +8,7 @@ Endpoints:
 - POST /api/admin/billing/clients/{client_id}/sync - Force sync from Stripe
 - POST /api/admin/billing/clients/{client_id}/portal-link - Create Stripe billing portal link
 - POST /api/admin/billing/clients/{client_id}/change-plan - Change subscription plan (upgrade/downgrade)
+- POST /api/admin/billing/clients/{client_id}/cancel - Cancel subscription on behalf of client (governed)
 - POST /api/admin/billing/clients/{client_id}/resend-setup - Resend password setup email
 - POST /api/admin/billing/clients/{client_id}/force-provision - Re-run provisioning
 - POST /api/admin/billing/clients/{client_id}/message - Send message to client
@@ -44,7 +45,7 @@ from services.billing_stripe_sync_service import persist_subscription_billing_fr
 from services.subscription_lifecycle_service import sync_subscription_lifecycle
 from services.billing_reconciliation_service import mark_billing_reconciliation_needed
 from services.provisioning import provisioning_service
-from services.stripe_service import StripeService
+from services.stripe_service import StripeService, stripe_service
 from services.billing_audit_normalization import normalized_billing_audit_metadata
 from services.admin_client_support_search import run_admin_client_support_search
 from services.admin_action_governance import ensure_action_reason, normalized_admin_action_metadata
@@ -116,6 +117,12 @@ class ChangePlanRequest(BaseModel):
     plan_code: str  # PLAN_1_SOLO | PLAN_2_PORTFOLIO | PLAN_3_PRO
     apply_at_period_end: bool = True  # If True, new price applies at next billing; if False, prorate immediately
     reason: str = Field(..., min_length=10, max_length=2000)
+
+
+class AdminCancelSubscriptionRequest(BaseModel):
+    """Governed admin cancel-on-behalf — reuses client cancellation service semantics."""
+    reason: str = Field(..., min_length=10, max_length=2000)
+    cancel_immediately: bool = False
 
 
 class SupportGovernedActionReasonBody(BaseModel):
@@ -1477,6 +1484,133 @@ async def change_client_plan(request: Request, client_id: str, body: ChangePlanR
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to change plan",
         )
+
+
+# =============================================================================
+# Cancel Subscription (admin-initiated, governed)
+# =============================================================================
+
+@router.post("/clients/{client_id}/cancel")
+async def admin_cancel_client_subscription(
+    request: Request,
+    client_id: str,
+    body: AdminCancelSubscriptionRequest,
+):
+    """
+    Cancel a client's Stripe subscription on behalf of support.
+
+    Reuses ``stripe_service.cancel_subscription`` — same semantics as customer self-cancel.
+    """
+    from middleware.step_up_auth import require_recent_step_up
+    from services.admin_action_governance import enforce_governed_admin_action
+
+    user = await admin_route_guard(request)
+    admin = getattr(request.state, "admin_user", None) or user
+    actor_id = admin.get("portal_user_id") or user.get("portal_user_id")
+    actor_email = admin.get("email") or user.get("email") or "admin"
+
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        "admin_cancel_subscription",
+        reason=body.reason,
+        resource_key=client_id,
+        require_recent_step_up=require_recent_step_up,
+    )
+
+    db = database.get_db()
+    client = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "client_id": 1})
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+
+    billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+    if not billing or not billing.get("stripe_subscription_id"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Client has no active Stripe subscription. Cannot cancel.",
+        )
+
+    sub_status = (billing.get("subscription_status") or "").upper()
+    if sub_status in ("CANCELED", "CANCELLED"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subscription is already cancelled.",
+        )
+    if billing.get("cancel_at_period_end") and not body.cancel_immediately:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cancellation is already scheduled at period end.",
+        )
+
+    try:
+        await resolve_stripe_context(
+            client_id=client_id,
+            billing=billing,
+            operation="admin_cancel_subscription",
+            require_preflight=True,
+        )
+    except StripeModeDriftError as drift:
+        await record_stripe_mode_drift(
+            drift,
+            actor_id=actor_id,
+            actor_role="ADMIN",
+        )
+        raise HTTPException(status_code=409, detail=drift.customer_message) from drift
+
+    try:
+        result = await stripe_service.cancel_subscription(
+            client_id,
+            cancel_immediately=body.cancel_immediately,
+            actor_role=UserRole.ROLE_ADMIN,
+            actor_id=actor_id,
+            cancellation_source="admin_billing_cancel",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except stripe.error.StripeError as exc:
+        logger.error("Admin cancel Stripe error client_id=%s: %s", client_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Stripe error: {str(exc)}",
+        ) from exc
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role=UserRole.ROLE_ADMIN,
+        actor_id=actor_id,
+        client_id=client_id,
+        metadata={
+            "action_type": "ADMIN_SUBSCRIPTION_CANCELLATION",
+            **normalized_admin_action_metadata("admin_cancel_subscription", support_reason),
+            "cancel_immediately": body.cancel_immediately,
+            "stripe_subscription_id": billing.get("stripe_subscription_id"),
+            **normalized_billing_audit_metadata(
+                machine_event_type="billing.subscription.admin_cancelled",
+                human_label="Admin cancelled subscription",
+                severity="warning",
+                actor_type="admin",
+                actor_id=actor_id,
+                client_id=client_id,
+                stripe_customer_id=billing.get("stripe_customer_id"),
+                stripe_subscription_id=billing.get("stripe_subscription_id"),
+                support_explanation="Support cancelled the client's subscription through governed admin billing controls.",
+                occurred_at=datetime.now(timezone.utc),
+            ),
+        },
+    )
+
+    return {
+        "success": True,
+        "client_id": client_id,
+        "cancel_immediately": body.cancel_immediately,
+        "cancel_at_period_end": result.get("cancel_at_period_end"),
+        "current_period_end": result.get("current_period_end"),
+        "message": (
+            "Subscription cancelled immediately."
+            if body.cancel_immediately
+            else "Cancellation scheduled at period end. Access continues until then."
+        ),
+    }
 
 
 # =============================================================================

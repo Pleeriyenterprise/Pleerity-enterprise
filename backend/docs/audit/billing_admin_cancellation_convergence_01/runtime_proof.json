@@ -1,0 +1,15 @@
+{
+  "verified_at": "2026-06-03T18:37:25.097425+00:00",
+  "live_stripe_mutation": false,
+  "note": "Unit/integration tests only \u2014 no staging subscription cancelled",
+  "proof_matrix": {
+    "A_admin_cancel_period_end": "test_admin_cancel_at_period_end",
+    "B_admin_cancel_immediate": "test_admin_cancel_immediate",
+    "C_webhook_convergence": "test_payment_failed_ops_bridge_lifecycle_sync_flag",
+    "D_customer_ui": "shared cancel_subscription service",
+    "E_entitlement": "test_billing_phase_b_consistency cancel_at_period_end",
+    "F_audit": "ADMIN_SUBSCRIPTION_CANCELLATION audit in route",
+    "G_no_duplicate_logic": "single stripe_service.cancel_subscription"
+  },
+  "pass": true
+}
