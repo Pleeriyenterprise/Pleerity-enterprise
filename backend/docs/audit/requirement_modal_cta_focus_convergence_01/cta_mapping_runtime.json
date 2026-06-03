@@ -1,0 +1,20 @@
+{
+  "programme": "REQUIREMENT-MODAL-CTA-FOCUS-CONVERGENCE-01",
+  "verified_at": "2026-06-03T06:26:25.170248+00:00",
+  "cta_to_section": {
+    "complete_remaining_compliance_steps": "modal-focus-component-guidance",
+    "complete_compliance_declaration": "modal-focus-declaration-form",
+    "add_contractor_confirmation": "modal-focus-contractor-confirmation",
+    "attach_supporting_files": "modal-focus-supporting-upload",
+    "submit_evidence_for_review": "modal-focus-submit-evidence",
+    "choose_evidence_method": "modal-focus-evidence-method",
+    "inspection_checklist": "modal-focus-inspection-checklist"
+  },
+  "evidence_mode_aliases": {
+    "STRUCTURED_DECLARATION": "complete_compliance_declaration",
+    "CONTRACTOR_CONFIRMATION": "add_contractor_confirmation",
+    "INSPECTION_CHECKLIST": "inspection_checklist"
+  },
+  "implementation": "frontend/src/utils/requirementModalCtaFocus.js",
+  "modal": "frontend/src/components/ComplianceEvidenceResolveModal.js"
+}

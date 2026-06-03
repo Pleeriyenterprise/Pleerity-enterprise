@@ -1,0 +1,11 @@
+{
+  "verified_at": "2026-06-03T06:26:28.854638+00:00",
+  "mode": "unit_tests_and_mapping",
+  "note": "Post-deploy Playwright capture recommended for smoke/legionella/landlord-registration flows",
+  "required_screenshots": [
+    "cta_before_click",
+    "post_click_scrolled_target",
+    "highlighted_section",
+    "missing_target_fallback"
+  ]
+}

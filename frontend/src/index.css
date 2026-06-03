@@ -168,4 +168,8 @@ code {
     .btn-secondary {
         @apply bg-[rgb(var(--electric-teal))] text-white hover:bg-[rgb(11,29,58)] transition-smooth;
     }
+
+    .modal-cta-focus-highlight {
+        @apply ring-2 ring-electric-teal/60 bg-teal-50/40 rounded-lg transition-colors duration-300;
+    }
 }

@@ -1,0 +1,13 @@
+{
+  "verified_at": "2026-06-03T06:26:28.854638+00:00",
+  "trust01_tests": "ComplianceEvidenceResolveModal.trust01.test.js unchanged authority",
+  "cta_focus_tests": true,
+  "requirement_types_covered": [
+    "smoke_heat_alarms",
+    "legionella",
+    "structured_declaration",
+    "contractor_confirmation",
+    "inspection_checklist"
+  ],
+  "pass": true
+}

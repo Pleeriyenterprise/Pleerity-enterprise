@@ -1,0 +1,17 @@
+{
+  "programme": "REQUIREMENT-MODAL-CTA-FOCUS-CONVERGENCE-01",
+  "verified_at": "2026-06-03T06:26:25.170248+00:00",
+  "problem": "ComplianceEvidenceResolveModal hero CTAs only set evidence mode without scrolling/focusing the intake section \u2014 dead-click perception.",
+  "root_cause": "handleGuidancePrimary updated selectedMode only; no scrollIntoView/focus/highlight wiring to modal sections.",
+  "fix": [
+    "requirementModalCtaFocus.js deterministic CTA\u2192section mapping",
+    "ComplianceEvidenceResolveModal pendingCtaFocusKey effect scrolls and highlights target",
+    "data-modal-focus-target markers on form sections",
+    "inline fallback when target missing"
+  ],
+  "out_of_scope": [
+    "lifecycle authority",
+    "scoring",
+    "modal layout redesign"
+  ]
+}

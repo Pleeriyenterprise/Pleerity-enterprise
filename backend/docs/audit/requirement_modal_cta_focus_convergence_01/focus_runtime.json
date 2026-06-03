@@ -1,0 +1,11 @@
+{
+  "verified_at": "2026-06-03T06:26:28.854638+00:00",
+  "tests_passed": true,
+  "stdout_tail": "\n> frontend@0.1.0 test\n> craco test --watchAll=false --testPathPattern=requirementModalCtaFocus\n\n",
+  "behaviour": [
+    "scrollIntoView on modal section",
+    "1.8s highlight class modal-cta-focus-highlight",
+    "focus first input/textarea/select/button in section",
+    "aria-live polite announcement"
+  ]
+}

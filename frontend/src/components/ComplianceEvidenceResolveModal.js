@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clientAPI } from '../api/client';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
@@ -24,7 +24,12 @@ import {
 } from '../utils/clientPersistedSubmissionPresentation';
 import { supportingUploadSuccessToast } from '../utils/supportingUploadToastCopy';
 import RequirementEvidenceGuidancePanel from './operational/RequirementEvidenceGuidancePanel';
-import { getRequirementGuidance, sortEvidenceModesByGuidance } from '../utils/operationalCognition';
+import { getRequirementGuidance, heroPrimaryFromCognition, sortEvidenceModesByGuidance } from '../utils/operationalCognition';
+import {
+  MODAL_CTA_FOCUS_FALLBACK_COPY,
+  focusModalCtaTarget,
+  resolveModalCtaFocusKey,
+} from '../utils/requirementModalCtaFocus';
 
 /** YYYY-MM-DD for native date input; tolerates other stored strings without coercing. */
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -71,6 +76,10 @@ export default function ComplianceEvidenceResolveModal({
   const [saving, setSaving] = useState(false);
   const [structuredValidationError, setStructuredValidationError] = useState('');
   const [submitSummaryRecord, setSubmitSummaryRecord] = useState(null);
+  const [pendingCtaFocusKey, setPendingCtaFocusKey] = useState(null);
+  const [ctaFocusFallback, setCtaFocusFallback] = useState('');
+  const [ctaFocusAnnounce, setCtaFocusAnnounce] = useState('');
+  const modalScrollRef = useRef(null);
 
   const resetLocal = useCallback(() => {
     setInfo(null);
@@ -93,6 +102,9 @@ export default function ComplianceEvidenceResolveModal({
     setSupportingUploads([]);
     setStructuredValidationError('');
     setSubmitSummaryRecord(null);
+    setPendingCtaFocusKey(null);
+    setCtaFocusFallback('');
+    setCtaFocusAnnounce('');
   }, []);
 
   useEffect(() => {
@@ -212,13 +224,36 @@ export default function ComplianceEvidenceResolveModal({
   );
 
   const handleGuidancePrimary = useCallback(() => {
+    setCtaFocusFallback('');
+    const primary = heroPrimaryFromCognition(cognitionEntity);
+    const focusKey = resolveModalCtaFocusKey({
+      primary,
+      guidance,
+      selectedMode,
+    });
     const recommended = guidance?.recommended_evidence_mode;
     if (recommended && modes.includes(recommended)) {
       setSelectedMode(recommended);
-      return;
+    } else if (primaryMode) {
+      setSelectedMode(primaryMode);
     }
-    if (primaryMode) setSelectedMode(primaryMode);
-  }, [guidance, modes, primaryMode]);
+    setPendingCtaFocusKey(focusKey);
+  }, [cognitionEntity, guidance, modes, primaryMode, selectedMode]);
+
+  useEffect(() => {
+    if (!open || !pendingCtaFocusKey || submitSummaryRecord) return undefined;
+    const timer = window.setTimeout(() => {
+      const ok = focusModalCtaTarget({
+        scrollRoot: modalScrollRef.current,
+        ctaKey: pendingCtaFocusKey,
+        onMissing: () => setCtaFocusFallback(MODAL_CTA_FOCUS_FALLBACK_COPY),
+        announce: (msg) => setCtaFocusAnnounce(msg),
+      });
+      if (!ok) setCtaFocusFallback(MODAL_CTA_FOCUS_FALLBACK_COPY);
+      setPendingCtaFocusKey(null);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [open, pendingCtaFocusKey, selectedMode, submitSummaryRecord, loading, modes.length]);
 
   const setChecklistAnswer = (mode, id, patch) => {
     if (mode === 'STRUCTURED_DECLARATION') setStructuredValidationError('');
@@ -444,7 +479,11 @@ export default function ComplianceEvidenceResolveModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="compliance-evidence-resolve-modal">
+      <DialogContent
+        ref={modalScrollRef}
+        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        data-testid="compliance-evidence-resolve-modal"
+      >
         <DialogHeader>
           <DialogTitle>{modalTitle}</DialogTitle>
           <DialogDescription>
@@ -487,6 +526,18 @@ export default function ComplianceEvidenceResolveModal({
             )}
           </DialogDescription>
         </DialogHeader>
+        <p className="sr-only" aria-live="polite" data-testid="modal-cta-focus-announce">
+          {ctaFocusAnnounce}
+        </p>
+        {ctaFocusFallback ? (
+          <p
+            className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
+            role="status"
+            data-testid="modal-cta-focus-fallback"
+          >
+            {ctaFocusFallback}
+          </p>
+        ) : null}
         {!submitSummaryRecord && !loading && info ? (
           <RequirementEvidenceGuidancePanel
             cognitionEntity={cognitionEntity}
@@ -554,7 +605,12 @@ export default function ComplianceEvidenceResolveModal({
           </p>
         ) : !submitSummaryRecord ? (
           <div className="space-y-4">
-            <div className="flex flex-col gap-3" data-testid="guided-evidence-mode-list">
+            <div
+              className="flex flex-col gap-3"
+              data-testid="guided-evidence-mode-list"
+              data-modal-focus-target="modal-focus-evidence-method"
+              data-modal-focus-label="Evidence method"
+            >
               {primaryMode ? renderEvidenceModeButton(primaryMode, { primary: true }) : null}
               {secondaryModes.length > 0 ? (
                 <details className="rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 group">
@@ -568,7 +624,11 @@ export default function ComplianceEvidenceResolveModal({
               ) : null}
             </div>
             {selectedMode === 'STRUCTURED_DECLARATION' ? (
-              <div className="space-y-2">
+              <div
+                className="space-y-2"
+                data-modal-focus-target="modal-focus-declaration-form"
+                data-modal-focus-label="Declaration form"
+              >
                 <Label>Declaration statement</Label>
                 <textarea
                   className="w-full min-h-[100px] border rounded-md p-2 text-sm"
@@ -583,7 +643,11 @@ export default function ComplianceEvidenceResolveModal({
               </div>
             ) : null}
             {selectedMode === 'CONTRACTOR_CONFIRMATION' ? (
-              <div className="space-y-2">
+              <div
+                className="space-y-2"
+                data-modal-focus-target="modal-focus-contractor-confirmation"
+                data-modal-focus-label="Contractor confirmation"
+              >
                 <Label>Contractor name</Label>
                 <input className="w-full border rounded-md p-2 text-sm" value={cName} onChange={(e) => setCName(e.target.value)} />
                 <Label>Company (optional)</Label>
@@ -617,7 +681,11 @@ export default function ComplianceEvidenceResolveModal({
                 <textarea className="w-full min-h-[60px] border rounded-md p-2 text-sm" value={inspNotes} onChange={(e) => setInspNotes(e.target.value)} />
               </div>
             ) : null}
-            <div className="space-y-2 border-t pt-3">
+            <div
+              className="space-y-2 border-t pt-3"
+              data-modal-focus-target="modal-focus-supporting-upload"
+              data-modal-focus-label="Supporting file upload"
+            >
               <p className="text-sm font-medium text-midnight-blue">
                 {isTenantDelivery
                   ? 'Upload delivery proof (optional)'
@@ -659,7 +727,11 @@ export default function ComplianceEvidenceResolveModal({
             </div>
           </div>
         ) : null}
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter
+          className="gap-2 sm:gap-0"
+          data-modal-focus-target="modal-focus-submit-evidence"
+          data-modal-focus-label="Submit evidence"
+        >
           {submitSummaryRecord ? (
             <Button
               type="button"

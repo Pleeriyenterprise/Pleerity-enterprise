@@ -7,6 +7,7 @@ import {
   getRequirementGuidance,
   progressionStepsFromCognition,
 } from '../../utils/operationalCognition';
+import { CTA_FOCUS_TARGET_IDS } from '../../utils/requirementModalCtaFocus';
 
 function StepStatusBadge({ status }) {
   const tone =
@@ -61,6 +62,8 @@ export function RequirementEvidenceGuidancePanel({
         <div
           className="rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2.5 space-y-1"
           data-testid="component-guidance-lines"
+          data-modal-focus-target={CTA_FOCUS_TARGET_IDS.complete_remaining_compliance_steps}
+          data-modal-focus-label="Missing compliance steps"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">Still required</p>
           <ul className="text-sm text-amber-950 space-y-1 list-disc list-inside">
