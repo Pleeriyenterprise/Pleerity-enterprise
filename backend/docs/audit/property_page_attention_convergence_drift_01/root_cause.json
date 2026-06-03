@@ -1,0 +1,36 @@
+{
+  "programme": "PROPERTY-PAGE-ATTENTION-CONVERGENCE-DRIFT-01",
+  "verified_at": "2026-06-03T20:10:14.145839+00:00",
+  "surfaces_traced": {
+    "operating_tab": {
+      "requirements_needing_attention": "PropertyDetailPage.hubPrioritizedRequirements \u2192 isRequirementActionRequired",
+      "missing_documents_kpi": "getComplianceSummary \u2192 isRequirementMissingDocument",
+      "urgent_actions": "Command Centre API \u2192 is_requirement_attention_eligible (backend)"
+    },
+    "compliance_tab": {
+      "needs_attention_now": "buildNeedsAttentionSubset (was legacy status gates; now converged when fields present)",
+      "missing_documents_count": "getComplianceSummary \u2192 isRequirementMissingDocument",
+      "suggested_next_steps": "compliancePriorityRecommendedNext"
+    },
+    "documents_tab": {
+      "requirements_still_needing_documents": "listRequirementsMissingDocumentsSorted \u2192 isRequirementMissingDocument",
+      "missing_critical_evidence": "GET /portfolio/properties/{id}/evidence (backend row_counts_as_missing_evidence)"
+    }
+  },
+  "root_causes": [
+    "compliance-detail matrix stripped requirement_satisfied, missing_required_document, requirement_attention_eligible",
+    "matrix evidence_doc_id only joined VERIFIED docs \u2014 pending/linked docs invisible to frontend",
+    "buildNeedsAttentionSubset used legacy status inclusion unlike Operating hub isRequirementActionRequired",
+    "applyLifecycleAwareCtaPresentation left Upload CTAs on platform-review rows with linked documents"
+  ],
+  "fix": [
+    "catalog_compliance._client_matrix_presentation_fields passes convergence truth",
+    "matrix evidence_doc_id falls back to row document_id",
+    "propertyDocumentsMatrix: converged attention gate + requirementHasLinkedDocument",
+    "requirementLifecyclePresentation: platform review CTA convergence"
+  ],
+  "out_of_scope": [
+    "cosmetic row hiding",
+    "lifecycle/scoring authority changes"
+  ]
+}

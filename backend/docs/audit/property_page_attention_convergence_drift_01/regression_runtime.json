@@ -1,0 +1,11 @@
+{
+  "verified_at": "2026-06-03T20:10:14.145839+00:00",
+  "frontend_property_matrix_tests": true,
+  "backend_satisfaction_attention_tests": true,
+  "surfaces_regression": [
+    "Today (backend is_requirement_attention_eligible unchanged)",
+    "Command Centre (client_priority_stream unchanged)",
+    "Requirements page (convergence fields already on full API)"
+  ],
+  "pass": true
+}

@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-06-03T20:10:14.145839+00:00",
+  "scenario": "HMO Licensing escalated for platform review with document linked",
+  "expected": {
+    "missing_required_document": false,
+    "requirement_attention_eligible": true,
+    "requirement_attention_reason": "escalation_review",
+    "primary_cta": "Review pending",
+    "missing_documents_count": "excluded"
+  },
+  "landlord_action": "Monitor platform review \u2014 no re-upload unless rejected",
+  "implementation": [
+    "resolvePlatformReviewPendingCtaPresentation",
+    "isRequirementMissingDocument excludes linked platform-review rows"
+  ]
+}

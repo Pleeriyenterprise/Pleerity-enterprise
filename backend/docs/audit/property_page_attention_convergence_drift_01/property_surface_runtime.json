@@ -1,0 +1,13 @@
+{
+  "verified_at": "2026-06-03T20:10:14.145839+00:00",
+  "shared_authority": [
+    "requirement_attention_eligible",
+    "requirement_satisfied",
+    "missing_required_document",
+    "document_upload_required",
+    "requirement_attention_reason",
+    "truth_presentation_stage"
+  ],
+  "matrix_passthrough": "backend/services/catalog_compliance.py _client_matrix_presentation_fields",
+  "frontend_ssot": "frontend/src/utils/propertyDocumentsMatrix.js"
+}

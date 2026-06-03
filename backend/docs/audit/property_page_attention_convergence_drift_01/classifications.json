@@ -1,0 +1,17 @@
+{
+  "programme": "PROPERTY-PAGE-ATTENTION-CONVERGENCE-DRIFT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "verified_at": "2026-06-03T20:10:14.145839+00:00",
+  "tags": [
+    "PROPERTY_ATTENTION_DRIFT",
+    "DOCUMENT_COUNT_DRIFT",
+    "PLATFORM_REVIEW_ACTION_DRIFT"
+  ],
+  "criteria": {
+    "surfaces_agree": true,
+    "missing_document_count_correct": true,
+    "satisfied_rows_excluded": true,
+    "platform_review_cta": true,
+    "regression_tests_pass": true
+  }
+}

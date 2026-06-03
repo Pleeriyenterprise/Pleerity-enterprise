@@ -33,6 +33,11 @@ async def test_compliance_detail_matrix_includes_canonical_take_action_for_multi
                     "allowed_evidence_modes": ["DOCUMENT_UPLOAD", "STRUCTURED_DECLARATION"]
                 }
             },
+            "requirement_satisfied": False,
+            "missing_required_document": True,
+            "requirement_attention_eligible": True,
+            "document_upload_required": True,
+            "truth_presentation_stage": "collect_evidence",
         }
     ]
 
@@ -45,6 +50,9 @@ async def test_compliance_detail_matrix_includes_canonical_take_action_for_multi
     ), patch(
         "services.catalog_compliance._load_catalog",
         AsyncMock(return_value=[{"code": "gas_safety", "weight": 3, "criticality": "HIGH"}]),
+    ), patch(
+        "services.catalog_compliance.get_canonical_requirement_ids_for_property",
+        AsyncMock(return_value={"req-1"}),
     ):
         result = await get_property_compliance_detail("client-1", "prop-1")
 
@@ -56,3 +64,7 @@ async def test_compliance_detail_matrix_includes_canonical_take_action_for_multi
     assert row["allowed_evidence_modes"] == ["DOCUMENT_UPLOAD", "STRUCTURED_DECLARATION"]
     assert row["primary_action_kind"] == "guided"
     assert row["primary_action_intent"] == "guided_evidence"
+    assert row["requirement_attention_eligible"] is True
+    assert row["missing_required_document"] is True
+    assert row["requirement_satisfied"] is False
+    assert row["truth_presentation_stage"] == "collect_evidence"

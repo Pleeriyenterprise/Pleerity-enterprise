@@ -24,6 +24,12 @@ logger = logging.getLogger(__name__)
 def _client_matrix_presentation_fields(row: Dict[str, Any]) -> Dict[str, Any]:
     """Pass-through fields required for matrix/urgent truthful submission + lifecycle copy."""
     ea = row.get("evidence_authority") if isinstance(row.get("evidence_authority"), dict) else {}
+    primary_cer = str(
+        ea.get("primary_evidence_record_id")
+        or row.get("primary_evidence_record_id")
+        or row.get("latest_evidence_record_id")
+        or ""
+    ).strip()
     return {
         "evidence_authority": ea or None,
         "workflow_class": row.get("workflow_class"),
@@ -34,6 +40,25 @@ def _client_matrix_presentation_fields(row: Dict[str, Any]) -> Dict[str, Any]:
         "requirement_type": row.get("requirement_type") or row.get("canonical_code"),
         "evidence_badge_label": row.get("evidence_badge_label"),
         "status_label": row.get("status_label"),
+        # Convergence truth — required for property-page attention/missing-doc surfaces.
+        "document_upload_required": row.get("document_upload_required"),
+        "missing_required_document": row.get("missing_required_document"),
+        "requirement_satisfied": row.get("requirement_satisfied"),
+        "satisfaction_source": row.get("satisfaction_source"),
+        "requirement_attention_eligible": row.get("requirement_attention_eligible"),
+        "requirement_attention_reason": row.get("requirement_attention_reason"),
+        "requirement_attention_suppression": row.get("requirement_attention_suppression"),
+        "requirement_resolution_status": row.get("requirement_resolution_status"),
+        "missing_document_status": row.get("missing_document_status"),
+        "portal_renewal_countdown_eligible": row.get("portal_renewal_countdown_eligible"),
+        "truth_presentation_stage": row.get("truth_presentation_stage"),
+        "truth_presentation_label": row.get("truth_presentation_label"),
+        "review_owner": row.get("review_owner"),
+        "governance_family": row.get("governance_family"),
+        "assurance_tier": row.get("assurance_tier"),
+        "document_id": row.get("document_id"),
+        "primary_evidence_record_id": primary_cer or None,
+        "evidence_completeness": row.get("evidence_completeness"),
     }
 
 
@@ -234,7 +259,11 @@ async def get_property_compliance_detail(
         due_date = proj.get("due_date")
         days = _days_to_expiry(due_date) if due_date else None
         score = _requirement_numeric_score(status, due_date)
-        evidence_doc_id = req_id_to_doc.get(row.get("requirement_id"))
+        evidence_doc_id = (
+            req_id_to_doc.get(row.get("requirement_id"))
+            or row.get("document_id")
+            or row.get("evidence_doc_id")
+        )
         if status in ("OVERDUE", "EXPIRED"):
             kpis["overdue"] += 1
             if is_high:

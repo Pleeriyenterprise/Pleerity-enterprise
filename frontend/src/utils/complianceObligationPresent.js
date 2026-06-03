@@ -147,6 +147,17 @@ export function compliancePriorityRecommendedNext(requirements, urgentOrdered, r
   if (first) {
     const act = complianceObligationPrimaryAction(first);
     const title = rowTitle(first) || 'this requirement';
+    const attentionReason = String(first.requirement_attention_reason || '');
+    if (
+      attentionReason === 'platform_verification_pending' ||
+      attentionReason === 'escalation_review' ||
+      attentionReason === 'review_pending'
+    ) {
+      if (attentionReason === 'escalation_review') {
+        return `${title} is escalated for platform review — no upload needed while review is in progress.`;
+      }
+      return `${title} is awaiting platform review — no upload needed while review is in progress.`;
+    }
     if (act.verb === 'upload') return `${act.label} for ${title}.`;
     if (act.verb === 'resolve') return `${act.label} for ${title}.`;
     if (act.verb === 'renew') return `Renew documents for ${title}.`;

@@ -25,7 +25,7 @@ import { resolveRiskSignalPrimaryKey } from '../../utils/primaryActionResolver';
 import { PORTAL_COPY } from '../../utils/clientPortalCopy';
 import { cn } from '../../lib/utils';
 import { humanizeOperatingFeedItems } from '../../utils/propertyOperatingActivityCopy';
-import { isRequirementMissingDocument } from '../../utils/propertyDocumentsMatrix';
+import { isRequirementMissingDocument, requirementHasLinkedDocument } from '../../utils/propertyDocumentsMatrix';
 import { isRedundantUploadStyleSecondaryAction } from '../../utils/complianceObligationPresent';
 import {
   projectResolvedRequirementFromPriorityTask,
@@ -461,7 +461,7 @@ export default function PropertyOperatingHub({
               const statusUi = sem.evidenceStatusForStatus(r.status);
               const Icon = statusUi.icon;
               const tierBadge = getLifecycleTierBadge(r);
-              const linked = !!r.evidence_doc_id;
+              const linked = requirementHasLinkedDocument(r);
               const due = rowExpiry(r);
               const est = r.date_source === 'SYSTEM_ESTIMATED';
               const needsDocument = isRequirementMissingDocument(r);

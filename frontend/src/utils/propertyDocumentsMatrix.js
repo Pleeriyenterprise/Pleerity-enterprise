@@ -15,13 +15,33 @@ function incompleteMultiEvidenceFamily(r) {
  * True when a file still needs to be supplied (not awaiting verification on an uploaded file).
  * Uses backend satisfaction truth when present; legacy fallback for stale payloads.
  */
+export function requirementHasLinkedDocument(r) {
+  if (!r || typeof r !== 'object') return false;
+  const ea = r.evidence_authority && typeof r.evidence_authority === 'object' ? r.evidence_authority : null;
+  return Boolean(
+    r.evidence_doc_id ||
+      String(r.document_id || '').trim() ||
+      String(r.primary_evidence_record_id || ea?.primary_evidence_record_id || '').trim(),
+  );
+}
+
 export function isRequirementMissingDocument(r) {
   if (r?.missing_required_document === true) return true;
   if (r?.missing_required_document === false || r?.requirement_satisfied === true) return false;
   if (r?.document_upload_required === false) return false;
+  if (requirementHasLinkedDocument(r) && r?.document_upload_required !== true) {
+    const resolution = String(r?.requirement_resolution_status || '').toUpperCase();
+    if (resolution === 'AWAITING_REVIEW' || resolution === 'RESOLVED') return false;
+    const attentionReason = String(r?.requirement_attention_reason || '');
+    if (
+      ['platform_verification_pending', 'escalation_review', 'review_pending'].includes(attentionReason)
+    ) {
+      return false;
+    }
+  }
   const s = (r?.status || '').toUpperCase();
   if (s === 'MISSING' || s === 'MISSING_EVIDENCE') return true;
-  if (s === 'PENDING') return !(r?.evidence_doc_id || String(r?.document_id || '').trim());
+  if (s === 'PENDING') return !requirementHasLinkedDocument(r);
   return false;
 }
 
@@ -88,7 +108,7 @@ export function requirementAttentionStatusRank(r) {
   if (u === 'EXPIRED' || u === 'FAILED') return 1;
   if (isHighRiskMissingEvidence) return 2;
   if (u === 'EXPIRING_SOON') return 3;
-  if (u === 'PENDING' && (r?.evidence_doc_id || String(r?.document_id || '').trim())) return 4;
+  if (u === 'PENDING' && requirementHasLinkedDocument(r)) return 4;
   if (incompleteRequiredEvidence) return 5;
   if (isRequirementMissingDocument(r)) return 6;
   return 9;
@@ -143,14 +163,14 @@ export function isRequirementExcludedFromNeedsAttention(r) {
   const { state } = resolveClientRequirementLifecycle(r);
   if (state === 'PENDING_REVIEW' || state === 'NOT_APPLICABLE') return true;
   if (state === 'VERIFIED' || state === 'SATISFIED_UNVERIFIED') {
-    const followUpDue = st === 'PENDING' && !!(r?.evidence_doc_id || String(r?.document_id || '').trim());
+    const followUpDue = st === 'PENDING' && requirementHasLinkedDocument(r);
     const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
     const incompleteRequiredEvidence =
       incompleteMultiEvidenceFamily(r) || (evidenceSummary && evidenceSummary !== 'COMPLETE');
     if (followUpDue || incompleteRequiredEvidence) return false;
     return true;
   }
-  const followUpDue = st === 'PENDING' && !!(r?.evidence_doc_id || String(r?.document_id || '').trim());
+  const followUpDue = st === 'PENDING' && requirementHasLinkedDocument(r);
   const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
   const incompleteRequiredEvidence =
     incompleteMultiEvidenceFamily(r) || (evidenceSummary && evidenceSummary !== 'COMPLETE');
@@ -170,11 +190,14 @@ export function buildNeedsAttentionSubset(requirements, rowExpiry, cap = 8) {
   const exp = (r) => rowExpiry(r) || '';
   const filtered = (Array.isArray(requirements) ? requirements : []).filter((r) => {
     if (isRequirementExcludedFromNeedsAttention(r)) return false;
+    if (typeof r?.requirement_attention_eligible === 'boolean') {
+      return isRequirementActionRequired(r);
+    }
     const s = String(r?.status || '').toUpperCase();
     const lc = resolveClientRequirementLifecycle(r).state;
     const followUpDue =
       s === 'PENDING' &&
-      !!(r?.evidence_doc_id || String(r?.document_id || '').trim()) &&
+      requirementHasLinkedDocument(r) &&
       lc === 'ACTION_REQUIRED';
     const evidenceSummary = String(r?.evidence_completeness?.summary_label || '').toUpperCase();
     const incompleteRequiredEvidence =

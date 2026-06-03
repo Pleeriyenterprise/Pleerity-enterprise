@@ -5,6 +5,7 @@ import {
   getRequirementLifecycleIconTone,
   getRequirementLifecycleRowSurfaceClass,
   primaryLabelSuggestsInitialObligation,
+  resolvePlatformReviewPendingCtaPresentation,
 } from './requirementLifecyclePresentation';
 
 function rowWithLifecycle(state, overrides = {}) {
@@ -121,6 +122,38 @@ describe('requirementLifecyclePresentation', () => {
         primary_action_label: 'Open job',
       });
       expect(out.primary_action_label).toBe('Open job');
+    });
+
+    it('maps linked HMO escalation upload CTA to Review pending', () => {
+      const row = rowWithLifecycle('PENDING_REVIEW', {
+        requirement_code: 'hmo_license',
+        document_id: 'doc-1',
+        requirement_attention_reason: 'escalation_review',
+        truth_presentation_stage: 'escalation_review',
+        review_owner: 'platform_admin_escalation',
+        missing_required_document: false,
+        requirement_resolution_status: 'AWAITING_REVIEW',
+      });
+      const out = applyLifecycleAwareCtaPresentation(row, {
+        ...baseCta,
+        primary_action_label: 'Upload valid HMO licence',
+        primary_route: '/documents?property_id=p1',
+        primary_action_handler: 'navigate',
+      });
+      expect(out.primary_action_label).toBe('Review pending');
+    });
+
+    it('resolvePlatformReviewPendingCtaPresentation returns Awaiting platform review for linked doc', () => {
+      const row = rowWithLifecycle('PENDING_REVIEW', {
+        document_id: 'doc-1',
+        requirement_attention_reason: 'platform_verification_pending',
+        missing_required_document: false,
+      });
+      const out = resolvePlatformReviewPendingCtaPresentation(row, {
+        primary_action_label: 'Upload valid gas safety certificate',
+        primary_route: '/documents',
+      });
+      expect(out?.primary_action_label).toBe('Awaiting platform review');
     });
   });
 

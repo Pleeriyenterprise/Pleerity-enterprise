@@ -1,4 +1,4 @@
-import { buildNeedsAttentionSubset, isRequirementActionRequired, requirementAttentionStatusRank } from './propertyDocumentsMatrix';
+import { buildNeedsAttentionSubset, isRequirementActionRequired, isRequirementMissingDocument, requirementAttentionStatusRank } from './propertyDocumentsMatrix';
 
 function req(id, status, extra = {}) {
   return {
@@ -76,6 +76,36 @@ describe('buildNeedsAttentionSubset', () => {
     ];
     const out = buildNeedsAttentionSubset(rows, (r) => r.due_date, 8);
     expect(out.items.map((r) => r.requirement_id)).toEqual(['bad']);
+  });
+
+  it('excludes platform-review linked document from missing-documents bucket', () => {
+    const hmo = req('hmo', 'PENDING', {
+      requirement_code: 'hmo_license',
+      document_id: 'doc-hmo',
+      missing_required_document: false,
+      requirement_satisfied: false,
+      requirement_attention_eligible: true,
+      requirement_attention_reason: 'escalation_review',
+      requirement_resolution_status: 'AWAITING_REVIEW',
+      document_upload_required: true,
+    });
+    expect(isRequirementMissingDocument(hmo)).toBe(false);
+  });
+
+  it('uses attention eligibility gate when convergence fields are present', () => {
+    const rows = [
+      req('satisfied', 'PENDING', {
+        requirement_satisfied: true,
+        requirement_attention_eligible: false,
+        missing_required_document: false,
+      }),
+      req('open', 'MISSING', {
+        requirement_attention_eligible: true,
+        missing_required_document: true,
+      }),
+    ];
+    const out = buildNeedsAttentionSubset(rows, (r) => r.due_date, 8);
+    expect(out.items.map((r) => r.requirement_id)).toEqual(['open']);
   });
 
   it('excludes satisfied non-document requirements still marked PENDING at engine level', () => {

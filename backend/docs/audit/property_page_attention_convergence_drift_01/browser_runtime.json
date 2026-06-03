@@ -1,0 +1,13 @@
+{
+  "verified_at": "2026-06-03T20:10:14.145839+00:00",
+  "mode": "unit_tests_and_mapping",
+  "property_scenarios": [
+    "Operating tab missing documents KPI",
+    "Compliance Needs attention now",
+    "Documents Requirements still needing documents",
+    "HMO Licensing platform review CTA",
+    "Legionella/Smoke self-recorded exclusion",
+    "Gas Safety verified exclusion"
+  ],
+  "post_deploy_note": "Playwright capture on affected property recommended after deploy"
+}

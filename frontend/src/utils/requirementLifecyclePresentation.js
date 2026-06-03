@@ -11,6 +11,49 @@ import {
   isRightToRentRequirement,
   resolveRightToRentMixedEvidenceCtaPresentation,
 } from './rightToRentTrustPresentation';
+import { requirementHasLinkedDocument } from './propertyDocumentsMatrix';
+
+/**
+ * Document-linked platform review / escalation — suppress stale upload CTAs.
+ * @param {Record<string, unknown>|null|undefined} requirement
+ * @param {Record<string, unknown>|null|undefined} cta
+ */
+export function resolvePlatformReviewPendingCtaPresentation(requirement, cta) {
+  if (!cta || typeof cta !== 'object' || !requirement) return null;
+  const baseLabel = String(cta.primary_action_label || '');
+  if (!primaryLabelSuggestsInitialObligation(baseLabel)) return null;
+
+  const attentionReason = String(requirement.requirement_attention_reason || '');
+  const truthStage = String(requirement.truth_presentation_stage || '').toLowerCase();
+  const reviewOwner = String(requirement.review_owner || '');
+  const resolution = String(requirement.requirement_resolution_status || '').toUpperCase();
+
+  const isPlatformReview =
+    attentionReason === 'platform_verification_pending' ||
+    attentionReason === 'escalation_review' ||
+    attentionReason === 'review_pending' ||
+    truthStage === 'platform_verification_pending' ||
+    truthStage === 'escalation_review' ||
+    reviewOwner === 'platform_admin_escalation' ||
+    resolution === 'AWAITING_REVIEW';
+
+  if (!isPlatformReview) return null;
+
+  const hasLinkedDoc = requirementHasLinkedDocument(requirement);
+  const missingDoc = requirement.missing_required_document;
+  if (!hasLinkedDoc && missingDoc !== false) return null;
+
+  let primary_action_label = 'Awaiting platform review';
+  if (
+    attentionReason === 'escalation_review' ||
+    truthStage === 'escalation_review' ||
+    reviewOwner === 'platform_admin_escalation'
+  ) {
+    primary_action_label = 'Review pending';
+  }
+
+  return { ...cta, primary_action_label };
+}
 
 /**
  * @param {string} label
@@ -34,6 +77,8 @@ export function applyLifecycleAwareCtaPresentation(requirement, cta) {
   if (!cta || typeof cta !== 'object') return cta || {};
   const rtrCta = resolveRightToRentMixedEvidenceCtaPresentation(requirement, cta);
   if (rtrCta) return rtrCta;
+  const platformReviewCta = resolvePlatformReviewPendingCtaPresentation(requirement, cta);
+  if (platformReviewCta) return platformReviewCta;
   const { state } = resolveClientRequirementLifecycleForPresentation(requirement);
   const truthStage = String(requirement?.truth_presentation_stage || '').trim();
   if (state === 'ACTION_REQUIRED' || state === 'NOT_APPLICABLE') {
@@ -48,8 +93,11 @@ export function applyLifecycleAwareCtaPresentation(requirement, cta) {
   let primary_action_label = baseLabel;
   if (state === 'PENDING_REVIEW') {
     if (handler === 'guided_evidence') primary_action_label = 'View submission';
-    else if (route.includes('/documents')) primary_action_label = 'View evidence';
-    else primary_action_label = 'Review submission';
+    else if (route.includes('/documents')) {
+      primary_action_label = requirementHasLinkedDocument(requirement)
+        ? 'Awaiting platform review'
+        : 'View evidence';
+    } else primary_action_label = 'Review submission';
   } else if (
     state === 'SATISFIED_UNVERIFIED' ||
     ['declaration_recorded', 'assessment_recorded', 'evidence_recorded', 'followup_required'].includes(truthStage)

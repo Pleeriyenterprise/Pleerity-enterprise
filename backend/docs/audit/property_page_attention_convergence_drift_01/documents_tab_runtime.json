@@ -1,0 +1,9 @@
+{
+  "verified_at": "2026-06-03T20:10:14.145839+00:00",
+  "rules": {
+    "exclude_self_recorded_satisfied": "requirement_satisfied=true OR document_upload_required=false",
+    "exclude_platform_review_linked": "document linked + AWAITING_REVIEW / platform_verification_pending",
+    "count_alignment": "listRequirementsMissingDocumentsSorted uses same isRequirementMissingDocument as Compliance KPI"
+  },
+  "implementation": "frontend/src/utils/propertyDocumentsMatrix.js"
+}
