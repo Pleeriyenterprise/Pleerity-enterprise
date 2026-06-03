@@ -12,6 +12,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from database import database
 from services.stripe_mode_authority import configure_stripe_sdk, get_stripe_mode
+
+REMEDIATION_MODE_UNVERIFIED = "MODE_UNVERIFIED"
+REMEDIATION_REGENERATE_CHECKOUT = "REGENERATE_CHECKOUT_REQUIRED"
 from utils.audit import create_audit_log
 from models import AuditAction
 
@@ -43,6 +46,32 @@ COL_DRIFT_EVENTS = "stripe_mode_drift_events"
 MODE_UNVERIFIED = "MODE_UNVERIFIED"
 CONFIDENCE_UNKNOWN = "unknown"
 CONFIDENCE_AUTHORITATIVE = "authoritative"
+
+
+def requires_deployment_checkout_for_plan_change(
+    billing: Optional[Dict[str, Any]],
+    *,
+    recovery_case: Optional[Dict[str, Any]] = None,
+) -> bool:
+    """
+    Use deployment-mode Checkout (not upgrade/portal preflight) for drift / MODE_UNVERIFIED rows.
+    Shared by billing recovery regeneration and client plan-change checkout.
+    """
+    if not billing:
+        return True
+    verification = (billing.get("stripe_mode_verification_status") or "").strip()
+    if verification == MODE_UNVERIFIED:
+        return True
+    remediation = (recovery_case or {}).get("remediation_code") or ""
+    if remediation in (REMEDIATION_MODE_UNVERIFIED, REMEDIATION_REGENERATE_CHECKOUT):
+        return True
+    dep = normalize_persisted_mode(get_stripe_mode())
+    stored = normalize_persisted_mode(billing.get("stripe_mode"))
+    if billing.get("stripe_subscription_id") and stored is None:
+        return True
+    if stored and dep and stored != dep:
+        return True
+    return False
 
 
 class StripeModeDriftError(Exception):

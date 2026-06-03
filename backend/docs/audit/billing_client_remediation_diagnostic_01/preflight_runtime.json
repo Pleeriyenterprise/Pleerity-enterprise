@@ -1,0 +1,46 @@
+{
+  "generated_at": "2026-06-03T07:10:38.781159+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "billing_row_probe": {
+    "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+    "stripe_customer_id": "cus_U17342UbP0YrQu",
+    "stripe_subscription_id": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+    "stripe_mode": "test",
+    "stripe_customer_mode": "test",
+    "stripe_mode_verification_status": null,
+    "stripe_mode_confidence": "authoritative"
+  },
+  "local_simulation": {
+    "deployment_mode": "live",
+    "requires_deployment_checkout": true,
+    "validator_chain": [
+      "BillingPage.handlePlanChange \u2192 POST /api/billing/checkout",
+      "routes.billing.create_checkout \u2192 stripe_service.create_upgrade_session",
+      "validate_stripe_subscription_mode (no verification kwargs on subscription-only call)",
+      "validate_portal_billing_preflight \u2192 validate_stripe_customer_mode + validate_stripe_subscription_mode",
+      "_assert_not_mode_unverified when stripe_mode_verification_status=MODE_UNVERIFIED"
+    ],
+    "portal_preflight": {
+      "ok": false,
+      "error_code": "STRIPE_CUSTOMER_MODE_DRIFT",
+      "customer_message": "Your billing record needs to be refreshed before plan changes can continue.",
+      "admin_reason": "stored_customer_mode_mismatch",
+      "recovery_action": "admin_billing_refresh",
+      "matches_ux_copy": true
+    }
+  },
+  "blocker": {
+    "upgrade_blocked": true,
+    "primary_validator": "validate_portal_billing_preflight",
+    "drift_classification": "LEGACY_TEST_SUBSCRIPTION",
+    "requires_deployment_checkout": true,
+    "refresh_did_not_converge_because": [
+      "client /billing/checkout uses create_upgrade_session \u2192 validate_portal_billing_preflight on staging",
+      "billing row carries MODE_UNVERIFIED and/or legacy test-mode persistence on live deployment",
+      "recovery case shows RECOVERY_RESOLVED while remediation_code remains MODE_UNVERIFIED (stale recovery metadata)",
+      "admin regenerate-checkout deployment path fixed in recovery service but not wired to client self-serve checkout",
+      "authoritative backfill must not re-apply test mode on live (LEGACY_TEST_SUBSCRIPTION)"
+    ]
+  },
+  "error": "Client error '401 Unauthorized' for url 'https://pleerity-enterprise.onrender.com/api/auth/login'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401"
+}

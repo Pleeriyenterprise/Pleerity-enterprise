@@ -1,0 +1,13 @@
+{
+  "marker": "BILLING-CLIENT-REMEDIATION-DIAGNOSTIC-01",
+  "generated_at": "2026-06-03T07:11:20.154383+00:00",
+  "classification": "STRIPE_MODE_DRIFT",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "gates": {
+    "root_cause_identified": true,
+    "code_fix_tests_pass": true,
+    "checkout_probe_status": null,
+    "portal_preflight_post_remediation": null,
+    "safe_remediation_executed": false
+  }
+}

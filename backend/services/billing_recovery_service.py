@@ -69,22 +69,9 @@ def _requires_deployment_checkout_regeneration(
     billing: Optional[Dict[str, Any]],
     case: Optional[Dict[str, Any]],
 ) -> bool:
-    """Use deployment-mode Checkout (not upgrade/portal preflight) for drift / MODE_UNVERIFIED rows."""
-    if not billing:
-        return True
-    verification = (billing.get("stripe_mode_verification_status") or "").strip()
-    if verification == CONTAINMENT_MODE_UNVERIFIED:
-        return True
-    remediation = (case or {}).get("remediation_code") or ""
-    if remediation in (REMEDIATION_MODE_UNVERIFIED, REMEDIATION_REGENERATE_CHECKOUT):
-        return True
-    dep = normalize_persisted_mode(get_stripe_mode())
-    stored = normalize_persisted_mode(billing.get("stripe_mode"))
-    if billing.get("stripe_subscription_id") and stored is None:
-        return True
-    if stored and dep and stored != dep:
-        return True
-    return False
+    from services.stripe_mode_containment_service import requires_deployment_checkout_for_plan_change
+
+    return requires_deployment_checkout_for_plan_change(billing, recovery_case=case)
 
 
 CUSTOMER_CONTINUATION_BODY = (

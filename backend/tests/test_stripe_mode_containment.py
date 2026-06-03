@@ -13,6 +13,7 @@ from services.stripe_mode_containment_service import (
     StripeModeDriftError,
     assess_billing_stripe_mode_drift,
     classify_stripe_api_error_for_drift,
+    requires_deployment_checkout_for_plan_change,
     validate_checkout_session_mode,
     validate_portal_billing_preflight,
     validate_stripe_customer_mode,
@@ -87,6 +88,32 @@ def test_validate_customer_mode_unverified_blocks():
         )
     assert exc.value.error_code == STRIPE_CUSTOMER_MODE_DRIFT
     assert exc.value.recovery_action == "MODE_UNVERIFIED"
+
+
+def test_requires_deployment_checkout_mode_unverified():
+    billing = {
+        "stripe_mode_verification_status": "MODE_UNVERIFIED",
+        "stripe_subscription_id": "sub_x",
+        "stripe_customer_id": "cus_x",
+    }
+    assert requires_deployment_checkout_for_plan_change(billing) is True
+
+
+def test_requires_deployment_checkout_missing_stored_mode_with_subscription():
+    billing = {
+        "stripe_subscription_id": "sub_x",
+        "stripe_customer_id": "cus_x",
+    }
+    assert requires_deployment_checkout_for_plan_change(billing) is True
+
+
+def test_requires_deployment_checkout_verified_live_uses_portal_path():
+    billing = {
+        "stripe_mode": "live",
+        "stripe_subscription_id": "sub_x",
+        "stripe_customer_id": "cus_x",
+    }
+    assert requires_deployment_checkout_for_plan_change(billing) is False
 
 
 def test_validate_portal_preflight_passes_verification_kwargs_to_customer():

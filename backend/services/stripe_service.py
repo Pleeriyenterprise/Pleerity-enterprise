@@ -351,6 +351,24 @@ class StripeService:
                 customer_email=client.get("contact_email") if client else None
             )
 
+        from services.stripe_mode_containment_service import requires_deployment_checkout_for_plan_change
+
+        if requires_deployment_checkout_for_plan_change(billing):
+            client = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "email": 1, "contact_email": 1, "customer_reference": 1},
+            )
+            customer_email = (client or {}).get("email") or (client or {}).get("contact_email")
+            result = await self.create_checkout_session(
+                client_id=client_id,
+                plan_code=new_plan_code,
+                origin_url=origin_url,
+                customer_email=customer_email,
+                customer_reference=(client or {}).get("customer_reference"),
+            )
+            result["plan_change_path"] = "deployment_checkout"
+            return result
+
         # Existing customer - send to portal with subscription_update_confirm so they
         # see the plan change confirmation for the requested plan, not the generic portal.
         stripe_customer_id = billing.get("stripe_customer_id")

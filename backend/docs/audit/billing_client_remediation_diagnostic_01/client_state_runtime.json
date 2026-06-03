@@ -1,0 +1,259 @@
+{
+  "audit_id": "BILLING-CLIENT-REMEDIATION-DIAGNOSTIC-01",
+  "generated_at": "2026-06-03T07:10:38.781159+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "client_email": "nancy@yopmail.com",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "mongo": {
+    "skipped": true,
+    "reason": "MONGO_URL not set"
+  },
+  "admin_billing_snapshot": {
+    "status": 200,
+    "body": {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "contact_name": "Confidence Marcel",
+      "contact_email": "confidence@yaho.co.uk",
+      "company_name": null,
+      "crn": "PLE-CVP-2026-000011",
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "plan_name": "Portfolio Landlord",
+      "max_properties": 10,
+      "current_property_count": 1,
+      "over_property_limit": false,
+      "subscription_status": "ACTIVE",
+      "entitlement_status": "ENABLED",
+      "onboarding_status": "PROVISIONED",
+      "stripe_customer_id": "cus_U17342UbP0YrQu",
+      "stripe_subscription_id": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+      "cancel_at_period_end": false,
+      "current_period_start": "2026-04-21T01:17:34",
+      "current_period_end": "2026-05-21T01:17:34",
+      "onboarding_fee_paid": true,
+      "latest_invoice_id": "in_1TOSwvCF0O5oqdUzq2o5HCi9",
+      "payment_failed_at": null,
+      "last_synced_at": "2026-04-29T06:45:09.957000",
+      "billing_record_exists": true,
+      "portal_user": {
+        "portal_user_id": "3f509fc0-163f-4ba6-8fb3-15ba09ef5aad",
+        "auth_email": "confidence@yaho.co.uk",
+        "password_status": "NOT_SET",
+        "created_at": "2026-02-21T15:10:17.200669+00:00",
+        "email": "confidence@yaho.co.uk"
+      },
+      "password_setup_complete": false,
+      "stripe_timeline": [
+        {
+          "event_id": "evt_1TOSwxCF0O5oqdUzDS5meE2S",
+          "type": "customer.subscription.updated",
+          "summary": "Subscription updated",
+          "status": "PROCESSED",
+          "created": "2026-04-21T01:18:05.815000",
+          "error_preview": null
+        },
+        {
+          "event_id": "evt_1TDEBECF0O5oqdUzhJxvPcO0",
+          "type": "customer.subscription.updated",
+          "summary": "Subscription updated",
+          "status": "PROCESSED",
+          "created": "2026-03-21T01:18:20.487000",
+          "error_preview": null
+        },
+        {
+          "event_id": "evt_1T34pDCF0O5oqdUzFGiNe5m2",
+          "type": "customer.subscription.created",
+          "summary": "Subscription created",
+          "status": "PROCESSED",
+          "created": "2026-02-21T01:17:39.592000",
+          "error_preview": null
+        },
+        {
+          "event_id": "evt_1T34pCCF0O5oqdUzWQuuyHHz",
+          "type": "checkout.session.completed",
+          "summary": "Checkout completed",
+          "status": "PROCESSED",
+          "created": "2026-02-21T01:17:39.303000",
+          "error_preview": null
+        }
+      ],
+      "checkout_receipt_ledger_count": 0,
+      "renewal_receipt_ledger_count": 0,
+      "subscription_payment_ledger_paid_count": 0,
+      "stripe_payment_evidence_webhook_count": 1,
+      "next_billing_date": "2026-05-21T01:17:34+00:00",
+      "last_stripe_invoice_id": "in_1TOSwvCF0O5oqdUzq2o5HCi9",
+      "created_at": "2026-02-21T01:16:47.222606+00:00",
+      "subscription_lifecycle": {
+        "has_subscription": true,
+        "stripe_subscription_id": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+        "stripe_customer_id": "cus_U17342UbP0YrQu",
+        "current_plan_code": "PLAN_2_PORTFOLIO",
+        "subscription_status": "ACTIVE",
+        "entitlement_status": "ENABLED",
+        "canonical_entitlement_state": "ENABLED",
+        "billing_lifecycle_state": "active",
+        "current_period_end": "2026-05-21T01:17:34+00:00",
+        "current_period_start": "2026-04-21T01:17:34+00:00",
+        "next_renewal_date": "2026-05-21T01:17:34+00:00",
+        "cancel_at_period_end": false,
+        "onboarding_fee_paid": true,
+        "grace_period_ends_at": null,
+        "payment_failed_at": null,
+        "charge_automatically": null,
+        "billing_last_synced_at": "2026-04-29T06:45:09.957000+00:00",
+        "billing_sync_state": "ok",
+        "latest_invoice_id": "in_1TOSwvCF0O5oqdUzq2o5HCi9",
+        "last_payment_at": null,
+        "last_payment_amount_pence": null,
+        "last_payment_status": null,
+        "last_payment_stripe_invoice_id": null,
+        "last_payment_invoice_number": null,
+        "last_payment_currency": null,
+        "last_payment_source_event_id": null,
+        "open_invoice_id": null,
+        "open_invoice_status": null,
+        "stripe_next_payment_attempt_at": null,
+        "last_invoice_failure_message": null,
+        "stripe_webhook_last_received_at": null,
+        "stripe_webhook_last_event_type": null,
+        "lifecycle_status_label": "Paid subscription active",
+        "plan_status_display": "Paid subscription active",
+        "billing_status_display": "Paid subscription active",
+        "billing_sync_visibility_note": "Last billing refresh: 2026-04-29T06:45:09.957000+00:00.",
+        "billing_operational_narrative_lines": [
+          "Access: Paid subscription active",
+          "Plan: Paid subscription active \u00b7 Billing: Paid subscription active",
+          "No last successful payment line in this view.",
+          "Next period on record: 21 May 2026 (depends on successful payment).",
+          "Last billing refresh: 2026-04-29T06:45:09.957000+00:00."
+        ],
+        "grace_period_summary": null
+      },
+      "billing_operational_narrative_lines": [
+        "Access: Paid subscription active",
+        "Plan: Paid subscription active \u00b7 Billing: Paid subscription active",
+        "No last successful payment line in this view.",
+        "Next period on record: 21 May 2026 (depends on successful payment).",
+        "Last billing refresh: 2026-04-29T06:45:09.957000+00:00."
+      ],
+      "billing_sync_visibility_note": "Last billing refresh: 2026-04-29T06:45:09.957000+00:00.",
+      "plan_status_display": "Paid subscription active",
+      "billing_status_display": "Paid subscription active",
+      "billing_last_synced_at": "2026-04-29T06:45:09.957000+00:00",
+      "billing_sync_state": "ok",
+      "retry_state_label": "No retry in progress",
+      "next_retry_at_utc": null,
+      "grace_period_ends_at_utc": null,
+      "stripe_sync_state_label": "Up to date",
+      "stripe_sync_updated_at_utc": "2026-04-29T06:45:09.957000+00:00",
+      "billing_reconciliation_needed": false,
+      "billing_reconciliation_reason": null,
+      "billing_reconciliation_marked_at": null,
+      "stripe_subscription_status": "ACTIVE",
+      "canonical_entitlement_state": "ENABLED",
+      "lifecycle_status_label": "Paid subscription active",
+      "last_payment_at": null,
+      "last_payment_amount_pence": null,
+      "last_payment_status": null,
+      "last_payment_stripe_invoice_id": null,
+      "last_payment_invoice_number": null,
+      "last_payment_currency": null,
+      "last_payment_source_event_id": null,
+      "open_invoice_id": null,
+      "open_invoice_status": null,
+      "stripe_next_payment_attempt_at": null,
+      "last_invoice_failure_message": null,
+      "stripe_webhook_last_received_at": null,
+      "stripe_webhook_last_event_type": null,
+      "payment_reconciliation": {
+        "subscription_payment_ledger_paid_row_count": 0,
+        "stripe_payment_related_webhook_row_count": 1,
+        "stripe_evidence_but_no_payment_ledger_rows": true,
+        "active_subscription_but_no_payment_ledger_rows": true,
+        "action_hint": "Run payment ledger reconciliation (admin) to materialize paid-invoice ledger rows from stored webhook pointers / Stripe invoices."
+      },
+      "billing_attention_items": [
+        {
+          "code": "password_setup_pending",
+          "severity": "medium",
+          "message": "Portal admin has not completed password setup."
+        },
+        {
+          "code": "no_subscription_checkout_receipt",
+          "severity": "low",
+          "message": "Subscription on file but no subscription checkout PDF in ledger (legacy or out-of-band Stripe)."
+        }
+      ],
+      "billing_anomaly_flags": [
+        "password_setup_pending",
+        "no_subscription_checkout_receipt"
+      ]
+    }
+  },
+  "recovery_dashboard_row": {
+    "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+    "client_label": "Confidence Marcel",
+    "crn": "PLE-CVP-2026-000011",
+    "remediation_code": "MODE_UNVERIFIED",
+    "operational_risk": "high",
+    "billing_status": "ACTIVE",
+    "entitlement_status": "ENABLED",
+    "recommended_action": "REGENERATE_CHECKOUT_REQUIRED",
+    "recovery_state": "RECOVERY_RESOLVED",
+    "owner": null,
+    "assigned_at": null,
+    "escalation_state": "unresolved_backlog",
+    "last_checkout": "2026-02-21T01:16:52.454000",
+    "last_webhook": "2026-04-21T01:18:05.815000",
+    "last_recovery_action": "recovery_closeout",
+    "recovery_age_days": 0,
+    "customer_safe_message": "Your billing record needs to be refreshed before plan changes can continue."
+  },
+  "stripe_mode_remediation": {
+    "status": 200,
+    "body": {
+      "found": true,
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "deployment_mode": "live",
+      "billing_identifiers": {
+        "stripe_subscription_id": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+        "stripe_customer_id": "cus_U17342UbP0YrQu"
+      },
+      "stored_stripe_mode": "test",
+      "stored_stripe_customer_mode": "test",
+      "verification_status": null,
+      "confidence": "authoritative",
+      "resolution": {
+        "stripe_mode": "test",
+        "stripe_mode_verification_source": "admin_verified",
+        "stripe_mode_confidence": "authoritative",
+        "inferred_mode_source": "persisted_authoritative",
+        "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+        "found": true,
+        "stripe_mode_verified_at": "2026-06-03T07:11:13.937450+00:00",
+        "stripe_mode_last_checked_at": "2026-06-03T07:11:13.937450+00:00",
+        "remediation_code": "LEGACY_TEST_SUBSCRIPTION",
+        "operational_risk": "critical",
+        "recommended_remediation_path": "Legacy test subscription in live deployment \u2014 regenerate checkout in live mode; do not auto-migrate subscription."
+      },
+      "remediation_code": "LEGACY_TEST_SUBSCRIPTION",
+      "operational_risk": "critical",
+      "recommended_remediation_path": "Legacy test subscription in live deployment \u2014 regenerate checkout in live mode; do not auto-migrate subscription.",
+      "allowed_admin_actions": [
+        "regenerate_checkout_in_deployment_mode",
+        "portal_relink",
+        "explicit_admin_mode_remediation",
+        "backfill_dry_run",
+        "backfill_execute_authoritative_only"
+      ],
+      "forbidden_actions": [
+        "automatic_subscription_migration",
+        "automatic_cancellation",
+        "automatic_recreation",
+        "silent_environment_switch"
+      ],
+      "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+    }
+  },
+  "error": "Client error '401 Unauthorized' for url 'https://pleerity-enterprise.onrender.com/api/auth/login'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401"
+}

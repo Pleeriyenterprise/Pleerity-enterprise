@@ -303,6 +303,43 @@ async def test_regenerate_mode_unverified_billing_row_uses_deployment_checkout()
 
 
 @pytest.mark.asyncio
+async def test_create_upgrade_session_mode_unverified_uses_deployment_checkout():
+    """Client /billing/checkout must not run portal preflight on MODE_UNVERIFIED rows."""
+    from services.stripe_service import StripeService
+
+    mock_db = MagicMock()
+    mock_db.client_billing.find_one = AsyncMock(
+        return_value={
+            "client_id": "c1",
+            "stripe_mode_verification_status": "MODE_UNVERIFIED",
+            "stripe_subscription_id": "sub_live_legacy",
+            "stripe_customer_id": "cus_live_legacy",
+        }
+    )
+    mock_db.clients.find_one = AsyncMock(
+        return_value={"client_id": "c1", "email": "client@example.com", "customer_reference": "CRN-TEST"}
+    )
+
+    svc = StripeService()
+    svc.create_checkout_session = AsyncMock(
+        return_value={"session_id": "cs_plan_change", "checkout_url": "https://checkout.example/plan"}
+    )
+
+    with patch("services.stripe_service.database.get_db", return_value=mock_db):
+        with patch("services.stripe_service.get_stripe_mode", return_value="live"):
+            with patch("services.stripe_service.configure_stripe_sdk"):
+                result = await svc.create_upgrade_session(
+                    client_id="c1",
+                    new_plan_code="PLAN_2_PORTFOLIO",
+                    origin_url="https://app.example/settings/billing",
+                )
+
+    svc.create_checkout_session.assert_awaited_once()
+    assert result["plan_change_path"] == "deployment_checkout"
+    assert result["session_id"] == "cs_plan_change"
+
+
+@pytest.mark.asyncio
 async def test_continuation_email_rate_limit_blocks_at_three():
     from services.billing_recovery_service import _send_continuation_email
 
