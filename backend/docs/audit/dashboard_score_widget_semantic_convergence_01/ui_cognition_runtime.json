@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-06-03T22:41:06.076253+00:00",
+  "honest_labels_required": true,
+  "issues": [
+    {
+      "label": "Requirements",
+      "current": "Requirements",
+      "problem": "Shows 43 while registry shows 49 tracked items",
+      "suggested": "Score-tracked obligations (after dedupe) or show both counts"
+    },
+    {
+      "label": "Valid",
+      "current": "Valid",
+      "problem": "Uses COMPLIANT/VALID status, not lifecycle verified count",
+      "suggested": "Valid (compliance status) or align count with lifecycle"
+    }
+  ],
+  "compliance_score_page_uses_tracked_items": true,
+  "dashboard_widget_uses_requirements": true,
+  "label_inconsistency_across_surfaces": true
+}

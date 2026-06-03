@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-06-03T22:41:06.075706+00:00",
+  "days_until_next_expiry": 5,
+  "nearest_requirement": {
+    "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "requirement_type": "occupation_contract",
+    "status": "PENDING",
+    "due_date": "2026-06-04T19:37:36.082901+00:00",
+    "days_until": 0,
+    "date_source": "due_date_or_extracted"
+  },
+  "classification": "operational_expiry_window",
+  "findings": {
+    "uses_future_effective_expiry": true,
+    "includes_estimated_dates": true,
+    "excludes_overdue_for_min_calc": true,
+    "misleading_label_when_days_gt_365": false,
+    "requirements_page_expiring_soon_zero": true
+  },
+  "note": "Label 'Days to Next Expiry' implies operational urgency; values >365d are renewal forecasts, not active expiries."
+}

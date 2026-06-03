@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-06-03T22:41:06.074078+00:00",
+  "widget_requirements_count": 43,
+  "registry_tracked_count": 49,
+  "delta": 6,
+  "is_drift": true,
+  "is_intentional_filtering": true,
+  "intentional_reasons": [
+    "Backend portal stats apply alias-family dedupe per property (fire_detection, deposit, etc.)",
+    "Requirements page counts FE tracked rows without alias dedupe",
+    "Widget Valid uses COMPLIANT/VALID status; Requirements Valid uses lifecycle VERIFIED/SATISFIED_UNVERIFIED"
+  ],
+  "widget_valid": 1,
+  "registry_valid_lifecycle": 3,
+  "valid_delta": 2,
+  "valid_is_drift": true,
+  "conclusion": "Counts differ by design (dedupe + status semantics) but UI labels do not disclose the distinction"
+}

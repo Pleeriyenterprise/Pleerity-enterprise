@@ -1,0 +1,27 @@
+{
+  "programme": "DASHBOARD-SCORE-WIDGET-SEMANTIC-CONVERGENCE-01",
+  "documented_at": "2026-06-03T22:41:00+00:00",
+  "intended_model": {
+    "chain": ["Requirement obligation", "Property score (persisted v2)", "Portfolio score (mean)", "Dashboard widgets"],
+    "quick_actions_widget": {
+      "requirements_count": "Portal-runtime rows after filter + alias dedupe — score projection scope",
+      "valid_count": "Rows with compliance status COMPLIANT or VALID in that projection",
+      "days_to_next": "Minimum future days to effective_expiry_date among COMPLIANT/VALID/PENDING/EXPIRING_SOON rows",
+      "quick_action_cards": "Persisted compliance_top_next_actions from last property recalc"
+    },
+    "requirements_registry_page": {
+      "tracked_count": "All client_surface_visible tracked DOCUMENT/JOB rows — no alias dedupe on list API",
+      "valid_count": "Lifecycle VERIFIED or SATISFIED_UNVERIFIED"
+    }
+  },
+  "rules": {
+    "do_not_equate_counts": "Widget stats ≠ Requirements page totals unless labels state projection scope",
+    "disclose_dedupe": "Alias families (smoke/CO/fire) collapse to one row per property in score stats",
+    "disclose_date_authority": "Distinguish confirmed expiry vs estimated renewal in expiry KPI",
+    "do_not_hide_estimated_renewal": "Far-future dates (e.g. 1709d) are forecasts — label as estimated renewal not urgent expiry"
+  },
+  "observed_ui_example": {
+    "note": "User screenshot: 2-property client showed 11 Requirements vs 13 tracked on Requirements page; 4 Valid vs 12 Valid; 1709 Days to Next Expiry with 0 expiring soon",
+    "mechanism": "Same as staging probe pattern: dedupe + status semantics + far-future effective expiry"
+  }
+}

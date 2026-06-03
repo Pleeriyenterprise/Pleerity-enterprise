@@ -1,0 +1,57 @@
+{
+  "programme": "DASHBOARD-SCORE-WIDGET-SEMANTIC-CONVERGENCE-01",
+  "generated_at": "2026-06-03T22:40:35.695322+00:00",
+  "widgets": {
+    "quick_actions_stats_requirements": {
+      "ui": "ClientDashboard.js stats row \u2014 complianceScore.stats.total_requirements",
+      "api": "GET /api/client/compliance-score \u2192 stats.total_requirements",
+      "backend": "compliance_score.calculate_compliance_score",
+      "derivation_chain": [
+        "filter_requirement_rows_for_client_runtime_surfaces (planner + jurisdiction + NOT_REQUIRED gates)",
+        "enrich_requirements_for_client",
+        "project_requirement_row_client_runtime",
+        "client_portal_surface_visible_row filter",
+        "compute_client_portal_requirement_stats(portal_reqs)"
+      ],
+      "meaning": "Count of portal-visible runtime rows AFTER alias-family dedupe per property",
+      "authority": "derived_live_projection",
+      "not_same_as": "Requirements page raw tracked count (no backend alias dedupe on FE list)"
+    },
+    "quick_actions_stats_valid": {
+      "ui": "ClientDashboard.js \u2014 complianceScore.stats.compliant",
+      "backend": "compute_client_portal_requirement_stats \u2014 status in (COMPLIANT, VALID)",
+      "meaning": "Legacy compliance status bucket, not lifecycle VERIFIED",
+      "authority": "derived_live_projection",
+      "not_same_as": "Requirements page stats.compliant uses lifecycle VERIFIED | SATISFIED_UNVERIFIED"
+    },
+    "days_until_next_expiry": {
+      "ui": "ClientDashboard.js \u2014 complianceScore.stats.days_until_next_expiry",
+      "backend": "calculate_compliance_score loop over portal_reqs",
+      "filter": "status in COMPLIANT, VALID, PENDING, EXPIRING_SOON with due_date >= today",
+      "due_date_source": "project_requirement_row_client_runtime \u2192 get_effective_expiry_date (evidence_authority effective_expiry, else confirmed/extracted/due_date)",
+      "meaning": "Minimum days until next future effective expiry among filtered rows",
+      "can_include": "estimated or provisional dates when no confirmed expiry",
+      "authority": "derived_live_projection",
+      "not_same_as": "Operational expiring-soon tile (expiring_soon count uses status EXPIRING_SOON only)"
+    },
+    "quick_action_cards": {
+      "ui": "complianceScore.recommendations.slice(0,3)",
+      "backend": "Aggregated property compliance_top_next_actions from persisted score recalc (v2 top_next_actions)",
+      "fallback": "Generic overdue/expiring_soon copy if no persisted actions",
+      "authority": "persisted_score_with_live_property_match"
+    },
+    "score_denominator_headline": {
+      "ui": "displayScoreInfo / complianceScore.score \u2014 portfolio mean of persisted property scores",
+      "backend": "aggregate_persisted_portfolio_headline + calculate_compliance_score",
+      "authority": "persisted_portfolio_aggregate"
+    },
+    "dashboard_score_card_breakdown": {
+      "ui": "complianceScore.components / bucket percents from persisted compliance_bucket_breakdown",
+      "authority": "persisted_property_score"
+    },
+    "compliance_top_next_actions": {
+      "persist": "compliance_scoring_service.recalculate_and_persist \u2192 compliance_top_next_actions",
+      "source": "compliance_scoring_v2 compute_property_score_v2 top_next_actions"
+    }
+  }
+}

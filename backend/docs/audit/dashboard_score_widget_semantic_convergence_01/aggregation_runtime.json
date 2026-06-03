@@ -1,0 +1,92 @@
+{
+  "generated_at": "2026-06-03T22:41:06.072076+00:00",
+  "properties_count": 7,
+  "dashboard_widget": {
+    "total_requirements": 43,
+    "compliant": 1,
+    "expiring_soon": 0,
+    "overdue": 0,
+    "days_until_next_expiry": 5,
+    "nearest_expiry_type": "hmo_license"
+  },
+  "requirements_registry": {
+    "raw_rows": 49,
+    "fe_tracked_attention_count": 49,
+    "fe_valid_lifecycle_count": 3
+  },
+  "deltas": {
+    "registry_vs_widget_requirements": 6,
+    "lifecycle_valid_vs_widget_valid": 2
+  },
+  "nearest_expiry_probe": [
+    {
+      "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "requirement_type": "occupation_contract",
+      "status": "PENDING",
+      "due_date": "2026-06-04T19:37:36.082901+00:00",
+      "days_until": 0,
+      "date_source": "due_date_or_extracted"
+    },
+    {
+      "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "requirement_type": "scotland_landlord_registration",
+      "status": "PENDING",
+      "due_date": "2026-06-09T12:56:05.461665+00:00",
+      "days_until": 5,
+      "date_source": "due_date_or_extracted"
+    },
+    {
+      "requirement_id": "b2f4cc3b-5a10-4274-b6fb-83f0f4681385",
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "requirement_type": "hmo_license",
+      "status": "PENDING",
+      "due_date": "2026-06-09T12:56:02.373263+00:00",
+      "days_until": 5,
+      "date_source": "due_date_or_extracted"
+    },
+    {
+      "requirement_id": "91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "requirement_type": "landlord_registration_ni",
+      "status": "PENDING",
+      "due_date": "2026-06-09T12:56:02.373263+00:00",
+      "days_until": 5,
+      "date_source": "due_date_or_extracted"
+    },
+    {
+      "requirement_id": "0b317b5b-a760-4f76-baf0-9cbee75f983e",
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "requirement_type": "hmo_license",
+      "status": "PENDING",
+      "due_date": "2026-06-09T12:56:03.988427+00:00",
+      "days_until": 5,
+      "date_source": "due_date_or_extracted"
+    }
+  ],
+  "expiry_match_api": false,
+  "recommendations_sample": [
+    {
+      "priority": "high",
+      "action": "Upload and verify evidence for Gas Safety Certificate (CP12)",
+      "impact": "+15 points",
+      "requirement_code": "GAS_SAFETY",
+      "display_label": "Gas Safety Certificate (CP12)"
+    },
+    {
+      "priority": "high",
+      "action": "Upload and verify evidence for Electrical Installation Condition Report (EICR)",
+      "impact": "+15 points",
+      "requirement_code": "EICR",
+      "display_label": "Electrical Installation Condition Report (EICR)"
+    },
+    {
+      "priority": "high",
+      "action": "Upload and verify evidence for Gas Safety Certificate (CP12)",
+      "impact": "+15 points",
+      "requirement_code": "GAS_SAFETY",
+      "display_label": "Gas Safety Certificate (CP12)"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-06-03T22:41:06.077253+00:00",
+  "redesign_scoring": false,
+  "minimal_fixes": [
+    {
+      "scope": "frontend/ClientDashboard.js",
+      "type": "label_clarification",
+      "change": "Score-tracked obligations (after dedupe) or show both counts",
+      "priority": "p1"
+    },
+    {
+      "scope": "frontend/ClientDashboard.js",
+      "type": "label_clarification",
+      "change": "Valid (compliance status) or align count with lifecycle",
+      "priority": "p1"
+    },
+    {
+      "scope": "frontend/ClientDashboard.js",
+      "type": "tooltip",
+      "change": "Explain stats come from score projection (alias dedupe + compliance status), link to Requirements for full registry",
+      "priority": "p1"
+    }
+  ],
+  "no_count_inflation": true
+}
