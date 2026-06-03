@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-06-03T07:32:28.946083+00:00",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "expected_commit_prefix": "c9cbeae5",
+  "version_probe": {
+    "attempt": 1,
+    "status": 200,
+    "body": {
+      "commit_sha": "c9cbeae5fc24008e23ab7ef7b95847b10c793dbf",
+      "environment": "production"
+    }
+  },
+  "deploy_commit": "c9cbeae5fc24008e23ab7ef7b95847b10c793dbf",
+  "deploy_matches": true,
+  "pass": true
+}

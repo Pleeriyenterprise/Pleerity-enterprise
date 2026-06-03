@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-03T07:33:29.861423+00:00",
+  "frontend_base": "https://pleerityenterprise.co.uk",
+  "portal_email": "confidence@yaho.co.uk",
+  "password_setup_complete": false,
+  "browser": {
+    "captured": false
+  },
+  "skipped_reason": "portal_password_not_set_or_no_probe_password",
+  "api_ux_proxy": {
+    "note": "Customer UX requires portal password; admin snapshot shows password_setup_complete=False"
+  },
+  "pass": false
+}

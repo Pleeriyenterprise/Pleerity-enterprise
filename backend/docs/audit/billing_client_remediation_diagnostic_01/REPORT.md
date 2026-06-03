@@ -1,32 +1,52 @@
-# BILLING-CLIENT-REMEDIATION-DIAGNOSTIC-01 — REPORT
+# BILLING-CLIENT-REMEDIATION — Post-deploy verification
 
-Generated: 2026-06-03T07:11:20.158385+00:00
-
-## Classification
-
-**STRIPE_MODE_DRIFT**
+**Programme:** BILLING-CLIENT-REMEDIATION-POST-DEPLOY-VERIFY-01  
+**Generated:** 2026-06-03T07:33:55+00:00  
+**Classification:** **PARTIAL**
 
 ## Client
 
 - **client_id:** `80f83edd-ba12-41ed-929a-bbaf8c696a23`
-- **probe account:** `nancy@yopmail.com` (Confidence Marcel / Solo Landlord staging)
+- **CRN:** `PLE-CVP-2026-000011`
+- **Portal:** `confidence@yaho.co.uk` (password setup **not complete**)
 
-## Root cause
+## Deploy
 
-Client self-serve plan changes call `create_upgrade_session` → `validate_portal_billing_preflight`, which blocks when `stripe_mode_verification_status` is `MODE_UNVERIFIED` (missing authoritative `stripe_mode` on `client_billing`).
+- `/api/version` → `c9cbeae5fc24008e23ab7ef7b95847b10c793dbf` (matches fix commit)
 
-Admin recovery **regenerate-checkout** was fixed to use deployment Checkout; **client `/billing/checkout` was not**, so refresh/regenerate attempts did not unblock the password-confirm upgrade UX.
+## Plan change (POST `/api/billing/checkout`)
 
-## Safe remediation
+| Check | Result |
+|--------|--------|
+| Affected client direct API | Blocked — portal login 401 (no password) |
+| Proxy drift cohort (`nancy@yopmail.com`) | **200**, `plan_change_path: deployment_checkout`, checkout URL present |
+| Refresh-block copy on proxy path | **Absent** |
+| `requires_deployment_checkout` for affected row | **true** (stored `test`, deployment `live`) |
 
-1. **Code:** `requires_deployment_checkout_for_plan_change` shared helper; client checkout uses deployment Checkout when MODE_UNVERIFIED (same as recovery).
-2. **Data (when authoritative):** `POST /admin/billing/stripe-mode-backfill` with `dry_run=false` when webhook/checkout evidence resolves live mode.
+Deployed code routes test/live drift through **deployment Checkout**, not portal preflight. Same path applies to the affected client once the portal can authenticate.
 
-## Validation
+## Admin recovery
 
-- Checkout probe: `n/a`
-- Portal probe: `n/a`
+- Stripe remediation guidance: `VERIFIED_OPERATIONALLY` (live checkout session evidence after prior regeneration activity)
+- Recovery dashboard row still shows stale `MODE_UNVERIFIED` while case is `RECOVERY_RESOLVED` — dashboard metadata lag, not billing API blocker
+- `regenerate-checkout` returns **409** when case is `RECOVERY_RESOLVED` (expected; reopen required for another admin regeneration)
 
-## Evidence
+## Customer UX
 
-See `preflight_runtime.json`, `client_state_runtime.json`, `remediation_runtime.json`.
+- Browser proof **skipped** — `password_setup_complete: false` for portal admin
+- No screenshot captured
+
+## Safety
+
+- Legacy subscription id unchanged during probes
+- No blind subscription mutation
+- Containment preserved (no mode bypass, no force-set)
+
+## Regression
+
+- `test_stripe_mode_containment.py` — pass
+- `test_billing_recovery_operations.py` — pass
+
+## Verdict
+
+**PARTIAL** — deploy and deployment-checkout routing verified on staging; affected customer UX pending portal password setup and checkout completion.

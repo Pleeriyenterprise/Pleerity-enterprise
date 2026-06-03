@@ -1,0 +1,80 @@
+{
+  "verified_at": "2026-06-03T07:32:30.175383+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "crn": "PLE-CVP-2026-000011",
+  "stripe_mode_remediation": {
+    "status": 200,
+    "body": {
+      "found": true,
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "deployment_mode": "live",
+      "billing_identifiers": {
+        "stripe_subscription_id": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+        "stripe_customer_id": "cus_U17342UbP0YrQu"
+      },
+      "stored_stripe_mode": "test",
+      "stored_stripe_customer_mode": "test",
+      "verification_status": null,
+      "confidence": "authoritative",
+      "resolution": {
+        "stripe_mode": "live",
+        "stripe_mode_verification_source": "checkout_session",
+        "stripe_mode_confidence": "authoritative",
+        "inferred_mode_source": "checkout_session",
+        "evidence_session_id": "cs_live_a1Ba4kORuG4wMIVrXQjWXzxxYD5snaFHZ5PTMzw7k39YLCYaaPJ8fQFecV",
+        "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+        "found": true,
+        "stripe_mode_verified_at": "2026-06-03T07:32:31.322440+00:00",
+        "stripe_mode_last_checked_at": "2026-06-03T07:32:31.322440+00:00",
+        "remediation_code": "VERIFIED_OPERATIONALLY",
+        "operational_risk": "none",
+        "recommended_remediation_path": "No remediation required."
+      },
+      "remediation_code": "VERIFIED_OPERATIONALLY",
+      "operational_risk": "none",
+      "recommended_remediation_path": "No remediation required.",
+      "allowed_admin_actions": [
+        "regenerate_checkout_in_deployment_mode",
+        "portal_relink",
+        "explicit_admin_mode_remediation",
+        "backfill_dry_run",
+        "backfill_execute_authoritative_only"
+      ],
+      "forbidden_actions": [
+        "automatic_subscription_migration",
+        "automatic_cancellation",
+        "automatic_recreation",
+        "silent_environment_switch"
+      ],
+      "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+    }
+  },
+  "probe_email": "confidence@yaho.co.uk",
+  "password_setup_complete": false,
+  "client_checkout_probes": {
+    "client_login": {
+      "status": 401,
+      "email": "confidence@yaho.co.uk"
+    },
+    "checkout": null,
+    "downgrade_probe": null
+  },
+  "pass": true,
+  "pass_via_admin_regenerate_fallback": false,
+  "admin_regenerate_checkout": {
+    "status": 409,
+    "regeneration_path": null,
+    "has_checkout_url": false,
+    "blocked_refresh_copy": false
+  },
+  "proxy_deploy_smoke": {
+    "email": "nancy@yopmail.com",
+    "note": "Same deployed create_upgrade_session path for test/live drift cohort",
+    "status": 200,
+    "plan_change_path": "deployment_checkout",
+    "checkout_url_present": true,
+    "blocked_refresh_copy": false
+  },
+  "pass_via_proxy_drift_cohort": true,
+  "affected_client_requires_deployment_checkout": true
+}

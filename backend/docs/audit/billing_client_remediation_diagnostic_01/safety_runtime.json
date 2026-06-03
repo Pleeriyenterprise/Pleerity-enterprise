@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-03T07:33:32.642258+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "subscription_id_before": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+  "orphaned_checkouts_for_client": 0,
+  "orphaned_sample": [],
+  "checks": {
+    "no_blind_subscription_mutation": true,
+    "subscription_id_unchanged_in_probe_window": true,
+    "deployment_checkout_expected_mode": "live",
+    "containment_preserved": true
+  },
+  "pass": true
+}

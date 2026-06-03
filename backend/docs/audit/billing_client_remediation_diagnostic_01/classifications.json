@@ -1,13 +1,20 @@
 {
-  "marker": "BILLING-CLIENT-REMEDIATION-DIAGNOSTIC-01",
-  "generated_at": "2026-06-03T07:11:20.154383+00:00",
-  "classification": "STRIPE_MODE_DRIFT",
+  "marker": "BILLING-CLIENT-REMEDIATION-POST-DEPLOY-VERIFY-01",
+  "generated_at": "2026-06-03T07:33:55.088915+00:00",
+  "classification": "PARTIAL",
   "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "crn": "PLE-CVP-2026-000011",
+  "fix_commit": "c9cbeae5",
   "gates": {
-    "root_cause_identified": true,
-    "code_fix_tests_pass": true,
-    "checkout_probe_status": null,
-    "portal_preflight_post_remediation": null,
-    "safe_remediation_executed": false
+    "deploy_verified": true,
+    "plan_change_deployment_checkout": true,
+    "client_checkout_200": false,
+    "no_refresh_block_copy": true,
+    "admin_recovery_aligned": true,
+    "customer_ux_pass": false,
+    "safety_pass": true,
+    "regression_pass": true,
+    "proxy_drift_cohort_deployment_checkout": true,
+    "affected_client_requires_deployment_checkout": true
   }
 }

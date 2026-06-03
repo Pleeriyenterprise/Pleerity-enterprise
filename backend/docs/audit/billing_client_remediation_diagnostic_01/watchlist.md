@@ -1,7 +1,9 @@
 # Billing client remediation watchlist
 
-- [ ] Deploy checkout `deployment_checkout` path for MODE_UNVERIFIED clients
-- [ ] Re-run diagnostic with `--apply-safe-remediation` after deploy
-- [ ] Confirm `80f83edd-ba12-41ed-929a-bbaf8c696a23` upgrade/downgrade + portal on staging UI
-- [ ] Batch authoritative backfill for remaining MODE_UNVERIFIED backlog (webhook evidence)
-- [ ] Classification target: VERIFIED_OPERATIONALLY (current: **STRIPE_MODE_DRIFT**)
+- [x] Deploy `c9cbeae5` to staging/production
+- [x] Proxy drift cohort checkout returns `deployment_checkout` (no refresh-block copy)
+- [ ] Complete portal password setup for `confidence@yaho.co.uk` (client `80f83edd…`)
+- [ ] Re-run customer UX proof on `/settings/billing` after password set
+- [ ] Customer completes live deployment Checkout session to converge subscription
+- [ ] Sync recovery dashboard `remediation_code` with stripe-mode guidance (stale `MODE_UNVERIFIED` label)
+- [ ] Reclassify to **VERIFIED_OPERATIONALLY** when affected-client checkout + UX pass
