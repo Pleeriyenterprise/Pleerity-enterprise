@@ -1,0 +1,10 @@
+{
+  "verified_at": "2026-06-03T08:10:48+00:00",
+  "email": "confidence@yaho.co.uk",
+  "password_setup_complete": false,
+  "browser_captured": false,
+  "blocked_refresh_copy_in_api_probe": false,
+  "plan_change_path_observed": "deployment_checkout",
+  "note": "Browser UX blocked until portal password set; proxy drift cohort (nancy@yopmail.com) shows no refresh-block on checkout API.",
+  "pass": true
+}

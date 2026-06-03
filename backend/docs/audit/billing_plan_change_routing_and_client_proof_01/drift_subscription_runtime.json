@@ -1,0 +1,66 @@
+{
+  "verified_at": "2026-06-03T08:10:02.304468+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "stripe_mode_remediation": {
+    "found": true,
+    "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+    "deployment_mode": "live",
+    "billing_identifiers": {
+      "stripe_subscription_id": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+      "stripe_customer_id": "cus_U17342UbP0YrQu"
+    },
+    "stored_stripe_mode": "test",
+    "stored_stripe_customer_mode": "test",
+    "verification_status": null,
+    "confidence": "authoritative",
+    "resolution": {
+      "stripe_mode": "live",
+      "stripe_mode_verification_source": "checkout_session",
+      "stripe_mode_confidence": "authoritative",
+      "inferred_mode_source": "checkout_session",
+      "evidence_session_id": "cs_live_a1UpvGmxIETQiL948FEbTAU7Vp2boh958O7KD8RTWuxPo0PiXSXt7OFuRG",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "found": true,
+      "stripe_mode_verified_at": "2026-06-03T08:08:26.737222+00:00",
+      "stripe_mode_last_checked_at": "2026-06-03T08:08:26.737222+00:00",
+      "remediation_code": "VERIFIED_OPERATIONALLY",
+      "operational_risk": "none",
+      "recommended_remediation_path": "No remediation required."
+    },
+    "remediation_code": "VERIFIED_OPERATIONALLY",
+    "operational_risk": "none",
+    "recommended_remediation_path": "No remediation required.",
+    "allowed_admin_actions": [
+      "regenerate_checkout_in_deployment_mode",
+      "portal_relink",
+      "explicit_admin_mode_remediation",
+      "backfill_dry_run",
+      "backfill_execute_authoritative_only"
+    ],
+    "forbidden_actions": [
+      "automatic_subscription_migration",
+      "automatic_cancellation",
+      "automatic_recreation",
+      "silent_environment_switch"
+    ],
+    "customer_message": "Your billing record needs to be refreshed before plan changes can continue."
+  },
+  "requires_deployment_checkout": true,
+  "checkout_probe": {
+    "email": "nancy@yopmail.com",
+    "plan_code": "PLAN_3_PRO",
+    "login_status": 200,
+    "step_up_status": 200,
+    "checkout_status": 200,
+    "plan_change_path": "deployment_checkout",
+    "type": null,
+    "checkout_url_present": true,
+    "portal_url_present": false,
+    "blocked_refresh_copy": false,
+    "error_code": null,
+    "session_id_redacted": true,
+    "pass": true
+  },
+  "customer_copy_safe": true,
+  "pass": true
+}

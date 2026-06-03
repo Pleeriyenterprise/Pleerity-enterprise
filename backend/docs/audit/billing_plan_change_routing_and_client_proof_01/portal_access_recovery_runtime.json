@@ -1,0 +1,15 @@
+{
+  "verified_at": "2026-06-03T08:08:11.710855+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "action": "resend-setup",
+  "status": 502,
+  "body": {
+    "detail": {
+      "error_code": "EMAIL_SEND_FAILED",
+      "message": "[406] You tried to send to recipient(s) that have been marked as inactive. Found inactive addresses: confidence@yaho.co.uk. Inactive recipients are ones that have generated a hard bounce, a spam complaint, or a manual suppression.",
+      "template": "password-setup"
+    }
+  },
+  "pass": false,
+  "token_exposed_in_response": false
+}

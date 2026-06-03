@@ -1,0 +1,10 @@
+{
+  "verified_at": "2026-06-03T08:08:27.578138+00:00",
+  "subscription_id_before": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+  "subscription_id_after_probe": "sub_1T34pBCF0O5oqdUzlpPSkpJU",
+  "duplicate_subscription_created": false,
+  "legacy_subscription_mutated": false,
+  "stored_stripe_mode": "test",
+  "deployment_mode": "live",
+  "pass": true
+}

@@ -1,0 +1,18 @@
+{
+  "marker": "BILLING-PLAN-CHANGE-ROUTING-AND-CLIENT-PROOF-01",
+  "generated_at": "2026-06-03T08:10:48.440692+00:00",
+  "classification": "PARTIAL",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "gates": {
+    "routing_rules": true,
+    "portal_access": true,
+    "resend_setup": false,
+    "affected_client_login": false,
+    "affected_checkout_or_proxy": true,
+    "live_guardrail": true,
+    "drift_sample": true,
+    "admin_recovery": true,
+    "regression": true,
+    "checkout_safety": true
+  }
+}

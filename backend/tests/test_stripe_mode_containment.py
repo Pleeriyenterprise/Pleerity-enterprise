@@ -116,6 +116,18 @@ def test_requires_deployment_checkout_verified_live_uses_portal_path():
     assert requires_deployment_checkout_for_plan_change(billing) is False
 
 
+def test_requires_deployment_checkout_stored_test_on_live_deployment():
+    """Legacy test subscription row on live deployment must not use portal preflight."""
+    billing = {
+        "stripe_mode": "test",
+        "stripe_customer_mode": "test",
+        "stripe_subscription_id": "sub_legacy",
+        "stripe_customer_id": "cus_legacy",
+        "stripe_mode_confidence": "authoritative",
+    }
+    assert requires_deployment_checkout_for_plan_change(billing) is True
+
+
 def test_validate_portal_preflight_passes_verification_kwargs_to_customer():
     with pytest.raises(StripeModeDriftError) as exc:
         validate_portal_billing_preflight(

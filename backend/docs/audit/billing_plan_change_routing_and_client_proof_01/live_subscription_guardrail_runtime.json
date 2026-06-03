@@ -1,0 +1,175 @@
+{
+  "verified_at": "2026-06-03T08:09:56.758390+00:00",
+  "candidate_client_id": null,
+  "staging_stripe_mode_inventory_sample": [
+    {
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "stored_stripe_mode": "test",
+      "remediation_code": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "stored_stripe_mode": "test",
+      "remediation_code": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "stored_stripe_mode": "test",
+      "remediation_code": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "1af75ae2-1ea5-43e5-a680-1c349a307166",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "27d048c3-6113-4a83-b5ef-2811cb12c1eb",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "26fbbc0b-7422-45f5-8ff6-852270b99721",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "959eed26-a142-4899-b22c-6ccfe732c52c",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "422e2785-f168-416b-95e8-9149454fbc1c",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "9a7c8f82-7b28-4237-8a30-dc882a94fb5d",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "04ceda9f-dd72-4b70-a6f5-809bef1b7b6a",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "921716dc-b0e0-4284-9d0a-4acd140fa6ff",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "86fbd659-851d-457e-bcb7-080ef7dfe0c8",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "412c72a9-f840-4fb2-9a8d-d04e7ad9d85a",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "6aa7906f-ed85-4367-8ca4-6ef1bb76668f",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "stored_stripe_mode": "",
+      "remediation_code": "MODE_UNVERIFIED"
+    },
+    {
+      "client_id": "6a614499-047c-4e19-85da-3281498fd27c",
+      "stored_stripe_mode": "test",
+      "remediation_code": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "client_id": "a032036f-70a3-4fe5-b629-d9ce9c104165",
+      "stored_stripe_mode": "test",
+      "remediation_code": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "stored_stripe_mode": "test",
+      "remediation_code": "VERIFIED_OPERATIONALLY"
+    }
+  ],
+  "staging_note": "No staging row with stored_stripe_mode=live at probe time; guardrail uses unit test.",
+  "unit_test": {
+    "name": "test_create_upgrade_session_verified_live_uses_portal_not_deployment_checkout",
+    "exit_code": 0,
+    "pass": true
+  },
+  "routing_scenario_A_pass": true,
+  "pass": true,
+  "note": "Staging sample had no stored_stripe_mode=live subscribers; unit test + routing scenario A prove healthy live rows use portal path."
+}

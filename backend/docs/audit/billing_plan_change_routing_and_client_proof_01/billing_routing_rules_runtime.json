@@ -1,0 +1,49 @@
+{
+  "verified_at": "2026-06-03T08:08:08.288916+00:00",
+  "source_files": [
+    "services/stripe_service.py:create_upgrade_session",
+    "services/stripe_mode_containment_service.py:requires_deployment_checkout_for_plan_change",
+    "services/stripe_mode_containment_service.py:validate_portal_billing_preflight"
+  ],
+  "create_upgrade_session_flow": [
+    "create_upgrade_session loads client_billing",
+    "if no stripe_customer_id \u2192 create_checkout_session (D)",
+    "if requires_deployment_checkout_for_plan_change \u2192 create_checkout_session + plan_change_path=deployment_checkout (B,C)",
+    "else validate_stripe_subscription_mode + validate_portal_billing_preflight \u2192 portal subscription_update_confirm (A)"
+  ],
+  "scenarios": {
+    "A_verified_live_on_live_deployment": {
+      "requires_deployment_checkout": false,
+      "expected_requires_deployment_checkout": false,
+      "match": true,
+      "expected_path": "billing_portal_subscription_update_confirm",
+      "portal_preflight_ok_when_not_deployment": true,
+      "portal_preflight_error": null
+    },
+    "B_stored_test_on_live_deployment": {
+      "requires_deployment_checkout": true,
+      "expected_requires_deployment_checkout": true,
+      "match": true,
+      "expected_path": "deployment_checkout",
+      "portal_preflight_ok_when_not_deployment": null,
+      "portal_preflight_error": null
+    },
+    "C_mode_unverified": {
+      "requires_deployment_checkout": true,
+      "expected_requires_deployment_checkout": true,
+      "match": true,
+      "expected_path": "deployment_checkout",
+      "portal_preflight_ok_when_not_deployment": null,
+      "portal_preflight_error": null
+    },
+    "D_no_subscription_no_customer": {
+      "requires_deployment_checkout": true,
+      "expected_requires_deployment_checkout": true,
+      "match": true,
+      "expected_path": "create_checkout_session_new_customer",
+      "portal_preflight_ok_when_not_deployment": null,
+      "portal_preflight_error": null
+    }
+  },
+  "pass": true
+}

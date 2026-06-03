@@ -303,6 +303,61 @@ async def test_regenerate_mode_unverified_billing_row_uses_deployment_checkout()
 
 
 @pytest.mark.asyncio
+async def test_create_upgrade_session_verified_live_uses_portal_not_deployment_checkout(monkeypatch):
+    """Healthy live subscriber must use portal plan-change path, not recovery checkout."""
+    from services.stripe_service import StripeService
+
+    monkeypatch.setenv("STRIPE_MODE", "live")
+    monkeypatch.setenv("STRIPE_SECRET_KEY_LIVE", "sk_live_test_guardrail")
+
+    mock_db = MagicMock()
+    mock_db.client_billing.find_one = AsyncMock(
+        return_value={
+            "client_id": "c_live",
+            "stripe_mode": "live",
+            "stripe_customer_mode": "live",
+            "stripe_mode_confidence": "authoritative",
+            "stripe_subscription_id": "sub_live_ok",
+            "stripe_customer_id": "cus_live_ok",
+            "current_plan_code": "PLAN_1_SOLO",
+        }
+    )
+    mock_db.clients.find_one = AsyncMock(return_value={"client_id": "c_live"})
+
+    svc = StripeService()
+    svc.create_checkout_session = AsyncMock(side_effect=Exception("deployment checkout must not run"))
+
+    mock_portal = MagicMock()
+    mock_portal.url = "https://billing.stripe.com/portal/test"
+    mock_sub = MagicMock()
+    mock_sub.get = lambda k, d=None: {"data": [{"id": "si_1"}]} if k == "items" else d
+    mock_sub.__getitem__ = lambda self, k: mock_sub.get(k)
+
+    with patch("services.stripe_service.database.get_db", return_value=mock_db):
+        with patch("services.stripe_service.get_stripe_mode", return_value="live"):
+            with patch("services.stripe_service.configure_stripe_sdk"):
+                with patch("services.stripe_service.validate_stripe_subscription_mode", return_value={"ok": True}):
+                    with patch("services.stripe_service.validate_portal_billing_preflight", return_value={"ok": True}):
+                        with patch("services.stripe_service.stripe.Subscription.retrieve", return_value=mock_sub):
+                            with patch(
+                                "services.stripe_service.stripe.billing_portal.Session.create",
+                                return_value=mock_portal,
+                            ):
+                                with patch("services.stripe_service.get_stripe_price_mappings", return_value={"mappings": {"PLAN_2_PORTFOLIO": {"subscription_price_id": "price_live"}}}):
+                                    with patch("services.stripe_service.PlanCode") as pc:
+                                        pc.return_value = MagicMock(value="PLAN_2_PORTFOLIO")
+                                        result = await svc.create_upgrade_session(
+                                            client_id="c_live",
+                                            new_plan_code="PLAN_2_PORTFOLIO",
+                                            origin_url="https://app.example/settings/billing",
+                                        )
+
+    svc.create_checkout_session.assert_not_awaited()
+    assert result.get("type") == "billing_portal"
+    assert "plan_change_path" not in result or result.get("plan_change_path") != "deployment_checkout"
+
+
+@pytest.mark.asyncio
 async def test_create_upgrade_session_mode_unverified_uses_deployment_checkout():
     """Client /billing/checkout must not run portal preflight on MODE_UNVERIFIED rows."""
     from services.stripe_service import StripeService

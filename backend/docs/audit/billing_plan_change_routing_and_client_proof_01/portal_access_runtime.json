@@ -1,0 +1,17 @@
+{
+  "verified_at": "2026-06-03T08:08:11.710855+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "email": "confidence@yaho.co.uk",
+  "crn": "PLE-CVP-2026-000011",
+  "admin_snapshot_status": 200,
+  "contact_name": "Confidence Marcel",
+  "subscription_status": "ACTIVE",
+  "entitlement_status": "ENABLED",
+  "onboarding_status": "PROVISIONED",
+  "password_setup_complete": false,
+  "portal_user": {
+    "email": "confidence@yaho.co.uk",
+    "password_status": "NOT_SET"
+  },
+  "pass": true
+}

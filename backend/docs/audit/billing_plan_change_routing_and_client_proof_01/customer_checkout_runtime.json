@@ -1,0 +1,21 @@
+{
+  "verified_at": "2026-06-03T08:08:17.798449+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "proxy_drift_cohort": {
+    "email": "nancy@yopmail.com",
+    "plan_code": "PLAN_3_PRO",
+    "login_status": 200,
+    "step_up_status": 200,
+    "checkout_status": 200,
+    "plan_change_path": "deployment_checkout",
+    "type": null,
+    "checkout_url_present": true,
+    "portal_url_present": false,
+    "blocked_refresh_copy": false,
+    "error_code": null,
+    "session_id_redacted": true,
+    "pass": true
+  },
+  "note": "Affected client portal login unavailable; proxy drift cohort proves deployed routing.",
+  "pass": true
+}
