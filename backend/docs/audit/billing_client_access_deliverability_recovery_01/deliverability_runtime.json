@@ -1,0 +1,20 @@
+{
+  "verified_at": "2026-06-03T08:41:16.480715+00:00",
+  "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+  "crn": "PLE-CVP-2026-000011",
+  "portal_email_masked": "con***@yopmail.com",
+  "portal_email_hash": "7a5cf92fd6f466a0",
+  "password_setup_complete": false,
+  "password_status": "NOT_SET",
+  "onboarding_status": "PROVISIONED",
+  "subscription_status": "ACTIVE",
+  "entitlement_status": "ENABLED",
+  "resend_setup_probe": {
+    "status": 200,
+    "postmark_inactive_or_suppressed": false,
+    "error_code": null,
+    "message_redacted": ""
+  },
+  "postmark_deliverability_blocked": false,
+  "pass": true
+}

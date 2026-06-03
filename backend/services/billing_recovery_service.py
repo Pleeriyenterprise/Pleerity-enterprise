@@ -198,15 +198,33 @@ async def _enrich_case_row(client_id: str, case: Dict[str, Any]) -> Dict[str, An
     )
     ch = await db.checkout_sessions.find_one({"client_id": client_id}, {"_id": 0, "created_at": 1}, sort=[("created_at", -1)])
 
+    from services.stripe_mode_backfill_service import classify_remediation, resolve_authoritative_mode
+    from services.stripe_mode_authority import get_stripe_mode
+
+    deployment_mode = get_stripe_mode()
+    resolution = await resolve_authoritative_mode(client_id, billing=billing)
+    live_code, live_risk, live_path = classify_remediation(billing, resolution, deployment_mode=deployment_mode)
+    case_code = case.get("remediation_code")
+    display_code = live_code or case_code
+    display_action = remediation_code_to_recommended_action(
+        display_code,
+        subscription_status=billing.get("subscription_status"),
+        has_webhook=bool(wh),
+        has_checkout=bool(ch),
+    )
+    if live_path and live_code in ("LEGACY_TEST_SUBSCRIPTION", "REGENERATE_CHECKOUT_REQUIRED"):
+        display_action = live_path[:500]
+
     return {
         "client_id": client_id_text,
         "client_label": (client or {}).get("full_name") or client_id_text[:8] or "unknown",
         "crn": (client or {}).get("customer_reference"),
-        "remediation_code": case.get("remediation_code"),
-        "operational_risk": case.get("operational_risk"),
+        "remediation_code": display_code,
+        "case_remediation_code_stale": case_code if case_code and case_code != display_code else None,
+        "operational_risk": live_risk or case.get("operational_risk"),
         "billing_status": billing.get("subscription_status"),
         "entitlement_status": billing.get("entitlement_status"),
-        "recommended_action": case.get("recommended_action"),
+        "recommended_action": display_action,
         "recovery_state": case.get("recovery_state"),
         "owner": case.get("owner"),
         "assigned_at": case.get("assigned_at"),

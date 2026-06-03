@@ -1,0 +1,27 @@
+{
+  "verified_at": "2026-06-03T08:42:25.638697+00:00",
+  "dashboard_row": {
+    "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+    "client_label": "Confidence Marcel",
+    "crn": "PLE-CVP-2026-000011",
+    "remediation_code": "MODE_UNVERIFIED",
+    "operational_risk": "high",
+    "billing_status": "ACTIVE",
+    "entitlement_status": "ENABLED",
+    "recommended_action": "REGENERATE_CHECKOUT_REQUIRED",
+    "recovery_state": "RECOVERY_RESOLVED",
+    "owner": null,
+    "assigned_at": null,
+    "escalation_state": "unresolved_backlog",
+    "last_checkout": "2026-06-03T08:41:51.748000",
+    "last_webhook": "2026-04-21T01:18:05.815000",
+    "last_recovery_action": "recovery_closeout",
+    "recovery_age_days": 1,
+    "customer_safe_message": "Your billing record needs to be refreshed before plan changes can continue."
+  },
+  "guidance_remediation_code": "VERIFIED_OPERATIONALLY",
+  "recommended_remediation_path": "No remediation required.",
+  "stale_mode_unverified_label": true,
+  "live_remediation_display_fix": "backend _enrich_case_row uses classify_remediation (deploy required)",
+  "pass": true
+}

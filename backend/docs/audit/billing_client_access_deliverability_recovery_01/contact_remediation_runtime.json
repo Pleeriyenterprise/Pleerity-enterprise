@@ -1,0 +1,11 @@
+{
+  "verified_at": "2026-06-03T08:41:16.481703+00:00",
+  "old_email_masked": "con***@yaho.co.uk",
+  "old_email_hash": "dbff168cc81db073",
+  "new_email_masked": "con***@yopmail.com",
+  "new_email_hash": "7a5cf92fd6f466a0",
+  "governed_flow": "POST /api/admin/clients/{client_id}/actions/change-login-email",
+  "already_on_target_email": true,
+  "pass": true,
+  "note": "Portal login already uses deliverable target email from prior governed change."
+}

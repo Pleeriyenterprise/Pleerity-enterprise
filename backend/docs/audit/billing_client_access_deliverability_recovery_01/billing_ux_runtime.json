@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-03T08:41:42.224427+00:00",
+  "email_masked": "con***@yopmail.com",
+  "login_status": 200,
+  "step_up_status": 200,
+  "checkout": {
+    "status": 200,
+    "plan_change_path": "deployment_checkout",
+    "checkout_url_present": true,
+    "blocked_refresh_copy": false,
+    "jargon_safe": true
+  },
+  "pass": true
+}

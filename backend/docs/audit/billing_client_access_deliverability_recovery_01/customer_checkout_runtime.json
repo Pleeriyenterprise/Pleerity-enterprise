@@ -1,0 +1,11 @@
+{
+  "verified_at": "2026-06-03T08:41:52.116869+00:00",
+  "checkout": {
+    "status": 200,
+    "plan_change_path": "deployment_checkout",
+    "checkout_url_present": true,
+    "blocked_refresh_copy": false,
+    "jargon_safe": true
+  },
+  "pass": true
+}

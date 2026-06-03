@@ -1,0 +1,14 @@
+{
+  "marker": "BILLING-CLIENT-ACCESS-DELIVERABILITY-RECOVERY-01",
+  "generated_at": "2026-06-03T08:42:36.658362+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "gates": {
+    "deliverability_diagnosed": true,
+    "postmark_blocked_old_email": false,
+    "contact_remediation": true,
+    "password_setup": true,
+    "billing_ux": true,
+    "admin_dashboard": true,
+    "regression": true
+  }
+}
