@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-06-03T23:02:09.836987+00:00",
+  "labels": {
+    "obligations": "Score-tracked obligations",
+    "valid": "Valid for scoring",
+    "renewal": "Next renewal"
+  },
+  "tooltips_present": true,
+  "legacy_labels_removed": [
+    "Requirements",
+    "Valid",
+    "Days to Next Expiry"
+  ],
+  "implementation": "frontend/src/utils/dashboardScoreWidgetLabels.js + ClientDashboard.js"
+}

@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-06-03T23:02:09.837973+00:00",
+  "rules": {
+    "gt_365_confirmed": "1+ year",
+    "gt_365_estimated": "1+ year estimated",
+    "null": "No upcoming renewal",
+    "lte_365": "numeric days"
+  },
+  "raw_days_in_tooltip_only": true
+}

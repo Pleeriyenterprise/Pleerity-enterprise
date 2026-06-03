@@ -91,6 +91,19 @@ import {
   headlineScoreShowsOutOf100,
 } from '../utils/scoringHeadlineDisplay';
 import {
+  SCORE_WIDGET_LABEL_OBLIGATIONS,
+  SCORE_WIDGET_LABEL_RENEWAL,
+  SCORE_WIDGET_LABEL_VALID,
+  SCORE_WIDGET_TOOLTIP_OBLIGATIONS,
+  SCORE_WIDGET_TOOLTIP_RENEWAL,
+  SCORE_WIDGET_TOOLTIP_VALID,
+  countRegistryTrackedRequirements,
+  isAssuranceQuickAction,
+  quickActionSupportingCopy,
+  resolveQuickActionDisplayText,
+  resolveScoreWidgetRenewalDisplay,
+} from '../utils/dashboardScoreWidgetLabels';
+import {
   formatScoreLastCalculatedForUi,
   pickScoreLastCalculatedIso,
   portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
@@ -1015,6 +1028,21 @@ const ClientDashboard = () => {
   const portfolioRecalcPendingLine = useMemo(
     () => resolvePortfolioScoreRecalcPendingNote(complianceScore),
     [complianceScore],
+  );
+
+  const scoreWidgetRenewalDisplay = useMemo(
+    () =>
+      resolveScoreWidgetRenewalDisplay(
+        complianceScore?.stats?.days_until_next_expiry,
+        requirementsList,
+        complianceScore?.stats?.nearest_expiry_type,
+      ),
+    [complianceScore?.stats?.days_until_next_expiry, complianceScore?.stats?.nearest_expiry_type, requirementsList],
+  );
+
+  const registryTrackedCount = useMemo(
+    () => countRegistryTrackedRequirements(requirementsList),
+    [requirementsList],
   );
 
   // Missing-evidence bucket from canonical score stats (portal projection); no client-side pending+overdue sum.
@@ -2803,9 +2831,9 @@ const ClientDashboard = () => {
                   {(complianceScore?.recommendations ?? []).slice(0, 3).map((rec, idx) => {
                     let actionDisplay = rec.action || '';
                     const code = rec.requirement_code;
+                    const displayLbl = rec.display_label || (code ? requirementLabel(code) : '');
                     if (code && actionDisplay.includes(code)) {
-                      const lbl = rec.display_label || requirementLabel(code);
-                      actionDisplay = actionDisplay.split(code).join(lbl);
+                      actionDisplay = actionDisplay.split(code).join(displayLbl);
                     }
                     const codeLower = (code || '').toString().trim().toLowerCase();
                     const recPropertyId = normalizeRouteId(rec.property_id || rec.related_property_id);
@@ -2827,7 +2855,10 @@ const ClientDashboard = () => {
                     const bestReq = sorted[0] || null;
                     const bestRequirementId = recReqId || normalizeRouteId(bestReq?.requirement_id);
                     const bestPropertyId = recPropertyId || normalizeRouteId(bestReq?.property_id);
-                    const isAssuranceAction = /self-recorded|awaiting (platform )?verification/i.test(actionDisplay);
+                    actionDisplay = resolveQuickActionDisplayText(actionDisplay, bestReq, displayLbl, sorted);
+                    const isAssuranceAction =
+                      isAssuranceQuickAction(actionDisplay, bestReq) ||
+                      sorted.some((r) => isAssuranceQuickAction(actionDisplay, r));
                     const fixNowPath = buildEntityRoute(
                       {
                         requirement_id: bestRequirementId,
@@ -2855,9 +2886,7 @@ const ClientDashboard = () => {
                         <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800">{actionDisplay}</p>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {isAssuranceAction
-                            ? 'Score reflects assurance confidence — not an active legal breach.'
-                            : 'Completing this can help improve your score.'}
+                          {quickActionSupportingCopy(isAssuranceAction)}
                         </p>
                       </div>
                         <Button
@@ -2928,7 +2957,10 @@ const ClientDashboard = () => {
                   data-testid="stat-requirements"
                 >
                   <p className="text-2xl font-bold text-midnight-blue">{complianceScore?.stats?.total_requirements || 0}</p>
-                  <p className="text-xs text-gray-500">Requirements</p>
+                  <p className="text-xs text-gray-500 inline-flex items-center justify-center flex-wrap gap-0.5">
+                    {SCORE_WIDGET_LABEL_OBLIGATIONS}
+                    <DashboardKpiHint label={SCORE_WIDGET_LABEL_OBLIGATIONS}>{SCORE_WIDGET_TOOLTIP_OBLIGATIONS}</DashboardKpiHint>
+                  </p>
                 </div>
                 <div 
                   className="text-center cursor-pointer hover:bg-green-50 rounded-lg p-2 transition-colors"
@@ -2936,21 +2968,32 @@ const ClientDashboard = () => {
                   data-testid="stat-valid"
                 >
                   <p className="text-2xl font-bold text-green-600">{complianceScore?.stats?.compliant || 0}</p>
-                  <p className="text-xs text-gray-500">Valid</p>
+                  <p className="text-xs text-gray-500 inline-flex items-center justify-center flex-wrap gap-0.5">
+                    {SCORE_WIDGET_LABEL_VALID}
+                    <DashboardKpiHint label={SCORE_WIDGET_LABEL_VALID}>{SCORE_WIDGET_TOOLTIP_VALID}</DashboardKpiHint>
+                  </p>
                 </div>
                 <div 
                   className="text-center cursor-pointer hover:bg-amber-50 rounded-lg p-2 transition-colors"
                   onClick={() => navigate('/requirements?window=30&status=DUE_SOON')}
                   data-testid="stat-expiry"
+                  title={scoreWidgetRenewalDisplay.detail || scoreWidgetRenewalDisplay.ariaLabel}
                 >
-                  <p className="text-2xl font-bold text-amber-600">
-                    {complianceScore?.stats?.days_until_next_expiry !== null && complianceScore?.stats?.days_until_next_expiry !== undefined
-                      ? complianceScore?.stats?.days_until_next_expiry
-                      : KPI_NO_DATA}
+                  <p className="text-2xl font-bold text-amber-600" aria-label={scoreWidgetRenewalDisplay.ariaLabel}>
+                    {scoreWidgetRenewalDisplay.headline}
                   </p>
-                  <p className="text-xs text-gray-500">Days to Next Expiry</p>
+                  <p className="text-xs text-gray-500 inline-flex items-center justify-center flex-wrap gap-0.5">
+                    {SCORE_WIDGET_LABEL_RENEWAL}
+                    <DashboardKpiHint label={SCORE_WIDGET_LABEL_RENEWAL}>{SCORE_WIDGET_TOOLTIP_RENEWAL}</DashboardKpiHint>
+                  </p>
                 </div>
               </div>
+              {registryTrackedCount != null &&
+              registryTrackedCount !== (complianceScore?.stats?.total_requirements ?? 0) ? (
+                <p className="text-xs text-gray-500 mt-2 text-center" data-testid="score-widget-registry-context">
+                  {registryTrackedCount} tracked in Requirements
+                </p>
+              ) : null}
             </div>
           </div>
         )}

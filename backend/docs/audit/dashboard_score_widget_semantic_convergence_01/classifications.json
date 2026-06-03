@@ -1,12 +1,7 @@
 {
-  "programme": "DASHBOARD-SCORE-WIDGET-SEMANTIC-CONVERGENCE-01",
-  "classified_at": "2026-06-03T22:41:40.002076+00:00",
-  "classification": "COUNT_CONVERGENCE_DRIFT",
-  "checks": {
-    "regression_passed": true,
-    "count_explained": true,
-    "count_labels_honest": false,
-    "expiry_explained": true,
-    "expiry_labels_honest": true
-  }
+  "programme": "DASHBOARD-SCORE-WIDGET-LABEL-CONVERGENCE-01",
+  "classified_at": "2026-06-03T23:02:09.883635+00:00",
+  "classification": "FAIL_OPERATIONAL",
+  "prior_classification": "COUNT_CONVERGENCE_DRIFT",
+  "resolved": false
 }
