@@ -1,0 +1,53 @@
+{
+  "verified_at": "2026-06-03T09:50:39.135128+00:00",
+  "deployment_stripe_mode": "live",
+  "expected_monthly_gbp": {
+    "PLAN_1_SOLO": 19,
+    "PLAN_2_PORTFOLIO": 39,
+    "PLAN_3_PRO": 79
+  },
+  "env_vars_on_runner": {
+    "PLAN_1_SOLO": {
+      "env_var": "STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY",
+      "present_on_runner": false,
+      "price_id_masked": ""
+    },
+    "PLAN_2_PORTFOLIO": {
+      "env_var": "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
+      "present_on_runner": false,
+      "price_id_masked": ""
+    },
+    "PLAN_3_PRO": {
+      "env_var": "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY",
+      "present_on_runner": false,
+      "price_id_masked": ""
+    }
+  },
+  "note": "Render deployment env is not readable from this runner; use session_probes + Stripe retrieve for deployed truth.",
+  "distinct_price_ids_from_sessions": 0,
+  "duplicate_price_ids_across_plans": false,
+  "amount_checks": [
+    {
+      "plan_code": "PLAN_1_SOLO",
+      "expected_gbp": 19,
+      "actual_gbp": null,
+      "match": null
+    },
+    {
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "expected_gbp": 39,
+      "actual_gbp": null,
+      "match": null
+    },
+    {
+      "plan_code": "PLAN_3_PRO",
+      "expected_gbp": 79,
+      "actual_gbp": null,
+      "match": null
+    }
+  ],
+  "deployment_duplicate_price_env_detected": true,
+  "pass": false,
+  "failure_reason": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STRIPE_{mode}_PRICE_*_MONTHLY value.",
+  "remediation": "Set distinct STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY, STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY, STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY on Render."
+}

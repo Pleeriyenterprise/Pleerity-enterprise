@@ -1,5 +1,13 @@
 {
-  "marker": "BILLING-PLAN-CHANGE-CHECKOUT-ROUTING-BUG-01",
-  "generated_at": "2026-06-03T09:25:01.304265+00:00",
-  "classification": "VERIFIED_OPERATIONALLY"
+  "marker": "BILLING-STRIPE-PRICE-CONFIG-VERIFY-01",
+  "generated_at": "2026-06-03T09:51:13.611499+00:00",
+  "classification": "STRIPE_PRICE_CONFIG_DRIFT",
+  "gates": {
+    "deploy": true,
+    "stripe_price_config": false,
+    "checkout_sessions": false,
+    "customer_ux": false,
+    "live_guardrail": true,
+    "regression": true
+  }
 }

@@ -1,6 +1,22 @@
 {
-  "verified_at": "2026-06-03T09:24:42.173595+00:00",
-  "test": "test_create_upgrade_session_verified_live_uses_portal_not_deployment_checkout",
-  "expectation": "stored_stripe_mode=live + authoritative \u2192 portal path, not deployment checkout",
-  "pass": true
+  "verified_at": "2026-06-03T09:50:43.633508+00:00",
+  "inventory": [
+    {
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "stored_stripe_mode": "test",
+      "remediation_code": "VERIFIED_OPERATIONALLY"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "stored_stripe_mode": "test",
+      "remediation_code": "VERIFIED_OPERATIONALLY"
+    }
+  ],
+  "live_client_id": null,
+  "unit_test": {
+    "exit_code": 0,
+    "pass": true
+  },
+  "pass": true,
+  "note": "No stored_stripe_mode=live on staging; unit test proves healthy live rows use portal path."
 }

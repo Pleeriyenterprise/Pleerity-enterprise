@@ -1,0 +1,45 @@
+{
+  "verified_at": "2026-06-03T09:50:38.401192+00:00",
+  "probes": [
+    {
+      "plan_code": "PLAN_1_SOLO",
+      "email_masked": "nan***@yopmail.com",
+      "checkout_status": 400,
+      "error_code": "STRIPE_MODE_MISMATCH",
+      "error_message": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STRIPE_{mode}_PRICE_*_MONTHLY value.",
+      "requested_plan_code": null,
+      "checkout_context": null,
+      "plan_change_path": null,
+      "session_id_masked": "",
+      "pass": false,
+      "checkout_url_present": false
+    },
+    {
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "email_masked": "nan***@yopmail.com",
+      "checkout_status": 400,
+      "error_code": "STRIPE_MODE_MISMATCH",
+      "error_message": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STRIPE_{mode}_PRICE_*_MONTHLY value.",
+      "requested_plan_code": null,
+      "checkout_context": null,
+      "plan_change_path": null,
+      "session_id_masked": "",
+      "pass": false,
+      "checkout_url_present": false
+    },
+    {
+      "plan_code": "PLAN_3_PRO",
+      "email_masked": "nan***@yopmail.com",
+      "checkout_status": 400,
+      "error_code": "STRIPE_MODE_MISMATCH",
+      "error_message": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STRIPE_{mode}_PRICE_*_MONTHLY value.",
+      "requested_plan_code": null,
+      "checkout_context": null,
+      "plan_change_path": null,
+      "session_id_masked": "",
+      "pass": false,
+      "checkout_url_present": false
+    }
+  ],
+  "pass": false
+}

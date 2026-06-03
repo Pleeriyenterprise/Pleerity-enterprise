@@ -1,0 +1,15 @@
+{
+  "verified_at": "2026-06-03T09:50:08.028095+00:00",
+  "target_commit_prefix": "0f06cb8c",
+  "backend": {
+    "commit_sha": "0f06cb8c009a65c25ba40cbe7d70ab07835defcd",
+    "environment": "production"
+  },
+  "backend_deployed": true,
+  "frontend": {
+    "status": 200,
+    "url": "https://pleerityenterprise.co.uk"
+  },
+  "frontend_reachable": true,
+  "pass": true
+}
