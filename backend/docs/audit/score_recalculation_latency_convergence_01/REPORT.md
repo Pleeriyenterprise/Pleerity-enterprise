@@ -1,31 +1,75 @@
-# Score recalculation latency — audit + post-deploy closeout
+# SCORE-RECALCULATION-LATENCY-FINAL-VERIFICATION-01
 
-## Programmes
-1. **SCORE-RECALCULATION-LATENCY-CONVERGENCE-01** @ `0a184409` — code convergence
-2. **SCORE-RECALCULATION-LATENCY-POST-DEPLOY-CLOSEOUT-01** — staging operational proof
+Verified at: 2026-06-03T21:54:21Z  
+Fix commit: **d5252f99**  
+Classification: **VERIFIED_OPERATIONALLY**
 
-## Post-deploy closeout summary
+## Summary
+
+Staging operational proof confirms the DONE-duplicate requeue fix (`d5252f99`) restores end-to-end score propagation after `requirements/sync` on a property with an existing DONE queue row.
+
+## Part 1 — Deploy
 
 | Check | Result |
 |-------|--------|
-| Deploy verified | YES — frontend markers + API health |
-| Regression tests | PASS |
-| Pending visible after trigger | NO — REQUEUE_DRIFT |
-| Stale Elevated risk during pending | N/A (no pending observed) |
-| Worker convergence | Not observed |
-| Browser screenshots | YES |
-| Classification | **PARTIAL** |
+| Frontend bundle `main.6bd8fcfe.js` | OK |
+| `Updating…` / `score_cognition_line` / `compliance_score_pending` | Present |
+| API health | 200, readiness `ready` |
+| Worker | Healthy |
 
-## Root cause (closeout)
-`POST /properties/{id}/requirements/sync` uses fixed correlation `REQUIREMENTS_SYNC:{property_id}`. When the queue row is already **DONE**, duplicate suppression on staging build `0a184409` did not regenerate the job or set `compliance_score_pending`. Admin recalc trigger unavailable (401 — staging admin credentials not in environment).
+## Part 2 — Trigger
 
-## Remediation (local, pending deploy)
-Regenerate DONE duplicate queue rows to PENDING and set `compliance_score_pending=true` (`regenerated_from_done_duplicate`).
+- **Method:** `POST /properties/{id}/requirements/sync`
+- **Property:** `d35a58ae-3c81-491c-9694-1d021dd3b8ad` (Kensington Garden Flat)
+- **Correlation:** `REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad`
+- **Status:** 200
+- **DONE duplicate regeneration:** inferred true (pending observed immediately after sync on previously DONE row)
 
-## Re-run instructions
-```bash
-export STAGING_ADMIN_PASSWORD=...
-python backend/scripts/score_recalculation_latency_post_deploy_closeout_01.py
-```
+## Part 3 — Pending cognition
 
-Expected after fix deploy: pending within seconds, convergence <2 min, classification **VERIFIED_OPERATIONALLY**.
+At **23.13s** after trigger:
+
+- `compliance_score_pending=true`
+- `score_status=calculating`
+- Risk suppressed (`risk_level=null`)
+- Cognition: *Score updating — recent compliance changes are being processed*
+- No stale Elevated risk while pending
+- Screenshots: `screenshots/final_verification/dashboard_pending.png`, `property_pending.png`
+
+## Part 4 — Worker convergence
+
+At **72.78s**:
+
+- Score persisted **42 → 52**
+- `compliance_score_pending=false`, `score_status=ok`
+- Dashboard / property / portfolio headline agree (0 properties pending recalc)
+- No contradictory cognition
+- Screenshots: `dashboard_converged.png`, `property_converged.png`
+
+## Part 5 — Safety
+
+- Duplicate sync pair: both 200, bounded pending observations (no storm)
+- Tenant isolation preserved (client-scoped token only)
+
+## Part 6 — Regression
+
+All suites passed (26 tests):
+
+- `test_compliance_recalc_queue_stabilization_phase1.py` (17)
+- `test_score_cognition_service.py` (4)
+- `test_compliance_scoring_v2_model.py` (5)
+
+Includes `test_enqueue_compliance_recalc_duplicate_done_regenerates`.
+
+## Latency
+
+| Metric | Value |
+|--------|-------|
+| Enqueue (sync API) | 6.09s |
+| Pending first visible | 23.13s |
+| Convergence complete | 72.78s |
+| Class | acceptable |
+
+## Residual watchlist
+
+See `watchlist.md`.

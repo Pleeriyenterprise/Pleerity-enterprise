@@ -1,0 +1,29 @@
+{
+  "status": 200,
+  "body": {
+    "message": "Requirements synchronized",
+    "ok": true,
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "planned_types": [
+      "eicr",
+      "emergency_lighting",
+      "epc",
+      "fire_alarm",
+      "fire_extinguisher",
+      "gas_safety",
+      "hmo_fire_risk",
+      "hmo_fire_risk_evidence",
+      "hmo_license",
+      "legionella",
+      "occupation_contract"
+    ],
+    "upsert_passes": 11,
+    "reopened_from_not_required": 0,
+    "reconciled_obsolete": 0
+  },
+  "elapsed_s": 6.09,
+  "triggered_at": "2026-06-03T21:48:32.649042+00:00",
+  "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "inferred_regenerated_from_done_duplicate": true,
+  "backend_fix_probe": "pending_after_done_duplicate_implies_d5252f99+"
+}

@@ -1,25 +1,24 @@
 {
-  "programme": "SCORE-RECALCULATION-LATENCY-POST-DEPLOY-CLOSEOUT-01",
-  "verified_at": "2026-06-03T21:26:17.278792+00:00",
-  "prior_commit": "0a184409",
-  "classification": "PARTIAL",
-  "prior_classification": "PARTIAL",
+  "programme": "SCORE-RECALCULATION-LATENCY-FINAL-VERIFICATION-01",
+  "verified_at": "2026-06-03T21:54:21.971565+00:00",
+  "fix_commit": "d5252f99",
+  "classification": "VERIFIED_OPERATIONALLY",
   "checks": {
     "deploy_verified": true,
     "regression_passed": true,
-    "pending_visible_immediately": false,
-    "stale_risk_suppressed_during_pending": true,
-    "worker_converged": false,
-    "latency_acceptable_or_degraded": false,
+    "pending_visible": true,
+    "stale_risk_suppressed": true,
+    "worker_converged": true,
+    "latency_acceptable_or_degraded": true,
+    "safety_duplicate_ok": true,
     "browser_captured": true,
-    "score_cognition_accurate": true
+    "inferred_regenerated_from_done_duplicate": true,
+    "score_changed_after_recalc": true,
+    "dashboard_property_portfolio_agree": true
   },
-  "defect": "REQUEUE_DRIFT",
-  "defect_status": "FIXED_PENDING_DEPLOY",
-  "rationale": "Deploy and cognition bundle verified on staging; requirements_sync re-enqueue against DONE duplicate did not surface pending on 0a184409. DONE-duplicate regeneration fix added locally. Re-run closeout after backend redeploy with STAGING_ADMIN_PASSWORD or post-fix sync.",
-  "path_to_verified_operationally": [
-    "Deploy backend with DONE duplicate regeneration fix",
-    "Re-run score_recalculation_latency_post_deploy_closeout_01.py",
-    "Confirm pending/calculating within 3s of trigger and convergence <2min"
-  ]
+  "latency_class": "acceptable",
+  "total_convergence_s": 72.78,
+  "pending_first_s": 23.13,
+  "score_before": 42,
+  "score_after": 52
 }

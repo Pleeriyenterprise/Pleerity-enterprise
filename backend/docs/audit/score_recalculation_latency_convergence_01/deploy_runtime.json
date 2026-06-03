@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-06-03T21:19:33.964719+00:00",
+  "programme": "SCORE-RECALCULATION-LATENCY-FINAL-VERIFICATION-01",
+  "generated_at": "2026-06-03T21:47:21.728235+00:00",
+  "fix_commit_expected": "d5252f99",
   "frontend_url": "https://pleerityenterprise.co.uk",
   "api_url": "https://pleerity-enterprise.onrender.com/api",
-  "fix_commit_expected": "0a184409",
-  "main_js": "https://pleerityenterprise.co.uk/static/js/main.75e503d8.js",
+  "main_js": "https://pleerityenterprise.co.uk/static/js/main.6bd8fcfe.js",
   "bundle_markers": {
     "score_cognition_line": true,
     "updating_headline": true,
     "compliance_score_pending": true,
-    "pending_processing_copy": true,
-    "buildDashboardComplianceGapsLine": false
+    "pending_processing_copy": true
   },
-  "frontend_deployed": true,
+  "frontend_ok": true,
   "api_health": {
     "status": 200,
     "body": {
@@ -24,5 +24,6 @@
       }
     }
   },
+  "worker_healthy": true,
   "deploy_verified": true
 }

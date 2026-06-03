@@ -1,16 +1,17 @@
 {
   "all_passed": true,
-  "verified_at": "2026-06-03T21:26:17.278792+00:00",
-  "programme": "SCORE-RECALCULATION-LATENCY-POST-DEPLOY-CLOSEOUT-01",
-  "suites_run": [
-    "tests/test_score_cognition_service.py",
-    "tests/test_compliance_scoring_satisfaction_convergence.py",
-    "tests/test_compliance_scoring_v2_model.py",
-    "tests/test_compliance_recalc_queue_stabilization_phase1.py",
-    "tests/test_scoring_semantics_v1.py",
-    "tests/test_portfolio_pending_score_recalc_snapshot.py",
-    "tests/test_compliance_recalc_worker_job_outcomes.py"
-  ],
-  "total_passed": 51,
-  "note": "Requested paths test_compliance_score_cognition.py / test_compliance_scoring_v2.py / test_compliance_recalc_queue.py mapped to above canonical suites"
+  "suites": {
+    "tests/test_compliance_recalc_queue_stabilization_phase1.py": {
+      "passed": true,
+      "tail": ". See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n17 passed, 4 warnings in 0.27s\n"
+    },
+    "tests/test_score_cognition_service.py": {
+      "passed": true,
+      "tail": "0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n4 passed, 4 warnings in 0.23s\n"
+    },
+    "tests/test_compliance_scoring_v2_model.py": {
+      "passed": true,
+      "tail": "0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n5 passed, 4 warnings in 0.20s\n"
+    }
+  }
 }

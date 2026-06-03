@@ -1,23 +1,22 @@
-# Watchlist — score recalculation latency
+# Watchlist — final verification (2026-06-03)
 
-## Post-deploy closeout (2026-06-03) — PARTIAL
+## Classification: VERIFIED_OPERATIONALLY
 
-### Verified on staging
-- [x] Frontend bundle includes score cognition / Updating / pending copy (`main.75e503d8.js`)
-- [x] API returns `score_cognition_line` per property (blocker-accurate)
-- [x] Regression suites pass locally
-- [x] Browser dashboard screenshots captured (before / pending / converged)
+- Fix commit: `d5252f99`
+- REQUEUE_DRIFT: **closed** on staging
+- Pending visible: yes (23.13s)
+- Worker converged: yes (72.78s, score 42→52)
+- Latency class: acceptable
 
-### Not verified on staging (blockers)
-- [ ] `compliance_score_pending=true` immediately after trigger — **REQUEUE_DRIFT** on DONE duplicate correlation
-- [ ] Worker convergence latency measurement
-- [ ] Pending-state “Updating…” visible in browser (no pending flag observed)
+## Screenshots
 
-### Fix pending deploy
-- [ ] Ship `regenerated_from_done_duplicate` queue handling (local fix after closeout)
-- [ ] Re-run `python scripts/score_recalculation_latency_post_deploy_closeout_01.py`
-- [ ] Provide `STAGING_ADMIN_PASSWORD` for admin recalc trigger (preferred over requirements/sync)
+- `screenshots/final_verification/dashboard_pending.png`
+- `screenshots/final_verification/property_pending.png`
+- `screenshots/final_verification/dashboard_converged.png`
+- `screenshots/final_verification/property_converged.png`
 
-### Monitor
-- [ ] `compliance_score_pending` stuck >10 minutes
-- [ ] Queue backlog / worker SLA
+## Follow-ups (non-blocking)
+
+1. **Backend build SHA endpoint** — deploy verification currently infers fix via behavioural probe; expose git SHA on `/health` for deterministic deploy checks.
+2. **Admin recalc trigger** — set `STAGING_ADMIN_PASSWORD` in CI for governed admin repair path (fallback sync works but is noisier).
+3. **Unified poll script** — `score_recalculation_latency_final_verification_01.py` updated to avoid missing short pending windows during browser capture.

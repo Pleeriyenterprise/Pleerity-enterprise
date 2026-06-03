@@ -1,0 +1,4691 @@
+{
+  "generated_at": "2026-06-03T21:49:20.739105+00:00",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "before": {
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "name": "Kensington Garden Flat",
+    "score": 42,
+    "score_status": "ok",
+    "risk_level": "High risk",
+    "compliance_score_pending": false,
+    "score_cognition_line": "3 missing documents"
+  },
+  "immediate_after_trigger": {
+    "at": "2026-06-03T21:48:49.688342+00:00",
+    "elapsed_s": 23.13,
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "name": "Kensington Garden Flat",
+    "score": 42,
+    "score_status": "calculating",
+    "risk_level": null,
+    "compliance_score_pending": true,
+    "score_cognition_line": "Score updating \u2014 recent compliance changes are being processed",
+    "portfolio_score_status": "partial",
+    "portfolio_pending_note": null
+  },
+  "fast_poll_snapshots": [
+    {
+      "at": "2026-06-03T21:48:49.688342+00:00",
+      "elapsed_s": 23.13,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "name": "Kensington Garden Flat",
+      "score": 42,
+      "score_status": "calculating",
+      "risk_level": null,
+      "compliance_score_pending": true,
+      "score_cognition_line": "Score updating \u2014 recent compliance changes are being processed",
+      "portfolio_score_status": "partial",
+      "portfolio_pending_note": null
+    }
+  ],
+  "pending_seen": true,
+  "stale_elevated_risk_while_pending": [],
+  "portfolio_score": {
+    "score": 25,
+    "grade": "F",
+    "color": "red",
+    "message": "Critical unresolved compliance risks require immediate operational action.",
+    "base_portfolio_risk_state": "Critical Risk",
+    "effective_portfolio_risk_state": "Critical Risk",
+    "risk_override_reasons": [
+      "UNRESOLVED_HIGH_RISK_GAP"
+    ],
+    "critical_property_count": 0,
+    "high_risk_gap_count": 5,
+    "unknown_or_stale_property_count": 0,
+    "attention_required": true,
+    "critical_property_escalation": false,
+    "suppress_positive_headline": true,
+    "legacy_override_output": {
+      "base_portfolio_risk_state": "Critical Risk",
+      "effective_portfolio_risk_state": "Critical Risk",
+      "risk_override_reasons": [
+        "UNRESOLVED_HIGH_RISK_GAP"
+      ],
+      "critical_property_count": 0,
+      "high_risk_gap_count": 5,
+      "unknown_or_stale_property_count": 0,
+      "attention_required": true,
+      "critical_property_escalation": false,
+      "suppress_positive_headline": true
+    },
+    "policy_override_output": {
+      "base_portfolio_risk_state": "Critical Risk",
+      "effective_portfolio_risk_state": "Critical Risk",
+      "risk_override_reasons": [
+        "ATTENTION_ONLY_GAP",
+        "PERSISTED_PORTFOLIO_HEADLINE_DOMINATES_EFFECTIVE"
+      ],
+      "critical_property_count": 0,
+      "high_risk_gap_count": 0,
+      "unknown_or_stale_property_count": 0,
+      "attention_required": true,
+      "critical_property_escalation": false,
+      "suppress_positive_headline": true
+    },
+    "effective_override_output": {
+      "base_portfolio_risk_state": "Critical Risk",
+      "effective_portfolio_risk_state": "Critical Risk",
+      "risk_override_reasons": [
+        "UNRESOLVED_HIGH_RISK_GAP"
+      ],
+      "critical_property_count": 0,
+      "high_risk_gap_count": 5,
+      "unknown_or_stale_property_count": 0,
+      "attention_required": true,
+      "critical_property_escalation": false,
+      "suppress_positive_headline": true,
+      "override_output_source": "legacy",
+      "fallback_applied": false,
+      "fallback_reason_codes": []
+    },
+    "risk_level": "Critical Risk",
+    "portfolio_risk_level": "Critical Risk",
+    "enhanced_model": true,
+    "breakdown": {
+      "status_score": 20.0,
+      "expiry_score": 51.4,
+      "document_score": 2.4,
+      "overdue_penalty_score": 72.0,
+      "risk_score": 62.9
+    },
+    "weights": {
+      "status": "35%",
+      "expiry": "25%",
+      "documents": "15%",
+      "overdue_penalty": "15%",
+      "risk_factor": "10%"
+    },
+    "stats": {
+      "total_requirements": 43,
+      "compliant": 1,
+      "pending": 42,
+      "missing_evidence": 20,
+      "expiring_soon": 0,
+      "overdue": 0,
+      "critical_overdue": 0,
+      "documents_uploaded": 29,
+      "documents_verified": 25,
+      "verified_coverage_percent": 9.3,
+      "total_coverage_percent": 9.3,
+      "document_coverage_percent": 9.3,
+      "days_until_next_expiry": 5,
+      "nearest_expiry_type": "hmo_license",
+      "hmo_properties": 4,
+      "gap_engine": {
+        "by_kind": {
+          "EVIDENCE_UPLOADED_UNCONFIRMED": 5,
+          "MISSING_EVIDENCE": 30,
+          "MISMATCHED_EVIDENCE": 1
+        },
+        "by_severity": {
+          "LOW": 18,
+          "HIGH": 5,
+          "MEDIUM": 13
+        },
+        "total_open": 36,
+        "policy": {
+          "critical_mandatory_breach_count": 0,
+          "high_risk_gap_count": 0,
+          "attention_only_gap_count": 5,
+          "unknown_or_stale_signal_count": 0,
+          "policy_fields_present_count": 36,
+          "policy_coverage_percent": 100.0,
+          "top_reason_codes": {
+            "ATTENTION_ONLY_GAP": 5
+          },
+          "policy_versions": {
+            "v1": 36
+          },
+          "total_open": 36
+        }
+      },
+      "properties_at_risk_count": 7
+    },
+    "recommendations": [
+      {
+        "priority": "high",
+        "action": "Upload and verify evidence for Gas Safety Certificate (CP12)",
+        "impact": "+15 points",
+        "requirement_code": "GAS_SAFETY",
+        "display_label": "Gas Safety Certificate (CP12)"
+      },
+      {
+        "priority": "high",
+        "action": "Upload and verify evidence for Electrical Installation Condition Report (EICR)",
+        "impact": "+15 points",
+        "requirement_code": "EICR",
+        "display_label": "Electrical Installation Condition Report (EICR)"
+      },
+      {
+        "priority": "high",
+        "action": "Upload and verify evidence for Gas Safety Certificate (CP12)",
+        "impact": "+15 points",
+        "requirement_code": "GAS_SAFETY",
+        "display_label": "Gas Safety Certificate (CP12)"
+      },
+      {
+        "priority": "high",
+        "action": "Upload and verify evidence for Electrical Installation Condition Report (EICR)",
+        "impact": "+15 points",
+        "requirement_code": "EICR",
+        "display_label": "Electrical Installation Condition Report (EICR)"
+      },
+      {
+        "priority": "high",
+        "action": "Upload and verify evidence for Gas Safety Certificate (CP12)",
+        "impact": "+15 points",
+        "requirement_code": "GAS_SAFETY",
+        "display_label": "Gas Safety Certificate (CP12)"
+      }
+    ],
+    "properties_count": 7,
+    "score_last_calculated_at": "2026-06-03T03:32:23.132111+00:00",
+    "score_model_version": "1.2",
+    "model_updated_at": "2026-01-15",
+    "data_completeness_percent": 9.0,
+    "components": {
+      "status": {
+        "weight": 0.35,
+        "score": 20.0,
+        "valid": 1,
+        "expiring": 0,
+        "overdue": 0
+      },
+      "timeline": {
+        "weight": 0.25,
+        "score": 51.0,
+        "due_0_30": 12,
+        "due_31_60": 1,
+        "due_61_90": 1,
+        "overdue": 0
+      },
+      "documents": {
+        "weight": 0.15,
+        "score": 2.0,
+        "evidence_coverage_percent": 9.0
+      },
+      "urgency": {
+        "weight": 0.15,
+        "score": 72.0,
+        "overdue": 0
+      }
+    },
+    "gap_engine_policy": {
+      "critical_mandatory_breach_count": 0,
+      "high_risk_gap_count": 0,
+      "attention_only_gap_count": 5,
+      "unknown_or_stale_signal_count": 0,
+      "policy_fields_present_count": 36,
+      "policy_coverage_percent": 100.0,
+      "top_reason_codes": {
+        "ATTENTION_ONLY_GAP": 5
+      },
+      "policy_versions": {
+        "v1": 36
+      },
+      "total_open": 36
+    },
+    "property_breakdown": [
+      {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "name": "Kensington Garden Flat",
+        "postcode": "W8",
+        "score": 42,
+        "score_status": "ok",
+        "last_calculated_at": "2026-06-03T03:32:23.132111+00:00",
+        "valid": 1,
+        "expiring": 0,
+        "overdue": 0,
+        "compliance_basis": "property_explicit",
+        "effective_jurisdiction_label": "Wales",
+        "jurisdiction_required": false,
+        "compliance_confidence": "explicit"
+      },
+      {
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "name": "Altrincham Townhouse",
+        "postcode": "M2",
+        "score": 12,
+        "score_status": "ok",
+        "last_calculated_at": "2026-06-03T03:31:59.641815+00:00",
+        "valid": 0,
+        "expiring": 0,
+        "overdue": 0,
+        "compliance_basis": "property_explicit",
+        "effective_jurisdiction_label": "Scotland",
+        "jurisdiction_required": false,
+        "compliance_confidence": "explicit"
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "name": "Leamington Spa Victorian",
+        "postcode": "BS",
+        "score": 23,
+        "score_status": "ok",
+        "last_calculated_at": "2026-06-03T03:22:13.111870+00:00",
+        "valid": 0,
+        "expiring": 0,
+        "overdue": 0,
+        "compliance_basis": "client_default",
+        "effective_jurisdiction_label": "Northern Ireland",
+        "jurisdiction_required": true,
+        "compliance_confidence": "fallback"
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "name": "Oxford Summertown",
+        "postcode": "OX",
+        "score": 21,
+        "score_status": "ok",
+        "last_calculated_at": "2026-06-03T03:24:46.483494+00:00",
+        "valid": 0,
+        "expiring": 0,
+        "overdue": 0,
+        "compliance_basis": "client_default",
+        "effective_jurisdiction_label": "Northern Ireland",
+        "jurisdiction_required": true,
+        "compliance_confidence": "fallback"
+      },
+      {
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "name": "Liverpool Georgian Quarter",
+        "postcode": "L4",
+        "score": 22,
+        "score_status": "ok",
+        "last_calculated_at": "2026-06-03T03:21:26.409764+00:00",
+        "valid": 0,
+        "expiring": 0,
+        "overdue": 0,
+        "compliance_basis": "client_default",
+        "effective_jurisdiction_label": "Northern Ireland",
+        "jurisdiction_required": true,
+        "compliance_confidence": "fallback"
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "name": "Glasgow Shawlands",
+        "postcode": "G4",
+        "score": 19,
+        "score_status": "ok",
+        "last_calculated_at": "2026-06-03T03:21:49.133450+00:00",
+        "valid": 0,
+        "expiring": 0,
+        "overdue": 0,
+        "compliance_basis": "client_default",
+        "effective_jurisdiction_label": "Northern Ireland",
+        "jurisdiction_required": true,
+        "compliance_confidence": "fallback"
+      },
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "name": "722075 Lookup Test Street",
+        "postcode": "M1 1AA",
+        "score": 35,
+        "score_status": "ok",
+        "last_calculated_at": "2026-06-03T03:29:17.962292+00:00",
+        "valid": 0,
+        "expiring": 0,
+        "overdue": 0,
+        "compliance_basis": "property_explicit",
+        "effective_jurisdiction_label": "England",
+        "jurisdiction_required": false,
+        "compliance_confidence": "explicit"
+      }
+    ],
+    "drivers": [
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "property_name": "722075 Lookup Test Street",
+        "requirement_id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+        "requirement_name": "PAT",
+        "requirement_display": {
+          "canonical_name": "Portable Appliance Testing (PAT)",
+          "short_name": "PAT",
+          "description": "",
+          "category_label": "Electrical",
+          "primary_cta_label": "Upload document",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-24T15:14:39.373939+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload document",
+            "route": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "property_name": "722075 Lookup Test Street",
+        "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+        "requirement_name": "Gas Safety",
+        "requirement_display": {
+          "canonical_name": "Gas Safety Certificate (CP12)",
+          "short_name": "Gas Safety",
+          "description": "",
+          "category_label": "Safety",
+          "primary_cta_label": "Upload Gas Safety Certificate",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-24T15:14:39.611022+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload Gas Safety Certificate",
+            "route": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=bb32fac0-c219-4401-8739-13ded9511721",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "property_name": "722075 Lookup Test Street",
+        "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+        "requirement_name": "EICR",
+        "requirement_display": {
+          "canonical_name": "Electrical Installation Condition Report (EICR)",
+          "short_name": "EICR",
+          "description": "",
+          "category_label": "Electrical",
+          "primary_cta_label": "Upload valid EICR certificate",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-08-23T15:14:37.803412+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload valid EICR certificate",
+            "route": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "property_name": "722075 Lookup Test Street",
+        "requirement_id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+        "requirement_name": "EPC",
+        "requirement_display": {
+          "canonical_name": "Energy Performance Certificate (EPC)",
+          "short_name": "EPC",
+          "description": "",
+          "category_label": "Energy",
+          "primary_cta_label": "Upload valid EPC document",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-11-21T15:14:37.803412+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload valid EPC document",
+            "route": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=9aaddf03-86c5-42c7-b42d-63d94f94239f",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "property_name": "722075 Lookup Test Street",
+        "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+        "requirement_name": "Legionella",
+        "requirement_display": {
+          "canonical_name": "Legionella Risk Assessment",
+          "short_name": "Legionella",
+          "description": "",
+          "category_label": "Health",
+          "primary_cta_label": "Record Legionella risk assessment",
+          "secondary_cta_label": "Upload assessment report"
+        },
+        "semantic_state": null,
+        "workflow_class": "EXTERNAL_ASSESSMENT_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-07-24T15:14:37.803412+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record Legionella risk assessment",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+            "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4"
+          },
+          "secondary": {
+            "label": "Upload assessment report",
+            "route": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "property_name": "722075 Lookup Test Street",
+        "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+        "requirement_name": "Smoke, Heat & CO Alarms",
+        "requirement_display": {
+          "canonical_name": "Smoke, Heat & Carbon Monoxide Alarm Compliance",
+          "short_name": "Smoke, Heat & CO Alarms",
+          "description": "",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-24T15:14:37.803412+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Complete smoke alarm details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+            "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": {
+          "evaluated": true,
+          "is_complete": false,
+          "summary_label": "Incomplete: smoke alarm evidence missing",
+          "missing_components": [
+            {
+              "key": "smoke_alarm",
+              "label": "Smoke alarm compliance"
+            }
+          ],
+          "required_missing_count": 1
+        },
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "STRUCTURED_DECLARATION",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "property_name": "Kensington Garden Flat",
+        "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+        "requirement_name": "EICR",
+        "requirement_display": {
+          "canonical_name": "Electrical Installation Condition Report (EICR)",
+          "short_name": "EICR",
+          "description": "",
+          "category_label": "Electrical",
+          "primary_cta_label": "Upload valid EICR certificate",
+          "secondary_cta_label": null
+        },
+        "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "NEEDS_CONFIRMATION",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": true,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload supporting evidence",
+            "route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=216ed196-883b-42a2-9011-39918534d32d",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "UPLOADED_UNCONFIRMED",
+          "state_reason": "document_upload_missing_required_expiry_semantics",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": "381443ee-f30b-4bfa-aac8-e64bce92e726",
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": "2026-05-21T11:43:15.990783+00:00",
+          "evidence_last_updated_at": "2026-05-28T17:30:56.937806+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "predicted_document_type": "EICR",
+          "match_outcome": "MATCH_LIKELY",
+          "match_confidence": 0.57,
+          "mismatch_reason_code": "NONE",
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "DOCUMENT_UPLOAD",
+          "evidence_confidence_level": "HIGH",
+          "non_document_verification_status": null,
+          "primary_evidence_record_id": null,
+          "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "property_name": "Kensington Garden Flat",
+        "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+        "requirement_name": "EPC",
+        "requirement_display": {
+          "canonical_name": "Energy Performance Certificate (EPC)",
+          "short_name": "EPC",
+          "description": "",
+          "category_label": "Energy",
+          "primary_cta_label": "Upload valid EPC document",
+          "secondary_cta_label": null
+        },
+        "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "NEEDS_CONFIRMATION",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": true,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload supporting evidence",
+            "route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=62589167-4e34-4aef-ad75-4967383e71bc",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "UPLOADED_UNCONFIRMED",
+          "state_reason": "document_upload_missing_required_expiry_semantics",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": "2026-05-21T12:55:32.090010+00:00",
+          "evidence_last_updated_at": "2026-05-28T17:31:07.954134+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "predicted_document_type": "UNKNOWN",
+          "match_outcome": "MATCH_CONFIRMED",
+          "match_confidence": 0.0,
+          "mismatch_reason_code": "EXTRACTION_AMBIGUOUS",
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "DOCUMENT_UPLOAD",
+          "evidence_confidence_level": "HIGH",
+          "non_document_verification_status": null,
+          "primary_evidence_record_id": null,
+          "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "property_name": "Kensington Garden Flat",
+        "requirement_id": "71e89158-5de0-422a-970c-5a2163fcc823",
+        "requirement_name": "HMO Licensing",
+        "requirement_display": {
+          "canonical_name": "HMO / Selective / Additional Licensing",
+          "short_name": "HMO Licensing",
+          "description": "",
+          "category_label": "Regulatory",
+          "primary_cta_label": "Upload valid HMO licence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": "EXPIRY_REVIEW_REQUIRED",
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "NEEDS_CONFIRMATION",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": true,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload supporting evidence",
+            "route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=71e89158-5de0-422a-970c-5a2163fcc823",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "engine_default",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "UPLOADED_UNCONFIRMED",
+          "state_reason": "document_upload_missing_required_expiry_semantics",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": "914b1e3b-ef2a-4d59-960b-74b7421d5dbb",
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": "2026-05-24T20:43:25.310163+00:00",
+          "evidence_last_updated_at": "2026-05-28T18:34:15.777451+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "predicted_document_type": "UNKNOWN",
+          "match_outcome": "MATCH_CONFIRMED",
+          "match_confidence": 0.0,
+          "mismatch_reason_code": "EXTRACTION_AMBIGUOUS",
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "DOCUMENT_UPLOAD",
+          "evidence_confidence_level": "HIGH",
+          "non_document_verification_status": null,
+          "primary_evidence_record_id": null,
+          "semantic_state": "EXPIRY_REVIEW_REQUIRED"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "property_name": "Kensington Garden Flat",
+        "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+        "requirement_name": "Occupation Contract",
+        "requirement_display": {
+          "canonical_name": "Occupation Contract (Wales)",
+          "short_name": "Occupation Contract",
+          "description": "",
+          "category_label": "Tenancy",
+          "primary_cta_label": "Record Wales occupation contract",
+          "secondary_cta_label": "Upload occupation contract"
+        },
+        "semantic_state": "DECLARATION_RECORDED",
+        "workflow_class": "GUIDED_DECLARATION",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record Wales occupation contract",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4"
+          },
+          "secondary": {
+            "label": "Upload occupation contract",
+            "route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=488269bb-1be7-47e7-a030-98accf6dffc4",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "UPLOADED_UNCONFIRMED",
+          "state_reason": "guided_declaration_not_independently_verified",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": "2026-05-31T16:28:14.976889+00:00",
+          "evidence_last_updated_at": "2026-05-31T16:37:17.857796+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "predicted_document_type": null,
+          "match_outcome": null,
+          "match_confidence": null,
+          "mismatch_reason_code": null,
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "STRUCTURED_DECLARATION",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": "VERIFIED",
+          "primary_evidence_record_id": "cer_7366a05e342d43019cd06824c0a6da27",
+          "semantic_state": "DECLARATION_RECORDED"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "property_name": "Kensington Garden Flat",
+        "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+        "requirement_name": "HMO Fire Safety",
+        "requirement_display": {
+          "canonical_name": "HMO Fire Safety Management",
+          "short_name": "HMO Fire Safety",
+          "description": "Log book, fire tests, compartmentation and related fire safety evidence.",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": "COMPLETENESS_PENDING",
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Add compliance evidence",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISMATCH_FLAGGED",
+          "state_reason": "evidence_document_match_blocks_satisfaction",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": "65cfb0b0-b983-47cd-96bc-93fa7b61e896",
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-05-21T12:55:32.632324+00:00",
+          "mismatch_flag": true,
+          "mismatch_reason": "Ambiguous classification signals.",
+          "evidence_confidence": null,
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "predicted_document_type": "UNKNOWN",
+          "match_outcome": "NEEDS_ADMIN_REVIEW",
+          "match_confidence": 0.0,
+          "mismatch_reason_code": "EXTRACTION_AMBIGUOUS",
+          "evidence_match_blocks_satisfaction": true,
+          "primary_evidence_mode": "DOCUMENT_UPLOAD",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": null,
+          "primary_evidence_record_id": null,
+          "pending_non_document_evidence_count": 1,
+          "semantic_state": "COMPLETENESS_PENDING"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "property_name": "Altrincham Townhouse",
+        "requirement_id": "ea22a50c-1421-4516-bcbe-e65f54cf7b25",
+        "requirement_name": "EICR",
+        "requirement_display": {
+          "canonical_name": "Electrical Installation Condition Report (EICR)",
+          "short_name": "EICR",
+          "description": "",
+          "category_label": "Electrical",
+          "primary_cta_label": "Upload EICR Certificate",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload EICR Certificate",
+            "route": "/documents?property_id=cd7c9bbc-f100-42e9-b5b1-69384898c75f&requirement_id=ea22a50c-1421-4516-bcbe-e65f54cf7b25",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:35.632084+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "property_name": "Altrincham Townhouse",
+        "requirement_id": "e3f6459c-cf42-40d9-bfc8-37507affeffb",
+        "requirement_name": "EPC",
+        "requirement_display": {
+          "canonical_name": "Energy Performance Certificate (EPC)",
+          "short_name": "EPC",
+          "description": "",
+          "category_label": "Energy",
+          "primary_cta_label": "Upload document",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload document",
+            "route": "/documents?property_id=cd7c9bbc-f100-42e9-b5b1-69384898c75f&requirement_id=e3f6459c-cf42-40d9-bfc8-37507affeffb",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:35.845101+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "property_name": "Altrincham Townhouse",
+        "requirement_id": "43375303-fdfc-46f4-b153-2bc8e8ad53ee",
+        "requirement_name": "Legionella",
+        "requirement_display": {
+          "canonical_name": "Legionella Risk Assessment",
+          "short_name": "Legionella",
+          "description": "",
+          "category_label": "Health",
+          "primary_cta_label": "Record Legionella risk assessment",
+          "secondary_cta_label": "Upload assessment report"
+        },
+        "semantic_state": null,
+        "workflow_class": "EXTERNAL_ASSESSMENT_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record Legionella risk assessment",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+            "requirement_id": "43375303-fdfc-46f4-b153-2bc8e8ad53ee"
+          },
+          "secondary": {
+            "label": "Upload assessment report",
+            "route": "/documents?property_id=cd7c9bbc-f100-42e9-b5b1-69384898c75f&requirement_id=43375303-fdfc-46f4-b153-2bc8e8ad53ee",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:36.279705+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "property_name": "Altrincham Townhouse",
+        "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+        "requirement_name": "Scottish Landlord Registration",
+        "requirement_display": {
+          "canonical_name": "Landlord Registration (Scotland)",
+          "short_name": "Scottish Landlord Registration",
+          "description": "",
+          "category_label": "Licensing",
+          "primary_cta_label": "Record registration details",
+          "secondary_cta_label": "Upload registration evidence"
+        },
+        "semantic_state": "REGISTRATION_RECORDED",
+        "workflow_class": "REGISTRATION_TRACKING",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record registration details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+            "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c"
+          },
+          "secondary": {
+            "label": "Upload registration evidence",
+            "route": "/documents?property_id=cd7c9bbc-f100-42e9-b5b1-69384898c75f&requirement_id=ad878819-8de2-4a32-85f2-9ee21f09817c",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "UPLOADED_UNCONFIRMED",
+          "state_reason": "registration_tracking_regulator_confirmation_not_verified",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": "2026-05-31T16:50:35.989086+00:00",
+          "evidence_last_updated_at": "2026-05-31T16:50:36.581432+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "predicted_document_type": null,
+          "match_outcome": null,
+          "match_confidence": null,
+          "mismatch_reason_code": null,
+          "evidence_match_blocks_satisfaction": false,
+          "primary_evidence_mode": "STRUCTURED_DECLARATION",
+          "evidence_confidence_level": "MEDIUM",
+          "non_document_verification_status": "VERIFIED",
+          "primary_evidence_record_id": "cer_060242c782cd4bc5ad6a9ff89b2829ca",
+          "semantic_state": "REGISTRATION_RECORDED"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "property_name": "Altrincham Townhouse",
+        "requirement_id": "ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
+        "requirement_name": "Smoke, Heat & CO Alarms",
+        "requirement_display": {
+          "canonical_name": "Smoke, Heat & Carbon Monoxide Alarm Compliance",
+          "short_name": "Smoke, Heat & CO Alarms",
+          "description": "",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Complete smoke alarm details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+            "requirement_id": "ec6a13b9-4b1b-4b32-8c49-94268bbaea20"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:36.057408+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f"
+        },
+        "evidence_completeness": {
+          "evaluated": true,
+          "is_complete": false,
+          "summary_label": "Incomplete: smoke alarm evidence missing",
+          "missing_components": [
+            {
+              "key": "smoke_alarm",
+              "label": "Smoke alarm compliance"
+            }
+          ],
+          "required_missing_count": 1
+        },
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "STRUCTURED_DECLARATION",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "property_name": "Leamington Spa Victorian",
+        "requirement_id": "33d417bd-26b3-4d02-a750-52b105307329",
+        "requirement_name": "EICR",
+        "requirement_display": {
+          "canonical_name": "Electrical Installation Condition Report (EICR)",
+          "short_name": "EICR",
+          "description": "",
+          "category_label": "Electrical",
+          "primary_cta_label": "Upload EICR Certificate",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload EICR Certificate",
+            "route": "/documents?property_id=0a6f0874-19b4-4344-b2af-f423585a5b94&requirement_id=33d417bd-26b3-4d02-a750-52b105307329",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:36.947460+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "property_name": "Leamington Spa Victorian",
+        "requirement_id": "b713877f-b8fc-4505-9947-40f7d960c0eb",
+        "requirement_name": "EPC",
+        "requirement_display": {
+          "canonical_name": "Energy Performance Certificate (EPC)",
+          "short_name": "EPC",
+          "description": "",
+          "category_label": "Energy",
+          "primary_cta_label": "Upload document",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload document",
+            "route": "/documents?property_id=0a6f0874-19b4-4344-b2af-f423585a5b94&requirement_id=b713877f-b8fc-4505-9947-40f7d960c0eb",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:37.206970+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "property_name": "Leamington Spa Victorian",
+        "requirement_id": "5dfd5abf-8642-4d2a-b25e-54afd9d5a9de",
+        "requirement_name": "Legionella",
+        "requirement_display": {
+          "canonical_name": "Legionella Risk Assessment",
+          "short_name": "Legionella",
+          "description": "",
+          "category_label": "Health",
+          "primary_cta_label": "Record Legionella risk assessment",
+          "secondary_cta_label": "Upload assessment report"
+        },
+        "semantic_state": null,
+        "workflow_class": "EXTERNAL_ASSESSMENT_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record Legionella risk assessment",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+            "requirement_id": "5dfd5abf-8642-4d2a-b25e-54afd9d5a9de"
+          },
+          "secondary": {
+            "label": "Upload assessment report",
+            "route": "/documents?property_id=0a6f0874-19b4-4344-b2af-f423585a5b94&requirement_id=5dfd5abf-8642-4d2a-b25e-54afd9d5a9de",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:37.634470+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "property_name": "Leamington Spa Victorian",
+        "requirement_id": "b2f4cc3b-5a10-4274-b6fb-83f0f4681385",
+        "requirement_name": "HMO Licensing",
+        "requirement_display": {
+          "canonical_name": "HMO / Selective / Additional Licensing",
+          "short_name": "HMO Licensing",
+          "description": "",
+          "category_label": "Regulatory",
+          "primary_cta_label": "Upload HMO Licence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-09T12:56:02.373263+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload HMO Licence",
+            "route": "/documents?property_id=0a6f0874-19b4-4344-b2af-f423585a5b94&requirement_id=b2f4cc3b-5a10-4274-b6fb-83f0f4681385",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "engine_default",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "property_name": "Leamington Spa Victorian",
+        "requirement_id": "91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
+        "requirement_name": "Landlord Registration Ni",
+        "requirement_display": {
+          "canonical_name": "Landlord Registration Ni",
+          "short_name": "Landlord Registration Ni",
+          "description": "",
+          "category_label": "",
+          "primary_cta_label": "Record registration details",
+          "secondary_cta_label": "Upload registration evidence"
+        },
+        "semantic_state": null,
+        "workflow_class": "REGISTRATION_TRACKING",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-09T12:56:02.373263+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record registration details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+            "requirement_id": "91ad1f2d-e267-44df-b7f9-6e9a2230f4b5"
+          },
+          "secondary": {
+            "label": "Upload registration evidence",
+            "route": "/documents?property_id=0a6f0874-19b4-4344-b2af-f423585a5b94&requirement_id=91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "property_name": "Leamington Spa Victorian",
+        "requirement_id": "edf564a2-ea75-4919-88f5-85aab93b42a5",
+        "requirement_name": "Smoke, Heat & CO Alarms",
+        "requirement_display": {
+          "canonical_name": "Smoke, Heat & Carbon Monoxide Alarm Compliance",
+          "short_name": "Smoke, Heat & CO Alarms",
+          "description": "",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Complete smoke alarm details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+            "requirement_id": "edf564a2-ea75-4919-88f5-85aab93b42a5"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:37.428489+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "0a6f0874-19b4-4344-b2af-f423585a5b94"
+        },
+        "evidence_completeness": {
+          "evaluated": true,
+          "is_complete": false,
+          "summary_label": "Incomplete: smoke alarm evidence missing",
+          "missing_components": [
+            {
+              "key": "smoke_alarm",
+              "label": "Smoke alarm compliance"
+            }
+          ],
+          "required_missing_count": 1
+        },
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "STRUCTURED_DECLARATION",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "property_name": "Leamington Spa Victorian",
+        "requirement_id": "524648e3-60e0-4888-985a-d014f0bb7a94",
+        "requirement_name": "HMO Fire Safety",
+        "requirement_display": {
+          "canonical_name": "HMO Fire Safety Management",
+          "short_name": "HMO Fire Safety",
+          "description": "Log book, fire tests, compartmentation and related fire safety evidence.",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-24T12:56:02.373263+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Add compliance evidence",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+            "requirement_id": "524648e3-60e0-4888-985a-d014f0bb7a94"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "property_name": "Oxford Summertown",
+        "requirement_id": "b1f7d382-e434-4d5f-86b9-00fded1a3a82",
+        "requirement_name": "EICR",
+        "requirement_display": {
+          "canonical_name": "Electrical Installation Condition Report (EICR)",
+          "short_name": "EICR",
+          "description": "",
+          "category_label": "Electrical",
+          "primary_cta_label": "Upload EICR Certificate",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload EICR Certificate",
+            "route": "/documents?property_id=51d71a27-94c3-4ff6-be9b-febd7d5ae796&requirement_id=b1f7d382-e434-4d5f-86b9-00fded1a3a82",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:38.295983+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "property_name": "Oxford Summertown",
+        "requirement_id": "57e66e0c-3288-47f6-95ef-6b4d59e715bf",
+        "requirement_name": "EPC",
+        "requirement_display": {
+          "canonical_name": "Energy Performance Certificate (EPC)",
+          "short_name": "EPC",
+          "description": "",
+          "category_label": "Energy",
+          "primary_cta_label": "Upload document",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload document",
+            "route": "/documents?property_id=51d71a27-94c3-4ff6-be9b-febd7d5ae796&requirement_id=57e66e0c-3288-47f6-95ef-6b4d59e715bf",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:38.529407+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "property_name": "Oxford Summertown",
+        "requirement_id": "f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
+        "requirement_name": "Legionella",
+        "requirement_display": {
+          "canonical_name": "Legionella Risk Assessment",
+          "short_name": "Legionella",
+          "description": "",
+          "category_label": "Health",
+          "primary_cta_label": "Record Legionella risk assessment",
+          "secondary_cta_label": "Upload assessment report"
+        },
+        "semantic_state": null,
+        "workflow_class": "EXTERNAL_ASSESSMENT_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record Legionella risk assessment",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+            "requirement_id": "f8af19ed-0da9-40a8-9d8a-ce4446ecbb66"
+          },
+          "secondary": {
+            "label": "Upload assessment report",
+            "route": "/documents?property_id=51d71a27-94c3-4ff6-be9b-febd7d5ae796&requirement_id=f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:39.036661+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "property_name": "Oxford Summertown",
+        "requirement_id": "0b317b5b-a760-4f76-baf0-9cbee75f983e",
+        "requirement_name": "HMO Licensing",
+        "requirement_display": {
+          "canonical_name": "HMO / Selective / Additional Licensing",
+          "short_name": "HMO Licensing",
+          "description": "",
+          "category_label": "Regulatory",
+          "primary_cta_label": "Upload HMO Licence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-09T12:56:03.988427+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload HMO Licence",
+            "route": "/documents?property_id=51d71a27-94c3-4ff6-be9b-febd7d5ae796&requirement_id=0b317b5b-a760-4f76-baf0-9cbee75f983e",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "engine_default",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "property_name": "Oxford Summertown",
+        "requirement_id": "40ddb2cc-4c36-474f-981d-296e0248ab31",
+        "requirement_name": "Landlord Registration Ni",
+        "requirement_display": {
+          "canonical_name": "Landlord Registration Ni",
+          "short_name": "Landlord Registration Ni",
+          "description": "",
+          "category_label": "",
+          "primary_cta_label": "Record registration details",
+          "secondary_cta_label": "Upload registration evidence"
+        },
+        "semantic_state": null,
+        "workflow_class": "REGISTRATION_TRACKING",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-09T12:56:03.988427+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record registration details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+            "requirement_id": "40ddb2cc-4c36-474f-981d-296e0248ab31"
+          },
+          "secondary": {
+            "label": "Upload registration evidence",
+            "route": "/documents?property_id=51d71a27-94c3-4ff6-be9b-febd7d5ae796&requirement_id=40ddb2cc-4c36-474f-981d-296e0248ab31",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "property_name": "Oxford Summertown",
+        "requirement_id": "89308629-f183-44e4-b07d-71c564a14eca",
+        "requirement_name": "Smoke, Heat & CO Alarms",
+        "requirement_display": {
+          "canonical_name": "Smoke, Heat & Carbon Monoxide Alarm Compliance",
+          "short_name": "Smoke, Heat & CO Alarms",
+          "description": "",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Complete smoke alarm details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+            "requirement_id": "89308629-f183-44e4-b07d-71c564a14eca"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:38.815672+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796"
+        },
+        "evidence_completeness": {
+          "evaluated": true,
+          "is_complete": false,
+          "summary_label": "Incomplete: smoke alarm evidence missing",
+          "missing_components": [
+            {
+              "key": "smoke_alarm",
+              "label": "Smoke alarm compliance"
+            }
+          ],
+          "required_missing_count": 1
+        },
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "STRUCTURED_DECLARATION",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "property_name": "Oxford Summertown",
+        "requirement_id": "27981630-213a-4210-8b0c-5061a4a08e7b",
+        "requirement_name": "HMO Fire Safety",
+        "requirement_display": {
+          "canonical_name": "HMO Fire Safety Management",
+          "short_name": "HMO Fire Safety",
+          "description": "Log book, fire tests, compartmentation and related fire safety evidence.",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-24T12:56:03.988427+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Add compliance evidence",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+            "requirement_id": "27981630-213a-4210-8b0c-5061a4a08e7b"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "property_name": "Liverpool Georgian Quarter",
+        "requirement_id": "2eb01d80-9fa6-472c-b845-f3b2bb38e382",
+        "requirement_name": "EICR",
+        "requirement_display": {
+          "canonical_name": "Electrical Installation Condition Report (EICR)",
+          "short_name": "EICR",
+          "description": "",
+          "category_label": "Electrical",
+          "primary_cta_label": "Upload EICR Certificate",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload EICR Certificate",
+            "route": "/documents?property_id=08dd5b1f-d963-4827-aa8a-a3daddd144cf&requirement_id=2eb01d80-9fa6-472c-b845-f3b2bb38e382",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:39.715711+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "property_name": "Liverpool Georgian Quarter",
+        "requirement_id": "4fde5533-ba46-4245-b55a-7e45f8c72557",
+        "requirement_name": "EPC",
+        "requirement_display": {
+          "canonical_name": "Energy Performance Certificate (EPC)",
+          "short_name": "EPC",
+          "description": "",
+          "category_label": "Energy",
+          "primary_cta_label": "Upload document",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload document",
+            "route": "/documents?property_id=08dd5b1f-d963-4827-aa8a-a3daddd144cf&requirement_id=4fde5533-ba46-4245-b55a-7e45f8c72557",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:39.927033+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "property_name": "Liverpool Georgian Quarter",
+        "requirement_id": "e7540d87-2ae8-4231-b142-311bcf0b370b",
+        "requirement_name": "Legionella",
+        "requirement_display": {
+          "canonical_name": "Legionella Risk Assessment",
+          "short_name": "Legionella",
+          "description": "",
+          "category_label": "Health",
+          "primary_cta_label": "Record Legionella risk assessment",
+          "secondary_cta_label": "Upload assessment report"
+        },
+        "semantic_state": null,
+        "workflow_class": "EXTERNAL_ASSESSMENT_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record Legionella risk assessment",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+            "requirement_id": "e7540d87-2ae8-4231-b142-311bcf0b370b"
+          },
+          "secondary": {
+            "label": "Upload assessment report",
+            "route": "/documents?property_id=08dd5b1f-d963-4827-aa8a-a3daddd144cf&requirement_id=e7540d87-2ae8-4231-b142-311bcf0b370b",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:40.357705+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "property_name": "Liverpool Georgian Quarter",
+        "requirement_id": "81cef5bd-cccf-421c-8758-ae916898b0bb",
+        "requirement_name": "Landlord Registration Ni",
+        "requirement_display": {
+          "canonical_name": "Landlord Registration Ni",
+          "short_name": "Landlord Registration Ni",
+          "description": "",
+          "category_label": "",
+          "primary_cta_label": "Record registration details",
+          "secondary_cta_label": "Upload registration evidence"
+        },
+        "semantic_state": null,
+        "workflow_class": "REGISTRATION_TRACKING",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-09T12:55:59.706919+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record registration details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+            "requirement_id": "81cef5bd-cccf-421c-8758-ae916898b0bb"
+          },
+          "secondary": {
+            "label": "Upload registration evidence",
+            "route": "/documents?property_id=08dd5b1f-d963-4827-aa8a-a3daddd144cf&requirement_id=81cef5bd-cccf-421c-8758-ae916898b0bb",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "property_name": "Liverpool Georgian Quarter",
+        "requirement_id": "69042628-c672-44dd-9bd7-cb51768f9730",
+        "requirement_name": "Smoke, Heat & CO Alarms",
+        "requirement_display": {
+          "canonical_name": "Smoke, Heat & Carbon Monoxide Alarm Compliance",
+          "short_name": "Smoke, Heat & CO Alarms",
+          "description": "",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Complete smoke alarm details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+            "requirement_id": "69042628-c672-44dd-9bd7-cb51768f9730"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:40.140243+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf"
+        },
+        "evidence_completeness": {
+          "evaluated": true,
+          "is_complete": false,
+          "summary_label": "Incomplete: smoke alarm evidence missing",
+          "missing_components": [
+            {
+              "key": "smoke_alarm",
+              "label": "Smoke alarm compliance"
+            }
+          ],
+          "required_missing_count": 1
+        },
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "STRUCTURED_DECLARATION",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "property_name": "Glasgow Shawlands",
+        "requirement_id": "d13a0b57-ad3f-4edd-99d6-6b6e38d85071",
+        "requirement_name": "EICR",
+        "requirement_display": {
+          "canonical_name": "Electrical Installation Condition Report (EICR)",
+          "short_name": "EICR",
+          "description": "",
+          "category_label": "Electrical",
+          "primary_cta_label": "Upload EICR Certificate",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload EICR Certificate",
+            "route": "/documents?property_id=0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68&requirement_id=d13a0b57-ad3f-4edd-99d6-6b6e38d85071",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:41.018927+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "property_name": "Glasgow Shawlands",
+        "requirement_id": "cb63e083-ba4c-4244-8549-de757960cdcf",
+        "requirement_name": "EPC",
+        "requirement_display": {
+          "canonical_name": "Energy Performance Certificate (EPC)",
+          "short_name": "EPC",
+          "description": "",
+          "category_label": "Energy",
+          "primary_cta_label": "Upload document",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload document",
+            "route": "/documents?property_id=0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68&requirement_id=cb63e083-ba4c-4244-8549-de757960cdcf",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:41.232687+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "property_name": "Glasgow Shawlands",
+        "requirement_id": "77f4422f-099e-48f8-a61f-18ca9a3f57f3",
+        "requirement_name": "Legionella",
+        "requirement_display": {
+          "canonical_name": "Legionella Risk Assessment",
+          "short_name": "Legionella",
+          "description": "",
+          "category_label": "Health",
+          "primary_cta_label": "Record Legionella risk assessment",
+          "secondary_cta_label": "Upload assessment report"
+        },
+        "semantic_state": null,
+        "workflow_class": "EXTERNAL_ASSESSMENT_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Record Legionella risk assessment",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+            "requirement_id": "77f4422f-099e-48f8-a61f-18ca9a3f57f3"
+          },
+          "secondary": {
+            "label": "Upload assessment report",
+            "route": "/documents?property_id=0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68&requirement_id=77f4422f-099e-48f8-a61f-18ca9a3f57f3",
+            "kind": "navigate",
+            "handler": "navigate",
+            "external": false,
+            "intent": "upload_evidence"
+          },
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:41.674215+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+        },
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "STRUCTURED_DECLARATION",
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "property_name": "Glasgow Shawlands",
+        "requirement_id": "ef6abb19-75a0-4382-a846-ff4c51dcddfa",
+        "requirement_name": "HMO Licensing",
+        "requirement_display": {
+          "canonical_name": "HMO / Selective / Additional Licensing",
+          "short_name": "HMO Licensing",
+          "description": "",
+          "category_label": "Regulatory",
+          "primary_cta_label": "Upload HMO Licence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "LEGACY_DOCUMENT_UPLOAD",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-09T12:56:00.973508+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Upload HMO Licence",
+            "route": "/documents?property_id=0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68&requirement_id=ef6abb19-75a0-4382-a846-ff4c51dcddfa",
+            "kind": "navigate",
+            "handler": "navigate",
+            "intent": "upload_evidence"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "engine_default",
+            "supporting_links": "engine_default",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD"
+        ]
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "property_name": "Glasgow Shawlands",
+        "requirement_id": "d1a70f19-94d1-4eca-8a4c-dab8bfc2c05b",
+        "requirement_name": "Smoke, Heat & CO Alarms",
+        "requirement_display": {
+          "canonical_name": "Smoke, Heat & Carbon Monoxide Alarm Compliance",
+          "short_name": "Smoke, Heat & CO Alarms",
+          "description": "",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": null,
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Complete smoke alarm details",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+            "requirement_id": "d1a70f19-94d1-4eca-8a4c-dab8bfc2c05b"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": {
+          "version": 1,
+          "state": "MISSING",
+          "state_reason": "no_evidence_document",
+          "effective_expiry_date": null,
+          "effective_expiry_is_null": true,
+          "effective_issue_date": null,
+          "effective_verified_document_id": null,
+          "expiry_source": "NONE",
+          "evidence_last_verified_at": null,
+          "evidence_last_updated_at": "2026-04-24T13:23:41.440918+00:00",
+          "mismatch_flag": false,
+          "mismatch_reason": null,
+          "evidence_confidence": null,
+          "authoritative_property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+        },
+        "evidence_completeness": {
+          "evaluated": true,
+          "is_complete": false,
+          "summary_label": "Incomplete: smoke alarm evidence missing",
+          "missing_components": [
+            {
+              "key": "smoke_alarm",
+              "label": "Smoke alarm compliance"
+            }
+          ],
+          "required_missing_count": 1
+        },
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "STRUCTURED_DECLARATION",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "property_name": "Glasgow Shawlands",
+        "requirement_id": "84954d53-09fd-4d49-9e69-3285b7c644f5",
+        "requirement_name": "HMO Fire Safety",
+        "requirement_display": {
+          "canonical_name": "HMO Fire Safety Management",
+          "short_name": "HMO Fire Safety",
+          "description": "Log book, fire tests, compartmentation and related fire safety evidence.",
+          "category_label": "Fire safety",
+          "primary_cta_label": "Add compliance evidence",
+          "secondary_cta_label": null
+        },
+        "semantic_state": null,
+        "workflow_class": "MULTI_EVIDENCE",
+        "status": "MISSING_EVIDENCE",
+        "date_used": "2026-06-24T12:56:00.973508+00:00",
+        "date_confidence": "UNKNOWN",
+        "evidence_uploaded": false,
+        "actions": [
+          "VIEW"
+        ],
+        "take_action": {
+          "primary": {
+            "label": "Add compliance evidence",
+            "route": null,
+            "kind": "guided_evidence_resolution",
+            "handler": "guided_evidence",
+            "intent": "guided_evidence_resolution",
+            "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+            "requirement_id": "84954d53-09fd-4d49-9e69-3285b7c644f5"
+          },
+          "secondary": null,
+          "supporting_external_links": [],
+          "contract": "requirement_take_action_v1",
+          "provenance": {
+            "primary_label": "published_registry",
+            "supporting_links": "published_registry",
+            "source_type": "requirement"
+          }
+        },
+        "evidence_authority": null,
+        "evidence_completeness": null,
+        "guidance_target": null,
+        "allowed_evidence_modes": [
+          "DOCUMENT_UPLOAD",
+          "CONTRACTOR_CONFIRMATION",
+          "INSPECTION_CHECKLIST"
+        ]
+      }
+    ],
+    "bucket_breakdown": {
+      "legal_core": {
+        "percent": 20.0
+      },
+      "documentation_completeness": {
+        "percent": 2.4
+      },
+      "operational_responsiveness": {
+        "percent": 72.0
+      },
+      "recency_maintenance_confidence": {
+        "percent": 51.4
+      }
+    },
+    "earned_points": 173.81,
+    "applicable_points": 700.0,
+    "top_next_actions": [
+      {
+        "requirement_code": "GAS_SAFETY",
+        "display_label": "Gas Safety Certificate (CP12)",
+        "action": "Upload and verify evidence for Gas Safety Certificate (CP12)",
+        "impact_points": 15.0,
+        "priority": "high"
+      },
+      {
+        "requirement_code": "EICR",
+        "display_label": "Electrical Installation Condition Report (EICR)",
+        "action": "Upload and verify evidence for Electrical Installation Condition Report (EICR)",
+        "impact_points": 15.0,
+        "priority": "high"
+      },
+      {
+        "requirement_code": "GAS_SAFETY",
+        "display_label": "Gas Safety Certificate (CP12)",
+        "action": "Upload and verify evidence for Gas Safety Certificate (CP12)",
+        "impact_points": 15.0,
+        "priority": "high"
+      },
+      {
+        "requirement_code": "EICR",
+        "display_label": "Electrical Installation Condition Report (EICR)",
+        "action": "Upload and verify evidence for Electrical Installation Condition Report (EICR)",
+        "impact_points": 15.0,
+        "priority": "high"
+      },
+      {
+        "requirement_code": "GAS_SAFETY",
+        "display_label": "Gas Safety Certificate (CP12)",
+        "action": "Upload and verify evidence for Gas Safety Certificate (CP12)",
+        "impact_points": 15.0,
+        "priority": "high"
+      }
+    ],
+    "top_deficits": [
+      {
+        "requirement_code": "LEGIONELLA",
+        "status": "MISSING",
+        "missing_points": 10.0,
+        "risk_level_if_failed": "MEDIUM"
+      },
+      {
+        "requirement_code": "EICR",
+        "status": "NEEDS_REVIEW",
+        "missing_points": 8.02,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EPC",
+        "status": "NEEDS_REVIEW",
+        "missing_points": 5.35,
+        "risk_level_if_failed": "MEDIUM"
+      },
+      {
+        "requirement_code": "FIRE_DETECTION",
+        "status": "VALID",
+        "missing_points": 0.7,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "HMO_FIRE_RISK",
+        "status": "VALID",
+        "missing_points": 0.56,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "GAS_SAFETY",
+        "status": "MISSING",
+        "missing_points": 15.0,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EICR",
+        "status": "MISSING",
+        "missing_points": 15.0,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "EPC",
+        "status": "MISSING",
+        "missing_points": 10.0,
+        "risk_level_if_failed": "MEDIUM"
+      },
+      {
+        "requirement_code": "FIRE_DETECTION",
+        "status": "MISSING",
+        "missing_points": 10.0,
+        "risk_level_if_failed": "HIGH"
+      },
+      {
+        "requirement_code": "LEGIONELLA",
+        "status": "MISSING",
+        "missing_points": 10.0,
+        "risk_level_if_failed": "MEDIUM"
+      }
+    ],
+    "jurisdictions": [
+      "England",
+      "Scotland",
+      "Wales"
+    ],
+    "score_breakdown_by_property": [
+      {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "name": "Kensington Garden Flat",
+        "jurisdiction": "Wales",
+        "scoring_jurisdiction_bucket": "ENGLAND_WALES",
+        "compliance_basis": "property_explicit",
+        "effective_jurisdiction_label": "Wales",
+        "jurisdiction_required": false,
+        "compliance_confidence": "explicit",
+        "score_breakdown": [
+          {
+            "requirement_code": "GAS_SAFETY",
+            "display_label": "Gas Safety Certificate (CP12)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "VALID",
+            "expiry_date": "2027-05-17",
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 15.0,
+            "applicable_points": 15.0,
+            "reasons": [],
+            "date_source": "VERIFIED_DOCUMENT",
+            "evidence_state": "VERIFIED",
+            "confidence_state": "VERIFIED"
+          },
+          {
+            "requirement_code": "EICR",
+            "display_label": "Electrical Installation Condition Report (EICR)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "NEEDS_REVIEW",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 6.98,
+            "applicable_points": 15.0,
+            "reasons": [
+              "AUTHORITY_NEEDS_REVIEW",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EPC",
+            "display_label": "Energy Performance Certificate (EPC)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "NEEDS_REVIEW",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 4.65,
+            "applicable_points": 10.0,
+            "reasons": [
+              "AUTHORITY_NEEDS_REVIEW",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "FIRE_DETECTION",
+            "display_label": "Smoke, heat and carbon monoxide alarms",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "VALID",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 9.3,
+            "applicable_points": 10.0,
+            "reasons": [
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "LEGIONELLA",
+            "display_label": "Legionella risk assessment",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "HMO_FIRE_RISK",
+            "display_label": "HMO fire safety evidence",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "VALID",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 7.44,
+            "applicable_points": 8.0,
+            "reasons": [
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "OCCUPATION_CONTRACT",
+            "display_label": "Occupation contract (Wales)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 3.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "LOW",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RIGHT_TO_RENT",
+            "display_label": "Right to Rent checks",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RENT_SMART_WALES",
+            "display_label": "Rent Smart Wales",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "LANDLORD_REGISTRATION_NI",
+            "display_label": "Landlord Registration Ni",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 8.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "PORTABLE_APPLIANCE",
+            "display_label": "Portable Appliance",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 4.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          }
+        ]
+      },
+      {
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "name": "Altrincham Townhouse",
+        "jurisdiction": "Scotland",
+        "scoring_jurisdiction_bucket": "SCOTLAND",
+        "compliance_basis": "property_explicit",
+        "effective_jurisdiction_label": "Scotland",
+        "jurisdiction_required": false,
+        "compliance_confidence": "explicit",
+        "score_breakdown": [
+          {
+            "requirement_code": "GAS_SAFETY",
+            "display_label": "Gas Safety Certificate (CP12)",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EICR",
+            "display_label": "Electrical Installation Condition Report (EICR)",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EPC",
+            "display_label": "Energy Performance Certificate (EPC)",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "FIRE_DETECTION",
+            "display_label": "Smoke, heat and carbon monoxide alarms",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "LEGIONELLA",
+            "display_label": "Legionella risk assessment",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "HMO_FIRE_RISK",
+            "display_label": "HMO fire safety evidence",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": false,
+            "weight": 8.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "OCCUPATION_CONTRACT",
+            "display_label": "Occupation contract (Wales)",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": false,
+            "weight": 3.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "LOW",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RIGHT_TO_RENT",
+            "display_label": "Right to Rent checks",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RENT_SMART_WALES",
+            "display_label": "Rent Smart Wales",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "LANDLORD_REGISTRATION_NI",
+            "display_label": "Landlord Registration Ni",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": false,
+            "weight": 8.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "PORTABLE_APPLIANCE",
+            "display_label": "Portable Appliance",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": false,
+            "weight": 4.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "LANDLORD_REGISTRATION",
+            "display_label": "Landlord registration",
+            "jurisdiction": "SCOTLAND",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "NEEDS_REVIEW",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 3.72,
+            "applicable_points": 8.0,
+            "reasons": [
+              "AUTHORITY_NEEDS_REVIEW",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          }
+        ]
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "name": "Leamington Spa Victorian",
+        "jurisdiction": null,
+        "scoring_jurisdiction_bucket": "ENGLAND_WALES",
+        "compliance_basis": "client_default",
+        "effective_jurisdiction_label": "Northern Ireland",
+        "jurisdiction_required": true,
+        "compliance_confidence": "fallback",
+        "score_breakdown": [
+          {
+            "requirement_code": "GAS_SAFETY",
+            "display_label": "Gas Safety Certificate (CP12)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EICR",
+            "display_label": "Electrical Installation Condition Report (EICR)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EPC",
+            "display_label": "Energy Performance Certificate (EPC)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "FIRE_DETECTION",
+            "display_label": "Smoke, heat and carbon monoxide alarms",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "LEGIONELLA",
+            "display_label": "Legionella risk assessment",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "HMO_FIRE_RISK",
+            "display_label": "HMO fire safety evidence",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "EXPIRING_SOON",
+            "expiry_date": "2026-06-24",
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 5.21,
+            "applicable_points": 8.0,
+            "reasons": [
+              "DOCUMENT_EXPIRING_SOON",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "OCCUPATION_CONTRACT",
+            "display_label": "Occupation contract (Wales)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 3.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "LOW",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RIGHT_TO_RENT",
+            "display_label": "Right to Rent checks",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RENT_SMART_WALES",
+            "display_label": "Rent Smart Wales",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "LANDLORD_REGISTRATION_NI",
+            "display_label": "Landlord Registration Ni",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "EXPIRING_SOON",
+            "expiry_date": "2026-06-09",
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 5.21,
+            "applicable_points": 8.0,
+            "reasons": [
+              "DOCUMENT_EXPIRING_SOON",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "PORTABLE_APPLIANCE",
+            "display_label": "Portable Appliance",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 4.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          }
+        ]
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "name": "Oxford Summertown",
+        "jurisdiction": null,
+        "scoring_jurisdiction_bucket": "ENGLAND_WALES",
+        "compliance_basis": "client_default",
+        "effective_jurisdiction_label": "Northern Ireland",
+        "jurisdiction_required": true,
+        "compliance_confidence": "fallback",
+        "score_breakdown": [
+          {
+            "requirement_code": "GAS_SAFETY",
+            "display_label": "Gas Safety Certificate (CP12)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EICR",
+            "display_label": "Electrical Installation Condition Report (EICR)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EPC",
+            "display_label": "Energy Performance Certificate (EPC)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "FIRE_DETECTION",
+            "display_label": "Smoke, heat and carbon monoxide alarms",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "LEGIONELLA",
+            "display_label": "Legionella risk assessment",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "HMO_FIRE_RISK",
+            "display_label": "HMO fire safety evidence",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "EXPIRING_SOON",
+            "expiry_date": "2026-06-24",
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 5.21,
+            "applicable_points": 8.0,
+            "reasons": [
+              "DOCUMENT_EXPIRING_SOON",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "OCCUPATION_CONTRACT",
+            "display_label": "Occupation contract (Wales)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 3.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "LOW",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RIGHT_TO_RENT",
+            "display_label": "Right to Rent checks",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RENT_SMART_WALES",
+            "display_label": "Rent Smart Wales",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "LANDLORD_REGISTRATION_NI",
+            "display_label": "Landlord Registration Ni",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "EXPIRING_SOON",
+            "expiry_date": "2026-06-09",
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 5.21,
+            "applicable_points": 8.0,
+            "reasons": [
+              "DOCUMENT_EXPIRING_SOON",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "PORTABLE_APPLIANCE",
+            "display_label": "Portable Appliance",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 4.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          }
+        ]
+      },
+      {
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "name": "Liverpool Georgian Quarter",
+        "jurisdiction": null,
+        "scoring_jurisdiction_bucket": "ENGLAND_WALES",
+        "compliance_basis": "client_default",
+        "effective_jurisdiction_label": "Northern Ireland",
+        "jurisdiction_required": true,
+        "compliance_confidence": "fallback",
+        "score_breakdown": [
+          {
+            "requirement_code": "GAS_SAFETY",
+            "display_label": "Gas Safety Certificate (CP12)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EICR",
+            "display_label": "Electrical Installation Condition Report (EICR)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EPC",
+            "display_label": "Energy Performance Certificate (EPC)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "FIRE_DETECTION",
+            "display_label": "Smoke, heat and carbon monoxide alarms",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "LEGIONELLA",
+            "display_label": "Legionella risk assessment",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "HMO_FIRE_RISK",
+            "display_label": "HMO fire safety evidence",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 8.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "OCCUPATION_CONTRACT",
+            "display_label": "Occupation contract (Wales)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 3.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "LOW",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RIGHT_TO_RENT",
+            "display_label": "Right to Rent checks",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RENT_SMART_WALES",
+            "display_label": "Rent Smart Wales",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "LANDLORD_REGISTRATION_NI",
+            "display_label": "Landlord Registration Ni",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "EXPIRING_SOON",
+            "expiry_date": "2026-06-09",
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 5.21,
+            "applicable_points": 8.0,
+            "reasons": [
+              "DOCUMENT_EXPIRING_SOON",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "PORTABLE_APPLIANCE",
+            "display_label": "Portable Appliance",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 4.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          }
+        ]
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "name": "Glasgow Shawlands",
+        "jurisdiction": null,
+        "scoring_jurisdiction_bucket": "ENGLAND_WALES",
+        "compliance_basis": "client_default",
+        "effective_jurisdiction_label": "Northern Ireland",
+        "jurisdiction_required": true,
+        "compliance_confidence": "fallback",
+        "score_breakdown": [
+          {
+            "requirement_code": "GAS_SAFETY",
+            "display_label": "Gas Safety Certificate (CP12)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EICR",
+            "display_label": "Electrical Installation Condition Report (EICR)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EPC",
+            "display_label": "Energy Performance Certificate (EPC)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "FIRE_DETECTION",
+            "display_label": "Smoke, heat and carbon monoxide alarms",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "LEGIONELLA",
+            "display_label": "Legionella risk assessment",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "HMO_FIRE_RISK",
+            "display_label": "HMO fire safety evidence",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "EXPIRING_SOON",
+            "expiry_date": "2026-06-24",
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 5.21,
+            "applicable_points": 8.0,
+            "reasons": [
+              "DOCUMENT_EXPIRING_SOON",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "OCCUPATION_CONTRACT",
+            "display_label": "Occupation contract (Wales)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 3.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "LOW",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RIGHT_TO_RENT",
+            "display_label": "Right to Rent checks",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RENT_SMART_WALES",
+            "display_label": "Rent Smart Wales",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "LANDLORD_REGISTRATION_NI",
+            "display_label": "Landlord Registration Ni",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 8.0,
+            "status": "MISSING_EVIDENCE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 8.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "PORTABLE_APPLIANCE",
+            "display_label": "Portable Appliance",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 4.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          }
+        ]
+      },
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "name": "722075 Lookup Test Street",
+        "jurisdiction": "England",
+        "scoring_jurisdiction_bucket": "ENGLAND_WALES",
+        "compliance_basis": "property_explicit",
+        "effective_jurisdiction_label": "England",
+        "jurisdiction_required": false,
+        "compliance_confidence": "explicit",
+        "score_breakdown": [
+          {
+            "requirement_code": "GAS_SAFETY",
+            "display_label": "Gas Safety Certificate (CP12)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 15.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "EICR",
+            "display_label": "Electrical Installation Condition Report (EICR)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 15.0,
+            "status": "MISSING",
+            "expiry_date": "2026-08-23",
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 15.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "EPC",
+            "display_label": "Energy Performance Certificate (EPC)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "MISSING",
+            "expiry_date": "2026-11-21",
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 10.0,
+            "reasons": [
+              "NO_DOCUMENT_FOUND",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "FIRE_DETECTION",
+            "display_label": "Smoke, heat and carbon monoxide alarms",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "EXPIRING_SOON",
+            "expiry_date": "2026-06-24",
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 6.51,
+            "applicable_points": 10.0,
+            "reasons": [
+              "DOCUMENT_EXPIRING_SOON",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "LEGIONELLA",
+            "display_label": "Legionella risk assessment",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": true,
+            "weight": 10.0,
+            "status": "EXPIRING_SOON",
+            "expiry_date": "2026-07-24",
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 6.51,
+            "applicable_points": 10.0,
+            "reasons": [
+              "DOCUMENT_EXPIRING_SOON",
+              "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+            ],
+            "date_source": "SYSTEM_ESTIMATED",
+            "evidence_state": "MISSING",
+            "confidence_state": "ESTIMATED"
+          },
+          {
+            "requirement_code": "HMO_FIRE_RISK",
+            "display_label": "HMO fire safety evidence",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 8.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "HIGH",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "OCCUPATION_CONTRACT",
+            "display_label": "Occupation contract (Wales)",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 3.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "LOW",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RIGHT_TO_RENT",
+            "display_label": "Right to Rent checks",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "RENT_SMART_WALES",
+            "display_label": "Rent Smart Wales",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 5.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "LANDLORD_REGISTRATION_NI",
+            "display_label": "Landlord Registration Ni",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 8.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          },
+          {
+            "requirement_code": "PORTABLE_APPLIANCE",
+            "display_label": "Portable Appliance",
+            "jurisdiction": "ENGLAND_WALES",
+            "applies_if": false,
+            "weight": 4.0,
+            "status": "NOT_APPLICABLE",
+            "expiry_date": null,
+            "verified_at": null,
+            "risk_level_if_failed": "MEDIUM",
+            "earned_points": 0.0,
+            "applicable_points": 0.0,
+            "reasons": [],
+            "date_source": null,
+            "evidence_state": null,
+            "confidence_state": null
+          }
+        ]
+      }
+    ],
+    "jurisdiction_compliance_notice": {
+      "active": false,
+      "compliance_basis": null,
+      "affected_property_ids": [],
+      "affected_property_count": 0
+    },
+    "properties_pending_score_recalc_count": 0,
+    "portfolio_score_recalc_pending_note": null,
+    "jurisdiction_required": true,
+    "compliance_confidence": "fallback",
+    "jurisdiction_required_property_ids": [
+      "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+      "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+    ],
+    "jurisdiction_required_property_count": 4,
+    "jurisdiction_fallback_acknowledged": true,
+    "client_default_jurisdiction": "Northern Ireland",
+    "score_status": "ok",
+    "score_status_message": null,
+    "score_coverage": {
+      "properties_total": 7,
+      "properties_with_score": 7,
+      "properties_missing_score": 0,
+      "properties_with_stale_persisted_score": 0
+    },
+    "portfolio_last_calculated_at": "2026-06-03T03:32:23.132111+00:00",
+    "last_calculated_at": "2026-06-03T03:32:23.132111+00:00",
+    "score_authority": "persisted_portfolio_aggregate",
+    "properties_missing_persisted_score": 0,
+    "scoring_semantics_version": "v1",
+    "catalog_portfolio_view": {
+      "score_authority": "non_authoritative_requirement_matrix",
+      "portfolio_score": 33,
+      "risk_level": "Critical Risk",
+      "grade": "F",
+      "color": "red",
+      "message": "High urgency: overdue items detected",
+      "updated_at": "2026-06-03T21:48:26.273612+00:00",
+      "note": "Catalog-weighted requirement matrix preview only. Headline score and KPI cards must use persisted portfolio aggregate."
+    }
+  },
+  "property_explainability": {
+    "score_status": "ok",
+    "score_status_message": null,
+    "message": "High risk - action required"
+  },
+  "browser": {
+    "dashboard": {
+      "label": "dashboard_pending",
+      "captured": true,
+      "screenshot": "docs\\audit\\score_recalculation_latency_convergence_01\\screenshots\\final_verification\\dashboard_pending.png"
+    },
+    "property": {
+      "label": "property_pending",
+      "captured": true,
+      "screenshot": "docs\\audit\\score_recalculation_latency_convergence_01\\screenshots\\final_verification\\property_pending.png"
+    }
+  },
+  "cognition_checks": {
+    "no_stale_elevated_risk": true,
+    "pending_or_calculating": true,
+    "score_cognition_present": true
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "first_sync_status": 200,
+  "second_sync_status": 200,
+  "pending_observations": 2,
+  "duplicate_safe": true,
+  "note": "duplicate_safe=true when repeated sync does not cause unbounded pending storms"
+}
