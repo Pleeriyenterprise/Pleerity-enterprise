@@ -1,21 +1,50 @@
-# BILLING-PRICE-ID-RUNTIME-DUPLICATE-DIAGNOSTIC-01
+# BILLING-STRIPE-RUNTIME-FINGERPRINT-VERIFY-01
 
-**Classification:** **STRIPE_PRICE_CONFIG_DRIFT**
+**Classification:** **STRIPE_PRICE_CONFIG_DRIFT**  
+**Root cause:** **DUPLICATE_VALUES_CONFIRMED**
 
-## Root cause (duplicate price)
+## 1. Deploy check
 
-Deployment fingerprint shows **duplicate_monthly_groups**: all three `STRIPE_LIVE_PRICE_PLAN_*_MONTHLY` env vars resolve to the **same** price fingerprint (`duplicate_group_id` collision).
+- `/api/version` commit: `5f5613c25b0c` (min `5f5613c2`)
+- Pass: **True**
 
-This is **DUPLICATE_RENDER_VALUES** — not a code resolution bug. Code reads only `STRIPE_LIVE_PRICE_PLAN_*_MONTHLY` (no legacy fallback).
+## 2. Runtime fingerprint
 
-## Legacy drift (separate)
+Admin `GET /api/admin/billing/stripe-price-env-fingerprint` (masked):
 
-Client `6aa7906f-ed85-4367-8ca4-6ef1bb76668f` has test-mode subscription on live deployment (`sub_…` exists in test mode only). Logged as warning; separate from duplicate env issue.
+| Plan | duplicate_group_id | last_6 |
+|------|-------------------|--------|
+| PLAN_1_SOLO | 66fe742a | djy27g |
+| PLAN_2_PORTFOLIO | 1358f55e | hJv239 |
+| PLAN_3_PRO | 1358f55e | hJv239 |
 
-## Remediation
+- Three monthly vars distinct at runtime: **False**
+- duplicate_detected: **True**
 
-1. Fix Render env: three distinct monthly price IDs.
-2. Redeploy/restart backend.
-3. Read paths degrade gracefully; checkout remains blocked until env fixed.
+## 3. Mode / env source
 
-See `runtime_price_fingerprint.json` for masked group evidence.
+- STRIPE_MODE runtime: **live**
+- Secret key: `STRIPE_SECRET_KEY_LIVE` (live) with legacy fallback only if unset
+- Service: **pleerity-enterprise.onrender.com** → **pleerityenterprise.co.uk**
+
+## 4. Price resolution
+
+Direct `os.environ[STRIPE_LIVE_PRICE_PLAN_*_MONTHLY]` — no legacy fallback.
+
+## 5. Root cause
+
+**DUPLICATE_VALUES_CONFIRMED** — Portfolio and Professional monthly env vars share the same runtime fingerprint; Solo is distinct.
+
+## 6. Remediation
+
+1. Set `STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY` to the £79 monthly price (distinct from Portfolio).
+2. Redeploy/restart backend API service.
+3. Re-run this verify script.
+
+## 7. Verification
+
+- `/api/billing/plans`: 200
+- `/api/client/entitlements`: 200
+- Checkout: blocked (400 STRIPE_MODE_MISMATCH duplicate) until Pro monthly fixed
+
+See `runtime_fingerprint_verify_01.json` for full masked evidence.

@@ -1,0 +1,27 @@
+{
+  "verified_at": "2026-06-03T16:32:12.005251+00:00",
+  "service_under_test": {
+    "api_host": "pleerity-enterprise.onrender.com",
+    "serves_frontend": "https://pleerityenterprise.co.uk",
+    "note": "pleerity-enterprise.onrender.com is the backend API for pleerityenterprise.co.uk"
+  },
+  "stripe_mode": {
+    "runtime_value": "live",
+    "authoritative_var": "STRIPE_MODE",
+    "code_reads_STRIPE_MODE_Test": false,
+    "note": "Backend reads only STRIPE_MODE (live|test). No STRIPE_MODE_Test variant in codebase."
+  },
+  "secret_key_selection": {
+    "primary_var_for_live": "STRIPE_SECRET_KEY_LIVE",
+    "primary_var_for_test": "STRIPE_SECRET_KEY_TEST",
+    "legacy_fallback": "STRIPE_SECRET_KEY or STRIPE_API_KEY only when mode-scoped var unset and prefix matches STRIPE_MODE",
+    "cross_mode_fallback": false,
+    "runtime_secret_value_exposed": false
+  },
+  "price_env_prefix_for_mode": "STRIPE_LIVE",
+  "deployment_mode_inventory": {
+    "status": 200,
+    "deployment_mode": "live"
+  },
+  "pass": true
+}

@@ -1,25 +1,34 @@
 {
-  "verified_at": "2026-06-03T16:15:27.234441+00:00",
-  "duplicate_detected_on_deployment": true,
-  "classification": "DUPLICATE_RENDER_VALUES",
-  "evidence": {
-    "duplicate_monthly_groups": [
-      {
-        "group_id": "inferred_from_api",
-        "env_vars": [
-          "STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY",
-          "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
-          "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY"
-        ],
-        "plan_codes": [
-          "PLAN_1_SOLO",
-          "PLAN_2_PORTFOLIO",
-          "PLAN_3_PRO"
-        ]
-      }
-    ],
-    "load_error": null
-  },
-  "separate_from": "legacy_subscription_drift",
-  "note": "All three monthly env vars share the same fingerprint group_id."
+  "verified_at": "2026-06-03T16:32:12.007251+00:00",
+  "classification": "DUPLICATE_VALUES_CONFIRMED",
+  "allowed_labels": [
+    "RUNTIME_ENV_STALE_RESTART_REQUIRED",
+    "WRONG_RENDER_SERVICE_CHECKED",
+    "WRONG_ENV_VAR_READ",
+    "LEGACY_FALLBACK_USED",
+    "DUPLICATE_VALUES_CONFIRMED",
+    "CODE_RESOLUTION_BUG",
+    "CACHE_STALE_AFTER_ENV_CHANGE"
+  ],
+  "rationale": [
+    "Runtime os.environ fingerprints show duplicate monthly group(s); fingerprint reads env directly (not price cache).",
+    "Partial distinct: Solo monthly unique; Portfolio and Professional share duplicate_group_id."
+  ],
+  "duplicate_monthly_groups": [
+    {
+      "group_id": "1358f55e",
+      "env_vars": [
+        "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
+        "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY"
+      ],
+      "plan_codes": [
+        "PLAN_2_PORTFOLIO",
+        "PLAN_3_PRO"
+      ]
+    }
+  ],
+  "three_monthly_distinct_at_runtime": false,
+  "legacy_fallback_used": false,
+  "fingerprint_reads_cache": false,
+  "pass": false
 }

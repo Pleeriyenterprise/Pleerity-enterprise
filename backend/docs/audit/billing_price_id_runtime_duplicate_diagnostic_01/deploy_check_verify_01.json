@@ -1,0 +1,14 @@
+{
+  "verified_at": "2026-06-03T16:32:07.113832+00:00",
+  "programme": "BILLING-STRIPE-RUNTIME-FINGERPRINT-VERIFY-01",
+  "min_commit_prefix": "5f5613c2",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "frontend_origin": "https://pleerityenterprise.co.uk",
+  "version_endpoint": {
+    "status": 200,
+    "commit_sha": "5f5613c25b0cd071260e49e70d09c3190147146d",
+    "environment": "production"
+  },
+  "commit_at_or_after_min": true,
+  "pass": true
+}

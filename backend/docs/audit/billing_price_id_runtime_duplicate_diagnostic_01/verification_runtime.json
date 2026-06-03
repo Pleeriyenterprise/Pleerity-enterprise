@@ -1,8 +1,28 @@
 {
-  "verified_at": "2026-06-03T16:15:32.248776+00:00",
-  "endpoints": {
-    "login": 401
+  "verified_at": "2026-06-03T16:32:12.009252+00:00",
+  "portal_email_masked": "nan\u2026",
+  "read_paths": {
+    "/billing/plans": 200,
+    "/client/entitlements": 200,
+    "/billing/status": 200
   },
-  "fingerprint_endpoint": 404,
+  "checkout": {
+    "PLAN_1_SOLO": {
+      "status": 400,
+      "error_code": "STRIPE_MODE_MISMATCH",
+      "message_prefix": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STR"
+    },
+    "PLAN_2_PORTFOLIO": {
+      "status": 400,
+      "error_code": "STRIPE_MODE_MISMATCH",
+      "message_prefix": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STR"
+    },
+    "PLAN_3_PRO": {
+      "status": 400,
+      "error_code": "STRIPE_MODE_MISMATCH",
+      "message_prefix": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STR"
+    }
+  },
+  "checkout_distinct_fingerprints_proven": false,
   "pass": false
 }

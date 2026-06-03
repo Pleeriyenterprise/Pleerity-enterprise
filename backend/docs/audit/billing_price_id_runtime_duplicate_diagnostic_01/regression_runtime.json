@@ -1,13 +1,10 @@
 {
-  "verified_at": "2026-06-03T16:15:53.372907+00:00",
+  "verified_at": "2026-06-03T16:32:38.558270+00:00",
   "suites": {
+    "price_env_fingerprint": {
+      "exit_code": 0
+    },
     "plan_change_routing": {
-      "exit_code": 0
-    },
-    "containment": {
-      "exit_code": 0
-    },
-    "recovery": {
       "exit_code": 0
     }
   },

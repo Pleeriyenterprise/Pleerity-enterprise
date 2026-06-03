@@ -1,23 +1,78 @@
 {
-  "verified_at": "2026-06-03T16:15:21.164358+00:00",
-  "source": "staging_api_inference",
+  "verified_at": "2026-06-03T16:32:08.791104+00:00",
+  "deployment_stripe_mode": "live",
   "stripe_mode": "live",
-  "duplicate_detected": true,
-  "fingerprint_endpoint_status": 404,
-  "staging_checkout_probe": "STRIPE_MODE_MISMATCH duplicate confirmed",
+  "monthly_env_vars": {
+    "STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY": {
+      "plan_code": "PLAN_1_SOLO",
+      "role": "subscription_monthly",
+      "present": true,
+      "starts_with_price_": true,
+      "last_6_chars": "djy27g",
+      "sha256_prefix_8": "66fe742a",
+      "duplicate_group_id": "66fe742a"
+    },
+    "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY": {
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "role": "subscription_monthly",
+      "present": true,
+      "starts_with_price_": true,
+      "last_6_chars": "hJv239",
+      "sha256_prefix_8": "1358f55e",
+      "duplicate_group_id": "1358f55e"
+    },
+    "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY": {
+      "plan_code": "PLAN_3_PRO",
+      "role": "subscription_monthly",
+      "present": true,
+      "starts_with_price_": true,
+      "last_6_chars": "hJv239",
+      "sha256_prefix_8": "1358f55e",
+      "duplicate_group_id": "1358f55e"
+    }
+  },
+  "onboarding_env_vars": {
+    "STRIPE_LIVE_PRICE_PLAN_1_SOLO_ONBOARDING": {
+      "plan_code": "PLAN_1_SOLO",
+      "role": "onboarding",
+      "present": true,
+      "starts_with_price_": true,
+      "last_6_chars": "kCKHjQ",
+      "sha256_prefix_8": "0b4883a6",
+      "duplicate_group_id": "0b4883a6"
+    },
+    "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_ONBOARDING": {
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "role": "onboarding",
+      "present": true,
+      "starts_with_price_": true,
+      "last_6_chars": "uYNTD9",
+      "sha256_prefix_8": "2f3e37c3",
+      "duplicate_group_id": "2f3e37c3"
+    },
+    "STRIPE_LIVE_PRICE_PLAN_3_PRO_ONBOARDING": {
+      "plan_code": "PLAN_3_PRO",
+      "role": "onboarding",
+      "present": true,
+      "starts_with_price_": true,
+      "last_6_chars": "mumLiD",
+      "sha256_prefix_8": "ab844bf9",
+      "duplicate_group_id": "ab844bf9"
+    }
+  },
   "duplicate_monthly_groups": [
     {
-      "group_id": "inferred_from_api",
+      "group_id": "1358f55e",
       "env_vars": [
-        "STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY",
         "STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY",
         "STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY"
       ],
       "plan_codes": [
-        "PLAN_1_SOLO",
         "PLAN_2_PORTFOLIO",
         "PLAN_3_PRO"
       ]
     }
-  ]
+  ],
+  "duplicate_detected": true,
+  "load_error": "Duplicate Stripe subscription price IDs detected for live mode. Each plan must map to a distinct STRIPE_{mode}_PRICE_*_MONTHLY value."
 }

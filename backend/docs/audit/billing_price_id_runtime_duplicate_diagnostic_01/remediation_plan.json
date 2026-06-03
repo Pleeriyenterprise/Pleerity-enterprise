@@ -1,17 +1,13 @@
 {
-  "verified_at": "2026-06-03T16:15:32.247888+00:00",
-  "duplicate_price_remediation": [
-    "On Render, set STRIPE_LIVE_PRICE_PLAN_1_SOLO_MONTHLY, STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY, STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY to three distinct Stripe Price IDs (\u00a319 / \u00a339 / \u00a379 monthly).",
-    "Clear duplicate_group_id collision shown in runtime_price_fingerprint.json.",
-    "Restart/redeploy backend after env change (clears _STRIPE_PRICE_CACHE)."
+  "verified_at": "2026-06-03T16:32:12.008251+00:00",
+  "classification": "DUPLICATE_VALUES_CONFIRMED",
+  "remediation_steps": [
+    "On Render backend API service (pleerity-enterprise), confirm STRIPE_LIVE_PRICE_PLAN_3_PRO_MONTHLY is distinct from STRIPE_LIVE_PRICE_PLAN_2_PORTFOLIO_MONTHLY (\u00a379 vs \u00a339 monthly).",
+    "Solo monthly already distinct at runtime (group 66fe742a); Portfolio+Pro still share group 1358f55e.",
+    "After env correction: Manual Deploy or restart backend to refresh process env and _STRIPE_PRICE_CACHE.",
+    "Re-run GET /api/admin/billing/stripe-price-env-fingerprint \u2014 expect three unique duplicate_group_id values.",
+    "Do not weaken duplicate-price guard in plan_registry._load_stripe_prices_for_mode."
   ],
-  "code_remediation_applied": [
-    "get_plan degrades to static metadata on duplicate (entitlements/status read paths).",
-    "checkout still blocks duplicate (guard preserved).",
-    "GET /admin/billing/stripe-price-env-fingerprint for masked audit."
-  ],
-  "legacy_drift_remediation": [
-    "Legacy test subscription on live deployment: use deployment_checkout path; do not mutate subscription.",
-    "billing/status should return degraded sync state, not 500, when plan metadata degraded."
-  ]
+  "mutations_allowed": false,
+  "guard_weakening_allowed": false
 }
