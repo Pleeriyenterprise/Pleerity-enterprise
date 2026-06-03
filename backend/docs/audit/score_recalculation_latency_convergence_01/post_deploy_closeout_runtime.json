@@ -1,0 +1,54 @@
+{
+  "programme": "SCORE-RECALCULATION-LATENCY-POST-DEPLOY-CLOSEOUT-01",
+  "verified_at": "2026-06-03T21:26:17.278792+00:00",
+  "commit_under_test": "0a184409",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "client_email": "nancy@yopmail.com",
+  "deploy": {
+    "frontend_deployed": true,
+    "main_js": "https://pleerityenterprise.co.uk/static/js/main.75e503d8.js",
+    "bundle_markers": {
+      "score_cognition_line": true,
+      "updating_headline": true,
+      "compliance_score_pending": true,
+      "pending_processing_copy": true
+    },
+    "api_health": 200
+  },
+  "recalc_trigger": {
+    "method": "requirements_sync_fallback",
+    "reason_admin_unavailable": "POST /auth/admin/login returned 401 for default staging admin email",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "status": 200,
+    "correlation_id": "REQUIREMENTS_SYNC:d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+  },
+  "pending_state_immediate": {
+    "any_compliance_score_pending": false,
+    "any_score_status_calculating": false,
+    "stale_elevated_risk_while_pending": [],
+    "score_cognition_lines_sample": "3 missing documents (blocker-accurate, not stale no-gaps)"
+  },
+  "worker_convergence": {
+    "pending_seen_during_poll": false,
+    "converged": false,
+    "poll_duration_s": 226.41
+  },
+  "latency": {
+    "classification": "timeout_or_no_pending",
+    "note": "No pending window observed; duplicate DONE queue row did not re-mark pending on staging build 0a184409"
+  },
+  "browser_proof": {
+    "screenshots": [
+      "docs/audit/score_recalculation_latency_convergence_01/screenshots/01_before.png",
+      "docs/audit/score_recalculation_latency_convergence_01/screenshots/02_pending.png",
+      "docs/audit/score_recalculation_latency_convergence_01/screenshots/03_converged.png"
+    ],
+    "captured": true,
+    "pending_updating_visible": false
+  },
+  "defect_found": {
+    "code": "REQUEUE_DRIFT",
+    "description": "Duplicate enqueue when existing queue row status=DONE did not regenerate job or set compliance_score_pending",
+    "fix_commit_pending_deploy": "regenerated_from_done_duplicate in compliance_recalc_queue.py"
+  }
+}

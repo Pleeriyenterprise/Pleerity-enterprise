@@ -1,0 +1,28 @@
+{
+  "generated_at": "2026-06-03T21:19:33.964719+00:00",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "api_url": "https://pleerity-enterprise.onrender.com/api",
+  "fix_commit_expected": "0a184409",
+  "main_js": "https://pleerityenterprise.co.uk/static/js/main.75e503d8.js",
+  "bundle_markers": {
+    "score_cognition_line": true,
+    "updating_headline": true,
+    "compliance_score_pending": true,
+    "pending_processing_copy": true,
+    "buildDashboardComplianceGapsLine": false
+  },
+  "frontend_deployed": true,
+  "api_health": {
+    "status": 200,
+    "body": {
+      "status": "healthy",
+      "environment": "production",
+      "readiness": {
+        "stage": "ready",
+        "degraded": false,
+        "last_error": null
+      }
+    }
+  },
+  "deploy_verified": true
+}

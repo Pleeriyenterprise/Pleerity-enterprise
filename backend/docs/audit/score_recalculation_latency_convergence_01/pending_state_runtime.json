@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-06-03T21:21:57.300736+00:00",
+  "enqueue_at": "2026-06-03T21:21:39.531616+00:00",
+  "properties": [
+    {
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "name": "Kensington Garden Flat",
+      "score": 42,
+      "score_status": "ok",
+      "risk_level": "High risk",
+      "compliance_score_pending": false,
+      "score_cognition_line": "3 missing documents",
+      "missing_count": 3
+    },
+    {
+      "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "name": "Altrincham Townhouse",
+      "score": 12,
+      "score_status": "ok",
+      "risk_level": "High risk",
+      "compliance_score_pending": false,
+      "score_cognition_line": "3 missing documents",
+      "missing_count": 3
+    },
+    {
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "name": "Leamington Spa Victorian",
+      "score": 23,
+      "score_status": "ok",
+      "risk_level": "High risk",
+      "compliance_score_pending": false,
+      "score_cognition_line": "4 missing documents",
+      "missing_count": 4
+    },
+    {
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "name": "Oxford Summertown",
+      "score": 21,
+      "score_status": "ok",
+      "risk_level": "High risk",
+      "compliance_score_pending": false,
+      "score_cognition_line": "4 missing documents",
+      "missing_count": 4
+    },
+    {
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+      "name": "Liverpool Georgian Quarter",
+      "score": 22,
+      "score_status": "ok",
+      "risk_level": "High risk",
+      "compliance_score_pending": false,
+      "score_cognition_line": "3 missing documents",
+      "missing_count": 3
+    },
+    {
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "name": "Glasgow Shawlands",
+      "score": 19,
+      "score_status": "ok",
+      "risk_level": "High risk",
+      "compliance_score_pending": false,
+      "score_cognition_line": "4 missing documents",
+      "missing_count": 4
+    },
+    {
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "name": "722075 Lookup Test Street",
+      "score": 35,
+      "score_status": "ok",
+      "risk_level": "High risk",
+      "compliance_score_pending": false,
+      "score_cognition_line": "4 missing documents",
+      "missing_count": 4
+    }
+  ],
+  "any_compliance_score_pending": false,
+  "any_score_status_calculating": false,
+  "stale_elevated_risk_while_pending": [],
+  "score_cognition_lines": [
+    "3 missing documents",
+    "3 missing documents",
+    "4 missing documents",
+    "4 missing documents",
+    "3 missing documents",
+    "4 missing documents",
+    "4 missing documents"
+  ]
+}

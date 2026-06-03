@@ -1,10 +1,134 @@
 {
-  "verified_at": "2026-06-03T21:07:05.608584+00:00",
-  "status": "PARTIAL",
-  "expected_sequence": {
-    "before": "Persisted score reflects pre-mutation snapshot",
-    "pending": "score_status=calculating, Updating\u2026, no Elevated risk label, cognition line shows processing",
-    "converged": "Worker completes; pending=false; score/risk align with requirement truth"
+  "generated_at": "2026-06-03T21:26:17.278792+00:00",
+  "before": {
+    "label": "01_before",
+    "captured": true,
+    "screenshot": "docs\\audit\\score_recalculation_latency_convergence_01\\screenshots\\01_before.png"
   },
-  "note": "Structural/API convergence verified via unit tests; live browser capture pending staging deploy."
+  "pending": {
+    "label": "02_pending",
+    "captured": true,
+    "screenshot": "docs\\audit\\score_recalculation_latency_convergence_01\\screenshots\\02_pending.png"
+  },
+  "converged": {
+    "label": "03_converged",
+    "captured": true,
+    "screenshot": "docs\\audit\\score_recalculation_latency_convergence_01\\screenshots\\03_converged.png"
+  },
+  "api_pending_check": {
+    "generated_at": "2026-06-03T21:21:57.300736+00:00",
+    "enqueue_at": "2026-06-03T21:21:39.531616+00:00",
+    "properties": [
+      {
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "name": "Kensington Garden Flat",
+        "score": 42,
+        "score_status": "ok",
+        "risk_level": "High risk",
+        "compliance_score_pending": false,
+        "score_cognition_line": "3 missing documents",
+        "missing_count": 3
+      },
+      {
+        "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+        "name": "Altrincham Townhouse",
+        "score": 12,
+        "score_status": "ok",
+        "risk_level": "High risk",
+        "compliance_score_pending": false,
+        "score_cognition_line": "3 missing documents",
+        "missing_count": 3
+      },
+      {
+        "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+        "name": "Leamington Spa Victorian",
+        "score": 23,
+        "score_status": "ok",
+        "risk_level": "High risk",
+        "compliance_score_pending": false,
+        "score_cognition_line": "4 missing documents",
+        "missing_count": 4
+      },
+      {
+        "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+        "name": "Oxford Summertown",
+        "score": 21,
+        "score_status": "ok",
+        "risk_level": "High risk",
+        "compliance_score_pending": false,
+        "score_cognition_line": "4 missing documents",
+        "missing_count": 4
+      },
+      {
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "name": "Liverpool Georgian Quarter",
+        "score": 22,
+        "score_status": "ok",
+        "risk_level": "High risk",
+        "compliance_score_pending": false,
+        "score_cognition_line": "3 missing documents",
+        "missing_count": 3
+      },
+      {
+        "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "name": "Glasgow Shawlands",
+        "score": 19,
+        "score_status": "ok",
+        "risk_level": "High risk",
+        "compliance_score_pending": false,
+        "score_cognition_line": "4 missing documents",
+        "missing_count": 4
+      },
+      {
+        "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+        "name": "722075 Lookup Test Street",
+        "score": 35,
+        "score_status": "ok",
+        "risk_level": "High risk",
+        "compliance_score_pending": false,
+        "score_cognition_line": "4 missing documents",
+        "missing_count": 4
+      }
+    ],
+    "any_compliance_score_pending": false,
+    "any_score_status_calculating": false,
+    "stale_elevated_risk_while_pending": [],
+    "score_cognition_lines": [
+      "3 missing documents",
+      "3 missing documents",
+      "4 missing documents",
+      "4 missing documents",
+      "3 missing documents",
+      "4 missing documents",
+      "4 missing documents"
+    ]
+  },
+  "trigger": {
+    "method": "requirements_sync_fallback",
+    "result": {
+      "status": 200,
+      "body": {
+        "message": "Requirements synchronized",
+        "ok": true,
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "planned_types": [
+          "eicr",
+          "emergency_lighting",
+          "epc",
+          "fire_alarm",
+          "fire_extinguisher",
+          "gas_safety",
+          "hmo_fire_risk",
+          "hmo_fire_risk_evidence",
+          "hmo_license",
+          "legionella",
+          "occupation_contract"
+        ],
+        "upsert_passes": 11,
+        "reopened_from_not_required": 0,
+        "reconciled_obsolete": 0
+      },
+      "triggered_at": "2026-06-03T21:21:39.531616+00:00"
+    }
+  }
 }

@@ -190,12 +190,39 @@ async def enqueue_compliance_recalc(
                     ),
                 )
                 existing_status = (existing or {}).get("status")
-                if existing_status in _DUPLICATE_PENDING_MARK_STATUSES:
+                if existing_status == STATUS_DONE:
+                    await db.compliance_recalc_queue.update_one(
+                        {"property_id": property_id, "correlation_id": correlation_id},
+                        {
+                            "$set": {
+                                "status": STATUS_PENDING,
+                                "next_run_at": now_iso,
+                                "updated_at": now_iso,
+                                "trigger_reason": trigger_reason,
+                                "actor_type": actor_type,
+                                "actor_id": actor_id,
+                                "attempts": 0,
+                                "retry_count": 0,
+                                "retry_exhausted": False,
+                                "last_error": None,
+                                "last_done_duplicate_regenerated_at": now_iso,
+                            },
+                            "$inc": {"done_duplicate_regeneration_count": 1},
+                        },
+                    )
                     await db.properties.update_one(
                         {"property_id": property_id},
                         {"$set": {"compliance_score_pending": True}},
                     )
-                branch = (False, reason)
+                    branch = (True, "regenerated_from_done_duplicate")
+                elif existing_status in _DUPLICATE_PENDING_MARK_STATUSES:
+                    await db.properties.update_one(
+                        {"property_id": property_id},
+                        {"$set": {"compliance_score_pending": True}},
+                    )
+                    branch = (False, reason)
+                else:
+                    branch = (False, reason)
             else:
                 await db.properties.update_one(
                     {"property_id": property_id},

@@ -1,11 +1,16 @@
 {
-  "verified_at": "2026-06-03T21:07:05.608584+00:00",
-  "backend_tests_passed": true,
-  "surfaces": [
-    "scoring semantics v1",
-    "recalc queue",
-    "score cognition",
-    "satisfaction scoring convergence",
-    "requirement action orchestration"
-  ]
+  "all_passed": true,
+  "verified_at": "2026-06-03T21:26:17.278792+00:00",
+  "programme": "SCORE-RECALCULATION-LATENCY-POST-DEPLOY-CLOSEOUT-01",
+  "suites_run": [
+    "tests/test_score_cognition_service.py",
+    "tests/test_compliance_scoring_satisfaction_convergence.py",
+    "tests/test_compliance_scoring_v2_model.py",
+    "tests/test_compliance_recalc_queue_stabilization_phase1.py",
+    "tests/test_scoring_semantics_v1.py",
+    "tests/test_portfolio_pending_score_recalc_snapshot.py",
+    "tests/test_compliance_recalc_worker_job_outcomes.py"
+  ],
+  "total_passed": 51,
+  "note": "Requested paths test_compliance_score_cognition.py / test_compliance_scoring_v2.py / test_compliance_recalc_queue.py mapped to above canonical suites"
 }

@@ -1,20 +1,31 @@
-# SCORE-RECALCULATION-LATENCY-CONVERGENCE-01
+# Score recalculation latency — audit + post-deploy closeout
 
-Verified at: 2026-06-03T21:07:05.608584+00:00
-Builds on: PROPERTY-COMPLIANCE-SCORE-CONVERGENCE-DRIFT-01 @ 0b7ed60c
+## Programmes
+1. **SCORE-RECALCULATION-LATENCY-CONVERGENCE-01** @ `0a184409` — code convergence
+2. **SCORE-RECALCULATION-LATENCY-POST-DEPLOY-CLOSEOUT-01** — staging operational proof
 
-## Problem
-Requirement truth converged immediately but persisted score/risk cognition could lag during async recalc, showing stale low scores and Elevated risk after satisfied mutations.
+## Post-deploy closeout summary
 
-## Fix
-1. **Pending dominates** — `compliance_score_pending` → `score_status=calculating` even when a numeric snapshot exists
-2. **Duplicate enqueue** — re-mark pending while worker job is active
-3. **Portfolio honesty** — partial status + pending message when recalc in flight
-4. **UI** — Updating… headline, suppress stale risk labels, cognition line during pending
-5. **Read-path gap** — enqueue after stale authority refresh
+| Check | Result |
+|-------|--------|
+| Deploy verified | YES — frontend markers + API health |
+| Regression tests | PASS |
+| Pending visible after trigger | NO — REQUEUE_DRIFT |
+| Stale Elevated risk during pending | N/A (no pending observed) |
+| Worker convergence | Not observed |
+| Browser screenshots | YES |
+| Classification | **PARTIAL** |
 
-## Classification
-PARTIAL
+## Root cause (closeout)
+`POST /properties/{id}/requirements/sync` uses fixed correlation `REQUIREMENTS_SYNC:{property_id}`. When the queue row is already **DONE**, duplicate suppression on staging build `0a184409` did not regenerate the job or set `compliance_score_pending`. Admin recalc trigger unavailable (401 — staging admin credentials not in environment).
 
-## Tests
-Backend: PASS
+## Remediation (local, pending deploy)
+Regenerate DONE duplicate queue rows to PENDING and set `compliance_score_pending=true` (`regenerated_from_done_duplicate`).
+
+## Re-run instructions
+```bash
+export STAGING_ADMIN_PASSWORD=...
+python backend/scripts/score_recalculation_latency_post_deploy_closeout_01.py
+```
+
+Expected after fix deploy: pending within seconds, convergence <2 min, classification **VERIFIED_OPERATIONALLY**.

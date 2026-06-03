@@ -1,14 +1,23 @@
-# Watchlist — SCORE-RECALCULATION-LATENCY-CONVERGENCE-01
+# Watchlist — score recalculation latency
 
-## Post-deploy verification
-- [ ] Submit declaration → property shows Updating… / calculating (not stale Elevated risk)
-- [ ] Verify document → pending state → score converges within worker SLA
-- [ ] Portfolio with 1 pending property shows partial + pending note
+## Post-deploy closeout (2026-06-03) — PARTIAL
 
-## Monitor
-- [ ] compliance_recalc_queue backlog depth
-- [ ] Properties with compliance_score_pending=true > 10 minutes (stuck marker)
-- [ ] activation gate deferrals without propagation_notice
+### Verified on staging
+- [x] Frontend bundle includes score cognition / Updating / pending copy (`main.75e503d8.js`)
+- [x] API returns `score_cognition_line` per property (blocker-accurate)
+- [x] Regression suites pass locally
+- [x] Browser dashboard screenshots captured (before / pending / converged)
 
-## Residual
-- Outcome engine sync recalc vs async queue mixed semantics (documented, not unified)
+### Not verified on staging (blockers)
+- [ ] `compliance_score_pending=true` immediately after trigger — **REQUEUE_DRIFT** on DONE duplicate correlation
+- [ ] Worker convergence latency measurement
+- [ ] Pending-state “Updating…” visible in browser (no pending flag observed)
+
+### Fix pending deploy
+- [ ] Ship `regenerated_from_done_duplicate` queue handling (local fix after closeout)
+- [ ] Re-run `python scripts/score_recalculation_latency_post_deploy_closeout_01.py`
+- [ ] Provide `STAGING_ADMIN_PASSWORD` for admin recalc trigger (preferred over requirements/sync)
+
+### Monitor
+- [ ] `compliance_score_pending` stuck >10 minutes
+- [ ] Queue backlog / worker SLA

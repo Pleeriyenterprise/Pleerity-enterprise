@@ -19,6 +19,7 @@ from services.compliance_recalc_operational_snapshot import (
 from services.compliance_recalc_queue import (
     EnqueueComplianceRecalcResult,
     STATUS_DEAD,
+    STATUS_DONE,
     STATUS_FAILED,
     STATUS_PENDING,
     STATUS_RUNNING,
@@ -180,6 +181,27 @@ async def test_enqueue_compliance_recalc_duplicate_failed_retry(monkeypatch):
 
     res = await enqueue_compliance_recalc("p1", "c1", "T", "SYSTEM", correlation_id="x")
     assert res.duplicate_suppression_reason == "retry_requeued"
+    db.properties.update_one.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_enqueue_compliance_recalc_duplicate_done_regenerates(monkeypatch):
+    import services.compliance_recalc_queue as qmod
+
+    db = MagicMock()
+    db.compliance_recalc_queue = MagicMock()
+    db.compliance_recalc_queue.insert_one = AsyncMock(side_effect=DuplicateKeyError("E11000"))
+    db.compliance_recalc_queue.find_one = AsyncMock(return_value={"status": STATUS_DONE})
+    db.compliance_recalc_queue.update_one = AsyncMock()
+    db.properties = MagicMock()
+    db.properties.update_one = AsyncMock()
+
+    monkeypatch.setattr(qmod.database, "get_db", lambda: db)
+    monkeypatch.setattr("services.risk_signal_regen_queue.enqueue_risk_signal_regen", AsyncMock())
+
+    res = await enqueue_compliance_recalc("p1", "c1", "T", "SYSTEM", correlation_id="done-corr")
+    assert res.enqueued is True
+    assert res.duplicate_suppression_reason == "regenerated_from_done_duplicate"
     db.properties.update_one.assert_awaited()
 
 

@@ -1,10 +1,25 @@
 {
-  "programme": "SCORE-RECALCULATION-LATENCY-CONVERGENCE-01",
-  "verified_at": "2026-06-03T21:07:05.608584+00:00",
+  "programme": "SCORE-RECALCULATION-LATENCY-POST-DEPLOY-CLOSEOUT-01",
+  "verified_at": "2026-06-03T21:26:17.278792+00:00",
+  "prior_commit": "0a184409",
   "classification": "PARTIAL",
-  "code_convergence": "COMPLETE",
-  "rationale": "Stale snapshot cognition during async window remediated; VERIFIED_OPERATIONALLY requires staging browser proof.",
-  "requires_follow_up": [
-    "Staging browser before/pending/after capture on declaration or verify flow"
+  "prior_classification": "PARTIAL",
+  "checks": {
+    "deploy_verified": true,
+    "regression_passed": true,
+    "pending_visible_immediately": false,
+    "stale_risk_suppressed_during_pending": true,
+    "worker_converged": false,
+    "latency_acceptable_or_degraded": false,
+    "browser_captured": true,
+    "score_cognition_accurate": true
+  },
+  "defect": "REQUEUE_DRIFT",
+  "defect_status": "FIXED_PENDING_DEPLOY",
+  "rationale": "Deploy and cognition bundle verified on staging; requirements_sync re-enqueue against DONE duplicate did not surface pending on 0a184409. DONE-duplicate regeneration fix added locally. Re-run closeout after backend redeploy with STAGING_ADMIN_PASSWORD or post-fix sync.",
+  "path_to_verified_operationally": [
+    "Deploy backend with DONE duplicate regeneration fix",
+    "Re-run score_recalculation_latency_post_deploy_closeout_01.py",
+    "Confirm pending/calculating within 3s of trigger and convergence <2min"
   ]
 }
