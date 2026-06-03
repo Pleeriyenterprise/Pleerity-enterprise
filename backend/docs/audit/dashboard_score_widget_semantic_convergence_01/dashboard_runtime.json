@@ -1,0 +1,26 @@
+{
+  "programme": "DASHBOARD-SCORE-WIDGET-SEMANTIC-CONVERGENCE-01",
+  "generated_at": "2026-06-03T22:41:06+00:00",
+  "ui_surfaces": {
+    "quick_actions_widget": {
+      "file": "frontend/src/pages/ClientDashboard.js",
+      "stats_labels": ["Requirements", "Valid", "Days to Next Expiry"],
+      "data_source": "GET /api/client/compliance-score",
+      "honest": false,
+      "issues": [
+        "Requirements label hides alias dedupe vs registry",
+        "Valid label hides COMPLIANT/VALID vs lifecycle VERIFIED",
+        "Days to Next Expiry can show far-future estimated renewal (e.g. 1709d) while Expiring Soon KPI is 0"
+      ]
+    },
+    "compliance_score_card": {
+      "uses": "displayScoreInfo + complianceScore.score (persisted portfolio mean)",
+      "copy": "Compliance score page uses 'tracked items' — dashboard widget does not"
+    },
+    "highest_risk_focus": {
+      "uses": "portfolioSummary.properties sorted by lowest score",
+      "semantics": "honest — separate from widget counts"
+    }
+  },
+  "see_also": "ui_cognition_runtime.json"
+}
