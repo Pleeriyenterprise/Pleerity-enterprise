@@ -1,0 +1,29 @@
+{
+  "at_utc": "2026-06-04T19:08:58.361415+00:00",
+  "programme": "COMMUNICATIONS-BROADCAST-GOVERNANCE-RUNTIME-AUDIT-01",
+  "marker": "COMM-BROADCAST-AUDIT-20260604T190840Z",
+  "personas": {
+    "admin": {
+      "email": "aigbochievictory@gmail.com"
+    },
+    "client_a": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "email": "nancy@yopmail.com"
+    },
+    "client_b": {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23"
+    },
+    "contractor": {
+      "email": "f2-ops-heating-wales@yopmail.com"
+    },
+    "tenant": {
+      "email": "f7-ops-wales@yopmail.com"
+    }
+  },
+  "templates_status": 200,
+  "messages_status": 200,
+  "banners_status": 200,
+  "template_count": 5,
+  "seeded_vs_existing": "Existing staging clients; audit sends use in_app/banner only to client A where sent",
+  "pass": true
+}

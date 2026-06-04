@@ -1,0 +1,21 @@
+{
+  "probes": [
+    {
+      "name": "email",
+      "preview_status": 200,
+      "count": 1
+    },
+    {
+      "name": "banner",
+      "preview_status": 200,
+      "count": 1
+    },
+    {
+      "name": "in_app",
+      "preview_status": 200,
+      "count": 1
+    }
+  ],
+  "at_utc": "2026-06-04T19:13:10.747097+00:00",
+  "pass": true
+}

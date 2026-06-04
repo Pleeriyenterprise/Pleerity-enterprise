@@ -1,0 +1,26 @@
+{
+  "at_utc": "2026-06-04T19:14:47.176041+00:00",
+  "probes": [
+    {
+      "name": "client_preview_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "contractor_preview_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "tenant_preview_blocked",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "unauthenticated_templates",
+      "status": 401,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

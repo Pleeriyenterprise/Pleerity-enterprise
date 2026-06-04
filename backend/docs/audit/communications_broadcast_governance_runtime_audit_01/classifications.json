@@ -1,0 +1,28 @@
+{
+  "programme": "COMMUNICATIONS-BROADCAST-GOVERNANCE-RUNTIME-AUDIT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "blockers": [],
+  "checklist": {
+    "setup": true,
+    "single": true,
+    "draft": true,
+    "broadcast": true,
+    "recipient": true,
+    "channel": true,
+    "whitelabel": true,
+    "template": true,
+    "variable": true,
+    "delivery": true,
+    "concurrency": true,
+    "storm": true,
+    "history": true,
+    "audit": true,
+    "security": true,
+    "edge_cases": true,
+    "cross_surface": true,
+    "regression": true
+  },
+  "classified_at_utc": "2026-06-04T19:15:51.499491+00:00",
+  "run_tag": "20260604T190840Z"
+}

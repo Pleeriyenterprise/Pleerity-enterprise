@@ -1,0 +1,26 @@
+{
+  "at_utc": "2026-06-04T19:08:58.361415+00:00",
+  "tabs": [
+    {
+      "tab": "compose",
+      "screenshot": "ui_compose.png",
+      "pass": true
+    },
+    {
+      "tab": "templates",
+      "screenshot": "ui_templates.png",
+      "pass": true
+    },
+    {
+      "tab": "history",
+      "screenshot": "ui_history.png",
+      "pass": true
+    },
+    {
+      "tab": "banners",
+      "screenshot": "ui_banners.png",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,34 @@
+{
+  "probes": [
+    {
+      "name": "single_a_only_a",
+      "ok": true,
+      "sample": [
+        "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
+      ]
+    },
+    {
+      "name": "single_b_only_b",
+      "ok": true,
+      "sample": [
+        "80f83edd-ba12-41ed-929a-bbaf8c696a23"
+      ]
+    },
+    {
+      "name": "wl_vs_non_wl_disjoint_sample",
+      "ok": true,
+      "wl_sample": [
+        "94fd6021-30d2-40af-8b2c-b1b5a61398f8"
+      ],
+      "nwl_sample": [
+        "4009e752-74e9-4949-a971-1e25ea8678a8",
+        "3edc554b-97c0-474b-aece-4fc0098d38b2",
+        "13682ea0-9f56-4d84-8e6c-b5c19910f477",
+        "6aa7906f-ed85-4367-8ca4-6ef1bb76668f",
+        "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8"
+      ]
+    }
+  ],
+  "at_utc": "2026-06-04T19:13:10.747097+00:00",
+  "pass": true
+}

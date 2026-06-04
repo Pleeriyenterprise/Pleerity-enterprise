@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-06-04T19:14:57.178157+00:00",
+  "probes": [
+    {
+      "name": "invalid_client_zero_recipients",
+      "preview_count": 0,
+      "pass": true
+    },
+    {
+      "name": "send_zero_blocked",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "name": "blank_subject_preview",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

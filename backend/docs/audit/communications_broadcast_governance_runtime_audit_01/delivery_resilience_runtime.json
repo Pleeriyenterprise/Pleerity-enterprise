@@ -1,0 +1,22 @@
+{
+  "probes": [
+    {
+      "name": "duplicate_send_blocked",
+      "ok": true,
+      "first": 200,
+      "second": 400
+    },
+    {
+      "name": "confirm_send_required",
+      "ok": true,
+      "status": 400
+    },
+    {
+      "name": "stale_checksum_rejected",
+      "ok": true,
+      "status": 400
+    }
+  ],
+  "at_utc": "2026-06-04T19:14:00.899266+00:00",
+  "pass": true
+}

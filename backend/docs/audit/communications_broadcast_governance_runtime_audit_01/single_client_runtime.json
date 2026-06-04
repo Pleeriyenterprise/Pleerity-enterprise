@@ -1,0 +1,28 @@
+{
+  "probes": [
+    {
+      "name": "in_app_only",
+      "preview_ok": true,
+      "preview_status": 200,
+      "send_status": 200,
+      "recipient_count": 1
+    },
+    {
+      "name": "banner_only",
+      "preview_ok": true,
+      "preview_status": 200,
+      "send_status": null,
+      "recipient_count": 1
+    },
+    {
+      "name": "mixed_in_app_banner",
+      "preview_ok": true,
+      "preview_status": 200,
+      "send_status": null,
+      "recipient_count": 1
+    }
+  ],
+  "at_utc": "2026-06-04T19:12:47.755639+00:00",
+  "communication_id": "ACM-2C951CB0F3B8",
+  "pass": true
+}

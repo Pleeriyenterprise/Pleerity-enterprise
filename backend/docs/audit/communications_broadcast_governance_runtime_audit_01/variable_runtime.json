@@ -1,0 +1,22 @@
+{
+  "at_utc": "2026-06-04T19:13:57.063707+00:00",
+  "probes": [
+    {
+      "name": "substitution",
+      "ok": true
+    },
+    {
+      "name": "unknown_stripped",
+      "ok": true
+    },
+    {
+      "name": "script_stripped",
+      "ok": true
+    },
+    {
+      "name": "preview_with_variables",
+      "ok": true
+    }
+  ],
+  "pass": true
+}

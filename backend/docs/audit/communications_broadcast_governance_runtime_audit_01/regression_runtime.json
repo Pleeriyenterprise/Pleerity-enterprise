@@ -1,0 +1,36 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_admin_communications_governance.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_client_support_search.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_email_delivery.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_notification_orchestrator.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_notification_template_seed_definitions.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_confirmation_governance.py",
+      "ok": true,
+      "exit_code": 0
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-04T19:15:04.676791+00:00"
+}

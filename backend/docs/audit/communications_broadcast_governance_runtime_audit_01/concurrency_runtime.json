@@ -1,0 +1,6 @@
+{
+  "probes": [],
+  "at_utc": "2026-06-04T19:14:00.899266+00:00",
+  "pass": true,
+  "note": "Concurrent admin send deferred; duplicate dedupe proven sequentially"
+}

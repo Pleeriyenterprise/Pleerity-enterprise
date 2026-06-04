@@ -1,0 +1,38 @@
+{
+  "probes": [
+    {
+      "name": "all_clients",
+      "status": 200,
+      "recipient_count": 43
+    },
+    {
+      "name": "single_a",
+      "status": 200,
+      "recipient_count": 1
+    },
+    {
+      "name": "single_b",
+      "status": 200,
+      "recipient_count": 1
+    },
+    {
+      "name": "active_only",
+      "status": 200,
+      "recipient_count": 33
+    },
+    {
+      "name": "white_label_only",
+      "status": 200,
+      "recipient_count": 1
+    },
+    {
+      "name": "non_white_label",
+      "status": 200,
+      "recipient_count": 42
+    }
+  ],
+  "at_utc": "2026-06-04T19:13:10.747097+00:00",
+  "all_clients_send_without_ack_status": 400,
+  "ack_gate_enforced": true,
+  "pass": true
+}
