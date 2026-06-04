@@ -1,0 +1,97 @@
+{
+  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
+  "audited_at": "2026-06-04T06:38:39.159665+00:00",
+  "note": "Mutation flows not executed on staging in this audit run (read-only). Propagation expectations traced from services and prior convergence audits.",
+  "actions": {
+    "A_upload_document_evidence": {
+      "expected_affected": [
+        "requirements_report",
+        "evidence_readiness_pdf",
+        "audit_pack_next_generation",
+        "matrix",
+        "dashboard_stats_after_recalc"
+      ],
+      "latency": "immediate in DB; score drivers after recalc enqueue (seconds\u2013minutes)",
+      "sync_async": "write sync; score async via compliance_recalc_worker",
+      "stale_window": "until recalc completes \u2014 exports taken mid-flight show old score headline",
+      "verification_mode": "code_trace + read_only_staging_snapshot"
+    },
+    "B_structured_declaration": {
+      "expected_affected": [
+        "requirements_report evidence_state",
+        "matrix presentation fields",
+        "audit pack governance summary"
+      ],
+      "latency": "immediate row update; score may lag",
+      "sync_async": "sync truth update; async score"
+    },
+    "C_platform_review_pending": {
+      "expected_affected": [
+        "requirements_report",
+        "matrix",
+        "score drivers next_step_label"
+      ],
+      "missing_risk": "older exports label Upload when portal shows review pending"
+    },
+    "D_verified_document": {
+      "expected_affected": [
+        "all compliance exports",
+        "audit pack includes file",
+        "score after recalc"
+      ],
+      "latency": "document immediate; score async"
+    },
+    "E_rejected_evidence": {
+      "expected_affected": [
+        "requirements_report latest_doc_status",
+        "matrix",
+        "drivers"
+      ],
+      "contradiction_risk": "CSV may still list rejected doc as latest_document if last in array"
+    },
+    "F_requirement_satisfaction_convergence": {
+      "expected_affected": [
+        "stats compliant count",
+        "matrix requirement_satisfied fields",
+        "audit pack status"
+      ],
+      "latency": "immediate on row; dashboard widget uses different compliant definition than requirements page"
+    },
+    "G_expiry_date_update": {
+      "expected_affected": [
+        "expiry schedule PDF",
+        "compliance summary expiring_* counts",
+        "drivers date_used"
+      ],
+      "latency": "immediate effective expiry in projection"
+    },
+    "H_property_score_recalculation": {
+      "expected_affected": [
+        "persisted headline",
+        "professional PDF batch time",
+        "evidence readiness property score"
+      ],
+      "latency": "worker queue SLA (verified <60s typical in prior audit)",
+      "stale_window": "compliance_score_pending / calculating states"
+    },
+    "I_portfolio_score_recalculation": {
+      "expected_affected": [
+        "dashboard headline",
+        "compliance summary headline block",
+        "score explanation PDF"
+      ],
+      "latency": "after all property recalcs + aggregate"
+    },
+    "J_requirement_not_applicable": {
+      "expected_affected": [
+        "filtered out of portal_reqs \u2014 drops from reports using filter_requirement_rows"
+      ],
+      "latency": "immediate filter on next export"
+    }
+  },
+  "missing_propagation_watchlist": [
+    "Evidence Readiness re-download does not replay historical snapshot",
+    "Scheduled report email may attach CSV generated before overnight recalc",
+    "Client jsPDF compliance PDF uses download-time JSON not immutable artifact"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "audited_at": "2026-06-04T06:26:42.251829+00:00",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "compliance_score_status": 200,
+  "dashboard_stats": {
+    "total_requirements": 43,
+    "compliant": 1,
+    "overdue": 0,
+    "expiring_soon": 0,
+    "headline_score": 26,
+    "score_status": "ok"
+  },
+  "requirements_status": 200,
+  "requirements_page_stats": {
+    "tracked_count": 47,
+    "lifecycle_valid_like": 0
+  },
+  "compliance_summary_csv_status": 200,
+  "compliance_summary_csv": {
+    "total_requirements": 49,
+    "compliant": 2
+  },
+  "requirements_report_csv_count": 49,
+  "alignment_checks": {
+    "dashboard_vs_compliance_summary_total": false,
+    "dashboard_vs_compliance_summary_compliant": false,
+    "dashboard_total_vs_requirements_page_tracked": false,
+    "dashboard_compliant_vs_requirements_lifecycle": false
+  },
+  "count_drift_detected": true
+}

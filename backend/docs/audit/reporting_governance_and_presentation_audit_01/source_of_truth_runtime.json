@@ -1,0 +1,97 @@
+{
+  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
+  "audited_at": "2026-06-04T06:38:39.159665+00:00",
+  "authoritative_layers": {
+    "live_requirement_lifecycle": {
+      "modules": [
+        "requirement_client_runtime_surface",
+        "requirement_evidence_authority",
+        "requirement_truth"
+      ],
+      "used_by": [
+        "requirements page",
+        "matrix",
+        "audit pack",
+        "evidence readiness loader"
+      ]
+    },
+    "persisted_score_snapshot": {
+      "fields": [
+        "compliance_score",
+        "compliance_breakdown",
+        "compliance_last_calculated_at",
+        "compliance_score_pending"
+      ],
+      "used_by": [
+        "dashboard headline",
+        "score explanation PDF buckets",
+        "professional PDF headline labels"
+      ]
+    },
+    "live_score_projection": {
+      "module": "compliance_score.calculate_compliance_score",
+      "used_by": [
+        "dashboard stats",
+        "score drivers CSV",
+        "compliance summary headline block"
+      ]
+    },
+    "non_authoritative": [
+      "catalog_matrix_portfolio_preview",
+      "preview_matrix_score on compliance-detail",
+      "legacy_matrix_portfolio_preview"
+    ]
+  },
+  "per_report": {
+    "compliance_status_summary": {
+      "authoritative_fields": [
+        "portal_req stats",
+        "compliance_score_headline from calculate_compliance_score"
+      ],
+      "non_authoritative": [
+        "property.compliance_status from DB without live recompute in report"
+      ],
+      "stale_risk": "medium \u2014 property RAG in CSV may differ from dashboard live RAG",
+      "duplicated_logic": "compute_client_portal_requirement_stats shared with dashboard stats path but FE Requirements page uses different valid definition",
+      "report_only_forks": [
+        "jsPDF client layout separate from server professional PDF"
+      ]
+    },
+    "requirements_report": {
+      "authoritative_fields": [
+        "project_requirement_row_client_runtime status/evidence_state"
+      ],
+      "stale_risk": "low at generation instant",
+      "duplicated_logic": "document count from requirements query not evidence_authority primary record only"
+    },
+    "evidence_readiness_pdf": {
+      "authoritative_fields": [
+        "authority_runtime_requirement_status",
+        "persisted compliance_score on property"
+      ],
+      "stale_risk": "high on re-download \u2014 metadata score_at_time stored but PDF rebuilt from live data",
+      "report_only_forks": [
+        "_derive_counts uses get_computed_status not identical to portal stats"
+      ]
+    },
+    "score_drivers_csv": {
+      "authoritative_fields": [
+        "drivers from calculate_compliance_score"
+      ],
+      "stale_risk": "low \u2014 explicit export_snapshot_generated_at comments"
+    },
+    "audit_evidence_pack": {
+      "authoritative_fields": [
+        "classify_compliance_status",
+        "checksum manifest",
+        "verified file bytes"
+      ],
+      "stale_risk": "low post-generation \u2014 immutable GridFS artifact",
+      "governance": "strongest export path for legal defensibility"
+    },
+    "scheduled_email_csv": {
+      "stale_risk": "medium \u2014 async delay up to next cron window"
+    }
+  },
+  "truth_divergence_summary": "Reporting mixes three lenses: (1) persisted portfolio/property scores, (2) live portal projection stats/drivers, (3) DB property RAG without always recomputing. Dashboard Requirements count semantics already documented as COUNT_CONVERGENCE_DRIFT vs Requirements page."
+}

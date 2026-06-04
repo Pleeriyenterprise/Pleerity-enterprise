@@ -1,0 +1,41 @@
+{
+  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
+  "audited_at": "2026-06-04T06:38:39.159665+00:00",
+  "rate_limits": {
+    "report_export_per_client_per_hour": "security_limits.report_export_per_client_per_hour via _enforce_report_export_rate",
+    "evidence_pack_jobs": "5 per client per 24h",
+    "admin_export": "admin_export_per_staff_per_hour"
+  },
+  "caching": "No report result CDN cache; compliance_score may serve cached calculate path internally",
+  "snapshot_versioning": {
+    "evidence_readiness": "reports collection stores score_at_time but download regenerates live",
+    "audit_pack": "immutable pack_id + GridFS",
+    "monthly_digest": "stored digest document per period"
+  },
+  "audit_traceability": "create_audit_log on exports; REPORT_EXPORTED / ADMIN_ACTION",
+  "retention": "GridFS audit packs; report metadata list limit 100",
+  "signed_urls": "not used for client report downloads \u2014 bearer auth streaming",
+  "tenant_isolation": "client_id on all queries",
+  "async_governance": {
+    "scheduled_reports": "plan_registry scheduled_reports + BLOCKED_PLAN message_logs",
+    "monthly_digest": "billing block may disable background jobs"
+  },
+  "risks": [
+    {
+      "risk": "REPORT_TRUTH_DRIFT",
+      "detail": "Re-download Evidence Readiness PDF with new data while filename implies historical run"
+    },
+    {
+      "risk": "GOVERNANCE_GAP",
+      "detail": "Dual evidence pack products with different defensibility"
+    },
+    {
+      "risk": "SCALABILITY_GAP",
+      "detail": "10k requirement load per sync export"
+    },
+    {
+      "risk": "LEGAL_DEFENSIBILITY",
+      "detail": "Client jsPDF reports lack checksum manifest"
+    }
+  ]
+}

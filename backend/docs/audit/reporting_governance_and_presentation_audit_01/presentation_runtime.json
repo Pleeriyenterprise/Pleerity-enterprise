@@ -1,0 +1,55 @@
+{
+  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
+  "audited_at": "2026-06-04T06:38:39.159665+00:00",
+  "tiers": {
+    "INTERNAL_OPERATIONAL_ONLY": [
+      "portal_analytics_summary",
+      "operational_rent_expense_summary",
+      "admin_score_ledger_csv",
+      "score_drivers_csv"
+    ],
+    "CLIENT_PRESENTABLE": [
+      "compliance_status_summary",
+      "requirements_report",
+      "professional_compliance_summary_pdf",
+      "professional_expiry_schedule_pdf",
+      "monthly_digest",
+      "evidence_readiness_pdf"
+    ],
+    "REGULATOR_READY": [
+      "audit_evidence_pack_governed"
+    ],
+    "AUDIT_READY": [
+      "audit_evidence_pack_governed",
+      "professional_audit_log_pdf"
+    ],
+    "INVESTOR_READY": []
+  },
+  "critiques": {
+    "audit_evidence_pack_governed": {
+      "structure": "strong \u2014 manifest, sections, checksums",
+      "governance_clarity": "export_identity, rules versions, jurisdiction notice",
+      "operational_trust": "highest \u2014 challengeable via manifest",
+      "delivery": "ZIP not print-ready PDF alone"
+    },
+    "evidence_readiness_pdf": {
+      "structure": "adequate sections; methodology present",
+      "governance_clarity": "disclaimer + generated-by; score batch labeling improved",
+      "gaps": [
+        "re-download drift",
+        "matrix counts may diverge from dashboard"
+      ],
+      "delivery": "PDF print-ok; weak for regulator without pack"
+    },
+    "compliance_status_summary_client_pdf": {
+      "structure": "jsPDF autoTable \u2014 basic",
+      "governance_clarity": "weaker than server professional PDF",
+      "delivery": "acceptable internal only"
+    },
+    "regulatory_system_export": {
+      "delivery": "CSV usable; requires scoring_metadata literacy",
+      "governance_clarity": "good comment/header contract when scoring_metadata=true"
+    }
+  },
+  "strict_summary": "Only governed Audit Evidence Pack meets REGULATOR_READY/AUDIT_READY bar. Client jsPDF and legacy evidence ZIP must not be marketed as tribunal-ready."
+}

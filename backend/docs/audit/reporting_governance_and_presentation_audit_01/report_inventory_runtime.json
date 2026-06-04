@@ -1,0 +1,321 @@
+{
+  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
+  "audited_at": "2026-06-04T06:38:39.159665+00:00",
+  "surface_count": 23,
+  "surfaces": [
+    {
+      "id": "compliance_status_summary",
+      "name": "Compliance Status Summary",
+      "route_component": "ReportsPage \u2192 GET /api/reports/compliance-summary",
+      "api_source": "routes/reports.py \u2192 reporting_service.generate_compliance_summary_report",
+      "generation_method": "Server CSV stream or JSON pdf_data for client jsPDF",
+      "sync_async": "sync",
+      "formats": [
+        "csv",
+        "pdf_client_jsPDF"
+      ],
+      "audience": "landlord, agency internal review",
+      "authoritative_source": "requirements via filter_requirement_rows + compute_client_portal_requirement_stats; headline score via calculate_compliance_score; property RAG from DB field (may lag live dashboard)"
+    },
+    {
+      "id": "requirements_report",
+      "name": "Requirements Report",
+      "route_component": "ReportsPage \u2192 GET /api/reports/requirements",
+      "api_source": "reporting_service.generate_requirements_report",
+      "generation_method": "Server CSV or JSON for jsPDF",
+      "sync_async": "sync",
+      "formats": [
+        "csv",
+        "pdf_client_jsPDF"
+      ],
+      "audience": "internal compliance, advisers",
+      "authoritative_source": "project_requirement_row_client_runtime + document linkage counts"
+    },
+    {
+      "id": "evidence_readiness_pdf",
+      "name": "Evidence Readiness Report",
+      "route_component": "ReportsPage \u2192 POST /api/reports/generate",
+      "api_source": "report_service.load_evidence_readiness_data + pdf_report_builder (ReportLab thread)",
+      "generation_method": "ReportLab template (sync build in thread)",
+      "sync_async": "sync_request_async_thread",
+      "formats": [
+        "pdf"
+      ],
+      "audience": "portfolio review, lender prep (informational)",
+      "authoritative_source": "authority_runtime_requirement_status + persisted property scores in matrix; re-download uses current data not snapshot"
+    },
+    {
+      "id": "score_explanation_pdf",
+      "name": "Compliance Score Summary (Informational) PDF",
+      "route_component": "ComplianceScorePage \u2192 GET /api/reports/score-explanation.pdf",
+      "api_source": "calculate_compliance_score + build_score_explanation_report",
+      "generation_method": "ReportLab",
+      "sync_async": "sync",
+      "formats": [
+        "pdf"
+      ],
+      "audience": "client education, internal",
+      "authoritative_source": "live calculate_compliance_score at export time"
+    },
+    {
+      "id": "regulatory_system_export",
+      "name": "Regulatory/System Export (Score Drivers CSV)",
+      "route_component": "ReportsPage regulatory section \u2192 GET /api/reports/score-drivers.csv",
+      "api_source": "calculate_compliance_score drivers",
+      "generation_method": "CSV serializer sync",
+      "sync_async": "sync",
+      "formats": [
+        "csv"
+      ],
+      "audience": "external systems, analysts",
+      "authoritative_source": "live score projection + driver rows; point-in-time comment rows"
+    },
+    {
+      "id": "audit_evidence_pack_governed",
+      "name": "Audit Evidence Pack (governed property ZIP)",
+      "route_component": "ReportsAuditPackPage \u2192 POST /api/client/compliance/audit-pack/generate",
+      "api_source": "compliance_audit_evidence_pack_service",
+      "generation_method": "ZIP + ReportLab summary + GridFS; manifest checksums",
+      "sync_async": "sync_build_store",
+      "formats": [
+        "zip"
+      ],
+      "audience": "council, tribunal, insurer, audit",
+      "authoritative_source": "classify_compliance_status + authority_state + verified docs on disk"
+    },
+    {
+      "id": "evidence_pack_zip_legacy",
+      "name": "Evidence Pack ZIP (CSVs + manifest, not governed audit pack)",
+      "route_component": "ReportsPage \u2192 POST /api/client/evidence-pack/jobs",
+      "api_source": "evidence_pack_service",
+      "generation_method": "async job optional; GridFS ZIP",
+      "sync_async": "async_job_or_sync",
+      "formats": [
+        "zip"
+      ],
+      "audience": "data export; explicitly not legal audit pack",
+      "authoritative_source": "filtered requirements + metadata CSVs; binary docs not in archive"
+    },
+    {
+      "id": "professional_compliance_summary_pdf",
+      "name": "Professional Compliance Summary PDF",
+      "route_component": "GET /api/reports/professional/compliance-summary",
+      "api_source": "professional_reports.generate_compliance_summary_pdf",
+      "generation_method": "ReportLab branded",
+      "sync_async": "sync",
+      "formats": [
+        "pdf"
+      ],
+      "audience": "client-facing professional export",
+      "authoritative_source": "reporting_service data + persisted score batch time labels"
+    },
+    {
+      "id": "professional_expiry_schedule_pdf",
+      "name": "Professional Expiry Schedule PDF",
+      "route_component": "GET /api/reports/professional/expiry-schedule",
+      "api_source": "professional_reports",
+      "generation_method": "ReportLab",
+      "sync_async": "sync",
+      "formats": [
+        "pdf"
+      ],
+      "audience": "operations, renewals planning",
+      "authoritative_source": "get_effective_expiry_date on filtered requirements"
+    },
+    {
+      "id": "professional_audit_log_pdf",
+      "name": "Professional Audit Log PDF",
+      "route_component": "GET /api/reports/professional/audit-log",
+      "api_source": "professional_reports + audit_logs collection",
+      "generation_method": "ReportLab",
+      "sync_async": "sync",
+      "formats": [
+        "pdf"
+      ],
+      "audience": "professional plan audit trail",
+      "authoritative_source": "audit_logs query (filtered)"
+    },
+    {
+      "id": "scheduled_reports_email",
+      "name": "Scheduled Reports (email CSV attachment)",
+      "route_component": "ReportsPage schedules \u2192 jobs scheduled_reports",
+      "api_source": "report_schedules + jobs.py notification SCHEDULED_REPORT",
+      "generation_method": "CSV via reporting_service; email orchestrator",
+      "sync_async": "async_cron",
+      "formats": [
+        "csv_email"
+      ],
+      "audience": "configured recipients",
+      "authoritative_source": "same as compliance_summary or requirements at job run time"
+    },
+    {
+      "id": "monthly_digest",
+      "name": "Monthly Compliance Digest",
+      "route_component": "ReportsPage digests + job monthly_digest",
+      "api_source": "monthly_digest_assembly_service",
+      "generation_method": "email HTML + stored digest record; client jsPDF re-render",
+      "sync_async": "async_monthly_job",
+      "formats": [
+        "email",
+        "pdf_client_jsPDF"
+      ],
+      "audience": "account owner",
+      "authoritative_source": "persisted headline + assembly snapshot at send time"
+    },
+    {
+      "id": "evidence_reminders_report",
+      "name": "Evidence Reminders Report",
+      "route_component": "NOT_FOUND \u2014 no dedicated report surface",
+      "api_source": "daily_reminders job + COMPLIANCE_EXPIRY_REMINDER email template",
+      "generation_method": "notification emails not export report",
+      "sync_async": "async",
+      "formats": [
+        "email_only"
+      ],
+      "audience": "account contacts",
+      "authoritative_source": "reminder engine projection (semantic_state read contract target)",
+      "note": "Listed in audit scope; implemented as notifications not downloadable report"
+    },
+    {
+      "id": "dashboard_compliance_summary",
+      "name": "Dashboard compliance summary (live UI)",
+      "route_component": "ClientDashboard + GET /api/client/dashboard or compliance-score",
+      "api_source": "calculate_compliance_score + portfolio summary",
+      "generation_method": "live_render",
+      "sync_async": "sync_api",
+      "formats": [
+        "live_ui"
+      ],
+      "audience": "portal user",
+      "authoritative_source": "mixed: persisted headline + live stats projection"
+    },
+    {
+      "id": "requirements_page",
+      "name": "Requirements list / stats",
+      "route_component": "RequirementsPage \u2192 GET /api/client/requirements",
+      "api_source": "client.py requirements list",
+      "generation_method": "live_render",
+      "sync_async": "sync",
+      "formats": [
+        "live_ui"
+      ],
+      "audience": "portal user",
+      "authoritative_source": "full tracked list; FE stats use lifecycle VERIFIED semantics"
+    },
+    {
+      "id": "property_compliance_matrix",
+      "name": "Property compliance matrix",
+      "route_component": "Property page \u2192 GET /api/portfolio/properties/{id}/compliance-detail",
+      "api_source": "catalog_compliance",
+      "generation_method": "live_render",
+      "sync_async": "sync",
+      "formats": [
+        "live_ui"
+      ],
+      "audience": "portal user",
+      "authoritative_source": "live matrix; preview_matrix_score non-authoritative"
+    },
+    {
+      "id": "documents_tab",
+      "name": "Documents tab exports",
+      "route_component": "Documents UI \u2014 per-document download",
+      "api_source": "document storage routes",
+      "generation_method": "file_stream",
+      "sync_async": "sync",
+      "formats": [
+        "binary"
+      ],
+      "audience": "evidence holder",
+      "authoritative_source": "stored document + verification state"
+    },
+    {
+      "id": "operational_rent_expense_summary",
+      "name": "Operational rent & expense summary",
+      "route_component": "ReportsPage card \u2192 GET /api/client/operations/rent/summary",
+      "api_source": "rent_ledger_service",
+      "generation_method": "live_render on Reports (not PDF export)",
+      "sync_async": "sync",
+      "formats": [
+        "live_ui"
+      ],
+      "audience": "landlord operations",
+      "authoritative_source": "rent ledger operational cache \u2014 not compliance score"
+    },
+    {
+      "id": "admin_reports_hub",
+      "name": "Admin Reports Hub",
+      "route_component": "Admin \u2192 /api/admin/reports/*",
+      "api_source": "routes/reporting.py",
+      "generation_method": "CSV/JSON/PDF/XLSX ReportLab openpyxl",
+      "sync_async": "sync + scheduled admin jobs",
+      "formats": [
+        "csv",
+        "json",
+        "pdf",
+        "xlsx"
+      ],
+      "audience": "internal staff",
+      "authoritative_source": "per report_type (revenue, orders, compliance, etc.)"
+    },
+    {
+      "id": "admin_audit_log_extract",
+      "name": "Admin Audit Log Extract",
+      "route_component": "GET /api/reports/audit-logs (admin)",
+      "api_source": "reporting_service.generate_audit_log_report",
+      "generation_method": "CSV or JSON for jsPDF",
+      "sync_async": "sync",
+      "formats": [
+        "csv",
+        "pdf_client_jsPDF"
+      ],
+      "audience": "ROLE_ADMIN",
+      "authoritative_source": "audit_logs collection"
+    },
+    {
+      "id": "admin_score_ledger_csv",
+      "name": "Admin score ledger export",
+      "route_component": "GET /api/admin/ledger/export.csv",
+      "api_source": "score_ledger_service",
+      "generation_method": "CSV",
+      "sync_async": "sync",
+      "formats": [
+        "csv"
+      ],
+      "audience": "admin diagnostics",
+      "authoritative_source": "score_change_log / ledger persistence"
+    },
+    {
+      "id": "compliance_matrix_export_implicit",
+      "name": "Compliance matrix in Evidence Readiness / audit pack",
+      "route_component": "embedded in PDF/ZIP exports",
+      "api_source": "pdf_report_builder / audit pack JSON sections",
+      "generation_method": "embedded tables",
+      "sync_async": "with parent export",
+      "formats": [
+        "pdf",
+        "zip_json"
+      ],
+      "audience": "varies",
+      "authoritative_source": "requirement rows at export time \u2014 not catalog_matrix preview from portfolio API"
+    },
+    {
+      "id": "portal_analytics_summary",
+      "name": "Portal activity summary (Reports card)",
+      "route_component": "ReportsPage analytics card",
+      "api_source": "portal analytics aggregation",
+      "generation_method": "live_render",
+      "sync_async": "sync",
+      "formats": [
+        "live_ui"
+      ],
+      "audience": "account owner",
+      "authoritative_source": "first-party event counters \u2014 not compliance truth"
+    }
+  ],
+  "hidden_or_admin": [
+    "admin_reports_hub",
+    "admin_audit_log_extract",
+    "admin_score_ledger_csv",
+    "admin audit-pack download /api/admin/compliance/audit-packs"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
+  "audited_at": "2026-06-04T06:40:00+00:00",
+  "note": "Full pytest run blocked in audit runner (test env DB/fixture errors). Targeted unit test test_reporting_compliance_export_snapshot.py validates CSV headline contract in CI.",
+  "all_passed": null,
+  "suites": {
+    "tests/test_reporting_compliance_export_snapshot.py": {
+      "passed": null,
+      "status": "not_completed_in_audit_runner"
+    },
+    "tests/test_reporting.py": {
+      "passed": null,
+      "status": "not_completed_in_audit_runner"
+    }
+  }
+}

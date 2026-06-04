@@ -1,0 +1,47 @@
+{
+  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
+  "audited_at": "2026-06-04T06:38:39.159665+00:00",
+  "engines": {
+    "reportlab_server": {
+      "modules": [
+        "pdf_report_builder",
+        "professional_reports",
+        "compliance_audit_evidence_pack_service",
+        "report_service legacy path"
+      ],
+      "html_to_pdf": false,
+      "deterministic": "template-only, no AI"
+    },
+    "jspdf_client": {
+      "modules": [
+        "ReportsPage.generatePDF",
+        "ReportsPage.downloadDigestPdf"
+      ],
+      "risk": "second layout engine \u2014 formatting divergence from server PDFs"
+    },
+    "csv_serializer": {
+      "modules": [
+        "reporting_service",
+        "reports.score_drivers",
+        "routes/reporting.py openpyxl"
+      ]
+    },
+    "zip_governed": {
+      "module": "compliance_audit_evidence_pack_service",
+      "features": [
+        "manifest",
+        "sha256",
+        "GridFS retention",
+        "export_identity block"
+      ]
+    }
+  },
+  "scalability": {
+    "large_portfolio": "requirements to_list(10000) \u2014 memory bound",
+    "large_evidence_pack": "disk read per verified doc \u2014 property-scoped mitigates",
+    "pagination": "ReportLab tables without automatic row pagination controls in all builders",
+    "multi_property": "supported; portfolio evidence readiness aggregates all properties in scope"
+  },
+  "determinism": "audit pack deterministic; evidence readiness re-fetch non-deterministic across time",
+  "branding": "branding_resolver_service for client PDFs"
+}
