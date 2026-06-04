@@ -1,0 +1,13 @@
+{
+  "programme": "REPORTING-IMMUTABLE-ARTIFACT-GOVERNANCE-PHASE-03",
+  "audited_at": "2026-06-04T09:18:24.591960+00:00",
+  "controls": [
+    "client_route_guard on all download routes",
+    "get_artifact_for_client filters client_id + artifact_id",
+    "reports.find_one includes client_id",
+    "content_sha256 verified on serve",
+    "rate_limit report_export per client"
+  ],
+  "cross_tenant_leakage": "prevented by query filter",
+  "status": "implemented"
+}

@@ -15,9 +15,12 @@ from reportlab.lib.units import mm
 from xml.sax.saxutils import escape as _xml_escape
 
 from services.reporting_semantics_v1 import (
+    EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
     EXPORT_DETERMINISM_LIVE_REGENERATED,
     GRADE_CLIENT_PRESENTATION,
+    IMMUTABLE_ARTIFACT_DISCLOSURE,
     LIVE_REGENERATED_DISCLOSURE,
+    REPORTING_SEMANTICS_VERSION,
 )
 from utils.expiry_utils import get_computed_status, get_effective_expiry_date
 
@@ -39,9 +42,20 @@ class GovernancePdfContext:
     regenerated_at: Optional[datetime] = None
     company_name: str = ""
     crn: str = ""
+    artifact_id: str = ""
+    semantics_version: str = REPORTING_SEMANTICS_VERSION
+    immutable_status: str = ""
+    report_scope: str = ""
+    source_snapshot_hash: str = ""
+
+    @property
+    def is_immutable_artifact(self) -> bool:
+        return self.determinism == EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT or bool(self.artifact_id)
 
     @property
     def is_live_regenerated(self) -> bool:
+        if self.is_immutable_artifact:
+            return False
         return self.regenerated_at is not None or self.determinism == EXPORT_DETERMINISM_LIVE_REGENERATED
 
 
@@ -239,7 +253,29 @@ def export_disclosure_paragraphs(ctx: GovernancePdfContext, styles: Dict[str, An
         )
     )
     elements.append(Spacer(1, 6))
-    if ctx.is_live_regenerated:
+    if ctx.is_immutable_artifact:
+        elements.append(
+            Paragraph(
+                "<b>IMMUTABLE GOVERNANCE ARTIFACT</b><br/>" + _xml_escape(IMMUTABLE_ARTIFACT_DISCLOSURE),
+                styles["body"],
+            )
+        )
+        meta_parts = [
+            f"<b>Artifact ID:</b> {_xml_escape(ctx.artifact_id or '—')}",
+            f"<b>Semantics:</b> {_xml_escape(ctx.semantics_version)}",
+            f"<b>Scope:</b> {_xml_escape(ctx.report_scope or '—')}",
+        ]
+        if ctx.source_snapshot_hash:
+            meta_parts.append(f"<b>Snapshot hash:</b> {_xml_escape(ctx.source_snapshot_hash[:16])}…")
+        elements.append(Paragraph(" &nbsp;|&nbsp; ".join(meta_parts), styles["small"]))
+        elements.append(
+            Paragraph(
+                f"<b>Generated (UTC):</b> {_xml_escape(utc_display(ctx.generated_at))} &nbsp;|&nbsp; "
+                f"<b>Status:</b> {_xml_escape(ctx.immutable_status or 'frozen')}",
+                styles["small"],
+            )
+        )
+    elif ctx.is_live_regenerated:
         elements.append(
             Paragraph(
                 "<b>LIVE-GENERATED EXPORT — READ BEFORE RELYING ON THIS FILE</b><br/>"

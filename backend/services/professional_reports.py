@@ -188,7 +188,8 @@ class ProfessionalReportGenerator:
     async def generate_compliance_summary_pdf(
         self,
         client_id: str,
-        include_details: bool = True
+        include_details: bool = True,
+        artifact_lineage: Optional[Dict[str, Any]] = None,
     ) -> io.BytesIO:
         """Generate a professionally formatted compliance summary PDF.
 
@@ -249,14 +250,26 @@ class ProfessionalReportGenerator:
         
         elements = []
         now = datetime.now(timezone.utc)
-        grade_def = EXPORT_GRADE_DEFINITIONS.get(GRADE_CLIENT_PRESENTATION) or {}
+        from services.reporting_semantics_v1 import EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT, GRADE_REGULATORY
+
+        lineage = artifact_lineage or {}
+        export_grade = lineage.get("export_grade") or GRADE_REGULATORY
+        determinism = lineage.get("determinism") or (
+            EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT if lineage.get("artifact_id") else EXPORT_DETERMINISM_POINT_IN_TIME
+        )
+        grade_def = EXPORT_GRADE_DEFINITIONS.get(export_grade) or {}
         gov_ctx = GovernancePdfContext(
-            export_grade=GRADE_CLIENT_PRESENTATION,
-            export_grade_label=grade_def.get("label") or GRADE_CLIENT_PRESENTATION,
+            export_grade=export_grade,
+            export_grade_label=lineage.get("export_grade_label") or grade_def.get("label") or export_grade,
             generated_at=now,
-            determinism=EXPORT_DETERMINISM_POINT_IN_TIME,
-            jurisdiction_summary=portfolio_jurisdiction_summary_sentence(client_doc, properties)[:90],
+            determinism=determinism,
+            jurisdiction_summary=(lineage.get("jurisdiction_scope") or portfolio_jurisdiction_summary_sentence(client_doc, properties))[:90],
             company_name=branding.get("company_name") or "",
+            artifact_id=str(lineage.get("artifact_id") or ""),
+            semantics_version=str(lineage.get("semantics_version") or "v1"),
+            immutable_status=str(lineage.get("immutable_status") or ("frozen" if lineage.get("artifact_id") else "")),
+            report_scope=str(lineage.get("report_scope") or "portfolio"),
+            source_snapshot_hash=str(lineage.get("source_snapshot_hash") or ""),
         )
         on_first, on_later = make_page_callbacks(gov_ctx)
         

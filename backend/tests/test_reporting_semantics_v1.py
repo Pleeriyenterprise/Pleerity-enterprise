@@ -106,6 +106,22 @@ def test_audit_pack_export_grade_immutable():
     assert reg["determinism"] == "immutable_artifact"
 
 
+def test_evidence_readiness_pdf_immutable_grade():
+    from services.reporting_semantics_v1 import EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT
+
+    reg = SURFACE_EXPORT_REGISTRY["evidence_readiness_pdf"]
+    assert reg["export_grade"] == GRADE_AUDIT_ARTIFACT
+    assert reg["determinism"] == EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT
+
+
+def test_professional_compliance_pdf_immutable_grade():
+    from services.reporting_semantics_v1 import EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT, GRADE_REGULATORY
+
+    reg = SURFACE_EXPORT_REGISTRY["professional_compliance_pdf"]
+    assert reg["export_grade"] == GRADE_REGULATORY
+    assert reg["determinism"] == EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT
+
+
 def test_jspdf_not_regulatory_grade():
     from services.reporting_semantics_v1 import PDF_ENGINE_JSPDF, PDF_ENGINE_RULES
 

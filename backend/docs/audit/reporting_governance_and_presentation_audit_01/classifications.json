@@ -1,15 +1,16 @@
 {
-  "programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02",
-  "classified_at": "2026-06-04T08:40:37.467583+00:00",
+  "programme": "REPORTING-IMMUTABLE-ARTIFACT-GOVERNANCE-PHASE-03",
+  "classified_at": "2026-06-04T09:18:56.107088+00:00",
   "classification": "VERIFIED_OPERATIONALLY",
   "checks": {
-    "server_pdf_routing": true,
-    "matrix_governance_columns": true,
-    "unresolved_obligations": true,
-    "evidence_readiness_disclosure": true,
-    "no_silent_truncation": true,
-    "governance_footer": true,
+    "immutable_storage": true,
+    "deterministic_redownload": true,
+    "regeneration_new_artifact": true,
+    "lineage_metadata": true,
+    "wording_converged": true,
+    "no_silent_overwrite": true,
+    "authorization": true,
     "regression_pass": true
   },
-  "prior_programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01"
+  "prior_programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02"
 }

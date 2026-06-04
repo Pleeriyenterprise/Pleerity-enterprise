@@ -1,0 +1,15 @@
+{
+  "programme": "REPORTING-IMMUTABLE-ARTIFACT-GOVERNANCE-PHASE-03",
+  "audited_at": "2026-06-04T09:18:24.591960+00:00",
+  "pdf_fields": [
+    "artifact_id",
+    "generated_utc",
+    "export_grade",
+    "immutable_notice",
+    "semantics_version",
+    "report_scope",
+    "snapshot_hash_prefix"
+  ],
+  "module": "services/report_layout_governance.py export_disclosure_paragraphs",
+  "status": "implemented"
+}

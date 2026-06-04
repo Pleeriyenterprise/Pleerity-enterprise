@@ -164,15 +164,16 @@ SURFACE_EXPORT_REGISTRY: Dict[str, Dict[str, str]] = {
         "pdf_engine": "",
     },
     "evidence_readiness_pdf": {
-        "export_grade": GRADE_CLIENT_PRESENTATION,
-        "determinism": EXPORT_DETERMINISM_LIVE_REGENERATED,
+        "export_grade": GRADE_AUDIT_ARTIFACT,
+        "determinism": EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
         "pdf_engine": PDF_ENGINE_REPORTLAB,
+        "disclosure": IMMUTABLE_ARTIFACT_DISCLOSURE,
     },
     "evidence_readiness_redownload": {
-        "export_grade": GRADE_CLIENT_PRESENTATION,
-        "determinism": EXPORT_DETERMINISM_LIVE_REGENERATED,
+        "export_grade": GRADE_AUDIT_ARTIFACT,
+        "determinism": EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
         "pdf_engine": PDF_ENGINE_REPORTLAB,
-        "disclosure": LIVE_REGENERATED_DISCLOSURE,
+        "disclosure": IMMUTABLE_ARTIFACT_DISCLOSURE,
     },
     "audit_evidence_pack_zip": {
         "export_grade": GRADE_AUDIT_ARTIFACT,
@@ -203,9 +204,10 @@ SURFACE_EXPORT_REGISTRY: Dict[str, Dict[str, str]] = {
         "pdf_engine": PDF_ENGINE_JSPDF,
     },
     "professional_compliance_pdf": {
-        "export_grade": GRADE_CLIENT_PRESENTATION,
-        "determinism": EXPORT_DETERMINISM_POINT_IN_TIME,
+        "export_grade": GRADE_REGULATORY,
+        "determinism": EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
         "pdf_engine": PDF_ENGINE_REPORTLAB,
+        "disclosure": IMMUTABLE_ARTIFACT_DISCLOSURE,
     },
     "score_explanation_pdf": {
         "export_grade": GRADE_EXECUTIVE,

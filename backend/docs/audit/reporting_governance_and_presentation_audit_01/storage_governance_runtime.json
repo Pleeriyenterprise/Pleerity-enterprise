@@ -1,0 +1,13 @@
+{
+  "programme": "REPORTING-IMMUTABLE-ARTIFACT-GOVERNANCE-PHASE-03",
+  "audited_at": "2026-06-04T09:18:24.591960+00:00",
+  "risks": {
+    "duplication": "each generate creates new GridFS object \u2014 by design",
+    "growth": "unbounded until retention policy (not implemented in P03)",
+    "large_pdfs": "same caps as phase-02 matrix continuation"
+  },
+  "retention": "list_reports limit 100 metadata rows; artifacts retained in GridFS",
+  "indexing": "artifact_id unique; reports.artifact_id link",
+  "cleanup_strategy": "deferred \u2014 document only",
+  "status": "governance_documented"
+}

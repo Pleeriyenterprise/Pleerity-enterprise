@@ -1,0 +1,19 @@
+{
+  "programme": "REPORTING-IMMUTABLE-ARTIFACT-GOVERNANCE-PHASE-03",
+  "audited_at": "2026-06-04T09:18:24.587347+00:00",
+  "gridfs_bucket": "governed_report_pdf_artifacts",
+  "mongo_collection": "governed_report_pdf_artifacts",
+  "on_first_generation": [
+    "pdf_bytes",
+    "content_sha256",
+    "artifact_id",
+    "export_grade",
+    "semantics_version",
+    "snapshot_context_hash",
+    "jurisdiction_scope",
+    "generation_metadata"
+  ],
+  "no_overwrite": true,
+  "redownload": "serve frozen GridFS bytes",
+  "status": "implemented"
+}

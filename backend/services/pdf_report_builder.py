@@ -39,11 +39,13 @@ from services.report_layout_governance import (
     MATRIX_MAX_ROWS_PER_PROPERTY,
 )
 from services.reporting_semantics_v1 import (
+    EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
     EXPORT_DETERMINISM_LIVE_REGENERATED,
     EXPORT_DETERMINISM_POINT_IN_TIME,
     EXPORT_GRADE_DEFINITIONS,
     GRADE_CLIENT_PRESENTATION,
     GRADE_EXECUTIVE,
+    REPORTING_SEMANTICS_VERSION,
 )
 from services.scoring_explanation_copy import (
     SCORE_AREA_DESCRIPTIONS,
@@ -287,18 +289,30 @@ def _governance_ctx(
     crn: str,
     export_grade: str = GRADE_CLIENT_PRESENTATION,
     determinism: str = EXPORT_DETERMINISM_LIVE_REGENERATED,
+    report_scope: str = "",
 ) -> GovernancePdfContext:
+    lineage = report_data.get("artifact_lineage") or {}
+    if lineage.get("export_grade"):
+        export_grade = lineage["export_grade"]
+    if lineage.get("determinism"):
+        determinism = lineage["determinism"]
     grade_def = EXPORT_GRADE_DEFINITIONS.get(export_grade) or {}
+    gen_at = _parse_governance_datetime(lineage.get("original_generated_at")) or now
     return GovernancePdfContext(
         export_grade=export_grade,
-        export_grade_label=grade_def.get("label") or export_grade,
-        generated_at=now,
+        export_grade_label=lineage.get("export_grade_label") or grade_def.get("label") or export_grade,
+        generated_at=gen_at,
         determinism=determinism,
-        jurisdiction_summary=portfolio_jurisdiction_summary_sentence(client, properties)[:90],
-        original_generated_at=_parse_governance_datetime(report_data.get("original_generated_at")),
+        jurisdiction_summary=(lineage.get("jurisdiction_scope") or portfolio_jurisdiction_summary_sentence(client, properties))[:90],
+        original_generated_at=_parse_governance_datetime(lineage.get("original_generated_at") or report_data.get("original_generated_at")),
         regenerated_at=_parse_governance_datetime(report_data.get("regenerated_at")),
         company_name=company_name,
         crn=crn,
+        artifact_id=str(lineage.get("artifact_id") or ""),
+        semantics_version=str(lineage.get("semantics_version") or REPORTING_SEMANTICS_VERSION),
+        immutable_status=str(lineage.get("immutable_status") or ("frozen" if determinism == EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT else "")),
+        report_scope=str(lineage.get("report_scope") or report_scope),
+        source_snapshot_hash=str(lineage.get("source_snapshot_hash") or ""),
     )
 
 
@@ -351,6 +365,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
         now=now,
         company_name=company_name,
         crn=crn,
+        report_scope="portfolio",
     )
     on_first, on_later = make_page_callbacks(gov_ctx)
 
@@ -378,18 +393,19 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     elements.append(Paragraph("Executive Summary", styles["heading"]))
     snap_ts = _evidence_readiness_snapshot_timestamp_display(now)
     elements.append(Paragraph(f"<b>Snapshot generated at</b> {_xml_escape(snap_ts)}", styles["body"]))
-    if gov_ctx.regenerated_at and gov_ctx.original_generated_at:
-        elements.append(
-            Paragraph(
-                f"<b>Regenerated (UTC):</b> {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.regenerated_at))} "
-                f"(original run: {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.original_generated_at))})",
-                styles["body"],
+    if not gov_ctx.is_immutable_artifact:
+        if gov_ctx.regenerated_at and gov_ctx.original_generated_at:
+            elements.append(
+                Paragraph(
+                    f"<b>Regenerated (UTC):</b> {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.regenerated_at))} "
+                    f"(original run: {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.original_generated_at))})",
+                    styles["body"],
+                )
             )
-        )
-    elements.append(Paragraph(
-        "This document reflects portfolio state at generation time and may differ from future downloads.",
-        styles["small"],
-    ))
+        elements.append(Paragraph(
+            "LIVE EXPORT: reflects portfolio state at generation time and may differ from future downloads.",
+            styles["small"],
+        ))
     elements.append(Spacer(1, 8))
     score_frag = _evidence_readiness_headline_score_frag(properties, now, headline_agg)
     summary_text = f"""
@@ -863,6 +879,7 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
         now=now,
         company_name=company_name,
         crn=crn,
+        report_scope=f"property:{property_id}",
     )
     on_first, on_later = make_page_callbacks(gov_ctx)
 
@@ -891,18 +908,19 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     elements.append(Paragraph("Executive Summary", styles["heading"]))
     snap_ts = _evidence_readiness_snapshot_timestamp_display(now)
     elements.append(Paragraph(f"<b>Snapshot generated at</b> {_xml_escape(snap_ts)}", styles["body"]))
-    if gov_ctx.regenerated_at and gov_ctx.original_generated_at:
-        elements.append(
-            Paragraph(
-                f"<b>Regenerated (UTC):</b> {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.regenerated_at))} "
-                f"(original run: {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.original_generated_at))})",
-                styles["body"],
+    if not gov_ctx.is_immutable_artifact:
+        if gov_ctx.regenerated_at and gov_ctx.original_generated_at:
+            elements.append(
+                Paragraph(
+                    f"<b>Regenerated (UTC):</b> {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.regenerated_at))} "
+                    f"(original run: {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.original_generated_at))})",
+                    styles["body"],
+                )
             )
-        )
-    elements.append(Paragraph(
-        "This document reflects portfolio state at generation time and may differ from future downloads.",
-        styles["small"],
-    ))
+        elements.append(Paragraph(
+            "LIVE EXPORT: reflects portfolio state at generation time and may differ from future downloads.",
+            styles["small"],
+        ))
     elements.append(Spacer(1, 8))
     score_line = (
         f"<b>Score:</b> {_evidence_readiness_headline_score_frag(properties, now, headline_agg)} &nbsp;|&nbsp; "

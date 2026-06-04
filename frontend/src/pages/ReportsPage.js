@@ -1219,7 +1219,7 @@ const ReportsPage = () => {
                 Previous reports
               </CardTitle>
               <p className="text-sm text-gray-500 mt-1">
-                Download a copy (re-generated with current data).
+                Immutable snapshots — re-download returns the same frozen PDF bytes. Use &quot;New snapshot&quot; for current portfolio state.
               </p>
             </CardHeader>
             <CardContent>
@@ -1234,35 +1234,69 @@ const ReportsPage = () => {
                     <p className="text-xs text-gray-500 mt-1">
                       Score / risk: {r.score_at_time != null ? `${r.score_at_time}` : '—'} / {r.risk_level_at_time || '—'}
                     </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="mt-3 min-h-11 w-full"
-                      disabled={generating === `download_${r.report_id}`}
-                      onClick={async () => {
-                        setGenerating(`download_${r.report_id}`);
-                        try {
-                          const res = await api.get(`/reports/${r.report_id}/download`, { responseType: 'blob' });
-                          const url = window.URL.createObjectURL(new Blob([res.data]));
-                          const link = document.createElement('a');
-                          link.href = url;
-                          link.setAttribute('download', `evidence_readiness_${r.scope}_${r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : 'report'}.pdf`);
-                          document.body.appendChild(link);
-                          link.click();
-                          link.remove();
-                          window.URL.revokeObjectURL(url);
-                          toast.success('Report downloaded');
-                        } catch (err) {
-                          toast.error('Download failed');
-                        } finally {
-                          setGenerating(null);
-                        }
-                      }}
-                      data-testid={`download-report-${r.report_id}`}
-                    >
-                      {generating === `download_${r.report_id}` ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-                      Download
-                    </Button>
+                    <div className="mt-3 flex flex-col gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-11 w-full"
+                        disabled={generating === `download_${r.report_id}`}
+                        onClick={async () => {
+                          setGenerating(`download_${r.report_id}`);
+                          try {
+                            const res = await api.get(`/reports/${r.report_id}/download`, { responseType: 'blob' });
+                            const url = window.URL.createObjectURL(new Blob([res.data]));
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.setAttribute('download', `evidence_readiness_${r.scope}_${r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : 'report'}.pdf`);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            window.URL.revokeObjectURL(url);
+                            toast.success('Immutable artifact downloaded', {
+                              description: res.headers['x-report-determinism'] === 'immutable_artifact'
+                                ? 'Same bytes as when this snapshot was created.'
+                                : undefined,
+                            });
+                          } catch (err) {
+                            toast.error('Download failed');
+                          } finally {
+                            setGenerating(null);
+                          }
+                        }}
+                        data-testid={`download-report-${r.report_id}`}
+                      >
+                        {generating === `download_${r.report_id}` ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                        Download frozen copy
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="min-h-11 w-full text-xs"
+                        disabled={generating === `new_${r.report_id}`}
+                        onClick={async () => {
+                          setGenerating(`new_${r.report_id}`);
+                          try {
+                            await api.post(
+                              '/reports/generate',
+                              { scope: r.scope, property_id: r.property_id || undefined },
+                              { responseType: 'blob' }
+                            );
+                            toast.success('New immutable snapshot created', {
+                              description: 'Based on current portfolio state. Prior snapshots remain downloadable unchanged.',
+                            });
+                            const reportsRes = await api.get('/reports/list');
+                            setPreviousReports(reportsRes.data.reports || reportsRes.data || []);
+                          } catch (err) {
+                            toast.error('Failed to create new snapshot');
+                          } finally {
+                            setGenerating(null);
+                          }
+                        }}
+                        data-testid={`new-snapshot-${r.report_id}`}
+                      >
+                        New snapshot (current data)
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1284,7 +1318,7 @@ const ReportsPage = () => {
                         <td className="py-2">{r.scope === 'property' ? 'Property' : 'Portfolio'}</td>
                         <td className="py-2">{r.property_id ? (properties.find(p => p.property_id === r.property_id)?.address_line_1 || r.property_id) : '—'}</td>
                         <td className="py-2">{r.score_at_time != null ? `${r.score_at_time}` : '—'} / {r.risk_level_at_time || '—'}</td>
-                        <td className="py-2 text-right">
+                        <td className="py-2 text-right space-x-1">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -1301,7 +1335,7 @@ const ReportsPage = () => {
                                 link.click();
                                 link.remove();
                                 window.URL.revokeObjectURL(url);
-                                toast.success('Report downloaded');
+                                toast.success('Immutable artifact downloaded');
                               } catch (err) {
                                 toast.error('Download failed');
                               } finally {
@@ -1311,7 +1345,32 @@ const ReportsPage = () => {
                             data-testid={`download-report-${r.report_id}`}
                           >
                             {generating === `download_${r.report_id}` ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                            Download
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="New snapshot (current data)"
+                            disabled={generating === `new_${r.report_id}`}
+                            onClick={async () => {
+                              setGenerating(`new_${r.report_id}`);
+                              try {
+                                await api.post(
+                                  '/reports/generate',
+                                  { scope: r.scope, property_id: r.property_id || undefined },
+                                  { responseType: 'blob' }
+                                );
+                                toast.success('New immutable snapshot created');
+                                const reportsRes = await api.get('/reports/list');
+                                setPreviousReports(reportsRes.data.reports || reportsRes.data || []);
+                              } catch (err) {
+                                toast.error('Failed to create new snapshot');
+                              } finally {
+                                setGenerating(null);
+                              }
+                            }}
+                            data-testid={`new-snapshot-${r.report_id}`}
+                          >
+                            {generating === `new_${r.report_id}` ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                           </Button>
                         </td>
                       </tr>

@@ -1,0 +1,23 @@
+{
+  "programme": "REPORTING-IMMUTABLE-ARTIFACT-GOVERNANCE-PHASE-03",
+  "audited_at": "2026-06-04T09:18:24.595007+00:00",
+  "live_export": {
+    "determinism": "live_regenerated",
+    "disclosure": "This report reflects current portfolio state at generation time and may differ from prior downloads.",
+    "surfaces": [
+      "score_explanation_pdf",
+      "operational_csv"
+    ]
+  },
+  "immutable_artifact": {
+    "determinism": "immutable_artifact",
+    "disclosure": "This artifact is stored at generation time with manifest checksums; re-download returns the same bytes.",
+    "surfaces": [
+      "evidence_readiness_pdf",
+      "professional_compliance_pdf",
+      "audit_evidence_pack_zip"
+    ]
+  },
+  "headers": "X-Report-Determinism distinguishes live vs immutable",
+  "status": "implemented"
+}

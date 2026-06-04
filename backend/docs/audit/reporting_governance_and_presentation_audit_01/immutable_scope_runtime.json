@@ -1,0 +1,32 @@
+{
+  "programme": "REPORTING-IMMUTABLE-ARTIFACT-GOVERNANCE-PHASE-03",
+  "audited_at": "2026-06-04T09:18:24.587347+00:00",
+  "immutable_surfaces": [
+    "audit_evidence_pack",
+    "evidence_readiness",
+    "professional_compliance"
+  ],
+  "scope_detail": {
+    "audit_evidence_pack": {
+      "export_grade": "AUDIT_ARTIFACT",
+      "determinism": "immutable_artifact",
+      "storage": "compliance_audit_packs + compliance_audit_packs GridFS bucket"
+    },
+    "evidence_readiness": {
+      "export_grade": "AUDIT_ARTIFACT",
+      "determinism": "immutable_artifact"
+    },
+    "professional_compliance": {
+      "export_grade": "REGULATORY_SUBMISSION",
+      "determinism": "immutable_artifact"
+    }
+  },
+  "operational_remain_live": [
+    "score_explanation_pdf",
+    "requirements_csv",
+    "compliance_summary_csv",
+    "jspdf_fallback",
+    "monthly_digest_jspdf"
+  ],
+  "status": "implemented"
+}

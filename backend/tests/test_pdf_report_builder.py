@@ -165,6 +165,22 @@ def test_build_score_explanation_report_trust_safe_copy(monkeypatch):
     assert b"Not legal advice" in pdf or b"not legal advice" in low
 
 
+def test_portfolio_pdf_immutable_artifact_notice(monkeypatch):
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
+    from services.immutable_report_artifact_service import prepare_artifact_identity
+
+    data = _minimal_report_data()
+    data["artifact_lineage"] = prepare_artifact_identity(
+        client_id="client-1",
+        report_type="evidence_readiness",
+        scope="portfolio",
+        report_data=data,
+    )
+    pdf = build_portfolio_report("client-1", data)
+    assert b"IMMUTABLE GOVERNANCE ARTIFACT" in pdf
+    assert b"Artifact ID" in pdf
+
+
 def test_portfolio_pdf_governance_sections(monkeypatch):
     monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
     data = _minimal_report_data()
@@ -180,7 +196,7 @@ def test_portfolio_pdf_governance_sections(monkeypatch):
     assert b"Unresolved obligations" in pdf
     assert b"Export grade" in pdf
     assert b"Governance" in pdf or b"SELF-REC" in pdf
-    assert b"may differ from future downloads" in pdf
+    assert b"IMMUTABLE GOVERNANCE ARTIFACT" in pdf or b"may differ from future downloads" in pdf
 
 
 def test_portfolio_pdf_regenerated_timestamp(monkeypatch):

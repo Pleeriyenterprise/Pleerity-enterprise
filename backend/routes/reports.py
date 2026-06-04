@@ -107,11 +107,25 @@ async def generate_evidence_readiness_report(request: Request, body: GenerateRep
     if body.scope == "property" and not body.property_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="property_id required when scope is property")
     try:
+        from services.immutable_report_artifact_service import (
+            artifact_http_headers,
+            prepare_artifact_identity,
+            store_pdf_artifact,
+        )
+
         report_data = await load_evidence_readiness_data(
             client_id=user["client_id"],
             scope=body.scope,
             property_id=body.property_id,
         )
+        embed_lineage = prepare_artifact_identity(
+            client_id=user["client_id"],
+            report_type="evidence_readiness",
+            scope=body.scope,
+            property_id=body.property_id,
+            report_data=report_data,
+        )
+        report_data["artifact_lineage"] = embed_lineage
         if body.scope == "portfolio":
             pdf_bytes = await asyncio.to_thread(build_portfolio_report, user["client_id"], report_data)
         else:
@@ -132,6 +146,29 @@ async def generate_evidence_readiness_report(request: Request, body: GenerateRep
         }
         ins = await db.reports.insert_one(doc)
         report_id = str(ins.inserted_id)
+        filename = f"evidence_readiness_{body.scope}_{now.strftime('%Y%m%d_%H%M')}.pdf"
+        stored = await store_pdf_artifact(
+            client_id=user["client_id"],
+            report_type="evidence_readiness",
+            pdf_bytes=pdf_bytes,
+            filename=filename,
+            scope=body.scope,
+            property_id=body.property_id,
+            report_data=report_data,
+            reports_mongo_id=report_id,
+            preset_artifact_id=embed_lineage.get("artifact_id"),
+            preset_lineage=embed_lineage,
+        )
+        from services.immutable_report_artifact_service import link_reports_row_immutable
+
+        await link_reports_row_immutable(
+            reports_mongo_id=report_id,
+            client_id=user["client_id"],
+            artifact_id=stored["artifact_id"],
+            gridfs_id=stored["gridfs_id"],
+            content_sha256=stored["content_sha256"],
+            lineage=stored,
+        )
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user.get("portal_user_id"),
@@ -142,19 +179,13 @@ async def generate_evidence_readiness_report(request: Request, body: GenerateRep
                 "scope": body.scope,
                 "property_id": body.property_id,
                 "report_id": report_id,
+                "artifact_id": stored["artifact_id"],
             },
         )
-        from services.reporting_semantics_v1 import LIVE_REGENERATED_DISCLOSURE
-
-        filename = f"evidence_readiness_{body.scope}_{now.strftime('%Y%m%d_%H%M')}.pdf"
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}",
-                "X-Report-Determinism": "live_regenerated",
-                "X-Report-Disclosure": LIVE_REGENERATED_DISCLOSURE[:200],
-            },
+            headers=artifact_http_headers(stored, filename=filename),
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -182,6 +213,10 @@ async def list_reports(request: Request):
             "created_at": row.get("created_at").isoformat() if row.get("created_at") else None,
             "score_at_time": row.get("score_at_time"),
             "risk_level_at_time": row.get("risk_level_at_time"),
+            "artifact_id": row.get("artifact_id"),
+            "immutable": bool(row.get("immutable")),
+            "determinism": row.get("determinism"),
+            "export_grade": row.get("export_grade"),
         })
     return {"reports": items}
 
@@ -409,10 +444,36 @@ async def get_score_explanation_pdf(
         )
 
 
+@router.get("/artifacts/{artifact_id}/download")
+async def download_governed_artifact_pdf(request: Request, artifact_id: str):
+    """Re-download frozen immutable PDF bytes by artifact ID (tenant-scoped)."""
+    from services.plan_registry import plan_registry
+    from services.immutable_report_artifact_service import serve_artifact_pdf
+
+    user = await client_route_guard(request)
+    allowed, _, _ = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Upgrade required for PDF reports")
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:client:{user['client_id']}",
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+    )
+    served = await serve_artifact_pdf(client_id=user["client_id"], artifact_id=artifact_id)
+    if not served:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
+    pdf_bytes, headers, _lineage = served
+    return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+
+
 @router.get("/{report_id}/download")
 async def download_report_by_id(request: Request, report_id: str):
-    """Re-generate and download PDF for a previous report run (same scope/property_id, current data)."""
+    """Download immutable PDF for a previous report run (frozen bytes when stored)."""
     from services.plan_registry import plan_registry
+    from services.immutable_report_artifact_service import (
+        artifact_http_headers,
+        read_pdf_artifact_bytes,
+    )
 
     user = await client_route_guard(request)
     allowed, _, _ = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
@@ -433,34 +494,34 @@ async def download_report_by_id(request: Request, report_id: str):
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
     scope = row.get("scope") or "portfolio"
-    property_id = row.get("property_id")
-    try:
-        report_data = await load_evidence_readiness_data(
-            client_id=user["client_id"], scope=scope, property_id=property_id
-        )
-        regen_now = datetime.now(timezone.utc)
-        report_data["original_generated_at"] = created
-        report_data["regenerated_at"] = regen_now
-        if scope == "portfolio":
-            pdf_bytes = await asyncio.to_thread(build_portfolio_report, user["client_id"], report_data)
-        else:
-            pdf_bytes = await asyncio.to_thread(
-                build_property_report, user["client_id"], property_id, report_data
-            )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     created = row.get("created_at") or datetime.now(timezone.utc)
-    from services.reporting_semantics_v1 import LIVE_REGENERATED_DISCLOSURE
-
     filename = f"evidence_readiness_{scope}_{created.strftime('%Y%m%d_%H%M')}.pdf"
-    return StreamingResponse(
-        io.BytesIO(pdf_bytes),
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}",
-            "X-Report-Determinism": "live_regenerated",
-            "X-Report-Disclosure": LIVE_REGENERATED_DISCLOSURE[:200],
-        },
+
+    if row.get("gridfs_id"):
+        pdf_bytes = await read_pdf_artifact_bytes(str(row["gridfs_id"]))
+        if not pdf_bytes:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stored artifact unavailable")
+        lineage = row.get("lineage") or {}
+        lineage.setdefault("artifact_id", row.get("artifact_id"))
+        lineage.setdefault("export_grade", row.get("export_grade"))
+        lineage.setdefault("content_sha256", row.get("content_sha256"))
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers=artifact_http_headers(lineage, filename=filename),
+        )
+
+    if row.get("artifact_id"):
+        from services.immutable_report_artifact_service import serve_artifact_pdf
+
+        served = await serve_artifact_pdf(client_id=user["client_id"], artifact_id=str(row["artifact_id"]))
+        if served:
+            pdf_bytes, headers, _ = served
+            return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="No immutable artifact for this report. Generate a new snapshot from Reports.",
     )
 
 
@@ -1049,14 +1110,23 @@ async def toggle_report_schedule(request: Request, schedule_id: str):
 # ============================================================================
 
 @router.get("/professional/compliance-summary")
-async def download_compliance_summary_pdf(request: Request):
-    """Download professionally formatted compliance summary PDF.
-    
-    Plan gating: Requires Portfolio plan or higher (plan_registry reports_pdf).
-    Uses client branding settings for white-label customization.
+async def download_compliance_summary_pdf(
+    request: Request,
+    artifact_id: Optional[str] = None,
+):
+    """Download professional compliance summary PDF (immutable artifact per generation).
+
+    Pass ``artifact_id`` to re-download frozen bytes. Omit to create a new immutable snapshot.
     """
     from services.plan_registry import plan_registry
     from services.professional_reports import professional_report_generator
+    from services.immutable_report_artifact_service import (
+        artifact_http_headers,
+        prepare_artifact_identity,
+        serve_artifact_pdf,
+        store_pdf_artifact,
+    )
+    from services.reporting_semantics_v1 import load_score_projection_portal_rows
 
     user = await client_route_guard(request)
     try:
@@ -1080,43 +1150,73 @@ async def download_compliance_summary_pdf(request: Request):
             client_id=user["client_id"],
             actor_id=user.get("portal_user_id"),
         )
-        
-        # Generate PDF
-        pdf_buffer = await professional_report_generator.generate_compliance_summary_pdf(
-            client_id=user["client_id"],
-            include_details=True
+
+        if artifact_id:
+            served = await serve_artifact_pdf(client_id=user["client_id"], artifact_id=artifact_id)
+            if not served:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found")
+            pdf_bytes, headers, _ = served
+            return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
+
+        db = database.get_db()
+        client_id = user["client_id"]
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+        properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
+        requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(10000)
+        portal_reqs = await load_score_projection_portal_rows(
+            db,
+            client_id=client_id,
+            client_doc=client,
+            properties=properties,
+            requirements=requirements,
         )
-        
-        # Audit log
+        report_data = {
+            "client": client,
+            "properties": properties,
+            "requirements": portal_reqs,
+            "now_iso": datetime.now(timezone.utc).isoformat(),
+        }
+        embed_lineage = prepare_artifact_identity(
+            client_id=client_id,
+            report_type="professional_compliance",
+            scope="portfolio",
+            report_data=report_data,
+        )
+        pdf_buffer = await professional_report_generator.generate_compliance_summary_pdf(
+            client_id=client_id,
+            include_details=True,
+            artifact_lineage=embed_lineage,
+        )
+        pdf_bytes = pdf_buffer.getvalue()
+        now = datetime.now(timezone.utc)
+        filename = f"compliance_summary_{now.strftime('%Y%m%d_%H%M')}.pdf"
+        stored = await store_pdf_artifact(
+            client_id=client_id,
+            report_type="professional_compliance",
+            pdf_bytes=pdf_bytes,
+            filename=filename,
+            scope="portfolio",
+            report_data=report_data,
+            preset_artifact_id=embed_lineage.get("artifact_id"),
+            preset_lineage=embed_lineage,
+        )
+
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
-            client_id=user["client_id"],
+            client_id=client_id,
             resource_type="report",
             metadata={
                 "report_type": "professional_compliance_summary",
-                "format": "pdf"
+                "format": "pdf",
+                "artifact_id": stored["artifact_id"],
             }
-        )
-        
-        from services.reporting_semantics_v1 import (
-            EXPORT_GRADE_DEFINITIONS,
-            GRADE_CLIENT_PRESENTATION,
-            SURFACE_EXPORT_REGISTRY,
         )
 
-        filename = f"compliance_summary_{datetime.now().strftime('%Y%m%d')}.pdf"
-        grade = SURFACE_EXPORT_REGISTRY.get("professional_compliance_pdf", {}).get("export_grade") or GRADE_CLIENT_PRESENTATION
-        
         return StreamingResponse(
-            pdf_buffer,
+            io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}",
-                "X-Export-Grade": grade,
-                "X-Export-Grade-Label": (EXPORT_GRADE_DEFINITIONS.get(grade) or {}).get("label", grade),
-                "X-Report-Engine": "reportlab_server",
-            }
+            headers=artifact_http_headers(stored, filename=filename),
         )
     
     except HTTPException:
