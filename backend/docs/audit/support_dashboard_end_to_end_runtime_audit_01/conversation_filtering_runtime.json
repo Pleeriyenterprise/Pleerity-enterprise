@@ -1,0 +1,44 @@
+{
+  "at_utc": "2026-06-04T20:15:24.026437+00:00",
+  "probes": [
+    {
+      "name": "open",
+      "status": 200,
+      "count": 20,
+      "no_secret_in_preview": true,
+      "pass": true
+    },
+    {
+      "name": "escalated",
+      "status": 200,
+      "count": 12,
+      "no_secret_in_preview": true,
+      "pass": true
+    },
+    {
+      "name": "billing_area",
+      "status": 200,
+      "count": 3,
+      "no_secret_in_preview": true,
+      "pass": true
+    },
+    {
+      "name": "search_marker",
+      "status": 200,
+      "count": 0,
+      "no_secret_in_preview": true,
+      "pass": true
+    },
+    {
+      "name": "search_email",
+      "status": 200,
+      "count": 0,
+      "no_secret_in_preview": true,
+      "pass": true
+    }
+  ],
+  "detail_conversation_id": "CONV-20260604201241-5991C869",
+  "message_count": 2,
+  "detail_ok": true,
+  "pass": true
+}

@@ -1,0 +1,39 @@
+{
+  "at_utc": "2026-06-04T20:14:36.304023+00:00",
+  "stats_status": 200,
+  "tickets": {
+    "total": 25,
+    "new": 22,
+    "open": 0,
+    "pending": 0,
+    "high_priority": 2
+  },
+  "conversations": {
+    "total": 88,
+    "open": 76,
+    "escalated": 12
+  },
+  "browser": {
+    "at_utc": "2026-06-04T20:14:36.117464+00:00",
+    "tabs": [
+      {
+        "view": "overview",
+        "pass": true,
+        "screenshot": "support_dashboard_overview.png"
+      },
+      {
+        "view": "conversations",
+        "pass": true,
+        "screenshot": "support_conversations_tab.png"
+      },
+      {
+        "view": "ticket_detail",
+        "pass": true,
+        "screenshot": "support_ticket_detail.png",
+        "ticket_id": "TKT-20260604-A8C97D"
+      }
+    ],
+    "pass": true
+  },
+  "pass": true
+}

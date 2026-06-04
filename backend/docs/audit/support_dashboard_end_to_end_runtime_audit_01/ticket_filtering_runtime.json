@@ -1,0 +1,50 @@
+{
+  "at_utc": "2026-06-04T20:15:05.796483+00:00",
+  "probes": [
+    {
+      "name": "all",
+      "status": 200,
+      "count": 20,
+      "pass": true
+    },
+    {
+      "name": "status_new",
+      "status": 200,
+      "count": 20,
+      "pass": true
+    },
+    {
+      "name": "priority_high",
+      "status": 200,
+      "count": 2,
+      "pass": true
+    },
+    {
+      "name": "search_email",
+      "status": 200,
+      "count": 4,
+      "pass": true
+    },
+    {
+      "name": "search_crn",
+      "status": 200,
+      "count": 7,
+      "pass": true
+    },
+    {
+      "name": "status_resolved",
+      "status": 200,
+      "count": 3,
+      "pass": true
+    }
+  ],
+  "seeded_ticket_ids": [
+    "TKT-20260604-8623C0",
+    "TKT-20260604-A8C97D"
+  ],
+  "search_hit_count": 4,
+  "seeded_tickets_found": true,
+  "no_duplicate_rows": true,
+  "detail_select_ok": true,
+  "pass": true
+}

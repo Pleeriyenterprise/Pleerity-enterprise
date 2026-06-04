@@ -1,0 +1,31 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_support_system.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_support_hardening.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_support_context_authority.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_client_support_search.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_confirmation_governance.py",
+      "ok": true,
+      "exit_code": 0
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-04T20:28:25.140451+00:00"
+}

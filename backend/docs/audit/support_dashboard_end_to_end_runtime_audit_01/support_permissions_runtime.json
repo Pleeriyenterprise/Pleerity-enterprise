@@ -1,0 +1,36 @@
+{
+  "at_utc": "2026-06-04T20:27:58.371783+00:00",
+  "probes": [
+    {
+      "name": "client_stats_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "contractor_stats_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "tenant_stats_blocked",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "unauthenticated_stats",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "client_tickets_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "stale_ticket_id",
+      "status": 404,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

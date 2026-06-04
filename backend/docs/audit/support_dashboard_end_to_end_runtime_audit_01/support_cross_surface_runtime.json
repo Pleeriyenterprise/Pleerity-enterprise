@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-06-04T20:27:27.473886+00:00",
+  "stats_snapshot": {
+    "conversations": {
+      "total": 88,
+      "open": 75,
+      "escalated": 13
+    },
+    "tickets": {
+      "total": 26,
+      "new": 22,
+      "open": 1,
+      "pending": 0,
+      "high_priority": 2
+    }
+  },
+  "audit_log_has_workflow_events": true,
+  "control_panel_reachable": true,
+  "pass": true
+}

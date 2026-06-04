@@ -1,0 +1,26 @@
+{
+  "programme": "SUPPORT-DASHBOARD-END-TO-END-RUNTIME-AUDIT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "blockers": [],
+  "checklist": {
+    "setup": true,
+    "overview": true,
+    "ticket_filter": true,
+    "conversation_filter": true,
+    "crn": true,
+    "ticket_workflow": true,
+    "conversation_workflow": true,
+    "ai_handoff": true,
+    "billing": true,
+    "compliance": true,
+    "cross_surface": true,
+    "audit": true,
+    "permissions": true,
+    "edge_cases": true,
+    "resilience": true,
+    "regression": true
+  },
+  "classified_at_utc": "2026-06-04T20:29:26.788849+00:00",
+  "run_tag": "20260604T200903Z"
+}

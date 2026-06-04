@@ -1,0 +1,19 @@
+{
+  "at_utc": "2026-06-04T20:19:44.763002+00:00",
+  "probes": [
+    {
+      "name": "portal_assistant_ticket",
+      "pass": true,
+      "handoff_summary_present": false
+    },
+    {
+      "name": "live_chat_escalation",
+      "pass": true
+    },
+    {
+      "name": "legal_refusal_in_chat",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

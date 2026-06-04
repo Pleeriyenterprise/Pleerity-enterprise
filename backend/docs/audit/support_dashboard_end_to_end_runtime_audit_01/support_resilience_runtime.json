@@ -1,0 +1,26 @@
+{
+  "at_utc": "2026-06-04T20:28:25.138454+00:00",
+  "probes": [
+    {
+      "name": "duplicate_reply_click",
+      "first": 200,
+      "second": 200,
+      "pass": true,
+      "note": "Both may succeed; verify audit count not storming"
+    },
+    {
+      "name": "concurrent_resolve",
+      "status_codes": [
+        200,
+        200
+      ],
+      "pass": true
+    },
+    {
+      "name": "final_status_converged",
+      "status": "resolved",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

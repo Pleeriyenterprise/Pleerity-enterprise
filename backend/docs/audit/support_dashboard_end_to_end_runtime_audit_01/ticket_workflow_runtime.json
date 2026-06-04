@@ -1,0 +1,35 @@
+{
+  "at_utc": "2026-06-04T20:19:26.428448+00:00",
+  "ticket_id": "TKT-20260604-A8C97D",
+  "probes": [
+    {
+      "name": "open_detail",
+      "pass": true
+    },
+    {
+      "name": "assign",
+      "pass": true
+    },
+    {
+      "name": "add_note",
+      "pass": true
+    },
+    {
+      "name": "status_pending",
+      "pass": true
+    },
+    {
+      "name": "status_resolved",
+      "pass": true
+    },
+    {
+      "name": "resolve_idempotent",
+      "pass": true
+    },
+    {
+      "name": "reopen",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

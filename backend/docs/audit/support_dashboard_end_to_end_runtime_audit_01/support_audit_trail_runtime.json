@@ -1,0 +1,12 @@
+{
+  "at_utc": "2026-06-04T20:27:40.393048+00:00",
+  "actions_found": {
+    "ticket_status_update": true,
+    "admin_reply": true,
+    "ticket_note_added": true,
+    "admin_crn_lookup": true,
+    "ticket_scoped": true
+  },
+  "no_secret_leakage": true,
+  "pass": true
+}

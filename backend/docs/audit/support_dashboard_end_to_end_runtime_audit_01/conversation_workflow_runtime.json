@@ -1,0 +1,25 @@
+{
+  "at_utc": "2026-06-04T20:19:39.322991+00:00",
+  "conversation_id": "CONV-20260604201241-5991C869",
+  "probes": [
+    {
+      "name": "load_history",
+      "pass": true
+    },
+    {
+      "name": "support_reply",
+      "pass": true
+    },
+    {
+      "name": "create_ticket_from_conversation",
+      "pass": true,
+      "status": 200,
+      "conversation_id": "CONV-20260604201253-D2F2C0DD"
+    },
+    {
+      "name": "reply_attribution",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

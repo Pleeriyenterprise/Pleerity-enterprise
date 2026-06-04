@@ -1,0 +1,24 @@
+{
+  "at_utc": "2026-06-04T20:19:02.841343+00:00",
+  "probes": [
+    {
+      "name": "valid_crn",
+      "status": 200,
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "pass": true
+    },
+    {
+      "name": "lowercase_crn",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "invalid_crn",
+      "status": 404,
+      "pass": true
+    }
+  ],
+  "context_panel_ok": true,
+  "wrong_client_context_status": 404,
+  "pass": true
+}

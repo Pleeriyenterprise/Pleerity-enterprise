@@ -1,0 +1,53 @@
+{
+  "programme": "SUPPORT-DASHBOARD-END-TO-END-RUNTIME-AUDIT-01",
+  "run_tag": "20260604T200903Z",
+  "marker": "SUPPORT-DASH-AUDIT-20260604T200903Z",
+  "at_utc": "2026-06-04T20:13:28.277016+00:00",
+  "personas": {
+    "platform_admin": {
+      "email": "aigbochievictory@gmail.com"
+    },
+    "reduced_support": {
+      "available": false,
+      "note": "No dedicated ROLE_SUPPORT staging credentials; admin used for support APIs"
+    },
+    "test_landlord": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "email": "nancy@yopmail.com",
+      "crn": "PLE-CVP-2026-000028"
+    },
+    "test_contractor": {
+      "email": "f2-ops-heating-wales@yopmail.com"
+    },
+    "test_tenant": {
+      "email": "f7-ops-wales@yopmail.com"
+    }
+  },
+  "seeded_vs_existing": "Audit-seeded tickets/conversations tagged with marker; stale tickets from existing resolved queue",
+  "crn": "PLE-CVP-2026-000028",
+  "seed": {
+    "marker": "SUPPORT-DASH-AUDIT-20260604T200903Z",
+    "seeded_at_utc": "2026-06-04T20:12:39.604307+00:00",
+    "records": {
+      "chat_conversation_id": "CONV-20260604201241-5991C869",
+      "billing_ticket_id": "TKT-20260604-8623C0",
+      "compliance_conversation_id": "CONV-20260604201253-D2F2C0DD",
+      "compliance_legal_refusal": true,
+      "workflow_ticket_id": "TKT-20260604-A8C97D",
+      "escalated_conversation_id": "CONV-20260604201300-2BD19990",
+      "escalated_ticket_id": "TKT-20260604-7DFB3B",
+      "ai_handoff": {
+        "assistant_conversation_id": "conv-dbae4e10db6d48",
+        "escalate_status": 200,
+        "ticket_id": "TKT-20260604-CBD345"
+      },
+      "closed_ticket_id": "TKT-20260604-F38EA0"
+    },
+    "pass": true
+  },
+  "stale_ticket_sample": [
+    "TKT-20260604-F38EA0",
+    "TKT-20260604-A9C6C1"
+  ],
+  "pass": true
+}
