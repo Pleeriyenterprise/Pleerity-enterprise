@@ -1,0 +1,9 @@
+{
+  "at_utc": "2026-06-04T18:17:01.279329+00:00",
+  "before_status": 200,
+  "patch_status": 200,
+  "invoicing_source": "manual",
+  "manual_override_visible": false,
+  "idempotent_retoggle": true,
+  "pass": true
+}

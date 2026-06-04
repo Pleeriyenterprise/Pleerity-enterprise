@@ -1,0 +1,41 @@
+{
+  "at_utc": "2026-06-04T18:14:00.060600+00:00",
+  "probes": [
+    {
+      "name": "email",
+      "status": 200,
+      "found_pilot": true,
+      "count": 1
+    },
+    {
+      "name": "client_id_prefix",
+      "status": 200,
+      "found_pilot": true,
+      "count": 1
+    },
+    {
+      "name": "name_fragment",
+      "status": 200,
+      "found_pilot": true,
+      "count": 1
+    },
+    {
+      "name": "archived_toggle",
+      "status": 200,
+      "found_pilot": true,
+      "count": 1
+    },
+    {
+      "name": "billing_search",
+      "status": 200,
+      "pass": true
+    }
+  ],
+  "browser": {
+    "path": "/admin/support",
+    "screenshot": "client_search_support.png",
+    "expect_text_found": true,
+    "pass": true
+  },
+  "pass": true
+}

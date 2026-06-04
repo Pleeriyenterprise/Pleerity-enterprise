@@ -1,0 +1,18 @@
+{
+  "at_utc": "2026-06-04T18:18:58.987181+00:00",
+  "status": 200,
+  "row_count": 25,
+  "sample_actions": [
+    "UPDATE",
+    "ACTIVATION_EMAIL_RESEND",
+    "EMAIL_SENT",
+    "RISK_SIGNAL_REGEN_COMPLETED",
+    "RISK_SIGNAL_REGEN_COMPLETED",
+    "RISK_SIGNAL_REGEN_COMPLETED",
+    "COMPLIANCE_SCORE_UPDATED",
+    "RISK_SIGNAL_REGEN_COMPLETED"
+  ],
+  "has_actor_fields": true,
+  "no_secret_leakage": true,
+  "pass": true
+}

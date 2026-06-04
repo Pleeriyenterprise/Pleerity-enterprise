@@ -1,0 +1,24 @@
+{
+  "at_utc": "2026-06-04T18:15:37.236590+00:00",
+  "control_panel_status": 200,
+  "sections_present": [
+    "identity",
+    "account_state",
+    "subscription_billing",
+    "compliance_overview",
+    "operations",
+    "activity_timeline",
+    "operational_snapshot"
+  ],
+  "audit_timeline_status": 200,
+  "compliance_activity_status": 200,
+  "recalculate_status": 200,
+  "recalculate_governed": true,
+  "browser": {
+    "path": "/admin/clients/6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "screenshot": "client_control_panel.png",
+    "expect_text_found": true,
+    "pass": true
+  },
+  "pass": true
+}

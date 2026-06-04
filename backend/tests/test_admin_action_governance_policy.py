@@ -21,6 +21,37 @@ EXPECTED_ACTIONS = {
     "backfill_evidence_match_batch",
 }
 
+# Full registry must stay in sync with frontend/src/config/adminActionPolicyRegistry.json
+FULL_REGISTRY_ACTIONS = {
+    "admin_cancel_subscription",
+    "authority_backfill_p0_apply",
+    "authority_backfill_p0_dry_run",
+    "backfill_evidence_match_batch",
+    "billing_recovery_admin_set_mode",
+    "billing_recovery_bulk_resend",
+    "billing_recovery_closeout",
+    "billing_recovery_escalate",
+    "billing_recovery_regenerate_checkout",
+    "change_login_email",
+    "change_plan",
+    "commercial_entitlement_execute",
+    "force_provision",
+    "link_unresolved_requirement",
+    "onboarding_recovery_execute",
+    "reconcile_subscription_payment_ledger",
+    "reject_unresolved_document",
+    "resolve_unresolved_scope",
+    "retry_agreement_issuance",
+    "retry_document_extraction",
+    "run_portfolio_wide_job",
+    "run_scoped_automation_job",
+    "run_stripe_reconcile_batch",
+    "run_subscription_lifecycle_batch",
+    "seed_admin_remediation_probe",
+    "start_impersonation",
+    "unlock_account",
+}
+
 REQUIRED_FIELDS = {
     "action_id",
     "risk_class",
@@ -57,7 +88,8 @@ def test_registry_action_ids_match_exactly_and_cannot_drift_silently():
 
     with _REGISTRY_PATH.open("r", encoding="utf-8") as f:
         registry = json.load(f)
-    assert set(registry.keys()) == EXPECTED_ACTIONS
+    assert set(registry.keys()) == FULL_REGISTRY_ACTIONS
+    assert EXPECTED_ACTIONS <= FULL_REGISTRY_ACTIONS
     for action_id, policy in registry.items():
         assert policy["action_id"] == action_id
         assert REQUIRED_FIELDS.issubset(set(policy.keys()))

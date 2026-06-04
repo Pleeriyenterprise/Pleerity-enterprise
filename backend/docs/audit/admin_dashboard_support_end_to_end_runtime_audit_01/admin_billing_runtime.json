@@ -1,0 +1,16 @@
+{
+  "at_utc": "2026-06-04T18:16:51.104830+00:00",
+  "snapshot_status": 200,
+  "recovery_dashboard_status": 200,
+  "sync_status": 409,
+  "cancel_without_governance_status": 422,
+  "cancel_without_step_up_status": 403,
+  "governance_blocked_cancel": true,
+  "browser": {
+    "path": "/admin/billing",
+    "screenshot": "billing_admin.png",
+    "expect_text_found": true,
+    "pass": true
+  },
+  "pass": true
+}

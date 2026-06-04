@@ -1,0 +1,37 @@
+{
+  "at_utc": "2026-06-04T18:12:50.249339+00:00",
+  "api_status": 200,
+  "stats_keys": [
+    "total_clients",
+    "active_clients",
+    "pending_clients",
+    "provisioned_clients",
+    "failed_provisioning",
+    "total_properties",
+    "recent_signups_7d",
+    "unverified_documents_count",
+    "failed_job_runs_24h",
+    "stuck_onboarding_active",
+    "provisioning_failed_open",
+    "total_overdue_requirements",
+    "high_risk_properties_red"
+  ],
+  "stats_sample": {
+    "total_clients": 43,
+    "active_clients": 33,
+    "total_properties": 67,
+    "unverified_documents_count": 0
+  },
+  "compliance_overview": {
+    "GREEN": 3,
+    "AMBER": 46,
+    "RED": 13
+  },
+  "browser": {
+    "path": "/admin/dashboard",
+    "screenshot": "dashboard_overview.png",
+    "expect_text_found": true,
+    "pass": true
+  },
+  "pass": true
+}

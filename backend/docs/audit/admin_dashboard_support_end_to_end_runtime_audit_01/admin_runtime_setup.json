@@ -1,0 +1,98 @@
+{
+  "programme": "ADMIN-DASHBOARD-SUPPORT-END-TO-END-RUNTIME-AUDIT-01",
+  "run_tag": "20260604T181049Z",
+  "marker": "ADMIN-SUPPORT-AUDIT-20260604T181049Z",
+  "at_utc": "2026-06-04T18:11:39.597745+00:00",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_frontend": "https://pleerityenterprise.co.uk",
+  "personas": {
+    "platform_admin": {
+      "email": "aigbochievictory@gmail.com",
+      "role": "ROLE_ADMIN"
+    },
+    "test_landlord": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "email": "nancy@yopmail.com",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    "test_contractor": {
+      "email": "f2-ops-heating-wales@yopmail.com"
+    },
+    "test_tenant": {
+      "email": "f7-ops-wales@yopmail.com"
+    }
+  },
+  "seeded_vs_existing": "Wales HMO pilot naturally existing; no new customers created",
+  "feature_flags_before": {
+    "flags": [
+      {
+        "flag_key": "COMPLIANCE_ENGINE",
+        "label": "Compliance Engine",
+        "enabled": true,
+        "source": "plan_default",
+        "updated_at": null,
+        "updated_by": null
+      },
+      {
+        "flag_key": "COMPLIANCE_PACKS",
+        "label": "Compliance Packs",
+        "enabled": true,
+        "source": "plan_default",
+        "updated_at": null,
+        "updated_by": null
+      },
+      {
+        "flag_key": "MAINTENANCE_WORKFLOWS",
+        "label": "Maintenance Workflows",
+        "enabled": true,
+        "source": "plan_default",
+        "updated_at": null,
+        "updated_by": null
+      },
+      {
+        "flag_key": "PREDICTIVE_MAINTENANCE",
+        "label": "Predictive Maintenance",
+        "enabled": true,
+        "source": "plan_default",
+        "updated_at": null,
+        "updated_by": null
+      },
+      {
+        "flag_key": "CONTRACTOR_NETWORK",
+        "label": "Contractor Network",
+        "enabled": true,
+        "source": "plan_default",
+        "updated_at": null,
+        "updated_by": null
+      },
+      {
+        "flag_key": "INVOICING",
+        "label": "Invoicing",
+        "enabled": true,
+        "source": "manual",
+        "updated_at": "2026-06-04T13:05:45.468362+00:00",
+        "updated_by": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379"
+      },
+      {
+        "flag_key": "CONTRACTOR_SELF_REGISTRATION",
+        "label": "Contractor Self-Registration",
+        "enabled": false,
+        "source": "plan_default",
+        "updated_at": null,
+        "updated_by": null
+      },
+      {
+        "flag_key": "RENT_OPERATIONS",
+        "label": "Rent Operations",
+        "enabled": true,
+        "source": "plan_default",
+        "updated_at": null,
+        "updated_by": null
+      }
+    ],
+    "plan_code": "PLAN_3_PRO"
+  },
+  "control_panel_reachable": true,
+  "billing_snapshot_reachable": true,
+  "pass": true
+}

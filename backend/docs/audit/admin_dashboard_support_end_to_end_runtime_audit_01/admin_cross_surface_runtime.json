@@ -1,0 +1,12 @@
+{
+  "at_utc": "2026-06-04T18:21:13.329556+00:00",
+  "admin_control_panel_ok": true,
+  "landlord_snapshot_ok": true,
+  "browser": {
+    "path": "/admin/clients/6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "screenshot": "cross_surface_control_panel.png",
+    "expect_text_found": true,
+    "pass": true
+  },
+  "pass": true
+}

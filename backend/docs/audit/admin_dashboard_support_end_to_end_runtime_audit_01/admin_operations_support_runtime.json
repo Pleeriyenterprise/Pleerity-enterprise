@@ -1,0 +1,21 @@
+{
+  "at_utc": "2026-06-04T18:18:46.699789+00:00",
+  "probes": [
+    {
+      "name": "ops_risk_queue",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "name": "pilot_ops",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "name": "wrong_client_blocked",
+      "status": 404,
+      "ok": true
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,52 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_admin_client_support_search.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_cancel_subscription.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_confirmation_governance.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_action_governance_policy.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_pending_verification.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_email_delivery.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_billing_receipts.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_ops_work_order_controls.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_billing_recovery_operations.py",
+      "ok": true,
+      "exit_code": 0
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-04T18:25:00.000000+00:00",
+  "note": "test_admin_action_governance_policy FULL_REGISTRY_ACTIONS synced after registry expansion"
+}

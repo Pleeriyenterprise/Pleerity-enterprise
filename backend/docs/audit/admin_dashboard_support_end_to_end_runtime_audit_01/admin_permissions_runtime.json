@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-06-04T18:19:15.935544+00:00",
+  "probes": [
+    {
+      "name": "client_admin_dashboard",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "contractor_admin_dashboard",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "unauthenticated_audit",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "client_billing_admin",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "cross_client_detail",
+      "status": 404,
+      "pass": true
+    }
+  ],
+  "pass": true
+}
