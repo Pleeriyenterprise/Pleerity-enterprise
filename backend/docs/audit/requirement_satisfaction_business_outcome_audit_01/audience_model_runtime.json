@@ -1,0 +1,48 @@
+{
+  "programme": "AUDIENCE-GOVERNANCE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T11:49:54.862314+00:00",
+  "version": "v1",
+  "audiences": {
+    "LANDLORD_OPERATIONAL": {
+      "label": "Landlord operational view",
+      "purpose": "Day-to-day action management; reduce false panic; show next steps only.",
+      "strictness": "calm",
+      "provisional_action_suppressing": true,
+      "show_assurance_limitation_inline": "when_useful"
+    },
+    "REGULATOR_EVIDENTIAL": {
+      "label": "Regulator evidential view",
+      "purpose": "Conservative evidence interpretation; assurance limitations disclosed.",
+      "strictness": "conservative",
+      "provisional_action_suppressing": false,
+      "show_assurance_limitation_inline": "always"
+    },
+    "INSURER_LENDER_REVIEW": {
+      "label": "Insurer / lender review",
+      "purpose": "Risk and assurance visibility; unresolved exposure clarity.",
+      "strictness": "conservative",
+      "provisional_action_suppressing": false,
+      "show_assurance_limitation_inline": "always"
+    },
+    "INTERNAL_SUPPORT": {
+      "label": "Internal support",
+      "purpose": "Support and admin diagnostics with readable detail.",
+      "strictness": "diagnostic",
+      "provisional_action_suppressing": true,
+      "show_assurance_limitation_inline": "always"
+    },
+    "IMMUTABLE_AUDIT_ARTIFACT": {
+      "label": "Immutable audit artifact",
+      "purpose": "Frozen point-in-time record for historical defensibility.",
+      "strictness": "conservative",
+      "provisional_action_suppressing": false,
+      "show_assurance_limitation_inline": "always"
+    }
+  },
+  "export_sections": [
+    "unresolved_obligations",
+    "recorded_not_verified",
+    "awaiting_review",
+    "verified_accepted"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "programme": "AUDIENCE-GOVERNANCE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T11:49:54.862314+00:00",
+  "sections": [
+    "Unresolved obligations",
+    "Recorded but not independently verified",
+    "Awaiting review",
+    "Verified / accepted evidence (summary)"
+  ],
+  "is_unresolved_row": "action-required bucket only \u2014 excludes SATISFIED_UNVERIFIED",
+  "entry": "append_audience_governed_obligation_sections",
+  "status": "implemented"
+}

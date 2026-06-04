@@ -479,7 +479,13 @@ class ReportingService:
         sem = (data.get("reporting_semantics") or {}).get("counts") or {}
         output.write(f"Total Requirements (rows): {len(data['requirements'])}\n")
         output.write(f"Score-tracked obligations: {sem.get(METRIC_SCORE_TRACKED, '')}\n")
-        output.write(f"Tracked requirements (registry): {sem.get(METRIC_TRACKED, '')}\n\n")
+        output.write(f"Tracked requirements (registry): {sem.get(METRIC_TRACKED, '')}\n")
+        from services.audience_governance_v1 import audience_export_preamble_paragraph
+
+        preamble = audience_export_preamble_paragraph("REGULATOR_EVIDENTIAL")
+        if preamble:
+            output.write(f"# audience_disclosure: {preamble}\n")
+        output.write("\n")
         for row in csv_semantics_preamble_rows(sem, generated_at=data.get("generated_at", "")):
             output.write(",".join(str(c) for c in row) + "\n")
         output.write("\n")
@@ -488,13 +494,28 @@ class ReportingService:
             'property_address', 'effective_jurisdiction_label', 'jurisdiction_source',
             'requirement_type', 'description', 'status', 'evidence_state',
             'due_date', 'frequency_days', 'documents_count',
-            'latest_document', 'latest_doc_status'
+            'latest_document', 'latest_doc_status',
+            'operational_status', 'evidential_assurance', 'audience_status',
+            'review_state', 'action_required',
         ])
         writer.writeheader()
-        
+
+        from services.audience_governance_v1 import (
+            AUDIENCE_REGULATOR_EVIDENTIAL,
+            interpret_requirement_for_audience,
+        )
+
         for req in data['requirements']:
-            # Remove requirement_id from output
             row = {k: v for k, v in req.items() if k != 'requirement_id'}
+            try:
+                interp = interpret_requirement_for_audience(req, AUDIENCE_REGULATOR_EVIDENTIAL)
+                row['operational_status'] = interp.get('operational_status', '')
+                row['evidential_assurance'] = interp.get('evidential_assurance', '')
+                row['audience_status'] = interp.get('audience_status_label', '')
+                row['review_state'] = interp.get('review_state', '')
+                row['action_required'] = interp.get('action_required', '')
+            except Exception:
+                pass
             writer.writerow(row)
         
         rows = [{k: v for k, v in req.items() if k != 'requirement_id'} for req in data['requirements']]

@@ -193,7 +193,8 @@ def test_portfolio_pdf_governance_sections(monkeypatch):
     pdf = build_portfolio_report("client-1", data)
     assert b"Unresolved obligations" in pdf
     assert b"Export grade" in pdf
-    assert b"Self-recorded" in pdf or b"Recorded on file" in pdf or b"Governance" in pdf
+    pdf_text = pdf.decode("latin-1", errors="ignore")
+    assert "Recorded but not independently verified" in pdf_text or "Self-recorded" in pdf_text
     assert b"Frozen governance record" in pdf or b"may differ from" in pdf
 
 

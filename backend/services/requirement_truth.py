@@ -809,6 +809,18 @@ def enrich_requirement_dict(
         out.update(reconcile_client_lifecycle_with_satisfaction(out))
         out.update(attach_satisfaction_fields(out))
 
+        try:
+            from services.audience_governance_v1 import (
+                AUDIENCE_LANDLORD_OPERATIONAL,
+                interpret_requirement_for_audience,
+            )
+
+            out["audience_interpretation"] = interpret_requirement_for_audience(
+                out, AUDIENCE_LANDLORD_OPERATIONAL
+            )
+        except Exception:
+            pass
+
         from services.cer_actionability_presentation import apply_actionability_cta_override
 
         apply_actionability_cta_override(out)

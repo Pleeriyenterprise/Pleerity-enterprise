@@ -30,6 +30,19 @@ def test_governance_chip_includes_review_when_pending():
     assert "Awaiting review" in line or "review" in line.lower()
 
 
+def test_satisfied_unverified_not_unresolved_row():
+    row = {
+        "property_id": "p1",
+        "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+        "assurance_tier": "SELF_RECORDED",
+        "requirement_satisfied": True,
+        "missing_required_document": False,
+        "requirement_attention_eligible": False,
+        "truth_presentation_stage": "declaration_recorded",
+    }
+    assert not is_unresolved_row(row, property_doc=None, client_doc={})
+
+
 def test_unresolved_collects_action_required():
     props = [{"property_id": "p1", "address_line_1": "1 High St"}]
     reqs = [

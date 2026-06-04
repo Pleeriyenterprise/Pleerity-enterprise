@@ -1,0 +1,15 @@
+{
+  "programme": "AUDIENCE-GOVERNANCE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T11:49:54.862314+00:00",
+  "backend": [
+    "enrich_requirement_dict.audience_interpretation",
+    "pdf_report_builder",
+    "professional_reports via append_unresolved",
+    "reporting_service requirements CSV columns"
+  ],
+  "frontend": [
+    "utils/audienceGovernance.js",
+    "API audience_interpretation on requirements"
+  ],
+  "status": "implemented"
+}

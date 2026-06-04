@@ -721,6 +721,13 @@ def build_score_explanation_report(
     )
     elements.append(Paragraph(f"<b>Updates:</b> {SCORE_DEFINITIONS_UPDATES}", styles["body"]))
     elements.append(Paragraph(SCORE_FRAMEWORK_DISCLAIMER, styles["small"]))
+    from services.audience_governance_v1 import (
+        AUDIENCE_REGULATOR_EVIDENTIAL,
+        score_explanation_audience_lines,
+    )
+
+    for line in score_explanation_audience_lines(AUDIENCE_REGULATOR_EVIDENTIAL):
+        elements.append(Paragraph(_xml_escape(line), styles["small"]))
     elements.append(Spacer(1, 24))
 
     # —— 4. Score components (area breakdown when available) ——

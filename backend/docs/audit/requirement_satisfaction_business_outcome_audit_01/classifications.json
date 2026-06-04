@@ -1,19 +1,11 @@
 {
-  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
-  "classified_at": "2026-06-04T11:11:53.475545+00:00",
-  "classification": "AUDIENCE_GOVERNANCE_GAP",
-  "checks": {
-    "satisfaction_truth_converged": true,
-    "workflow_class_respected": true,
-    "operational_regulator_distinguishable": true,
-    "governance_intent_traceable": true,
-    "async_governance_honest": true,
-    "regression_pass": true,
-    "no_major_contradiction": false,
-    "audience_governance_explicit": false
-  },
-  "secondary_tags": [
-    "REGULATOR_CONSERVATISM_DRIFT",
-    "GOVERNANCE_DOCUMENTATION_AHEAD_OF_RUNTIME"
+  "programme": "AUDIENCE-GOVERNANCE-CONVERGENCE-01",
+  "classified_at": "2026-06-04T11:50:39.325554+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "prior_audit": "AUDIENCE_GOVERNANCE_GAP",
+  "resolved": [
+    "PDF section split",
+    "is_unresolved_row excludes self-recorded satisfied",
+    "audience_interpretation on client enrich"
   ]
 }

@@ -172,23 +172,78 @@ def _unresolved_reason(row: Dict[str, Any], *, property_doc: Optional[dict], cli
 
 
 def is_unresolved_row(row: Dict[str, Any], *, property_doc: Optional[dict], client_doc: dict) -> bool:
-    life = str(row.get("client_lifecycle_state") or "").strip().upper()
-    if life in ("ACTION_REQUIRED", "PENDING_REVIEW"):
-        return True
-    if life in ("VERIFIED", "NOT_APPLICABLE"):
-        return False
-    cs = (get_computed_status(row, property_doc=property_doc, client_doc=client_doc) or "").upper()
-    if cs in ("OVERDUE", "EXPIRED", "MISSING"):
-        return True
-    if cs in ("PENDING",):
-        from services.requirement_satisfaction_service import row_counts_as_missing_evidence
+    """True only for action-required export bucket — not self-recorded satisfaction exposure."""
+    from services.audience_governance_v1 import (
+        AUDIENCE_REGULATOR_EVIDENTIAL,
+        EXPORT_SECTION_UNRESOLVED,
+        classify_export_section_bucket,
+    )
 
-        return row_counts_as_missing_evidence(row)
-    if cs == "EXPIRING_SOON":
-        return True
-    if life == "SATISFIED_UNVERIFIED":
-        return True
-    return False
+    return (
+        classify_export_section_bucket(
+            row,
+            property_doc=property_doc,
+            client_doc=client_doc,
+            audience=AUDIENCE_REGULATOR_EVIDENTIAL,
+        )
+        == EXPORT_SECTION_UNRESOLVED
+    )
+
+
+def _collect_obligations_for_export_bucket(
+    requirements: List[Dict[str, Any]],
+    properties: List[Dict[str, Any]],
+    client_doc: Optional[Dict[str, Any]],
+    *,
+    bucket: str,
+    limit: int = UNRESOLVED_SECTION_MAX_ROWS,
+) -> Tuple[List[Dict[str, Any]], int]:
+    from services.audience_governance_v1 import AUDIENCE_REGULATOR_EVIDENTIAL, classify_export_section_bucket
+
+    pmap = {p.get("property_id"): p for p in properties if p.get("property_id")}
+    client = client_doc or {}
+    out: List[Dict[str, Any]] = []
+    total = 0
+    for r in requirements:
+        pid = r.get("property_id")
+        pd = pmap.get(pid)
+        if (
+            classify_export_section_bucket(
+                r, property_doc=pd, client_doc=client, audience=AUDIENCE_REGULATOR_EVIDENTIAL
+            )
+            != bucket
+        ):
+            continue
+        total += 1
+        if len(out) >= limit:
+            continue
+        eff = get_effective_expiry_date(r)
+        due_s = eff.date().isoformat() if eff and hasattr(eff, "date") else (str(r.get("due_date") or "")[:10] or "—")
+        addr = ""
+        if pd:
+            addr = ", ".join(x for x in [pd.get("address_line_1"), pd.get("postcode")] if x)[:60]
+        interp = None
+        try:
+            from services.audience_governance_v1 import interpret_requirement_for_audience
+
+            interp = interpret_requirement_for_audience(
+                r, AUDIENCE_REGULATOR_EVIDENTIAL, property_doc=pd, client_doc=client
+            )
+        except Exception:
+            interp = {}
+        out.append(
+            {
+                "requirement": (r.get("description") or r.get("requirement_type") or "—")[:50],
+                "property": addr or str(pid or "—")[:20],
+                "reason": (interp or {}).get("audience_status_description", _unresolved_reason(r, property_doc=pd, client_doc=client))[:60],
+                "assurance": assurance_tier_chip(r),
+                "evidence": evidence_presence_label(r),
+                "review": review_state_label(r),
+                "expiry_risk": due_s,
+                "status_label": (interp or {}).get("audience_status_label", "")[:40],
+            }
+        )
+    return out, total
 
 
 def collect_unresolved_obligations(
@@ -369,6 +424,157 @@ def matrix_continuation_stats(
     }
 
 
+def _append_obligation_table_section(
+    elements: List[Any],
+    *,
+    title: str,
+    intro: str,
+    rows: List[Dict[str, Any]],
+    total: int,
+    styles: Dict[str, Any],
+    table_style: Any,
+    heading_style: Any,
+    empty_message: str,
+) -> None:
+    from reportlab.platypus import Paragraph, Spacer, Table
+
+    elements.append(Paragraph(title, heading_style))
+    elements.append(Paragraph(intro, styles["small"]))
+    elements.append(Spacer(1, 8))
+    if not rows:
+        elements.append(Paragraph(empty_message, styles["body"]))
+        elements.append(Spacer(1, 16))
+        return
+    table_data = [["Requirement", "Property", "Status", "Assurance", "Evidence", "Review", "Expiry"]]
+    for row in rows:
+        table_data.append(
+            [
+                row["requirement"],
+                row["property"],
+                row.get("status_label") or row["reason"][:40],
+                row["assurance"],
+                row["evidence"],
+                row["review"],
+                row["expiry_risk"],
+            ]
+        )
+    if total > len(rows):
+        table_data.append([f"… {total - len(rows)} more", "—", "See portal", "—", "—", "—", "—"])
+    t = Table(table_data, colWidths=[90, 68, 82, 45, 40, 52, 48], repeatRows=1)
+    t.setStyle(table_style)
+    elements.append(t)
+    if total > len(rows):
+        elements.append(
+            Paragraph(
+                f"<i>Table continues: {total - len(rows)} additional rows in portal.</i>",
+                styles["small"],
+            )
+        )
+    elements.append(Spacer(1, 16))
+
+
+def append_audience_governed_obligation_sections(
+    elements: List[Any],
+    *,
+    requirements: List[Dict[str, Any]],
+    properties: List[Dict[str, Any]],
+    client_doc: Dict[str, Any],
+    styles: Dict[str, Any],
+    table_style: Any,
+    heading_style: Any,
+    audience: str = "REGULATOR_EVIDENTIAL",
+) -> None:
+    """Governed export sections: unresolved vs recorded-not-verified vs awaiting review vs verified."""
+    from reportlab.platypus import Paragraph, Spacer
+
+    from services.audience_governance_v1 import (
+        AUDIENCE_REGULATOR_EVIDENTIAL,
+        EXPORT_SECTION_AWAITING_REVIEW,
+        EXPORT_SECTION_RECORDED_NOT_VERIFIED,
+        EXPORT_SECTION_UNRESOLVED,
+        EXPORT_SECTION_VERIFIED,
+        audience_export_preamble_paragraph,
+    )
+
+    preamble = audience_export_preamble_paragraph(audience)
+    if preamble:
+        elements.append(Paragraph(_xml_escape(preamble), styles["small"]))
+        elements.append(Spacer(1, 12))
+
+    un_rows, un_total = _collect_obligations_for_export_bucket(
+        requirements, properties, client_doc, bucket=EXPORT_SECTION_UNRESOLVED
+    )
+    _append_obligation_table_section(
+        elements,
+        title="Unresolved obligations",
+        intro=(
+            f"Action, missing evidence, expiry, or follow-up blockers ({len(un_rows)} of {un_total} shown). "
+            "These items may require landlord action."
+        ),
+        rows=un_rows,
+        total=un_total,
+        styles=styles,
+        table_style=table_style,
+        heading_style=heading_style,
+        empty_message="No unresolved action-required obligations in export scope.",
+    )
+
+    rec_rows, rec_total = _collect_obligations_for_export_bucket(
+        requirements, properties, client_doc, bucket=EXPORT_SECTION_RECORDED_NOT_VERIFIED
+    )
+    _append_obligation_table_section(
+        elements,
+        title="Recorded but not independently verified",
+        intro=(
+            f"Self-recorded or declaration-based satisfaction ({len(rec_rows)} of {rec_total} shown). "
+            "Not missing — disclosed for evidential review. Not equivalent to external verification."
+        ),
+        rows=rec_rows,
+        total=rec_total,
+        styles=styles,
+        table_style=table_style,
+        heading_style=heading_style,
+        empty_message="No recorded-not-verified obligations in export scope.",
+    )
+
+    rev_rows, rev_total = _collect_obligations_for_export_bucket(
+        requirements, properties, client_doc, bucket=EXPORT_SECTION_AWAITING_REVIEW
+    )
+    _append_obligation_table_section(
+        elements,
+        title="Awaiting review",
+        intro=(
+            f"Evidence submitted — platform review pending ({len(rev_rows)} of {rev_total} shown). "
+            "Not treated as missing evidence."
+        ),
+        rows=rev_rows,
+        total=rev_total,
+        styles=styles,
+        table_style=table_style,
+        heading_style=heading_style,
+        empty_message="No obligations awaiting review in export scope.",
+    )
+
+    ver_rows, ver_total = _collect_obligations_for_export_bucket(
+        requirements, properties, client_doc, bucket=EXPORT_SECTION_VERIFIED, limit=25
+    )
+    if ver_total > 0:
+        _append_obligation_table_section(
+            elements,
+            title="Verified / accepted evidence (summary)",
+            intro=(
+                f"Platform-accepted evidence at generation time ({len(ver_rows)} of {ver_total} shown). "
+                "Sample only — see requirement matrix for full detail."
+            ),
+            rows=ver_rows,
+            total=ver_total,
+            styles=styles,
+            table_style=table_style,
+            heading_style=heading_style,
+            empty_message="",
+        )
+
+
 def append_unresolved_obligations_section(
     elements: List[Any],
     *,
@@ -379,65 +585,19 @@ def append_unresolved_obligations_section(
     table_style: Any,
     heading_style: Any,
 ) -> None:
-    from reportlab.platypus import Paragraph, Spacer, Table
+    """Backward-compatible entry — routes to audience-governed multi-section layout."""
+    from services.audience_governance_v1 import AUDIENCE_REGULATOR_EVIDENTIAL
 
-    rows, total = collect_unresolved_obligations(requirements, properties, client_doc)
-    elements.append(Paragraph("Unresolved obligations", heading_style))
-    elements.append(
-        Paragraph(
-            f"Explicit exposure list ({len(rows)} shown of {total} unresolved in scope). "
-            "Assurance column: assurance · lifecycle · date confidence · evidence · review where shown. "
-            "Self-recorded items are not regulator-verified.",
-            styles["small"],
-        )
+    append_audience_governed_obligation_sections(
+        elements,
+        requirements=requirements,
+        properties=properties,
+        client_doc=client_doc,
+        styles=styles,
+        table_style=table_style,
+        heading_style=heading_style,
+        audience=AUDIENCE_REGULATOR_EVIDENTIAL,
     )
-    elements.append(Spacer(1, 8))
-    if not rows:
-        elements.append(Paragraph("No unresolved obligations in export scope.", styles["body"]))
-        elements.append(Spacer(1, 16))
-        return
-    table_data = [
-        ["Requirement", "Property", "Reason", "Assurance", "Evidence", "Review", "Expiry"],
-    ]
-    for row in rows:
-        table_data.append(
-            [
-                row["requirement"],
-                row["property"],
-                row["reason"],
-                row["assurance"],
-                row["evidence"],
-                row["review"],
-                row["expiry_risk"],
-            ]
-        )
-    if total > len(rows):
-        table_data.append(
-            [
-                f"… {total - len(rows)} more",
-                "—",
-                "See portal",
-                "—",
-                "—",
-                "—",
-                "—",
-            ]
-        )
-    t = Table(
-        table_data,
-        colWidths=[95, 70, 85, 45, 40, 55, 50],
-        repeatRows=1,
-    )
-    t.setStyle(table_style)
-    elements.append(t)
-    if total > len(rows):
-        elements.append(
-            Paragraph(
-                f"<i>Table continues: {total - len(rows)} additional unresolved obligations in portal.</i>",
-                styles["small"],
-            )
-        )
-    elements.append(Spacer(1, 16))
 
 
 def append_governance_matrix_for_properties(
