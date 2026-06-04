@@ -1,16 +1,19 @@
-# Watchlist — enterprise presentation (2026-06-04)
+# Watchlist — post PHASE-02 (2026-06-04)
 
 ## VERIFIED_OPERATIONALLY
 
-### P0
-- [ ] Replace jsPDF compliance/requirements PDF with server ReportLab for external sharing
-- [ ] Evidence readiness matrix: assurance_tier, date_confidence, lifecycle columns
-- [ ] Unresolved obligations index in PDF exports
+### Done (P0)
+- Server PDF routing for compliance/requirements with reports_pdf
+- Matrix governance columns + unresolved obligations section
+- Live-regenerated disclosure hardening
+- Matrix continuation / appendix index
+- Shared governance footer on ReportLab exports
 
 ### P1
-- [ ] ReportLab running footers + page numbers
-- [ ] Branding logo on cover sheet
-- [ ] Portfolio >20 properties: continuation appendix not silent truncation
+- [ ] Immutable stored PDF bytes for evidence readiness re-download
+- [ ] Branded logo on all ReportLab cover sheets
+- [ ] Table header repetition on page breaks
 
 ### P2
-- [ ] Shared report_layout_v1 primitives across ReportLab modules
+- [ ] Monthly digest server PDF
+- [ ] PDF/UA accessibility tags

@@ -1,0 +1,20 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02",
+  "audited_at": "2026-06-04T08:40:13.467412+00:00",
+  "section_title": "Unresolved obligations",
+  "fields": [
+    "requirement",
+    "property",
+    "reason",
+    "assurance",
+    "evidence",
+    "review",
+    "expiry_risk"
+  ],
+  "surfaces": [
+    "evidence_readiness_pdf",
+    "professional_compliance_pdf",
+    "professional_requirements_pdf"
+  ],
+  "status": "implemented"
+}

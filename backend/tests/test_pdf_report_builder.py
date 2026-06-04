@@ -4,6 +4,7 @@ from services.pdf_report_builder import (
     build_portfolio_report,
     build_property_report,
     build_score_explanation_report,
+    build_requirements_report_pdf,
     PDF_FOOTER_DISCLAIMER,
 )
 
@@ -162,3 +163,39 @@ def test_build_score_explanation_report_trust_safe_copy(monkeypatch):
         assert forbidden not in low, f"forbidden phrase in PDF: {forbidden!r}"
     assert b"Core legal requirements" in pdf or b"How you're doing in each area" in pdf
     assert b"Not legal advice" in pdf or b"not legal advice" in low
+
+
+def test_portfolio_pdf_governance_sections(monkeypatch):
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
+    data = _minimal_report_data()
+    data["requirements"] = [
+        {
+            "property_id": "p1",
+            "client_lifecycle_state": "ACTION_REQUIRED",
+            "description": "EPC",
+            "due_date": "2026-12-01",
+        }
+    ]
+    pdf = build_portfolio_report("client-1", data)
+    assert b"Unresolved obligations" in pdf
+    assert b"Export grade" in pdf
+    assert b"Governance" in pdf or b"SELF-REC" in pdf
+    assert b"may differ from future downloads" in pdf
+
+
+def test_portfolio_pdf_regenerated_timestamp(monkeypatch):
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
+    data = _minimal_report_data()
+    data["original_generated_at"] = "2026-01-15T10:00:00+00:00"
+    data["regenerated_at"] = "2026-06-02T14:00:00+00:00"
+    pdf = build_portfolio_report("client-1", data)
+    assert b"Regenerated" in pdf
+
+
+def test_requirements_report_pdf_bytes(monkeypatch):
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
+    data = _minimal_report_data()
+    data["requirements"] = [{"property_id": "p1", "description": "Gas", "client_lifecycle_state": "VERIFIED"}]
+    pdf = build_requirements_report_pdf("client-1", data)
+    assert pdf[:4] == b"%PDF"
+    assert b"Requirements Report" in pdf

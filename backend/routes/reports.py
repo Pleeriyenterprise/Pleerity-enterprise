@@ -17,7 +17,12 @@ from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from config.security_limits import security_limits
 from services.reporting_service import reporting_service
-from services.pdf_report_builder import build_portfolio_report, build_property_report, build_score_explanation_report
+from services.pdf_report_builder import (
+    build_portfolio_report,
+    build_property_report,
+    build_score_explanation_report,
+    build_requirements_report_pdf,
+)
 from services.report_service import load_evidence_readiness_data
 from services.compliance_score import calculate_compliance_score
 
@@ -433,6 +438,9 @@ async def download_report_by_id(request: Request, report_id: str):
         report_data = await load_evidence_readiness_data(
             client_id=user["client_id"], scope=scope, property_id=property_id
         )
+        regen_now = datetime.now(timezone.utc)
+        report_data["original_generated_at"] = created
+        report_data["regenerated_at"] = regen_now
         if scope == "portfolio":
             pdf_bytes = await asyncio.to_thread(build_portfolio_report, user["client_id"], report_data)
         else:
@@ -714,6 +722,7 @@ async def get_available_reports(request: Request):
             "description": "Overview of property compliance including statistics and breakdown",
             "formats": ["csv", "pdf"],
             "endpoint": "/reports/compliance-summary",
+            "pdf_server_endpoint": "/reports/professional/compliance-summary",
             **_meta("compliance_summary_csv"),
         },
         {
@@ -722,6 +731,7 @@ async def get_available_reports(request: Request):
             "description": "Detailed list of all requirements with status and due dates",
             "formats": ["csv", "pdf"],
             "endpoint": "/reports/requirements",
+            "pdf_server_endpoint": "/reports/professional/requirements",
             **_meta("requirements_report_csv"),
         },
         {
@@ -1089,13 +1099,23 @@ async def download_compliance_summary_pdf(request: Request):
             }
         )
         
+        from services.reporting_semantics_v1 import (
+            EXPORT_GRADE_DEFINITIONS,
+            GRADE_CLIENT_PRESENTATION,
+            SURFACE_EXPORT_REGISTRY,
+        )
+
         filename = f"compliance_summary_{datetime.now().strftime('%Y%m%d')}.pdf"
+        grade = SURFACE_EXPORT_REGISTRY.get("professional_compliance_pdf", {}).get("export_grade") or GRADE_CLIENT_PRESENTATION
         
         return StreamingResponse(
             pdf_buffer,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename={filename}"
+                "Content-Disposition": f"attachment; filename={filename}",
+                "X-Export-Grade": grade,
+                "X-Export-Grade-Label": (EXPORT_GRADE_DEFINITIONS.get(grade) or {}).get("label", grade),
+                "X-Report-Engine": "reportlab_server",
             }
         )
     
@@ -1106,6 +1126,109 @@ async def download_compliance_summary_pdf(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report"
+        )
+
+
+@router.get("/professional/requirements")
+async def download_requirements_pdf(
+    request: Request,
+    property_id: Optional[str] = None,
+):
+    """Server-side requirements PDF (ReportLab). Plan-gated by reports_pdf."""
+    from services.plan_registry import plan_registry
+    from services.branding_resolver_service import resolve_branding, BrandingContext
+    from services.reporting_semantics_v1 import (
+        EXPORT_GRADE_DEFINITIONS,
+        GRADE_CLIENT_PRESENTATION,
+        SURFACE_EXPORT_REGISTRY,
+        load_score_projection_portal_rows,
+    )
+
+    user = await client_route_guard(request)
+    allowed, error_msg, error_details = await plan_registry.enforce_feature(
+        user["client_id"], "reports_pdf"
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
+                "message": error_msg,
+                "feature": "reports_pdf",
+                "upgrade_required": True,
+                **(error_details or {}),
+            },
+        )
+    await _enforce_report_export_rate(
+        rate_key=f"report_export:client:{user['client_id']}",
+        client_id=user["client_id"],
+        actor_id=user.get("portal_user_id"),
+    )
+    try:
+        db = database.get_db()
+        client_id = user["client_id"]
+        query = {"client_id": client_id}
+        if property_id:
+            query["property_id"] = property_id
+        requirements = await db.requirements.find(query, {"_id": 0}).to_list(10000)
+        client = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+        prop_ids = list({r.get("property_id") for r in requirements if r.get("property_id")})
+        if prop_ids:
+            properties = await db.properties.find(
+                {"client_id": client_id, "property_id": {"$in": prop_ids}}, {"_id": 0}
+            ).to_list(1000)
+        else:
+            properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
+        portal_reqs = await load_score_projection_portal_rows(
+            db,
+            client_id=client_id,
+            client_doc=client,
+            properties=properties,
+            requirements=requirements,
+        )
+        branding_profile = await resolve_branding(client_id, BrandingContext.CLIENT_DOCUMENT_PDF)
+        now = datetime.now(timezone.utc)
+        report_data = {
+            "client": client,
+            "properties": properties,
+            "requirements": portal_reqs,
+            "now_iso": now.isoformat(),
+            "branding": branding_profile.to_report_dict(),
+        }
+        pdf_bytes = await asyncio.to_thread(build_requirements_report_pdf, client_id, report_data)
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_id=user["portal_user_id"],
+            client_id=client_id,
+            resource_type="report",
+            metadata={
+                "report_type": "professional_requirements",
+                "format": "pdf",
+                "property_id": property_id,
+            },
+        )
+        filename = f"requirements_report_{now.strftime('%Y%m%d')}.pdf"
+        grade = (
+            SURFACE_EXPORT_REGISTRY.get("professional_requirements_pdf", {}).get("export_grade")
+            or GRADE_CLIENT_PRESENTATION
+        )
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "X-Export-Grade": grade,
+                "X-Export-Grade-Label": (EXPORT_GRADE_DEFINITIONS.get(grade) or {}).get("label", grade),
+                "X-Report-Engine": "reportlab_server",
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Professional requirements PDF error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate report",
         )
 
 

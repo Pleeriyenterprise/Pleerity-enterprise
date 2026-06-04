@@ -1,0 +1,22 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02",
+  "audited_at": "2026-06-04T08:40:13.467412+00:00",
+  "columns": [
+    "assurance_tier",
+    "client_lifecycle_state",
+    "date_confidence",
+    "review_state",
+    "evidence_presence"
+  ],
+  "presentation": "concise governance chip line in matrix Governance column",
+  "module": "services/report_layout_governance.py",
+  "limits": {
+    "max_properties": 15,
+    "max_rows_per_property": 25
+  },
+  "surfaces": [
+    "pdf_report_builder portfolio/property/requirements",
+    "professional_reports compliance summary"
+  ],
+  "status": "implemented"
+}

@@ -187,9 +187,15 @@ SURFACE_EXPORT_REGISTRY: Dict[str, Dict[str, str]] = {
         "disclosure": "Operational CSV/ZIP export — not regulator-grade audit artifact.",
     },
     "compliance_summary_pdf_jspdf": {
-        "export_grade": GRADE_CLIENT_PRESENTATION,
+        "export_grade": GRADE_OPERATIONAL,
         "determinism": EXPORT_DETERMINISM_POINT_IN_TIME,
         "pdf_engine": PDF_ENGINE_JSPDF,
+        "disclosure": "Internal fallback when reports_pdf unavailable — not for external regulator handoff.",
+    },
+    "professional_requirements_pdf": {
+        "export_grade": GRADE_CLIENT_PRESENTATION,
+        "determinism": EXPORT_DETERMINISM_POINT_IN_TIME,
+        "pdf_engine": PDF_ENGINE_REPORTLAB,
     },
     "monthly_digest_pdf_jspdf": {
         "export_grade": GRADE_EXECUTIVE,

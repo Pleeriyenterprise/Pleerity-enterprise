@@ -27,6 +27,24 @@ from services.scoring_semantics_v1 import (
     headline_score_display_for_export,
     resolve_property_score_status,
 )
+from services.report_layout_governance import (
+    GovernancePdfContext,
+    append_governance_matrix_for_properties,
+    append_unresolved_obligations_section,
+    export_disclosure_paragraphs,
+    make_page_callbacks,
+    matrix_continuation_stats,
+    matrix_continuation_disclosure_paragraph,
+    governance_chip_line,
+    MATRIX_MAX_ROWS_PER_PROPERTY,
+)
+from services.reporting_semantics_v1 import (
+    EXPORT_DETERMINISM_LIVE_REGENERATED,
+    EXPORT_DETERMINISM_POINT_IN_TIME,
+    EXPORT_GRADE_DEFINITIONS,
+    GRADE_CLIENT_PRESENTATION,
+    GRADE_EXECUTIVE,
+)
 from services.scoring_explanation_copy import (
     SCORE_AREA_DESCRIPTIONS,
     SCORE_AREA_LABELS,
@@ -247,6 +265,43 @@ def _evidence_readiness_property_score_cell_html(p: dict, *, now: datetime) -> s
     return _xml_escape(primary) + '<br/><font size="8">' + " · ".join(meta) + "</font>"
 
 
+def _parse_governance_datetime(raw: Any) -> Optional[datetime]:
+    if raw is None or raw == "":
+        return None
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    try:
+        d = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def _governance_ctx(
+    *,
+    report_data: dict,
+    client: dict,
+    properties: List[dict],
+    now: datetime,
+    company_name: str,
+    crn: str,
+    export_grade: str = GRADE_CLIENT_PRESENTATION,
+    determinism: str = EXPORT_DETERMINISM_LIVE_REGENERATED,
+) -> GovernancePdfContext:
+    grade_def = EXPORT_GRADE_DEFINITIONS.get(export_grade) or {}
+    return GovernancePdfContext(
+        export_grade=export_grade,
+        export_grade_label=grade_def.get("label") or export_grade,
+        generated_at=now,
+        determinism=determinism,
+        jurisdiction_summary=portfolio_jurisdiction_summary_sentence(client, properties)[:90],
+        original_generated_at=_parse_governance_datetime(report_data.get("original_generated_at")),
+        regenerated_at=_parse_governance_datetime(report_data.get("regenerated_at")),
+        company_name=company_name,
+        crn=crn,
+    )
+
+
 def _top_risk_drivers(
     requirements: List[dict],
     properties: List[dict],
@@ -289,10 +344,19 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     derived = _derive_counts_and_risk(properties, requirements, now, client_doc=client)
     top_risks = _top_risk_drivers(requirements, properties, client, limit=10)
     headline_agg = aggregate_persisted_portfolio_headline(properties, now=now)
+    gov_ctx = _governance_ctx(
+        report_data=report_data,
+        client=client,
+        properties=properties,
+        now=now,
+        company_name=company_name,
+        crn=crn,
+    )
+    on_first, on_later = make_page_callbacks(gov_ctx)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50,
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
     )
     elements = []
 
@@ -300,10 +364,13 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     elements.append(Spacer(1, 80))
     elements.append(Paragraph("Evidence Readiness Report", styles["title"]))
     elements.append(Paragraph(
-        f"{company_name}<br/>CRN: {crn}<br/>Scope: portfolio<br/>Generated: {now.strftime('%d %B %Y at %H:%M UTC')}",
+        f"{company_name}<br/>CRN: {crn}<br/>Scope: portfolio<br/>"
+        f"Generated: {now.strftime('%d %B %Y at %H:%M UTC')}<br/>"
+        f"Export grade: {_xml_escape(gov_ctx.export_grade_label)}",
         styles["subtitle"],
     ))
-    elements.append(Spacer(1, 40))
+    elements.extend(export_disclosure_paragraphs(gov_ctx, styles))
+    elements.append(Spacer(1, 20))
     elements.append(HRFlowable(width="100%", thickness=2, color=colors.Color(*_hex_to_rgb(branding.get("secondary_color", "#00B8A9"))), spaceAfter=20))
     elements.append(PageBreak())
 
@@ -311,9 +378,16 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     elements.append(Paragraph("Executive Summary", styles["heading"]))
     snap_ts = _evidence_readiness_snapshot_timestamp_display(now)
     elements.append(Paragraph(f"<b>Snapshot generated at</b> {_xml_escape(snap_ts)}", styles["body"]))
+    if gov_ctx.regenerated_at and gov_ctx.original_generated_at:
+        elements.append(
+            Paragraph(
+                f"<b>Regenerated (UTC):</b> {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.regenerated_at))} "
+                f"(original run: {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.original_generated_at))})",
+                styles["body"],
+            )
+        )
     elements.append(Paragraph(
-        "This PDF is a point-in-time export. Persisted headline scores and counts reflect data loaded for this run "
-        "and may differ from the client application after later recalculation or data changes.",
+        "This document reflects portfolio state at generation time and may differ from future downloads.",
         styles["small"],
     ))
     elements.append(Spacer(1, 8))
@@ -354,6 +428,16 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
         rt.setStyle(table_style)
         elements.append(rt)
         elements.append(Spacer(1, 20))
+
+    append_unresolved_obligations_section(
+        elements,
+        requirements=requirements,
+        properties=properties,
+        client_doc=client,
+        styles=styles,
+        table_style=table_style,
+        heading_style=styles["heading"],
+    )
 
     # Portfolio breakdown
     elements.append(Paragraph("Portfolio breakdown", styles["heading"]))
@@ -442,7 +526,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     elements.append(Paragraph(gen_by, styles["footer"]))
     elements.append(Paragraph(contact_line, styles["footer"]))
 
-    doc.build(elements)
+    doc.build(elements, onFirstPage=on_first, onLaterPages=on_later)
     buffer.seek(0)
     return buffer.getvalue()
 
@@ -502,10 +586,22 @@ def build_score_explanation_report(
         "company_name": company_name,
     }
     styles, table_style = _build_styles_and_table_style(branding)
+    props_for_j = score_payload.get("property_breakdown") or []
+    gov_ctx = _governance_ctx(
+        report_data={},
+        client=client_doc,
+        properties=props_for_j if isinstance(props_for_j, list) else [],
+        now=now,
+        company_name=company_name,
+        crn=crn,
+        export_grade=GRADE_EXECUTIVE,
+        determinism=EXPORT_DETERMINISM_LIVE_REGENERATED,
+    )
+    on_first, on_later = make_page_callbacks(gov_ctx)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50,
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
     )
     elements = []
 
@@ -513,7 +609,9 @@ def build_score_explanation_report(
     elements.append(Spacer(1, 60))
     elements.append(Paragraph("Compliance Score Summary (Informational)", styles["title"]))
     elements.append(Paragraph(
-        f"{company_name}<br/>CRN: {crn}<br/>Generated: {now_str}<br/>Data as of: {_xml_escape(data_as_of_display)}",
+        f"{company_name}<br/>CRN: {crn}<br/>Generated: {now_str}<br/>"
+        f"Data as of: {_xml_escape(data_as_of_display)}<br/>"
+        f"Export grade: {_xml_escape(gov_ctx.export_grade_label)}",
         styles["subtitle"],
     ))
     elements.append(Paragraph(
@@ -726,7 +824,7 @@ def build_score_explanation_report(
     elements.append(Paragraph(f"CRN: {crn} &nbsp;|&nbsp; Generated: {now_str}", styles["footer"]))
     elements.append(Paragraph("Informational indicator based on portal records. Not legal advice.", styles["footer"]))
 
-    doc.build(elements)
+    doc.build(elements, onFirstPage=on_first, onLaterPages=on_later)
     buffer.seek(0)
     return buffer.getvalue()
 
@@ -758,10 +856,19 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     top_risks = _top_risk_drivers(requirements, properties, client, limit=10)
     prop = properties[0] if properties else {}
     headline_agg = aggregate_persisted_portfolio_headline(properties, now=now)
+    gov_ctx = _governance_ctx(
+        report_data=report_data,
+        client=client,
+        properties=properties,
+        now=now,
+        company_name=company_name,
+        crn=crn,
+    )
+    on_first, on_later = make_page_callbacks(gov_ctx)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50,
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
     )
     elements = []
 
@@ -770,10 +877,13 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     elements.append(Paragraph("Evidence Readiness Report", styles["title"]))
     scope_line = f"Scope: property (Property: {property_id})"
     elements.append(Paragraph(
-        f"{company_name}<br/>CRN: {crn}<br/>{scope_line}<br/>Generated: {now.strftime('%d %B %Y at %H:%M UTC')}",
+        f"{company_name}<br/>CRN: {crn}<br/>{scope_line}<br/>"
+        f"Generated: {now.strftime('%d %B %Y at %H:%M UTC')}<br/>"
+        f"Export grade: {_xml_escape(gov_ctx.export_grade_label)}",
         styles["subtitle"],
     ))
-    elements.append(Spacer(1, 40))
+    elements.extend(export_disclosure_paragraphs(gov_ctx, styles))
+    elements.append(Spacer(1, 20))
     elements.append(HRFlowable(width="100%", thickness=2, color=colors.Color(*_hex_to_rgb(branding.get("secondary_color", "#00B8A9"))), spaceAfter=20))
     elements.append(PageBreak())
 
@@ -781,9 +891,16 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     elements.append(Paragraph("Executive Summary", styles["heading"]))
     snap_ts = _evidence_readiness_snapshot_timestamp_display(now)
     elements.append(Paragraph(f"<b>Snapshot generated at</b> {_xml_escape(snap_ts)}", styles["body"]))
+    if gov_ctx.regenerated_at and gov_ctx.original_generated_at:
+        elements.append(
+            Paragraph(
+                f"<b>Regenerated (UTC):</b> {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.regenerated_at))} "
+                f"(original run: {_xml_escape(_evidence_readiness_snapshot_timestamp_display(gov_ctx.original_generated_at))})",
+                styles["body"],
+            )
+        )
     elements.append(Paragraph(
-        "This PDF is a point-in-time export. Persisted headline scores and counts reflect data loaded for this run "
-        "and may differ from the client application after later recalculation or data changes.",
+        "This document reflects portfolio state at generation time and may differ from future downloads.",
         styles["small"],
     ))
     elements.append(Spacer(1, 8))
@@ -902,6 +1019,114 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     elements.append(Paragraph(gen_by, styles["footer"]))
     elements.append(Paragraph(contact_line, styles["footer"]))
 
-    doc.build(elements)
+    doc.build(elements, onFirstPage=on_first, onLaterPages=on_later)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def build_requirements_report_pdf(client_id: str, report_data: dict) -> bytes:
+    """Server-side requirements PDF with governance columns and unresolved section."""
+    client = report_data.get("client") or {}
+    company_name = client.get("company_name") or client.get("full_name") or "Client"
+    crn = client.get("customer_reference") or client_id
+    properties = report_data.get("properties") or []
+    requirements = report_data.get("requirements") or []
+    now_iso = report_data.get("now_iso")
+    now = datetime.fromisoformat(now_iso.replace("Z", "+00:00")) if now_iso else datetime.now(timezone.utc)
+    branding = report_data.get("branding") or {
+        "primary_color": "#0B1D3A",
+        "secondary_color": "#00B8A9",
+        "company_name": company_name,
+    }
+    styles, table_style = _build_styles_and_table_style(branding)
+    gov_ctx = _governance_ctx(
+        report_data=report_data,
+        client=client,
+        properties=properties,
+        now=now,
+        company_name=company_name,
+        crn=crn,
+        determinism=EXPORT_DETERMINISM_POINT_IN_TIME,
+    )
+    on_first, on_later = make_page_callbacks(gov_ctx)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
+    )
+    elements = []
+    elements.append(Spacer(1, 60))
+    elements.append(Paragraph("Requirements Report", styles["title"]))
+    elements.append(Paragraph(
+        f"{company_name}<br/>CRN: {crn}<br/>Generated: {now.strftime('%d %B %Y at %H:%M UTC')}<br/>"
+        f"Export grade: {_xml_escape(gov_ctx.export_grade_label)}",
+        styles["subtitle"],
+    ))
+    elements.extend(export_disclosure_paragraphs(gov_ctx, styles))
+    elements.append(Spacer(1, 16))
+    elements.append(Paragraph(f"<b>Requirements in scope:</b> {len(requirements)}", styles["body"]))
+    elements.append(Spacer(1, 12))
+
+    append_unresolved_obligations_section(
+        elements,
+        requirements=requirements,
+        properties=properties,
+        client_doc=client,
+        styles=styles,
+        table_style=table_style,
+        heading_style=styles["heading"],
+    )
+
+    if properties:
+        append_governance_matrix_for_properties(
+            elements,
+            properties=properties,
+            requirements=requirements,
+            client_doc=client,
+            styles=styles,
+            table_style=table_style,
+            heading_style=styles["heading"],
+            body_style=styles["body"],
+            now=now,
+            status_label_fn=_status_label,
+        )
+    else:
+        elements.append(Paragraph("Requirement detail", styles["heading"]))
+        elements.append(matrix_continuation_disclosure_paragraph(
+            matrix_continuation_stats([], requirements), styles
+        ))
+        rows = [["Requirement", "Status", "Governance", "Due", "Days"]]
+        for r in requirements[:MATRIX_MAX_ROWS_PER_PROPERTY]:
+            due = get_effective_expiry_date(r)
+            due_str = "—"
+            if due and hasattr(due, "date"):
+                due_str = due.date().isoformat()
+            elif isinstance(r.get("due_date"), str):
+                due_str = str(r.get("due_date"))[:10]
+            cs = get_computed_status(r, property_doc=None, client_doc=client)
+            rows.append([
+                (r.get("description") or r.get("requirement_type") or "—")[:35],
+                _status_label(cs),
+                governance_chip_line(r)[:42],
+                due_str,
+                "—",
+            ])
+        if len(rows) > 1:
+            tb = Table(rows, colWidths=[150, 90, 130, 65, 45])
+            tb.setStyle(table_style)
+            elements.append(tb)
+        omitted = max(0, len(requirements) - MATRIX_MAX_ROWS_PER_PROPERTY)
+        if omitted:
+            elements.append(
+                Paragraph(
+                    f"<b>Continuation:</b> {omitted} additional obligations omitted from summary matrix.",
+                    styles["small"],
+                )
+            )
+
+    elements.append(Spacer(1, 20))
+    elements.append(HRFlowable(width="100%", thickness=1, color=colors.gray, spaceAfter=12))
+    elements.append(Paragraph(PDF_FOOTER_DISCLAIMER, styles["footer"]))
+    doc.build(elements, onFirstPage=on_first, onLaterPages=on_later)
     buffer.seek(0)
     return buffer.getvalue()

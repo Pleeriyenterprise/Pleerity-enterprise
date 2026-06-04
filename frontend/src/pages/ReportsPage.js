@@ -459,13 +459,45 @@ const ReportsPage = () => {
           description: 'Snapshot of your current compliance position.',
         });
       } else {
-        // Get JSON data and generate PDF client-side
-        const response = await api.get(`${endpoint}?${params.toString()}`);
-        const reportData = response.data.data || response.data;
-        
-        const doc = generatePDF(reportData, reportId);
-        doc.save(`report_${reportId}_${new Date().toISOString().split('T')[0]}.pdf`);
-        
+        const serverPdfByReport = {
+          compliance_summary: '/reports/professional/compliance-summary',
+          requirements: '/reports/professional/requirements',
+        };
+        const serverPath = hasReportsPdf ? serverPdfByReport[reportId] : null;
+
+        if (serverPath) {
+          const pdfParams = new URLSearchParams();
+          if (reportId === 'requirements' && selectedFilters.property_id) {
+            pdfParams.append('property_id', selectedFilters.property_id);
+          }
+          const qs = pdfParams.toString();
+          const response = await api.get(qs ? `${serverPath}?${qs}` : serverPath, {
+            responseType: 'blob',
+          });
+          const blob = new Blob([response.data], { type: 'application/pdf' });
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          const contentDisposition = response.headers['content-disposition'];
+          let filename = `report_${reportId}_${new Date().toISOString().split('T')[0]}.pdf`;
+          if (contentDisposition) {
+            const match = contentDisposition.match(/filename=([^;]+)/);
+            if (match) {
+              filename = match[1].replace(/"/g, '');
+            }
+          }
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } else {
+          const response = await api.get(`${endpoint}?${params.toString()}`);
+          const reportData = response.data.data || response.data;
+          const doc = generatePDF(reportData, reportId);
+          doc.save(`report_${reportId}_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+
         toast.success('Report ready', {
           description: 'Snapshot of your current compliance position.',
         });

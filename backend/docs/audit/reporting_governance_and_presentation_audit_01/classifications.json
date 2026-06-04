@@ -1,11 +1,15 @@
 {
-  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
-  "classified_at": "2026-06-04T07:50:27.107341+00:00",
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02",
+  "classified_at": "2026-06-04T08:40:37.467583+00:00",
   "classification": "VERIFIED_OPERATIONALLY",
-  "gap_classes": [
-    "PRESENTATION_GAP",
-    "GOVERNANCE_VISIBILITY_GAP",
-    "ENTERPRISE_DELIVERY_GAP"
-  ],
-  "summary": "Governance semantics are sound; presentation fragmentation (jsPDF vs ReportLab) and matrix assurance visibility are main enterprise blockers."
+  "checks": {
+    "server_pdf_routing": true,
+    "matrix_governance_columns": true,
+    "unresolved_obligations": true,
+    "evidence_readiness_disclosure": true,
+    "no_silent_truncation": true,
+    "governance_footer": true,
+    "regression_pass": true
+  },
+  "prior_programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01"
 }

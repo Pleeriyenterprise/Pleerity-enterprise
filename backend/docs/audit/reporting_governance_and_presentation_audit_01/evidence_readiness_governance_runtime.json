@@ -1,0 +1,11 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02",
+  "audited_at": "2026-06-04T08:40:13.467412+00:00",
+  "disclosures": [
+    "LIVE-GENERATED export grade on cover",
+    "may differ from future downloads",
+    "regenerated vs original timestamp on re-download"
+  ],
+  "immutable_storage": "not implemented (P0 minimum hardening only)",
+  "status": "implemented"
+}

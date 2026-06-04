@@ -26,6 +26,19 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 
 from utils.expiry_utils import get_computed_status, get_effective_expiry_date
+from presentation.jurisdiction_reporting import portfolio_jurisdiction_summary_sentence
+from services.report_layout_governance import (
+    GovernancePdfContext,
+    append_governance_matrix_for_properties,
+    append_unresolved_obligations_section,
+    export_disclosure_paragraphs,
+    make_page_callbacks,
+)
+from services.reporting_semantics_v1 import (
+    EXPORT_DETERMINISM_POINT_IN_TIME,
+    EXPORT_GRADE_DEFINITIONS,
+    GRADE_CLIENT_PRESENTATION,
+)
 import io
 import logging
 
@@ -236,6 +249,16 @@ class ProfessionalReportGenerator:
         
         elements = []
         now = datetime.now(timezone.utc)
+        grade_def = EXPORT_GRADE_DEFINITIONS.get(GRADE_CLIENT_PRESENTATION) or {}
+        gov_ctx = GovernancePdfContext(
+            export_grade=GRADE_CLIENT_PRESENTATION,
+            export_grade_label=grade_def.get("label") or GRADE_CLIENT_PRESENTATION,
+            generated_at=now,
+            determinism=EXPORT_DETERMINISM_POINT_IN_TIME,
+            jurisdiction_summary=portfolio_jurisdiction_summary_sentence(client_doc, properties)[:90],
+            company_name=branding.get("company_name") or "",
+        )
+        on_first, on_later = make_page_callbacks(gov_ctx)
         
         # Header
         if branding.get("report_header_text"):
@@ -245,9 +268,11 @@ class ProfessionalReportGenerator:
         # Title
         elements.append(Paragraph("Compliance Summary Report", styles["title"]))
         elements.append(Paragraph(
-            f"{branding['company_name']}<br/>PDF generated: {now.strftime('%d %B %Y at %H:%M UTC')}",
+            f"{branding['company_name']}<br/>PDF generated: {now.strftime('%d %B %Y at %H:%M UTC')}<br/>"
+            f"Export grade: {_professional_compliance_summary_escape_xml(gov_ctx.export_grade_label)}",
             styles["subtitle"]
         ))
+        elements.extend(export_disclosure_paragraphs(gov_ctx, styles))
         
         # Divider
         elements.append(HRFlowable(
@@ -409,7 +434,7 @@ class ProfessionalReportGenerator:
             elements.append(Paragraph(branding["pdf_footer_contact_line"], styles["footer"]))
         
         # Build PDF
-        doc.build(elements)
+        doc.build(elements, onFirstPage=on_first, onLaterPages=on_later)
         buffer.seek(0)
         return buffer
     

@@ -1,0 +1,19 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02",
+  "audited_at": "2026-06-04T08:40:13.467412+00:00",
+  "component": "report_layout_governance.make_page_callbacks",
+  "includes": [
+    "export grade",
+    "UTC generated time",
+    "live disclosure snippet",
+    "page numbers",
+    "jurisdiction snippet"
+  ],
+  "applied_to": [
+    "evidence_readiness portfolio/property",
+    "professional_compliance_pdf",
+    "requirements_report_pdf",
+    "score_explanation_pdf"
+  ],
+  "status": "implemented"
+}

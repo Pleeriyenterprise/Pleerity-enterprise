@@ -1,0 +1,12 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02",
+  "audited_at": "2026-06-04T08:40:13.467412+00:00",
+  "features": [
+    "matrix_continuation_disclosure_paragraph",
+    "per-property continuation label",
+    "matrix appendix index",
+    "explicit omitted obligation counts"
+  ],
+  "silent_truncation": false,
+  "status": "implemented"
+}

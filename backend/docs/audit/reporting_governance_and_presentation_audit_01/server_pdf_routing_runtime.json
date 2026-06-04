@@ -1,0 +1,29 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02",
+  "audited_at": "2026-06-04T08:40:12.900086+00:00",
+  "reports_pdf_routes": {
+    "compliance_summary": {
+      "client_when_entitled": "/reports/professional/compliance-summary",
+      "engine": "reportlab_server",
+      "jspdf_fallback": "ReportsPage.js generatePDF when reports_pdf false"
+    },
+    "requirements": {
+      "client_when_entitled": "/reports/professional/requirements",
+      "engine": "reportlab_server"
+    },
+    "evidence_readiness_portfolio": {
+      "route": "POST /reports/generate scope=portfolio",
+      "engine": "reportlab_server"
+    }
+  },
+  "jspdf_allowed": [
+    "audit_logs without server path",
+    "compliance/requirements without reports_pdf"
+  ],
+  "headers": [
+    "X-Export-Grade",
+    "X-Export-Grade-Label",
+    "X-Report-Engine"
+  ],
+  "status": "implemented"
+}
