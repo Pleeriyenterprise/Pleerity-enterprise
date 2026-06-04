@@ -1,0 +1,39 @@
+{
+  "at_utc": "2026-06-04T12:27:10.242948+00:00",
+  "seeded_vs_natural": {
+    "landlord": "natural_staging_account",
+    "contractor": "pilot_fixture_documented_in_ops_runtime_03",
+    "property": "charter_wales_hmo_pilot",
+    "tenant": "ops_runtime_07_tenant_portal_fixture"
+  },
+  "landlord_session": {
+    "email": "nancy@yopmail.com",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "role": "ROLE_CLIENT_ADMIN"
+  },
+  "contractor_session": {
+    "email": "f2-ops-heating-wales@yopmail.com",
+    "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde"
+  },
+  "tenant_session": {
+    "email": "f7-ops-wales@yopmail.com",
+    "role": "ROLE_TENANT"
+  },
+  "entitlements_status": 200,
+  "maintenance_workflows": true,
+  "invoicing": false,
+  "rent_operations": true,
+  "predictive_maintenance": true,
+  "property": {
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "label": "Kensington Garden Flat",
+    "jurisdiction": "Wales"
+  },
+  "account_ids": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde"
+  },
+  "pass": true,
+  "tenancy_source": "seeded_this_run"
+}

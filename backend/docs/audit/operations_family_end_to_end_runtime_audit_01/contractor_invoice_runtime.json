@@ -1,0 +1,31 @@
+{
+  "work_order_id": "4203692b-8383-4f5e-9ad1-3323957ae3b0",
+  "invoice_id": "e0d2dc2f-1336-4bff-bbed-32476af80fea",
+  "steps": [
+    {
+      "step": "contractor_submit_invoice",
+      "ok": true,
+      "detail": "status=200 detail={\"invoice_id\":\"e0d2dc2f-1336-4bff-bbed-32476af80fea\",\"client_id\":\"6fd5ac4c-3fd4-4112-ade7-156977deb49f\",\"property_id\":\"d",
+      "at_utc": "2026-06-04T12:31:35.715394+00:00"
+    },
+    {
+      "step": "landlord_lists_invoice",
+      "ok": false,
+      "detail": "status=403",
+      "at_utc": "2026-06-04T12:31:41.245309+00:00"
+    },
+    {
+      "step": "landlord_approve_invoice",
+      "ok": false,
+      "detail": "status=403 inv_st=",
+      "at_utc": "2026-06-04T12:31:45.842550+00:00"
+    },
+    {
+      "step": "landlord_mark_paid",
+      "ok": false,
+      "detail": "status=403",
+      "at_utc": "2026-06-04T12:31:48.725886+00:00"
+    }
+  ],
+  "pass": false
+}

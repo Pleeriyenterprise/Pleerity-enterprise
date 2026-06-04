@@ -1,0 +1,94 @@
+{
+  "accept_work_order_id": "4203692b-8383-4f5e-9ad1-3323957ae3b0",
+  "decline_work_order_id": "2f31cb1f-6eeb-4bf6-b0bb-d7a0ff2322bb",
+  "accept_steps": [
+    {
+      "step": "create_issue",
+      "ok": true,
+      "detail": "status=200 id=0fa13d7f-1972-4721-9ad7-f2b43cafc411",
+      "at_utc": "2026-06-04T12:28:42.901208+00:00"
+    },
+    {
+      "step": "create_work_order",
+      "ok": true,
+      "detail": "status=200 wo=4203692b-8383-4f5e-9ad1-3323957ae3b0",
+      "at_utc": "2026-06-04T12:28:49.098987+00:00"
+    },
+    {
+      "step": "duplicate_create_wo_blocked",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:28:54.731767+00:00"
+    },
+    {
+      "step": "assign_contractor",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:29:03.548657+00:00"
+    },
+    {
+      "step": "contractor_submit_quote",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:29:11.214042+00:00"
+    },
+    {
+      "step": "landlord_approve_quote",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:29:18.812499+00:00"
+    },
+    {
+      "step": "contractor_accept",
+      "ok": true,
+      "detail": "status=200 st=SCHEDULED",
+      "at_utc": "2026-06-04T12:29:24.025639+00:00"
+    },
+    {
+      "step": "contractor_sees_job",
+      "ok": true,
+      "detail": "list=200",
+      "at_utc": "2026-06-04T12:29:35.105993+00:00"
+    },
+    {
+      "step": "landlord_sees_accepted",
+      "ok": true,
+      "detail": "st=SCHEDULED",
+      "at_utc": "2026-06-04T12:29:39.999612+00:00"
+    }
+  ],
+  "decline_steps": [
+    {
+      "step": "assign_contractor",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:30:14.405990+00:00"
+    },
+    {
+      "step": "contractor_submit_quote",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:30:21.816275+00:00"
+    },
+    {
+      "step": "landlord_approve_quote",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:30:29.502415+00:00"
+    },
+    {
+      "step": "contractor_decline",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:30:34.377371+00:00"
+    },
+    {
+      "step": "landlord_sees_reassignable",
+      "ok": true,
+      "detail": "status=OPEN contractor=None",
+      "at_utc": "2026-06-04T12:30:39.337213+00:00"
+    }
+  ],
+  "pass": true,
+  "decline_pass": true
+}

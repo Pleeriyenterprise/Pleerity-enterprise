@@ -1,0 +1,41 @@
+{
+  "probes": [
+    {
+      "name": "landlord_can_list_issues",
+      "status": 200,
+      "expect_forbidden": false,
+      "pass": true
+    },
+    {
+      "name": "contractor_cannot_list_client_issues",
+      "status": 401,
+      "expect_forbidden": true,
+      "pass": true
+    },
+    {
+      "name": "tenant_cannot_list_client_issues",
+      "status": 403,
+      "expect_forbidden": true,
+      "pass": true
+    },
+    {
+      "name": "contractor_can_view_assigned_wo",
+      "status": 200,
+      "expect_forbidden": false,
+      "pass": true
+    },
+    {
+      "name": "contractor_cannot_view_fake_wo",
+      "status": 404,
+      "expect_forbidden": true,
+      "pass": true
+    },
+    {
+      "name": "tenant_cannot_view_contractor_wo",
+      "status": 403,
+      "expect_forbidden": true,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

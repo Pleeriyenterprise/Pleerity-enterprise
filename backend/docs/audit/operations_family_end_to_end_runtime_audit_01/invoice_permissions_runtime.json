@@ -1,0 +1,20 @@
+{
+  "probes": [
+    {
+      "name": "contractor_own_job_invoice_governed",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "name": "contractor_unrelated_wo_hidden",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "tenant_cannot_list_approvals",
+      "pass": true,
+      "status": 403
+    }
+  ],
+  "pass": true
+}

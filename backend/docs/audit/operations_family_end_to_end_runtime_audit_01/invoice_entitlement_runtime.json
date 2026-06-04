@@ -1,0 +1,25 @@
+{
+  "programme": "OPERATIONS-FAMILY-INVOICE-CLOSEOUT-01",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "method": "admin_api_patch_feature_flags",
+  "at_utc": "2026-06-04T13:05:43.037606+00:00",
+  "before_status": 200,
+  "invoicing_before": {
+    "enabled": false,
+    "source": "plan_default"
+  },
+  "patch_status": 200,
+  "patch_body": {
+    "ok": true,
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
+  },
+  "invoicing_after": {
+    "enabled": true,
+    "source": "manual"
+  },
+  "governed": true,
+  "setup_only_note": "INVOICING override via PATCH /api/admin/ops/clients/{id}/feature-flags (audited FEATURE_FLAG_CHANGED)",
+  "pass": true,
+  "landlord_entitlements_invoicing": true,
+  "reused_prior_run": true
+}

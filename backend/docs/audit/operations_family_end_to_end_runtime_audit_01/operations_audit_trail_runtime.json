@@ -1,0 +1,100 @@
+{
+  "issue_id": "7e27f818-1962-4add-9102-b3e7311197f6",
+  "timeline_status": 200,
+  "event_count": 4,
+  "event_type_sample": [
+    "ISSUE_CREATED",
+    "ISSUE_RECORDED",
+    "MAINTENANCE_ISSUE_CREATED",
+    "WORK_ORDER_CREATED"
+  ],
+  "events_sample": [
+    {
+      "id": "wo_created:fd162562-b358-4636-a130-fc683ed869fe",
+      "timestamp": "2026-06-04T12:27:49.181026+00:00",
+      "category": "WORK_ORDER",
+      "event_type": "WORK_ORDER_CREATED",
+      "title": "Work order created",
+      "description": "OPS-E2E-01-20260604T122710Z \u2014 E2E issue/job path (OPEN)",
+      "source": "work_order",
+      "metadata": {
+        "work_order_id": "fd162562-b358-4636-a130-fc683ed869fe",
+        "issue_id": "7e27f818-1962-4add-9102-b3e7311197f6",
+        "status": "OPEN"
+      }
+    },
+    {
+      "id": "0a75d4e3-2b2f-4a4b-8fad-91cc7467420b",
+      "timestamp": "2026-06-04T12:27:42.778658+00:00",
+      "category": "AUDIT",
+      "event_type": "MAINTENANCE_ISSUE_CREATED",
+      "title": "Maintenance Issue Created",
+      "description": "Maintenance Issue Created",
+      "source": "audit_log",
+      "metadata": {
+        "issue_id": "7e27f818-1962-4add-9102-b3e7311197f6",
+        "actor_id": "2dfd42d0-e439-46ef-8071-73600e46088e",
+        "old_status": null,
+        "new_status": null
+      }
+    },
+    {
+      "id": "400ff6f6-538a-4079-bba9-58faa0f34bd2",
+      "timestamp": "2026-06-04T12:27:33.462097+00:00",
+      "category": "ASSET",
+      "event_type": "ISSUE_CREATED",
+      "title": "Issue Created",
+      "description": "OPS-E2E-01-20260604T122710Z \u2014 E2E issue/job path",
+      "source": "asset_event",
+      "metadata": {
+        "issue_id": "7e27f818-1962-4add-9102-b3e7311197f6",
+        "asset_id": "2f6f7113-0808-408f-ab25-74f09c4d33e0"
+      }
+    },
+    {
+      "id": "issue_created:7e27f818-1962-4add-9102-b3e7311197f6",
+      "timestamp": "2026-06-04T12:27:32.585652+00:00",
+      "category": "ISSUE",
+      "event_type": "ISSUE_RECORDED",
+      "title": "Issue reported",
+      "description": "OPS-E2E-01-20260604T122710Z \u2014 E2E issue/job path Source: client.",
+      "source": "issue",
+      "metadata": {
+        "issue_id": "7e27f818-1962-4add-9102-b3e7311197f6",
+        "status_after": "ready_for_work_order"
+      }
+    }
+  ],
+  "expected_actions": [
+    {
+      "keyword": "issue",
+      "present": true
+    },
+    {
+      "keyword": "work_order",
+      "present": true
+    },
+    {
+      "keyword": "contractor",
+      "present": false
+    },
+    {
+      "keyword": "quote",
+      "present": false
+    },
+    {
+      "keyword": "complete",
+      "present": false
+    },
+    {
+      "keyword": "invoice",
+      "present": false
+    },
+    {
+      "keyword": "audit",
+      "present": true
+    }
+  ],
+  "pass": true,
+  "reconciled": true
+}

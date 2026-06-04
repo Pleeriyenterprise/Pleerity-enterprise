@@ -1,0 +1,28 @@
+{
+  "steps": [],
+  "marker": "OPS-E2E-01-20260604T122710Z",
+  "capabilities_status": 200,
+  "rent_enabled": true,
+  "tenancy_count": 0,
+  "tenancy_id": "pty_9ec2e1723d7b",
+  "tenancy_source": "seeded_this_run",
+  "create_tenancy_status": 200,
+  "ledger_count": 30,
+  "target_ledger": {
+    "ledger_id": "rlp_eaa80d462b1c",
+    "status": "UPCOMING",
+    "outstanding_balance_minor": 85000
+  },
+  "partial_payment_status": 200,
+  "after_partial_status": "PARTIALLY_PAID",
+  "after_partial_overdue": false,
+  "has_overdue_in_list": false,
+  "summary_status": 200,
+  "rent_summary": {
+    "overdue_count": 57,
+    "partial_overdue_count": 6,
+    "upcoming_count": null,
+    "collected_this_month_minor": null
+  },
+  "pass": true
+}

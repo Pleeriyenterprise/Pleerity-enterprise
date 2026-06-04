@@ -1,0 +1,16 @@
+{
+  "probes": [
+    {
+      "name": "invoice_before_completion_blocked",
+      "pass": false,
+      "status": 404,
+      "detail": "{\"detail\":\"Work order not found or not assigned to you\"}"
+    },
+    {
+      "name": "close_without_evidence_blocked",
+      "pass": true,
+      "close_status": 400
+    }
+  ],
+  "pass": false
+}

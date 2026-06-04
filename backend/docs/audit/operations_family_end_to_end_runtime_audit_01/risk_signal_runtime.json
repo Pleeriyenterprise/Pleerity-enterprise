@@ -1,0 +1,101 @@
+{
+  "property_api_status": 200,
+  "signals": [
+    {
+      "signal_id": "rs_f47870a5506a",
+      "risk_type": "RENT_SEVERELY_OVERDUE",
+      "risk_level": "high",
+      "status": "active",
+      "reasons_sample": [
+        "9 rent period(s) severely overdue (14+ days)"
+      ]
+    },
+    {
+      "signal_id": "rs_e80553df6e7b",
+      "risk_type": "RENT_OVERDUE",
+      "risk_level": "medium",
+      "status": "active",
+      "reasons_sample": [
+        "7 rent period(s) overdue"
+      ]
+    },
+    {
+      "signal_id": "rs_c9c2a9725f62",
+      "risk_type": "Recurring Repairs Risk",
+      "risk_level": "high",
+      "status": "active",
+      "reasons_sample": [
+        "Same asset/category has 8 issues or work orders in the last 12 months"
+      ]
+    },
+    {
+      "signal_id": "rs_1cb5079e835a",
+      "risk_type": "Electrical Risk",
+      "risk_level": "medium",
+      "status": "active",
+      "reasons_sample": [
+        "EICR overdue or missing"
+      ]
+    },
+    {
+      "signal_id": "rs_c7790af76ce0",
+      "risk_type": "Recurring Repairs Risk",
+      "risk_level": "high",
+      "status": "active",
+      "reasons_sample": [
+        "Same asset/category has 16 issues or work orders in the last 12 months"
+      ]
+    },
+    {
+      "signal_id": "rs_688d2a958c5e",
+      "risk_type": "Recurring Repairs Risk",
+      "risk_level": "high",
+      "status": "active",
+      "reasons_sample": [
+        "Same asset/category has 166 issues or work orders in the last 12 months"
+      ]
+    },
+    {
+      "signal_id": "rs_364ee2dfbb31",
+      "risk_type": "Recurring Repairs Risk",
+      "risk_level": "high",
+      "status": "active",
+      "reasons_sample": [
+        "Same asset/category has 13 issues or work orders in the last 12 months"
+      ]
+    },
+    {
+      "signal_id": "rs_16eb27170459",
+      "risk_type": "Recurring Repairs Risk",
+      "risk_level": "high",
+      "status": "acknowledged",
+      "reasons_sample": [
+        "Same asset/category has 35 issues or work orders in the last 12 months"
+      ]
+    }
+  ],
+  "validations": [
+    {
+      "signal_id": "rs_f47870a5506a",
+      "pass": true
+    },
+    {
+      "signal_id": "rs_e80553df6e7b",
+      "pass": true
+    },
+    {
+      "signal_id": "rs_c9c2a9725f62",
+      "pass": true
+    },
+    {
+      "signal_id": "rs_1cb5079e835a",
+      "pass": true
+    },
+    {
+      "signal_id": "rs_c7790af76ce0",
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "reconciled": true
+}

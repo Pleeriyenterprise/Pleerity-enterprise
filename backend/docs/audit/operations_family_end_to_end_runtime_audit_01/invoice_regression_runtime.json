@@ -1,0 +1,47 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_contractor_lifecycle.py",
+      "ok": true,
+      "exit_code": 0,
+      "stdout_tail": "ecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n8 passed, 4 warnings in 0.18s\n"
+    },
+    {
+      "suite": "tests/test_contractor_evidence_and_decline.py",
+      "ok": true,
+      "exit_code": 0,
+      "stdout_tail": "ecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n8 passed, 4 warnings in 0.22s\n"
+    },
+    {
+      "suite": "tests/test_completion_workflow_convergence.py",
+      "ok": true,
+      "exit_code": 0,
+      "stdout_tail": "ecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n7 passed, 4 warnings in 0.21s\n"
+    },
+    {
+      "suite": "tests/test_contractor_next_job_actions.py",
+      "ok": true,
+      "exit_code": 0,
+      "stdout_tail": "cated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n20 passed, 4 warnings in 0.20s\n"
+    },
+    {
+      "suite": "tests/test_step_up_sensitive_routes.py",
+      "ok": true,
+      "exit_code": 0,
+      "stdout_tail": "ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n5 passed, 4 warnings in 132.30s (0:02:12)\n"
+    },
+    {
+      "suite": "tests/test_client_invoice_review_email.py",
+      "ok": true,
+      "exit_code": 0,
+      "stdout_tail": "ecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 4 warnings in 0.34s\n"
+    },
+    {
+      "suite": "tests/test_approval_service_api_serialization.py",
+      "ok": true,
+      "exit_code": 0,
+      "stdout_tail": "ecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 4 warnings in 0.32s\n"
+    }
+  ],
+  "pass": true
+}

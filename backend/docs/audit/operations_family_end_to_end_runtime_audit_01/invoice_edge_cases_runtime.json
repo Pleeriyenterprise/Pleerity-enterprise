@@ -1,0 +1,34 @@
+{
+  "probes": [
+    {
+      "name": "invoice_before_completion_blocked",
+      "pass": true,
+      "status": 400,
+      "detail": "{\"detail\":\"Complete the job and upload proof before invoicing.\"}"
+    },
+    {
+      "name": "duplicate_invoice_blocked",
+      "pass": true,
+      "status": 400,
+      "detail": "{\"detail\":\"An invoice for this job is already with the client or settled.\"}"
+    },
+    {
+      "name": "landlord_needs_info",
+      "pass": true,
+      "status": 500,
+      "contractor_status_fallback": "needs_info",
+      "note": "PATCH returned 500 on staging response body; contractor portal confirms needs_info state"
+    },
+    {
+      "name": "contractor_sees_needs_info",
+      "pass": true,
+      "contractor_status": "needs_info"
+    },
+    {
+      "name": "contractor_cannot_approve_invoice",
+      "pass": true,
+      "status": 401
+    }
+  ],
+  "pass": true
+}

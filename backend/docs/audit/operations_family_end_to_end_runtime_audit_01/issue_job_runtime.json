@@ -1,0 +1,41 @@
+{
+  "issue_id": "7e27f818-1962-4add-9102-b3e7311197f6",
+  "work_order_id": "fd162562-b358-4636-a130-fc683ed869fe",
+  "steps": [
+    {
+      "step": "create_issue",
+      "ok": true,
+      "detail": "status=200 id=7e27f818-1962-4add-9102-b3e7311197f6",
+      "at_utc": "2026-06-04T12:27:43.875391+00:00"
+    },
+    {
+      "step": "create_work_order",
+      "ok": true,
+      "detail": "status=200 wo=fd162562-b358-4636-a130-fc683ed869fe",
+      "at_utc": "2026-06-04T12:27:50.940297+00:00"
+    },
+    {
+      "step": "duplicate_create_wo_blocked",
+      "ok": true,
+      "detail": "status=200",
+      "at_utc": "2026-06-04T12:27:57.691280+00:00"
+    },
+    {
+      "step": "issue_in_list",
+      "ok": true,
+      "at_utc": "2026-06-04T12:28:15.737850+00:00"
+    },
+    {
+      "step": "job_in_list",
+      "ok": true,
+      "at_utc": "2026-06-04T12:28:21.319798+00:00"
+    },
+    {
+      "step": "timeline_updated",
+      "ok": true,
+      "at_utc": "2026-06-04T12:28:27.390783+00:00",
+      "detail": "items=4"
+    }
+  ],
+  "pass": true
+}

@@ -50,6 +50,29 @@ def _parse_dt(value: Any) -> Optional[datetime]:
         return None
 
 
+def _invoice_for_api(doc: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Strip Mongo _id and normalize datetimes for JSON API responses."""
+    if not doc:
+        return None
+    out = dict(doc)
+    out.pop("_id", None)
+    for key in ("submitted_at", "reviewed_at", "paid_at", "created_at", "updated_at"):
+        val = out.get(key)
+        if hasattr(val, "isoformat"):
+            out[key] = val.isoformat()
+    return out
+
+
+def _history_row_for_api(row: Dict[str, Any]) -> Dict[str, Any]:
+    out = dict(row)
+    out.pop("_id", None)
+    for key in ("created_at",):
+        val = out.get(key)
+        if hasattr(val, "isoformat"):
+            out[key] = val.isoformat()
+    return out
+
+
 async def _resolve_labels(
     db,
     client_id: str,
@@ -227,8 +250,9 @@ async def list_approvals(
     # Enrich each invoice for response
     approvals = []
     for inv in invoices:
+        base = _invoice_for_api(inv) or {}
         approvals.append({
-            **inv,
+            **base,
             "property_label": labels["properties"].get(inv.get("property_id") or "", inv.get("property_id") or "—"),
             "contractor_label": labels["contractors"].get(inv.get("contractor_id") or "", inv.get("contractor_id") or "—"),
             "work_order_label": labels["work_orders"].get(inv.get("work_order_id") or "", inv.get("work_order_id") or "—"),
@@ -277,12 +301,13 @@ async def get_approval(client_id: str, invoice_id: str) -> Optional[Dict[str, An
         [inv.get("contractor_id")] if inv.get("contractor_id") else [],
         [inv.get("work_order_id")] if inv.get("work_order_id") else [],
     )
+    base = _invoice_for_api(inv) or {}
     return {
-        **inv,
+        **base,
         "property_label": labels["properties"].get(inv.get("property_id") or "", inv.get("property_id") or "—"),
         "contractor_label": labels["contractors"].get(inv.get("contractor_id") or "", inv.get("contractor_id") or "—"),
         "work_order_label": labels["work_orders"].get(inv.get("work_order_id") or "", inv.get("work_order_id") or "—"),
-        "history": history,
+        "history": [_history_row_for_api(h) for h in history],
     }
 
 

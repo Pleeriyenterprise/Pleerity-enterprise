@@ -1,0 +1,34 @@
+{
+  "programme_e2e": "OPERATIONS-FAMILY-END-TO-END-RUNTIME-AUDIT-01",
+  "classification_e2e": "FAIL_OPERATIONAL",
+  "programme_invoice_closeout": "OPERATIONS-FAMILY-INVOICE-CLOSEOUT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "classification_combined": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [
+    "STAGING_APPROVALS_GET_500_UNTIL_DEPLOY"
+  ],
+  "blockers_resolved": [
+    "invoice_entitlement"
+  ],
+  "blockers_remaining": [],
+  "classified_at_utc": "2026-06-04T13:32:59.013995+00:00",
+  "run_tag_closeout": "20260604T132330Z",
+  "marker_closeout": "OPS-INV-CLOSEOUT-20260604T132330Z",
+  "checklist_closeout": {
+    "entitlement": true,
+    "invoice_closeout": true,
+    "edge_cases": true,
+    "cross_surface": true,
+    "audit_trail": true,
+    "permissions": true,
+    "risk": true,
+    "regression": true
+  },
+  "prior_e2e_checklist": null,
+  "notes_closeout": [
+    "INVOICING enabled via governed admin PATCH.",
+    "Approve/mark-paid/paid state proven via contractor portal + PATCH side effects.",
+    "GET /client/approvals returns 500 on staging until approval_service _id serialization fix deploys.",
+    "Fix committed in approval_service.py + test_approval_service_api_serialization.py."
+  ]
+}

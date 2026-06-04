@@ -1,0 +1,314 @@
+{
+  "active_signal_count": 10,
+  "financial_related_sample": [
+    {
+      "signal_id": "rs_f47870a5506a",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "asset_id": null,
+      "signal_category": "financial_operational",
+      "risk_type": "RENT_SEVERELY_OVERDUE",
+      "risk_level": "high",
+      "description": "9 rent period(s) severely overdue (14+ days)",
+      "suggested_actions": [
+        "Review rent ledger and follow up with tenant",
+        "Record payments when received"
+      ],
+      "trend": "stable",
+      "score": null,
+      "reasons": [
+        "9 rent period(s) severely overdue (14+ days)"
+      ],
+      "recommended_action": "Review operational rent position for this property",
+      "status": "active",
+      "source": "rent_operations",
+      "stable_key": "RENT_SEVERELY_OVERDUE_d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "generated_at": "2026-06-04T04:47:46.850282+00:00",
+      "updated_at": "2026-06-04T04:47:46.850302+00:00",
+      "risk_type_label_client": "Rent Severely Overdue",
+      "risk_type_label_admin": "RENT_SEVERELY_OVERDUE",
+      "recommended_action_client": "Review operational rent position for this property.",
+      "operational_continuation": {
+        "mode": "create",
+        "has_active_lineage": false
+      },
+      "operational_cognition": {
+        "cognition_version": "operational_cognition_v1",
+        "entity_type": "risk_signal",
+        "read_only": true,
+        "forbidden_mutations": [
+          "clear_arrears",
+          "clear_obligation",
+          "complete_work_order",
+          "infer_legal_compliance",
+          "mark_compliant",
+          "mint_workflow",
+          "override_evidence_review",
+          "resolve_workflow",
+          "suppress_degraded_state",
+          "suppress_operational_debt",
+          "verify_evidence"
+        ],
+        "primary_action": {
+          "key": "review",
+          "label": "Review risk signal",
+          "source": "risk_signal_service"
+        },
+        "continuation_state": {
+          "mode": "create",
+          "summary": null,
+          "has_active_lineage": false
+        },
+        "workflow_state": {
+          "signal_status": "active",
+          "risk_type": "RENT_SEVERELY_OVERDUE"
+        },
+        "progression_state": {
+          "recommended_action": "Review operational rent position for this property"
+        },
+        "blockers": [],
+        "warnings": [],
+        "review_state": {},
+        "escalation_state": {
+          "active": false,
+          "level": null,
+          "label": "RENT_SEVERELY_OVERDUE"
+        },
+        "degraded_state": {
+          "active": false
+        },
+        "stale_state": {
+          "active": false
+        },
+        "operational_truth_flags": {
+          "assigned_not_fixed": false,
+          "uploaded_not_verified": false,
+          "submitted_not_compliant": false,
+          "completed_not_compliant": false,
+          "acknowledged_not_resolved": false
+        },
+        "recommended_priority": "normal",
+        "user_safe_summary": "Review operational rent position for this property",
+        "list_guidance": {
+          "recommended_action_label": "Review risk signal",
+          "recommended_action_url": null,
+          "recommended_action_key": "review",
+          "continuation_summary": "create",
+          "escalation_badge": "RENT_SEVERELY_OVERDUE",
+          "escalation_level": null,
+          "stale_warning": false,
+          "degraded_warning": false,
+          "blocker_summary": null,
+          "cognition_version": "operational_cognition_v1"
+        }
+      }
+    },
+    {
+      "signal_id": "rs_e80553df6e7b",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "asset_id": null,
+      "signal_category": "financial_operational",
+      "risk_type": "RENT_OVERDUE",
+      "risk_level": "medium",
+      "description": "7 rent period(s) overdue",
+      "suggested_actions": [
+        "Review rent ledger and follow up with tenant",
+        "Record payments when received"
+      ],
+      "trend": "stable",
+      "score": null,
+      "reasons": [
+        "7 rent period(s) overdue"
+      ],
+      "recommended_action": "Review operational rent position for this property",
+      "status": "active",
+      "source": "rent_operations",
+      "stable_key": "RENT_OVERDUE_d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "generated_at": "2026-06-04T04:47:46.489223+00:00",
+      "updated_at": "2026-06-04T04:47:46.489241+00:00",
+      "risk_type_label_client": "Rent Overdue",
+      "risk_type_label_admin": "RENT_OVERDUE",
+      "recommended_action_client": "Review operational rent position for this property.",
+      "operational_continuation": {
+        "mode": "create",
+        "has_active_lineage": false
+      },
+      "operational_cognition": {
+        "cognition_version": "operational_cognition_v1",
+        "entity_type": "risk_signal",
+        "read_only": true,
+        "forbidden_mutations": [
+          "clear_arrears",
+          "clear_obligation",
+          "complete_work_order",
+          "infer_legal_compliance",
+          "mark_compliant",
+          "mint_workflow",
+          "override_evidence_review",
+          "resolve_workflow",
+          "suppress_degraded_state",
+          "suppress_operational_debt",
+          "verify_evidence"
+        ],
+        "primary_action": {
+          "key": "review",
+          "label": "Review risk signal",
+          "source": "risk_signal_service"
+        },
+        "continuation_state": {
+          "mode": "create",
+          "summary": null,
+          "has_active_lineage": false
+        },
+        "workflow_state": {
+          "signal_status": "active",
+          "risk_type": "RENT_OVERDUE"
+        },
+        "progression_state": {
+          "recommended_action": "Review operational rent position for this property"
+        },
+        "blockers": [],
+        "warnings": [],
+        "review_state": {},
+        "escalation_state": {
+          "active": false,
+          "level": null,
+          "label": "RENT_OVERDUE"
+        },
+        "degraded_state": {
+          "active": false
+        },
+        "stale_state": {
+          "active": false
+        },
+        "operational_truth_flags": {
+          "assigned_not_fixed": false,
+          "uploaded_not_verified": false,
+          "submitted_not_compliant": false,
+          "completed_not_compliant": false,
+          "acknowledged_not_resolved": false
+        },
+        "recommended_priority": "normal",
+        "user_safe_summary": "Review operational rent position for this property",
+        "list_guidance": {
+          "recommended_action_label": "Review risk signal",
+          "recommended_action_url": null,
+          "recommended_action_key": "review",
+          "continuation_summary": "create",
+          "escalation_badge": "RENT_OVERDUE",
+          "escalation_level": null,
+          "stale_warning": false,
+          "degraded_warning": false,
+          "blocker_summary": null,
+          "cognition_version": "operational_cognition_v1"
+        }
+      }
+    },
+    {
+      "signal_id": "rs_41e75708db25",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "asset_id": null,
+      "signal_category": "financial_operational",
+      "risk_type": "RENT_SEVERELY_OVERDUE",
+      "risk_level": "high",
+      "description": "9 rent period(s) severely overdue (14+ days)",
+      "suggested_actions": [
+        "Review rent ledger and follow up with tenant",
+        "Record payments when received"
+      ],
+      "trend": "stable",
+      "score": null,
+      "reasons": [
+        "9 rent period(s) severely overdue (14+ days)"
+      ],
+      "recommended_action": "Review operational rent position for this property",
+      "status": "resolved",
+      "source": "rent_operations",
+      "stable_key": "RENT_SEVERELY_OVERDUE_d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "generated_at": "2026-05-28T04:46:38.809962+00:00",
+      "updated_at": "2026-05-28T17:30:26.955663+00:00",
+      "risk_type_label_client": "Rent Severely Overdue",
+      "risk_type_label_admin": "RENT_SEVERELY_OVERDUE",
+      "recommended_action_client": "Review operational rent position for this property.",
+      "operational_continuation": {
+        "mode": "create",
+        "has_active_lineage": false
+      },
+      "operational_cognition": {
+        "cognition_version": "operational_cognition_v1",
+        "entity_type": "risk_signal",
+        "read_only": true,
+        "forbidden_mutations": [
+          "clear_arrears",
+          "clear_obligation",
+          "complete_work_order",
+          "infer_legal_compliance",
+          "mark_compliant",
+          "mint_workflow",
+          "override_evidence_review",
+          "resolve_workflow",
+          "suppress_degraded_state",
+          "suppress_operational_debt",
+          "verify_evidence"
+        ],
+        "primary_action": {
+          "key": "review",
+          "label": "Review risk signal",
+          "source": "risk_signal_service"
+        },
+        "continuation_state": {
+          "mode": "create",
+          "summary": null,
+          "has_active_lineage": false
+        },
+        "workflow_state": {
+          "signal_status": "resolved",
+          "risk_type": "RENT_SEVERELY_OVERDUE"
+        },
+        "progression_state": {
+          "recommended_action": "Review operational rent position for this property"
+        },
+        "blockers": [],
+        "warnings": [],
+        "review_state": {},
+        "escalation_state": {
+          "active": false,
+          "level": null,
+          "label": "RENT_SEVERELY_OVERDUE"
+        },
+        "degraded_state": {
+          "active": false
+        },
+        "stale_state": {
+          "active": false
+        },
+        "operational_truth_flags": {
+          "assigned_not_fixed": false,
+          "uploaded_not_verified": false,
+          "submitted_not_compliant": false,
+          "completed_not_compliant": false,
+          "acknowledged_not_resolved": false
+        },
+        "recommended_priority": "normal",
+        "user_safe_summary": "Review operational rent position for this property",
+        "list_guidance": {
+          "recommended_action_label": "Review risk signal",
+          "recommended_action_url": null,
+          "recommended_action_key": "review",
+          "continuation_summary": "create",
+          "escalation_badge": "RENT_SEVERELY_OVERDUE",
+          "escalation_level": null,
+          "stale_warning": false,
+          "degraded_warning": false,
+          "blocker_summary": null,
+          "cognition_version": "operational_cognition_v1"
+        }
+      }
+    }
+  ],
+  "false_paid_invoice_signal": false,
+  "note": "No spurious invoice-paid risk signal observed; unpaid-invoice rules not re-derived this run.",
+  "pass": true
+}

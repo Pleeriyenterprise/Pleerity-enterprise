@@ -1,0 +1,21 @@
+{
+  "surfaces": {
+    "issues_list_open": 116,
+    "work_orders_open": 108,
+    "protection_snapshot_open_issues": 116,
+    "protection_snapshot_risk_active": 10,
+    "risk_signals_list_status": 200,
+    "rent_summary_status": 200,
+    "property_status": 404
+  },
+  "consistency": [
+    {
+      "check": "open_issues_vs_protection_snapshot",
+      "pass": true,
+      "api_list": 116,
+      "snapshot": 116,
+      "delta": 0
+    }
+  ],
+  "pass": true
+}

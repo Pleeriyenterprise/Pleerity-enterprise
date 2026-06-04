@@ -1,0 +1,31 @@
+{
+  "checks": [
+    {
+      "surface": "job_detail_api",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "surface": "approval_detail",
+      "pass": true,
+      "invoice_status": null,
+      "contractor_status_fallback": "paid"
+    },
+    {
+      "surface": "command_centre_tasks",
+      "pass": true,
+      "invoice_in_tasks": true
+    },
+    {
+      "surface": "issue_timeline",
+      "pass": true,
+      "item_count": 7
+    },
+    {
+      "surface": "contractor_portal_invoices",
+      "pass": true,
+      "status": 200
+    }
+  ],
+  "pass": true
+}

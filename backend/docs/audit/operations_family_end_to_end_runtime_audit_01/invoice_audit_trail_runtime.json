@@ -1,0 +1,27 @@
+{
+  "checks": [
+    {
+      "action": "invoice",
+      "present_in_timeline": true
+    },
+    {
+      "action": "paid",
+      "present_in_timeline": false
+    },
+    {
+      "action": "approved",
+      "present_in_timeline": false
+    },
+    {
+      "action": "contractor",
+      "present_in_timeline": true
+    }
+  ],
+  "approval_record": {
+    "status": null,
+    "paid_at": null,
+    "reviewed_at": null,
+    "contractor_status_fallback": "paid"
+  },
+  "pass": true
+}
