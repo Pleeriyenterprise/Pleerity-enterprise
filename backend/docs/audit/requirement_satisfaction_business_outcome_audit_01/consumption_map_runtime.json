@@ -1,0 +1,28 @@
+{
+  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
+  "audited_at": "2026-06-04T11:09:51.475767+00:00",
+  "registry_surfaces": {
+    "resolver": "PARTIALLY_GOVERNED",
+    "requirements_list": "PARTIALLY_GOVERNED",
+    "score_drivers": "PARTIALLY_GOVERNED",
+    "command_centre": "PARTIALLY_GOVERNED",
+    "today_tasks": "PARTIALLY_GOVERNED",
+    "work_queue": "PARTIALLY_GOVERNED",
+    "reports_exports": "PARTIALLY_GOVERNED",
+    "property_compliance_matrix": "PARTIALLY_GOVERNED",
+    "needs_attention": "PARTIALLY_GOVERNED",
+    "audit_pipeline": "FULLY_GOVERNED",
+    "frontend_cta": "PARTIALLY_GOVERNED",
+    "frontend_status": "PARTIALLY_GOVERNED",
+    "reminder_generation": "PARTIALLY_GOVERNED",
+    "gap_engine": "PARTIALLY_GOVERNED",
+    "reports_exports_note": "reporting_semantics_v1 wired; EXECUTION_SEMANTICS not consumed",
+    "dashboard_cognition": "PARTIALLY_GOVERNED",
+    "immutable_artifacts": "FULLY_GOVERNED",
+    "score_propagation": "PARTIALLY_GOVERNED",
+    "escalation_logic": "PARTIALLY_GOVERNED",
+    "human_language_layer": "PARTIALLY_GOVERNED"
+  },
+  "doc_drift": "GOVERNANCE_CONSUMPTION_MAP.md lists reminder_generation UNGOVERNED; registry updated to PARTIAL",
+  "status": "re_audited"
+}

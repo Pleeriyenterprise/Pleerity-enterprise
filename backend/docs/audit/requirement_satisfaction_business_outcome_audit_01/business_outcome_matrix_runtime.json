@@ -1,0 +1,158 @@
+{
+  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
+  "audited_at": "2026-06-04T11:09:51.441957+00:00",
+  "cells": [
+    {
+      "workflow_class": "VERIFIED_DOCUMENT",
+      "surface": "Today",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Attention suppressed; satisfaction true; KPI COMPLIANT/VALID when authority synced"
+    },
+    {
+      "workflow_class": "VERIFIED_DOCUMENT",
+      "surface": "Command Centre",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Attention suppressed; satisfaction true; KPI COMPLIANT/VALID when authority synced"
+    },
+    {
+      "workflow_class": "VERIFIED_DOCUMENT",
+      "surface": "Requirements",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Attention suppressed; satisfaction true; KPI COMPLIANT/VALID when authority synced"
+    },
+    {
+      "workflow_class": "VERIFIED_DOCUMENT",
+      "surface": "Property page",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Attention suppressed; satisfaction true; KPI COMPLIANT/VALID when authority synced"
+    },
+    {
+      "workflow_class": "VERIFIED_DOCUMENT",
+      "surface": "Documents tab",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Attention suppressed; satisfaction true; KPI COMPLIANT/VALID when authority synced"
+    },
+    {
+      "workflow_class": "SATISFIED_UNVERIFIED",
+      "surface": "Today",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Phase2b: no false action tasks when truth stages satisfied"
+    },
+    {
+      "workflow_class": "SATISFIED_UNVERIFIED",
+      "surface": "Command Centre",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Phase2b: no false action tasks when truth stages satisfied"
+    },
+    {
+      "workflow_class": "SATISFIED_UNVERIFIED",
+      "surface": "Requirements",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Phase2b: no false action tasks when truth stages satisfied"
+    },
+    {
+      "workflow_class": "SATISFIED_UNVERIFIED",
+      "surface": "Property page",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Phase2b: no false action tasks when truth stages satisfied"
+    },
+    {
+      "workflow_class": "SELF_RECORDED",
+      "surface": "Compliance score",
+      "classification": "EXPECTED_BY_DESIGN",
+      "note": "0.85 assurance fraction \u2014 not full certificate credit"
+    },
+    {
+      "workflow_class": "SELF_RECORDED",
+      "surface": "Portfolio dashboard",
+      "classification": "PARTIAL",
+      "note": "Headline persisted score async; may lag satisfaction moment"
+    },
+    {
+      "workflow_class": "EXTERNAL_ASSESSMENT",
+      "surface": "Today",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "followup_required \u2192 attention eligible \u2192 not satisfied"
+    },
+    {
+      "workflow_class": "EXTERNAL_ASSESSMENT",
+      "surface": "Professional PDFs",
+      "classification": "EXPECTED_BY_DESIGN",
+      "note": "May list assessment rows in unresolved when self-recorded exposure required"
+    },
+    {
+      "workflow_class": "PLATFORM_REVIEW_PENDING",
+      "surface": "Today",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Attention remains; is_requirement_satisfied false"
+    },
+    {
+      "workflow_class": "PLATFORM_REVIEW_PENDING",
+      "surface": "Compliance score",
+      "classification": "EXPECTED_BY_DESIGN",
+      "note": "0.80 fraction with linked doc; assurance pending status"
+    },
+    {
+      "workflow_class": "SATISFIED_UNVERIFIED",
+      "surface": "Evidence Readiness PDF",
+      "classification": "REGULATOR_CONSERVATISM_DRIFT",
+      "note": "is_unresolved_row includes SATISFIED_UNVERIFIED \u2014 conservative vs operational suppression"
+    },
+    {
+      "workflow_class": "SATISFIED_UNVERIFIED",
+      "surface": "Immutable audit artifacts",
+      "classification": "EXPECTED_BY_DESIGN",
+      "note": "Frozen point-in-time may include self-recorded in unresolved exposure"
+    },
+    {
+      "workflow_class": "VERIFIED_DOCUMENT",
+      "surface": "Evidence Readiness PDF",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Verified rows typically excluded from unresolved unless overdue/expiring"
+    },
+    {
+      "workflow_class": "CONDITION_STANDARD",
+      "surface": "Requirements",
+      "classification": "PARTIAL",
+      "note": "Workflow audit flags; operational convergence not certificate satisfaction"
+    },
+    {
+      "workflow_class": "ACTIVE_STANDARD",
+      "surface": "Compliance score",
+      "classification": "EXPECTED_BY_DESIGN",
+      "note": "Guidance/operational model \u2014 not upload-only closure"
+    },
+    {
+      "workflow_class": "DOCUMENT_UPLOAD",
+      "surface": "Reminder generation",
+      "classification": "PARTIAL",
+      "note": "Registry marks PARTIAL; satisfaction gate not proven in reminder jobs grep"
+    },
+    {
+      "workflow_class": "GUIDED_DECLARATION",
+      "surface": "Digests",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Uses calculate_compliance_score stats + enriched rows"
+    },
+    {
+      "workflow_class": "SELF_RECORDED",
+      "surface": "CSV exports",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Human-language headline; integration rows retain machine keys"
+    },
+    {
+      "workflow_class": "PLATFORM_REVIEW_PENDING",
+      "surface": "Pending review queues",
+      "classification": "VERIFIED_OPERATIONALLY",
+      "note": "Queue surfaces align with PENDING_REVIEW lifecycle"
+    }
+  ],
+  "classification_counts": {
+    "VERIFIED_OPERATIONALLY": 15,
+    "EXPECTED_BY_DESIGN": 5,
+    "PARTIAL": 3,
+    "REGULATOR_CONSERVATISM_DRIFT": 1
+  },
+  "total_cells": 24,
+  "status": "matrix_built"
+}

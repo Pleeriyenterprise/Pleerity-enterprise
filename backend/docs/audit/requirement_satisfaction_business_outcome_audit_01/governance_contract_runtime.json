@@ -1,0 +1,66 @@
+{
+  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
+  "audited_at": "2026-06-04T11:09:50.814543+00:00",
+  "sources": {
+    "WORKFLOW_BEHAVIOUR_GOVERNANCE": "docs/WORKFLOW_BEHAVIOUR_GOVERNANCE.md",
+    "COMPLIANCE_CLIENT_STATUS_AUTHORITY": "docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md",
+    "GOVERNANCE_CONSUMPTION_MAP": "docs/GOVERNANCE_CONSUMPTION_MAP.md",
+    "STREAM_B_SCORING_AUTHORITY_MATRIX": "docs/STREAM_B_SCORING_AUTHORITY_MATRIX.md"
+  },
+  "A_user_business_outcomes": [
+    "Evidence recorded \u2260 obligation satisfied \u2260 remediation complete (core principle)",
+    "Per-class user outcomes in Workflow Execution & System Behaviour Semantics (A column)",
+    "Landlord operational surfaces must not show false action on satisfied truth (attention suppression)",
+    "Must not imply external verification on GUIDED_DECLARATION / self-recorded paths"
+  ],
+  "B_system_runtime_outcomes": [
+    "enrich_requirement_dict attaches satisfaction + attention fields",
+    "Authority sync + enqueue_compliance_recalc on material mutations",
+    "Score recalc via recalculate_and_persist (authoritative writer)",
+    "EXECUTION_SEMANTICS_METADATA documents may_trigger_* effects \u2014 not engine-consumed"
+  ],
+  "C_workflow_class_expectations": {
+    "DOCUMENT_UPLOAD": "May directly satisfy; high score impact; expiry attention may remain",
+    "GUIDED_DECLARATION": "May satisfy when complete; moderate score; no statutory verification",
+    "EXTERNAL_ASSESSMENT": "Conditional; follow-ups may block satisfaction truth",
+    "TENANT_DELIVERY": "Delivery recorded not legal outcome",
+    "ACTIVE_STANDARD_CONDITION_STANDARD": "Operational convergence only; not document-only closure",
+    "PLATFORM_REVIEW_PENDING": "Attention eligible; not fully satisfied for score/action"
+  },
+  "D_score_by_class": {
+    "verified_document": "Full VALID/COMPLIANT fraction path",
+    "self_recorded_satisfied_unverified": "SATISFIED_SELF_RECORDED_FRACTION=0.85",
+    "platform_review_pending": "SATISFIED_PLATFORM_REVIEW_FRACTION=0.80",
+    "async_headline": "Persisted headline may lag live satisfaction (queue)"
+  },
+  "E_attention_remediation": [
+    "requirement_attention_eligibility_service suppresses satisfied truth stages",
+    "followup_required / operational_incomplete keeps attention eligible",
+    "is_requirement_satisfied returns False when attention eligible"
+  ],
+  "F_verification_vs_recording": [
+    "VERIFIED / VERIFIED_DOCUMENT = platform-accepted evidence",
+    "SATISFIED_UNVERIFIED / SELF_RECORDED = recorded on file not regulator-verified",
+    "PENDING_REVIEW = awaiting platform review"
+  ],
+  "G_operational_vs_regulator": [
+    "KPI-authoritative surfaces: projected status + stats",
+    "Operational task flow: Today/CC may diverge by design",
+    "Audit/regulator exports: conservative unresolved exposure for self-recorded"
+  ],
+  "H_documentation_only_execution": {
+    "keys": [
+      "CONDITION_STANDARD_ACTIVE_STANDARD",
+      "DOCUMENT_UPLOAD",
+      "EXTERNAL_ASSESSMENT_EVIDENCE",
+      "GUIDANCE_ONLY",
+      "GUIDED_DECLARATION",
+      "MULTI_EVIDENCE",
+      "REGISTRATION_TRACKING",
+      "TENANT_DELIVERY"
+    ],
+    "metadata_rows": 8,
+    "runtime_consumption": "governance_validation_engine + audit_pipeline only; engines explicit non-consumer"
+  },
+  "status": "extracted"
+}

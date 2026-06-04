@@ -1,0 +1,33 @@
+{
+  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
+  "audited_at": "2026-06-04T11:09:51.475767+00:00",
+  "mechanisms": [
+    "compliance_score_pending flag",
+    "score_status calculating|partial|stale",
+    "enqueue_compliance_recalc queue",
+    "headline persisted vs live stats split (STREAM_B matrix)"
+  ],
+  "disclosures": [
+    "async_reporting_disclosure human lines",
+    "scoreFreshnessUi CALCULATING_SCORE_FALLBACK_MESSAGE",
+    "human_score_status_label on exports/UI"
+  ],
+  "suppression": [
+    "Satisfied rows suppress attention regardless of async headline",
+    "Stale does not re-open satisfied truth"
+  ],
+  "findings": [
+    {
+      "issue": "Headline may lag satisfaction moment",
+      "classification": "ACCEPTABLE_ASYNC_GOVERNANCE",
+      "note": "Disclosed; not a satisfaction truth bug"
+    },
+    {
+      "issue": "Landlord may read low headline while rows show recorded on file",
+      "classification": "UX_TRUST_GAP",
+      "note": "Bounded; mitigated by status messages"
+    }
+  ],
+  "overall": "ACCEPTABLE_ASYNC_GOVERNANCE",
+  "status": "classified"
+}

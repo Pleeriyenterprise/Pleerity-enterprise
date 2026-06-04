@@ -1,0 +1,37 @@
+{
+  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
+  "audited_at": "2026-06-04T11:09:51.475767+00:00",
+  "metadata_keys": [
+    "CONDITION_STANDARD_ACTIVE_STANDARD",
+    "DOCUMENT_UPLOAD",
+    "EXTERNAL_ASSESSMENT_EVIDENCE",
+    "GUIDANCE_ONLY",
+    "GUIDED_DECLARATION",
+    "MULTI_EVIDENCE",
+    "REGISTRATION_TRACKING",
+    "TENANT_DELIVERY"
+  ],
+  "documented_note": "Merged into get_workflow_capabilities; not consumed by runtime engines",
+  "runtime_authoritative": [
+    "requirement_satisfaction_service",
+    "requirement_attention_eligibility_service",
+    "compliance_scoring_v2 satisfaction fractions",
+    "reporting_semantics_v1",
+    "immutable_report_artifact_service"
+  ],
+  "documentation_only": [
+    "EXECUTION_SEMANTICS_METADATA may_trigger_* flags",
+    "system_execution_effects frozensets"
+  ],
+  "consumes_execution_semantics_surfaces": [
+    "audit_pipeline"
+  ],
+  "orchestration_procedural": [
+    "enqueue_compliance_recalc (queue)",
+    "reminder_generation (PARTIAL registry)",
+    "report PDF layout (report_layout_governance not EXECUTION_SEMANTICS)"
+  ],
+  "classification": "GOVERNANCE_DOCUMENTATION_AHEAD_OF_RUNTIME",
+  "sub_classification": "UNUSED_METADATA for engines; PARTIALLY_CONSUMED for audit_pipeline",
+  "status": "gap_documented"
+}

@@ -1,0 +1,60 @@
+{
+  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
+  "audited_at": "2026-06-04T11:09:51.441957+00:00",
+  "authority_chain": [
+    "requirement_truth.enrich_requirement_dict (client)",
+    "\u2192 attach_satisfaction_fields",
+    "\u2192 reconcile_client_lifecycle_with_satisfaction",
+    "\u2192 project_requirement_row_client_runtime (KPI status)",
+    "\u2192 compliance_scoring_v2._satisfaction_aware_assurance_fraction",
+    "\u2192 requirement_attention_eligibility_service.is_requirement_attention_eligible"
+  ],
+  "fields": {
+    "requirement_satisfied": "is_requirement_satisfied()",
+    "missing_required_document": "derive_missing_document_status / document_gap",
+    "requirement_attention_eligible": "is_requirement_attention_eligible()[0]",
+    "client_lifecycle_state": "client_requirement_lifecycle + satisfaction reconcile",
+    "assurance_tier": "cer_governance_presentation.derive_assurance_tier",
+    "score_fractions": {
+      "self_recorded": 0.85,
+      "platform_review": 0.8
+    }
+  },
+  "satisfied_truth_stages": [
+    "assessment_recorded",
+    "declaration_recorded",
+    "evidence_recorded",
+    "recorded_on_file",
+    "verified"
+  ],
+  "sample_declaration": {
+    "document_upload_required": false,
+    "missing_required_document": false,
+    "requirement_satisfied": true,
+    "satisfaction_source": "self_certified_record",
+    "missing_document_status": "NOT_REQUIRED",
+    "requirement_resolution_status": "RESOLVED",
+    "requirement_attention_eligible": false,
+    "requirement_attention_reason": null,
+    "requirement_attention_suppression": "declaration_recorded",
+    "portal_renewal_countdown_eligible": false,
+    "document_gap": false,
+    "requirement_gap": false
+  },
+  "sample_followup_blocks_satisfaction": {
+    "requirement_satisfied": false,
+    "attention_eligible": true
+  },
+  "provisional_paths": [
+    "PENDING_REVIEW / platform_verification_pending",
+    "followup_required / operational_incomplete",
+    "legacy unsynced authority bridge"
+  ],
+  "non_regulator_sufficient": [
+    "SATISFIED_UNVERIFIED lifecycle",
+    "SELF_RECORDED assurance tier",
+    "declaration_recorded without VERIFIED truth stage"
+  ],
+  "operational_suppression": "attention eligible False + suppression reason set \u2192 Today/CC filters",
+  "status": "verified_in_code"
+}

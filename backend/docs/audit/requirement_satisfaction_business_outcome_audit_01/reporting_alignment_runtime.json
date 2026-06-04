@@ -1,0 +1,38 @@
+{
+  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
+  "audited_at": "2026-06-04T11:09:51.475767+00:00",
+  "surfaces": {
+    "evidence_readiness_pdf": {
+      "operational_truth": "Uses enrich pipeline + governance context",
+      "regulator_truth": "Conservative unresolved includes self-recorded",
+      "classification": "REGULATOR_CONSERVATISM_DRIFT"
+    },
+    "professional_compliance_pdf": {
+      "operational_truth": "Immutable snapshot per download",
+      "regulator_truth": "REGULATORY_SUBMISSION grade + disclosures",
+      "classification": "VERIFIED_OPERATIONALLY"
+    },
+    "score_explanation_pdf": {
+      "operational_truth": "Human score status labels",
+      "scoring_truth": "Headline + authority humanized",
+      "classification": "VERIFIED_OPERATIONALLY"
+    },
+    "csv_snapshot": {
+      "operational_truth": "Human headline_score_status",
+      "integration_truth": "Machine keys when SCORING_SEMANTICS_EXPORT_V1",
+      "classification": "VERIFIED_OPERATIONALLY"
+    },
+    "monthly_digest_pdf": {
+      "operational_truth": "Executive summary from assembly model",
+      "classification": "VERIFIED_OPERATIONALLY"
+    }
+  },
+  "intentional_conservatism": [
+    "Unresolved obligations exposure for self-recorded assurance",
+    "Immutable artifact frozen point-in-time",
+    "Assurance chips on matrices"
+  ],
+  "overstate_risk": "SATISFIED_UNVERIFIED in unresolved may overstate 'unresolved' to landlords reading PDF",
+  "understate_risk": "Operational surfaces may understate renewal attention when legacy_due_date blocked (fixed phase2b for declarations)",
+  "status": "aligned_with_tension"
+}

@@ -1,0 +1,41 @@
+{
+  "programme": "REQUIREMENT-SATISFACTION-BUSINESS-OUTCOME-AUDIT-01",
+  "audited_at": "2026-06-04T11:09:51.441957+00:00",
+  "landlord_operator_signals": {
+    "today_command_centre": "Suppress tasks when requirement_attention_eligible false",
+    "requirements_property": "Lifecycle chips + requirement_satisfied on enriched rows",
+    "documents_banner": "document_upload_required gate only",
+    "dashboard_score": "Async honesty + human score status labels"
+  },
+  "regulator_auditor_signals": {
+    "evidence_readiness_pdf": "Unresolved obligations includes SATISFIED_UNVERIFIED by is_unresolved_row",
+    "professional_pdf": "Governance chips + self-recorded disclosure in unresolved intro",
+    "immutable_artifacts": "Frozen bytes + manifest; conservative grade",
+    "csv_integration": "SCORING_SEMANTICS_EXPORT_V1 machine keys preserved"
+  },
+  "contradictions": [
+    {
+      "id": "UNRESOLVED_VS_INBOX",
+      "description": "Landlord inbox suppresses satisfied self-recorded; PDF unresolved section lists SATISFIED_UNVERIFIED",
+      "real": true,
+      "governance_intentional": "Partially \u2014 regulator conservatism vs operational calm",
+      "audience_governance_explicit": false,
+      "recommended_classification": "AUDIENCE_GOVERNANCE_GAP"
+    },
+    {
+      "id": "RECORDED_ON_FILE_WORDING",
+      "description": "Human-language convergence aligns labels; export section title still 'Unresolved obligations'",
+      "real": true,
+      "governance_intentional": "Unclear in WORKFLOW \u2014 reporting emphasises exposure not inbox parity",
+      "recommended_classification": "REGULATOR_CONSERVATISM_DRIFT"
+    }
+  ],
+  "satisfied_unverified_pdf_placement": {
+    "current": "Inside 'Unresolved obligations' via is_unresolved_row lifecycle check",
+    "operational_alternative": "Separate 'Recorded but not independently verified' section",
+    "audit_decision": "CLASSIFY_ONLY \u2014 do not move in this phase",
+    "classification": "AUDIENCE_GOVERNANCE_GAP"
+  },
+  "priority_stance": "Platform currently prioritises regulator-grade evidential conservatism on exports over landlord operational cognition parity",
+  "status": "classified"
+}
