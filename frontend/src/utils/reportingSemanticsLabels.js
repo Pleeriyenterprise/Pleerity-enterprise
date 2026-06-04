@@ -19,8 +19,8 @@ export const REPORTING_SEMANTICS_LABELS = {
     tooltip: 'Projected COMPLIANT/VALID status in the score model — not the same as lifecycle verified.',
   },
   satisfied_requirement_count: {
-    label: 'Lifecycle satisfied',
-    tooltip: 'Recorded evidence (SATISFIED_UNVERIFIED) — assurance may still be pending.',
+    label: 'Recorded on file (unverified)',
+    tooltip: 'Recorded evidence on file — assurance may still be pending.',
   },
   verified_requirement_count: {
     label: 'Lifecycle verified',
@@ -33,7 +33,7 @@ export const REPORTING_SEMANTICS_LABELS = {
 };
 
 export const LIVE_EXPORT_DISCLOSURE =
-  'This download reflects current portfolio state and may differ from earlier exports.';
+  'This export reflects the latest portfolio information and may differ from previous downloads.';
 
 export const AUDIT_PACK_IMMUTABLE_DISCLOSURE =
   'Governed audit artifact: stored at generation with manifest checksums. Re-download returns the same file.';

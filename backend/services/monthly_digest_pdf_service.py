@@ -26,6 +26,7 @@ from services.reporting_semantics_v1 import (
     REPORTING_SEMANTICS_VERSION,
 )
 from services.scoring_explanation_copy import email_score_delta_line
+from services.report_human_language_v1 import human_score_status_label
 from services.scoring_semantics_v1 import headline_score_display_for_export
 from utils.storage_paths import resolve_data_dir
 
@@ -247,7 +248,7 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         ],
         [
             "Score status",
-            html.escape(str(model.get("score_status") or "—")),
+            html.escape(human_score_status_label(model.get("score_status"))),
         ],
         [
             "Last calculated (headline)",

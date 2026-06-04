@@ -1,0 +1,11 @@
+{
+  "programme": "REPORTING-HUMAN-LANGUAGE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T10:39:23.868267+00:00",
+  "classifications": {
+    "pdf_reportlab": "REGULATOR_READY_LANGUAGE",
+    "csv_integration_scoring_metadata": "GOVERNANCE_LANGUAGE_OK",
+    "csv_human_snapshot": "CLIENT_SAFE_LANGUAGE",
+    "jspdf_fallback": "OPERATIONAL_EXPORT label only"
+  },
+  "status": "converged"
+}

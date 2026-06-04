@@ -67,6 +67,29 @@ const OPERATIONAL_LABEL_BY_KEY = {
   compliance_summary: 'Compliance status summary',
   requirements: 'Requirements report',
 
+  // Score headline status (API values unchanged)
+  calculating: 'Score updating',
+  partial: 'Partially calculated',
+  stale: 'Score may be out of date',
+  ok: 'Current',
+  reconciliation_required: 'Reconciliation in progress',
+  unavailable: 'Not available',
+  unknown: 'Status unclear',
+  pending_recalc: 'Score updating',
+
+  // Lifecycle (display only)
+  satisfied_unverified: 'Recorded on file',
+  pending_review: 'Awaiting review',
+  action_required: 'Action required',
+  verified: 'Verified',
+  not_applicable: 'Not applicable',
+
+  // Assurance / compliance tokens
+  self_recorded: 'Self-recorded assurance',
+  verified_document: 'Document verified',
+  platform_reviewed: 'Awaiting review',
+  expiring_soon: 'Renewal approaching',
+
   // Property / occupancy (intake-aligned)
   multi_family: 'Multi-family occupancy',
   single_family: 'Single-family occupancy',

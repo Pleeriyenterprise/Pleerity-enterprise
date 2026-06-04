@@ -126,7 +126,7 @@ def _status_label(s: Optional[str]) -> str:
     if u in ("COMPLIANT", "VALID"):
         return "Evidence in place"
     if u == "EXPIRING_SOON":
-        return "Expiring soon"
+        return "Renewal approaching"
     if u in ("OVERDUE", "EXPIRED"):
         return "Expired / overdue"
     if u in ("PENDING", "MISSING"):
@@ -241,8 +241,10 @@ def _evidence_readiness_headline_score_frag(
 
 def _evidence_readiness_exec_aggregate_meta_html(agg: dict) -> str:
     """HTML lines for executive summary: score status, last portfolio calculation, optional headline note."""
+    from services.report_human_language_v1 import human_score_status_label
+
     st = agg.get("score_status")
-    st_s = _xml_escape(str(st)) if st is not None and str(st) != "" else "—"
+    st_s = _xml_escape(human_score_status_label(st))
     last = _evidence_readiness_last_calc_display(agg.get("portfolio_last_calculated_at"))
     lines = [
         f"<b>Score status:</b> {st_s} &nbsp;|&nbsp; <b>Last score calculation:</b> {_xml_escape(last)}",
@@ -258,7 +260,9 @@ def _evidence_readiness_property_score_cell_html(p: dict, *, now: datetime) -> s
     st = resolve_property_score_status(p, now=now)
     disp = headline_score_display_for_export(p.get("compliance_score"), st)
     primary = f"{disp}/100" if disp.isdigit() else disp
-    meta: List[str] = [f"Score status: {_xml_escape(str(st))}"]
+    from services.report_human_language_v1 import human_score_status_label
+
+    meta: List[str] = [f"Score status: {_xml_escape(human_score_status_label(st))}"]
     lcat = p.get("compliance_last_calculated_at")
     if lcat is not None and str(lcat).strip():
         meta.append(f"Last calculated: {_xml_escape(_evidence_readiness_last_calc_display(lcat))}")
@@ -400,7 +404,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
                 )
             )
         elements.append(Paragraph(
-            "LIVE EXPORT: reflects portfolio state at generation time and may differ from future downloads.",
+            "This export reflects the latest portfolio information and may differ from previous downloads.",
             styles["small"],
         ))
     elements.append(Spacer(1, 8))
@@ -648,7 +652,14 @@ def build_score_explanation_report(
     elements.append(Spacer(1, 8))
     score = score_payload.get("score")
     score_status = score_payload.get("score_status")
+    from services.report_human_language_v1 import (
+        human_score_authority_label,
+        human_score_status_label,
+    )
+
     score_display = headline_score_display_for_export(score, score_status)
+    score_status_human = human_score_status_label(score_status)
+    score_authority_human = human_score_authority_label(score_payload.get("score_authority"))
     grade = score_payload.get("grade") or "—"
     stats = score_payload.get("stats") or {}
     valid = stats.get("compliant", 0)
@@ -670,7 +681,7 @@ def build_score_explanation_report(
         headline_note = f"<br/><b>Headline note:</b> {_xml_escape(ssm)}"
     snapshot_text = f"""
     <b>Overall score (headline):</b> {score_display}{'/100' if score_display.isdigit() else ''} &nbsp;|&nbsp; <b>Grade:</b> {grade}
-    <br/><b>Score status:</b> {score_status or '—'} &nbsp;|&nbsp; <b>Authority:</b> {score_payload.get('score_authority') or '—'}
+    <br/><b>Score status:</b> {_xml_escape(score_status_human)} &nbsp;|&nbsp; <b>Score basis:</b> {_xml_escape(score_authority_human)}
     {cov_note}{headline_note}
     <br/><br/>
     <b>Valid:</b> {valid} &nbsp;|&nbsp; <b>Expiring soon:</b> {expiring} &nbsp;|&nbsp; <b>Overdue:</b> {overdue}
@@ -914,7 +925,7 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
                 )
             )
         elements.append(Paragraph(
-            "LIVE EXPORT: reflects portfolio state at generation time and may differ from future downloads.",
+            "This export reflects the latest portfolio information and may differ from previous downloads.",
             styles["small"],
         ))
     elements.append(Spacer(1, 8))

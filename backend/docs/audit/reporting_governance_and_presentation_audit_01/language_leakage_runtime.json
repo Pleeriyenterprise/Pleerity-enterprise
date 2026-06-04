@@ -1,0 +1,24 @@
+{
+  "programme": "REPORTING-HUMAN-LANGUAGE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T10:39:23.303926+00:00",
+  "module": "services/report_human_language_v1.py",
+  "surfaces_audited": [
+    "pdf_report_builder",
+    "report_layout_governance",
+    "monthly_digest_pdf_service",
+    "professional_reports",
+    "ReportsPage.js",
+    "reportingSemanticsLabels.js",
+    "scoreFreshnessUi.js"
+  ],
+  "fixes_applied": [
+    "PDF footers use export_grade_label not raw AUDIT_ARTIFACT",
+    "Matrix chips use human assurance/lifecycle labels",
+    "Score explanation PDF uses human score status",
+    "CSV snapshot headline_score_status humanized",
+    "UI score_status displays use humanScoreStatusLabel"
+  ],
+  "leak_detector": "contains_internal_language_leak",
+  "sample_safe": true,
+  "status": "remediated"
+}

@@ -22,12 +22,12 @@ def test_date_confidence_estimated_from_authority():
 
 
 def test_assurance_tier_self_recorded():
-    assert assurance_tier_chip({"assurance_tier": "SELF_RECORDED"}) == "SELF-REC"
+    assert assurance_tier_chip({"assurance_tier": "SELF_RECORDED"}) == "Self-recorded assurance"
 
 
 def test_governance_chip_includes_review_when_pending():
     line = governance_chip_line({"client_lifecycle_state": "PENDING_REVIEW"})
-    assert "REVIEW" in line or "Platform" in line
+    assert "Awaiting review" in line or "review" in line.lower()
 
 
 def test_unresolved_collects_action_required():

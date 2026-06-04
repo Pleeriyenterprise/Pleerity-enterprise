@@ -33,6 +33,7 @@ import {
   fetchOperational,
   OPERATIONAL_CACHE_KEYS,
 } from '../utils/clientOperationalFetch';
+import { humanScoreStatusLabel } from '../utils/reportHumanLanguage';
 import {
   aggregateJobSignals,
   attentionBadgeForJob,
@@ -732,7 +733,7 @@ export default function ClientCommandCenterPage() {
               </p>
               {summary.score_status && (
                 <p className="text-xs mt-1 opacity-90">
-                  Status: {summary.score_status}
+                  Status: {humanScoreStatusLabel(summary.score_status)}
                   {summary.last_calculated_at
                     ? ` · Last calculated ${new Date(summary.last_calculated_at).toLocaleString()}`
                     : ''}

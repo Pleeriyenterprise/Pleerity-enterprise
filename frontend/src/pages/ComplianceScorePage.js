@@ -559,7 +559,7 @@ const ComplianceScorePage = () => {
                   <p className="text-lg text-gray-700">{scoreData?.message}</p>
                   {scoreData?.score_status && (
                     <p className="text-xs text-gray-600 mt-1">
-                      Score status: {scoreData.score_status}
+                      Score status: {operationalLabelForToken(scoreData.score_status, { emptyLabel: '—' })}
                       {(scoreData.last_calculated_at || scoreData.portfolio_last_calculated_at) && (
                         <>
                           {' '}

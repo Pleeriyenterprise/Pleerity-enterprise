@@ -1,14 +1,14 @@
 {
-  "programme": "REPORTING-PRESENTATION-USABILITY-PHASE-04",
-  "classified_at": "2026-06-04T09:59:03.566783+00:00",
+  "programme": "REPORTING-HUMAN-LANGUAGE-CONVERGENCE-01",
+  "classified_at": "2026-06-04T10:39:58.700502+00:00",
   "classification": "VERIFIED_OPERATIONALLY",
   "checks": {
-    "branded_covers": true,
-    "table_repeat_headers": true,
-    "monthly_digest_server_pdf": true,
-    "accessibility_enhanced": true,
-    "governance_preserved": true,
-    "whitelabel_convergence": true,
+    "no_enum_leakage_pdf": true,
+    "human_mapping_authoritative": true,
+    "disclosure_converged": true,
+    "export_language_safe": true,
+    "ui_cognition_converged": true,
+    "csv_governance_clarified": true,
     "regression_pass": true
   }
 }

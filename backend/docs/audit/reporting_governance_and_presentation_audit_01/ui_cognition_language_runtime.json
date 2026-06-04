@@ -1,0 +1,14 @@
+{
+  "programme": "REPORTING-HUMAN-LANGUAGE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T10:39:23.869261+00:00",
+  "surfaces": [
+    "ClientDashboard",
+    "ClientCommandCenterPage",
+    "ComplianceScorePage",
+    "PropertyDetailPage",
+    "reportingSemanticsLabels",
+    "scoreFreshnessUi",
+    "presentationLanguage"
+  ],
+  "status": "converged"
+}

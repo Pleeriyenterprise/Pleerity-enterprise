@@ -53,8 +53,8 @@ REPORTING_METRIC_DEFINITIONS: Dict[str, Dict[str, str]] = {
         "authority": "score_projection_pipeline",
     },
     METRIC_SATISFIED: {
-        "label": "Lifecycle satisfied (unverified)",
-        "short_help": "Client lifecycle SATISFIED_UNVERIFIED — recorded evidence not yet fully verified.",
+        "label": "Recorded on file (unverified)",
+        "short_help": "Recorded evidence on file — not yet fully verified by the platform.",
         "authority": "client_lifecycle_state",
     },
     METRIC_VERIFIED: {
@@ -71,21 +71,18 @@ REPORTING_METRIC_DEFINITIONS: Dict[str, Dict[str, str]] = {
         "authority": "score_projection_pipeline",
     },
     METRIC_EXPIRING: {
-        "label": "Expiring soon (score view)",
-        "short_help": "Projected status EXPIRING_SOON in score-tracked set.",
+        "label": "Renewal approaching (score view)",
+        "short_help": "Obligations with renewal or expiry approaching in the score-tracked set.",
         "authority": "score_projection_pipeline",
     },
     METRIC_PLATFORM_REVIEW_PENDING: {
         "label": "Awaiting platform review",
-        "short_help": "Client lifecycle PENDING_REVIEW — evidence submitted, not yet verified.",
+        "short_help": "Evidence submitted — awaiting platform review.",
         "authority": "client_lifecycle_state",
     },
     METRIC_SELF_RECORDED: {
         "label": "Self-recorded assurance",
-        "short_help": (
-            "Rows with assurance_tier SELF_RECORDED or lifecycle SATISFIED_UNVERIFIED "
-            "without verified assurance."
-        ),
+        "short_help": "Self-recorded or on-file assurance without platform verification.",
         "authority": "assurance_tier_and_lifecycle",
     },
 }
@@ -125,7 +122,7 @@ EXPORT_DETERMINISM_POINT_IN_TIME = "point_in_time_snapshot"
 EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT = "immutable_artifact"
 
 LIVE_REGENERATED_DISCLOSURE = (
-    "This report reflects current portfolio state at generation time and may differ from prior downloads."
+    "This export reflects the latest portfolio information and may differ from previous downloads."
 )
 IMMUTABLE_ARTIFACT_DISCLOSURE = (
     "This artifact is stored at generation time with manifest checksums; re-download returns the same bytes."
@@ -369,16 +366,15 @@ def async_reporting_disclosure(
     last_calculated_at: Optional[str],
 ) -> Dict[str, Any]:
     """Disclosure block for exports during async recalc / stale headline."""
+    from services.report_human_language_v1 import human_async_disclosure_lines
+
     st = (score_status or "").strip().lower()
     pending = st in ("calculating", "partial", "reconciliation_required")
     stale = st == "stale"
-    lines = []
-    if pending:
-        lines.append("Portfolio compliance score may be updating; requirement rows reflect current records.")
-    if stale:
-        lines.append("Persisted compliance score is stale; headline may not reflect latest recalculation.")
-    if score_status_message:
-        lines.append(str(score_status_message))
+    lines = human_async_disclosure_lines(
+        score_status=score_status,
+        score_status_message=score_status_message,
+    )
     return {
         "score_status": score_status,
         "score_pending_recalculation": pending,

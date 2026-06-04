@@ -1,0 +1,8 @@
+{
+  "programme": "REPORTING-HUMAN-LANGUAGE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T10:39:23.869261+00:00",
+  "human_facing": "headline_score_status uses human_score_status_label in snapshot CSV",
+  "integration": "SCORING_SEMANTICS_EXPORT_V1 retains machine keys for governed integration",
+  "preamble": "reporting_semantics csv preamble \u2014 metric keys internal; labels in column 3",
+  "status": "clarified"
+}

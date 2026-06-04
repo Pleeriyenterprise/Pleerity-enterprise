@@ -1,18 +1,16 @@
-# Watchlist — post PHASE-04 (2026-06-04)
+# Watchlist — post REPORTING-HUMAN-LANGUAGE-CONVERGENCE-01 (2026-06-04)
 
 ## VERIFIED_OPERATIONALLY
 
 ### Done
-- Branded cover block on governance-grade ReportLab PDFs
-- Table repeatRows on matrices and unresolved tables
-- Monthly digest server PDF via portal route
-- Accessibility-enhanced notice (not PDF/UA certified)
-- White-label logo/name on covers
+- Authoritative human-language mapping (backend + frontend mirror)
+- PDF/CSV/UI enum leakage remediated on governance-grade surfaces
+- Live vs immutable disclosure wording converged
+- Score status and assurance chips human-readable
 
 ### P1
-- [ ] Full PDF/UA tagging if regulator requires formal accessibility certification
-- [ ] GridFS retention policy for governed PDF artifacts
-- [ ] Digest artifact listing UI with artifact_id
+- [ ] Extend human mapping to remaining admin-only diagnostics if desired
+- [ ] Localise labels if multi-language exports required
 
 ### P2
-- [ ] Running header with report title on every page (beyond table headers)
+- [ ] Automated grep audit in CI for forbidden customer terms on PDF golden files

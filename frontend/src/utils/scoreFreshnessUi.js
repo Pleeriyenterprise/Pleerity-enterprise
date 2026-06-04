@@ -19,7 +19,7 @@ export const CALCULATING_SCORE_FALLBACK_MESSAGE =
 
 const DEFAULT_EXPLANATION_WHEN_NO_SERVER_MESSAGE = {
   reconciliation_required:
-    'Persisted compliance scores are not yet available for every property. The headline will update after the next calculation.',
+    'Compliance scores are not yet available for every property. The headline will update after the next calculation.',
   unavailable: 'Compliance score is not available for this view.',
   unknown: 'Compliance score status is unclear. Try refreshing in a moment.',
 };

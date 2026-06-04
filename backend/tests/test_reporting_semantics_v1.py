@@ -129,7 +129,7 @@ def test_jspdf_not_regulatory_grade():
 
 
 def test_live_regenerated_disclosure_present():
-    assert "current portfolio state" in LIVE_REGENERATED_DISCLOSURE.lower()
+    assert "latest portfolio" in LIVE_REGENERATED_DISCLOSURE.lower()
 
 
 def test_build_payload_includes_definitions():

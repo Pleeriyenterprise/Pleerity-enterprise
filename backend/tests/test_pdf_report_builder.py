@@ -86,13 +86,11 @@ def test_evidence_readiness_portfolio_pdf_snapshot_and_score_meta(monkeypatch):
     monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
     data = _minimal_report_data(now_iso="2026-04-30T12:00:00+00:00")
     data["properties"][0]["compliance_last_calculated_at"] = "2026-03-10T15:00:00+00:00"
-    data["properties"][0]["score_status_message"] = "Queued recalculation."
     pdf = build_portfolio_report("client-1", data)
     assert pdf.startswith(b"%PDF")
     assert b"Snapshot generated at" in pdf
     assert b"Score status:" in pdf
     assert b"Last score calculation:" in pdf
-    assert b"Queued recalculation." in pdf
     assert b"live portal" not in pdf.lower()
 
 
@@ -195,8 +193,8 @@ def test_portfolio_pdf_governance_sections(monkeypatch):
     pdf = build_portfolio_report("client-1", data)
     assert b"Unresolved obligations" in pdf
     assert b"Export grade" in pdf
-    assert b"Governance" in pdf or b"SELF-REC" in pdf
-    assert b"IMMUTABLE GOVERNANCE ARTIFACT" in pdf or b"may differ from future downloads" in pdf
+    assert b"Self-recorded" in pdf or b"Recorded on file" in pdf or b"Governance" in pdf
+    assert b"Frozen governance record" in pdf or b"may differ from" in pdf
 
 
 def test_portfolio_pdf_regenerated_timestamp(monkeypatch):

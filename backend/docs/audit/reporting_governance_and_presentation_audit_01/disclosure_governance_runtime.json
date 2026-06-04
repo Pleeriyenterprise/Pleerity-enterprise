@@ -1,0 +1,10 @@
+{
+  "programme": "REPORTING-HUMAN-LANGUAGE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T10:39:23.868267+00:00",
+  "live_export": "This export reflects the latest portfolio information and may differ from previous downloads.",
+  "immutable_export": "This artifact is stored at generation time with manifest checksums; re-download returns the same bytes.",
+  "immutable_title": "Frozen governance record",
+  "live_title": "Current portfolio export",
+  "async_disclosure": "human_async_disclosure_lines \u2014 no persisted/queue jargon",
+  "status": "converged"
+}

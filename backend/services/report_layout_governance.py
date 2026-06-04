@@ -14,6 +14,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from xml.sax.saxutils import escape as _xml_escape
 
+from services.report_human_language_v1 import (
+    IMMUTABLE_SECTION_TITLE,
+    LIVE_EXPORT_SECTION_TITLE,
+    human_export_footer_grade,
+    human_governance_chip_line,
+)
 from services.reporting_semantics_v1 import (
     EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
     EXPORT_DETERMINISM_LIVE_REGENERATED,
@@ -100,35 +106,19 @@ def date_confidence_label(row: Dict[str, Any]) -> str:
 
 
 def assurance_tier_chip(row: Dict[str, Any]) -> str:
-    tier = str(row.get("assurance_tier") or "").strip().upper()
-    if tier == "SELF_RECORDED":
-        return "SELF-REC"
-    if tier in ("VERIFIED", "PLATFORM_VERIFIED"):
-        return "VERIFIED"
-    if tier == "ASSURANCE_PENDING":
-        return "ASPEND"
-    life = str(row.get("client_lifecycle_state") or row.get("lifecycle_state") or "").strip().upper()
-    if life == "SATISFIED_UNVERIFIED":
-        return "SELF-REC"
-    if life == "VERIFIED":
-        return "VERIFIED"
-    if life == "PENDING_REVIEW":
-        return "REVIEW"
-    return tier[:10] if tier else "—"
+    """Customer-facing assurance column (compact label)."""
+    from services.report_human_language_v1 import human_assurance_tier_label
+
+    label = human_assurance_tier_label(row)
+    return label[:24] if label and label != "—" else "—"
 
 
 def lifecycle_chip(row: Dict[str, Any]) -> str:
-    life = str(row.get("client_lifecycle_state") or row.get("lifecycle_state") or "").strip().upper()
-    if not life:
-        return "—"
-    short = {
-        "ACTION_REQUIRED": "ACTION",
-        "PENDING_REVIEW": "REVIEW",
-        "SATISFIED_UNVERIFIED": "SAT-UNVER",
-        "VERIFIED": "VERIFIED",
-        "NOT_APPLICABLE": "N/A",
-    }
-    return short.get(life, life[:10])
+    """Customer-facing lifecycle column (compact label)."""
+    from services.report_human_language_v1 import human_lifecycle_label
+
+    label = human_lifecycle_label(row)
+    return label[:20] if label and label != "—" else "—"
 
 
 def review_state_label(row: Dict[str, Any]) -> str:
@@ -155,16 +145,7 @@ def evidence_presence_label(row: Dict[str, Any]) -> str:
 
 def governance_chip_line(row: Dict[str, Any]) -> str:
     """Single concise governance column for matrix tables."""
-    parts = [
-        assurance_tier_chip(row),
-        lifecycle_chip(row),
-        date_confidence_label(row),
-        evidence_presence_label(row),
-    ]
-    rev = review_state_label(row)
-    if rev != "—":
-        parts.append(rev)
-    return " · ".join(p for p in parts if p and p != "—")
+    return human_governance_chip_line(row)
 
 
 def _unresolved_reason(row: Dict[str, Any], *, property_doc: Optional[dict], client_doc: dict) -> str:
@@ -184,7 +165,8 @@ def _unresolved_reason(row: Dict[str, Any], *, property_doc: Optional[dict], cli
         return "Pending confirmation"
     if cs == "EXPIRING_SOON":
         return "Expiring soon — renewal attention"
-    if life == "SATISFIED_UNVERIFIED" and assurance_tier_chip(row) == "SELF-REC":
+    tier = str(row.get("assurance_tier") or "").strip().upper()
+    if life == "SATISFIED_UNVERIFIED" or tier == "SELF_RECORDED":
         return "Self-recorded — not platform-verified"
     return "Unresolved in export scope"
 
@@ -404,8 +386,8 @@ def append_unresolved_obligations_section(
     elements.append(
         Paragraph(
             f"Explicit exposure list ({len(rows)} shown of {total} unresolved in scope). "
-            "Assurance chips: tier · lifecycle · date confidence · evidence. "
-            "SELF-REC = self-recorded, not regulator-verified.",
+            "Assurance column: assurance · lifecycle · date confidence · evidence · review where shown. "
+            "Self-recorded items are not regulator-verified.",
             styles["small"],
         )
     )

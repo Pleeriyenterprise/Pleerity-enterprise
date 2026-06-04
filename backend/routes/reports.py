@@ -298,7 +298,11 @@ async def get_score_drivers_csv(
             writer.writerow([])
         else:
             writer.writerow(["# export_snapshot_generated_at", export_generated_at])
-            writer.writerow(["# headline_score_status", score_data.get("score_status") or ""])
+            from services.report_human_language_v1 import human_score_status_label
+
+            writer.writerow(
+                ["# headline_score_status", human_score_status_label(score_data.get("score_status"))]
+            )
             writer.writerow(
                 [
                     "# headline_last_calculated_at",

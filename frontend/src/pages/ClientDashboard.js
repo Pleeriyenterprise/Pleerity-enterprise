@@ -15,6 +15,7 @@ import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
 import ScoreTrendChart from '../components/ScoreTrendChart';
 import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
+import { humanScoreStatusLabel } from '../utils/reportHumanLanguage';
 import { UrgencyRow, timingLabelFromDueAtIso } from '../components/client/UrgencyDisplay';
 import { requirementLabel, slaStateLabel, riskTypeLabelClient } from '../domain/presentDomain';
 import {
@@ -2203,7 +2204,7 @@ const ClientDashboard = () => {
                       </p>
                       {cc.compliance_status_summary.score_status && (
                         <p className="text-xs text-gray-600 mt-1">
-                          Status: {cc.compliance_status_summary.score_status}
+                          Status: {humanScoreStatusLabel(cc.compliance_status_summary.score_status)}
                           {cc.compliance_status_summary.last_calculated_at
                             ? ` · Last calculated ${new Date(cc.compliance_status_summary.last_calculated_at).toLocaleString()}`
                             : ''}

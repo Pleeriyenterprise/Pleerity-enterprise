@@ -1663,7 +1663,7 @@ export default function PropertyDetailPage() {
                 </p>
                 {complianceDetail.score_status && (
                   <p className="text-xs text-gray-600 mt-1">
-                    Score status: {complianceDetail.score_status}
+                    Score status: {operationalLabelForToken(complianceDetail.score_status, { emptyLabel: '—' })}
                     {complianceDetail.last_calculated_at
                       ? ` · Last calculated: ${new Date(complianceDetail.last_calculated_at).toLocaleString()}`
                       : ''}

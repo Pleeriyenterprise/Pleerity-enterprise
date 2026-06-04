@@ -1,0 +1,54 @@
+{
+  "programme": "REPORTING-HUMAN-LANGUAGE-CONVERGENCE-01",
+  "audited_at": "2026-06-04T10:39:23.304939+00:00",
+  "authority": "services/report_human_language_v1.py",
+  "mapping": {
+    "version": "v1",
+    "assurance_tier": {
+      "SELF_RECORDED": "Self-recorded assurance",
+      "PLATFORM_REVIEWED": "Awaiting review",
+      "VERIFIED_DOCUMENT": "Document verified",
+      "VERIFIED": "Verified",
+      "PLATFORM_VERIFIED": "Verified",
+      "ASSURANCE_PENDING": "Assurance pending"
+    },
+    "lifecycle": {
+      "ACTION_REQUIRED": "Action required",
+      "PENDING_REVIEW": "Awaiting review",
+      "SATISFIED_UNVERIFIED": "Recorded on file",
+      "VERIFIED": "Verified",
+      "NOT_APPLICABLE": "Not applicable"
+    },
+    "compliance_status": {
+      "EXPIRING_SOON": "Renewal approaching",
+      "OVERDUE": "Overdue",
+      "EXPIRED": "Expired",
+      "MISSING": "Missing evidence",
+      "PENDING": "Pending confirmation",
+      "COMPLIANT": "Compliant",
+      "VALID": "Valid",
+      "NOT_REQUIRED": "Not required"
+    },
+    "score_status": {
+      "calculating": "Score updating",
+      "partial": "Partially calculated",
+      "stale": "Score may be out of date",
+      "ok": "Current",
+      "reconciliation_required": "Reconciliation in progress",
+      "unavailable": "Not available",
+      "unknown": "Status unclear",
+      "pending_recalc": "Score updating"
+    },
+    "score_authority": {
+      "persisted_property_score": "Stored property scores",
+      "live_projection": "Live projection"
+    },
+    "determinism": {
+      "live_regenerated": "This export reflects the latest portfolio information and may differ from previous downloads.",
+      "point_in_time_snapshot": "Point-in-time export \u2014 data as at generation.",
+      "immutable_artifact": "Frozen governance record \u2014 re-download returns the same file bytes as at generation."
+    }
+  },
+  "frontend_mirror": "frontend/src/utils/reportHumanLanguage.js",
+  "status": "implemented"
+}
