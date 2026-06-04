@@ -8,6 +8,7 @@ GET /api/portal/digests/{id}/pdf - Download stored PDF audit report when availab
 """
 import os
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, Query, Body, status
 from fastapi.responses import FileResponse
@@ -501,7 +502,34 @@ async def download_portal_digest_pdf(request: Request, digest_id: str):
         full_path.relative_to(data_dir.resolve())
     except ValueError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF not available")
-    if not full_path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF file missing on server")
-    fname = f"compliance-summary-{digest_id[:8]}.pdf"
-    return FileResponse(path=str(full_path), filename=fname, media_type="application/pdf")
+    pdf_bytes: Optional[bytes] = None
+    if full_path.is_file():
+        pdf_bytes = full_path.read_bytes()
+    else:
+        doc_full = await db.digest_logs.find_one(
+            {"digest_id": digest_id, "client_id": client_id},
+            {"_id": 0},
+        )
+        content = (doc_full or {}).get("content") or doc_full or {}
+        if content:
+            from services.branding_resolver_service import resolve_branding, BrandingContext
+            from services.monthly_digest_pdf_service import build_monthly_digest_pdf_bytes
+
+            brand = await resolve_branding(client_id, BrandingContext.CLIENT_DOCUMENT_PDF)
+            pdf_bytes = build_monthly_digest_pdf_bytes(content, brand=brand)
+
+    if not pdf_bytes:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF not available")
+    fname = f"monthly-compliance-summary-{digest_id[:8]}.pdf"
+    from fastapi.responses import Response
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{fname}"',
+            "X-Report-Engine": "reportlab_server",
+            "X-Report-Determinism": "point_in_time_snapshot",
+            "X-Export-Grade": "EXECUTIVE_SUMMARY",
+        },
+    )

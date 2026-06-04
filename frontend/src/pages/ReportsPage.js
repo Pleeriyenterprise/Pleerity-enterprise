@@ -514,7 +514,34 @@ const ReportsPage = () => {
     }
   };
 
-  const downloadDigestPdf = (digest) => {
+  const downloadDigestPdf = async (digest) => {
+    if (hasReportsPdf && digest.digest_id) {
+      try {
+        setDownloadingDigestId(digest.digest_id);
+        const res = await api.get(`/portal/digests/${digest.digest_id}/pdf`, { responseType: 'blob' });
+        const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+        const link = document.createElement('a');
+        link.href = url;
+        const periodEnd = (digest.digest_period_end || digest.content?.period_end || '').slice(0, 10);
+        link.setAttribute('download', `monthly_digest_${periodEnd || 'report'}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success('Monthly digest PDF downloaded', {
+          description: res.headers['x-report-engine'] === 'reportlab_server'
+            ? 'Server-rendered report with governance footer.'
+            : undefined,
+        });
+        return;
+      } catch (err) {
+        toast.error('Digest PDF download failed');
+        console.error(err);
+        return;
+      } finally {
+        setDownloadingDigestId(null);
+      }
+    }
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFillColor(26, 39, 68);

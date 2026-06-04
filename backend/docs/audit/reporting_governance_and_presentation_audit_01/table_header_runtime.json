@@ -1,0 +1,13 @@
+{
+  "programme": "REPORTING-PRESENTATION-USABILITY-PHASE-04",
+  "audited_at": "2026-06-04T09:58:22.803415+00:00",
+  "mechanism": "ReportLab Table repeatRows=1",
+  "tables": [
+    "requirement matrix",
+    "unresolved obligations",
+    "appendix index",
+    "digest property table"
+  ],
+  "continuation_markers": true,
+  "status": "implemented"
+}

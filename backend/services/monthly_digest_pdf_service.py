@@ -17,6 +17,14 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from services.monthly_digest_limits import DIGEST_PDF_MAX_REQUIREMENT_ROWS
+from services.report_branding_layout import ACCESSIBILITY_ENHANCED_NOTICE, append_report_cover_block
+from services.report_layout_governance import GovernancePdfContext, make_page_callbacks
+from services.reporting_semantics_v1 import (
+    EXPORT_DETERMINISM_POINT_IN_TIME,
+    EXPORT_GRADE_DEFINITIONS,
+    GRADE_EXECUTIVE,
+    REPORTING_SEMANTICS_VERSION,
+)
 from services.scoring_explanation_copy import email_score_delta_line
 from services.scoring_semantics_v1 import headline_score_display_for_export
 from utils.storage_paths import resolve_data_dir
@@ -39,6 +47,21 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
     Full audit PDF from digest assembly model.
     ``brand`` is ResolvedBrandingProfile from branding_resolver_service.
     """
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    grade_def = EXPORT_GRADE_DEFINITIONS.get(GRADE_EXECUTIVE) or {}
+    gov_ctx = GovernancePdfContext(
+        export_grade=GRADE_EXECUTIVE,
+        export_grade_label=grade_def.get("label") or GRADE_EXECUTIVE,
+        generated_at=now,
+        determinism=EXPORT_DETERMINISM_POINT_IN_TIME,
+        jurisdiction_summary=str(model.get("digest_jurisdiction_framing") or "")[:90],
+        company_name=str(getattr(brand, "company_name", None) or ""),
+        semantics_version=REPORTING_SEMANTICS_VERSION,
+        report_scope="portfolio",
+    )
+    on_first, on_later = make_page_callbacks(gov_ctx)
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -46,61 +69,63 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         rightMargin=1.8 * cm,
         leftMargin=1.8 * cm,
         topMargin=1.8 * cm,
-        bottomMargin=1.8 * cm,
+        bottomMargin=2.2 * cm,
         title="Monthly Compliance Summary",
     )
     styles = getSampleStyleSheet()
     primary = _hex_color(getattr(brand, "primary_color", None))
-    title_style = ParagraphStyle(
-        name="DigestTitle",
-        parent=styles["Heading1"],
-        textColor=primary,
-        spaceAfter=10,
-        fontSize=18,
-    )
-    h2 = ParagraphStyle(name="H2", parent=styles["Heading2"], textColor=primary, spaceBefore=12, spaceAfter=8)
+    digest_styles = {
+        "title": ParagraphStyle(
+            name="DigestTitle",
+            parent=styles["Heading1"],
+            textColor=primary,
+            spaceAfter=10,
+            fontSize=18,
+        ),
+        "subtitle": ParagraphStyle(name="DigestSub", parent=styles["Normal"], fontSize=10),
+        "heading": ParagraphStyle(name="H2", parent=styles["Heading2"], textColor=primary, spaceBefore=12, spaceAfter=8),
+        "body": styles["Normal"],
+        "small": ParagraphStyle(name="Small", parent=styles["Normal"], fontSize=8, textColor=colors.HexColor("#64748b")),
+    }
+    h2 = digest_styles["heading"]
     h3 = ParagraphStyle(name="H3", parent=styles["Heading3"], spaceBefore=8, spaceAfter=6)
-    small = ParagraphStyle(name="Small", parent=styles["Normal"], fontSize=8, textColor=colors.HexColor("#64748b"))
+    small = digest_styles["small"]
 
-    body: List[Any] = []
-    company = html.escape(str(getattr(brand, "company_name", None) or "Pleerity Enterprise Ltd"))
-    tag = html.escape(str(getattr(brand, "tagline", None) or "AI-Driven Solutions & Compliance"))
-    logo_path = getattr(brand, "logo_path", None)
-    if logo_path and Path(str(logo_path)).is_file():
+    branding_dict: Dict[str, Any] = {}
+    if hasattr(brand, "to_report_dict") and callable(getattr(brand, "to_report_dict")):
         try:
-            img = Image(str(logo_path), width=3.2 * cm, height=1.2 * cm)
-            body.append(img)
-            body.append(Spacer(1, 0.2 * cm))
-        except Exception as e:
-            logger.debug("digest PDF logo skip: %s", e)
-
-    report_title = html.escape(str(model.get("reporting_month_label") or "Monthly report"))
-    body.append(Paragraph(f"<b>{company}</b><br/><i>{tag}</i>", styles["Normal"]))
-    body.append(Spacer(1, 0.3 * cm))
-    body.append(Paragraph("Monthly Compliance Summary (audit report)", title_style))
-    body.append(Paragraph(f"<b>Reporting period:</b> {html.escape(report_title)}", styles["Normal"]))
-    body.append(
-        Paragraph(
+            raw_bd = brand.to_report_dict()
+            if isinstance(raw_bd, dict):
+                branding_dict = raw_bd
+        except Exception:
+            branding_dict = {}
+    if not branding_dict:
+        branding_dict = {
+            "company_name": getattr(brand, "company_name", None) or "",
+            "brand_company_name": getattr(brand, "company_name", None) or "",
+            "logo_path": getattr(brand, "logo_path", None),
+            "branding_source": getattr(brand, "source", None) or "pleerity",
+            "primary_color": getattr(brand, "primary_color", None),
+            "secondary_color": getattr(brand, "secondary_color", None),
+            "tagline": getattr(brand, "tagline", None),
+        }
+    body: List[Any] = []
+    report_period = str(model.get("reporting_month_label") or "Monthly report")
+    crn = model.get("customer_reference")
+    account = str(model.get("account_name") or model.get("client_name") or "")
+    append_report_cover_block(
+        body,
+        report_title="Monthly Compliance Summary",
+        branding=branding_dict,
+        gov_ctx=gov_ctx,
+        styles=digest_styles,
+        account_line=f"<b>Account:</b> {html.escape(account)}"
+        + (f" &nbsp;|&nbsp; <b>CRN:</b> {html.escape(str(crn))}" if crn else ""),
+        scope_line=f"<b>Reporting period:</b> {html.escape(report_period)} &nbsp;|&nbsp; "
+        f"<b>Properties:</b> {int(model.get('properties_count') or 0)}",
+        extra_metadata_lines=[
             f"<b>Generated:</b> {html.escape(str(model.get('generated_at_display') or model.get('data_as_of') or ''))}",
-            styles["Normal"],
-        )
-    )
-    body.append(
-        Paragraph(
-            f"<b>Account:</b> {html.escape(str(model.get('account_name') or model.get('client_name') or ''))}"
-            + (
-                f" &nbsp;|&nbsp; <b>CRN:</b> {html.escape(str(model.get('customer_reference')))}"
-                if model.get("customer_reference")
-                else ""
-            ),
-            styles["Normal"],
-        )
-    )
-    body.append(
-        Paragraph(
-            f"<b>Properties in scope:</b> {int(model.get('properties_count') or 0)}",
-            styles["Normal"],
-        )
+        ],
     )
     if model.get("digest_truncated") and model.get("digest_truncation_display_lines"):
         warn_style = ParagraphStyle(
@@ -441,8 +466,9 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
     if getattr(brand, "include_pleerity_attribution", True) and getattr(brand, "powered_by_text", None):
         foot.append(html.escape(str(brand.powered_by_text)))
     body.append(Paragraph("<br/>".join(foot), small))
+    body.append(Paragraph(html.escape(ACCESSIBILITY_ENHANCED_NOTICE), small))
 
-    doc.build(body)
+    doc.build(body, onFirstPage=on_first, onLaterPages=on_later)
     out = buffer.getvalue()
     buffer.close()
     return out

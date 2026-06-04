@@ -30,6 +30,12 @@ UNRESOLVED_SECTION_MAX_ROWS = 45
 
 PDF_LEGAL_FOOTER = "This report does not constitute legal advice."
 
+# Table header row contrast (accessibility-enhanced, print-safe monochrome)
+TABLE_HEADER_BG = colors.Color(0.12, 0.15, 0.22)
+TABLE_HEADER_FG = colors.white
+TABLE_ROW_ALT = colors.Color(0.97, 0.97, 0.97)
+TABLE_GRID = colors.Color(0.72, 0.72, 0.72)
+
 
 @dataclass(frozen=True)
 class GovernancePdfContext:
@@ -438,9 +444,17 @@ def append_unresolved_obligations_section(
     t = Table(
         table_data,
         colWidths=[95, 70, 85, 45, 40, 55, 50],
+        repeatRows=1,
     )
     t.setStyle(table_style)
     elements.append(t)
+    if total > len(rows):
+        elements.append(
+            Paragraph(
+                f"<i>Table continues: {total - len(rows)} additional unresolved obligations in portal.</i>",
+                styles["small"],
+            )
+        )
     elements.append(Spacer(1, 16))
 
 
@@ -531,7 +545,7 @@ def append_governance_matrix_for_properties(
             n = len(reqs_by_prop.get(pid, []))
             appendix_index.append([(p.get("address_line_1") or pid or "—")[:40], "0", str(n)])
         if len(appendix_index) > 1:
-            idx = Table(appendix_index, colWidths=[200, 80, 80])
+            idx = Table(appendix_index, colWidths=[200, 80, 80], repeatRows=1)
             idx.setStyle(table_style)
             elements.append(idx)
         elements.append(Spacer(1, 12))

@@ -1,0 +1,11 @@
+{
+  "programme": "REPORTING-PRESENTATION-USABILITY-PHASE-04",
+  "audited_at": "2026-06-04T09:58:22.806395+00:00",
+  "immutable_artifacts": "unchanged \u2014 GridFS serve path preserved",
+  "export_grade_in_pdf": true,
+  "semantics_version_in_pdf": true,
+  "unresolved_obligations": true,
+  "governance_footer": true,
+  "assurance_columns": true,
+  "status": "verified"
+}

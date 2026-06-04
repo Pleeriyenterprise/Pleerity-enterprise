@@ -1,0 +1,20 @@
+{
+  "programme": "REPORTING-PRESENTATION-USABILITY-PHASE-04",
+  "audited_at": "2026-06-04T09:58:22.808404+00:00",
+  "resolver": "branding_resolver_service CLIENT_DOCUMENT_PDF",
+  "preserved": [
+    "export_grade",
+    "artifact_id",
+    "disclosures",
+    "timestamps",
+    "jurisdiction"
+  ],
+  "tenant_fields": [
+    "logo_path",
+    "company_name",
+    "report_header_text",
+    "pdf_footer lines"
+  ],
+  "fallback": "pleerity default when WL assets incomplete",
+  "status": "implemented"
+}

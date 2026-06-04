@@ -1,17 +1,18 @@
-# Watchlist — post PHASE-03 (2026-06-04)
+# Watchlist — post PHASE-04 (2026-06-04)
 
 ## VERIFIED_OPERATIONALLY
 
 ### Done
-- Immutable PDF storage + deterministic re-download
-- Lineage metadata + tenant-scoped artifact access
-- Live vs immutable terminology in API headers and PDF
+- Branded cover block on governance-grade ReportLab PDFs
+- Table repeatRows on matrices and unresolved tables
+- Monthly digest server PDF via portal route
+- Accessibility-enhanced notice (not PDF/UA certified)
+- White-label logo/name on covers
 
 ### P1
-- [ ] Retention / archive policy for governed_report_pdf_artifacts GridFS growth
-- [ ] Admin artifact listing UI with artifact_id re-download
-- [ ] Backfill legacy reports rows without gridfs_id (optional one-time migration)
+- [ ] Full PDF/UA tagging if regulator requires formal accessibility certification
+- [ ] GridFS retention policy for governed PDF artifacts
+- [ ] Digest artifact listing UI with artifact_id
 
 ### P2
-- [ ] Signed URL time-limited artifact download
-- [ ] Manifest sidecar JSON per PDF artifact (checksum already in mongo)
+- [ ] Running header with report title on every page (beyond table headers)

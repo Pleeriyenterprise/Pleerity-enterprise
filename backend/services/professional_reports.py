@@ -27,11 +27,11 @@ from typing import Dict, Any, List, Optional
 
 from utils.expiry_utils import get_computed_status, get_effective_expiry_date
 from presentation.jurisdiction_reporting import portfolio_jurisdiction_summary_sentence
+from services.report_branding_layout import append_report_cover_block
 from services.report_layout_governance import (
     GovernancePdfContext,
     append_governance_matrix_for_properties,
     append_unresolved_obligations_section,
-    export_disclosure_paragraphs,
     make_page_callbacks,
 )
 from services.reporting_semantics_v1 import (
@@ -245,7 +245,7 @@ class ProfessionalReportGenerator:
             rightMargin=50,
             leftMargin=50,
             topMargin=50,
-            bottomMargin=50
+            bottomMargin=62,
         )
         
         elements = []
@@ -273,27 +273,20 @@ class ProfessionalReportGenerator:
         )
         on_first, on_later = make_page_callbacks(gov_ctx)
         
-        # Header
-        if branding.get("report_header_text"):
-            elements.append(Paragraph(branding["report_header_text"], styles["small"]))
-            elements.append(Spacer(1, 6))
-        
-        # Title
-        elements.append(Paragraph("Compliance Summary Report", styles["title"]))
-        elements.append(Paragraph(
-            f"{branding['company_name']}<br/>PDF generated: {now.strftime('%d %B %Y at %H:%M UTC')}<br/>"
-            f"Export grade: {_professional_compliance_summary_escape_xml(gov_ctx.export_grade_label)}",
-            styles["subtitle"]
-        ))
-        elements.extend(export_disclosure_paragraphs(gov_ctx, styles))
-        
-        # Divider
-        elements.append(HRFlowable(
-            width="100%",
-            thickness=2,
-            color=colors.Color(*hex_to_rgb(branding["secondary_color"])),
-            spaceAfter=20
-        ))
+        client_row = client or {}
+        crn = client_row.get("customer_reference") or client_id
+        append_report_cover_block(
+            elements,
+            report_title="Compliance Summary Report",
+            branding=branding,
+            gov_ctx=gov_ctx,
+            styles=styles,
+            account_line=(
+                f"<b>Account:</b> {_professional_compliance_summary_escape_xml(branding.get('company_name') or '')}"
+                f" &nbsp;|&nbsp; <b>CRN:</b> {_professional_compliance_summary_escape_xml(crn)}"
+            ),
+            scope_line="<b>Scope:</b> portfolio",
+        )
 
         snap_ts = now.strftime("%d %B %Y at %H:%M UTC")
         elements.append(
@@ -395,7 +388,7 @@ class ProfessionalReportGenerator:
                 status
             ])
         
-        prop_table = Table(prop_data, colWidths=[200, 80, 70, 70])
+        prop_table = Table(prop_data, colWidths=[200, 80, 70, 70], repeatRows=1)
         prop_table.setStyle(table_style)
         
         # Color-code status cells

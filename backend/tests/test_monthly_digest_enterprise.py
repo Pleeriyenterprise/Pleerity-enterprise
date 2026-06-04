@@ -91,9 +91,10 @@ def test_pdf_reflects_white_label_company_on_cover(monkeypatch):
         "top_risk_drivers": [],
         "top_next_actions": [],
     }
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
     pdf = build_monthly_digest_pdf_bytes(model, brand=brand)
     assert pdf.startswith(b"%PDF")
-    assert b"Acme Portfolio" in pdf
+    assert b"Acme Portfolio Group Ltd" in pdf
 
 
 def test_pdf_omits_property_section_when_preference_off(monkeypatch):

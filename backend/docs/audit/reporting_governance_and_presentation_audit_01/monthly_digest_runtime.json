@@ -1,0 +1,10 @@
+{
+  "programme": "REPORTING-PRESENTATION-USABILITY-PHASE-04",
+  "audited_at": "2026-06-04T09:58:22.804151+00:00",
+  "service": "services/monthly_digest_pdf_service.py",
+  "route": "GET /api/portal/digests/{digest_id}/pdf",
+  "on_demand_fallback": "build from digest_logs.content when storage file missing",
+  "frontend": "ReportsPage uses server PDF when reports_pdf",
+  "immutable": false,
+  "status": "implemented"
+}

@@ -1,16 +1,14 @@
 {
-  "programme": "REPORTING-IMMUTABLE-ARTIFACT-GOVERNANCE-PHASE-03",
-  "classified_at": "2026-06-04T09:18:56.107088+00:00",
+  "programme": "REPORTING-PRESENTATION-USABILITY-PHASE-04",
+  "classified_at": "2026-06-04T09:59:03.566783+00:00",
   "classification": "VERIFIED_OPERATIONALLY",
   "checks": {
-    "immutable_storage": true,
-    "deterministic_redownload": true,
-    "regeneration_new_artifact": true,
-    "lineage_metadata": true,
-    "wording_converged": true,
-    "no_silent_overwrite": true,
-    "authorization": true,
+    "branded_covers": true,
+    "table_repeat_headers": true,
+    "monthly_digest_server_pdf": true,
+    "accessibility_enhanced": true,
+    "governance_preserved": true,
+    "whitelabel_convergence": true,
     "regression_pass": true
-  },
-  "prior_programme": "REPORTING-ENTERPRISE-PRESENTATION-PHASE-02"
+  }
 }

@@ -27,6 +27,7 @@ from services.scoring_semantics_v1 import (
     headline_score_display_for_export,
     resolve_property_score_status,
 )
+from services.report_branding_layout import append_report_cover_block
 from services.report_layout_governance import (
     GovernancePdfContext,
     append_governance_matrix_for_properties,
@@ -374,19 +375,15 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
         buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
     )
     elements = []
-
-    # Cover
-    elements.append(Spacer(1, 80))
-    elements.append(Paragraph("Evidence Readiness Report", styles["title"]))
-    elements.append(Paragraph(
-        f"{company_name}<br/>CRN: {crn}<br/>Scope: portfolio<br/>"
-        f"Generated: {now.strftime('%d %B %Y at %H:%M UTC')}<br/>"
-        f"Export grade: {_xml_escape(gov_ctx.export_grade_label)}",
-        styles["subtitle"],
-    ))
-    elements.extend(export_disclosure_paragraphs(gov_ctx, styles))
-    elements.append(Spacer(1, 20))
-    elements.append(HRFlowable(width="100%", thickness=2, color=colors.Color(*_hex_to_rgb(branding.get("secondary_color", "#00B8A9"))), spaceAfter=20))
+    append_report_cover_block(
+        elements,
+        report_title="Evidence Readiness Report",
+        branding=branding,
+        gov_ctx=gov_ctx,
+        styles=styles,
+        account_line=f"<b>Account:</b> {_xml_escape(company_name)} &nbsp;|&nbsp; <b>CRN:</b> {_xml_escape(crn)}",
+        scope_line="<b>Scope:</b> portfolio",
+    )
     elements.append(PageBreak())
 
     # Executive summary
@@ -621,21 +618,23 @@ def build_score_explanation_report(
     )
     elements = []
 
-    # —— 1. Cover ——
-    elements.append(Spacer(1, 60))
-    elements.append(Paragraph("Compliance Score Summary (Informational)", styles["title"]))
-    elements.append(Paragraph(
-        f"{company_name}<br/>CRN: {crn}<br/>Generated: {now_str}<br/>"
-        f"Data as of: {_xml_escape(data_as_of_display)}<br/>"
-        f"Export grade: {_xml_escape(gov_ctx.export_grade_label)}",
-        styles["subtitle"],
-    ))
-    elements.append(Paragraph(
-        "Informational tracking indicator only. Not legal advice. Status based on portal records; may apply depending on your situation.",
-        styles["small"],
-    ))
-    elements.append(Spacer(1, 30))
-    elements.append(HRFlowable(width="100%", thickness=2, color=colors.Color(*_hex_to_rgb(branding.get("secondary_color", "#00B8A9"))), spaceAfter=20))
+    branding = branding or {
+        "primary_color": "#0B1D3A",
+        "secondary_color": "#00B8A9",
+        "company_name": company_name,
+    }
+    append_report_cover_block(
+        elements,
+        report_title="Compliance Score Summary (Informational)",
+        branding=branding,
+        gov_ctx=gov_ctx,
+        styles=styles,
+        account_line=f"<b>Account:</b> {_xml_escape(company_name)} &nbsp;|&nbsp; <b>CRN:</b> {_xml_escape(crn)}",
+        scope_line=f"<b>Data as of:</b> {_xml_escape(data_as_of_display)}",
+        extra_metadata_lines=[
+            "Informational tracking indicator only. Not legal advice.",
+        ],
+    )
     elements.append(PageBreak())
 
     # —— 2. Portfolio snapshot ——
@@ -889,19 +888,16 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     )
     elements = []
 
-    # Cover
-    elements.append(Spacer(1, 80))
-    elements.append(Paragraph("Evidence Readiness Report", styles["title"]))
-    scope_line = f"Scope: property (Property: {property_id})"
-    elements.append(Paragraph(
-        f"{company_name}<br/>CRN: {crn}<br/>{scope_line}<br/>"
-        f"Generated: {now.strftime('%d %B %Y at %H:%M UTC')}<br/>"
-        f"Export grade: {_xml_escape(gov_ctx.export_grade_label)}",
-        styles["subtitle"],
-    ))
-    elements.extend(export_disclosure_paragraphs(gov_ctx, styles))
-    elements.append(Spacer(1, 20))
-    elements.append(HRFlowable(width="100%", thickness=2, color=colors.Color(*_hex_to_rgb(branding.get("secondary_color", "#00B8A9"))), spaceAfter=20))
+    scope_line = f"<b>Scope:</b> property (Property: {_xml_escape(property_id)})"
+    append_report_cover_block(
+        elements,
+        report_title="Evidence Readiness Report",
+        branding=branding,
+        gov_ctx=gov_ctx,
+        styles=styles,
+        account_line=f"<b>Account:</b> {_xml_escape(company_name)} &nbsp;|&nbsp; <b>CRN:</b> {_xml_escape(crn)}",
+        scope_line=scope_line,
+    )
     elements.append(PageBreak())
 
     # Executive summary
@@ -1130,7 +1126,7 @@ def build_requirements_report_pdf(client_id: str, report_data: dict) -> bytes:
                 "—",
             ])
         if len(rows) > 1:
-            tb = Table(rows, colWidths=[150, 90, 130, 65, 45])
+            tb = Table(rows, colWidths=[150, 90, 130, 65, 45], repeatRows=1)
             tb.setStyle(table_style)
             elements.append(tb)
         omitted = max(0, len(requirements) - MATRIX_MAX_ROWS_PER_PROPERTY)

@@ -1,0 +1,20 @@
+{
+  "programme": "REPORTING-PRESENTATION-USABILITY-PHASE-04",
+  "audited_at": "2026-06-04T09:58:22.795294+00:00",
+  "module": "services/report_branding_layout.py",
+  "surfaces": [
+    "evidence_readiness_pdf",
+    "professional_compliance_pdf",
+    "score_explanation_pdf",
+    "monthly_digest_pdf_reportlab"
+  ],
+  "features": [
+    "logo via branding_resolver logo_path",
+    "metadata strip",
+    "export grade",
+    "governance identity",
+    "accessibility notice"
+  ],
+  "whitelabel": "branding_source client_white_label uses tenant logo/name; Pleerity suppressed when WL complete",
+  "status": "implemented"
+}

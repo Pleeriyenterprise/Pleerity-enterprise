@@ -199,9 +199,15 @@ SURFACE_EXPORT_REGISTRY: Dict[str, Dict[str, str]] = {
         "pdf_engine": PDF_ENGINE_REPORTLAB,
     },
     "monthly_digest_pdf_jspdf": {
-        "export_grade": GRADE_EXECUTIVE,
+        "export_grade": GRADE_OPERATIONAL,
         "determinism": EXPORT_DETERMINISM_POINT_IN_TIME,
         "pdf_engine": PDF_ENGINE_JSPDF,
+        "disclosure": "Internal fallback when reports_pdf unavailable.",
+    },
+    "monthly_digest_pdf_reportlab": {
+        "export_grade": GRADE_EXECUTIVE,
+        "determinism": EXPORT_DETERMINISM_POINT_IN_TIME,
+        "pdf_engine": PDF_ENGINE_REPORTLAB,
     },
     "professional_compliance_pdf": {
         "export_grade": GRADE_REGULATORY,
