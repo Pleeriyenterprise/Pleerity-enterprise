@@ -44,6 +44,7 @@ import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components
 import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { REQUIREMENTS_PAGE_CONFIDENCE_LINE } from '../utils/confidenceUxCopy';
+import { REPORTING_SEMANTICS_LABELS } from '../utils/reportingSemanticsLabels';
 import {
   WORKSPACE_REQUIREMENTS_DESCRIPTION_DEFAULT,
   WORKSPACE_REQUIREMENTS_DESCRIPTION_DUE_SOON,
@@ -801,6 +802,7 @@ const RequirementsPage = () => {
       const s = resolveClientRequirementLifecycle(r).state;
       return s === 'VERIFIED' || s === 'SATISFIED_UNVERIFIED';
     }).length,
+    verifiedLifecycle: statsBase.filter((r) => resolveClientRequirementLifecycle(r).state === 'VERIFIED').length,
     expiringSoon: statsBase.filter((r) => r.status === 'EXPIRING_SOON').length,
     attentionAction: statsBase.filter((r) => isRequirementActionRequired(r)).length,
     pendingReview: statsBase.filter((r) => resolveClientRequirementLifecycle(r).state === 'PENDING_REVIEW').length,
@@ -883,7 +885,12 @@ const RequirementsPage = () => {
             data-testid="filter-all"
           >
             <p className="text-2xl font-bold text-midnight-blue">{stats.total}</p>
-            <p className="text-sm text-gray-500">Total</p>
+            <p
+              className="text-sm text-gray-500"
+              title={REPORTING_SEMANTICS_LABELS.tracked_requirement_count.tooltip}
+            >
+              {REPORTING_SEMANTICS_LABELS.tracked_requirement_count.label}
+            </p>
           </button>
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${statusFilter === 'COMPLIANT' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}
@@ -891,7 +898,13 @@ const RequirementsPage = () => {
             data-testid="filter-compliant"
           >
             <p className="text-2xl font-bold text-green-600">{stats.compliant}</p>
-            <p className="text-sm text-gray-500">Valid</p>
+            <p
+              className="text-sm text-gray-500"
+              title={REPORTING_SEMANTICS_LABELS.satisfied_requirement_count.tooltip}
+              data-testid="requirements-stat-lifecycle-valid-label"
+            >
+              Lifecycle valid
+            </p>
           </button>
           <button
             className={`bg-white rounded-xl border p-4 text-left hover:shadow-md transition-shadow ${statusFilter === 'DUE_SOON' ? 'border-electric-teal ring-2 ring-electric-teal/20' : 'border-gray-200'}`}

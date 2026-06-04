@@ -1,0 +1,14 @@
+{
+  "programme": "REPORTING-TRUTH-CONVERGENCE-PHASE-01",
+  "governed": {
+    "route": "POST /client/compliance/audit-pack/generate",
+    "grade": "AUDIT_ARTIFACT",
+    "immutability": "GridFS + manifest checksums",
+    "ui": "ReportsAuditPackPage immutable disclosure"
+  },
+  "operational": {
+    "route": "POST /client/evidence-pack/jobs",
+    "grade": "OPERATIONAL_EXPORT",
+    "ui": "ReportsPage OPERATIONAL_ZIP_DISCLOSURE"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "programme": "REPORTING-TRUTH-CONVERGENCE-PHASE-01",
+  "surfaces": {
+    "dashboard_score_widget": {
+      "semantic_mode": "score_projection",
+      "metrics": [
+        "score_tracked_requirement_count",
+        "compliant_requirement_count"
+      ],
+      "api": "GET /client/compliance-score",
+      "labels": "dashboardScoreWidgetLabels.js"
+    },
+    "requirements_page": {
+      "semantic_mode": "tracked_registry_lifecycle",
+      "metrics": [
+        "tracked_requirement_count",
+        "satisfied_requirement_count",
+        "verified_requirement_count"
+      ],
+      "api": "GET /client/requirements + reporting_semantics block",
+      "labels": "reportingSemanticsLabels.js"
+    },
+    "compliance_summary_csv": {
+      "semantic_mode": "score_projection",
+      "pipeline": "load_score_projection_portal_rows (aligned with compliance-score)"
+    },
+    "requirements_report_csv": {
+      "semantic_mode": "score_projection rows + semantics preamble"
+    }
+  },
+  "intentional_divergence": "tracked_requirement_count may exceed score_tracked_requirement_count \u2014 disclosed in CSV preamble and UI tooltips"
+}

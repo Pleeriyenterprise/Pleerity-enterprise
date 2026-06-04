@@ -2006,7 +2006,20 @@ async def get_all_requirements(
 
         enriched, presentation = await enrich_requirements_for_client(db, user["client_id"], requirements)
         enriched = [r for r in enriched if r.get("client_surface_visible", True)]
-        return {"requirements": enriched, "presentation": presentation}
+        from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
+        from services.reporting_semantics_v1 import (
+            build_reporting_semantics_payload,
+            compute_reporting_semantic_counts,
+        )
+
+        projected = [project_requirement_row_client_runtime(r) for r in enriched]
+        return {
+            "requirements": enriched,
+            "presentation": presentation,
+            "reporting_semantics": build_reporting_semantics_payload(
+                compute_reporting_semantic_counts(projected)
+            ),
+        }
     
     except Exception as e:
         logger.error(f"Requirements error: {e}")

@@ -198,23 +198,17 @@ class ProfessionalReportGenerator:
         client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
         properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
         requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(10000)
-        from services.requirement_client_runtime_surface import (
-            filter_requirement_rows_for_client_runtime_surfaces,
-            client_portal_surface_visible_row,
-            project_requirement_row_client_runtime,
-            compute_client_portal_requirement_stats,
-        )
+        from services.requirement_client_runtime_surface import compute_client_portal_requirement_stats
+        from services.reporting_semantics_v1 import load_score_projection_portal_rows
 
-        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        client_doc = client or {}
+        portal_reqs = await load_score_projection_portal_rows(
             db,
             client_id=client_id,
-            requirements=requirements,
-            client_doc=client,
+            client_doc=client_doc,
             properties=properties,
+            requirements=requirements,
         )
-        client_doc = client or {}
-        projected = [project_requirement_row_client_runtime(r) for r in requirements]
-        portal_reqs = [r for r in projected if client_portal_surface_visible_row(r)]
         counts = compute_client_portal_requirement_stats(portal_reqs)
 
         # Calculate stats

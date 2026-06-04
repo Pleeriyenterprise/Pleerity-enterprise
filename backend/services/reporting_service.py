@@ -21,6 +21,15 @@ from services.requirement_client_runtime_surface import (
     project_requirement_row_client_runtime,
     compute_client_portal_requirement_stats,
 )
+from services.reporting_semantics_v1 import (
+    METRIC_SCORE_TRACKED,
+    METRIC_TRACKED,
+    async_reporting_disclosure,
+    build_reporting_semantics_payload,
+    compute_reporting_semantic_counts,
+    csv_semantics_preamble_rows,
+    load_score_projection_portal_rows,
+)
 from services.scoring_semantics_v1 import attach_semantics_contract, headline_score_display_for_export
 from services.semantic_state_precedence_adapter import REPORT_EXPORT, observe_consumer_precedence_delta
 
@@ -241,17 +250,17 @@ class ReportingService:
         else:
             props_full = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
 
-        requirements = await filter_requirement_rows_for_client_runtime_surfaces(
+        portal_reqs = await load_score_projection_portal_rows(
             db,
             client_id=client_id,
-            requirements=requirements,
             client_doc=client_row or {},
             properties=props_full,
+            requirements=requirements,
         )
         prop_map = {p["property_id"]: p for p in properties}
         
         # Get documents linked to requirements
-        req_ids = [r.get("requirement_id") for r in requirements]
+        req_ids = [r.get("requirement_id") for r in portal_reqs]
         documents = await db.documents.find(
             {"requirement_id": {"$in": req_ids}},
             {"_id": 0, "requirement_id": 1, "file_name": 1, "status": 1, "uploaded_at": 1}
@@ -266,14 +275,15 @@ class ReportingService:
         report_data = {
             "report_type": "Requirements Report",
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "requirements": []
+            "requirements": [],
+            "reporting_semantics": build_reporting_semantics_payload(
+                compute_reporting_semantic_counts(portal_reqs)
+            ),
         }
         
         client_doc = client_row or {}
-        for req in requirements:
-            proj = project_requirement_row_client_runtime(req)
-            if not client_portal_surface_visible_row(proj):
-                continue
+        for proj in portal_reqs:
+            req = proj
             try:
                 sem = proj.get("semantic_state") or (
                     (proj.get("evidence_authority") or {}).get("semantic_state")
@@ -411,6 +421,12 @@ class ReportingService:
         output.write(
             "export_snapshot_note,CSV generated at Generated time above; headline uses persisted scores as of last_calculated_at (not live portal).\n"
         )
+        sem = (data.get("reporting_semantics") or {}).get("counts") or {}
+        async_disc = (data.get("summary") or {}).get("async_reporting_disclosure") or {}
+        for msg in async_disc.get("messages") or []:
+            output.write(f"async_score_note,{msg}\n")
+        for row in csv_semantics_preamble_rows(sem, generated_at=data.get("generated_at", "")):
+            output.write(",".join(str(c) for c in row) + "\n")
         output.write("\n")
 
         # Summary section
@@ -460,7 +476,13 @@ class ReportingService:
         
         output.write(f"Report: {data['report_type']}\n")
         output.write(f"Generated: {data['generated_at']}\n")
-        output.write(f"Total Requirements: {len(data['requirements'])}\n\n")
+        sem = (data.get("reporting_semantics") or {}).get("counts") or {}
+        output.write(f"Total Requirements (rows): {len(data['requirements'])}\n")
+        output.write(f"Score-tracked obligations: {sem.get(METRIC_SCORE_TRACKED, '')}\n")
+        output.write(f"Tracked requirements (registry): {sem.get(METRIC_TRACKED, '')}\n\n")
+        for row in csv_semantics_preamble_rows(sem, generated_at=data.get("generated_at", "")):
+            output.write(",".join(str(c) for c in row) + "\n")
+        output.write("\n")
         
         writer = csv.DictWriter(output, fieldnames=[
             'property_address', 'effective_jurisdiction_label', 'jurisdiction_source',

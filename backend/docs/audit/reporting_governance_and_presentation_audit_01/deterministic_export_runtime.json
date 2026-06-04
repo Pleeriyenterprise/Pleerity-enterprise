@@ -1,0 +1,76 @@
+{
+  "programme": "REPORTING-TRUTH-CONVERGENCE-PHASE-01",
+  "registry": {
+    "compliance_summary_csv": {
+      "export_grade": "CLIENT_PRESENTATION",
+      "determinism": "point_in_time_snapshot",
+      "pdf_engine": ""
+    },
+    "requirements_report_csv": {
+      "export_grade": "CLIENT_PRESENTATION",
+      "determinism": "point_in_time_snapshot",
+      "pdf_engine": ""
+    },
+    "score_drivers_csv": {
+      "export_grade": "OPERATIONAL_EXPORT",
+      "determinism": "point_in_time_snapshot",
+      "pdf_engine": ""
+    },
+    "evidence_readiness_pdf": {
+      "export_grade": "CLIENT_PRESENTATION",
+      "determinism": "live_regenerated",
+      "pdf_engine": "reportlab_server"
+    },
+    "evidence_readiness_redownload": {
+      "export_grade": "CLIENT_PRESENTATION",
+      "determinism": "live_regenerated",
+      "pdf_engine": "reportlab_server",
+      "disclosure": "This report reflects current portfolio state at generation time and may differ from prior downloads."
+    },
+    "audit_evidence_pack_zip": {
+      "export_grade": "AUDIT_ARTIFACT",
+      "determinism": "immutable_artifact",
+      "pdf_engine": "reportlab_server",
+      "disclosure": "This artifact is stored at generation time with manifest checksums; re-download returns the same bytes."
+    },
+    "evidence_pack_jobs_zip": {
+      "export_grade": "OPERATIONAL_EXPORT",
+      "determinism": "point_in_time_snapshot",
+      "pdf_engine": "",
+      "disclosure": "Operational CSV/ZIP export \u2014 not regulator-grade audit artifact."
+    },
+    "compliance_summary_pdf_jspdf": {
+      "export_grade": "CLIENT_PRESENTATION",
+      "determinism": "point_in_time_snapshot",
+      "pdf_engine": "jspdf_client"
+    },
+    "monthly_digest_pdf_jspdf": {
+      "export_grade": "EXECUTIVE_SUMMARY",
+      "determinism": "point_in_time_snapshot",
+      "pdf_engine": "jspdf_client"
+    },
+    "professional_compliance_pdf": {
+      "export_grade": "CLIENT_PRESENTATION",
+      "determinism": "point_in_time_snapshot",
+      "pdf_engine": "reportlab_server"
+    },
+    "score_explanation_pdf": {
+      "export_grade": "EXECUTIVE_SUMMARY",
+      "determinism": "live_regenerated",
+      "pdf_engine": "reportlab_server"
+    }
+  },
+  "live_regenerated": [
+    "evidence_readiness_pdf",
+    "evidence_readiness_redownload",
+    "score_explanation_pdf"
+  ],
+  "immutable": [
+    "audit_evidence_pack_zip"
+  ],
+  "point_in_time": [
+    "compliance_summary_csv",
+    "requirements_report_csv",
+    "score_drivers_csv"
+  ]
+}

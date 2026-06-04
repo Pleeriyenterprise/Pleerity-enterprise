@@ -950,6 +950,14 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         earned_points = sum(float(p.get("compliance_earned_points") or 0) for p in properties)
         applicable_points = sum(float(p.get("compliance_applicable_points") or 0) for p in properties)
         _pending_snap = portfolio_pending_score_recalc_snapshot(properties)
+        from services.reporting_semantics_v1 import (
+            build_reporting_semantics_payload,
+            compute_reporting_semantic_counts,
+        )
+
+        _reporting_semantics = build_reporting_semantics_payload(
+            compute_reporting_semantic_counts(portal_reqs)
+        )
         result = {
             "score": client_score,
             "grade": grade,
@@ -979,6 +987,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "risk_factor": "10%",
             },
             "stats": stats,
+            "reporting_semantics": _reporting_semantics,
             "recommendations": recommendations[:5],
             "properties_count": len(properties),
             "score_last_calculated_at": score_last_calculated_at.isoformat() if isinstance(score_last_calculated_at, datetime) else score_last_calculated_at,

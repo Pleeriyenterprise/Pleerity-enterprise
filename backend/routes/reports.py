@@ -139,11 +139,17 @@ async def generate_evidence_readiness_report(request: Request, body: GenerateRep
                 "report_id": report_id,
             },
         )
+        from services.reporting_semantics_v1 import LIVE_REGENERATED_DISCLOSURE
+
         filename = f"evidence_readiness_{body.scope}_{now.strftime('%Y%m%d_%H%M')}.pdf"
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "X-Report-Determinism": "live_regenerated",
+                "X-Report-Disclosure": LIVE_REGENERATED_DISCLOSURE[:200],
+            },
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -436,11 +442,17 @@ async def download_report_by_id(request: Request, report_id: str):
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     created = row.get("created_at") or datetime.now(timezone.utc)
+    from services.reporting_semantics_v1 import LIVE_REGENERATED_DISCLOSURE
+
     filename = f"evidence_readiness_{scope}_{created.strftime('%Y%m%d_%H%M')}.pdf"
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "X-Report-Determinism": "live_regenerated",
+            "X-Report-Disclosure": LIVE_REGENERATED_DISCLOSURE[:200],
+        },
     )
 
 
@@ -681,23 +693,53 @@ async def get_audit_logs_report(
 @router.get("/available")
 async def get_available_reports(request: Request):
     """Get list of available reports for the user."""
+    from services.reporting_semantics_v1 import EXPORT_GRADE_DEFINITIONS, SURFACE_EXPORT_REGISTRY
+
     user = await client_route_guard(request)
     
+    def _meta(surface_key: str) -> dict:
+        reg = SURFACE_EXPORT_REGISTRY.get(surface_key) or {}
+        grade = reg.get("export_grade") or ""
+        return {
+            "export_grade": grade,
+            "export_grade_label": (EXPORT_GRADE_DEFINITIONS.get(grade) or {}).get("label"),
+            "determinism": reg.get("determinism"),
+            "disclosure": reg.get("disclosure") or (EXPORT_GRADE_DEFINITIONS.get(grade) or {}).get("disclaimer"),
+        }
+
     reports = [
         {
             "id": "compliance_summary",
             "name": "Compliance Status Summary",
             "description": "Overview of property compliance including statistics and breakdown",
             "formats": ["csv", "pdf"],
-            "endpoint": "/reports/compliance-summary"
+            "endpoint": "/reports/compliance-summary",
+            **_meta("compliance_summary_csv"),
         },
         {
             "id": "requirements",
             "name": "Requirements Report",
             "description": "Detailed list of all requirements with status and due dates",
             "formats": ["csv", "pdf"],
-            "endpoint": "/reports/requirements"
-        }
+            "endpoint": "/reports/requirements",
+            **_meta("requirements_report_csv"),
+        },
+        {
+            "id": "evidence_readiness",
+            "name": "Evidence Readiness Report",
+            "description": "PDF portfolio or property evidence readiness summary",
+            "formats": ["pdf"],
+            "endpoint": "/reports/generate",
+            **_meta("evidence_readiness_pdf"),
+        },
+        {
+            "id": "audit_evidence_pack",
+            "name": "Audit Evidence Pack",
+            "description": "Governed immutable ZIP for evidentiary review (property scope)",
+            "formats": ["zip"],
+            "endpoint": "/client/compliance/audit-pack/generate",
+            **_meta("audit_evidence_pack_zip"),
+        },
     ]
     
     # Add audit logs report for admins
@@ -712,7 +754,8 @@ async def get_available_reports(request: Request):
     
     return {
         "reports": reports,
-        "user_role": user.get("role")
+        "user_role": user.get("role"),
+        "reporting_semantics_version": "v1",
     }
 
 

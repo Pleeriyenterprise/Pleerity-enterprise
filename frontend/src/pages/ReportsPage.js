@@ -49,6 +49,7 @@ import { presentPortalAnalyticsEvent } from '../utils/timelinePresent';
 import { cn } from '../lib/utils';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { formatMinorUnits } from '../utils/rentMoney';
+import { LIVE_EXPORT_DISCLOSURE, OPERATIONAL_ZIP_DISCLOSURE } from '../utils/reportingSemanticsLabels';
 
 function reportPropertyOptionLabel(p) {
   const base = getPropertyDisplayName(p) || p.property_id;
@@ -952,7 +953,7 @@ const ReportsPage = () => {
               </CardTitle>
               <p className="text-sm text-gray-500 mt-1">
                 Structured CSV + JSON ZIP export for system handoff, accountant workflows, regulator data requests, or migration support.
-                This export is not the governed Audit Evidence Pack used for evidentiary/legal review.
+                {OPERATIONAL_ZIP_DISCLOSURE}
                 Limited to five exports per 24 hours. Optionally restrict rows to a UTC date range (properties CSV always lists your full portfolio for context).
               </p>
             </CardHeader>
@@ -1088,7 +1089,8 @@ const ReportsPage = () => {
                 Evidence Readiness Report
               </CardTitle>
               <p className="text-sm text-gray-500 mt-1">
-                PDF with cover, executive summary, portfolio breakdown, property requirement matrix, methodology, and audit snapshot. Risk level and evidence readiness only; not legal advice.
+                PDF with cover, executive summary, portfolio breakdown, property requirement matrix, methodology, and audit snapshot. Risk level and evidence readiness only; not legal advice.{' '}
+                <span className="text-gray-600" data-testid="evidence-readiness-live-disclosure">{LIVE_EXPORT_DISCLOSURE}</span>
               </p>
             </CardHeader>
             <CardContent className="space-y-4">

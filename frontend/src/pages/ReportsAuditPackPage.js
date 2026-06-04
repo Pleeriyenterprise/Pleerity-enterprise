@@ -15,6 +15,7 @@ import {
 import { toast } from '@/utils/portalNotifications';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { ArrowLeft, Download, Package } from 'lucide-react';
+import { AUDIT_PACK_IMMUTABLE_DISCLOSURE } from '../utils/reportingSemanticsLabels';
 
 /**
  * Property-scoped governed audit evidence ZIP (reports / compliance export — not tenant email delivery).
@@ -100,7 +101,10 @@ export default function ReportsAuditPackPage() {
       <p className="text-sm text-slate-600 mb-6 max-w-2xl">
         Download a governed ZIP for a single property: summary PDF, authority-filtered certificates, timeline, delivery
         index where applicable, manifest and checksums. For regulators, lenders, or archival evidence — not tenant email
-        delivery.
+        delivery.{' '}
+        <span className="block mt-2 text-slate-700" data-testid="audit-pack-immutable-disclosure">
+          {AUDIT_PACK_IMMUTABLE_DISCLOSURE}
+        </span>
       </p>
 
       <Card>

@@ -1,0 +1,8 @@
+{
+  "programme": "REPORTING-TRUTH-CONVERGENCE-PHASE-01",
+  "module": "async_reporting_disclosure in reporting_semantics_v1",
+  "wired": [
+    "compliance_summary CSV async_score_note rows",
+    "compliance-score reporting_semantics"
+  ]
+}

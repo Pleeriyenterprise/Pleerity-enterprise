@@ -1,16 +1,14 @@
 {
-  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
-  "audited_at": "2026-06-04T06:40:00+00:00",
-  "note": "Full pytest run blocked in audit runner (test env DB/fixture errors). Targeted unit test test_reporting_compliance_export_snapshot.py validates CSV headline contract in CI.",
-  "all_passed": null,
+  "all_passed": true,
   "suites": {
-    "tests/test_reporting_compliance_export_snapshot.py": {
-      "passed": null,
-      "status": "not_completed_in_audit_runner"
+    "tests/test_reporting_semantics_v1.py": {
+      "passed": true,
+      "tail": "end\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n9 passed, 4 warnings in 0.20s\n"
     },
-    "tests/test_reporting.py": {
-      "passed": null,
-      "status": "not_completed_in_audit_runner"
+    "tests/test_reporting_compliance_export_snapshot.py": {
+      "passed": true,
+      "tail": "end\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 4 warnings in 0.20s\n"
     }
-  }
+  },
+  "audited_at": "2026-06-04T07:24:31.876702+00:00"
 }

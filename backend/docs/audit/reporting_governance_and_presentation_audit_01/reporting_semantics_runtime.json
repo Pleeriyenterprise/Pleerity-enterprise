@@ -1,0 +1,64 @@
+{
+  "programme": "REPORTING-TRUTH-CONVERGENCE-PHASE-01",
+  "module": "services/reporting_semantics_v1.py",
+  "version": "v1",
+  "metrics": [
+    "tracked_requirement_count",
+    "score_tracked_requirement_count",
+    "compliant_requirement_count",
+    "satisfied_requirement_count",
+    "verified_requirement_count",
+    "missing_document_count",
+    "expiring_requirement_count",
+    "platform_review_pending_count",
+    "self_recorded_count"
+  ],
+  "definitions": {
+    "tracked_requirement_count": {
+      "label": "Tracked requirements",
+      "short_help": "Registry rows in scope on the Requirements page (tracked DOCUMENT/JOB items, excluding not-applicable lifecycle).",
+      "authority": "tracked_registry_projection"
+    },
+    "score_tracked_requirement_count": {
+      "label": "Score-tracked obligations",
+      "short_help": "Obligations counted in the compliance score projection after runtime filtering and portal visibility.",
+      "authority": "score_projection_pipeline"
+    },
+    "compliant_requirement_count": {
+      "label": "Valid for scoring",
+      "short_help": "Rows with projected compliance status COMPLIANT or VALID (score KPI bucket).",
+      "authority": "score_projection_pipeline"
+    },
+    "satisfied_requirement_count": {
+      "label": "Lifecycle satisfied (unverified)",
+      "short_help": "Client lifecycle SATISFIED_UNVERIFIED \u2014 recorded evidence not yet fully verified.",
+      "authority": "client_lifecycle_state"
+    },
+    "verified_requirement_count": {
+      "label": "Lifecycle verified",
+      "short_help": "Client lifecycle VERIFIED \u2014 platform-accepted evidence state.",
+      "authority": "client_lifecycle_state"
+    },
+    "missing_document_count": {
+      "label": "Missing document (score view)",
+      "short_help": "Score projection: pending/missing rows that still count as missing required evidence (satisfied-without-doc excluded).",
+      "authority": "score_projection_pipeline"
+    },
+    "expiring_requirement_count": {
+      "label": "Expiring soon (score view)",
+      "short_help": "Projected status EXPIRING_SOON in score-tracked set.",
+      "authority": "score_projection_pipeline"
+    },
+    "platform_review_pending_count": {
+      "label": "Awaiting platform review",
+      "short_help": "Client lifecycle PENDING_REVIEW \u2014 evidence submitted, not yet verified.",
+      "authority": "client_lifecycle_state"
+    },
+    "self_recorded_count": {
+      "label": "Self-recorded assurance",
+      "short_help": "Rows with assurance_tier SELF_RECORDED or lifecycle SATISFIED_UNVERIFIED without verified assurance.",
+      "authority": "assurance_tier_and_lifecycle"
+    }
+  },
+  "loader": "load_score_projection_portal_rows (filter \u2192 enrich \u2192 project \u2192 portal-visible)"
+}

@@ -1,0 +1,26 @@
+{
+  "programme": "REPORTING-TRUTH-CONVERGENCE-PHASE-01",
+  "rules": {
+    "reportlab_server": {
+      "allowed_grades": [
+        "CLIENT_PRESENTATION",
+        "AUDIT_ARTIFACT",
+        "REGULATORY_SUBMISSION",
+        "EXECUTIVE_SUMMARY"
+      ],
+      "deterministic": true
+    },
+    "jspdf_client": {
+      "allowed_grades": [
+        "OPERATIONAL_EXPORT",
+        "CLIENT_PRESENTATION"
+      ],
+      "prohibited_grades": [
+        "AUDIT_ARTIFACT",
+        "REGULATORY_SUBMISSION"
+      ],
+      "deterministic": false,
+      "note": "Client-rendered; governance metadata may be thinner than server PDFs."
+    }
+  }
+}

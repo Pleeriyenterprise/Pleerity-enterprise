@@ -1,79 +1,17 @@
 {
-  "programme": "REPORTING-GOVERNANCE-AND-PRESENTATION-AUDIT-01",
-  "classified_at": "2026-06-04T06:40:00+00:00",
-  "primary_classification": "REPORT_TRUTH_DRIFT",
-  "gaps": [
-    {
-      "class": "REPORT_TRUTH_DRIFT",
-      "severity": "operational",
-      "detail": "Staging: dashboard total_requirements=43 vs compliance summary CSV=49 vs requirements tracked=47; compliant counts 1/2/0 across surfaces"
-    },
-    {
-      "class": "REPORT_TRUTH_DRIFT",
-      "severity": "operational",
-      "detail": "Evidence Readiness re-download regenerates from live DB; score_at_time metadata not bound into PDF body"
-    },
-    {
-      "class": "EXPORT_ENGINE_GAP",
-      "severity": "operational",
-      "detail": "Parallel PDF engines (ReportLab vs jsPDF) with inconsistent governance metadata"
-    },
-    {
-      "class": "GOVERNANCE_GAP",
-      "severity": "operational",
-      "detail": "Two evidence pack products — only audit-pack/generate is governed for regulators"
-    },
-    {
-      "class": "PRESENTATION_GAP",
-      "severity": "cosmetic",
-      "detail": "Client jsPDF compliance reports lack manifest/checksum and weaker typography than professional ReportLab"
-    },
-    {
-      "class": "SCALABILITY_GAP",
-      "severity": "operational",
-      "detail": "Sync 10k requirement exports and unbounded audit log extract default limit 1000"
-    },
-    {
-      "class": "NO_MATERIAL_GAP",
-      "severity": "info",
-      "detail": "Audit evidence pack service v2 contract, score drivers export snapshot headers, rate limits present"
-    }
+  "programme": "REPORTING-TRUTH-CONVERGENCE-PHASE-01",
+  "classified_at": "2026-06-04T07:24:31.877705+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "prior_audit": "REPORT_TRUTH_DRIFT",
+  "remediation": [
+    "Central reporting_semantics_v1 layer",
+    "Exports use enrich+projection pipeline",
+    "Explicit metric definitions in API and CSV",
+    "Export grades and determinism registry",
+    "UI disclosures for live vs immutable exports"
   ],
-  "cosmetic_vs_dangerous": {
-    "cosmetic": [
-      {
-        "class": "PRESENTATION_GAP",
-        "severity": "cosmetic",
-        "detail": "Client jsPDF compliance reports lack manifest/checksum and weaker typography than professional ReportLab"
-      }
-    ],
-    "operational": [
-      {
-        "class": "REPORT_TRUTH_DRIFT",
-        "severity": "operational",
-        "detail": "Staging count divergence across dashboard, compliance summary CSV, and requirements page"
-      },
-      {
-        "class": "REPORT_TRUTH_DRIFT",
-        "severity": "operational",
-        "detail": "Evidence Readiness re-download is not point-in-time"
-      },
-      {
-        "class": "EXPORT_ENGINE_GAP",
-        "severity": "operational",
-        "detail": "Dual PDF engines"
-      },
-      {
-        "class": "GOVERNANCE_GAP",
-        "severity": "operational",
-        "detail": "Legacy evidence-pack ZIP vs governed audit pack"
-      },
-      {
-        "class": "SCALABILITY_GAP",
-        "severity": "operational",
-        "detail": "Large sync exports"
-      }
-    ]
-  },
-  "surface_count": 22
+  "residual_watchlist": [
+    "Evidence Readiness still live-regenerated (disclosed, not snapshotted)",
+    "jsPDF client PDFs remain CLIENT_PRESENTATION grade only"
+  ]
 }
