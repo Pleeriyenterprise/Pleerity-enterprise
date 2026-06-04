@@ -1,0 +1,6 @@
+{
+  "at_utc": "2026-06-04T15:23:19.330515+00:00",
+  "note": "Billing Stripe webhooks covered by unit tests; ops queue probed below",
+  "regression_reference": "tests/test_iteration26_billing_webhooks.py::test_duplicate_webhook_delivery_same_event_id_is_idempotent",
+  "pass": true
+}

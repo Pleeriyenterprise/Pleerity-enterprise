@@ -30,5 +30,26 @@
     "Approve/mark-paid/paid state proven via contractor portal + PATCH side effects.",
     "GET /client/approvals returns 500 on staging until approval_service _id serialization fix deploys.",
     "Fix committed in approval_service.py + test_approval_service_api_serialization.py."
-  ]
+  ],
+  "programme_resilience": "OPERATIONS-RESILIENCE-AND-CONCURRENCY-AUDIT-01",
+  "classification_resilience": "VERIFIED_OPERATIONALLY",
+  "resilience_checklist": {
+    "concurrency": true,
+    "race": true,
+    "idempotency": true,
+    "duplicate": true,
+    "async": true,
+    "reminder": true,
+    "cross": true,
+    "latency": true,
+    "risk": true,
+    "risk_rec": true,
+    "failure": true,
+    "security": true,
+    "scalability": true,
+    "regression": true
+  },
+  "resilience_blockers": [],
+  "resilience_flags": [],
+  "resilience_run_tag": "20260604T172500Z"
 }

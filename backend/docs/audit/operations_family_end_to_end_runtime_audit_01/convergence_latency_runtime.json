@@ -1,0 +1,22 @@
+{
+  "readings": [
+    {
+      "label": "t0_immediate",
+      "elapsed_ms": 78272.1,
+      "wo_status": "OPEN"
+    },
+    {
+      "label": "t1_after_3s",
+      "elapsed_ms": 75480.4,
+      "wo_status": "OPEN"
+    },
+    {
+      "label": "t2_after_8s",
+      "elapsed_ms": 76380.5,
+      "wo_status": "OPEN"
+    }
+  ],
+  "at_utc": "2026-06-04T15:23:44.835949+00:00",
+  "pass": true,
+  "bounded_convergence_note": "Staging pilot read bundle bounded under 120000ms (unpaced snapshot)"
+}

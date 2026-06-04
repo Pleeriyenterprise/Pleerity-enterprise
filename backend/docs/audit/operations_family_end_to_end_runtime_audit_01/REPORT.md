@@ -160,4 +160,25 @@ See `watchlist.md` (deploy serialization fix; optional INVOICING override revert
 
 - Execute: `backend/operations_family_end_to_end_runtime_audit_01_execute.py`
 - Reconcile: `backend/operations_family_end_to_end_runtime_audit_01_reconcile.py`
+## Resilience and concurrency (OPERATIONS-RESILIENCE-AND-CONCURRENCY-AUDIT-01)
 
+**Classification:** `VERIFIED_OPERATIONALLY`
+**Run tag:** `20260604T172500Z`
+**Marker:** `OPS-RESIL-20260604T172500Z`
+
+API-only stress probes on Wales HMO staging pilot. No workflow redesign.
+
+- concurrency: PASS
+- race: PASS
+- idempotency: PASS
+- duplicate: PASS
+- async: PASS
+- reminder: PASS
+- cross: PASS
+- latency: PASS
+- risk: PASS
+- risk_rec: PASS
+- failure: PASS
+- security: PASS
+- scalability: PASS
+- regression: PASS

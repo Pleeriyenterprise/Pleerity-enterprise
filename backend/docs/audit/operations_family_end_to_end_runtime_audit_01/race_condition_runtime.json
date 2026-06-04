@@ -1,0 +1,31 @@
+{
+  "probes": [
+    {
+      "name": "contractor_accept_after_decline_blocked",
+      "ok": true,
+      "accept_status": 404,
+      "wo_status": "OPEN",
+      "contractor_id": null,
+      "at_utc": "2026-06-04T15:15:28.601423+00:00"
+    },
+    {
+      "name": "evidence_upload_vs_landlord_close",
+      "ok": true,
+      "prep": "status=COMPLETED evidence=1",
+      "evidence_status": 200,
+      "close_status": 200,
+      "final_status": "VERIFIED",
+      "evidence_count": 2,
+      "at_utc": "2026-06-04T15:17:02.481621+00:00"
+    },
+    {
+      "name": "invoice_submit_during_reassign",
+      "ok": true,
+      "invoice_status": 400,
+      "reassign_status": 200,
+      "at_utc": "2026-06-04T15:17:59.084075+00:00"
+    }
+  ],
+  "at_utc": "2026-06-04T15:13:58.511867+00:00",
+  "pass": true
+}

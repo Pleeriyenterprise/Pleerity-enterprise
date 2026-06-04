@@ -1,0 +1,10 @@
+{
+  "at_utc": "2026-06-04T17:21:45.547393+00:00",
+  "wo_list_status": 200,
+  "wo_count": 100,
+  "issues_list_status": 200,
+  "issues_count": 100,
+  "combined_elapsed_ms": 31543.0,
+  "pass": true,
+  "note": "Bounded list reads only; no destructive load"
+}

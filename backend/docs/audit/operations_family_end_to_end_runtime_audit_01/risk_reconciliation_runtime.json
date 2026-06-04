@@ -1,0 +1,33 @@
+{
+  "at_utc": "2026-06-04T17:18:58.391267+00:00",
+  "active_before": 0,
+  "active_after": 0,
+  "signal_sample": [
+    {
+      "signal_id": "rs_f47870a5506a",
+      "risk_type": "RENT_SEVERELY_OVERDUE",
+      "status": "acknowledged"
+    },
+    {
+      "signal_id": "rs_e80553df6e7b",
+      "risk_type": "RENT_OVERDUE",
+      "status": "acknowledged"
+    },
+    {
+      "signal_id": "rs_c9c2a9725f62",
+      "risk_type": "Recurring Repairs Risk",
+      "status": "acknowledged"
+    },
+    {
+      "signal_id": "rs_1cb5079e835a",
+      "risk_type": "Electrical Risk",
+      "status": "acknowledged"
+    },
+    {
+      "signal_id": "rs_c7790af76ce0",
+      "risk_type": "Recurring Repairs Risk",
+      "status": "acknowledged"
+    }
+  ],
+  "pass": true
+}

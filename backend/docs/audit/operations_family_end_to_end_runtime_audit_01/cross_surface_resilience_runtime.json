@@ -1,0 +1,115 @@
+{
+  "samples": [
+    {
+      "label": "t0_immediate",
+      "snapshot": {
+        "at_utc": "2026-06-04T15:23:44.835949+00:00",
+        "protection_snapshot": {
+          "property_id_filter": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "account": {
+            "last_login_at": "2026-06-04T15:13:49.409095+00:00",
+            "failed_login_attempts": 0,
+            "account_locked": false,
+            "lock_reason": null
+          },
+          "compliance": {
+            "score": 26,
+            "grade": "F",
+            "requirements_overdue": 0,
+            "requirements_expiring_soon": 0,
+            "requirements_pending": 42
+          },
+          "operations": {
+            "open_maintenance_issues": 155,
+            "maintenance_workflows_enabled": true
+          },
+          "risk": {
+            "predictive_enabled": true,
+            "active_risk_signals_count": 0,
+            "high_or_critical_active_count": 0
+          }
+        },
+        "tasks_status": 200,
+        "tasks_count": 0,
+        "wo_status": "OPEN",
+        "issue_status": "ready_for_work_order",
+        "risk_signal_count": 86
+      }
+    },
+    {
+      "label": "t1_after_3s",
+      "snapshot": {
+        "at_utc": "2026-06-04T15:25:06.085843+00:00",
+        "protection_snapshot": {
+          "property_id_filter": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "account": {
+            "last_login_at": "2026-06-04T15:13:49.409095+00:00",
+            "failed_login_attempts": 0,
+            "account_locked": false,
+            "lock_reason": null
+          },
+          "compliance": {
+            "score": 26,
+            "grade": "F",
+            "requirements_overdue": 0,
+            "requirements_expiring_soon": 0,
+            "requirements_pending": 42
+          },
+          "operations": {
+            "open_maintenance_issues": 155,
+            "maintenance_workflows_enabled": true
+          },
+          "risk": {
+            "predictive_enabled": true,
+            "active_risk_signals_count": 0,
+            "high_or_critical_active_count": 0
+          }
+        },
+        "tasks_status": 200,
+        "tasks_count": 0,
+        "wo_status": "OPEN",
+        "issue_status": "ready_for_work_order",
+        "risk_signal_count": 86
+      }
+    },
+    {
+      "label": "t2_after_8s",
+      "snapshot": {
+        "at_utc": "2026-06-04T15:26:29.543479+00:00",
+        "protection_snapshot": {
+          "property_id_filter": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "account": {
+            "last_login_at": "2026-06-04T15:13:49.409095+00:00",
+            "failed_login_attempts": 0,
+            "account_locked": false,
+            "lock_reason": null
+          },
+          "compliance": {
+            "score": 26,
+            "grade": "F",
+            "requirements_overdue": 0,
+            "requirements_expiring_soon": 0,
+            "requirements_pending": 42
+          },
+          "operations": {
+            "open_maintenance_issues": 155,
+            "maintenance_workflows_enabled": true
+          },
+          "risk": {
+            "predictive_enabled": true,
+            "active_risk_signals_count": 0,
+            "high_or_critical_active_count": 0
+          }
+        },
+        "tasks_status": 200,
+        "tasks_count": 0,
+        "wo_status": "OPEN",
+        "issue_status": "ready_for_work_order",
+        "risk_signal_count": 86
+      }
+    }
+  ],
+  "at_utc": "2026-06-04T15:23:44.835949+00:00",
+  "status_stable": true,
+  "pass": true
+}

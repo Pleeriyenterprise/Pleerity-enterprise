@@ -1,0 +1,56 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_maintenance_wo_from_issue_idempotency.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_maintenance_issue_create_idempotency.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_notification_reminder_idempotency.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_notification_orchestrator.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_risk_signal_regen_governance.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_risk_signal_regen_worker_outcomes.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_iteration26_billing_webhooks.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_contractor_evidence_and_decline.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_approval_service_api_serialization.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_rent_operations.py",
+      "ok": true,
+      "exit_code": 0
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-04T17:21:45.564521+00:00"
+}

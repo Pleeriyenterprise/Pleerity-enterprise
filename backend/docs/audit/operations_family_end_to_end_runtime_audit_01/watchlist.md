@@ -15,3 +15,18 @@
 
 - [ ] Revert INVOICING manual override on pilot if staging policy requires plan-default only.
 - [ ] Clean up marker invoices/work orders from closeout runs if portfolio noise is undesirable.
+## Resilience audit watchlist (OPERATIONS-RESILIENCE-AND-CONCURRENCY-AUDIT-01)
+
+- [x] Concurrent assign, accept-after-decline, evidence/close race, invoice/reassign race, rent idempotency key (staging).
+- [x] WO-from-issue idempotency, duplicate accept, duplicate invoice (≤ approved quote), duplicate evidence append.
+- [x] Risk regen queue summary, reminder/notification governance (code + unit tests).
+- [x] Cross-surface convergence and bounded staging read latency.
+- [x] Risk churn does not increase duplicate stable keys on pilot.
+- [x] Retry-after-timeout accept recovery.
+- [x] Security under decline/stale WO; scalability bounded list reads.
+- [x] Regression suites (idempotency, queue, webhooks, rent, approval serialization).
+
+## Optional follow-up
+
+- [ ] Extend concurrent landlord invoice approve/mark-paid race with two landlord sessions.
+- [ ] Reconcile pre-existing duplicate risk stable keys on Wales pilot (5 types) via governed regen/cleanup if product requires zero duplicates.

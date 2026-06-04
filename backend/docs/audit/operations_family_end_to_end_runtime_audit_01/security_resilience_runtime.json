@@ -1,0 +1,11 @@
+{
+  "probes": [
+    {
+      "name": "unrelated_wo_hidden",
+      "ok": true,
+      "status": 404
+    }
+  ],
+  "at_utc": "2026-06-04T14:53:35.769485+00:00",
+  "pass": true
+}

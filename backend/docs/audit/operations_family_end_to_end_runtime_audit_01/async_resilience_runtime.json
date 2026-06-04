@@ -1,0 +1,17 @@
+{
+  "at_utc": "2026-06-04T15:23:19.330515+00:00",
+  "regen_queue_status": 200,
+  "queue_summary": {
+    "pending": null,
+    "running": null,
+    "failed_sample": 0,
+    "dead_sample": 0
+  },
+  "governance_observed": [
+    "debounced_enqueue_per_property",
+    "atomic_claim_PENDING_to_RUNNING",
+    "FAILED_with_backoff",
+    "DEAD_after_max_attempts"
+  ],
+  "pass": true
+}

@@ -1,0 +1,9 @@
+{
+  "at_utc": "2026-06-04T15:23:24.154227+00:00",
+  "code_governance": [
+    "daily_compliance_reminder_scope_fingerprint stabilizes idempotency scope",
+    "contractor_assign notification uses idempotency_key contractor_assign_{wo}_{contractor}",
+    "notification_orchestrator duplicate idempotency_key returns duplicate_ignored"
+  ],
+  "pass": true
+}

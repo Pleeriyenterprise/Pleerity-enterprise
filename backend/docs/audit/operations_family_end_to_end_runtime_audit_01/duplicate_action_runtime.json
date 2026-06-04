@@ -1,0 +1,22 @@
+{
+  "probes": [
+    {
+      "name": "duplicate_invoice_submit",
+      "ok": true,
+      "statuses": [
+        200,
+        400
+      ],
+      "wo_status": "VERIFIED",
+      "first_detail": "{\"invoice_id\":\"8ff031ff-3caa-4975-9771-47823e502657\",\"client_id\":\"6fd5ac4c-3fd4-4112-ade7-156977deb49f\",\"property_id\":\"d35a58ae-3c81-491c-9694-1d021dd3b8ad\",\"co",
+      "second_detail": "{\"detail\":\"An invoice for this job is already with the client or settled.\"}"
+    },
+    {
+      "name": "duplicate_evidence_upload_append_only",
+      "ok": true,
+      "keys": 2
+    }
+  ],
+  "at_utc": "2026-06-04T17:25:10.857548+00:00",
+  "pass": true
+}

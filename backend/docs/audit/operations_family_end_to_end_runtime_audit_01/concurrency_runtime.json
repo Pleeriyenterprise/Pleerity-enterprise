@@ -1,0 +1,23 @@
+{
+  "probes": [
+    {
+      "name": "concurrent_duplicate_assign",
+      "ok": true,
+      "statuses": [
+        200,
+        200
+      ],
+      "final_contractor": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+      "at_utc": "2026-06-04T15:14:29.337132+00:00"
+    },
+    {
+      "name": "concurrent_rent_payment_idempotency",
+      "ok": true,
+      "first": 200,
+      "second": 200,
+      "at_utc": "2026-06-04T15:18:09.840659+00:00"
+    }
+  ],
+  "at_utc": "2026-06-04T15:13:58.511867+00:00",
+  "pass": true
+}

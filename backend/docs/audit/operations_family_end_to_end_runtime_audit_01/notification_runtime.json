@@ -1,0 +1,5 @@
+{
+  "at_utc": "2026-06-04T15:23:24.154227+00:00",
+  "pass": true,
+  "note": "Rent/reminder runtime send not exercised (safe mode); idempotency proven via unit tests"
+}

@@ -137,7 +137,7 @@ def test_wo_from_issue_begin_replay_when_fingerprint_has_work_order():
     asyncio.run(_run())
 
 
-def test_http_duplicate_post_returns_same_work_order_id(client, http_client_guard_override):
+def test_http_duplicate_post_returns_same_work_order_id(http_client_guard_override, client):
     dedupe_store = {}
     created_count = {"n": 0}
 
@@ -203,7 +203,7 @@ def test_http_duplicate_post_returns_same_work_order_id(client, http_client_guar
     assert created_count["n"] == 1
 
 
-def test_http_replays_existing_linked_work_order_without_create(client, http_client_guard_override):
+def test_http_replays_existing_linked_work_order_without_create(http_client_guard_override, client):
     existing = {
         "work_order_id": WO_ID,
         "client_id": CLIENT_ID,
@@ -213,8 +213,18 @@ def test_http_replays_existing_linked_work_order_without_create(client, http_cli
         "idempotent_replay": True,
     }
     flags = {MAINTENANCE_WORKFLOWS: True}
+    user = {
+        "client_id": CLIENT_ID,
+        "portal_user_id": PORTAL_USER,
+        "role": "ROLE_CLIENT",
+        "email": "idem-wo@test.com",
+    }
     with (
-        patch("routes.client_maintenance.client_route_guard", new=_fake_client_guard),
+        patch(
+            "routes.client_maintenance._require_maintenance_enabled",
+            new_callable=AsyncMock,
+            return_value=user,
+        ),
         patch(
             "routes.client_maintenance.get_effective_flags",
             new_callable=AsyncMock,
@@ -239,6 +249,18 @@ def test_http_replays_existing_linked_work_order_without_create(client, http_cli
             "routes.client_maintenance.maintenance_issues_service.create_work_order_from_issue",
             AsyncMock(),
         ) as create_mock,
+        patch(
+            "services.operational_continuation_service.enrich_issue_with_continuation",
+            AsyncMock(side_effect=lambda issue, _cid: issue),
+        ),
+        patch(
+            "services.operational_continuation_service.resolve_continuation_for_issue",
+            AsyncMock(return_value={}),
+        ),
+        patch(
+            "services.operational_continuation_service.merge_continuation_into_payload",
+            lambda wo, _cont: wo,
+        ),
     ):
         r = client.post(f"/api/client/maintenance/issues/{ISSUE_ID}/create-work-order")
 

@@ -1,0 +1,18 @@
+{
+  "probes": [
+    {
+      "name": "risk_api_reachable_under_churn",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "name": "churn_does_not_increase_duplicate_stable_keys",
+      "ok": true,
+      "duplicate_key_types_before": 5,
+      "duplicate_key_types_after": 5,
+      "note": "Pre-existing pilot duplicates allowed; churn must not add more"
+    }
+  ],
+  "at_utc": "2026-06-04T17:18:58.391267+00:00",
+  "pass": true
+}
