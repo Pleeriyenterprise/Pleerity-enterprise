@@ -1,0 +1,54 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
+  "audited_at": "2026-06-04T07:50:09.860119+00:00",
+  "checks": [
+    {
+      "concept": "generated_timestamp",
+      "evidence_readiness_pdf": "pass \u2014 UTC on cover + Snapshot generated at",
+      "audit_pack": "pass \u2014 Generated at UTC + export_id",
+      "jspdf_client": "partial \u2014 locale date only",
+      "csv": "pass \u2014 Generated row"
+    },
+    {
+      "concept": "snapshot_vs_live_disclosure",
+      "evidence_readiness_pdf": "pass \u2014 body text warns point-in-time",
+      "evidence_readiness_http": "pass \u2014 X-Report-Determinism live_regenerated",
+      "jspdf": "fail \u2014 no disclosure"
+    },
+    {
+      "concept": "assurance_tiers",
+      "audit_pack": "pass \u2014 authority_state in pack JSON",
+      "evidence_readiness_matrix": "fail \u2014 status label only",
+      "requirements_csv": "partial \u2014 evidence_state column not assurance_tier"
+    },
+    {
+      "concept": "estimated_vs_confirmed_dates",
+      "score_drivers_csv": "pass \u2014 date_confidence column",
+      "evidence_readiness_matrix": "fail \u2014 due date without confidence flag"
+    },
+    {
+      "concept": "platform_review_pending",
+      "requirements_page_ui": "pass \u2014 pending review hint",
+      "exports": "partial \u2014 not in PDF matrix"
+    },
+    {
+      "concept": "immutable_artifact_notice",
+      "audit_pack_ui": "pass \u2014 ReportsAuditPackPage disclosure",
+      "operational_zip_ui": "pass \u2014 OPERATIONAL_ZIP_DISCLOSURE"
+    },
+    {
+      "concept": "report_grade",
+      "api_available": "pass \u2014 export_grade on /reports/available",
+      "jspdf_download": "fail \u2014 grade not embedded in PDF metadata"
+    }
+  ],
+  "overstatement_risks": [
+    "jspdf uses domain labels that may read as verified without assurance column",
+    "COMPLIANT/VALID in matrix can imply regulator verification",
+    "professional PDF property GREEN/AMBER/RED from DB without recalc footnote per row"
+  ],
+  "buried_risk_patterns": [
+    "Silent truncation in evidence readiness property loop",
+    "Missing items only in counts paragraph \u2014 no full unresolved index in PDF"
+  ]
+}

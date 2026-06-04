@@ -1,0 +1,22 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
+  "audited_at": "2026-06-04T07:50:09.860119+00:00",
+  "primitives_to_extract": [
+    "ReportCoverBlock(title, scope, crn, generated_at_utc, logo_optional)",
+    "GovernanceFooterBlock(disclaimer, generated_by, contact, report_grade)",
+    "SnapshotFramingParagraph(determinism, score_status, last_calculated_at)",
+    "MetadataTable(export_identity | score headline | semantics counts)",
+    "BrandedTableStyle from professional_reports + pdf_report_builder unify",
+    "RequirementRowPresentation(status, assurance_tier, date_confidence, lifecycle)"
+  ],
+  "do_not_migrate_yet": [
+    "jsPDF \u2192 ReportLab (product decision)",
+    "HTML-to-PDF"
+  ],
+  "quick_wins_no_engine_swap": [
+    "Shared footer constant across ReportLab builders",
+    "Add assurance_tier + date_confidence columns to evidence readiness matrix",
+    "Embed export_grade text in ReportLab cover metadata block",
+    "Deprecate jsPDF for compliance_summary when reports_pdf (route to professional PDF)"
+  ]
+}

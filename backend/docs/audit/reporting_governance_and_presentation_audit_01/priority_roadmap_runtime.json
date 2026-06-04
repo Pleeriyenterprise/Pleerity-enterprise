@@ -1,0 +1,26 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
+  "audited_at": "2026-06-04T07:50:09.860119+00:00",
+  "P0_trust_legal_governance": [
+    "Route compliance/requirements PDF downloads to server ReportLab (retire jsPDF for external sharing)",
+    "Add assurance_tier + date_confidence + lifecycle to evidence readiness matrix tables",
+    "Explicit unresolved obligations index in CLIENT_PRESENTABLE PDFs",
+    "Frozen PDF artifact option for evidence readiness (or disable re-download without warning banner)"
+  ],
+  "P1_enterprise_readability": [
+    "Running headers/footers with page numbers on ReportLab exports",
+    "Logo on cover via branding_resolver",
+    "Portfolio truncation \u2192 appendix continuation pages with index",
+    "Professional PDF property RAG footnote (persisted vs live)"
+  ],
+  "P2_template_consistency": [
+    "Extract shared report_layout_v1 module for ReportLab builders",
+    "Unify table styles between pdf_report_builder and professional_reports",
+    "Monthly digest server-side PDF option"
+  ],
+  "P3_advanced": [
+    "PDF/UA accessibility tags",
+    "Digital signature / sealed manifest for audit packs",
+    "Executive one-pager template"
+  ]
+}

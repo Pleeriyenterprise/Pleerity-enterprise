@@ -1,0 +1,133 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
+  "audited_at": "2026-06-04T07:50:09.860119+00:00",
+  "templates": [
+    {
+      "id": "evidence_readiness_portfolio_pdf",
+      "engine": "reportlab",
+      "module": "services/pdf_report_builder.py:build_portfolio_report",
+      "layout_system": "platypus SimpleDocTemplate A4; branded TableStyle via _build_styles_and_table_style",
+      "reusable_template": "partial \u2014 shared styles/table_style, no external template file",
+      "typography": "Helvetica 8\u201324pt; branded primary/secondary hex",
+      "branding": "branding_resolver via report_data.branding",
+      "pagination": "PageBreak cover only; no running header/footer on every page",
+      "appendix": "audit snapshot table only; no indexed evidence appendix",
+      "evidence_refs": "requirement matrix by property; no doc_id hyperlinks",
+      "print_readiness": "adequate A4; wide tables may clip on narrow print",
+      "mobile_readiness": "poor \u2014 dense tables"
+    },
+    {
+      "id": "evidence_readiness_property_pdf",
+      "engine": "reportlab",
+      "module": "pdf_report_builder.py:build_property_report",
+      "layout_system": "same family as portfolio",
+      "reusable_template": "shared with portfolio builder",
+      "pagination": "limited",
+      "print_readiness": "adequate"
+    },
+    {
+      "id": "score_explanation_pdf",
+      "engine": "reportlab",
+      "module": "pdf_report_builder.py:build_score_explanation_report",
+      "layout_system": "executive summary + bucket breakdown when v2 present",
+      "tier": "EXECUTIVE_SUMMARY grade",
+      "governance_copy": "Snapshot as of; forbids live calculator language (tested)",
+      "print_readiness": "good for 1\u20133 pages"
+    },
+    {
+      "id": "professional_compliance_summary_pdf",
+      "engine": "reportlab",
+      "module": "services/professional_reports.py:generate_compliance_summary_pdf",
+      "layout_system": "SimpleDocTemplate; create_styles/create_table_style",
+      "branding": "get_branding(client_id) white-label",
+      "pagination": "no page numbers in builder",
+      "appendix": "expiry schedule section inline",
+      "tier": "CLIENT_PRESENTABLE"
+    },
+    {
+      "id": "professional_expiry_schedule_pdf",
+      "engine": "reportlab",
+      "module": "professional_reports.py",
+      "tier": "CLIENT_PRESENTABLE"
+    },
+    {
+      "id": "professional_audit_log_pdf",
+      "engine": "reportlab",
+      "module": "professional_reports.py",
+      "tier": "AUDIT_READY (activity trail, not evidence pack)"
+    },
+    {
+      "id": "compliance_summary_jspdf",
+      "engine": "jspdf",
+      "module": "frontend/ReportsPage.js:generatePDF",
+      "layout_system": "imperative coordinates + jspdf-autotable",
+      "reusable_template": "none \u2014 duplicated header/footer inline",
+      "typography": "8\u201320pt; hard-coded midnight-blue header bar",
+      "branding": "CVP product header only \u2014 not client white-label resolver",
+      "pagination": "page x of y footer",
+      "governance_gaps": "no score_status_message block; local browser date not UTC; no assurance tier column",
+      "tier": "CLIENT_PRESENTABLE (weak)"
+    },
+    {
+      "id": "requirements_jspdf",
+      "engine": "jspdf",
+      "module": "ReportsPage.js generatePDF requirements branch",
+      "overflow": "7pt font wide table \u2014 overflow risk on long descriptions",
+      "tier": "INTERNAL_OPERATIONAL_ONLY"
+    },
+    {
+      "id": "monthly_digest_jspdf",
+      "engine": "jspdf",
+      "module": "ReportsPage.js:downloadDigestPdf",
+      "tier": "EXECUTIVE_READY (summary only)",
+      "governance": "email content re-rendered client-side \u2014 not immutable"
+    },
+    {
+      "id": "compliance_summary_csv",
+      "engine": "csv_text",
+      "module": "reporting_service._generate_compliance_csv",
+      "semantics_preamble": "reporting_semantics_v1 csv_semantics_preamble_rows",
+      "tier": "OPERATIONAL_EXPORT / handoff"
+    },
+    {
+      "id": "requirements_report_csv",
+      "engine": "csv_text",
+      "module": "reporting_service._generate_requirements_csv",
+      "tier": "CLIENT_PRESENTABLE data; not print layout"
+    },
+    {
+      "id": "score_drivers_csv",
+      "engine": "csv_text",
+      "module": "routes/reports.py get_score_drivers_csv",
+      "tier": "OPERATIONAL_EXPORT"
+    },
+    {
+      "id": "audit_evidence_pack_zip",
+      "engine": "zip + reportlab summary pdf + files",
+      "module": "compliance_audit_evidence_pack_service.py",
+      "layout_system": "ROOT_DIR folder contract + manifest JSON + checksums",
+      "appendix": "03_COMPLIANCE_EVIDENCE verified files + NO_ACTIVE_EVIDENCE marker",
+      "export_identity": "export_id, export_rules_version, registry_version_used",
+      "tier": "REGULATOR_READY / AUDIT_READY",
+      "print_readiness": "ZIP navigation requires desktop unzip literacy"
+    },
+    {
+      "id": "evidence_pack_jobs_zip",
+      "engine": "zip csv",
+      "module": "evidence_pack_service",
+      "tier": "OPERATIONAL_EXPORT only"
+    },
+    {
+      "id": "scheduled_report_email",
+      "engine": "html email + csv attachment",
+      "module": "jobs.py SCHEDULED_REPORT",
+      "tier": "CLIENT_PRESENTABLE email body; CSV operational"
+    },
+    {
+      "id": "admin_reports_hub",
+      "engine": "reportlab + openpyxl + csv",
+      "module": "routes/reporting.py",
+      "tier": "INTERNAL_OPERATIONAL_ONLY"
+    }
+  ]
+}

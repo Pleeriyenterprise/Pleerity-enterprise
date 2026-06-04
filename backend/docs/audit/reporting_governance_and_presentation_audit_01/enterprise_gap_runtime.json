@@ -1,0 +1,56 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
+  "audited_at": "2026-06-04T07:50:09.860119+00:00",
+  "gaps": [
+    {
+      "id": "no_frozen_evidence_readiness_bytes",
+      "class": "regulator-risk",
+      "severity": "operational"
+    },
+    {
+      "id": "jspdf_not_white_label",
+      "class": "operational",
+      "severity": "operational"
+    },
+    {
+      "id": "matrix_silent_truncation",
+      "class": "scalability-risk",
+      "severity": "regulator-risk"
+    },
+    {
+      "id": "no_running_page_numbers_reportlab",
+      "class": "cosmetic",
+      "severity": "cosmetic"
+    },
+    {
+      "id": "no_logo_on_cover",
+      "class": "cosmetic",
+      "severity": "operational"
+    },
+    {
+      "id": "assurance_not_in_matrix",
+      "class": "regulator-risk",
+      "severity": "operational"
+    },
+    {
+      "id": "no_evidence_chronology_section",
+      "class": "operational",
+      "severity": "operational"
+    },
+    {
+      "id": "no_digital_signature",
+      "class": "operational",
+      "severity": "cosmetic"
+    },
+    {
+      "id": "pdf_untagged_accessibility",
+      "class": "operational",
+      "severity": "cosmetic"
+    },
+    {
+      "id": "large_table_page_split_headers",
+      "class": "scalability-risk",
+      "severity": "operational"
+    }
+  ]
+}

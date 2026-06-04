@@ -1,0 +1,41 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
+  "audited_at": "2026-06-04T07:50:09.860119+00:00",
+  "personas": {
+    "councils": {
+      "best_artifact": "audit_evidence_pack_zip",
+      "friction": "ZIP structure learning curve; strong manifest",
+      "score": "B+"
+    },
+    "insurers_lenders": {
+      "best_artifact": "audit_evidence_pack + professional compliance PDF",
+      "friction": "jsPDF exports inadequate \u2014 must use governed pack",
+      "score": "B"
+    },
+    "legal_review": {
+      "best_artifact": "audit pack manifest + checksums",
+      "friction": "evidence readiness re-download non-frozen",
+      "score": "B"
+    },
+    "landlords_agencies": {
+      "best_artifact": "professional PDF + evidence readiness",
+      "friction": "dual PDF engines confusing",
+      "score": "B-"
+    },
+    "executives": {
+      "best_artifact": "score_explanation_pdf + monthly digest",
+      "friction": "digest client re-render",
+      "score": "B"
+    },
+    "support_teams": {
+      "best_artifact": "csv + score drivers",
+      "friction": "semantics preamble requires training",
+      "score": "A-"
+    }
+  },
+  "multi_property": "evidence readiness caps display; audit pack per-property scope",
+  "csv_import": "utf-8-sig score drivers; comment preamble rows in compliance csv",
+  "print": "reportlab adequate; jsPDF autotable may clip",
+  "accessibility": "PDFs not tagged; tables not structured for screen readers",
+  "low_tech_users": "jspdf familiar; ZIP pack needs guidance copy (present)"
+}

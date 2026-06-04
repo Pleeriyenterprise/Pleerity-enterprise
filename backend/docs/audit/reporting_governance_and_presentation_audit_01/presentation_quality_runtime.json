@@ -1,0 +1,63 @@
+{
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
+  "audited_at": "2026-06-04T07:50:09.860119+00:00",
+  "ratings": {
+    "evidence_readiness_reportlab": {
+      "tier": "CLIENT_PRESENTABLE",
+      "hierarchy": "strong cover + exec summary + sections; weak running nav",
+      "typography": "consistent Helvetica stack; score meta in 8pt sublines \u2014 readable",
+      "whitespace": "adequate; property matrix dense after ~10 properties",
+      "evidence_grouping": "by property tables; no assurance chip per row",
+      "overflow": "tables hard-truncate text [:35]; no repeat header on page split",
+      "page_breaks": "cover break only \u2014 long portfolios run together",
+      "cover": "title + CRN + scope + UTC timestamp \u2014 no logo image on cover",
+      "disclaimers": "legal footer + jurisdiction notice + snapshot framing paragraph",
+      "unresolved_risk": "top risk drivers section when overdue/expiring \u2014 not full backlog",
+      "assurance_visibility": "weak \u2014 uses computed status labels not lifecycle/assurance tier",
+      "harsh_notes": [
+        "Matrix omits platform review vs self-recorded distinction",
+        "Cap 20 properties / 30 reqs per property silently truncates large portfolios",
+        "Claims snapshot in PDF body but HTTP re-download is live_regenerated"
+      ]
+    },
+    "professional_compliance_pdf": {
+      "tier": "CLIENT_PRESENTABLE",
+      "hierarchy": "executive blocks + tables",
+      "branding": "white-label colors \u2014 stronger than jsPDF",
+      "harsh_notes": [
+        "No page numbers",
+        "Property RAG from DB may stale vs live dashboard"
+      ]
+    },
+    "audit_evidence_pack": {
+      "tier": "REGULATOR_READY",
+      "hierarchy": "folder contract + summary PDF + manifest",
+      "governance": "export identity block, scope/limitations, compliance status authority",
+      "harsh_notes": [
+        "UX depends on ZIP literacy \u2014 not single scrollable PDF for councils",
+        "Summary PDF lacks branded cover sheet with logo slot (text-only)"
+      ]
+    },
+    "jspdf_compliance_requirements": {
+      "tier": "INTERNAL_OPERATIONAL_ONLY",
+      "hierarchy": "flat header bar + autotable",
+      "harsh_notes": [
+        "Not white-label \u2014 product branding only",
+        "No immutable artifact framing",
+        "Must not be used for lender/regulator submission"
+      ]
+    },
+    "score_explanation_pdf": {
+      "tier": "EXECUTIVE_READY",
+      "harsh_notes": [
+        "Strong trust-safe copy tests; not a evidence catalog"
+      ]
+    },
+    "csv_exports": {
+      "tier": "OPERATIONAL_EXPORT",
+      "harsh_notes": [
+        "Semantically strong post phase-01; visually N/A"
+      ]
+    }
+  }
+}
