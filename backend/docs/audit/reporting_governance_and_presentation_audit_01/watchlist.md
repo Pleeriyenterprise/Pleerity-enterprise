@@ -1,13 +1,16 @@
-# Watchlist — reporting truth convergence (2026-06-04)
+# Watchlist — enterprise presentation (2026-06-04)
 
-## Classification: VERIFIED_OPERATIONALLY
+## VERIFIED_OPERATIONALLY
 
-- [ ] Optional: snapshot Evidence Readiness PDF bytes at first generation
-- [ ] Property RAG in compliance summary CSV still from DB field (label or recompute)
-- [ ] Migrate client jsPDF compliance PDF to server ReportLab when product approves
+### P0
+- [ ] Replace jsPDF compliance/requirements PDF with server ReportLab for external sharing
+- [ ] Evidence readiness matrix: assurance_tier, date_confidence, lifecycle columns
+- [ ] Unresolved obligations index in PDF exports
 
-## Completed in phase 01
-- reporting_semantics_v1 metrics A–I
-- CSV/API semantics preamble
-- Export grade + determinism on /reports/available
-- Evidence pack vs operational ZIP copy
+### P1
+- [ ] ReportLab running footers + page numbers
+- [ ] Branding logo on cover sheet
+- [ ] Portfolio >20 properties: continuation appendix not silent truncation
+
+### P2
+- [ ] Shared report_layout_v1 primitives across ReportLab modules

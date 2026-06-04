@@ -1,17 +1,11 @@
 {
-  "programme": "REPORTING-TRUTH-CONVERGENCE-PHASE-01",
-  "classified_at": "2026-06-04T07:24:31.877705+00:00",
+  "programme": "REPORTING-ENTERPRISE-PRESENTATION-GOVERNANCE-01",
+  "classified_at": "2026-06-04T07:50:27.107341+00:00",
   "classification": "VERIFIED_OPERATIONALLY",
-  "prior_audit": "REPORT_TRUTH_DRIFT",
-  "remediation": [
-    "Central reporting_semantics_v1 layer",
-    "Exports use enrich+projection pipeline",
-    "Explicit metric definitions in API and CSV",
-    "Export grades and determinism registry",
-    "UI disclosures for live vs immutable exports"
+  "gap_classes": [
+    "PRESENTATION_GAP",
+    "GOVERNANCE_VISIBILITY_GAP",
+    "ENTERPRISE_DELIVERY_GAP"
   ],
-  "residual_watchlist": [
-    "Evidence Readiness still live-regenerated (disclosed, not snapshotted)",
-    "jsPDF client PDFs remain CLIENT_PRESENTATION grade only"
-  ]
+  "summary": "Governance semantics are sound; presentation fragmentation (jsPDF vs ReportLab) and matrix assurance visibility are main enterprise blockers."
 }
