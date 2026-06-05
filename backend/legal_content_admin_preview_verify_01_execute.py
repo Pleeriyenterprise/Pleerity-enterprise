@@ -87,25 +87,35 @@ def part_browser_preview(token: str, admin_user: dict) -> dict:
         page.goto(f"{FRONTEND}/admin/settings/legal", wait_until="networkidle", timeout=120_000)
         page.wait_for_timeout(3000)
 
-        preview_btn = page.get_by_role("button", name="Preview")
-        live_link = page.get_by_role("link", name="View live page")
+        page.get_by_role("tab", name="Careers").click()
+        page.wait_for_timeout(2000)
+
+        preview_btn = page.locator('[data-testid="admin-legal-preview-btn-careers"]')
+        live_link = page.locator('[data-testid="admin-legal-live-link-careers"]')
         out["checks"]["preview_button"] = preview_btn.count() > 0
         out["checks"]["live_page_link"] = live_link.count() > 0
-
-        page.get_by_role("tab", name="Careers").click()
-        page.wait_for_timeout(1500)
+        if preview_btn.count() == 0:
+            out["error"] = "Preview UI not deployed (missing admin-legal-preview-btn-careers)"
+            return out
 
         textarea = page.locator("textarea").first
         textarea.fill(DIRTY)
-        preview_btn.first.click()
-        page.wait_for_timeout(4000)
+        with page.expect_response(
+            lambda r: "/admin/legal-content/careers/preview" in r.url and r.request.method == "POST",
+            timeout=60_000,
+        ):
+            preview_btn.click()
+        page.locator('[data-testid="admin-legal-preview-pane-careers"] .legal-content-markdown').wait_for(
+            timeout=60_000
+        )
 
         body = page.locator("body").inner_text()
         out["checks"]["preview_mode_copy"] = "same markdown renderer" in body.lower()
         out["checks"]["sanitization_warning"] = "unsafe html was removed" in body.lower()
-        out["checks"]["bold_rendered"] = page.locator(".legal-content-markdown strong").count() > 0
-        out["checks"]["script_not_rendered"] = page.locator(".legal-content-markdown script").count() == 0
-        preview_text = page.locator(".legal-content-markdown").inner_text()
+        preview_md = page.locator('[data-testid="admin-legal-preview-pane-careers"] .legal-content-markdown')
+        out["checks"]["bold_rendered"] = preview_md.locator("strong").count() > 0
+        out["checks"]["script_not_rendered"] = preview_md.locator("script").count() == 0
+        preview_text = preview_md.inner_text()
         out["checks"]["visible_paragraph"] = "Visible paragraph" in preview_text
 
         page.screenshot(path=str(shot_dir / "admin_preview_careers.png"))

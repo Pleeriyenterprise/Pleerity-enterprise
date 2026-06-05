@@ -30,6 +30,16 @@ const INITIAL_CONTENT = {
   about: EMPTY_ROW('about', 'About Us'),
 };
 
+const LIVE_PAGE_PATHS = {
+  privacy: '/legal/privacy',
+  terms: '/legal/terms',
+  cookies: '/legal/cookies',
+  accessibility: '/accessibility',
+  careers: '/careers',
+  partnerships: '/partnerships',
+  about: '/about',
+};
+
 const TABS = [
   { value: 'privacy', label: 'Privacy Policy', icon: FileText },
   { value: 'terms', label: 'Terms', icon: FileText },
@@ -71,6 +81,14 @@ const AdminLegalContentPage = () => {
   const [message, setMessage] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [content, setContent] = useState(INITIAL_CONTENT);
+  const [editorMode, setEditorMode] = useState('edit');
+  const [preview, setPreview] = useState({
+    loading: false,
+    content: '',
+    sanitizationApplied: false,
+    error: null,
+    stale: false,
+  });
 
   const applyRow = useCallback((slug, row) => {
     setContent((prev) => ({
@@ -126,6 +144,54 @@ const AdminLegalContentPage = () => {
   useEffect(() => {
     loadSlug(activeTab, { quiet: true });
   }, [activeTab, loadSlug]);
+
+  useEffect(() => {
+    setEditorMode('edit');
+    setPreview({
+      loading: false,
+      content: '',
+      sanitizationApplied: false,
+      error: null,
+      stale: false,
+    });
+  }, [activeTab]);
+
+  const refreshPreview = useCallback(async (slug) => {
+    const row = content[slug];
+    if (!row) return;
+    setPreview((prev) => ({ ...prev, loading: true, error: null }));
+    try {
+      const { data } = await apiClient.post(`/admin/legal-content/${slug}/preview`, {
+        title: row.title,
+        content: row.content,
+      });
+      setPreview({
+        loading: false,
+        content: data.content || '',
+        sanitizationApplied: Boolean(data.sanitization_applied),
+        error: null,
+        stale: false,
+      });
+    } catch (error) {
+      const detail = error?.response?.data?.detail || error.message || 'Preview failed';
+      setPreview((prev) => ({
+        ...prev,
+        loading: false,
+        error: String(detail),
+        stale: false,
+      }));
+    }
+  }, [content]);
+
+  useEffect(() => {
+    if (editorMode !== 'preview') return;
+    setPreview((prev) => (prev.content ? { ...prev, stale: true } : prev));
+  }, [content[activeTab]?.content, content[activeTab]?.title, editorMode, activeTab]);
+
+  const openPreview = (slug) => {
+    setEditorMode('preview');
+    refreshPreview(slug);
+  };
 
   const handleSave = async (slug) => {
     setSaving(true);
@@ -297,19 +363,99 @@ const AdminLegalContentPage = () => {
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">
-                        Content (Markdown supported)
-                      </label>
-                      <Textarea
-                        value={row.content}
-                        onChange={(e) => updateField(tab.value, 'content', e.target.value)}
-                        placeholder="Enter legal content here..."
-                        className="min-h-[400px] font-mono text-sm"
-                        disabled={loading}
-                      />
-                      <p className="text-xs text-gray-500 mt-2">
-                        {(row.content || '').length} characters
-                      </p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          Content (Markdown supported)
+                        </label>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={editorMode === 'edit' && activeTab === tab.value ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setEditorMode('edit')}
+                            disabled={loading}
+                            data-testid={`admin-legal-edit-btn-${tab.value}`}
+                          >
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={editorMode === 'preview' && activeTab === tab.value ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => openPreview(tab.value)}
+                            disabled={loading}
+                            data-testid={`admin-legal-preview-btn-${tab.value}`}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Preview
+                          </Button>
+                        </div>
+                      </div>
+
+                      {editorMode === 'edit' || activeTab !== tab.value ? (
+                        <>
+                          <Textarea
+                            value={row.content}
+                            onChange={(e) => updateField(tab.value, 'content', e.target.value)}
+                            placeholder="Enter legal content here..."
+                            className="min-h-[400px] font-mono text-sm"
+                            disabled={loading}
+                          />
+                          <p className="text-xs text-gray-500 mt-2">
+                            {(row.content || '').length} characters
+                          </p>
+                        </>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="text-xs text-gray-500">
+                            Preview uses the same markdown renderer and save-time sanitisation as the public site.
+                            Marketing header/footer are not shown. Use <strong>View live page</strong> to compare the
+                            currently published page.
+                          </p>
+                          {preview.sanitizationApplied && !preview.loading && (
+                            <Alert className="bg-amber-50 border-amber-200">
+                              <AlertCircle className="h-4 w-4 text-amber-600" />
+                              <AlertDescription className="text-amber-800">
+                                Unsafe HTML was removed from your draft. The preview below matches what will be saved.
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                          {preview.stale && !preview.loading && (
+                            <div className="flex items-center gap-3">
+                              <p className="text-xs text-amber-700">Draft changed since last preview.</p>
+                              <Button type="button" variant="outline" size="sm" onClick={() => refreshPreview(tab.value)}>
+                                <RefreshCw className="w-4 h-4 mr-1" />
+                                Refresh preview
+                              </Button>
+                            </div>
+                          )}
+                          {preview.error && (
+                            <Alert className="bg-red-50 border-red-200">
+                              <AlertCircle className="h-4 w-4 text-red-600" />
+                              <AlertDescription className="text-red-700">{preview.error}</AlertDescription>
+                            </Alert>
+                          )}
+                          <div
+                            className="border rounded-lg bg-white p-6 min-h-[400px]"
+                            data-testid={`admin-legal-preview-pane-${tab.value}`}
+                          >
+                            {preview.loading && (
+                              <p className="text-sm text-gray-400" aria-live="polite">
+                                Generating preview…
+                              </p>
+                            )}
+                            {!preview.loading && preview.content && (
+                              <div className="max-w-4xl mx-auto">
+                                <LegalContentMarkdown markdown={preview.content} />
+                              </div>
+                            )}
+                            {!preview.loading && !preview.content && !preview.error && (
+                              <p className="text-sm text-gray-500">No content to preview.</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-3">
