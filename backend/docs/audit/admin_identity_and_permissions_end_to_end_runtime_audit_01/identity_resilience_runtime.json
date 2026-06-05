@@ -1,0 +1,25 @@
+{
+  "at_utc": "2026-06-05T10:16:47.461206+00:00",
+  "probes": [
+    {
+      "name": "concurrent_admin_list",
+      "pass": true,
+      "codes": [
+        200,
+        200,
+        200
+      ]
+    },
+    {
+      "name": "concurrent_resend",
+      "pass": true,
+      "skipped": true
+    },
+    {
+      "name": "duplicate_forgot_password",
+      "pass": true,
+      "note": "Covered in password_reset probes; skipped here to avoid rate-limit coupling"
+    }
+  ],
+  "pass": true
+}

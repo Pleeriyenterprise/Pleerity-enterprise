@@ -1,0 +1,25 @@
+{
+  "at_utc": "2026-06-05T10:17:33.645475+00:00",
+  "probes": [
+    {
+      "name": "duplicate_email_invite",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "name": "invalid_role_assignment",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "name": "empty_identity_search",
+      "pass": true
+    },
+    {
+      "name": "stale_admin_id",
+      "pass": true,
+      "status": 404
+    }
+  ],
+  "pass": true
+}

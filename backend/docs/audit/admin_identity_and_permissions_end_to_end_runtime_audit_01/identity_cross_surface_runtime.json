@@ -1,0 +1,30 @@
+{
+  "at_utc": "2026-06-05T10:17:05.103297+00:00",
+  "probes": [
+    {
+      "name": "admin_list_reachable",
+      "pass": true
+    },
+    {
+      "name": "team_users_reachable",
+      "pass": true
+    },
+    {
+      "name": "identities_reachable",
+      "pass": true
+    },
+    {
+      "name": "counts_coherent",
+      "pass": true,
+      "admins_total": 3,
+      "team_total": 2,
+      "identities_sample": 20
+    },
+    {
+      "name": "live_badges_sample",
+      "pass": true,
+      "active_sample": 3
+    }
+  ],
+  "pass": true
+}

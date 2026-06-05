@@ -1,0 +1,39 @@
+{
+  "at_utc": "2026-06-05T10:13:56.241034+00:00",
+  "probes": [
+    {
+      "name": "list_active",
+      "pass": true,
+      "count": 3
+    },
+    {
+      "name": "list_archived_toggle",
+      "pass": true,
+      "archived_count": 3
+    },
+    {
+      "name": "browser_admins_tab",
+      "pass": true
+    },
+    {
+      "name": "browser_team_permissions",
+      "pass": true
+    },
+    {
+      "name": "owner_archive_blocked",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "name": "self_archive_blocked",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "name": "archive_requires_step_up",
+      "pass": true,
+      "status": 403
+    }
+  ],
+  "pass": true
+}

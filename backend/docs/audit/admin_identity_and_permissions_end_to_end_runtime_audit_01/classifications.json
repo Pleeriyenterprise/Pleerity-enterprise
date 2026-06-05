@@ -1,0 +1,21 @@
+{
+  "programme": "ADMIN-IDENTITY-AND-PERMISSIONS-END-TO-END-RUNTIME-AUDIT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "blockers": [],
+  "checklist": {
+    "setup": true,
+    "lifecycle": true,
+    "invite": true,
+    "password_reset": true,
+    "permissions": true,
+    "cross_role": true,
+    "audit": true,
+    "resilience": true,
+    "cross_surface": true,
+    "edge_cases": true,
+    "regression": true
+  },
+  "classified_at_utc": "2026-06-05T10:18:07.326356+00:00",
+  "run_tag": "20260605T101234Z"
+}

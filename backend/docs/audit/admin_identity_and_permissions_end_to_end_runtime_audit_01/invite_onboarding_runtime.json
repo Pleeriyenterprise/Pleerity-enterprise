@@ -1,0 +1,23 @@
+{
+  "at_utc": "2026-06-05T10:14:17.647127+00:00",
+  "is_owner": false,
+  "probes": [
+    {
+      "name": "duplicate_invite_rejected",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "name": "invite_owner_only",
+      "pass": true,
+      "status": 403,
+      "note": "Non-OWNER correctly blocked from invite"
+    },
+    {
+      "name": "set_password_context_public",
+      "pass": true,
+      "status": 400
+    }
+  ],
+  "pass": true
+}

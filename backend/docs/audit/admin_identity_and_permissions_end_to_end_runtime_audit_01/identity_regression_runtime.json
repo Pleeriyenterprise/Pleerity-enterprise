@@ -1,0 +1,36 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_owner_admin_governance.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_team_cms_sharing.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_action_governance_policy.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_forgot_password_recipient.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_identity_lifecycle.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_change_login_email.py",
+      "ok": true,
+      "exit_code": 0
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-05T10:17:33.645475+00:00"
+}

@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-06-05T10:16:36.347632+00:00",
+  "probes": [
+    {
+      "name": "audit_admin_invited",
+      "pass": true,
+      "count": 2
+    },
+    {
+      "name": "audit_forgot_password_requested",
+      "pass": true,
+      "count": 10
+    },
+    {
+      "name": "audit_user_archived",
+      "pass": true,
+      "count": 0
+    },
+    {
+      "name": "audit_admin_action",
+      "pass": true,
+      "count": 10
+    }
+  ],
+  "policy_registry_actions": 0,
+  "policy_registry_present": true,
+  "pass": true
+}

@@ -1,0 +1,48 @@
+{
+  "at_utc": "2026-06-05T10:15:42.713270+00:00",
+  "probes": [
+    {
+      "name": "permissions_catalog",
+      "pass": true
+    },
+    {
+      "name": "roles_list",
+      "pass": true
+    },
+    {
+      "name": "team_users_list",
+      "pass": true
+    },
+    {
+      "name": "me_permissions",
+      "pass": true
+    },
+    {
+      "name": "builtin_roles_present",
+      "pass": true
+    },
+    {
+      "name": "custom_role_create",
+      "pass": true,
+      "role_id": "ROLE-1B80C6B8FC96"
+    },
+    {
+      "name": "invalid_permission_category",
+      "pass": true
+    },
+    {
+      "name": "custom_role_delete",
+      "pass": true
+    },
+    {
+      "name": "builtin_role_immutable",
+      "pass": true
+    },
+    {
+      "name": "force_logout_owner_only",
+      "pass": true,
+      "status": 403
+    }
+  ],
+  "pass": true
+}

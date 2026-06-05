@@ -1,0 +1,51 @@
+{
+  "programme": "ADMIN-IDENTITY-AND-PERMISSIONS-END-TO-END-RUNTIME-AUDIT-01",
+  "run_tag": "20260605T101234Z",
+  "marker": "ADMIN-ID-AUDIT-20260605T101234Z",
+  "at_utc": "2026-06-05T10:13:02.583114+00:00",
+  "personas": {
+    "platform_admin": {
+      "email": "aigbochievictory@gmail.com",
+      "role": "ROLE_ADMIN",
+      "portal_user_id": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+      "team_role_id": "super_admin",
+      "team_role_name": "Super Admin",
+      "is_owner": false
+    },
+    "restricted_support": {
+      "available": false,
+      "note": "No separate support-lite staging credentials"
+    },
+    "test_landlord": {
+      "email": "nancy@yopmail.com",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
+    },
+    "test_contractor": {
+      "email": "f2-ops-heating-wales@yopmail.com"
+    },
+    "test_tenant": {
+      "email": "f7-ops-wales@yopmail.com",
+      "available": false
+    },
+    "unauthenticated": {
+      "available": true
+    }
+  },
+  "admin_counts": {
+    "active": 3,
+    "archived_inclusive": 3,
+    "archived_only": 0
+  },
+  "permissions_sample": [
+    "dashboard",
+    "clients",
+    "leads",
+    "orders",
+    "reports",
+    "cms",
+    "support",
+    "billing"
+  ],
+  "no_password_hash_exposed": true,
+  "pass": true
+}

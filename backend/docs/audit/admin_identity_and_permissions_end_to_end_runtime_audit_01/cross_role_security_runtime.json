@@ -1,0 +1,36 @@
+{
+  "at_utc": "2026-06-05T10:16:14.075872+00:00",
+  "probes": [
+    {
+      "name": "landlord_admins",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "landlord_team",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "contractor_admins",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "contractor_team",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "unauthenticated_admins",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "unauthenticated_team",
+      "status": 401,
+      "pass": true
+    }
+  ],
+  "pass": true
+}
