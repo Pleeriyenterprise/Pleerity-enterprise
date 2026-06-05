@@ -6,8 +6,9 @@ import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Save, RotateCcw, FileText, AlertCircle, Check, RefreshCw, Database } from 'lucide-react';
+import { Save, RotateCcw, FileText, AlertCircle, Check, RefreshCw, Database, Eye, Pencil, ExternalLink } from 'lucide-react';
 import apiClient from '../api/client';
+import LegalContentMarkdown from '../components/public/LegalContentMarkdown';
 
 const EMPTY_ROW = (slug, title) => ({
   slug,
@@ -335,6 +336,7 @@ const AdminLegalContentPage = () => {
                       <p className="font-semibold mb-2">Publication governance</p>
                       <ul className="list-disc list-inside space-y-1">
                         <li>Editor loads the same governed CMS content published on the public site</li>
+                        <li>Preview applies save-time sanitisation and the public markdown renderer before publish</li>
                         <li>Saving publishes to the matching public URL immediately</li>
                         <li>All edits and resets are logged with version history</li>
                         <li>Unsafe HTML/scripts are stripped on save</li>

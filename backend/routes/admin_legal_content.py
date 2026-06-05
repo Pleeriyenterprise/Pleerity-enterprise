@@ -16,6 +16,7 @@ import logging
 from services.legal_content_defaults import LEGAL_SLUGS
 from services.legal_content_service import (
     get_reset_default,
+    preview_legal_draft,
     sanitize_legal_markdown,
     seed_canonical_content,
     serialize_legal_admin_row,
@@ -39,6 +40,23 @@ class LegalContentResponse(BaseModel):
     version: int
     updated_at: str
     updated_by: Optional[str]
+
+
+class LegalContentPreviewRequest(BaseModel):
+    title: str = ""
+    content: str = ""
+
+
+@router.post("/{slug}/preview")
+async def preview_legal_content(
+    slug: str,
+    data: LegalContentPreviewRequest,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Preview draft markdown after governed sanitisation (no save, no audit)."""
+    if slug not in LEGAL_SLUGS:
+        raise HTTPException(status_code=400, detail="Invalid slug")
+    return preview_legal_draft(slug, data.title, data.content)
 
 
 @router.get("/{slug}")

@@ -160,6 +160,19 @@ def get_reset_default(slug: str) -> Optional[Dict[str, str]]:
     return {"title": canonical["title"], "content": canonical["content"]}
 
 
+def preview_legal_draft(slug: str, title: str, content: str) -> Dict[str, Any]:
+    """Non-persistent admin preview using the same sanitisation as save."""
+    raw = content or ""
+    clean = sanitize_legal_markdown(raw)
+    return {
+        "slug": slug,
+        "title": (title or "").strip() or slug.title(),
+        "content": clean,
+        "content_length": len(clean.strip()),
+        "sanitization_applied": clean != raw.strip(),
+    }
+
+
 def serialize_legal_admin_row(doc: Optional[dict], slug: str) -> Dict[str, Any]:
     """Normalize Mongo legal_content for admin editor hydration."""
     if not doc:
