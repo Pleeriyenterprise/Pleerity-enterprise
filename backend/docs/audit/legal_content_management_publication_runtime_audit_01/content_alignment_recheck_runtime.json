@@ -1,0 +1,42 @@
+{
+  "at_utc": "2026-06-05T12:08:48.811062+00:00",
+  "checks": [
+    {
+      "slug": "privacy",
+      "hits": [
+        "gdpr",
+        "stripe",
+        "data",
+        "retention"
+      ],
+      "pass": true
+    },
+    {
+      "slug": "cookies",
+      "hits": [
+        "cookie",
+        "analytics"
+      ],
+      "pass": true
+    },
+    {
+      "slug": "terms",
+      "hits": [
+        "subscription",
+        "recurring",
+        "stripe",
+        "cancel"
+      ],
+      "pass": true
+    },
+    {
+      "slug": "accessibility",
+      "hits": [
+        "wcag",
+        "contact"
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true
+}

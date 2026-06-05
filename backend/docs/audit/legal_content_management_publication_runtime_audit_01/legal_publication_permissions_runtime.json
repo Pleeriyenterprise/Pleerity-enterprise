@@ -1,0 +1,32 @@
+{
+  "at_utc": "2026-06-05T12:08:36.731131+00:00",
+  "probes": [
+    {
+      "name": "admin_put",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "landlord_put",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "contractor_put",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "unauth_put",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "public_read",
+      "status": 200,
+      "pass": true
+    }
+  ],
+  "no_metadata_leak": true,
+  "pass": true
+}

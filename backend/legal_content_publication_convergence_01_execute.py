@@ -74,7 +74,7 @@ def req(method: str, path: str, token: str = "", **kwargs) -> httpx.Response:
                 time.sleep(20 * (attempt + 1))
                 continue
             return resp
-        except (httpx.ConnectError, httpx.ReadTimeout):
+        except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout):
             time.sleep(2 * (attempt + 1))
     raise RuntimeError("request failed")
 
@@ -146,7 +146,7 @@ def part_architecture(at: str) -> dict:
         "sample_has_html": bool(body.get("content_html")),
         "admin_path": "/api/admin/legal-content/{slug}",
         "frontend": "PublicLegalContentPage.jsx fetches public API; server canonical fallback when CMS empty",
-        "pass": has_api and body.get("content"),
+        "pass": bool(has_api and (body.get("content") or "").strip()),
     }
 
 
@@ -168,12 +168,14 @@ def part_seed(at: str) -> dict:
             "provenance": row.get("provenance"),
             "pass": (row.get("version") or 0) > 0 and len((row.get("content") or "").strip()) > 100,
         })
+    seeded_or_ready = seed.status_code == 200 and all(p["pass"] for p in probes)
     return {
         "at_utc": utc(),
         "seed_status": seed.status_code,
         "seed_results": results,
         "probes": probes,
-        "pass": seed.status_code == 200 and all(p["pass"] for p in probes),
+        "idempotent": all((r.get("action") == "skipped") for r in results) if results else False,
+        "pass": seeded_or_ready,
     }
 
 
@@ -260,6 +262,8 @@ def part_rendering() -> dict:
 
 def part_edit_publication(at: str) -> dict:
     slug = "careers"
+    if len((req("get", f"/admin/legal-content/{slug}", at, timeout=60).json() or {}).get("content") or "") < 100:
+        req("post", f"/admin/legal-content/{slug}/reset-default", at, timeout=90)
     before = req("get", f"/admin/legal-content/{slug}", at, timeout=60)
     bbody = before.json() if before.status_code == 200 else {}
     prev = bbody.get("content") or ""
@@ -480,6 +484,17 @@ def classify(results: Dict[str, bool]) -> dict:
     }
 
 
+def _safe(part_name: str, fn, *args, **kwargs) -> dict:
+    try:
+        return fn(*args, **kwargs)
+    except Exception as exc:
+        return {"pass": False, "error": str(exc)[:300], "part": part_name, "at_utc": utc()}
+
+
+def bool_pass(data: dict) -> bool:
+    return data.get("pass") is True
+
+
 def main() -> int:
     print(PROGRAMME, "starting", RUN_TAG)
     at, _ = login_admin()
@@ -487,53 +502,53 @@ def main() -> int:
     contractor_t = login_contractor()
     results: Dict[str, bool] = {}
 
-    arch = part_architecture(at)
+    arch = _safe("architecture", part_architecture, at)
     write_artifact("publication_architecture_runtime.json", arch)
-    results["architecture"] = arch.get("pass", False)
+    results["architecture"] = bool_pass(arch)
 
-    seed = part_seed(at)
+    seed = _safe("seed", part_seed, at)
     write_artifact("cms_seed_runtime.json", seed)
-    results["seed"] = seed.get("pass", False)
+    results["seed"] = bool_pass(seed)
 
-    san = part_sanitisation(at)
+    san = _safe("sanitisation", part_sanitisation, at)
     write_artifact("sanitisation_runtime.json", san)
-    results["sanitisation"] = san.get("pass", False)
+    results["sanitisation"] = bool_pass(san)
 
-    render = part_rendering()
+    render = _safe("rendering", part_rendering)
     write_artifact("public_rendering_runtime.json", render)
-    results["rendering"] = render.get("pass", False)
+    results["rendering"] = bool_pass(render)
 
-    edit = part_edit_publication(at)
+    edit = _safe("edit_publication", part_edit_publication, at)
     write_artifact("edit_publication_runtime.json", edit)
-    results["edit_publication"] = edit.get("pass", False)
+    results["edit_publication"] = bool_pass(edit)
 
-    reset = part_reset(at)
+    reset = _safe("reset", part_reset, at)
     write_artifact("reset_default_convergence_runtime.json", reset)
-    results["reset"] = reset.get("pass", False)
+    results["reset"] = bool_pass(reset)
 
     ui = part_admin_ui_copy()
     write_artifact("admin_ui_copy_runtime.json", ui)
-    results["admin_ui"] = ui.get("pass", False)
+    results["admin_ui"] = bool_pass(ui)
 
-    ver = part_version_restore(at)
+    ver = _safe("version_restore", part_version_restore, at)
     write_artifact("version_restore_runtime.json", ver)
-    results["version_restore"] = ver.get("pass", False)
+    results["version_restore"] = bool_pass(ver)
 
-    perm = part_permissions(at, ct, contractor_t)
+    perm = _safe("permissions", part_permissions, at, ct, contractor_t)
     write_artifact("legal_publication_permissions_runtime.json", perm)
-    results["permissions"] = perm.get("pass", False)
+    results["permissions"] = bool_pass(perm)
 
-    align = part_alignment()
+    align = _safe("alignment", part_alignment)
     write_artifact("content_alignment_recheck_runtime.json", align)
-    results["alignment"] = align.get("pass", False)
+    results["alignment"] = bool_pass(align)
 
-    conc = part_concurrency(at)
+    conc = _safe("concurrency", part_concurrency, at)
     write_artifact("publication_cache_concurrency_runtime.json", conc)
-    results["concurrency"] = conc.get("pass", False)
+    results["concurrency"] = bool_pass(conc)
 
     reg = part_regression()
     write_artifact("legal_publication_regression_runtime.json", reg)
-    results["regression"] = reg.get("pass", False)
+    results["regression"] = bool_pass(reg)
 
     clf = classify(results)
     write_artifact("classifications.json", clf)
@@ -547,6 +562,7 @@ def main() -> int:
         "## Summary",
         "Governed legal_content CMS is wired to public pages via `/api/public/legal-content/{slug}` with canonical server fallback.",
         "Public React pages fetch CMS content; admin save publishes immediately.",
+        f"**Deploy note:** Staging API sample status `{arch.get('public_api_status')}`; seed `{seed.get('seed_status')}`. Re-run after Render/Vercel deploy for VERIFIED_OPERATIONALLY.",
         "",
         "## Checklist",
     ]

@@ -1,0 +1,117 @@
+{
+  "at_utc": "2026-06-05T12:06:15.023400+00:00",
+  "probes": [
+    {
+      "slug": "privacy",
+      "api_status": 200,
+      "source": "cms",
+      "version": 2,
+      "public_text_length": 3754,
+      "pass": true
+    },
+    {
+      "slug": "terms",
+      "api_status": 200,
+      "source": "cms",
+      "version": 2,
+      "public_text_length": 5326,
+      "pass": true
+    },
+    {
+      "slug": "cookies",
+      "api_status": 200,
+      "source": "cms",
+      "version": 3,
+      "public_text_length": 2872,
+      "pass": true
+    },
+    {
+      "slug": "accessibility",
+      "api_status": 200,
+      "source": "cms",
+      "version": 2,
+      "public_text_length": 2659,
+      "pass": true
+    },
+    {
+      "slug": "careers",
+      "api_status": 200,
+      "source": "cms",
+      "version": 5,
+      "public_text_length": 4218,
+      "pass": true
+    },
+    {
+      "slug": "partnerships",
+      "api_status": 200,
+      "source": "cms",
+      "version": 11,
+      "public_text_length": 4328,
+      "pass": true
+    },
+    {
+      "slug": "about",
+      "api_status": 200,
+      "source": "cms",
+      "version": 2,
+      "public_text_length": 2397,
+      "pass": true
+    }
+  ],
+  "browser_shots": {
+    "at_utc": "2026-06-05T12:06:14.762423+00:00",
+    "pages": [
+      {
+        "slug": "privacy",
+        "path": "/legal/privacy",
+        "screenshot": "screenshots/convergence/convergence_privacy.png",
+        "pass": true,
+        "raw_markdown_leak": false
+      },
+      {
+        "slug": "terms",
+        "path": "/legal/terms",
+        "screenshot": "screenshots/convergence/convergence_terms.png",
+        "pass": true,
+        "raw_markdown_leak": false
+      },
+      {
+        "slug": "cookies",
+        "path": "/legal/cookies",
+        "screenshot": "screenshots/convergence/convergence_cookies.png",
+        "pass": true,
+        "raw_markdown_leak": false
+      },
+      {
+        "slug": "accessibility",
+        "path": "/accessibility",
+        "screenshot": "screenshots/convergence/convergence_accessibility.png",
+        "pass": true,
+        "raw_markdown_leak": false
+      },
+      {
+        "slug": "careers",
+        "path": "/careers",
+        "screenshot": "screenshots/convergence/convergence_careers.png",
+        "pass": true,
+        "raw_markdown_leak": false
+      },
+      {
+        "slug": "partnerships",
+        "path": "/partnerships",
+        "screenshot": "screenshots/convergence/convergence_partnerships.png",
+        "pass": true,
+        "raw_markdown_leak": false
+      },
+      {
+        "slug": "about",
+        "path": "/about",
+        "screenshot": "screenshots/convergence/convergence_about.png",
+        "pass": true,
+        "raw_markdown_leak": false
+      }
+    ],
+    "pass": true
+  },
+  "pass": true
+}

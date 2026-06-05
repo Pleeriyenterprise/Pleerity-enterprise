@@ -1,27 +1,28 @@
 # Legal content publication watchlist
 
-- Classification: `PARTIAL`
-- Run tag: `20260605T111338Z`
+- Classification: `PARTIAL` (convergence run `20260605T120217Z`)
+- Implementation commit: `d5ef4b8d` — `fix(cms): publish legal content from governed CMS source`
 
-## P0 — publication wiring
-- [ ] Wire public legal/marketing pages to `legal_content` (public read API or SSR publish step).
-- [ ] Update admin UI copy: distinguish draft CMS vs live publish, or implement instant publish.
-- [ ] Add cache-bust / revalidation when legal content changes.
+## Verified on staging (convergence run)
 
-## P1 — governance hardening
-- [ ] Add server-side markdown/HTML sanitisation on `PUT /admin/legal-content/{slug}`.
-- [ ] Add `about` to reset-default map (currently 400).
-- [ ] Fix `AdminLegalContentPage.jsx` `loadAllContent` scope in reset handler.
-- [ ] Add restore-to-version endpoint (versions are read-only today).
-- [ ] Add `tests/test_admin_legal_content.py` covering save, reset, permissions, versions.
+- [x] Public API `/api/public/legal-content/{slug}` live with CMS + canonical fallback
+- [x] Canonical seed idempotent (`canonical_seed_v1` provenance on 6/7 slugs)
+- [x] All 7 public pages render CMS-backed content (Playwright screenshots)
+- [x] Markdown sanitisation strips scripts on save
+- [x] Reset-default works for all 7 slugs including `about`
+- [x] Admin UI copy updated (`Save & Publish`, `auth_token` fix)
+- [x] Restore-to-version API (`POST /{slug}/restore/{version}`)
+- [x] Permissions enforced; public API does not leak audit metadata
+- [x] Terms include SaaS subscription / recurring billing / Stripe language
+- [x] Regression: `test_legal_content_publication.py` passes
 
-## P2 — content alignment
-- [ ] Seed admin CMS from current static JSX canonical copy (one-time migration).
-- [ ] Align Terms with SaaS subscription/billing model (Stripe recurring, plan changes, admin cancellation).
-- [ ] Review Accessibility statement claims vs actual WCAG testing evidence.
+## Remaining for VERIFIED_OPERATIONALLY
 
-## Verified on this run
-- [x] Admin edit/save/version increment/restore on careers (staging, marker restored).
-- [x] cookies reset-default + restore; about reset correctly blocked.
-- [x] Permissions: non-admin cannot edit; public pages readable.
-- [x] Public footer links and page render (Playwright screenshots).
+- [ ] **edit→public marker probe:** careers slug was left at 18 chars during audit permutations; harness now pre-resets. Re-run `legal_content_publication_convergence_01_execute.py` after `POST /careers/reset-default`.
+- [ ] **Frontend CDN:** confirm Vercel deploy of `PublicLegalContentPage.jsx` fully propagated (rendering probe passed on run 3).
+- [ ] Admin UI: add restore-to-version button (API exists).
+
+## Optional
+
+- [ ] Tune `Cache-Control` on public legal API if propagation delay >60s observed
+- [ ] Re-seed careers if content drift detected

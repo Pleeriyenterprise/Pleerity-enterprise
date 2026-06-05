@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-06-05T12:02:32.114707+00:00",
+  "pattern": "public_read_api_with_canonical_fallback",
+  "public_api_path": "/api/public/legal-content/{slug}",
+  "public_api_status": 200,
+  "sample_source": "cms",
+  "sample_has_html": true,
+  "admin_path": "/api/admin/legal-content/{slug}",
+  "frontend": "PublicLegalContentPage.jsx fetches public API; server canonical fallback when CMS empty",
+  "pass": true
+}

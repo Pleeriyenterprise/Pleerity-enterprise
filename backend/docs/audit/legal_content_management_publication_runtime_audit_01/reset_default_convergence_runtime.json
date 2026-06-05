@@ -1,0 +1,50 @@
+{
+  "at_utc": "2026-06-05T12:07:55.476788+00:00",
+  "probes": [
+    {
+      "slug": "privacy",
+      "reset_status": 200,
+      "public_nonempty": true,
+      "pass": true
+    },
+    {
+      "slug": "terms",
+      "reset_status": 200,
+      "public_nonempty": true,
+      "pass": true
+    },
+    {
+      "slug": "cookies",
+      "reset_status": 200,
+      "public_nonempty": true,
+      "pass": true
+    },
+    {
+      "slug": "accessibility",
+      "reset_status": 200,
+      "public_nonempty": true,
+      "pass": true
+    },
+    {
+      "slug": "careers",
+      "reset_status": 200,
+      "public_nonempty": true,
+      "pass": true
+    },
+    {
+      "slug": "partnerships",
+      "reset_status": 200,
+      "public_nonempty": true,
+      "pass": true
+    },
+    {
+      "slug": "about",
+      "reset_status": 200,
+      "public_nonempty": true,
+      "pass": true
+    }
+  ],
+  "about_reset_ok": true,
+  "restored_backup": true,
+  "pass": true
+}
