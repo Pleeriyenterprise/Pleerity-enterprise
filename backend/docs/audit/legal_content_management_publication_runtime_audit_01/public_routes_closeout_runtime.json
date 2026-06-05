@@ -1,0 +1,97 @@
+{
+  "at_utc": "2026-06-05T12:38:04.044585+00:00",
+  "probes": [
+    {
+      "slug": "privacy",
+      "path": "/legal/privacy",
+      "api_status": 200,
+      "source": "cms",
+      "version": 3,
+      "fallback_used": false,
+      "content_length": 2950,
+      "public_text_length": 3748,
+      "raw_markdown_leak": false,
+      "script_in_html": false,
+      "pass": true
+    },
+    {
+      "slug": "terms",
+      "path": "/legal/terms",
+      "api_status": 200,
+      "source": "cms",
+      "version": 3,
+      "fallback_used": false,
+      "content_length": 5584,
+      "public_text_length": 6313,
+      "raw_markdown_leak": false,
+      "script_in_html": false,
+      "pass": true
+    },
+    {
+      "slug": "cookies",
+      "path": "/legal/cookies",
+      "api_status": 200,
+      "source": "cms",
+      "version": 5,
+      "fallback_used": false,
+      "content_length": 2048,
+      "public_text_length": 2867,
+      "raw_markdown_leak": false,
+      "script_in_html": false,
+      "pass": true
+    },
+    {
+      "slug": "accessibility",
+      "path": "/accessibility",
+      "api_status": 200,
+      "source": "cms",
+      "version": 3,
+      "fallback_used": false,
+      "content_length": 1912,
+      "public_text_length": 2740,
+      "raw_markdown_leak": false,
+      "script_in_html": false,
+      "pass": true
+    },
+    {
+      "slug": "careers",
+      "path": "/careers",
+      "api_status": 200,
+      "source": "cms",
+      "version": 12,
+      "fallback_used": false,
+      "content_length": 3326,
+      "public_text_length": 4083,
+      "raw_markdown_leak": false,
+      "script_in_html": false,
+      "pass": true
+    },
+    {
+      "slug": "partnerships",
+      "path": "/partnerships",
+      "api_status": 200,
+      "source": "cms",
+      "version": 16,
+      "fallback_used": false,
+      "content_length": 3175,
+      "public_text_length": 3943,
+      "raw_markdown_leak": false,
+      "script_in_html": false,
+      "pass": true
+    },
+    {
+      "slug": "about",
+      "path": "/about",
+      "api_status": 200,
+      "source": "cms",
+      "version": 3,
+      "fallback_used": false,
+      "content_length": 1527,
+      "public_text_length": 2360,
+      "raw_markdown_leak": false,
+      "script_in_html": false,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

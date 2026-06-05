@@ -1,0 +1,18 @@
+{
+  "at_utc": "2026-06-05T12:36:40.103444+00:00",
+  "slug": "careers",
+  "marker": "LEGAL-CMS-CLOSEOUT-20260605T123518Z",
+  "put_status": 200,
+  "version_before": 10,
+  "version_after_edit": 11,
+  "version_incremented": true,
+  "marker_in_admin": true,
+  "marker_on_public_api_content": true,
+  "marker_on_public_api_html": true,
+  "marker_on_public_page": true,
+  "audit_rows": 11,
+  "restore_status": 200,
+  "marker_removed_api": true,
+  "marker_removed_page": true,
+  "pass": true
+}

@@ -1,0 +1,16 @@
+{
+  "at_utc": "2026-06-05T12:35:52.472706+00:00",
+  "reset_status": 200,
+  "version_before": 9,
+  "version_after": 10,
+  "version_incremented": true,
+  "content_length_before": 18,
+  "content_length_after": 3326,
+  "versions_count": 14,
+  "public_source": "cms",
+  "public_fallback_used": false,
+  "public_content_length": 3326,
+  "public_has_canonical_text": true,
+  "public_page_has_content": true,
+  "pass": true
+}

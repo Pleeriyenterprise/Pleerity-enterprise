@@ -1,28 +1,16 @@
 {
-  "programme": "LEGAL-CONTENT-PUBLICATION-CONVERGENCE-01",
-  "classification": "PARTIAL",
-  "secondary_flags": [
-    "CONTENT_ALIGNMENT_DRIFT",
-    "PUBLICATION_DRIFT"
-  ],
-  "blockers": [
-    "seed",
-    "edit_publication"
-  ],
+  "programme": "LEGAL-CONTENT-PUBLICATION-CLOSEOUT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "prior_classification": "PARTIAL",
+  "prior_programme": "LEGAL-CONTENT-PUBLICATION-CONVERGENCE-01",
+  "secondary_flags": [],
+  "blockers": [],
   "checklist": {
-    "architecture": true,
-    "seed": false,
-    "sanitisation": true,
-    "rendering": true,
-    "edit_publication": false,
-    "reset": true,
-    "admin_ui": true,
-    "version_restore": true,
-    "permissions": true,
-    "alignment": true,
-    "concurrency": true,
-    "regression": true
+    "careers_reset": true,
+    "edit_publication": true,
+    "public_routes": true,
+    "sanitisation": true
   },
-  "classified_at_utc": "2026-06-05T12:09:25.706407+00:00",
-  "run_tag": "20260605T120217Z"
+  "classified_at_utc": "2026-06-05T12:38:29.762088+00:00",
+  "run_tag": "20260605T123518Z"
 }
