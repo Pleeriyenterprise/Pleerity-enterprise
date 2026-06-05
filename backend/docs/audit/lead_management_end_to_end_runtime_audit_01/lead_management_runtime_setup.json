@@ -1,0 +1,83 @@
+{
+  "programme": "LEAD-MANAGEMENT-END-TO-END-RUNTIME-AUDIT-01",
+  "run_tag": "20260605T075947Z",
+  "marker": "LEAD-MGMT-AUDIT-20260605T075947Z",
+  "at_utc": "2026-06-05T08:00:48.163041+00:00",
+  "personas": {
+    "platform_admin": {
+      "email": "aigbochievictory@gmail.com"
+    },
+    "reduced_support": {
+      "available": false
+    },
+    "safe_convert_client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
+  },
+  "seeded_vs_existing": "Audit-seeded leads tagged with marker; discovered samples from existing staging pipeline",
+  "seed": {
+    "marker": "LEAD-MGMT-AUDIT-20260605T075947Z",
+    "emails": {
+      "new": "lead-mgmt-audit-20260605T075947Z-new@yopmail.com",
+      "convert": "lead-mgmt-audit-20260605T075947Z-convert@yopmail.com",
+      "lost": "lead-mgmt-audit-20260605T075947Z-lost@yopmail.com",
+      "risk": "lead-mgmt-audit-20260605T075947Z-risk@yopmail.com"
+    },
+    "records": {
+      "new_lead_id": "LEAD-20260605075958-09C321",
+      "convert_lead_id": "LEAD-20260605080006-B81F5B",
+      "lost_lead_id": "LEAD-20260605080011-D09BC4",
+      "risk_lead_id": "RISK-A84A68A983",
+      "risk_band": "MODERATE",
+      "recommended_plan": "PLAN_2_PORTFOLIO"
+    },
+    "discovered_staging_samples": {
+      "stage_new": [
+        {
+          "lead_id": "LEAD-20260605080011-D09BC4",
+          "stage": "NEW",
+          "status": "ACTIVE"
+        },
+        {
+          "lead_id": "LEAD-20260605080006-B81F5B",
+          "stage": "NEW",
+          "status": "ACTIVE"
+        }
+      ],
+      "stage_contacted": [],
+      "status_converted": [
+        {
+          "lead_id": "LEAD-20260605075417-3E2D41",
+          "stage": "WON",
+          "status": "CONVERTED"
+        },
+        {
+          "lead_id": "LEAD-20260605075412-3A014F",
+          "stage": "WON",
+          "status": "CONVERTED"
+        }
+      ],
+      "status_lost": [],
+      "sla_breach": [
+        {
+          "lead_id": "LEAD-20260424155445-9C718C",
+          "stage": "NEW",
+          "status": "ACTIVE"
+        }
+      ],
+      "risk_check_source": [
+        {
+          "lead_id": "LEAD-20260605080016-0B4E54",
+          "stage": "SALES_READY",
+          "status": "ACTIVE"
+        },
+        {
+          "lead_id": "LEAD-20260605075422-A14026",
+          "stage": "SALES_READY",
+          "status": "ACTIVE"
+        }
+      ]
+    },
+    "pass": true
+  },
+  "sources_status": 200,
+  "pass": true
+}

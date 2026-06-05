@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-06-05T08:04:06.813105+00:00",
+  "probes": [
+    {
+      "name": "client_leads_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "contractor_leads_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "tenant_risk_blocked",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "unauthenticated_leads",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "stale_lead_id",
+      "status": 404,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

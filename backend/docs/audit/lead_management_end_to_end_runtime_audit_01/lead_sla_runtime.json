@@ -1,0 +1,16 @@
+{
+  "at_utc": "2026-06-05T08:03:35.577256+00:00",
+  "sla_check_status": 200,
+  "breaches_detected": 0,
+  "breach_filter_count": 1,
+  "notification_alerts": [
+    {
+      "lead_id": "LEAD-20260424155445-9C718C",
+      "name": "Test User",
+      "created_at": "2026-04-24T15:54:45.904117+00:00",
+      "sla_breach_at": "2026-04-25T16:00:02.426012+00:00",
+      "type": "sla_breach"
+    }
+  ],
+  "pass": true
+}

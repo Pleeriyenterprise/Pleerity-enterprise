@@ -1,0 +1,36 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_lead_scoring.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_lead_followup_service.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_risk_check.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_risk_lead_token.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_marketing_funnel_conversion.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_risk_lead_email_service.py",
+      "ok": true,
+      "exit_code": 0
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-05T08:04:46.346163+00:00"
+}

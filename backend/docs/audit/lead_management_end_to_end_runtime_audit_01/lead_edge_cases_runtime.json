@@ -1,0 +1,23 @@
+{
+  "at_utc": "2026-06-05T08:04:20.850525+00:00",
+  "probes": [
+    {
+      "name": "mark_lost_converted",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "name": "empty_search",
+      "pass": true
+    },
+    {
+      "name": "invalid_lead_id",
+      "pass": true
+    },
+    {
+      "name": "create_without_email",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

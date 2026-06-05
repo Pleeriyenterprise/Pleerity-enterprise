@@ -1,0 +1,56 @@
+{
+  "at_utc": "2026-06-05T08:01:48.887977+00:00",
+  "probes": [
+    {
+      "name": "search_marker",
+      "status": 200,
+      "count": 4,
+      "marker_hits": 3,
+      "pass": true
+    },
+    {
+      "name": "stage_new",
+      "status": 200,
+      "count": 6,
+      "marker_hits": null,
+      "pass": true
+    },
+    {
+      "name": "source_web_chat",
+      "status": 200,
+      "count": 3,
+      "marker_hits": null,
+      "pass": true
+    },
+    {
+      "name": "intent_high",
+      "status": 200,
+      "count": 0,
+      "marker_hits": null,
+      "pass": true
+    },
+    {
+      "name": "sla_breach_only",
+      "status": 200,
+      "count": 1,
+      "marker_hits": null,
+      "pass": true
+    },
+    {
+      "name": "risk_source",
+      "status": 200,
+      "count": 18,
+      "marker_hits": null,
+      "pass": true
+    },
+    {
+      "name": "page_two",
+      "status": 200,
+      "count": 5,
+      "marker_hits": null,
+      "pass": true
+    }
+  ],
+  "seeded_lead_found": true,
+  "pass": true
+}

@@ -1,0 +1,38 @@
+{
+  "at_utc": "2026-06-05T08:02:27.475184+00:00",
+  "risk_lead_id": "RISK-A84A68A983",
+  "probes": [
+    {
+      "name": "risk_list",
+      "pass": true,
+      "count": 1
+    },
+    {
+      "name": "filter_low",
+      "pass": true
+    },
+    {
+      "name": "filter_moderate",
+      "pass": true
+    },
+    {
+      "name": "filter_high",
+      "pass": true
+    },
+    {
+      "name": "risk_report",
+      "pass": true,
+      "risk_band": "MODERATE"
+    },
+    {
+      "name": "resend_report",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "name": "crm_sync",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

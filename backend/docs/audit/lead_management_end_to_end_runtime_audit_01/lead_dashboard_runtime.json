@@ -1,0 +1,50 @@
+{
+  "at_utc": "2026-06-05T08:01:13.006895+00:00",
+  "stats_status": 200,
+  "notifications_status": 200,
+  "stats_keys": [
+    "total_leads",
+    "new_leads",
+    "contacted_leads",
+    "qualified_leads",
+    "converted_leads",
+    "lost_leads",
+    "conversion_rate",
+    "avg_time_to_contact_hours",
+    "leads_by_source",
+    "leads_by_service",
+    "leads_by_intent",
+    "sla_breaches_today"
+  ],
+  "list_embedded_stats_keys": [
+    "total_leads",
+    "new_leads",
+    "contacted_leads",
+    "qualified_leads",
+    "converted_leads",
+    "lost_leads",
+    "conversion_rate",
+    "avg_time_to_contact_hours",
+    "leads_by_source",
+    "leads_by_service",
+    "leads_by_intent",
+    "sla_breaches_today"
+  ],
+  "browser": {
+    "at_utc": "2026-06-05T08:01:12.920368+00:00",
+    "views": [
+      {
+        "view": "lead_dashboard",
+        "pass": true,
+        "screenshot": "lead_dashboard.png"
+      },
+      {
+        "view": "risk_leads",
+        "pass": true,
+        "screenshot": "risk_leads_list.png"
+      }
+    ],
+    "pass": true
+  },
+  "pass": true
+}

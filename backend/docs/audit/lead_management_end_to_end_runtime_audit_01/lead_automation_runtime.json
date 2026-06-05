@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-06-05T08:03:25.853777+00:00",
+  "active_count": 0,
+  "probes": [
+    {
+      "name": "active_sequences",
+      "pass": true
+    },
+    {
+      "name": "email_performance",
+      "pass": true
+    },
+    {
+      "name": "manual_trigger",
+      "pass": true,
+      "status": 200
+    }
+  ],
+  "pass": true
+}

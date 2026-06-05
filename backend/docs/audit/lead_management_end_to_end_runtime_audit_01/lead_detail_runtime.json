@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-06-05T08:02:04.560635+00:00",
+  "lead_id": "LEAD-20260605080006-B81F5B",
+  "probes": [
+    {
+      "name": "detail_load",
+      "pass": true,
+      "has_audit_log": true,
+      "has_events": true,
+      "has_transcript": true
+    },
+    {
+      "name": "log_contact",
+      "pass": true
+    },
+    {
+      "name": "assign",
+      "pass": true
+    },
+    {
+      "name": "generate_summary",
+      "pass": true,
+      "status": 500
+    },
+    {
+      "name": "audit_log_endpoint",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

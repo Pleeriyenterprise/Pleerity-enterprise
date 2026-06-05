@@ -1,0 +1,29 @@
+{
+  "programme": "LEAD-MANAGEMENT-END-TO-END-RUNTIME-AUDIT-01",
+  "classification": "PARTIAL",
+  "secondary_flags": [
+    "LEAD_CONVERSION_DRIFT"
+  ],
+  "blockers": [
+    "conversion"
+  ],
+  "checklist": {
+    "setup": true,
+    "dashboard": true,
+    "filter": true,
+    "detail": true,
+    "risk_check": true,
+    "conversion": false,
+    "automation": true,
+    "sla": true,
+    "communications": true,
+    "audit": true,
+    "permissions": true,
+    "edge_cases": true,
+    "resilience": true,
+    "cross_surface": true,
+    "regression": true
+  },
+  "classified_at_utc": "2026-06-05T08:10:05.424854+00:00",
+  "run_tag": "20260605T075947Z"
+}
