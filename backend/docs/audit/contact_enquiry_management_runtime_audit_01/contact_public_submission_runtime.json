@@ -1,0 +1,95 @@
+{
+  "at_utc": "2026-06-05T21:11:31.552087+00:00",
+  "run_tag": "20260605T211005Z",
+  "marker": "CONTACT-AUDIT-20260605T150308Z",
+  "reuse_mode": true,
+  "probes": [
+    {
+      "kind": "malformed_links",
+      "submission_id": "CONTACT-DF83DA",
+      "status_code": 200,
+      "stored_status": "NEW",
+      "message_sanitized": true,
+      "pass": true
+    },
+    {
+      "kind": "script_sanitize",
+      "submission_id": "CONTACT-880426",
+      "status_code": 200,
+      "stored_status": "NEW",
+      "message_sanitized": true,
+      "pass": true
+    },
+    {
+      "kind": "spam_honeypot",
+      "submission_id": "CONTACT-B0FDEF",
+      "status_code": 200,
+      "stored_status": "SPAM",
+      "message_sanitized": true,
+      "pass": true
+    },
+    {
+      "kind": "privacy",
+      "submission_id": "CONTACT-C7EE9C",
+      "status_code": 200,
+      "stored_status": "NEW",
+      "message_sanitized": true,
+      "pass": true
+    },
+    {
+      "kind": "partnership",
+      "submission_id": "CONTACT-7EC62A",
+      "status_code": 200,
+      "stored_status": "IN_PROGRESS",
+      "message_sanitized": true,
+      "pass": true
+    },
+    {
+      "kind": "support",
+      "submission_id": "CONTACT-7C735A",
+      "status_code": 200,
+      "stored_status": "IN_PROGRESS",
+      "message_sanitized": true,
+      "pass": true
+    },
+    {
+      "kind": "general",
+      "submission_id": "CONTACT-E50983",
+      "status_code": 200,
+      "stored_status": "NEW",
+      "message_sanitized": true,
+      "pass": true
+    },
+    {
+      "kind": "privacy_required",
+      "status_code": 422,
+      "pass": true,
+      "note": "422 validation"
+    }
+  ],
+  "created_ids": {
+    "malformed_links": "CONTACT-DF83DA",
+    "script_sanitize": "CONTACT-880426",
+    "spam_honeypot": "CONTACT-B0FDEF",
+    "privacy": "CONTACT-C7EE9C",
+    "partnership": "CONTACT-7EC62A",
+    "support": "CONTACT-7C735A",
+    "general": "CONTACT-E50983"
+  },
+  "browser": {
+    "pass": true,
+    "checks": {
+      "fullname_field": true,
+      "email_field": true,
+      "subject_field": true,
+      "message_field": true,
+      "submit_button": true,
+      "privacy_checkbox": true
+    },
+    "screenshots": [
+      "screenshots/public/contact_form.png"
+    ]
+  },
+  "api_pass": true,
+  "pass": true
+}

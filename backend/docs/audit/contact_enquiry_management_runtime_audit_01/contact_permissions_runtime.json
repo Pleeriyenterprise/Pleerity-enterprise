@@ -1,0 +1,41 @@
+{
+  "at_utc": "2026-06-05T21:14:04.151450+00:00",
+  "probes": [
+    {
+      "check": "admin_list_no_auth",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "check": "client_list_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "check": "contractor_list_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "check": "no_auth_patch",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "check": "no_auth_export",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "check": "no_auth_note",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "check": "stale_id",
+      "status": 404,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

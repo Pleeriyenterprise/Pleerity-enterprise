@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-06-05T21:13:34.138847+00:00",
+  "probes": [
+    {
+      "kind": "honeypot",
+      "status": "SPAM",
+      "spam_score": 50,
+      "pass": true
+    },
+    {
+      "kind": "script_sanitize",
+      "script_in_message": false,
+      "pass": true
+    }
+  ],
+  "spam_filter_hits": 0,
+  "spam_export_status": 200,
+  "spam_visible_in_export": false,
+  "pass": true
+}

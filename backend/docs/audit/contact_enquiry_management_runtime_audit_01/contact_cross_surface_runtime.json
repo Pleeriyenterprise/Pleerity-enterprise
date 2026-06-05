@@ -1,0 +1,12 @@
+{
+  "at_utc": "2026-06-05T21:14:19.499396+00:00",
+  "workflow": "partially_integrated",
+  "contact_pipeline": "unified_submissions",
+  "lead_sync_attempted": true,
+  "lead_list_status": 200,
+  "admin_inbox_route": "/admin/inbox/enquiries",
+  "support_dashboard_direct_link": false,
+  "crm_lead_management_available": true,
+  "notifications_on_new": "ADMIN_NOTIFY_EMAIL if configured",
+  "pass": true
+}

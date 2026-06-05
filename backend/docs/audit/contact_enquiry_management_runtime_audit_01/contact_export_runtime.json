@@ -1,0 +1,18 @@
+{
+  "at_utc": "2026-06-05T21:13:37.290208+00:00",
+  "status": 200,
+  "headers": [
+    "submission_id",
+    "created_at",
+    "full_name",
+    "email",
+    "phone",
+    "subject",
+    "status"
+  ],
+  "row_count": 8,
+  "utf8_safe": true,
+  "internal_field_leak": [],
+  "classification": "CLIENT_SAFE_EXPORT",
+  "pass": true
+}

@@ -1,0 +1,12 @@
+{
+  "at_utc": "2026-06-05T21:13:22.355681+00:00",
+  "composite_id": "contact-CONTACT-7C735A",
+  "notes_count": 4,
+  "audit_count": 5,
+  "has_status_change_audit": true,
+  "has_tag_change_audit": true,
+  "has_mark_spam_action": false,
+  "actors_recorded": true,
+  "secret_leak": false,
+  "pass": true
+}

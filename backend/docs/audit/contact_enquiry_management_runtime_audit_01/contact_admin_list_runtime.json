@@ -1,0 +1,32 @@
+{
+  "at_utc": "2026-06-05T21:12:20.952275+00:00",
+  "search_marker": "CONTACT-AUDIT-20260605T150308Z",
+  "list_status": 200,
+  "total": 20,
+  "marker_rows": 7,
+  "search_hits": 8,
+  "spam_filter_status": 200,
+  "spam_rows_sample": 3,
+  "newest_order_ok": true,
+  "export_status": 200,
+  "export_has_marker": true,
+  "statuses_visible": [
+    "IN_PROGRESS",
+    "NEW",
+    "SPAM"
+  ],
+  "browser": {
+    "pass": true,
+    "detail_shows_marker": true,
+    "detail_fallback": true,
+    "search_shows_marker": true,
+    "spam_filter_ui": true,
+    "screenshots": [
+      "screenshots/admin/enquiry_detail.png",
+      "screenshots/admin/enquiry_list.png",
+      "screenshots/admin/enquiry_search.png",
+      "screenshots/admin/enquiry_spam_filter.png"
+    ]
+  },
+  "pass": true
+}

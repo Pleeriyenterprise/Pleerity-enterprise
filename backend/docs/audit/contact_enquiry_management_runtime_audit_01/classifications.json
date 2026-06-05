@@ -1,0 +1,20 @@
+{
+  "programme": "CONTACT-ENQUIRY-MANAGEMENT-END-TO-END-RUNTIME-AUDIT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "blockers": [],
+  "checklist": {
+    "public": true,
+    "admin_list": true,
+    "detail": true,
+    "audit": true,
+    "spam": true,
+    "export": true,
+    "permissions": true,
+    "resilience": true,
+    "cross_surface": true,
+    "regression": true
+  },
+  "classified_at_utc": "2026-06-05T21:16:43.344269+00:00",
+  "run_tag": "20260605T211005Z"
+}

@@ -1,0 +1,14 @@
+{
+  "at_utc": "2026-06-05T21:14:10.282441+00:00",
+  "composite_id": "contact-CONTACT-7EC62A",
+  "mutation_codes": [
+    200,
+    200,
+    200,
+    200
+  ],
+  "final_status": "RESPONDED",
+  "concurrent_notes_count": 2,
+  "audit_count": 21,
+  "pass": true
+}

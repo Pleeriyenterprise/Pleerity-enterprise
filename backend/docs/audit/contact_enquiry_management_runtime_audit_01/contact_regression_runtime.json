@@ -1,0 +1,18 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_submissions_pipeline.py",
+      "ok": true,
+      "exit_code": 0,
+      "tail": "tead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n13 passed, 7 deselected, 4 warnings in 91.43s (0:01:31)\n"
+    },
+    {
+      "suite": "tests/test_public_form_rate_limit.py",
+      "ok": true,
+      "exit_code": 0,
+      "tail": "ecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 4 warnings in 0.69s\n"
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-05T21:14:47.192816+00:00"
+}
