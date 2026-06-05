@@ -1,0 +1,25 @@
+{
+  "at_utc": "2026-06-05T11:16:18.426989+00:00",
+  "probes": [
+    {
+      "slug": "careers",
+      "put_status": 200,
+      "version_before": 2,
+      "version_after": 3,
+      "version_incremented": true,
+      "marker_in_admin": true,
+      "marker_on_public_after_edit": false,
+      "public_status": 200,
+      "versions_count": 3,
+      "restored": true,
+      "restore_status": 200,
+      "pass": true
+    }
+  ],
+  "browser": {
+    "pass": false,
+    "screenshot": "admin_legal_content.png"
+  },
+  "pass": true,
+  "note": "API edit/save/restore is primary; browser admin UI is supplementary evidence"
+}

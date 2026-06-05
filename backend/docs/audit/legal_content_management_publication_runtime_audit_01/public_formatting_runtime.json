@@ -1,0 +1,41 @@
+{
+  "at_utc": "2026-06-05T11:18:07.678485+00:00",
+  "probes": [
+    {
+      "slug": "privacy",
+      "classification": "FORMAT_DRIFT",
+      "pass": true
+    },
+    {
+      "slug": "terms",
+      "classification": "FORMAT_DRIFT",
+      "pass": true
+    },
+    {
+      "slug": "cookies",
+      "classification": "FORMAT_DRIFT",
+      "pass": true
+    },
+    {
+      "slug": "accessibility",
+      "classification": "FORMAT_DRIFT",
+      "pass": true
+    },
+    {
+      "slug": "careers",
+      "classification": "FORMAT_DRIFT",
+      "pass": true
+    },
+    {
+      "slug": "partnerships",
+      "classification": "FORMAT_DRIFT",
+      "pass": true
+    },
+    {
+      "slug": "about",
+      "classification": "FORMAT_DRIFT",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

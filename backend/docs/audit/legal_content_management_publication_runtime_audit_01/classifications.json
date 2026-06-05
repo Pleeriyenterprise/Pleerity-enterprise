@@ -1,0 +1,28 @@
+{
+  "programme": "LEGAL-CONTENT-MANAGEMENT-AND-PUBLICATION-RUNTIME-AUDIT-01",
+  "classification": "PARTIAL",
+  "secondary_flags": [
+    "PUBLICATION_DRIFT"
+  ],
+  "blockers": [],
+  "publication_drift": 7,
+  "checklist": {
+    "inventory": true,
+    "alignment": true,
+    "edit_save": true,
+    "reset": true,
+    "audit": true,
+    "publication": true,
+    "formatting": true,
+    "sanitisation": true,
+    "links": true,
+    "privacy_cookie": true,
+    "accessibility": true,
+    "terms_billing": true,
+    "permissions": true,
+    "concurrency": true,
+    "regression": true
+  },
+  "classified_at_utc": "2026-06-05T11:20:31.329793+00:00",
+  "run_tag": "20260605T111338Z"
+}

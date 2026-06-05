@@ -1,0 +1,40 @@
+{
+  "at_utc": "2026-06-05T11:19:21.075224+00:00",
+  "checks": [
+    {
+      "slug": "privacy",
+      "keyword_hits": [
+        "gdpr",
+        "stripe",
+        "data",
+        "personal",
+        "retention",
+        "rights"
+      ],
+      "pass": true,
+      "source": "playwright_rendered"
+    },
+    {
+      "slug": "cookies",
+      "keyword_hits": [
+        "cookie",
+        "analytics",
+        "essential"
+      ],
+      "pass": true,
+      "source": "playwright_rendered"
+    },
+    {
+      "slug": "terms",
+      "keyword_hits": [
+        "service",
+        "payment",
+        "stripe",
+        "cancel"
+      ],
+      "pass": true,
+      "source": "playwright_rendered"
+    }
+  ],
+  "pass": true
+}

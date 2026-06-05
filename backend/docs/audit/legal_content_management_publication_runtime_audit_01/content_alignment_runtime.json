@@ -1,0 +1,133 @@
+{
+  "at_utc": "2026-06-05T11:15:33.261026+00:00",
+  "probes": [
+    {
+      "slug": "privacy",
+      "public_status": 200,
+      "admin_content_empty": true,
+      "public_keyword_hits": [
+        "compliance",
+        "stripe",
+        "document",
+        "report",
+        "contractor",
+        "gdpr",
+        "cookie",
+        "accessibility"
+      ],
+      "admin_keyword_hits": [],
+      "classification": "PUBLICATION_DRIFT",
+      "flags": [],
+      "pass": true
+    },
+    {
+      "slug": "terms",
+      "public_status": 200,
+      "admin_content_empty": true,
+      "public_keyword_hits": [
+        "compliance",
+        "landlord",
+        "stripe",
+        "document",
+        "report",
+        "contractor",
+        "gdpr",
+        "cookie"
+      ],
+      "admin_keyword_hits": [],
+      "classification": "PUBLICATION_DRIFT",
+      "flags": [],
+      "pass": true
+    },
+    {
+      "slug": "cookies",
+      "public_status": 200,
+      "admin_content_empty": true,
+      "public_keyword_hits": [
+        "compliance",
+        "document",
+        "report",
+        "contractor",
+        "cookie",
+        "accessibility"
+      ],
+      "admin_keyword_hits": [],
+      "classification": "PUBLICATION_DRIFT",
+      "flags": [],
+      "pass": true
+    },
+    {
+      "slug": "accessibility",
+      "public_status": 200,
+      "admin_content_empty": true,
+      "public_keyword_hits": [
+        "compliance",
+        "document",
+        "contractor",
+        "cookie",
+        "accessibility"
+      ],
+      "admin_keyword_hits": [],
+      "classification": "PUBLICATION_DRIFT",
+      "flags": [],
+      "pass": true
+    },
+    {
+      "slug": "careers",
+      "public_status": 200,
+      "admin_content_empty": true,
+      "public_keyword_hits": [
+        "compliance",
+        "landlord",
+        "document",
+        "contractor",
+        "gdpr",
+        "cookie",
+        "accessibility"
+      ],
+      "admin_keyword_hits": [],
+      "classification": "PUBLICATION_DRIFT",
+      "flags": [],
+      "pass": true
+    },
+    {
+      "slug": "partnerships",
+      "public_status": 200,
+      "admin_content_empty": true,
+      "public_keyword_hits": [
+        "compliance",
+        "landlord",
+        "document",
+        "contractor",
+        "gdpr",
+        "cookie",
+        "accessibility"
+      ],
+      "admin_keyword_hits": [],
+      "classification": "PUBLICATION_DRIFT",
+      "flags": [],
+      "pass": true
+    },
+    {
+      "slug": "about",
+      "public_status": 200,
+      "admin_content_empty": true,
+      "public_keyword_hits": [
+        "compliance",
+        "landlord",
+        "document",
+        "report",
+        "contractor",
+        "cookie",
+        "accessibility"
+      ],
+      "admin_keyword_hits": [],
+      "classification": "PUBLICATION_DRIFT",
+      "flags": [],
+      "pass": true
+    }
+  ],
+  "publication_drift_count": 7,
+  "finding": "Public marketing pages are static JSX; admin legal_content DB is not wired to public render",
+  "pass": true
+}

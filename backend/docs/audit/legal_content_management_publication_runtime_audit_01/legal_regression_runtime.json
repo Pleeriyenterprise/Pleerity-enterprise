@@ -1,0 +1,17 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_cms_site_builder.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_action_governance_policy.py",
+      "ok": true,
+      "exit_code": 0
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-05T11:20:19.495117+00:00",
+  "note": "Legal-scoped regression only; iteration29 public website suite requires live API base URL"
+}

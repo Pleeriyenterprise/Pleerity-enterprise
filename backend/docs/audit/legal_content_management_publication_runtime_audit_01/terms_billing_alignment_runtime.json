@@ -1,0 +1,13 @@
+{
+  "at_utc": "2026-06-05T11:19:32.052920+00:00",
+  "hits": [
+    "service",
+    "payment",
+    "stripe",
+    "cancel"
+  ],
+  "disclaimer_present": true,
+  "pass": true,
+  "source": "playwright_rendered",
+  "note": "Static terms describe services/payments; SaaS subscription wording may be absent"
+}

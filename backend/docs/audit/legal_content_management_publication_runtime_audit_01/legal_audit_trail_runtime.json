@@ -1,0 +1,16 @@
+{
+  "at_utc": "2026-06-05T11:16:54.649498+00:00",
+  "legal_audit_rows": 13,
+  "sample_metadata": {
+    "action_type": "LEGAL_CONTENT_UPDATED",
+    "slug": "cookies",
+    "title": "Cookie Policy",
+    "version": 4,
+    "content_length": 0,
+    "previous_version": 3
+  },
+  "careers_versions": 4,
+  "has_previous_content_field": true,
+  "no_secret_leakage": true,
+  "pass": true
+}

@@ -1,0 +1,54 @@
+{
+  "at_utc": "2026-06-05T11:19:06.167280+00:00",
+  "probes": [
+    {
+      "path": "/about",
+      "status": 200,
+      "pass": true,
+      "staging_url_leak": false
+    },
+    {
+      "path": "/careers",
+      "status": 200,
+      "pass": true,
+      "staging_url_leak": false
+    },
+    {
+      "path": "/partnerships",
+      "status": 200,
+      "pass": true,
+      "staging_url_leak": false
+    },
+    {
+      "path": "/contact",
+      "status": 200,
+      "pass": true,
+      "staging_url_leak": false
+    },
+    {
+      "path": "/legal/privacy",
+      "status": 200,
+      "pass": true,
+      "staging_url_leak": false
+    },
+    {
+      "path": "/legal/terms",
+      "status": 200,
+      "pass": true,
+      "staging_url_leak": false
+    },
+    {
+      "path": "/legal/cookies",
+      "status": 200,
+      "pass": true,
+      "staging_url_leak": false
+    },
+    {
+      "path": "/accessibility",
+      "status": 200,
+      "pass": true,
+      "staging_url_leak": false
+    }
+  ],
+  "pass": true
+}

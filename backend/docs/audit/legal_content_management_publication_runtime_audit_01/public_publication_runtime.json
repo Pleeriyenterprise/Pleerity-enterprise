@@ -1,0 +1,89 @@
+{
+  "at_utc": "2026-06-05T11:17:39.150936+00:00",
+  "probes": [
+    {
+      "slug": "privacy",
+      "public_path": "/legal/privacy",
+      "status": 200,
+      "pass": true,
+      "raw_markdown_leak": false
+    },
+    {
+      "slug": "terms",
+      "public_path": "/legal/terms",
+      "status": 200,
+      "pass": true,
+      "raw_markdown_leak": false
+    },
+    {
+      "slug": "cookies",
+      "public_path": "/legal/cookies",
+      "status": 200,
+      "pass": true,
+      "raw_markdown_leak": false
+    },
+    {
+      "slug": "accessibility",
+      "public_path": "/accessibility",
+      "status": 200,
+      "pass": true,
+      "raw_markdown_leak": false
+    },
+    {
+      "slug": "careers",
+      "public_path": "/careers",
+      "status": 200,
+      "pass": true,
+      "raw_markdown_leak": false
+    },
+    {
+      "slug": "partnerships",
+      "public_path": "/partnerships",
+      "status": 200,
+      "pass": true,
+      "raw_markdown_leak": false
+    },
+    {
+      "slug": "about",
+      "public_path": "/about",
+      "status": 200,
+      "pass": true,
+      "raw_markdown_leak": false
+    }
+  ],
+  "browser_shots": {
+    "at_utc": "2026-06-05T11:17:39.035318+00:00",
+    "pages": [
+      {
+        "slug": "privacy",
+        "path": "/legal/privacy",
+        "screenshot": "public_privacy.png",
+        "pass": true,
+        "has_h1": true
+      },
+      {
+        "slug": "terms",
+        "path": "/legal/terms",
+        "screenshot": "public_terms.png",
+        "pass": true,
+        "has_h1": true
+      },
+      {
+        "slug": "cookies",
+        "path": "/legal/cookies",
+        "screenshot": "public_cookies.png",
+        "pass": true,
+        "has_h1": true
+      },
+      {
+        "slug": "about",
+        "path": "/about",
+        "screenshot": "public_about.png",
+        "pass": true,
+        "has_h1": true
+      }
+    ],
+    "pass": true
+  },
+  "pass": true
+}
