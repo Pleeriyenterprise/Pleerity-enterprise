@@ -1,14 +1,13 @@
 # Legal content publication watchlist
 
 - Classification: `VERIFIED_OPERATIONALLY`
-- Closeout run: `20260605T123518Z`
+- Admin hydration closeout: `20260605T131326Z`
 
 ## Verified
-- [x] Careers reset to canonical default
-- [x] Admin edit publishes marker to public API and live page
-- [x] Restore removes marker publicly
-- [x] All 7 public routes CMS-backed with safe rendering
-- [x] Sanitisation intact
+- [x] Admin editor hydrates CMS content for all 7 slugs
+- [x] Admin API and public API content agree
+- [x] Browser editor shows version/last updated/character counts
+- [x] Edit safety marker round-trip via admin API
 
 ## Optional
 - [ ] Admin UI restore-to-version button

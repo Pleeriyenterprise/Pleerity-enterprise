@@ -18,6 +18,7 @@ from services.legal_content_service import (
     get_reset_default,
     sanitize_legal_markdown,
     seed_canonical_content,
+    serialize_legal_admin_row,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,17 +51,7 @@ async def get_legal_content(slug: str, current_user: dict = Depends(admin_route_
         {"_id": 0}
     )
 
-    if not legal_content:
-        return {
-            "slug": slug,
-            "title": "",
-            "content": "",
-            "version": 0,
-            "updated_at": None,
-            "updated_by": None
-        }
-
-    return legal_content
+    return serialize_legal_admin_row(legal_content, slug)
 
 
 @router.get("")
@@ -73,20 +64,9 @@ async def list_legal_content(current_user: dict = Depends(admin_route_guard)):
         {"_id": 0}
     ).to_list(100)
 
-    existing_slugs = {item['slug'] for item in content_list}
+    by_slug = {item["slug"]: item for item in content_list if item.get("slug")}
 
-    for slug in LEGAL_SLUGS:
-        if slug not in existing_slugs:
-            content_list.append({
-                "slug": slug,
-                "title": f"{slug.title()} Page",
-                "content": "",
-                "version": 0,
-                "updated_at": None,
-                "updated_by": None
-            })
-
-    return content_list
+    return [serialize_legal_admin_row(by_slug.get(slug), slug) for slug in LEGAL_SLUGS]
 
 
 async def _persist_legal_update(
@@ -233,10 +213,11 @@ async def reset_to_default(slug: str, current_user: dict = Depends(admin_route_g
         audit_action_type="LEGAL_CONTENT_RESET_DEFAULT",
         extra_metadata={"reset_to": "canonical_default"},
     )
+    serialized = serialize_legal_admin_row(updated, slug)
     return {
         "success": True,
-        "content": updated,
-        "message": f"Legal content '{slug}' reset to canonical default (v{updated['version']})",
+        "content": serialized,
+        "message": f"Legal content '{slug}' reset to canonical default (v{serialized['version']})",
     }
 
 

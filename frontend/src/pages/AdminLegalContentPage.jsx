@@ -6,85 +6,149 @@ import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Save, RotateCcw, FileText, AlertCircle, Check } from 'lucide-react';
+import { Save, RotateCcw, FileText, AlertCircle, Check, RefreshCw, Database } from 'lucide-react';
+import apiClient from '../api/client';
+
+const EMPTY_ROW = (slug, title) => ({
+  slug,
+  title,
+  content: '',
+  version: 0,
+  updated_at: null,
+  updated_by: null,
+  content_length: 0,
+});
+
+const INITIAL_CONTENT = {
+  privacy: EMPTY_ROW('privacy', 'Privacy Policy'),
+  terms: EMPTY_ROW('terms', 'Terms of Service'),
+  cookies: EMPTY_ROW('cookies', 'Cookie Policy'),
+  accessibility: EMPTY_ROW('accessibility', 'Accessibility Statement'),
+  careers: EMPTY_ROW('careers', 'Careers'),
+  partnerships: EMPTY_ROW('partnerships', 'Partnerships'),
+  about: EMPTY_ROW('about', 'About Us'),
+};
+
+const TABS = [
+  { value: 'privacy', label: 'Privacy Policy', icon: FileText },
+  { value: 'terms', label: 'Terms', icon: FileText },
+  { value: 'cookies', label: 'Cookies', icon: FileText },
+  { value: 'accessibility', label: 'Accessibility', icon: FileText },
+  { value: 'careers', label: 'Careers', icon: FileText },
+  { value: 'partnerships', label: 'Partnerships', icon: FileText },
+  { value: 'about', label: 'About Us', icon: FileText },
+];
+
+function normalizeRow(row, slug) {
+  const fallback = INITIAL_CONTENT[slug] || EMPTY_ROW(slug, slug);
+  if (!row || typeof row !== 'object') return { ...fallback };
+  const content = row.content ?? '';
+  return {
+    slug: row.slug || slug,
+    title: row.title || fallback.title,
+    content,
+    version: Number(row.version) || 0,
+    updated_at: row.updated_at ?? null,
+    updated_by: row.updated_by ?? null,
+    content_length: row.content_length ?? content.length,
+    provenance: row.provenance ?? null,
+  };
+}
+
+function formatUpdatedAt(value) {
+  if (!value) return 'Never';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? 'Never' : d.toLocaleString();
+}
 
 const AdminLegalContentPage = () => {
   const [activeTab, setActiveTab] = useState('privacy');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [tabLoading, setTabLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [message, setMessage] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [content, setContent] = useState(INITIAL_CONTENT);
 
-  const [content, setContent] = useState({
-    privacy: { slug: 'privacy', title: 'Privacy Policy', content: '', version: 0 },
-    terms: { slug: 'terms', title: 'Terms of Service', content: '', version: 0 },
-    cookies: { slug: 'cookies', title: 'Cookie Policy', content: '', version: 0 },
-    accessibility: { slug: 'accessibility', title: 'Accessibility Statement', content: '', version: 0 },
-    careers: { slug: 'careers', title: 'Careers', content: '', version: 0 },
-    partnerships: { slug: 'partnerships', title: 'Partnerships', content: '', version: 0 },
-    about: { slug: 'about', title: 'About Us', content: '', version: 0 },
-  });
+  const applyRow = useCallback((slug, row) => {
+    setContent((prev) => ({
+      ...prev,
+      [slug]: normalizeRow(row, slug),
+    }));
+  }, []);
 
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
-
-  const authHeaders = () => ({
-    Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-    'Content-Type': 'application/json',
-  });
+  const loadSlug = useCallback(async (slug, { quiet = false } = {}) => {
+    if (!quiet) setTabLoading(true);
+    try {
+      const { data } = await apiClient.get(`/admin/legal-content/${slug}`);
+      applyRow(slug, data);
+      return data;
+    } catch (error) {
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail || error.message;
+      setLoadError(`Failed to load ${slug} (${status || 'network'}): ${detail}`);
+      return null;
+    } finally {
+      if (!quiet) setTabLoading(false);
+    }
+  }, [applyRow]);
 
   const loadAllContent = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const response = await fetch(`${API_URL}/api/admin/legal-content`, {
-        headers: authHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const contentMap = {};
-        data.forEach((item) => {
-          contentMap[item.slug] = item;
-        });
-        setContent((prev) => ({ ...prev, ...contentMap }));
+      const { data } = await apiClient.get('/admin/legal-content');
+      if (!Array.isArray(data)) {
+        throw new Error('Unexpected admin legal content response');
       }
+      const next = { ...INITIAL_CONTENT };
+      data.forEach((item) => {
+        if (item?.slug) {
+          next[item.slug] = normalizeRow(item, item.slug);
+        }
+      });
+      setContent(next);
     } catch (error) {
-      console.error('Failed to load legal content:', error);
+      const status = error?.response?.status;
+      const detail = error?.response?.data?.detail || error.message;
+      setLoadError(`Failed to load legal content (${status || 'network'}): ${detail}`);
     } finally {
       setLoading(false);
     }
-  }, [API_URL]);
+  }, []);
 
   useEffect(() => {
     loadAllContent();
   }, [loadAllContent]);
 
+  useEffect(() => {
+    loadSlug(activeTab, { quiet: true });
+  }, [activeTab, loadSlug]);
+
   const handleSave = async (slug) => {
     setSaving(true);
     setMessage(null);
-
+    const row = content[slug];
     try {
-      const response = await fetch(`${API_URL}/api/admin/legal-content/${slug}`, {
-        method: 'PUT',
-        headers: authHeaders(),
-        body: JSON.stringify(content[slug]),
+      const { data } = await apiClient.put(`/admin/legal-content/${slug}`, {
+        slug,
+        title: row.title,
+        content: row.content,
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        setMessage({
-          type: 'success',
-          text: `Saved and published to the public page (version ${result.content.version}).`,
-        });
-
-        setContent((prev) => ({
-          ...prev,
-          [slug]: result.content,
-        }));
-
-        setTimeout(() => setMessage(null), 4000);
+      if (data?.content) {
+        applyRow(slug, data.content);
       } else {
-        setMessage({ type: 'error', text: 'Failed to save. Please try again.' });
+        await loadSlug(slug, { quiet: true });
       }
+      setMessage({
+        type: 'success',
+        text: data?.message || `Saved and published to the public page (version ${data?.content?.version ?? row.version + 1}).`,
+      });
+      setTimeout(() => setMessage(null), 4000);
     } catch (error) {
-      setMessage({ type: 'error', text: 'Network error. Please try again.' });
+      const detail = error?.response?.data?.detail || 'Failed to save. Please try again.';
+      setMessage({ type: 'error', text: String(detail) });
     } finally {
       setSaving(false);
     }
@@ -98,29 +162,44 @@ const AdminLegalContentPage = () => {
     ) {
       return;
     }
-
     try {
-      const response = await fetch(`${API_URL}/api/admin/legal-content/${slug}/reset-default`, {
-        method: 'POST',
-        headers: authHeaders(),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setMessage({
-          type: 'success',
-          text: result.message || 'Reset to canonical default and published.',
-        });
-        setContent((prev) => ({
-          ...prev,
-          [slug]: result.content,
-        }));
-        await loadAllContent();
-      } else {
-        setMessage({ type: 'error', text: 'Failed to reset' });
+      const { data } = await apiClient.post(`/admin/legal-content/${slug}/reset-default`);
+      if (data?.content) {
+        applyRow(slug, data.content);
       }
+      await loadAllContent();
+      setMessage({
+        type: 'success',
+        text: data?.message || 'Reset to canonical default and published.',
+      });
     } catch (error) {
-      setMessage({ type: 'error', text: 'Network error' });
+      const detail = error?.response?.data?.detail || 'Failed to reset';
+      setMessage({ type: 'error', text: String(detail) });
+    }
+  };
+
+  const handleSeed = async () => {
+    if (
+      !window.confirm(
+        'Seed all legal pages from canonical published copy? Existing custom content is not overwritten.'
+      )
+    ) {
+      return;
+    }
+    setSeeding(true);
+    try {
+      const { data } = await apiClient.post('/admin/legal-content/seed-canonical');
+      await loadAllContent();
+      await loadSlug(activeTab, { quiet: true });
+      setMessage({
+        type: 'success',
+        text: data?.message || 'Canonical content seed completed.',
+      });
+    } catch (error) {
+      const detail = error?.response?.data?.detail || 'Failed to seed canonical content';
+      setMessage({ type: 'error', text: String(detail) });
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -131,26 +210,38 @@ const AdminLegalContentPage = () => {
     }));
   };
 
-  const tabs = [
-    { value: 'privacy', label: 'Privacy Policy', icon: FileText, category: 'Legal' },
-    { value: 'terms', label: 'Terms', icon: FileText, category: 'Legal' },
-    { value: 'cookies', label: 'Cookies', icon: FileText, category: 'Legal' },
-    { value: 'accessibility', label: 'Accessibility', icon: FileText, category: 'Legal' },
-    { value: 'careers', label: 'Careers', icon: FileText, category: 'Marketing' },
-    { value: 'partnerships', label: 'Partnerships', icon: FileText, category: 'Marketing' },
-    { value: 'about', label: 'About Us', icon: FileText, category: 'Marketing' },
-  ];
+  const active = content[activeTab] || INITIAL_CONTENT[activeTab];
+  const isEmptyEditor = (active.content || '').length < 100;
 
   return (
     <UnifiedAdminLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-midnight-blue">Legal Content Management</h1>
-          <p className="text-gray-600 mt-2">
-            Edit legal and marketing pages. Changes publish to the public site after save. All edits are
-            versioned and audited.
-          </p>
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-midnight-blue">Legal Content Management</h1>
+            <p className="text-gray-600 mt-2">
+              Edit legal and marketing pages. Changes publish to the public site after save. All edits are
+              versioned and audited.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={loadAllContent} disabled={loading || saving || seeding}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button variant="outline" onClick={handleSeed} disabled={loading || saving || seeding}>
+              <Database className="w-4 h-4 mr-2" />
+              {seeding ? 'Seeding…' : 'Seed published content'}
+            </Button>
+          </div>
         </div>
+
+        {loadError && (
+          <Alert className="mb-6 bg-red-50 border-red-200">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-700">{loadError}</AlertDescription>
+          </Alert>
+        )}
 
         {message && (
           <Alert className={`mb-6 ${message.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
@@ -161,9 +252,19 @@ const AdminLegalContentPage = () => {
           </Alert>
         )}
 
+        {isEmptyEditor && !loading && (
+          <Alert className="mb-6 bg-amber-50 border-amber-200">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              This page has no CMS content loaded. Use <strong>Seed published content</strong> or{' '}
+              <strong>Reset to Default</strong> before editing to avoid overwriting published copy with empty text.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7">
-            {tabs.map((tab) => (
+            {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
                 <tab.icon className="w-4 h-4 mr-1" />
                 {tab.label}
@@ -171,77 +272,79 @@ const AdminLegalContentPage = () => {
             ))}
           </TabsList>
 
-          {tabs.map((tab) => (
-            <TabsContent key={tab.value} value={tab.value}>
-              <Card>
-                <CardHeader>
-                  <CardTitle>{content[tab.value].title}</CardTitle>
-                  <CardDescription>
-                    Version {content[tab.value].version} | Last updated:{' '}
-                    {content[tab.value].updated_at
-                      ? new Date(content[tab.value].updated_at).toLocaleString()
-                      : 'Never'}
-                    {loading ? ' · Loading…' : ''}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Page Title</label>
-                    <Input
-                      value={content[tab.value].title}
-                      onChange={(e) => updateField(tab.value, 'title', e.target.value)}
-                      placeholder="Page title"
-                    />
-                  </div>
+          {TABS.map((tab) => {
+            const row = content[tab.value] || INITIAL_CONTENT[tab.value];
+            return (
+              <TabsContent key={tab.value} value={tab.value}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{row.title}</CardTitle>
+                    <CardDescription>
+                      Version {row.version} | Last updated: {formatUpdatedAt(row.updated_at)}
+                      {loading || tabLoading ? ' · Loading…' : ''}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">Page Title</label>
+                      <Input
+                        value={row.title}
+                        onChange={(e) => updateField(tab.value, 'title', e.target.value)}
+                        placeholder="Page title"
+                        disabled={loading}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      Content (Markdown supported)
-                    </label>
-                    <Textarea
-                      value={content[tab.value].content}
-                      onChange={(e) => updateField(tab.value, 'content', e.target.value)}
-                      placeholder="Enter legal content here..."
-                      className="min-h-[400px] font-mono text-sm"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      {content[tab.value].content.length} characters
-                    </p>
-                  </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">
+                        Content (Markdown supported)
+                      </label>
+                      <Textarea
+                        value={row.content}
+                        onChange={(e) => updateField(tab.value, 'content', e.target.value)}
+                        placeholder="Enter legal content here..."
+                        className="min-h-[400px] font-mono text-sm"
+                        disabled={loading}
+                      />
+                      <p className="text-xs text-gray-500 mt-2">
+                        {(row.content || '').length} characters
+                      </p>
+                    </div>
 
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={() => handleSave(tab.value)}
-                      disabled={saving}
-                      className="bg-electric-teal hover:bg-electric-teal/90"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      {saving ? 'Saving...' : 'Save & Publish'}
-                    </Button>
+                    <div className="flex gap-3">
+                      <Button
+                        onClick={() => handleSave(tab.value)}
+                        disabled={saving || loading}
+                        className="bg-electric-teal hover:bg-electric-teal/90"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {saving ? 'Saving...' : 'Save & Publish'}
+                      </Button>
 
-                    <Button
-                      onClick={() => handleReset(tab.value)}
-                      variant="outline"
-                      disabled={saving}
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Reset to Default
-                    </Button>
-                  </div>
+                      <Button
+                        onClick={() => handleReset(tab.value)}
+                        variant="outline"
+                        disabled={saving || loading}
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Reset to Default
+                      </Button>
+                    </div>
 
-                  <div className="text-xs text-gray-500 mt-4 p-4 bg-gray-50 rounded">
-                    <p className="font-semibold mb-2">Publication governance</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Saving publishes to the matching public URL immediately</li>
-                      <li>Empty CMS content falls back to canonical static copy on the public API</li>
-                      <li>All edits and resets are logged with version history</li>
-                      <li>Unsafe HTML/scripts are stripped on save</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
+                    <div className="text-xs text-gray-500 mt-4 p-4 bg-gray-50 rounded">
+                      <p className="font-semibold mb-2">Publication governance</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Editor loads the same governed CMS content published on the public site</li>
+                        <li>Saving publishes to the matching public URL immediately</li>
+                        <li>All edits and resets are logged with version history</li>
+                        <li>Unsafe HTML/scripts are stripped on save</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            );
+          })}
         </Tabs>
       </div>
     </UnifiedAdminLayout>

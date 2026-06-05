@@ -1,16 +1,18 @@
 {
-  "programme": "LEGAL-CONTENT-PUBLICATION-CLOSEOUT-01",
+  "programme": "LEGAL-CONTENT-ADMIN-HYDRATION-CLOSEOUT-01",
   "classification": "VERIFIED_OPERATIONALLY",
-  "prior_classification": "PARTIAL",
-  "prior_programme": "LEGAL-CONTENT-PUBLICATION-CONVERGENCE-01",
+  "prior_classification": "VERIFIED_OPERATIONALLY",
+  "prior_programme": "LEGAL-CONTENT-PUBLICATION-CLOSEOUT-01",
   "secondary_flags": [],
   "blockers": [],
   "checklist": {
-    "careers_reset": true,
-    "edit_publication": true,
-    "public_routes": true,
-    "sanitisation": true
+    "root_cause": true,
+    "admin_api": true,
+    "frontend": true,
+    "browser": true,
+    "edit_safety": true,
+    "regression": true
   },
-  "classified_at_utc": "2026-06-05T12:38:29.762088+00:00",
-  "run_tag": "20260605T123518Z"
+  "classified_at_utc": "2026-06-05T13:17:09.313973+00:00",
+  "run_tag": "20260605T131326Z"
 }

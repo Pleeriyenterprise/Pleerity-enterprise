@@ -158,3 +158,32 @@ def get_reset_default(slug: str) -> Optional[Dict[str, str]]:
     if not canonical:
         return None
     return {"title": canonical["title"], "content": canonical["content"]}
+
+
+def serialize_legal_admin_row(doc: Optional[dict], slug: str) -> Dict[str, Any]:
+    """Normalize Mongo legal_content for admin editor hydration."""
+    if not doc:
+        canonical = get_canonical(slug)
+        return {
+            "slug": slug,
+            "title": (canonical or {}).get("title") or f"{slug.title()} Page",
+            "content": "",
+            "version": 0,
+            "updated_at": None,
+            "updated_by": None,
+            "provenance": None,
+            "content_length": 0,
+            "is_empty": True,
+        }
+    content = doc.get("content") or ""
+    return {
+        "slug": doc.get("slug", slug),
+        "title": doc.get("title") or "",
+        "content": content,
+        "version": int(doc.get("version") or 0),
+        "updated_at": _iso(doc.get("updated_at")),
+        "updated_by": doc.get("updated_by"),
+        "provenance": doc.get("provenance"),
+        "content_length": len(content.strip()),
+        "is_empty": len(content.strip()) == 0,
+    }

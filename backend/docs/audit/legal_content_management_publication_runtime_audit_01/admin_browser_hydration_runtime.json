@@ -1,0 +1,97 @@
+{
+  "at_utc": "2026-06-05T13:16:32.413568+00:00",
+  "tabs": [
+    {
+      "slug": "privacy",
+      "title_populated": true,
+      "char_count": 2950,
+      "version": 3,
+      "never_updated": false,
+      "admin_preview": "# Privacy Policy\n\nPleerity Enterprise Ltd (\"we\", \"our\", or \"us\") is committed to",
+      "editor_preview": "# Privacy Policy\n\nPleerity Enterprise Ltd (\"we\", \"our\", or \"us\") is committed to",
+      "public_preview": "# Privacy Policy\n\nPleerity Enterprise Ltd (\"we\", \"our\", or \"us\") is committed to",
+      "preview_match": true,
+      "screenshot": "screenshots/admin_hydration/admin_privacy.png",
+      "pass": true
+    },
+    {
+      "slug": "terms",
+      "title_populated": true,
+      "char_count": 5584,
+      "version": 3,
+      "never_updated": false,
+      "admin_preview": "# Terms of Service\n\nThese Terms of Service (\"Terms\") govern the use of services ",
+      "editor_preview": "# Terms of Service\n\nThese Terms of Service (\"Terms\") govern the use of services ",
+      "public_preview": "# Terms of Service\n\nThese Terms of Service (\"Terms\") govern the use of services ",
+      "preview_match": true,
+      "screenshot": "screenshots/admin_hydration/admin_terms.png",
+      "pass": true
+    },
+    {
+      "slug": "cookies",
+      "title_populated": true,
+      "char_count": 2048,
+      "version": 5,
+      "never_updated": false,
+      "admin_preview": "# Cookie Policy\n\n*Last updated: November 2025*\n\nThis Cookie Policy explains how ",
+      "editor_preview": "# Cookie Policy\n\n*Last updated: November 2025*\n\nThis Cookie Policy explains how ",
+      "public_preview": "# Cookie Policy\n\n*Last updated: November 2025*\n\nThis Cookie Policy explains how ",
+      "preview_match": true,
+      "screenshot": null,
+      "pass": true
+    },
+    {
+      "slug": "accessibility",
+      "title_populated": true,
+      "char_count": 1912,
+      "version": 3,
+      "never_updated": false,
+      "admin_preview": "# Accessibility Statement\n\n*Last updated: November 2025*\n\nPleerity Enterprise Lt",
+      "editor_preview": "# Accessibility Statement\n\n*Last updated: November 2025*\n\nPleerity Enterprise Lt",
+      "public_preview": "# Accessibility Statement\n\n*Last updated: November 2025*\n\nPleerity Enterprise Lt",
+      "preview_match": true,
+      "screenshot": null,
+      "pass": true
+    },
+    {
+      "slug": "careers",
+      "title_populated": true,
+      "char_count": 3326,
+      "version": 14,
+      "never_updated": false,
+      "admin_preview": "# Build Systems That Make Businesses Stronger\n\nJoin Pleerity Enterprise Ltd as w",
+      "editor_preview": "# Build Systems That Make Businesses Stronger\n\nJoin Pleerity Enterprise Ltd as w",
+      "public_preview": "# Build Systems That Make Businesses Stronger\n\nJoin Pleerity Enterprise Ltd as w",
+      "preview_match": true,
+      "screenshot": "screenshots/admin_hydration/admin_careers.png",
+      "pass": true
+    },
+    {
+      "slug": "partnerships",
+      "title_populated": true,
+      "char_count": 3175,
+      "version": 18,
+      "never_updated": false,
+      "admin_preview": "# Partnerships Built on Trust and Operational Excellence\n\nCollaborate with Pleer",
+      "editor_preview": "# Partnerships Built on Trust and Operational Excellence\n\nCollaborate with Pleer",
+      "public_preview": "# Partnerships Built on Trust and Operational Excellence\n\nCollaborate with Pleer",
+      "preview_match": true,
+      "screenshot": null,
+      "pass": true
+    },
+    {
+      "slug": "about",
+      "title_populated": true,
+      "char_count": 1527,
+      "version": 3,
+      "never_updated": false,
+      "admin_preview": "# Built for Organisations That Need Structure \u2014 Not Guesswork\n\nCompliance is oft",
+      "editor_preview": "# Built for Organisations That Need Structure \u2014 Not Guesswork\n\nCompliance is oft",
+      "public_preview": "# Built for Organisations That Need Structure \u2014 Not Guesswork\n\nCompliance is oft",
+      "preview_match": true,
+      "screenshot": "screenshots/admin_hydration/admin_about.png",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

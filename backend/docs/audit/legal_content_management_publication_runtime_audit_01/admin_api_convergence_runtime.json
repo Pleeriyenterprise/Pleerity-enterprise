@@ -1,0 +1,70 @@
+{
+  "at_utc": "2026-06-05T13:14:24.018827+00:00",
+  "status": 200,
+  "probes": [
+    {
+      "slug": "privacy",
+      "title": "Privacy Policy",
+      "version": 3,
+      "content_length": 2950,
+      "updated_at": "2026-06-05T12:07:02.574000",
+      "is_empty": null,
+      "pass": true
+    },
+    {
+      "slug": "terms",
+      "title": "Terms of Service",
+      "version": 3,
+      "content_length": 5584,
+      "updated_at": "2026-06-05T12:07:09.794000",
+      "is_empty": null,
+      "pass": true
+    },
+    {
+      "slug": "cookies",
+      "title": "Cookie Policy",
+      "version": 5,
+      "content_length": 2048,
+      "updated_at": "2026-06-05T12:07:54.399000",
+      "is_empty": null,
+      "pass": true
+    },
+    {
+      "slug": "accessibility",
+      "title": "Accessibility Statement",
+      "version": 3,
+      "content_length": 1912,
+      "updated_at": "2026-06-05T12:07:24.841000",
+      "is_empty": null,
+      "pass": true
+    },
+    {
+      "slug": "careers",
+      "title": "Careers",
+      "version": 14,
+      "content_length": 3326,
+      "updated_at": "2026-06-05T13:10:40.490000",
+      "is_empty": null,
+      "pass": true
+    },
+    {
+      "slug": "partnerships",
+      "title": "Partnerships",
+      "version": 18,
+      "content_length": 3175,
+      "updated_at": "2026-06-05T12:38:28.735000",
+      "is_empty": null,
+      "pass": true
+    },
+    {
+      "slug": "about",
+      "title": "About Us",
+      "version": 3,
+      "content_length": 1527,
+      "updated_at": "2026-06-05T12:07:47.561000",
+      "is_empty": null,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

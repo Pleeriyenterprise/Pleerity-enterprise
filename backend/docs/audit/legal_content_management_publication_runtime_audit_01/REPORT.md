@@ -1,19 +1,20 @@
-# LEGAL-CONTENT-PUBLICATION-CLOSEOUT-01
+# LEGAL-CONTENT-ADMIN-HYDRATION-CLOSEOUT-01
 
 **Classification:** `VERIFIED_OPERATIONALLY`
-**Prior:** `PARTIAL` (LEGAL-CONTENT-PUBLICATION-CONVERGENCE-01)
-**Run tag:** `20260605T123518Z`
+**Run tag:** `20260605T131326Z`
 
-## Closeout summary
-Focused verification after careers canonical reset and Vercel frontend deploy.
+## Summary
+Admin Legal Content Management now hydrates from governed CMS via apiClient with serialized admin API rows.
 
 ## Checklist
-- careers_reset: PASS
-- edit_publication: PASS
-- public_routes: PASS
-- sanitisation: PASS
+- root_cause: PASS
+- admin_api: PASS
+- frontend: PASS
+- browser: PASS
+- edit_safety: PASS
+- regression: PASS
 
 ## Harness
 
-`backend/legal_content_publication_closeout_01_execute.py`
+`backend/legal_content_admin_hydration_closeout_01_execute.py`
 
