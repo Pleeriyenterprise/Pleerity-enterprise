@@ -22,9 +22,8 @@ export default function PublicLegalContentPage({
     let cancelled = false;
     const load = async () => {
       try {
-        const versionQ = page?.version ? `?v=${page.version}` : '';
         const response = await fetch(
-          `${API_URL}/api/public/legal-content/${slug}${versionQ}`,
+          `${API_URL}/api/public/legal-content/${slug}`,
           { cache: 'no-store' }
         );
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
