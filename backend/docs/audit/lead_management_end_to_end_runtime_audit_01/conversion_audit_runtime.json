@@ -1,0 +1,8 @@
+{
+  "at_utc": "2026-06-05T09:10:35.956135+00:00",
+  "lead_converted_events": 1,
+  "blocked_lost_audit_rows": 1,
+  "blocked_duplicate_audit_rows": 1,
+  "no_secret_leakage": true,
+  "pass": true
+}

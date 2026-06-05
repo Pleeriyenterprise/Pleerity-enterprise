@@ -1,0 +1,33 @@
+{
+  "at_utc": "2026-06-05T09:09:51.455212+00:00",
+  "finding": "convert_lead previously mutated without status guard; guard now enforced pre-mutation",
+  "convertible_status": [
+    "ACTIVE"
+  ],
+  "convertible_stages": [
+    "NEW",
+    "CONTACTED",
+    "QUALIFIED",
+    "NURTURING",
+    "SALES_READY",
+    "PROPOSAL_SENT",
+    "NEGOTIATING"
+  ],
+  "rejected_statuses": [
+    "LOST",
+    "CONVERTED",
+    "MERGED",
+    "UNSUBSCRIBED"
+  ],
+  "rejected_stages": [
+    "LOST",
+    "WON"
+  ],
+  "lost_requires_reopen": true,
+  "duplicate_returns_409": "LEAD_ALREADY_CONVERTED",
+  "client_id_immutable_after_conversion": true,
+  "guard_helper_present": true,
+  "exception_present": "LeadConversionError",
+  "guard_before_side_effects": true,
+  "pass": true
+}

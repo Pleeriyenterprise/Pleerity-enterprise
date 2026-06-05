@@ -1,0 +1,28 @@
+{
+  "deploy_wait": {
+    "pass": true,
+    "waited_s": 2.6,
+    "status": 409,
+    "error_code": "LEAD_NOT_CONVERTIBLE"
+  },
+  "at_utc": "2026-06-05T09:09:48.072510+00:00",
+  "responses": {
+    "LOST": {
+      "status": 409,
+      "error_code": "LEAD_NOT_CONVERTIBLE"
+    },
+    "CONVERTED": {
+      "status": 409,
+      "error_code": "LEAD_ALREADY_CONVERTED"
+    },
+    "missing": {
+      "status": 404
+    }
+  },
+  "implementation": [
+    "services/lead_service.py: LeadConversionError + _lead_conversion_block_code",
+    "routes/leads.py: HTTP 409 via conflict_error_detail",
+    "frontend AdminLeadsPage.js: structured detail.message toast"
+  ],
+  "pass": true
+}

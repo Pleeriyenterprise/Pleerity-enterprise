@@ -1,19 +1,15 @@
 {
   "programme": "LEAD-MANAGEMENT-END-TO-END-RUNTIME-AUDIT-01",
-  "classification": "PARTIAL",
-  "secondary_flags": [
-    "LEAD_CONVERSION_DRIFT"
-  ],
-  "blockers": [
-    "conversion"
-  ],
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "blockers": [],
   "checklist": {
     "setup": true,
     "dashboard": true,
     "filter": true,
     "detail": true,
     "risk_check": true,
-    "conversion": false,
+    "conversion": true,
     "automation": true,
     "sla": true,
     "communications": true,
@@ -24,6 +20,26 @@
     "cross_surface": true,
     "regression": true
   },
-  "classified_at_utc": "2026-06-05T08:10:05.424854+00:00",
-  "run_tag": "20260605T075947Z"
+  "classified_at_utc": "2026-06-05T09:16:49.474494+00:00",
+  "run_tag": "20260605T075947Z",
+  "closeout": {
+    "programme": "LEAD-MANAGEMENT-CONVERSION-GOVERNANCE-CLOSEOUT-01",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "secondary_flags": [],
+    "blockers": [],
+    "checklist": {
+      "root_cause": true,
+      "closeout": true,
+      "audit": true,
+      "automation": true,
+      "cross_surface": true,
+      "regression": true,
+      "guard": true
+    },
+    "classified_at_utc": "2026-06-05T09:16:49.474494+00:00",
+    "run_tag": "20260605T090934Z",
+    "parent_audit": "LEAD-MANAGEMENT-END-TO-END-RUNTIME-AUDIT-01",
+    "parent_classification_upgraded": true
+  },
+  "closeout_run_tag": "20260605T090934Z"
 }

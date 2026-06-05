@@ -1,0 +1,40 @@
+{
+  "at_utc": "2026-06-05T09:10:30.563513+00:00",
+  "seed": {
+    "emails": {
+      "convert": "lead-conv-closeout-20260605T090934Z-convert@yopmail.com",
+      "lost": "lead-conv-closeout-20260605T090934Z-lost@yopmail.com"
+    },
+    "convert_lead_id": "LEAD-20260605090953-56884F",
+    "lost_lead_id": "LEAD-20260605090958-D92F6C",
+    "mark_lost_status": 200,
+    "pass": true
+  },
+  "probes": [
+    {
+      "name": "valid_convert",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "name": "duplicate_convert_blocked",
+      "pass": true,
+      "status": 409,
+      "error_code": "LEAD_ALREADY_CONVERTED"
+    },
+    {
+      "name": "lost_convert_blocked",
+      "pass": true,
+      "status": 409,
+      "error_code": "LEAD_NOT_CONVERTIBLE",
+      "conflict_message": "This lead cannot be converted. Reopen the lead or create a new record first."
+    },
+    {
+      "name": "conversion_metrics_not_inflated",
+      "pass": true,
+      "converted_before": 14,
+      "converted_after": 15
+    }
+  ],
+  "pass": true
+}

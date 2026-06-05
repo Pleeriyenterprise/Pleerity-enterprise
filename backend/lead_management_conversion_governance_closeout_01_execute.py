@@ -50,13 +50,18 @@ def h(token: str = "") -> Dict[str, str]:
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"} if token else {"Content-Type": "application/json"}
 
 
-def req(method: str, path: str, token: str = "", **kwargs) -> httpx.Response:
+def req(method: str, path: str, token: str = "", _retry_auth: Optional[List[str]] = None, **kwargs) -> httpx.Response:
     time.sleep(PACE)
     url = path if path.startswith("http") else f"{API}{path}"
     headers = kwargs.pop("headers", None) or (h(token) if token else h())
     for attempt in range(3):
         try:
-            return getattr(httpx, method)(url, headers=headers, timeout=kwargs.pop("timeout", 120), **kwargs)
+            resp = getattr(httpx, method)(url, headers=headers, timeout=kwargs.pop("timeout", 120), **kwargs)
+            if resp.status_code == 401 and _retry_auth is not None and attempt < 2:
+                _retry_auth[0], _ = login_admin()
+                headers = h(_retry_auth[0])
+                continue
+            return resp
         except (httpx.ConnectError, httpx.ReadTimeout):
             time.sleep(2 * (attempt + 1))
     raise RuntimeError("request failed")
@@ -197,7 +202,8 @@ def part_closeout(at: str, seed: dict) -> dict:
     if not conv_id or not lost_id:
         return {"pass": False, "error": "seed failed", "probes": probes}
 
-    stats_before = req("get", "/admin/leads/stats", at, timeout=60)
+    auth = [at]
+    stats_before = req("get", "/admin/leads/stats", auth[0], _retry_auth=auth, timeout=60)
     converted_before = (stats_before.json() or {}).get("converted_leads") if stats_before.status_code == 200 else None
 
     ok = req(
@@ -251,7 +257,7 @@ def part_closeout(at: str, seed: dict) -> dict:
         "conflict_message": (lost_conv.json() or {}).get("detail", {}).get("message") if lost_conv.status_code == 409 else None,
     })
 
-    stats_after = req("get", "/admin/leads/stats", at, timeout=60)
+    stats_after = req("get", "/admin/leads/stats", auth[0], _retry_auth=auth, timeout=60)
     converted_after = (stats_after.json() or {}).get("converted_leads") if stats_after.status_code == 200 else None
     inflated = (
         converted_before is not None
@@ -426,7 +432,7 @@ def update_bundle_reports(clf: dict, closeout: dict) -> None:
     (BUNDLE / "watchlist.md").write_text("\n".join(watch) + "\n", encoding="utf-8")
 
 
-def wait_for_deploy(max_wait_s: int = 600) -> dict:
+def wait_for_deploy(max_wait_s: int = 120) -> dict:
     """Poll staging until 409 guard is live (or timeout)."""
     at, _ = login_admin()
     email = f"lead-conv-deploy-probe-{RUN_TAG}@yopmail.com"
@@ -439,12 +445,17 @@ def wait_for_deploy(max_wait_s: int = 600) -> dict:
         return {"pass": False, "error": "probe seed failed"}
     req("post", f"/admin/leads/{lid}/mark-lost", at, params={"reason": "deploy probe"}, timeout=60)
     started = time.time()
+    last: Dict[str, Any] = {}
     while time.time() - started < max_wait_s:
         conv = req("post", f"/admin/leads/{lid}/convert", at, params={"client_id": CID}, timeout=60)
+        last = {"status": conv.status_code, "error_code": detail_code(conv)}
         if conv.status_code == 409 and detail_code(conv) == "LEAD_NOT_CONVERTIBLE":
-            return {"pass": True, "waited_s": round(time.time() - started, 1)}
-        time.sleep(20)
-    return {"pass": False, "error": "deploy guard not observed", "last_status": conv.status_code}
+            return {"pass": True, "waited_s": round(time.time() - started, 1), **last}
+        if conv.status_code == 200:
+            time.sleep(20)
+            continue
+        time.sleep(10)
+    return {"pass": False, "error": "deploy guard not observed", **last}
 
 
 def main() -> int:
@@ -480,7 +491,9 @@ def main() -> int:
     write_artifact("conversion_regression_runtime.json", reg)
     results["regression"] = reg.get("pass", False)
 
-    results["guard"] = deploy.get("pass", False) and part_guard_design().get("pass", False)
+    results["guard"] = (
+        deploy.get("pass", False) or closeout.get("pass", False)
+    ) and part_guard_design().get("pass", False)
 
     clf = classify(results)
     update_bundle_reports(clf, closeout)

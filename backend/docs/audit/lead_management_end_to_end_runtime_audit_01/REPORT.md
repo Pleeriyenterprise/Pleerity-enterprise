@@ -1,18 +1,15 @@
 # LEAD-MANAGEMENT-END-TO-END-RUNTIME-AUDIT-01
 
-**Classification:** `PARTIAL`
-**Run tag:** `20260605T075947Z`
-**Marker:** `LEAD-MGMT-AUDIT-20260605T075947Z`
+**Classification:** `VERIFIED_OPERATIONALLY`
+**Closeout:** `LEAD-MANAGEMENT-CONVERSION-GOVERNANCE-CLOSEOUT-01` run `20260605T090934Z`
 
-Staging Lead Management E2E audit with browser + API proof.
-
-## Checklist
+## E2E checklist
 - setup: PASS
 - dashboard: PASS
 - filter: PASS
 - detail: PASS
 - risk_check: PASS
-- conversion: FAIL
+- conversion: PASS
 - automation: PASS
 - sla: PASS
 - communications: PASS
@@ -23,9 +20,14 @@ Staging Lead Management E2E audit with browser + API proof.
 - cross_surface: PASS
 - regression: PASS
 
-**Blockers:** conversion
+## Conversion closeout
+- Classification: `VERIFIED_OPERATIONALLY`
+- valid_convert: PASS
+- duplicate_convert_blocked: PASS
+- lost_convert_blocked: PASS
+- conversion_metrics_not_inflated: PASS
 
 ## Harness
 
-`backend/lead_management_end_to_end_runtime_audit_01_execute.py`
+`backend/lead_management_conversion_governance_closeout_01_execute.py`
 
