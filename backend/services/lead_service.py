@@ -44,6 +44,50 @@ LEADS_COLLECTION = "leads"
 LEAD_AUDIT_COLLECTION = "lead_audit_logs"
 LEAD_CONTACTS_COLLECTION = "lead_contacts"
 
+CONVERSION_BLOCK_MESSAGES = {
+    "LEAD_ALREADY_CONVERTED": "This lead has already been converted to a client.",
+    "LEAD_NOT_CONVERTIBLE": "This lead cannot be converted. Reopen the lead or create a new record first.",
+}
+
+
+class LeadConversionError(Exception):
+    """Raised when a lead conversion request violates governance rules."""
+
+    def __init__(self, code: str, message: str):
+        self.code = code
+        self.message = message
+        super().__init__(message)
+
+
+def _lead_is_converted(lead: Dict[str, Any]) -> bool:
+    status = str(lead.get("status") or "").upper()
+    lead_status = str(lead.get("lead_status") or "").lower()
+    stage = str(lead.get("stage") or "").upper()
+    return (
+        status == LeadStatus.CONVERTED.value
+        or lead_status == "converted"
+        or stage == LeadStage.WON.value
+        or bool(lead.get("client_id"))
+    )
+
+
+def _lead_conversion_block_code(lead: Dict[str, Any]) -> Optional[str]:
+    if _lead_is_converted(lead):
+        return "LEAD_ALREADY_CONVERTED"
+    status = str(lead.get("status") or "").upper()
+    lead_status = str(lead.get("lead_status") or "").lower()
+    stage = str(lead.get("stage") or "").upper()
+    if (
+        status == LeadStatus.LOST.value
+        or lead_status == "lost"
+        or stage == LeadStage.LOST.value
+        or status in {LeadStatus.MERGED.value, LeadStatus.UNSUBSCRIBED.value}
+    ):
+        return "LEAD_NOT_CONVERTIBLE"
+    if status != LeadStatus.ACTIVE.value:
+        return "LEAD_NOT_CONVERTIBLE"
+    return None
+
 
 def generate_lead_id() -> str:
     """Generate unique lead ID in format LEAD-XXXXXX."""
@@ -723,6 +767,27 @@ class LeadService:
         db = database.get_db()
         now = datetime.now(timezone.utc).isoformat()
 
+        lead_before = await db[LEADS_COLLECTION].find_one({"lead_id": lead_id}, {"_id": 0})
+        if not lead_before:
+            return None
+
+        block_code = _lead_conversion_block_code(lead_before)
+        if block_code:
+            await LeadService.log_audit(
+                event=LeadAuditEvent.LEAD_UPDATED,
+                lead_id=lead_id,
+                actor_id=actor_id,
+                actor_type="admin",
+                details={
+                    "action": "conversion_blocked",
+                    "error_code": block_code,
+                    "attempted_client_id": client_id,
+                    "current_status": lead_before.get("status"),
+                    "current_stage": lead_before.get("stage"),
+                },
+            )
+            raise LeadConversionError(block_code, CONVERSION_BLOCK_MESSAGES[block_code])
+
         attribution: Dict[str, Any] = {}
         try:
             from services.lead_automation_service import apply_conversion_attribution
@@ -732,8 +797,6 @@ class LeadService:
             )
         except Exception:
             attribution = {}
-        
-        lead_before = await db[LEADS_COLLECTION].find_one({"lead_id": lead_id}, {"_id": 0, "created_at": 1, "source_platform": 1})
         time_to_convert_seconds = None
         try:
             created_raw = (lead_before or {}).get("created_at")

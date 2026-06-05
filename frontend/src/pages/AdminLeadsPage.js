@@ -391,7 +391,11 @@ export default function AdminLeadsPage() {
       }
     } catch (error) {
       console.error('Action failed:', error);
-      toast.error(error.response?.data?.detail || 'Action failed');
+      const detail = error.response?.data?.detail;
+      const msg = typeof detail === 'string'
+        ? detail
+        : (detail && typeof detail === 'object' && detail.message ? detail.message : 'Action failed');
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

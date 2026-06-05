@@ -396,7 +396,7 @@ def part_conversion(at: str, admin_user: dict, seed: dict) -> dict:
         params={"client_id": CID, "conversion_notes": f"{MARKER} duplicate attempt"},
         timeout=60,
     )
-    probes.append({"name": "duplicate_convert_idempotent", "pass": dup.status_code in (200, 400, 409), "status": dup.status_code})
+    probes.append({"name": "duplicate_convert_idempotent", "pass": dup.status_code == 409, "status": dup.status_code})
 
     detail = req("get", f"/admin/leads/{lid}", at, timeout=60)
     lead = detail.json() if detail.status_code == 200 else {}
@@ -424,7 +424,7 @@ def part_conversion(at: str, admin_user: dict, seed: dict) -> dict:
             params={"client_id": CID, "conversion_notes": "should block"},
             timeout=60,
         )
-        probes.append({"name": "convert_lost_blocked", "pass": conv_lost.status_code in (400, 409, 422), "status": conv_lost.status_code})
+        probes.append({"name": "convert_lost_blocked", "pass": conv_lost.status_code == 409, "status": conv_lost.status_code})
 
     return {"at_utc": utc(), "probes": probes, "pass": all(p["pass"] for p in probes)}
 

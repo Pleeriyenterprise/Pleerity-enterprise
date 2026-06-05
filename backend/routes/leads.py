@@ -1417,17 +1417,26 @@ async def convert_lead(
     current_user: dict = Depends(admin_route_guard),
 ):
     """Convert a lead to a client."""
-    lead = await LeadService.convert_lead(
-        lead_id=lead_id,
-        client_id=client_id,
-        actor_id=current_user.get("email"),
-        conversion_notes=conversion_notes,
-        conversion_source=conversion_source,
-    )
-    
+    from services.lead_service import LeadConversionError
+    from utils.api_errors import conflict_error_detail
+
+    try:
+        lead = await LeadService.convert_lead(
+            lead_id=lead_id,
+            client_id=client_id,
+            actor_id=current_user.get("email"),
+            conversion_notes=conversion_notes,
+            conversion_source=conversion_source,
+        )
+    except LeadConversionError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=conflict_error_detail(exc.message, error_code=exc.code),
+        ) from exc
+
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
-    
+
     return {"success": True, "lead": lead}
 
 
