@@ -1,0 +1,12 @@
+{
+  "at_utc": "2026-06-05T07:16:37.175667+00:00",
+  "summary_status": 200,
+  "accepted": null,
+  "accepted_at": null,
+  "version": null,
+  "issued": null,
+  "retry_without_governance_status": 422,
+  "retry_with_confirmation_status": 422,
+  "governance_enforced": true,
+  "pass": true
+}

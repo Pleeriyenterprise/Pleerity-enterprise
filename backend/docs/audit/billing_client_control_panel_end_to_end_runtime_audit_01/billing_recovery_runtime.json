@@ -1,0 +1,8 @@
+{
+  "at_utc": "2026-06-05T07:19:26.651674+00:00",
+  "dashboard_status": 200,
+  "client_b_recovery_state": "RECOVERY_RESOLVED",
+  "regenerate_without_governance_status": 422,
+  "resolved_not_actionable": true,
+  "pass": true
+}

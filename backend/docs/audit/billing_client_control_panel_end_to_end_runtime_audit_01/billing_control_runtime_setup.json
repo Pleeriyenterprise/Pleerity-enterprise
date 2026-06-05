@@ -1,0 +1,55 @@
+{
+  "programme": "BILLING-AND-CLIENT-CONTROL-PANEL-END-TO-END-RUNTIME-AUDIT-01",
+  "run_tag": "20260605T071317Z",
+  "marker": "BILLING-CP-AUDIT-20260605T071317Z",
+  "at_utc": "2026-06-05T07:14:23.795175+00:00",
+  "personas": {
+    "platform_admin": {
+      "email": "aigbochievictory@gmail.com"
+    },
+    "reduced_support": {
+      "available": false,
+      "note": "No ROLE_SUPPORT-only staging credentials"
+    },
+    "active_client": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "email": "nancy@yopmail.com",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad"
+    },
+    "recovery_pending_setup_client": {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23"
+    },
+    "live_guardrail_client": {
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "note": "read-only; do not mutate"
+    }
+  },
+  "seeded_vs_existing": "Wales HMO pilot (CID) naturally active; CID_B used for recovery/contrast staging (password may be SET)",
+  "client_a": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "crn": "PLE-CVP-2026-000028",
+    "plan_code": "PLAN_3_PRO",
+    "subscription_status": "ACTIVE",
+    "entitlement_status": "ENABLED",
+    "onboarding_status": "PROVISIONED",
+    "password_setup_complete": true,
+    "stripe_customer_id_masked": "cus_***Aq09",
+    "stripe_subscription_id_masked": "sub_***N0BF",
+    "cancel_at_period_end": false
+  },
+  "client_b": {
+    "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+    "crn": "PLE-CVP-2026-000011",
+    "plan_code": "PLAN_2_PORTFOLIO",
+    "subscription_status": "ACTIVE",
+    "entitlement_status": "ENABLED",
+    "onboarding_status": "PROVISIONED",
+    "password_setup_complete": true,
+    "stripe_customer_id_masked": "cus_***YrQu",
+    "stripe_subscription_id_masked": "sub_***kpJU",
+    "cancel_at_period_end": false
+  },
+  "control_panel_a_status": 200,
+  "control_panel_b_status": 200,
+  "pass": true
+}

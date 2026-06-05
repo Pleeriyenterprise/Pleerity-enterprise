@@ -1,0 +1,26 @@
+{
+  "at_utc": "2026-06-05T07:22:11.926399+00:00",
+  "probes": [
+    {
+      "name": "duplicate_sync_clicks",
+      "status_codes": [
+        409,
+        409
+      ],
+      "pass": true
+    },
+    {
+      "name": "snapshot_after_sync",
+      "pass": true
+    },
+    {
+      "name": "duplicate_resend_setup",
+      "status_codes": [
+        200,
+        200
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true
+}

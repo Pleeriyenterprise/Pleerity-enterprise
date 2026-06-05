@@ -1,0 +1,32 @@
+{
+  "at_utc": "2026-06-05T07:17:56.938798+00:00",
+  "current_plan": "PLAN_3_PRO",
+  "probes": [
+    {
+      "name": "missing_reason_blocked",
+      "pass": true,
+      "status": 422
+    },
+    {
+      "name": "invalid_plan_blocked",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "name": "same_plan_handled",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "name": "confirmation_required",
+      "pass": true,
+      "status": 400
+    },
+    {
+      "name": "governed_same_plan_idempotent",
+      "pass": true,
+      "status": 400
+    }
+  ],
+  "pass": true
+}

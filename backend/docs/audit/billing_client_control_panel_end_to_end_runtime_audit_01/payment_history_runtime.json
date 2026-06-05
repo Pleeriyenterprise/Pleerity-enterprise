@@ -1,0 +1,23 @@
+{
+  "at_utc": "2026-06-05T07:16:25.393540+00:00",
+  "receipts_status": 200,
+  "receipt_count": 1,
+  "sample_fields": [
+    "source",
+    "source_detail",
+    "receipt_key",
+    "invoice_number",
+    "order_reference",
+    "stripe_checkout_session_id",
+    "date_issued",
+    "amount_total_pence",
+    "amount_display",
+    "currency",
+    "payment_status",
+    "payment_method"
+  ],
+  "download_probe": null,
+  "resend_without_body_status": 422,
+  "no_cross_client_leak": true,
+  "pass": true
+}

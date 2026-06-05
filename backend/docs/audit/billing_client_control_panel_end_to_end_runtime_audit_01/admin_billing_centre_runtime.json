@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-06-05T07:17:34.315593+00:00",
+  "snapshot_status": 200,
+  "statistics_status": 200,
+  "plan_aligned_with_control_panel": true,
+  "browser": {
+    "at_utc": "2026-06-05T07:17:00.955094+00:00",
+    "views": [
+      {
+        "view": "overview",
+        "pass": true,
+        "screenshot": "billing_centre_overview.png"
+      },
+      {
+        "view": "pending_payments",
+        "pass": true,
+        "screenshot": "billing_centre_pending.png"
+      },
+      {
+        "view": "recovery",
+        "pass": true,
+        "screenshot": "billing_centre_recovery.png"
+      }
+    ],
+    "pass": true
+  },
+  "pass": true
+}

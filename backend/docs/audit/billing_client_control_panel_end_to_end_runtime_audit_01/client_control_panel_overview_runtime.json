@@ -1,0 +1,44 @@
+{
+  "at_utc": "2026-06-05T07:15:13.676551+00:00",
+  "status": 200,
+  "sections": [
+    "identity",
+    "account_state",
+    "subscription_billing",
+    "compliance_overview",
+    "operations",
+    "activity_timeline",
+    "operational_snapshot"
+  ],
+  "has_subscription_billing": true,
+  "has_compliance_overview": true,
+  "has_operational_snapshot": true,
+  "identity_email": "nancy@yopmail.com",
+  "browser": {
+    "at_utc": "2026-06-05T07:15:13.526860+00:00",
+    "tabs": [
+      {
+        "tab": "overview",
+        "pass": true,
+        "screenshot": "control_panel_overview.png"
+      },
+      {
+        "tab": "compliance",
+        "pass": true,
+        "screenshot": "control_panel_compliance.png"
+      },
+      {
+        "tab": "operations",
+        "pass": true,
+        "screenshot": "control_panel_operations.png"
+      },
+      {
+        "tab": "billing",
+        "pass": true,
+        "screenshot": "control_panel_billing.png"
+      }
+    ],
+    "pass": true
+  },
+  "pass": true
+}

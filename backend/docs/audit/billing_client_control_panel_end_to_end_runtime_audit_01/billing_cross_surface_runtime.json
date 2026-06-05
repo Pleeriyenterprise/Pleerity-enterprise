@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-06-05T07:20:29.387212+00:00",
+  "control_panel_plan": "PLAN_3_PRO",
+  "admin_billing_plan": "PLAN_3_PRO",
+  "client_portal_plan": null,
+  "client_billing_status": 200,
+  "client_receipts_status": 200,
+  "feature_flags_status": 200,
+  "plan_converged": true,
+  "pass": true
+}

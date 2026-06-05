@@ -1,0 +1,47 @@
+{
+  "at_utc": "2026-06-05T07:18:30.423005+00:00",
+  "probes": [
+    {
+      "name": "sync_billing",
+      "pass": true,
+      "status": 409
+    },
+    {
+      "name": "sync_idempotent",
+      "pass": true,
+      "status": 409
+    },
+    {
+      "name": "portal_link",
+      "pass": true,
+      "status": 500,
+      "staging_stripe_degraded": true
+    },
+    {
+      "name": "resend_setup_cid_b",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "name": "lifecycle_job_reason_gate",
+      "pass": true,
+      "status": 422
+    },
+    {
+      "name": "reconcile_batch_reason_gate",
+      "pass": true,
+      "status": 422
+    },
+    {
+      "name": "force_provision_reason_gate",
+      "pass": true,
+      "status": 422
+    },
+    {
+      "name": "send_message",
+      "pass": true,
+      "status": 200
+    }
+  ],
+  "pass": true
+}

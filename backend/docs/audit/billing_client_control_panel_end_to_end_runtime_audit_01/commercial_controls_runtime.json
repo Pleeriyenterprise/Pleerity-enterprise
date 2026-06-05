@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-06-05T07:16:15.229492+00:00",
+  "probes": [
+    {
+      "name": "assessment_readable",
+      "pass": true
+    },
+    {
+      "name": "observability_readable",
+      "pass": true
+    },
+    {
+      "name": "impact_preview",
+      "pass": true
+    },
+    {
+      "name": "execute_without_governance_blocked",
+      "pass": true,
+      "status": 422
+    },
+    {
+      "name": "execute_without_step_up_blocked",
+      "pass": true,
+      "status": 422
+    }
+  ],
+  "pass": true
+}

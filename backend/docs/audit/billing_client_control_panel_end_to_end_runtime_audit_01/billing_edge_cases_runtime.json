@@ -1,0 +1,27 @@
+{
+  "at_utc": "2026-06-05T07:21:45.419225+00:00",
+  "probes": [
+    {
+      "name": "already_active_sync",
+      "pass": true
+    },
+    {
+      "name": "already_provisioned_rerun",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "name": "invalid_confirmation_token",
+      "pass": true
+    },
+    {
+      "name": "invalid_step_up",
+      "pass": true
+    },
+    {
+      "name": "live_guardrail_readable",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

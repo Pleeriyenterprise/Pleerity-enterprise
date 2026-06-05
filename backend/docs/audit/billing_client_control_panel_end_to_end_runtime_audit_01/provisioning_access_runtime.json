@@ -1,0 +1,17 @@
+{
+  "at_utc": "2026-06-05T07:19:43.543052+00:00",
+  "active_client": {
+    "onboarding_status": "PROVISIONED",
+    "password_setup_complete": true,
+    "entitlement_status": "ENABLED"
+  },
+  "recovery_client": {
+    "onboarding_status": "PROVISIONED",
+    "password_setup_complete": true,
+    "password_status": "SET",
+    "note": "CID_B password now SET on staging; used for recovery/contrast not pending-setup"
+  },
+  "feature_flags_status": 200,
+  "resend_setup_status": 200,
+  "pass": true
+}

@@ -1,0 +1,36 @@
+{
+  "at_utc": "2026-06-05T07:21:18.953473+00:00",
+  "probes": [
+    {
+      "name": "client_control_panel",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "client_billing_snapshot",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "contractor_billing",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "name": "unauthenticated_billing",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "cancel_without_step_up",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "name": "invalid_receipt_ref",
+      "pass": true,
+      "status": 404
+    }
+  ],
+  "pass": true
+}

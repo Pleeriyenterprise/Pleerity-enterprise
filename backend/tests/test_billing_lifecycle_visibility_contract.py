@@ -82,6 +82,7 @@ class _FakeDb:
         self.digest_logs = _FakeCollection(rows=[])
         self.communication_deliveries = _FakeCollection(rows=[])
         self.documents = _FakeCollection()
+        self.subscription_payment_ledger = _FakeCollection()
 
 
 def _request() -> Request:

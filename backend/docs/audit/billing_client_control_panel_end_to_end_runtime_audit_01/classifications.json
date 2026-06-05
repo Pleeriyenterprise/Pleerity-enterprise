@@ -1,0 +1,28 @@
+{
+  "programme": "BILLING-AND-CLIENT-CONTROL-PANEL-END-TO-END-RUNTIME-AUDIT-01",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "blockers": [],
+  "checklist": {
+    "setup": true,
+    "overview": true,
+    "snapshot": true,
+    "commercial": true,
+    "payments": true,
+    "agreement": true,
+    "billing_centre": true,
+    "plan_change": true,
+    "actions": true,
+    "pending": true,
+    "recovery": true,
+    "provisioning": true,
+    "cross_surface": true,
+    "audit": true,
+    "permissions": true,
+    "edge_cases": true,
+    "resilience": true,
+    "regression": true
+  },
+  "classified_at_utc": "2026-06-05T07:25:40.155428+00:00",
+  "run_tag": "20260605T071317Z"
+}

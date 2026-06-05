@@ -1,0 +1,56 @@
+{
+  "suites": [
+    {
+      "suite": "tests/test_admin_cancel_subscription.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_billing_receipts.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_billing_recovery_operations.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_commercial_entitlement_governance.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_plan_change_checkout_routing.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_stripe_mode_containment.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_billing_lifecycle_visibility_contract.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_agreement_commercial_snapshot.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_admin_confirmation_governance.py",
+      "ok": true,
+      "exit_code": 0
+    },
+    {
+      "suite": "tests/test_step_up_sensitive_routes.py",
+      "ok": true,
+      "exit_code": 0
+    }
+  ],
+  "pass": true,
+  "at_utc": "2026-06-05T07:22:11.928417+00:00"
+}
