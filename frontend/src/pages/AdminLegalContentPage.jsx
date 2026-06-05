@@ -183,10 +183,13 @@ const AdminLegalContentPage = () => {
     }
   }, [content]);
 
+  const activeDraftContent = content[activeTab]?.content ?? '';
+  const activeDraftTitle = content[activeTab]?.title ?? '';
+
   useEffect(() => {
     if (editorMode !== 'preview') return;
     setPreview((prev) => (prev.content ? { ...prev, stale: true } : prev));
-  }, [content[activeTab]?.content, content[activeTab]?.title, editorMode, activeTab]);
+  }, [activeDraftContent, activeDraftTitle, editorMode, activeTab]);
 
   const openPreview = (slug) => {
     setEditorMode('preview');
