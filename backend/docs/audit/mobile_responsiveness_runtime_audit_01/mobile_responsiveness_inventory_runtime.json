@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-06-05T22:27:35.889247+00:00",
+  "source_files_scanned": 53,
+  "fix_files_present": {
+    "src/components/SettingsLayout.jsx": true,
+    "src/components/ui/scrollable-nav.jsx": true,
+    "src/components/ui/tabs.jsx": true,
+    "src/components/ui/dialog.jsx": true,
+    "src/components/ui/responsive-table.jsx": true,
+    "src/pages/AdminBillingPage.js": true,
+    "src/pages/ClientRentOperationsPage.js": true,
+    "src/pages/admin/AdminCommunicationsPage.js": true,
+    "src/pages/AdminLegalContentPage.jsx": true,
+    "src/pages/AdminDashboard.js": true,
+    "src/pages/AdminContactEnquiriesPage.jsx": true
+  },
+  "settings_uses_scrollable_nav": true,
+  "high_risk_remaining": [],
+  "pass": true
+}

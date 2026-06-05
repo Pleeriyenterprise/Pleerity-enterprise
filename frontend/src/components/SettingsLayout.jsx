@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { User, Bell, CreditCard, Palette, Globe2 } from 'lucide-react';
 import { useEntitlements } from '../contexts/EntitlementsContext';
+import { ScrollableUnderlineNav, scrollableNavItemClass } from './ui/scrollable-nav';
 
 const BASE_TABS = [
   { path: '/settings/profile', label: 'Profile', icon: User },
@@ -23,27 +24,22 @@ export default function SettingsLayout() {
   );
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full">
       <h1 className="text-2xl font-bold text-midnight-blue mb-2">Settings</h1>
       <p className="text-gray-600 mb-6">Profile, compliance jurisdiction, notifications, and plan.</p>
-      <nav className="flex gap-2 border-b border-gray-200 mb-6">
+      <ScrollableUnderlineNav ariaLabel="Settings sections" data-testid="settings-tab-nav">
         {tabs.map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}
-            className={({ isActive }) =>
-              `flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                isActive
-                  ? 'border-electric-teal text-electric-teal'
-                  : 'border-transparent text-gray-600 hover:text-midnight-blue'
-              }`
-            }
+            data-testid={`settings-tab-${path.split('/').pop()}`}
+            className={({ isActive }) => scrollableNavItemClass(isActive)}
           >
-            <Icon className="w-4 h-4" />
+            <Icon className="w-4 h-4 shrink-0" aria-hidden />
             {label}
           </NavLink>
         ))}
-      </nav>
+      </ScrollableUnderlineNav>
       <Outlet />
     </div>
   );

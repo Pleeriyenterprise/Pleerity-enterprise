@@ -17,6 +17,7 @@ import { presentScoreChangeReason } from '../utils/timelinePresent';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
 import AdminClientSupportSearch from '../components/admin/AdminClientSupportSearch';
+import { ScrollableUnderlineNav, scrollableNavButtonClass } from '../components/ui/scrollable-nav';
 import {
   accountEnvironmentActionNote,
   clientOrgPermanentDeleteHint,
@@ -442,8 +443,8 @@ const ClientDetailModal = ({ clientId, onClose }) => {
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 px-6 flex-shrink-0">
-          <div className="flex gap-6">
+        <div className="border-b border-gray-200 px-4 sm:px-6 flex-shrink-0">
+          <ScrollableUnderlineNav ariaLabel="Client detail sections" className="mb-0" trackClassName="border-b-0">
             {[
               { id: 'overview', label: 'Overview', icon: Eye },
               { id: 'setup', label: 'Setup Controls', icon: Settings },
@@ -453,19 +454,16 @@ const ClientDetailModal = ({ clientId, onClose }) => {
             ].map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveSection(tab.id)}
-                className={`flex items-center gap-2 py-4 border-b-2 transition-colors ${
-                  activeSection === tab.id
-                    ? 'border-electric-teal text-electric-teal'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                className={scrollableNavButtonClass(activeSection === tab.id)}
                 data-testid={`client-tab-${tab.id}`}
               >
-                <tab.icon className="w-4 h-4" />
+                <tab.icon className="w-4 h-4 shrink-0" aria-hidden />
                 {tab.label}
               </button>
             ))}
-          </div>
+          </ScrollableUnderlineNav>
         </div>
 
         {/* Content */}

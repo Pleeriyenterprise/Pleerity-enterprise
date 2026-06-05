@@ -1,0 +1,367 @@
+{
+  "at_utc": "2026-06-05T22:31:03.974957+00:00",
+  "count": 40,
+  "shots": [
+    {
+      "path": "/settings/profile",
+      "width": 375,
+      "screenshot": "screenshots/client/settings/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/settings/billing",
+      "width": 375,
+      "screenshot": "screenshots/client/settings_billing/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/requirements",
+      "width": 375,
+      "screenshot": "screenshots/client/requirements/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/documents",
+      "width": 375,
+      "screenshot": "screenshots/client/documents/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/reports",
+      "width": 375,
+      "screenshot": "screenshots/client/reports/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/settings/profile",
+      "width": 390,
+      "screenshot": "screenshots/client/settings/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/settings/billing",
+      "width": 390,
+      "screenshot": "screenshots/client/settings_billing/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/requirements",
+      "width": 390,
+      "screenshot": "screenshots/client/requirements/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/documents",
+      "width": 390,
+      "screenshot": "screenshots/client/documents/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/reports",
+      "width": 390,
+      "screenshot": "screenshots/client/reports/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/settings/profile",
+      "width": 414,
+      "screenshot": "screenshots/client/settings/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/settings/billing",
+      "width": 414,
+      "screenshot": "screenshots/client/settings_billing/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/requirements",
+      "width": 414,
+      "screenshot": "screenshots/client/requirements/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/documents",
+      "width": 414,
+      "screenshot": "screenshots/client/documents/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/reports",
+      "width": 414,
+      "screenshot": "screenshots/client/reports/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/settings/profile",
+      "width": 768,
+      "screenshot": "screenshots/client/settings/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/settings/billing",
+      "width": 768,
+      "screenshot": "screenshots/client/settings_billing/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/requirements",
+      "width": 768,
+      "screenshot": "screenshots/client/requirements/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/documents",
+      "width": 768,
+      "screenshot": "screenshots/client/documents/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/reports",
+      "width": 768,
+      "screenshot": "screenshots/client/reports/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/admin/dashboard",
+      "width": 375,
+      "screenshot": "screenshots/admin/admin_dashboard/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/admin/support",
+      "width": 375,
+      "screenshot": "screenshots/admin/admin_support/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/admin/leads",
+      "width": 375,
+      "screenshot": "screenshots/admin/admin_leads/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/admin/legal",
+      "width": 375,
+      "screenshot": "screenshots/admin/admin_legal/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/admin/inbox/enquiries",
+      "width": 375,
+      "screenshot": "screenshots/admin/admin_contact_enquiries/375px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 375,
+      "client_width": 375
+    },
+    {
+      "path": "/admin/dashboard",
+      "width": 390,
+      "screenshot": "screenshots/admin/admin_dashboard/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/admin/support",
+      "width": 390,
+      "screenshot": "screenshots/admin/admin_support/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/admin/leads",
+      "width": 390,
+      "screenshot": "screenshots/admin/admin_leads/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/admin/legal",
+      "width": 390,
+      "screenshot": "screenshots/admin/admin_legal/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/admin/inbox/enquiries",
+      "width": 390,
+      "screenshot": "screenshots/admin/admin_contact_enquiries/390px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 390,
+      "client_width": 390
+    },
+    {
+      "path": "/admin/dashboard",
+      "width": 414,
+      "screenshot": "screenshots/admin/admin_dashboard/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/admin/support",
+      "width": 414,
+      "screenshot": "screenshots/admin/admin_support/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/admin/leads",
+      "width": 414,
+      "screenshot": "screenshots/admin/admin_leads/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/admin/legal",
+      "width": 414,
+      "screenshot": "screenshots/admin/admin_legal/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/admin/inbox/enquiries",
+      "width": 414,
+      "screenshot": "screenshots/admin/admin_contact_enquiries/414px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 414,
+      "client_width": 414
+    },
+    {
+      "path": "/admin/dashboard",
+      "width": 768,
+      "screenshot": "screenshots/admin/admin_dashboard/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/admin/support",
+      "width": 768,
+      "screenshot": "screenshots/admin/admin_support/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/admin/leads",
+      "width": 768,
+      "screenshot": "screenshots/admin/admin_leads/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/admin/legal",
+      "width": 768,
+      "screenshot": "screenshots/admin/admin_legal/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    },
+    {
+      "path": "/admin/inbox/enquiries",
+      "width": 768,
+      "screenshot": "screenshots/admin/admin_contact_enquiries/768px.png",
+      "doc_overflow": false,
+      "body_overflow": false,
+      "scroll_width": 768,
+      "client_width": 768
+    }
+  ],
+  "pass": true
+}

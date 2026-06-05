@@ -154,6 +154,31 @@ code {
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
     }
+    /* Horizontal tab rows: edge fade hints more tabs are scrollable */
+    .scrollable-nav::before,
+    .scrollable-nav::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 1.25rem;
+        pointer-events: none;
+        z-index: 1;
+    }
+    .scrollable-nav::before {
+        left: 0;
+        background: linear-gradient(to right, rgb(var(--background)) 0%, transparent 100%);
+    }
+    .scrollable-nav::after {
+        right: 0;
+        background: linear-gradient(to left, rgb(var(--background)) 0%, transparent 100%);
+    }
+    .scrollable-nav-track > * {
+        flex-shrink: 0;
+    }
+    .responsive-table-wrap {
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 @layer utilities {

@@ -3,6 +3,7 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ScrollableUnderlineNav, scrollableNavButtonClass } from '../components/ui/scrollable-nav';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -258,21 +259,19 @@ function ClientRentOperationsPageInner() {
 
         <RentSummaryCards summary={summary} activeFilter={activeKpi} onFilter={handleKpiFilter} />
 
-        <div className="flex gap-2 border-b border-gray-200 mb-4">
+        <ScrollableUnderlineNav ariaLabel="Rent operations sections" className="mb-4" data-testid="rent-operations-tab-nav">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setSearchParams({ tab: t.id })}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-                tab === t.id ? 'border-electric-teal text-midnight-blue' : 'border-transparent text-gray-500'
-              }`}
+              className={scrollableNavButtonClass(tab === t.id)}
               data-testid={`rent-tab-${t.id}`}
             >
               {t.label}
             </button>
           ))}
-        </div>
+        </ScrollableUnderlineNav>
 
         {loading ? (
           <div className="flex justify-center py-12" data-testid="rent-loading">

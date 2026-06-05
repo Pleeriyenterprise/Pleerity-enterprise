@@ -1,0 +1,61 @@
+{
+  "at_utc": "2026-06-05T22:27:53.304686+00:00",
+  "probes": [
+    {
+      "viewport": 320,
+      "page": "/settings/profile",
+      "billing_present": true,
+      "billing_visible": true,
+      "nav_scrollable": true,
+      "billing_reachable_after_scroll": true,
+      "nav_overflow": true
+    },
+    {
+      "viewport": 375,
+      "page": "/settings/profile",
+      "billing_present": true,
+      "billing_visible": true,
+      "nav_scrollable": true,
+      "billing_reachable_after_scroll": true,
+      "nav_overflow": true
+    },
+    {
+      "viewport": 390,
+      "page": "/settings/profile",
+      "billing_present": true,
+      "billing_visible": true,
+      "nav_scrollable": true,
+      "billing_reachable_after_scroll": true,
+      "nav_overflow": true
+    },
+    {
+      "viewport": 414,
+      "page": "/settings/profile",
+      "billing_present": true,
+      "billing_visible": true,
+      "nav_scrollable": true,
+      "billing_reachable_after_scroll": true,
+      "nav_overflow": true
+    },
+    {
+      "viewport": 768,
+      "page": "/settings/profile",
+      "billing_present": true,
+      "billing_visible": true,
+      "nav_scrollable": false,
+      "billing_reachable_after_scroll": true,
+      "nav_overflow": false
+    },
+    {
+      "viewport": 375,
+      "page": "/admin/billing",
+      "admin_billing_nav": true
+    },
+    {
+      "viewport": 768,
+      "page": "/admin/billing",
+      "admin_billing_nav": true
+    }
+  ],
+  "pass": true
+}

@@ -17,6 +17,7 @@ import {
   Trash2,
   CalendarClock,
 } from 'lucide-react';
+import { ScrollableUnderlineNav, scrollableNavItemClass } from '../../components/ui/scrollable-nav';
 
 const MESSAGE_TYPES = [
   'INCIDENT',
@@ -396,7 +397,7 @@ export default function AdminCommunicationsPage() {
           </Link>
         </div>
 
-        <div className="flex gap-2 border-b border-gray-200 mb-6">
+        <ScrollableUnderlineNav ariaLabel="Communications sections" data-testid="communications-tab-nav">
           {[
             { id: 'compose', label: 'Compose', icon: Send },
             { id: 'templates', label: 'Templates', icon: FileText },
@@ -407,15 +408,14 @@ export default function AdminCommunicationsPage() {
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
-                tab === id ? 'border-electric-teal text-electric-teal' : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
+              className={scrollableNavItemClass(tab === id)}
+              data-testid={`communications-tab-${id}`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4 shrink-0" aria-hidden />
               {label}
             </button>
           ))}
-        </div>
+        </ScrollableUnderlineNav>
 
         {tab === 'compose' && (
           <div className="space-y-4 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">

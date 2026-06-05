@@ -333,7 +333,7 @@ const AdminLegalContentPage = () => {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="flex w-full max-w-full flex-nowrap gap-1 overflow-x-auto h-auto p-1 lg:grid lg:grid-cols-7 lg:overflow-visible">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
                 <tab.icon className="w-4 h-4 mr-1" />

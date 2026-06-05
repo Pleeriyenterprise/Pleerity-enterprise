@@ -6,6 +6,7 @@ import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Search, Eye, Download } from 'lucide-react';
+import { ResponsiveTable } from '../components/ui/responsive-table';
 
 const STATUS_OPTIONS = [
   { value: '__all__', label: 'All' },
@@ -121,8 +122,9 @@ const AdminContactEnquiriesPage = () => {
           </Button>
         </div>
 
-        <Card>
-          <table className="w-full">
+        <Card className="p-0 overflow-hidden">
+          <ResponsiveTable data-testid="contact-enquiries-table-wrap">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold">Date</th>
@@ -160,6 +162,7 @@ const AdminContactEnquiriesPage = () => {
               )}
             </tbody>
           </table>
+          </ResponsiveTable>
         </Card>
       </div>
     </UnifiedAdminLayout>

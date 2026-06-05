@@ -501,7 +501,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         {/* Tabs: visible on desktop; collapsible on mobile */}
         <nav className={`border-t border-white/10 ${mobileNavOpen ? 'block' : 'hidden'} lg:block`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col divide-y divide-white/10 lg:divide-y-0 lg:flex-row lg:items-stretch lg:space-x-1">
+            <div className="flex flex-col divide-y divide-white/10 lg:divide-y-0 lg:flex-row lg:items-stretch lg:space-x-1 lg:overflow-x-auto lg:scroll-smooth lg:[scrollbar-width:thin]">
               {tabs.map((tab) => {
                 if (tab.type === 'group' && tab.children?.length > 0) {
                   const Icon = tab.icon;

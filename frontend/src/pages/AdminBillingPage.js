@@ -46,6 +46,7 @@ import {
 } from '../utils/adminActionGovernance';
 import { runGovernedAdminMutation } from '../utils/adminGovernedMutation';
 import { useStepUpApi } from '../hooks/useStepUpApi';
+import { ScrollableNav } from '../components/ui/scrollable-nav';
 
 const MIN_VALID_DATE_MS = 946684800000;
 
@@ -661,10 +662,10 @@ const AdminBillingPage = () => {
             </div>
           </div>
           {/* Tabs: one source of truth for anything money */}
-          <div className="flex gap-1 mt-3 border-b border-gray-200">
+          <ScrollableNav className="mt-3" ariaLabel="Billing sections" data-testid="admin-billing-tab-nav" trackClassName="border-b border-gray-200">
             <button
               onClick={() => setSearchParams((p) => { const next = new URLSearchParams(p); next.delete('tab'); return next; })}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+              className={`shrink-0 min-h-11 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap ${
                 tab !== 'pending-payments' && tab !== 'recovery' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
               }`}
               data-testid="tab-overview"
@@ -673,25 +674,25 @@ const AdminBillingPage = () => {
             </button>
             <button
               onClick={() => setSearchParams((p) => { const next = new URLSearchParams(p); next.set('tab', 'pending-payments'); return next; })}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+              className={`shrink-0 min-h-11 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
                 tab === 'pending-payments' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
               }`}
               data-testid="tab-pending-payments"
             >
-              <Clock className="w-4 h-4" />
+              <Clock className="w-4 h-4 shrink-0" />
               Pending Payments
             </button>
             <button
               onClick={() => setSearchParams((p) => { const next = new URLSearchParams(p); next.set('tab', 'recovery'); return next; })}
-              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+              className={`shrink-0 min-h-11 px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap ${
                 tab === 'recovery' ? 'bg-gray-100 text-midnight-blue border-b-2 border-electric-teal -mb-px' : 'text-gray-600 hover:bg-gray-50'
               }`}
               data-testid="tab-recovery"
             >
-              <AlertTriangle className="w-4 h-4" />
+              <AlertTriangle className="w-4 h-4 shrink-0" />
               Recovery
             </button>
-          </div>
+          </ScrollableNav>
         </div>
       </header>
 

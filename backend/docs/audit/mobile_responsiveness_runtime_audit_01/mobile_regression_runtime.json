@@ -1,0 +1,7 @@
+{
+  "at_utc": "2026-06-05T22:31:12.539770+00:00",
+  "exit_code": 0,
+  "stdout_tail": "\n> frontend@0.1.0 test\n> craco test --watchAll=false --passWithNoTests src/components/SettingsLayout.test.jsx src/components/ui/scrollable-nav.test.jsx\n\n",
+  "stderr_tail": "PASS src/components/ui/scrollable-nav.test.jsx\nPASS src/components/SettingsLayout.test.jsx\n\nTest Suites: 2 passed, 2 total\nTests:       4 passed, 4 total\nSnapshots:   0 total\nTime:        2.869 s, estimated 3 s\nRan all test suites matching /src\\\\components\\\\SettingsLayout.test.jsx|src\\\\components\\\\ui\\\\scrollable-nav.test.jsx/i.\n",
+  "pass": true
+}
