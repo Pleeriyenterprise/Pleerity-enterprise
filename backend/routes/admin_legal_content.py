@@ -13,6 +13,13 @@ from pydantic import BaseModel
 from typing import Optional
 import logging
 
+from services.legal_content_defaults import LEGAL_SLUGS
+from services.legal_content_service import (
+    get_reset_default,
+    sanitize_legal_markdown,
+    seed_canonical_content,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin/legal-content", tags=["admin-legal"])
@@ -37,15 +44,13 @@ class LegalContentResponse(BaseModel):
 async def get_legal_content(slug: str, current_user: dict = Depends(admin_route_guard)):
     """Get current legal/marketing content by slug."""
     db = database.get_db()
-    
-    # Support both legal and marketing pages
+
     legal_content = await db.legal_content.find_one(
         {"slug": slug},
         {"_id": 0}
     )
-    
+
     if not legal_content:
-        # Return default/empty structure
         return {
             "slug": slug,
             "title": "",
@@ -54,7 +59,7 @@ async def get_legal_content(slug: str, current_user: dict = Depends(admin_route_
             "updated_at": None,
             "updated_by": None
         }
-    
+
     return legal_content
 
 
@@ -62,17 +67,15 @@ async def get_legal_content(slug: str, current_user: dict = Depends(admin_route_
 async def list_legal_content(current_user: dict = Depends(admin_route_guard)):
     """List all legal/marketing content pages."""
     db = database.get_db()
-    
+
     content_list = await db.legal_content.find(
         {},
         {"_id": 0}
     ).to_list(100)
-    
-    # Ensure all required slugs exist (legal + marketing + about)
-    required_slugs = ['privacy', 'terms', 'cookies', 'accessibility', 'careers', 'partnerships', 'about']
+
     existing_slugs = {item['slug'] for item in content_list}
-    
-    for slug in required_slugs:
+
+    for slug in LEGAL_SLUGS:
         if slug not in existing_slugs:
             content_list.append({
                 "slug": slug,
@@ -82,8 +85,69 @@ async def list_legal_content(current_user: dict = Depends(admin_route_guard)):
                 "updated_at": None,
                 "updated_by": None
             })
-    
+
     return content_list
+
+
+async def _persist_legal_update(
+    slug: str,
+    title: str,
+    content: str,
+    current_user: dict,
+    *,
+    audit_action_type: str = "LEGAL_CONTENT_UPDATED",
+    extra_metadata: Optional[dict] = None,
+) -> dict:
+    db = database.get_db()
+    clean_content = sanitize_legal_markdown(content)
+    current = await db.legal_content.find_one({"slug": slug}, {"_id": 0})
+    current_version = current.get("version", 0) if current else 0
+    new_version = current_version + 1
+
+    updated_content = {
+        "slug": slug,
+        "title": title,
+        "content": clean_content,
+        "version": new_version,
+        "updated_at": datetime.now(timezone.utc),
+        "updated_by": current_user.get("email"),
+        "updated_by_user_id": current_user.get("user_id"),
+    }
+
+    await db.legal_content.update_one(
+        {"slug": slug},
+        {"$set": updated_content},
+        upsert=True
+    )
+
+    version_record = {
+        **updated_content,
+        "version_id": f"{slug}_v{new_version}",
+        "previous_content": current.get("content") if current else None,
+        "previous_version": current_version,
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.legal_content_versions.insert_one(version_record)
+
+    metadata = {
+        "action_type": audit_action_type,
+        "slug": slug,
+        "title": title,
+        "version": new_version,
+        "content_length": len(clean_content),
+        "previous_version": current_version,
+    }
+    if extra_metadata:
+        metadata.update(extra_metadata)
+
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role="ROLE_ADMIN",
+        actor_id=current_user.get("user_id"),
+        metadata=metadata,
+    )
+
+    return updated_content
 
 
 @router.put("/{slug}")
@@ -92,67 +156,20 @@ async def update_legal_content(
     data: LegalContentUpdate,
     current_user: dict = Depends(admin_route_guard)
 ):
-    """
-    Update legal content with full audit trail.
-    Creates a new version and logs the change.
-    """
-    db = database.get_db()
-    
-    # Get current content for diff
-    current = await db.legal_content.find_one({"slug": slug}, {"_id": 0})
-    
-    current_version = current.get("version", 0) if current else 0
-    new_version = current_version + 1
-    
-    # Store new version
-    updated_content = {
-        "slug": slug,
-        "title": data.title,
-        "content": data.content,
-        "version": new_version,
-        "updated_at": datetime.now(timezone.utc),
-        "updated_by": current_user.get("email"),
-        "updated_by_user_id": current_user.get("user_id"),
-    }
-    
-    await db.legal_content.update_one(
-        {"slug": slug},
-        {"$set": updated_content},
-        upsert=True
+    """Update legal content with full audit trail."""
+    if slug not in LEGAL_SLUGS:
+        raise HTTPException(status_code=400, detail="Invalid slug")
+
+    updated_content = await _persist_legal_update(
+        slug, data.title, data.content, current_user
     )
-    
-    # Store version history
-    version_record = {
-        **updated_content,
-        "version_id": f"{slug}_v{new_version}",
-        "previous_content": current.get("content") if current else None,
-        "previous_version": current_version,
-        "created_at": datetime.now(timezone.utc),
-    }
-    
-    await db.legal_content_versions.insert_one(version_record)
-    
-    # Audit log
-    await create_audit_log(
-        action=AuditAction.ADMIN_ACTION,
-        actor_role="ROLE_ADMIN",
-        actor_id=current_user.get("user_id"),
-        metadata={
-            "action_type": "LEGAL_CONTENT_UPDATED",
-            "slug": slug,
-            "title": data.title,
-            "version": new_version,
-            "content_length": len(data.content),
-            "previous_version": current_version,
-        }
-    )
-    
-    logger.info(f"Legal content updated: {slug} v{new_version} by {current_user.get('email')}")
-    
+
+    logger.info(f"Legal content updated: {slug} v{updated_content['version']} by {current_user.get('email')}")
+
     return {
         "success": True,
         "content": updated_content,
-        "message": f"Legal content '{slug}' updated to version {new_version}"
+        "message": f"Legal content '{slug}' updated to version {updated_content['version']}"
     }
 
 
@@ -160,63 +177,86 @@ async def update_legal_content(
 async def get_legal_content_versions(slug: str, current_user: dict = Depends(admin_route_guard)):
     """Get version history for a legal content page."""
     db = database.get_db()
-    
+
     versions = await db.legal_content_versions.find(
         {"slug": slug},
         {"_id": 0}
     ).sort("version", -1).to_list(100)
-    
+
     return versions
+
+
+@router.post("/{slug}/restore/{version}")
+async def restore_legal_content_version(
+    slug: str,
+    version: int,
+    current_user: dict = Depends(admin_route_guard),
+):
+    """Restore a prior version as a new published version (non-destructive)."""
+    if slug not in LEGAL_SLUGS:
+        raise HTTPException(status_code=400, detail="Invalid slug")
+    db = database.get_db()
+    row = await db.legal_content_versions.find_one(
+        {"slug": slug, "version": version},
+        {"_id": 0},
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    updated = await _persist_legal_update(
+        slug,
+        row.get("title") or slug.title(),
+        row.get("content") or "",
+        current_user,
+        audit_action_type="LEGAL_CONTENT_RESTORED",
+        extra_metadata={"restored_from_version": version},
+    )
+    return {
+        "success": True,
+        "content": updated,
+        "message": f"Restored version {version} as new version {updated['version']}",
+    }
 
 
 @router.post("/{slug}/reset-default")
 async def reset_to_default(slug: str, current_user: dict = Depends(admin_route_guard)):
-    """
-    Reset legal content to default/baseline.
-    Useful if admin wants to restore original content.
-    """
-    db = database.get_db()
-    
-    # Define default content (legal + marketing pages)
-    defaults = {
-        "privacy": {
-            "title": "Privacy Policy",
-            "content": "# Privacy Policy\n\nPlaceholder content. Please update via admin panel."
-        },
-        "terms": {
-            "title": "Terms of Service",
-            "content": "# Terms of Service\n\nPlaceholder content. Please update via admin panel."
-        },
-        "cookies": {
-            "title": "Cookie Policy",
-            "content": "# Cookie Policy\n\nPlaceholder content. Please update via admin panel."
-        },
-        "accessibility": {
-            "title": "Accessibility Statement",
-            "content": "# Accessibility Statement\n\nPlaceholder content. Please update via admin panel."
-        },
-        "careers": {
-            "title": "Careers",
-            "content": "# Careers\n\nPlaceholder content. Please update via admin panel."
-        },
-        "partnerships": {
-            "title": "Partnerships",
-            "content": "# Partnerships\n\nPlaceholder content. Please update via admin panel."
-        }
-    }
-    
-    if slug not in defaults:
+    """Reset legal content to canonical default baseline."""
+    default_data = get_reset_default(slug)
+    if not default_data:
         raise HTTPException(status_code=400, detail="Invalid slug")
-    
-    default_data = defaults[slug]
-    
-    # Update using the same logic as update endpoint
-    return await update_legal_content(
-        slug=slug,
-        data=LegalContentUpdate(
-            slug=slug,
-            title=default_data["title"],
-            content=default_data["content"]
-        ),
-        current_user=current_user
+
+    updated = await _persist_legal_update(
+        slug,
+        default_data["title"],
+        default_data["content"],
+        current_user,
+        audit_action_type="LEGAL_CONTENT_RESET_DEFAULT",
+        extra_metadata={"reset_to": "canonical_default"},
     )
+    return {
+        "success": True,
+        "content": updated,
+        "message": f"Legal content '{slug}' reset to canonical default (v{updated['version']})",
+    }
+
+
+@router.post("/seed-canonical")
+async def seed_canonical(current_user: dict = Depends(admin_route_guard)):
+    """Idempotent seed of canonical public copy into legal_content."""
+    db = database.get_db()
+    result = await seed_canonical_content(
+        db,
+        actor_email=current_user.get("email"),
+        actor_user_id=current_user.get("user_id"),
+    )
+    await create_audit_log(
+        action=AuditAction.ADMIN_ACTION,
+        actor_role="ROLE_ADMIN",
+        actor_id=current_user.get("user_id"),
+        metadata={
+            "action_type": "LEGAL_CONTENT_SEED_CANONICAL",
+            "provenance": result.get("provenance"),
+            "results": result.get("results"),
+        },
+    )
+    return {"success": True, **result}

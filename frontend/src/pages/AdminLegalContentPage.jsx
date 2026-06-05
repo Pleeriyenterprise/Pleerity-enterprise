@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -13,7 +13,7 @@ const AdminLegalContentPage = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
-  
+
   const [content, setContent] = useState({
     privacy: { slug: 'privacy', title: 'Privacy Policy', content: '', version: 0 },
     terms: { slug: 'terms', title: 'Terms of Service', content: '', version: 0 },
@@ -26,34 +26,35 @@ const AdminLegalContentPage = () => {
 
   const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadAllContent = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`${API_URL}/api/admin/legal-content`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+  const authHeaders = () => ({
+    Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
+    'Content-Type': 'application/json',
+  });
+
+  const loadAllContent = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/legal-content`, {
+        headers: authHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const contentMap = {};
+        data.forEach((item) => {
+          contentMap[item.slug] = item;
         });
-        if (cancelled) return;
-        if (response.ok) {
-          const data = await response.json();
-          const contentMap = {};
-          data.forEach(item => {
-            contentMap[item.slug] = item;
-          });
-          setContent(prev => ({ ...prev, ...contentMap }));
-        }
-      } catch (error) {
-        if (!cancelled) console.error('Failed to load legal content:', error);
-      } finally {
-        if (!cancelled) setLoading(false);
+        setContent((prev) => ({ ...prev, ...contentMap }));
       }
-    };
-    loadAllContent();
-    return () => { cancelled = true; };
+    } catch (error) {
+      console.error('Failed to load legal content:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [API_URL]);
+
+  useEffect(() => {
+    loadAllContent();
+  }, [loadAllContent]);
 
   const handleSave = async (slug) => {
     setSaving(true);
@@ -62,23 +63,23 @@ const AdminLegalContentPage = () => {
     try {
       const response = await fetch(`${API_URL}/api/admin/legal-content/${slug}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(content[slug])
+        headers: authHeaders(),
+        body: JSON.stringify(content[slug]),
       });
 
       if (response.ok) {
         const result = await response.json();
-        setMessage({ type: 'success', text: `Saved! Version ${result.content.version}` });
-        
-        setContent(prev => ({
+        setMessage({
+          type: 'success',
+          text: `Saved and published to the public page (version ${result.content.version}).`,
+        });
+
+        setContent((prev) => ({
           ...prev,
-          [slug]: result.content
+          [slug]: result.content,
         }));
 
-        setTimeout(() => setMessage(null), 3000);
+        setTimeout(() => setMessage(null), 4000);
       } else {
         setMessage({ type: 'error', text: 'Failed to save. Please try again.' });
       }
@@ -90,20 +91,30 @@ const AdminLegalContentPage = () => {
   };
 
   const handleReset = async (slug) => {
-    if (!window.confirm(`Reset ${content[slug].title} to default content? This cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Reset ${content[slug].title} to the canonical default? This publishes immediately and is versioned in audit history.`
+      )
+    ) {
       return;
     }
 
     try {
       const response = await fetch(`${API_URL}/api/admin/legal-content/${slug}/reset-default`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        headers: authHeaders(),
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Reset to default content' });
+        const result = await response.json();
+        setMessage({
+          type: 'success',
+          text: result.message || 'Reset to canonical default and published.',
+        });
+        setContent((prev) => ({
+          ...prev,
+          [slug]: result.content,
+        }));
         await loadAllContent();
       } else {
         setMessage({ type: 'error', text: 'Failed to reset' });
@@ -114,9 +125,9 @@ const AdminLegalContentPage = () => {
   };
 
   const updateField = (slug, field, value) => {
-    setContent(prev => ({
+    setContent((prev) => ({
       ...prev,
-      [slug]: { ...prev[slug], [field]: value }
+      [slug]: { ...prev[slug], [field]: value },
     }));
   };
 
@@ -136,7 +147,8 @@ const AdminLegalContentPage = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-midnight-blue">Legal Content Management</h1>
           <p className="text-gray-600 mt-2">
-            Edit legal pages. Changes apply instantly. All edits are audited.
+            Edit legal and marketing pages. Changes publish to the public site after save. All edits are
+            versioned and audited.
           </p>
         </div>
 
@@ -151,7 +163,7 @@ const AdminLegalContentPage = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-7">
-            {tabs.map(tab => (
+            {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
                 <tab.icon className="w-4 h-4 mr-1" />
                 {tab.label}
@@ -159,13 +171,17 @@ const AdminLegalContentPage = () => {
             ))}
           </TabsList>
 
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <TabsContent key={tab.value} value={tab.value}>
               <Card>
                 <CardHeader>
                   <CardTitle>{content[tab.value].title}</CardTitle>
                   <CardDescription>
-                    Version {content[tab.value].version} | Last updated: {content[tab.value].updated_at ? new Date(content[tab.value].updated_at).toLocaleString() : 'Never'}
+                    Version {content[tab.value].version} | Last updated:{' '}
+                    {content[tab.value].updated_at
+                      ? new Date(content[tab.value].updated_at).toLocaleString()
+                      : 'Never'}
+                    {loading ? ' · Loading…' : ''}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -200,7 +216,7 @@ const AdminLegalContentPage = () => {
                       className="bg-electric-teal hover:bg-electric-teal/90"
                     >
                       <Save className="w-4 h-4 mr-2" />
-                      {saving ? 'Saving...' : 'Save Changes'}
+                      {saving ? 'Saving...' : 'Save & Publish'}
                     </Button>
 
                     <Button
@@ -214,11 +230,12 @@ const AdminLegalContentPage = () => {
                   </div>
 
                   <div className="text-xs text-gray-500 mt-4 p-4 bg-gray-50 rounded">
-                    <p className="font-semibold mb-2">⚠️ Important:</p>
+                    <p className="font-semibold mb-2">Publication governance</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Changes apply immediately</li>
-                      <li>All edits are logged</li>
-                      <li>Version history preserved</li>
+                      <li>Saving publishes to the matching public URL immediately</li>
+                      <li>Empty CMS content falls back to canonical static copy on the public API</li>
+                      <li>All edits and resets are logged with version history</li>
+                      <li>Unsafe HTML/scripts are stripped on save</li>
                     </ul>
                   </div>
                 </CardContent>

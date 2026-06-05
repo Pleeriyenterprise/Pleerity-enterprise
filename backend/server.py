@@ -7,7 +7,7 @@ import uuid
 from contextlib import asynccontextmanager
 from database import database
 from routes import auth, intake, onboarding, portal, webhooks, client, client_read_api, admin, admin_client_lifecycle, admin_identity_lifecycle, documents, evidence_review, assistant, profile, properties, rules, compliance_governed_rules, templates, calendar, sms, otp, reports, tenant, webhooks_config, billing, admin_billing, public, admin_orders, orders, client_orders, client_billing, admin_notifications, admin_services, public_services, blog, admin_services_v2, public_services_v2, services_public, orchestration, intake_wizard, admin_intake_schema, admin_pending_payments, admin_pilot_invites, admin_pilot_lifecycle, admin_onboarding_recovery, admin_commercial_entitlement, admin_compliance_registry, admin_compliance_truth, analytics, admin_generation_analytics, support, admin_canned_responses, knowledge_base, leads, consent, cms, enablement, reporting, team, prompts, document_packs, checkout_validation, marketing, admin_legal_content, talent_pool, partnerships, admin_modules, admin_submissions, intake_uploads, portfolio, risk_check, admin_risk_leads, agreements_public, admin_client_agreements
-from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, client_rent_operations, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications, requirement_workflow_audit_admin
+from routes import observability, ops_compliance, contractors, maintenance, client_maintenance, client_compliance_execution, client_compliance_evidence, compliance_delivery_audit, api_compliance_workflow, client_approvals, client_rent_operations, predictive_data, admin_document_templates, public_orders, admin_invoices, contractor_portal, contractor_job, security_monitoring, control_centre, admin_communications, requirement_workflow_audit_admin, public_legal_content
 from utils.request_ip import get_client_ip as _client_ip
 
 # ClearForm - Separate Product Routes
@@ -1439,6 +1439,7 @@ app.include_router(admin_document_templates.router)  # Server-side DOCX template
 app.include_router(document_packs.router)  # Document Pack Orchestrator
 app.include_router(checkout_validation.router)  # Checkout Validation
 app.include_router(marketing.router)  # Marketing Website CMS
+app.include_router(public_legal_content.router)  # Public legal/marketing page content
 app.include_router(admin_legal_content.router)  # Legal Content Editor
 app.include_router(talent_pool.router)  # Talent Pool
 app.include_router(partnerships.router)  # Partnerships
