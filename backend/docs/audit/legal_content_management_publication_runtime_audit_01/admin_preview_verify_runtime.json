@@ -1,0 +1,27 @@
+{
+  "at_utc": "2026-06-05T14:48:23.361931+00:00",
+  "run_tag": "20260605T144718Z",
+  "api": {
+    "status": 200,
+    "sanitization_applied": true,
+    "script_stripped": true,
+    "markdown_preserved": true,
+    "content_length": 59,
+    "pass": true
+  },
+  "browser": {
+    "pass": true,
+    "checks": {
+      "preview_button": true,
+      "live_page_link": true,
+      "live_page_href": true,
+      "preview_mode_copy": true,
+      "sanitization_warning": true,
+      "bold_rendered": true,
+      "script_not_rendered": true,
+      "visible_paragraph": true
+    },
+    "screenshot": "screenshots/admin_preview/admin_preview_careers.png"
+  },
+  "pass": true
+}

@@ -14,5 +14,21 @@
     "regression": true
   },
   "classified_at_utc": "2026-06-05T13:17:09.313973+00:00",
-  "run_tag": "20260605T131326Z"
+  "run_tag": "20260605T131326Z",
+  "admin_preview_verify": {
+    "programme": "LEGAL-CONTENT-ADMIN-PREVIEW-VERIFY-01",
+    "classification": "VERIFIED_OPERATIONALLY",
+    "prior_classification": "VERIFIED_OPERATIONALLY",
+    "prior_programme": "LEGAL-CONTENT-ADMIN-HYDRATION-CLOSEOUT-01",
+    "feature": "admin_legal_content_preview",
+    "secondary_flags": [],
+    "blockers": [],
+    "checklist": {
+      "api_preview": true,
+      "browser_preview": true
+    },
+    "classified_at_utc": "2026-06-05T14:48:23.362933+00:00",
+    "run_tag": "20260605T144718Z"
+  },
+  "admin_preview_verified_at_utc": "2026-06-05T14:48:23.368934+00:00"
 }

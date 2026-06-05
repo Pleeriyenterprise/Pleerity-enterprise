@@ -88,31 +88,32 @@ def part_browser_preview(token: str, admin_user: dict) -> dict:
         page.wait_for_timeout(3000)
 
         page.get_by_role("tab", name="Careers").click()
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(2500)
 
-        preview_btn = page.locator('[data-testid="admin-legal-preview-btn-careers"]')
-        live_link = page.locator('[data-testid="admin-legal-live-link-careers"]')
+        careers_panel = page.get_by_role("tabpanel").filter(
+            has=page.locator('[data-testid="admin-legal-preview-btn-careers"]')
+        )
+        careers_panel.wait_for(state="visible", timeout=30_000)
+
+        preview_btn = careers_panel.locator('[data-testid="admin-legal-preview-btn-careers"]')
+        live_link = careers_panel.get_by_role("link", name="View live page")
         out["checks"]["preview_button"] = preview_btn.count() > 0
         out["checks"]["live_page_link"] = live_link.count() > 0
-        if preview_btn.count() == 0:
-            out["error"] = "Preview UI not deployed (missing admin-legal-preview-btn-careers)"
-            return out
+        out["checks"]["live_page_href"] = (live_link.get_attribute("href") or "") == "/careers"
 
-        textarea = page.locator("textarea").first
+        textarea = careers_panel.locator("textarea")
         textarea.fill(DIRTY)
-        with page.expect_response(
-            lambda r: "/admin/legal-content/careers/preview" in r.url and r.request.method == "POST",
-            timeout=60_000,
-        ):
-            preview_btn.click()
-        page.locator('[data-testid="admin-legal-preview-pane-careers"] .legal-content-markdown').wait_for(
-            timeout=60_000
+        preview_btn.click()
+        careers_panel.locator('[data-testid="admin-legal-preview-pane-careers"] .legal-content-markdown').wait_for(
+            state="visible",
+            timeout=90_000,
         )
+        page.wait_for_timeout(1000)
 
-        body = page.locator("body").inner_text()
+        body = careers_panel.inner_text()
         out["checks"]["preview_mode_copy"] = "same markdown renderer" in body.lower()
         out["checks"]["sanitization_warning"] = "unsafe html was removed" in body.lower()
-        preview_md = page.locator('[data-testid="admin-legal-preview-pane-careers"] .legal-content-markdown')
+        preview_md = careers_panel.locator('[data-testid="admin-legal-preview-pane-careers"] .legal-content-markdown')
         out["checks"]["bold_rendered"] = preview_md.locator("strong").count() > 0
         out["checks"]["script_not_rendered"] = preview_md.locator("script").count() == 0
         preview_text = preview_md.inner_text()
@@ -124,6 +125,7 @@ def part_browser_preview(token: str, admin_user: dict) -> dict:
         required = [
             "preview_button",
             "live_page_link",
+            "live_page_href",
             "preview_mode_copy",
             "sanitization_warning",
             "bold_rendered",

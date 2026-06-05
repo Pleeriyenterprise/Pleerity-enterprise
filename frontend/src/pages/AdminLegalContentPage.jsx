@@ -345,11 +345,25 @@ const AdminLegalContentPage = () => {
               <TabsContent key={tab.value} value={tab.value}>
                 <Card>
                   <CardHeader>
-                    <CardTitle>{row.title}</CardTitle>
-                    <CardDescription>
-                      Version {row.version} | Last updated: {formatUpdatedAt(row.updated_at)}
-                      {loading || tabLoading ? ' · Loading…' : ''}
-                    </CardDescription>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <CardTitle>{row.title}</CardTitle>
+                        <CardDescription>
+                          Version {row.version} | Last updated: {formatUpdatedAt(row.updated_at)}
+                          {loading || tabLoading ? ' · Loading…' : ''}
+                        </CardDescription>
+                      </div>
+                      <a
+                        href={LIVE_PAGE_PATHS[tab.value]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid={`admin-legal-live-link-${tab.value}`}
+                        className="inline-flex items-center text-sm text-electric-teal hover:underline shrink-0"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        View live page
+                      </a>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>

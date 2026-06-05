@@ -1,20 +1,10 @@
-# LEGAL-CONTENT-ADMIN-HYDRATION-CLOSEOUT-01
+# LEGAL-CONTENT-ADMIN-PREVIEW-VERIFY-01
 
 **Classification:** `VERIFIED_OPERATIONALLY`
-**Run tag:** `20260605T131326Z`
+**Run tag:** `20260605T144718Z`
 
-## Summary
-Admin Legal Content Management now hydrates from governed CMS via apiClient with serialized admin API rows.
+## Checks
+- API preview sanitisation: PASS
+- Browser preview UI: PASS
 
-## Checklist
-- root_cause: PASS
-- admin_api: PASS
-- frontend: PASS
-- browser: PASS
-- edit_safety: PASS
-- regression: PASS
-
-## Harness
-
-`backend/legal_content_admin_hydration_closeout_01_execute.py`
-
+Artifact: `admin_preview_verify_runtime.json`

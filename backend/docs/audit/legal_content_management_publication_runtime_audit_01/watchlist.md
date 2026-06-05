@@ -11,3 +11,8 @@
 
 ## Optional
 - [ ] Admin UI restore-to-version button
+
+## Admin preview
+- [x] Server-sanitised draft preview in admin legal editor
+- [x] Public markdown renderer in preview pane
+- [x] View live page link for published comparison
