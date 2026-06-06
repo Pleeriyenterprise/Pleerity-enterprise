@@ -1,5 +1,5 @@
 {
-  "programme": "RENT-REMINDER-LIVE-DELIVERY-POST-DEPLOY-PROOF-01",
+  "programme": "RENT-REMINDER-FRESH-EVENT-PROOF-01",
   "parent_audit": "RENT-OPERATIONS-LANDLORD-TENANT-RUNTIME-AUDIT-01",
   "prior_classification": "PARTIAL",
   "classification": "PARTIAL",
@@ -9,18 +9,20 @@
   ],
   "blockers": [
     "due_delivery",
-    "overdue_delivery"
+    "overdue_delivery",
+    "partial_payment_copy"
   ],
   "checklist": {
-    "env_proof": true,
+    "fixture": true,
     "due_delivery": false,
     "overdue_delivery": false,
-    "idempotency": true,
-    "tenant_delivery": true,
+    "dedupe": true,
+    "payment_suppression": true,
+    "partial_payment_copy": false,
+    "tenant_targeting": true,
     "regression": true
   },
-  "deploy_commit_verified": true,
-  "delivery_blocker": "no_missing_reminder_types_on_pilot_ledgers; live send only fires on newly created events (pre-live manual events are not upgraded)",
-  "classified_at_utc": "2026-06-06T14:46:07.008160+00:00",
-  "run_tag": "20260606T143514Z"
+  "delivery_note": "Fresh reminder events created with delivery_status=manual — RENT_REMINDERS_LIVE_SEND not active on staging runtime; set env on Render service and re-run with new marker",
+  "classified_at_utc": "2026-06-06T15:23:24.651341+00:00",
+  "run_tag": "20260606T151019Z"
 }

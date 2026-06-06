@@ -1,0 +1,98 @@
+{
+  "at_utc": "2026-06-06T15:11:20.183897+00:00",
+  "run_tag": "20260606T151019Z",
+  "marker": "RENT-FRESH-20260606T151019Z",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "tenancy_id": "pty_9ec2e1723d7b",
+  "tenant_recipient": "f7-ops-wales@yopmail.com",
+  "overdue_schedule": {
+    "status": 200,
+    "schedule_id": "rs_0cb5fe9e6cee",
+    "body": {
+      "schedule_id": "rs_0cb5fe9e6cee",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "tenancy_id": "pty_9ec2e1723d7b",
+      "rent_type": "residential_rent",
+      "tenant_name": "mat",
+      "is_external_payer": false,
+      "external_payer_name": null,
+      "expected_amount_minor": 118500,
+      "currency": "GBP",
+      "rent_frequency": "monthly",
+      "due_day": 1,
+      "start_date": "2026-02-01",
+      "end_date": null,
+      "notes": "RENT-FRESH-20260606T151019Z overdue fixture",
+      "is_active": true,
+      "idempotency_key": "RENT-FRESH-20260606T151019Z-overdue-sched",
+      "created_at": "2026-06-06T15:10:49.175021+00:00",
+      "updated_at": "2026-06-06T15:10:49.175021+00:00",
+      "created_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+      "creation_preview": {
+        "period_count": 11,
+        "period_start": "2026-02-01",
+        "period_end": "2026-12-01",
+        "cadence_label": "monthly",
+        "next_due_date": "2026-07-01",
+        "disclosure": "This will create 11 monthly rent periods from Feb 2026 to Dec 2026. Next due date: 2026-07-01."
+      },
+      "periods_created": 11,
+      "success": true,
+      "message": "This will create 11 monthly rent periods from Feb 2026 to Dec 2026. Next due date: 2026-07-01."
+    }
+  },
+  "due_schedule": {
+    "status": 200,
+    "schedule_id": "rs_7c625677c768",
+    "expected_reminder_type": "due_today",
+    "body": {
+      "schedule_id": "rs_7c625677c768",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "tenancy_id": "pty_9ec2e1723d7b",
+      "rent_type": "residential_rent",
+      "tenant_name": "mat",
+      "is_external_payer": false,
+      "external_payer_name": null,
+      "expected_amount_minor": 125000,
+      "currency": "GBP",
+      "rent_frequency": "monthly",
+      "due_day": 6,
+      "start_date": "2026-06-06",
+      "end_date": null,
+      "notes": "RENT-FRESH-20260606T151019Z due fixture",
+      "is_active": true,
+      "idempotency_key": "RENT-FRESH-20260606T151019Z-due-sched",
+      "created_at": "2026-06-06T15:10:59.304518+00:00",
+      "updated_at": "2026-06-06T15:10:59.304518+00:00",
+      "created_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+      "creation_preview": {
+        "period_count": 7,
+        "period_start": "2026-06-06",
+        "period_end": "2026-12-06",
+        "cadence_label": "monthly",
+        "next_due_date": "2026-06-06",
+        "disclosure": "This will create 7 monthly rent periods from Jun 2026 to Dec 2026. Next due date: 2026-06-06."
+      },
+      "periods_created": 7,
+      "success": true,
+      "message": "This will create 7 monthly rent periods from Jun 2026 to Dec 2026. Next due date: 2026-06-06."
+    }
+  },
+  "due_ledger_id": "rlp_7a2727a8a245",
+  "overdue_ledger_id": "rlp_a28ff0eb87d7",
+  "due_ledger": {
+    "due_date": "2026-06-06",
+    "outstanding": 125000,
+    "prior_reminders": 0
+  },
+  "overdue_ledger": {
+    "due_date": "2026-02-01",
+    "outstanding": 118500,
+    "days_overdue": 125,
+    "prior_reminders": 0
+  },
+  "pass": true
+}

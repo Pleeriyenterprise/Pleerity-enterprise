@@ -1,20 +1,21 @@
 # Rent operations landlord-tenant watchlist
 
 - Classification: `PARTIAL`
-- Post-deploy run tag: `20260606T143514Z`
+- Fresh event run tag: `20260606T151019Z`
 
-## Post-deploy checklist
-- [x] env_proof (commit `1dfcc85a` deployed; job 200; rate limit cleared)
+## Fresh event checklist
+- [x] fixture
 - [ ] due_delivery
 - [ ] overdue_delivery
-- [x] idempotency
-- [x] tenant_delivery
+- [x] dedupe
+- [x] payment_suppression
+- [ ] partial_payment_copy
+- [x] tenant_targeting
 - [x] regression
 
 ## Remaining
-- [ ] Pilot ledger with **missing** due/overdue reminder event (live send only fires on newly created events; pre-live `manual` events are not upgraded)
-- [ ] `RENT_REMINDER` message_logs with `status=sent` to `f7-ops-wales@yopmail.com`
-- [ ] Reminder events with `delivery_status=sent` (not `manual`)
-- [ ] Re-run `rent_reminder_live_delivery_post_deploy_proof_01_execute.py` when a new due_soon/due_today/overdue threshold crosses on an un-evented period
+- [ ] **Apply `RENT_REMINDERS_LIVE_SEND=true` on Render `pleerity-api` service** (render.yaml alone does not update existing services)
+- [ ] Re-run `python backend/rent_reminder_fresh_event_proof_01_execute.py` with new marker after env active
+- [ ] Expect fresh events `delivery_status=sent` and `RENT_REMINDER` message_logs to `f7-ops-wales@yopmail.com`
 - [ ] Tenant in-app notification surface when enabled
 - [ ] SMS proof only with configured safe test number

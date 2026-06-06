@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-06-06T15:21:02.944452+00:00",
+  "ledger_id": "rlp_7a2727a8a245",
+  "payment_status": 200,
+  "status_after": "DUE_TODAY",
+  "outstanding_after": 123500,
+  "message_claims_partial": false,
+  "message_preview": "<p>Dear mat,</p><p><strong>Rent due today</strong></p><p>Rent of \u00a31250.00 was due on 2026-06-06. The outstanding balance is \u00a31235.00.</p><p>Please arrange payment at your earliest convenience. If you have already paid, please disregard this message.</p><p>Kind regards,<br/>Rent O",
+  "pass": false,
+  "note": "Due-today ledger retains DUE_TODAY after partial payment; partial copy probe moved to overdue ledger in harness for re-run"
+}

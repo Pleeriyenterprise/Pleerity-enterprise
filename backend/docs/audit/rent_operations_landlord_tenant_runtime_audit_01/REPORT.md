@@ -196,3 +196,26 @@ Missing reminder candidates: 0
 
 ### Next proof window
 Re-run when a pilot ledger crosses due_soon/due_today/overdue threshold **without** an existing reminder event (e.g. new period or calendar boundary on un-evented ledger).
+
+---
+
+## RENT-REMINDER-FRESH-EVENT-PROOF-01 (20260606T151019Z)
+
+**Classification:** `PARTIAL` (not `VERIFIED_OPERATIONALLY`)
+
+### Fresh event checklist
+- fixture: PASS — new schedules `rs_0cb5fe9e6cee` / `rs_7c625677c768`; ledgers `rlp_7a2727a8a245` (due today) and `rlp_a28ff0eb87d7` (125d overdue); zero prior reminder events
+- due_delivery: FAIL — event `RENT_DUE_TODAY_rlp_7a2727a8a245_2026-06` created with `delivery_status=manual`; no `RENT_REMINDER` message_log
+- overdue_delivery: FAIL — overdue events created as `manual`; no sent message_log
+- dedupe: PASS — duplicate job 200; no duplicate sends
+- payment_suppression: PASS — full payment suppresses new sends
+- partial_payment_copy: FAIL — due-today ledger stayed `DUE_TODAY` after partial pay (harness updated to use overdue ledger on re-run)
+- tenant_targeting: PASS
+- regression: PASS — 28 pytest passed
+
+**Blockers:** due_delivery, overdue_delivery, partial_payment_copy
+
+### Root cause
+Fresh events prove fixture and job path work, but **`RENT_REMINDERS_LIVE_SEND` is not active on staging runtime** (events created as `manual`, not `pending`/`sent`). `render.yaml` documents the env vars; they must be applied on the live Render web service, then re-run with a new marker.
+
+Harness: `backend/rent_reminder_fresh_event_proof_01_execute.py`
