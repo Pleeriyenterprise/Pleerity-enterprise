@@ -1,0 +1,35 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T23:24:14.566452+00:00",
+  "scenarios": [
+    {
+      "id": "missing_evidence",
+      "classify": "OPERATIONAL_ACTION",
+      "today": true,
+      "pass": true
+    },
+    {
+      "id": "rejected",
+      "classify": "OPERATIONAL_ACTION",
+      "pass": true
+    },
+    {
+      "id": "overdue",
+      "classify": "OPERATIONAL_ACTION",
+      "pass": true
+    },
+    {
+      "id": "self_recorded_satisfied",
+      "classify": "ASSURANCE_CONFIDENCE_OPPORTUNITY",
+      "today_suppressed": true,
+      "pass": true
+    },
+    {
+      "id": "pending_admin_no_landlord_urgent",
+      "classify": "STALE_INVALID",
+      "today_suppressed": false,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

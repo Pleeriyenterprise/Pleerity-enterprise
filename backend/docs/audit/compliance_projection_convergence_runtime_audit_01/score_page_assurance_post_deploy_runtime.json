@@ -1,0 +1,85 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T23:24:13.425080+00:00",
+  "score": 93,
+  "score_confidence": {
+    "score": 93.0,
+    "headline": "Your requirements are satisfied.",
+    "detail": "Your score is below 100 because some evidence is self-recorded or awaiting assurance review. This reflects assurance confidence, not an active compliance breach.",
+    "achievability_note": "100/100 is achievable when evidence is platform-verified where verification applies.",
+    "tracked_requirement_count": 8,
+    "score_tracked_requirement_count": 8,
+    "self_recorded_count": 4,
+    "verified_requirement_count": 4,
+    "obligations_satisfied_on_file": true,
+    "assurance_explains_sub_100": true
+  },
+  "stats": {
+    "total_requirements": 8,
+    "compliant": 8,
+    "satisfied": 8,
+    "pending": 4,
+    "missing_evidence": 0,
+    "expiring_soon": 0,
+    "overdue": 0,
+    "critical_overdue": 0,
+    "documents_uploaded": 8,
+    "documents_verified": 8,
+    "verified_coverage_percent": 50.0,
+    "total_coverage_percent": 50.0,
+    "document_coverage_percent": 50.0,
+    "days_until_next_expiry": 1090,
+    "nearest_expiry_type": "eicr",
+    "hmo_properties": 0,
+    "gap_engine": {
+      "by_kind": {
+        "MISSING_EVIDENCE": 5
+      },
+      "by_severity": {
+        "LOW": 5
+      },
+      "total_open": 5,
+      "policy": {
+        "critical_mandatory_breach_count": 0,
+        "high_risk_gap_count": 0,
+        "attention_only_gap_count": 0,
+        "unknown_or_stale_signal_count": 0,
+        "policy_fields_present_count": 5,
+        "policy_coverage_percent": 100.0,
+        "top_reason_codes": {},
+        "policy_versions": {
+          "v1": 5
+        },
+        "total_open": 5
+      }
+    },
+    "properties_at_risk_count": 0,
+    "tracked_requirement_count": 8,
+    "score_tracked_requirement_count": 8,
+    "lifecycle_satisfied_count": 8
+  },
+  "assurance_opportunities": [
+    {
+      "priority": "info",
+      "action": "Optional: improve assurance confidence for Legionella risk assessment (evidence is recorded; platform verification can raise your score).",
+      "impact": "+2 points",
+      "requirement_code": "LEGIONELLA",
+      "display_label": "Legionella risk assessment",
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "requirement_id": "b2c11957-d8b4-40e6-939c-080d1cea971d",
+      "action_kind": "ASSURANCE_CONFIDENCE_OPPORTUNITY"
+    },
+    {
+      "priority": "info",
+      "action": "Optional: improve assurance confidence for Legionella risk assessment (evidence is recorded; platform verification can raise your score).",
+      "impact": "+2 points",
+      "requirement_code": "LEGIONELLA",
+      "display_label": "Legionella risk assessment",
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "requirement_id": "fc1edfcd-2c40-4fa2-90cb-e242e8905152",
+      "action_kind": "ASSURANCE_CONFIDENCE_OPPORTUNITY"
+    }
+  ],
+  "recommendations": [],
+  "pass": true
+}

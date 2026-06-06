@@ -1,0 +1,200 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T23:24:11.271775+00:00",
+  "target": {
+    "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+    "crn": "PLE-CVP-2026-000023",
+    "name": "Sophie Walker"
+  },
+  "requirements_visible": 10,
+  "requirements_satisfied": 10,
+  "score": 93,
+  "grade": "A",
+  "stats": {
+    "total_requirements": 8,
+    "compliant": 8,
+    "satisfied": 8,
+    "pending": 4,
+    "missing_evidence": 0,
+    "expiring_soon": 0,
+    "overdue": 0,
+    "critical_overdue": 0,
+    "documents_uploaded": 8,
+    "documents_verified": 8,
+    "verified_coverage_percent": 50.0,
+    "total_coverage_percent": 50.0,
+    "document_coverage_percent": 50.0,
+    "days_until_next_expiry": 1090,
+    "nearest_expiry_type": "eicr",
+    "hmo_properties": 0,
+    "gap_engine": {
+      "by_kind": {
+        "MISSING_EVIDENCE": 5
+      },
+      "by_severity": {
+        "LOW": 5
+      },
+      "total_open": 5,
+      "policy": {
+        "critical_mandatory_breach_count": 0,
+        "high_risk_gap_count": 0,
+        "attention_only_gap_count": 0,
+        "unknown_or_stale_signal_count": 0,
+        "policy_fields_present_count": 5,
+        "policy_coverage_percent": 100.0,
+        "top_reason_codes": {},
+        "policy_versions": {
+          "v1": 5
+        },
+        "total_open": 5
+      }
+    },
+    "properties_at_risk_count": 0,
+    "tracked_requirement_count": 8,
+    "score_tracked_requirement_count": 8,
+    "lifecycle_satisfied_count": 8
+  },
+  "score_confidence": {
+    "score": 93.0,
+    "headline": "Your requirements are satisfied.",
+    "detail": "Your score is below 100 because some evidence is self-recorded or awaiting assurance review. This reflects assurance confidence, not an active compliance breach.",
+    "achievability_note": "100/100 is achievable when evidence is platform-verified where verification applies.",
+    "tracked_requirement_count": 8,
+    "score_tracked_requirement_count": 8,
+    "self_recorded_count": 4,
+    "verified_requirement_count": 4,
+    "obligations_satisfied_on_file": true,
+    "assurance_explains_sub_100": true
+  },
+  "recommendations": [],
+  "assurance_opportunities": [
+    {
+      "priority": "info",
+      "action": "Optional: improve assurance confidence for Legionella risk assessment (evidence is recorded; platform verification can raise your score).",
+      "impact": "+2 points",
+      "requirement_code": "LEGIONELLA",
+      "display_label": "Legionella risk assessment",
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "requirement_id": "b2c11957-d8b4-40e6-939c-080d1cea971d",
+      "action_kind": "ASSURANCE_CONFIDENCE_OPPORTUNITY"
+    },
+    {
+      "priority": "info",
+      "action": "Optional: improve assurance confidence for Legionella risk assessment (evidence is recorded; platform verification can raise your score).",
+      "impact": "+2 points",
+      "requirement_code": "LEGIONELLA",
+      "display_label": "Legionella risk assessment",
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "requirement_id": "fc1edfcd-2c40-4fa2-90cb-e242e8905152",
+      "action_kind": "ASSURANCE_CONFIDENCE_OPPORTUNITY"
+    }
+  ],
+  "reporting_semantics": {
+    "version": "v1",
+    "scoring_semantics_version": "v1",
+    "counts": {
+      "tracked_requirement_count": 8,
+      "score_tracked_requirement_count": 8,
+      "compliant_requirement_count": 8,
+      "missing_document_count": 0,
+      "expiring_requirement_count": 0,
+      "satisfied_requirement_count": 4,
+      "verified_requirement_count": 4,
+      "platform_review_pending_count": 0,
+      "self_recorded_count": 4,
+      "pending": 4,
+      "overdue": 0
+    },
+    "definitions": {
+      "tracked_requirement_count": {
+        "label": "Tracked requirements",
+        "short_help": "Registry rows in scope on the Requirements page (tracked DOCUMENT/JOB items, excluding not-applicable lifecycle).",
+        "authority": "tracked_registry_projection"
+      },
+      "score_tracked_requirement_count": {
+        "label": "Score-tracked obligations",
+        "short_help": "Obligations counted in the compliance score projection after runtime filtering and portal visibility.",
+        "authority": "score_projection_pipeline"
+      },
+      "compliant_requirement_count": {
+        "label": "Valid for scoring",
+        "short_help": "Rows with projected compliance status COMPLIANT or VALID (score KPI bucket).",
+        "authority": "score_projection_pipeline"
+      },
+      "satisfied_requirement_count": {
+        "label": "Recorded on file (unverified)",
+        "short_help": "Recorded evidence on file \u2014 not yet fully verified by the platform.",
+        "authority": "client_lifecycle_state"
+      },
+      "verified_requirement_count": {
+        "label": "Lifecycle verified",
+        "short_help": "Client lifecycle VERIFIED \u2014 platform-accepted evidence state.",
+        "authority": "client_lifecycle_state"
+      },
+      "missing_document_count": {
+        "label": "Missing document (score view)",
+        "short_help": "Score projection: pending/missing rows that still count as missing required evidence (satisfied-without-doc excluded).",
+        "authority": "score_projection_pipeline"
+      },
+      "expiring_requirement_count": {
+        "label": "Renewal approaching (score view)",
+        "short_help": "Obligations with renewal or expiry approaching in the score-tracked set.",
+        "authority": "score_projection_pipeline"
+      },
+      "platform_review_pending_count": {
+        "label": "Awaiting platform review",
+        "short_help": "Evidence submitted \u2014 awaiting platform review.",
+        "authority": "client_lifecycle_state"
+      },
+      "self_recorded_count": {
+        "label": "Self-recorded assurance",
+        "short_help": "Self-recorded or on-file assurance without platform verification.",
+        "authority": "assurance_tier_and_lifecycle"
+      }
+    },
+    "convergence_note": "score_tracked_requirement_count and compliant_requirement_count align with dashboard compliance-score stats when the same enrich+projection pipeline is used."
+  },
+  "today_summary": {
+    "urgent_count": 0,
+    "upcoming_count": 0,
+    "in_progress_count": 4,
+    "recently_completed_count": 0,
+    "snoozed_count": 0,
+    "hidden_count": 0,
+    "habit": {
+      "urgent_open_total": 0,
+      "items_due_or_expiring_in_7_days": 0,
+      "tasks_acknowledged_last_7_days": 0
+    }
+  },
+  "today_urgent_count": 0,
+  "today_in_progress_count": 4,
+  "dashboard_compliance_summary": {
+    "total_requirements": 10,
+    "compliant": 10,
+    "satisfied_requirements": 10,
+    "score_tracked_requirements": 10,
+    "overdue": 0,
+    "expiring_soon": 0
+  },
+  "properties": [
+    {
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "nickname": "Brixton Hill",
+      "compliance_status": "GREEN"
+    },
+    {
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "nickname": "Willow Grove",
+      "compliance_status": "GREEN"
+    }
+  ],
+  "checks": {
+    "ten_visible": true,
+    "ten_satisfied": true,
+    "two_properties": true,
+    "all_green": true,
+    "no_overdue": true
+  },
+  "auth_method": "impersonation"
+}

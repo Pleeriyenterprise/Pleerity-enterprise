@@ -1,0 +1,28 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T23:23:34.597765+00:00",
+  "expected_commit": "28743ee3",
+  "api": {
+    "has_score_confidence": true,
+    "has_assurance_opportunities_key": true,
+    "assurance_opportunities_count": 2,
+    "operational_recommendations_count": 0,
+    "has_lifecycle_satisfied_count": true,
+    "has_score_tracked_requirement_count": true,
+    "has_tracked_requirement_count": true,
+    "legacy_high_assurance_in_operational_recs": []
+  },
+  "frontend": {
+    "frontend_url": "https://pleerityenterprise.co.uk",
+    "html_status": 200,
+    "main_bundle_hash": "193d3a8d",
+    "markers": {
+      "assurance_opportunities_literal": true,
+      "assurance_confidence_literal": true,
+      "optional_assurance_label": true,
+      "isTaskAssuranceOnly": false
+    },
+    "deployed_assurance_ui": true
+  },
+  "pass": true
+}

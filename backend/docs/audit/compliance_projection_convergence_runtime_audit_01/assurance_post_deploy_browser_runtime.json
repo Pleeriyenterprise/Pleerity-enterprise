@@ -1,0 +1,22 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T23:25:23.192161+00:00",
+  "screenshots": {
+    "today": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_post_deploy_screenshots\\01_today.png",
+    "dashboard": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_post_deploy_screenshots\\02_dashboard.png",
+    "compliance_score": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_post_deploy_screenshots\\03_compliance_score.png",
+    "requirements": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_post_deploy_screenshots\\04_requirements.png",
+    "properties": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_post_deploy_screenshots\\05_properties.png"
+  },
+  "findings": {
+    "do_this_next": false,
+    "needs_action_nonzero": false,
+    "high_quick_action_red": false,
+    "optional_assurance_copy": false,
+    "score_confidence_visible": true,
+    "assurance_section": true,
+    "lifecycle_valid_10": true,
+    "attention_needed": 2
+  },
+  "pass": false
+}

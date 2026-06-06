@@ -1,0 +1,32 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T23:24:13.420890+00:00",
+  "operational_recommendations": [],
+  "assurance_opportunities": [
+    {
+      "priority": "info",
+      "action": "Optional: improve assurance confidence for Legionella risk assessment (evidence is recorded; platform verification can raise your score).",
+      "impact": "+2 points",
+      "requirement_code": "LEGIONELLA",
+      "display_label": "Legionella risk assessment",
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "requirement_id": "b2c11957-d8b4-40e6-939c-080d1cea971d",
+      "action_kind": "ASSURANCE_CONFIDENCE_OPPORTUNITY"
+    },
+    {
+      "priority": "info",
+      "action": "Optional: improve assurance confidence for Legionella risk assessment (evidence is recorded; platform verification can raise your score).",
+      "impact": "+2 points",
+      "requirement_code": "LEGIONELLA",
+      "display_label": "Legionella risk assessment",
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "requirement_id": "fc1edfcd-2c40-4fa2-90cb-e242e8905152",
+      "action_kind": "ASSURANCE_CONFIDENCE_OPPORTUNITY"
+    }
+  ],
+  "operational_count": 0,
+  "assurance_count": 2,
+  "high_operational": [],
+  "high_assurance": [],
+  "pass": true
+}
