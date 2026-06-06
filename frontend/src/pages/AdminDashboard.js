@@ -12,6 +12,11 @@ import {
   getMatchResolutionSuccessToast,
 } from '../utils/adminOperationalPresentation';
 import PendingVerificationTable from '../components/admin/PendingVerificationTable';
+import { runGovernedAdminMutation } from '../utils/adminGovernedMutation';
+import {
+  getGovernanceConfirmationWording,
+  getGovernanceWarning,
+} from '../utils/adminActionGovernance';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentScoreChangeReason } from '../utils/timelinePresent';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
@@ -4718,6 +4723,9 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
   const [rejectModalDoc, setRejectModalDoc] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [deleteModalDoc, setDeleteModalDoc] = useState(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [verifyOverrideModal, setVerifyOverrideModal] = useState(null);
   const [verifyOverrideReason, setVerifyOverrideReason] = useState('');
   const [verifyOverrideSubmitting, setVerifyOverrideSubmitting] = useState(false);
@@ -4905,6 +4913,34 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
       toast.error(e.response?.data?.detail || 'Failed to reject document');
     } finally {
       setRejectSubmitting(false);
+    }
+  };
+
+  const handleDeleteDocument = async () => {
+    if (!deleteModalDoc?.document_id) return;
+    const trimmedReason = deleteReason.trim();
+    if (trimmedReason.length < 10) {
+      toast.error('Support reason must be at least 10 characters');
+      return;
+    }
+    setDeleteSubmitting(true);
+    try {
+      await runGovernedAdminMutation({
+        actionId: 'delete_admin_document',
+        reason: trimmedReason,
+        resourceKey: deleteModalDoc.document_id,
+        mutate: (headers) =>
+          adminAPI.deleteDocument(deleteModalDoc.document_id, trimmedReason, { headers }),
+      });
+      toast.success('Document deleted from vault');
+      setDeleteModalDoc(null);
+      setDeleteReason('');
+      fetchPendingVerification();
+      fetchStats();
+    } catch (e) {
+      toast.error(parseApiError(e, 'Failed to delete document'));
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -5390,6 +5426,14 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
             setRejectModalDoc({ document_id: doc.document_id, client_name: doc.client_name });
             setRejectReason('');
           }}
+          onDeleteDocument={(doc) => {
+            setDeleteModalDoc({
+              document_id: doc.document_id,
+              file_name: doc.file_name,
+              client_name: doc.client_name,
+            });
+            setDeleteReason('');
+          }}
         />
       </div>
 
@@ -5604,6 +5648,53 @@ export const DashboardOverview = ({ onShowDrilldown, onSelectClient }) => {
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete document modal (governed) */}
+      {deleteModalDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-labelledby="delete-document-title">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <h2 id="delete-document-title" className="text-lg font-semibold text-midnight-blue mb-2">Delete document</h2>
+            <p className="text-sm text-gray-600 mb-2">
+              Permanently removes the file and vault record. The client can upload a replacement afterward.
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              {deleteModalDoc.file_name || 'Document'} · {deleteModalDoc.document_id}
+              {deleteModalDoc.client_name && ` · ${deleteModalDoc.client_name}`}
+            </p>
+            <p className="text-xs text-amber-900 border border-amber-200 bg-amber-50 rounded-md px-3 py-2 mb-3">
+              {getGovernanceWarning('delete_admin_document')}
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Support reason (required, min 10 characters)</label>
+            <textarea
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="e.g. Client uploaded wrong certificate; removing so they can re-upload"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm min-h-[80px] mb-2"
+              data-testid="delete-document-reason"
+            />
+            <p className="text-xs text-gray-500 mb-4">{getGovernanceConfirmationWording('delete_admin_document')}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setDeleteModalDoc(null); setDeleteReason(''); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteDocument}
+                disabled={deleteReason.trim().length < 10 || deleteSubmitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-700 hover:bg-red-800 disabled:opacity-50 rounded-lg flex items-center gap-2"
+                data-testid="delete-document-submit"
+              >
+                {deleteSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Delete permanently
               </button>
             </div>
           </div>

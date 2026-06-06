@@ -31,7 +31,7 @@ function GovernedActionModal({ open, title, onClose, onConfirm, confirming, chil
   );
 }
 
-/** @typedef {'resolve' | 'link' | 'reject'} ActionKind */
+/** @typedef {'resolve' | 'link' | 'reject' | 'delete'} ActionKind */
 
 export default function AdminUnresolvedEvidenceQueuePage() {
   const [searchParams] = useSearchParams();
@@ -125,6 +125,13 @@ export default function AdminUnresolvedEvidenceQueuePage() {
               { headers },
             ),
         });
+      } else if (modal.kind === 'delete') {
+        res = await runGovernedAdminMutation({
+          actionId: 'delete_admin_document',
+          reason,
+          resourceKey: docId,
+          mutate: (headers) => adminAPI.deleteDocument(docId, reason.trim(), { headers }),
+        });
       } else {
         res = await runGovernedAdminMutation({
           actionId: 'reject_unresolved_document',
@@ -152,7 +159,9 @@ export default function AdminUnresolvedEvidenceQueuePage() {
       ? 'resolve_unresolved_scope'
       : modal?.kind === 'link'
         ? 'link_unresolved_requirement'
-        : 'reject_unresolved_document';
+        : modal?.kind === 'delete'
+          ? 'delete_admin_document'
+          : 'reject_unresolved_document';
 
   return (
     <UnifiedAdminLayout>
@@ -236,6 +245,9 @@ export default function AdminUnresolvedEvidenceQueuePage() {
                             <Button size="sm" variant="destructive" onClick={() => openAction('reject', r)}>
                               Reject
                             </Button>
+                            <Button size="sm" variant="destructive" onClick={() => openAction('delete', r)}>
+                              Delete
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -255,7 +267,9 @@ export default function AdminUnresolvedEvidenceQueuePage() {
               ? 'Resolve UNRESOLVED scope'
               : modal?.kind === 'link'
                 ? 'Link requirement'
-                : 'Reject unresolved document'
+                : modal?.kind === 'delete'
+                  ? 'Delete document'
+                  : 'Reject unresolved document'
           }
           onClose={closeModal}
           onConfirm={executeAction}

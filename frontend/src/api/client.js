@@ -855,6 +855,11 @@ export const adminAPI = {
   /** Admin document verify (optional evidence mismatch override for audited resolution). */
   verifyDocument: (documentId, body = {}) =>
     apiClient.post(`/documents/verify/${encodeURIComponent(documentId)}`, body),
+  deleteDocument: (documentId, reason, config = {}) =>
+    apiClient.delete(`/documents/admin/${encodeURIComponent(documentId)}`, {
+      ...config,
+      params: { reason: (reason || '').trim() },
+    }),
   getDocumentAiAssistance: (documentId) =>
     apiClient.get(`/documents/${encodeURIComponent(documentId)}/review/ai-assistance`),
   getDocumentVerificationHelpers: (documentId) =>

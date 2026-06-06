@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, Download, Eye, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle, Download, Eye, RefreshCw, Trash2, XCircle } from 'lucide-react';
 import { getPendingDocumentOperationalPresentation } from '../../utils/adminOperationalPresentation';
 import OperationalTechnicalDetailsPanel from './OperationalTechnicalDetailsPanel';
 
@@ -22,6 +22,7 @@ export default function PendingVerificationTable({
   onVerifyDocument,
   onResolveMatch,
   onRejectDocument,
+  onDeleteDocument,
 }) {
   if (loading) {
     return (
@@ -200,6 +201,16 @@ export default function PendingVerificationTable({
                       >
                         <XCircle className="w-3.5 h-3.5" />
                         Reject
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteDocument?.(doc)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-900 bg-red-50 hover:bg-red-100 border border-red-200 rounded"
+                        title="Permanently delete file and vault record (governed)"
+                        data-testid={`delete-doc-${doc?.document_id}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
                       </button>
                     </div>
                   </td>

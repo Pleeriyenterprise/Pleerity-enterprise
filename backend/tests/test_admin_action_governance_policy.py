@@ -35,6 +35,7 @@ FULL_REGISTRY_ACTIONS = {
     "change_login_email",
     "change_plan",
     "commercial_entitlement_execute",
+    "delete_admin_document",
     "force_provision",
     "link_unresolved_requirement",
     "onboarding_recovery_execute",

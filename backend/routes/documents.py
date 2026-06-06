@@ -2746,9 +2746,25 @@ async def delete_document(request: Request, document_id: str):
 
 
 @router.delete("/admin/{document_id}")
-async def admin_delete_document(request: Request, document_id: str):
+async def admin_delete_document(
+    request: Request,
+    document_id: str,
+    reason: str = Query(..., min_length=10, max_length=2000),
+):
     """Admin deletes a document on behalf of any client. Requirement reverted if no other VERIFIED doc; property compliance synced."""
     user = await admin_route_guard(request)
+    from services.admin_action_governance import (
+        enforce_governed_admin_action,
+        normalized_admin_action_metadata,
+    )
+
+    support_reason = await enforce_governed_admin_action(
+        request,
+        user,
+        "delete_admin_document",
+        reason=reason,
+        resource_key=document_id,
+    )
     db = database.get_db()
     try:
         document = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
@@ -2806,7 +2822,12 @@ async def admin_delete_document(request: Request, document_id: str):
             client_id=client_id,
             resource_type="document",
             resource_id=document_id,
-            metadata={"action": "admin_document_deleted", "file_name": document.get("file_name")},
+            metadata={
+                "action": "admin_document_deleted",
+                "action_type": "ADMIN_DOCUMENT_DELETED",
+                "file_name": document.get("file_name"),
+                **normalized_admin_action_metadata("delete_admin_document", support_reason),
+            },
         )
         out_admin_del: Dict[str, Any] = {"message": "Document deleted"}
         pn_adm_del = build_propagation_notice_from_transition_fanout(admin_delete_fanout)

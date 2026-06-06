@@ -119,6 +119,16 @@
     "affects_multiple_customers": false,
     "irreversible": false
   },
+  "delete_admin_document": {
+    "action_id": "delete_admin_document",
+    "risk_class": "high_impact_operational",
+    "operator_level": "l2_support",
+    "requires_reason": true,
+    "requires_confirmation": true,
+    "requires_step_up": false,
+    "affects_multiple_customers": false,
+    "irreversible": true
+  },
   "retry_document_extraction": {
     "action_id": "retry_document_extraction",
     "risk_class": "high_impact_operational",
