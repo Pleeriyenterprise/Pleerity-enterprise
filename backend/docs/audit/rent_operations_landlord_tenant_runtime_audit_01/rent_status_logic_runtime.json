@@ -1,0 +1,142 @@
+{
+  "at_utc": "2026-06-06T11:59:55.428586+00:00",
+  "statuses_observed": [
+    "OVERDUE",
+    "PAID",
+    "PARTIALLY_PAID",
+    "SEVERELY_OVERDUE",
+    "UPCOMING"
+  ],
+  "counts": {
+    "overdue": 20,
+    "partial": 5,
+    "paid": 6,
+    "upcoming": 98,
+    "due_today": 0
+  },
+  "overdue_date_probes": [
+    {
+      "ledger_id": "rlp_48f87cf9ef35",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_fa9a214da74a",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_465ba09c91ac",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_2677df93a32d",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_017612eff95e",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_c8df0536e9f9",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_51b0fc86b82f",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_c59511f5defe",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_a8ffb202e07c",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_41f2b40c79f6",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_d07f0d155feb",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_72bfd1ff42a8",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_f502ab60eecb",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_a1d55b00f2e8",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_e76f0d5109f7",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_c598c3e6e1cf",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_2b9571a1dc16",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_dd960eedb1a3",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_8b4350153e2e",
+      "check": "overdue_after_due_date",
+      "pass": true
+    },
+    {
+      "ledger_id": "rlp_4ca0c3806cb9",
+      "check": "overdue_after_due_date",
+      "pass": true
+    }
+  ],
+  "partial_payment_probe": {
+    "pass": true,
+    "status": "PARTIALLY_PAID",
+    "outstanding": 124000
+  },
+  "summary_before": {
+    "rent_collected_this_month_minor": 307750,
+    "upcoming_due_count": 98,
+    "overdue_count": 22,
+    "partially_paid_count": 5,
+    "tenancies_with_arrears_count": 6,
+    "average_payment_delay_days": 0.0
+  },
+  "summary_after": {
+    "rent_collected_this_month_minor": 308750,
+    "upcoming_due_count": 98,
+    "overdue_count": 22,
+    "partially_paid_count": 6,
+    "tenancies_with_arrears_count": 6,
+    "average_payment_delay_days": 0.0
+  },
+  "kpi_present": true,
+  "pass": true
+}

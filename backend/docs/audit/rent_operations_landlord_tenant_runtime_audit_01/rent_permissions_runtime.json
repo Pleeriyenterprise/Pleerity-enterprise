@@ -1,0 +1,30 @@
+{
+  "at_utc": "2026-06-06T12:08:38.978049+00:00",
+  "probes": [
+    {
+      "persona": "landlord",
+      "endpoint": "/client/operations/rent/summary",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "persona": "tenant",
+      "endpoint": "/client/operations/rent/summary",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "persona": "contractor",
+      "endpoint": "/client/operations/rent/summary",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "persona": "unauthenticated",
+      "endpoint": "/client/operations/rent/summary",
+      "status": 401,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

@@ -29,6 +29,7 @@ jest.mock('../api/client', () => ({
     getProperties: jest.fn(),
     getRentLedger: jest.fn(),
     markRentReminderSent: jest.fn(),
+    getRentCapabilities: jest.fn(),
   },
 }));
 
@@ -57,6 +58,7 @@ describe('ClientRentOperationsPage', () => {
     clientAPI.getProperties.mockResolvedValue({ data: { properties: [] } });
     clientAPI.getRentLedger.mockResolvedValue({ data: {} });
     clientAPI.markRentReminderSent.mockResolvedValue({ data: {} });
+    clientAPI.getRentCapabilities.mockResolvedValue({ data: { tenancy_authority: true } });
   });
 
   it('renders summary cards and tabs', async () => {

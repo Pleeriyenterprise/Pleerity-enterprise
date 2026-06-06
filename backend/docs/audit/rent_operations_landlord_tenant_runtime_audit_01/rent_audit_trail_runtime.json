@@ -1,0 +1,12 @@
+{
+  "at_utc": "2026-06-06T12:08:15.730824+00:00",
+  "admin_audit_status": 200,
+  "rent_actions_seen": [
+    "RENT_LEDGER_CREATED",
+    "RENT_PAYMENT_RECORDED",
+    "RENT_STATUS_RECALCULATED"
+  ],
+  "ledger_payments_count": 11,
+  "ledger_reminders_count": 0,
+  "pass": true
+}

@@ -1,0 +1,36 @@
+{
+  "at_utc": "2026-06-06T12:08:01.429019+00:00",
+  "captures": [
+    {
+      "width": 375,
+      "logged_in": true,
+      "rent_loaded": true,
+      "overflow_ok": true,
+      "tabs": true,
+      "kpi": true,
+      "page_ok": true,
+      "screenshot": "screenshots/rent_ops_375px.png"
+    },
+    {
+      "width": 390,
+      "logged_in": true,
+      "rent_loaded": true,
+      "overflow_ok": true,
+      "tabs": true,
+      "kpi": true,
+      "page_ok": true,
+      "screenshot": "screenshots/rent_ops_390px.png"
+    },
+    {
+      "width": 414,
+      "logged_in": true,
+      "rent_loaded": true,
+      "overflow_ok": true,
+      "tabs": true,
+      "kpi": true,
+      "page_ok": true,
+      "screenshot": "screenshots/rent_ops_414px.png"
+    }
+  ],
+  "pass": true
+}

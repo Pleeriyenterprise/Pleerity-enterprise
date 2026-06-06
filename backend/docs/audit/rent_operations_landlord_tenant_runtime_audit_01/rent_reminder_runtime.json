@@ -1,0 +1,21 @@
+{
+  "at_utc": "2026-06-06T12:03:36.072348+00:00",
+  "implementation": {
+    "daily_job": "rent_operations_daily_job",
+    "auto_event_creation": true,
+    "live_email_sms": false,
+    "default_mode": "manual mark-sent + auto-created events when job runs"
+  },
+  "mark_sent_first": 200,
+  "mark_sent_duplicate": 200,
+  "idempotent": true,
+  "reminder_count_on_ledger": 3,
+  "suppression_note": {
+    "note": "paid ledgers should not generate new reminder types",
+    "paid_sample": "rlp_e76f0d5109f7"
+  },
+  "live_send_on_staging": false,
+  "automatic_send_proven": false,
+  "classification_note": "RENT_REMINDER_GAP if live send not enabled on staging; manual workflow must pass",
+  "pass": true
+}

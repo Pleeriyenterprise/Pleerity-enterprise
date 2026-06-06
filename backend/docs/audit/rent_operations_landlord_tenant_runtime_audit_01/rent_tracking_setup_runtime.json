@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-06-06T11:59:27.347602+00:00",
+  "preview_status": 200,
+  "preview_periods": 0,
+  "schedule_create_status": 200,
+  "idempotent_replay_status": 200,
+  "idempotent_same": true,
+  "validation_blocked": true,
+  "schedule_count": 2,
+  "browser": {
+    "pass": true,
+    "logged_in": true,
+    "rent_loaded": true,
+    "modal_visible": true,
+    "submit_visible": true,
+    "rent_page": true,
+    "screenshot": "screenshots/rent_setup_modal_mobile.png"
+  },
+  "pass": true
+}

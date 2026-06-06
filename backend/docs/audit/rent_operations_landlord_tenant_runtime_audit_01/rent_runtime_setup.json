@@ -1,0 +1,29 @@
+{
+  "at_utc": "2026-06-06T11:56:23.859997+00:00",
+  "run_tag": "20260606T115547Z",
+  "marker": "RENT-LT-AUDIT-20260606T115547Z",
+  "landlord": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "email": "nancy@yopmail.com",
+    "user_id": null
+  },
+  "tenant": {
+    "tenant_id": "962fa7b2-d8a0-4082-8d89-f4a2abb402e0",
+    "email": "f7-ops-wales@yopmail.com",
+    "user_id": null
+  },
+  "property": {
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "address": "Kenny Cresent"
+  },
+  "tenancy_id": "pty_9ec2e1723d7b",
+  "schedule_id": "rs_da9f62d77236",
+  "rent_tracking_enabled": true,
+  "capabilities_status": 200,
+  "reminder_safe_channels": [
+    "manual_mark_sent",
+    "in_app_if_live_send"
+  ],
+  "live_send_note": "RENT_REMINDERS_LIVE_SEND must be true on staging for automatic email/SMS delivery",
+  "pass": true
+}

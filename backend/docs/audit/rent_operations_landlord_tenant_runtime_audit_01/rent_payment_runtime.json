@@ -1,0 +1,17 @@
+{
+  "at_utc": "2026-06-06T12:03:01.685516+00:00",
+  "ledger_id": "rlp_e76f0d5109f7",
+  "full_payment_status": 200,
+  "duplicate_status": 200,
+  "overpayment_status": 400,
+  "duplicate_safe": true,
+  "ledger_after": {
+    "status": "PAID",
+    "outstanding": 0
+  },
+  "browser": {
+    "record_payment_button_reachable": true,
+    "pass": true
+  },
+  "pass": true
+}

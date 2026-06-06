@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-06-06T12:04:44.256906+00:00",
+  "overdue_count": 21,
+  "arrears_count": 6,
+  "attention_ledgers": 21,
+  "risk_signals_status": 200,
+  "rent_risk_signals": 5,
+  "snapshot_status": 200,
+  "command_centre_rent_items": 0,
+  "pass": true
+}

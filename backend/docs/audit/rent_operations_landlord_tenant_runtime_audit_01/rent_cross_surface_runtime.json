@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-06-06T12:05:07.712663+00:00",
+  "summary_collected": 432750,
+  "snapshot_collected": 432750,
+  "collected_match": true,
+  "occupancy_status": 200,
+  "occupancy_rent_status": {
+    "authority": "rent_operations",
+    "currency": "GBP",
+    "overdue_count": 21,
+    "severely_overdue_count": 5,
+    "partially_paid_count": 5,
+    "upcoming_due_count": 98,
+    "total_outstanding_minor": 12502500,
+    "rent_collected_this_month_minor": 432750,
+    "last_payment_at": "2026-06-06",
+    "disclaimer": "Financial authority: Rent Operations. Snapshot is operational, not accounting truth."
+  },
+  "pass": true
+}
