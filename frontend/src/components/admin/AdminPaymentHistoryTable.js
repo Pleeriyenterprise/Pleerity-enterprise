@@ -1,12 +1,101 @@
 import React from 'react';
 import { Button } from '../ui/button';
-import { Loader2, Download, Send } from 'lucide-react';
+import { Loader2, Download, Send, ExternalLink } from 'lucide-react';
 
 function fmt(value) {
   if (!value) return '—';
   const t = new Date(value).getTime();
   if (Number.isNaN(t)) return '—';
   return new Date(value).toLocaleString('en-GB');
+}
+
+export function isLedgerPaymentRow(row) {
+  return row?.source_detail === 'subscription_payment_ledger' || Boolean(row?.financial_evidence_ledger_row);
+}
+
+export function stripeInvoiceViewUrl(row) {
+  if (!row) return null;
+  const url = row.hosted_invoice_url || row.receipt_url || row.invoice_pdf_url;
+  return typeof url === 'string' && url.trim() ? url.trim() : null;
+}
+
+function ReceiptDownloadAction({ row, onDownload, busyDl, compact = false }) {
+  const rk = row.receipt_key || '';
+  const ledger = isLedgerPaymentRow(row);
+  const stripeUrl = stripeInvoiceViewUrl(row);
+
+  if (ledger) {
+    if (stripeUrl) {
+      if (compact) {
+        return (
+          <a
+            href={stripeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-electric-teal hover:underline"
+            data-testid={`stripe-invoice-${rk}`}
+          >
+            View Stripe invoice
+          </a>
+        );
+      }
+      return (
+        <a
+          href={stripeUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 h-8 px-2 text-xs text-electric-teal hover:underline"
+          data-testid={`stripe-invoice-${rk}`}
+          title="View Stripe invoice"
+        >
+          <ExternalLink className="w-4 h-4 shrink-0" />
+          <span>View Stripe invoice</span>
+        </a>
+      );
+    }
+    const unavailableTitle = row.hosted_invoice_unavailable_reason || 'Stripe invoice not available for this ledger row yet.';
+    if (compact) {
+      return (
+        <span className="text-xs text-gray-400 cursor-not-allowed" title={unavailableTitle}>
+          Stripe invoice unavailable
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center h-8 px-2 text-xs text-gray-400" title={unavailableTitle}>
+        Stripe invoice unavailable
+      </span>
+    );
+  }
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        className={`text-xs ${row.download_available ? 'text-electric-teal hover:underline' : 'text-gray-400 cursor-not-allowed'}`}
+        disabled={!row.download_available}
+        onClick={() => onDownload?.(row)}
+        title={row.download_available ? 'Download receipt PDF' : (row.download_unavailable_reason || 'Download unavailable')}
+      >
+        Download
+      </button>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-8 px-2"
+      disabled={!row.download_available || busyDl}
+      onClick={() => onDownload?.(row)}
+      data-testid={`receipt-download-${rk}`}
+      title={row.download_available ? 'Download receipt PDF' : (row.download_unavailable_reason || 'Download unavailable')}
+    >
+      {busyDl ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+    </Button>
+  );
 }
 
 export default function AdminPaymentHistoryTable({
@@ -60,7 +149,7 @@ export default function AdminPaymentHistoryTable({
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button type="button" className={`text-xs ${r.download_available ? 'text-electric-teal hover:underline' : 'text-gray-400 cursor-not-allowed'}`} disabled={!r.download_available} onClick={() => onDownload?.(r)} title={r.download_available ? 'Download receipt PDF' : (r.download_unavailable_reason || 'Download unavailable')}>Download</button>
+              <ReceiptDownloadAction row={r} onDownload={onDownload} compact />
               <button type="button" className={`text-xs ${r.resend_available ? 'text-gray-700 hover:underline' : 'text-gray-400 cursor-not-allowed'}`} disabled={!r.resend_available} onClick={() => onResend?.(r)} title={r.resend_available ? 'Resend receipt confirmation email' : (r.resend_unavailable_reason || 'Resend unavailable')}>Resend</button>
             </div>
           </div>
@@ -97,7 +186,7 @@ export default function AdminPaymentHistoryTable({
                   <div className="text-gray-600">{row.grace_period_ends_at_utc ? `Grace period ends: ${fmt(row.grace_period_ends_at_utc)}` : 'Grace period: No billing timestamp available yet'}</div>
                 </td>
                 <td className="p-2 text-right whitespace-nowrap">
-                  <Button type="button" variant="ghost" size="sm" className="h-8 px-2" disabled={!row.download_available || busyDl} onClick={() => onDownload?.(row)} data-testid={`receipt-download-${rk}`} title={row.download_available ? 'Download receipt PDF' : (row.download_unavailable_reason || 'Download unavailable')}>{busyDl ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}</Button>
+                  <ReceiptDownloadAction row={row} onDownload={onDownload} busyDl={busyDl} />
                   <Button type="button" variant="ghost" size="sm" className="h-8 px-2" disabled={!row.resend_available || busyRs} onClick={() => onResend?.(row)} data-testid={`receipt-resend-${rk}`} title={row.resend_available ? 'Resend receipt confirmation email' : (row.resend_unavailable_reason || 'Resend unavailable')}>{busyRs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button>
                 </td>
               </tr>
