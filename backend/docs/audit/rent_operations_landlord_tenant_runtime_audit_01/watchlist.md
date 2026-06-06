@@ -1,29 +1,20 @@
 # Rent operations landlord-tenant watchlist
 
-- Classification: `PARTIAL` (closeout)
-- Prior audit: `RENT_REMINDER_GAP`
-- Closeout run tag: `20260606T123538Z`
+- Classification: `PARTIAL`
+- Post-deploy run tag: `20260606T143514Z`
 
-## Closeout checklist
-- [x] setup
+## Post-deploy checklist
+- [x] env_proof (commit `1dfcc85a` deployed; job 200; rate limit cleared)
 - [ ] due_delivery
 - [ ] overdue_delivery
-- [x] suppression
-- [x] partial_payment
-- [x] audit_delivery
-- [x] tenant_visibility
-- [ ] retry
+- [x] idempotency
+- [x] tenant_delivery
 - [x] regression
 
-## Code delivered (pending deploy proof)
-- [x] Safe live send: client allowlist + yopmail domain guard
-- [x] Tenant recipient resolution from tenancy assignments
-- [x] RENT_REMINDER notification template seed
-- [x] render.yaml staging env flags
-
 ## Remaining
-- [ ] Deploy to staging and re-run closeout harness after admin job rate limit clears
-- [ ] Verify `RENT_REMINDER` message_logs with status `sent` to `f7-ops-wales@yopmail.com`
-- [ ] Tenant portal in-app notification surface when enabled
+- [ ] Pilot ledger with **missing** due/overdue reminder event (live send only fires on newly created events; pre-live `manual` events are not upgraded)
+- [ ] `RENT_REMINDER` message_logs with `status=sent` to `f7-ops-wales@yopmail.com`
+- [ ] Reminder events with `delivery_status=sent` (not `manual`)
+- [ ] Re-run `rent_reminder_live_delivery_post_deploy_proof_01_execute.py` when a new due_soon/due_today/overdue threshold crosses on an un-evented period
+- [ ] Tenant in-app notification surface when enabled
 - [ ] SMS proof only with configured safe test number
-- [ ] Real-device Safari bottom-bar overlap on enable-tracking modal

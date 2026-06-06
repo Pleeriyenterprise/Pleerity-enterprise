@@ -1,0 +1,33 @@
+{
+  "at_utc": "2026-06-06T14:35:38.445822+00:00",
+  "run_tag": "20260606T143514Z",
+  "marker": "RENT-REM-POST-20260606T143514Z",
+  "min_commit_prefix": "1dfcc85a",
+  "version_endpoint": {
+    "status": 200,
+    "commit_sha": "1dfcc85ad93dcd4918d648be630064b655549b1b",
+    "environment": "production"
+  },
+  "commit_at_or_after_min": true,
+  "env_expected": {
+    "RENT_REMINDERS_LIVE_SEND": "true",
+    "RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS": "yopmail.com",
+    "sms_disabled_unless_safe_number": true
+  },
+  "tenant_recipient": "f7-ops-wales@yopmail.com",
+  "template_key": "RENT_REMINDER",
+  "missing_reminder_candidates": [],
+  "rate_limit_probe_status": 200,
+  "rate_limit_cleared": true,
+  "job_probe_live_send_enabled": null,
+  "live_send_runtime_observable": false,
+  "prior_rent_reminder_logs": 0,
+  "job_reminders_result": {},
+  "deploy_verified": true,
+  "pass": true,
+  "job_probe_detail": "{\"success\":true,\"job\":\"rent_operations_daily_job\",\"message\":\"Rent operations daily: processed=1 skipped=0 failed=0\"}",
+  "delivery_job_status": 200,
+  "delivery_blocker": "no_missing_reminder_types_on_pilot_ledgers; live send only fires on newly created events (pre-live manual events are not upgraded)",
+  "note": "Live-send env vars configured in render.yaml at commit; runtime flag not exposed on job API without new reminder event"
+}

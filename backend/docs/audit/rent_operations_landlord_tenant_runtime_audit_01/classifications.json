@@ -1,30 +1,26 @@
 {
-  "programme": "RENT-REMINDER-LIVE-DELIVERY-CLOSEOUT-01",
+  "programme": "RENT-REMINDER-LIVE-DELIVERY-POST-DEPLOY-PROOF-01",
   "parent_audit": "RENT-OPERATIONS-LANDLORD-TENANT-RUNTIME-AUDIT-01",
+  "prior_classification": "PARTIAL",
   "classification": "PARTIAL",
-  "prior_classification": "RENT_REMINDER_GAP",
   "secondary_flags": [
     "RENT_REMINDER_GAP",
     "DELIVERY_DRIFT"
   ],
   "blockers": [
     "due_delivery",
-    "overdue_delivery",
-    "retry"
+    "overdue_delivery"
   ],
   "checklist": {
-    "setup": true,
+    "env_proof": true,
     "due_delivery": false,
     "overdue_delivery": false,
-    "suppression": true,
-    "partial_payment": true,
-    "audit_delivery": true,
-    "tenant_visibility": true,
-    "retry": false,
+    "idempotency": true,
+    "tenant_delivery": true,
     "regression": true
   },
-  "delivery_blocker": "admin_job_rate_limit_429_during_closeout; staging deploy pending for RENT_REMINDERS_LIVE_SEND + RENT_REMINDER template seed",
-  "code_ready": true,
-  "classified_at_utc": "2026-06-06T13:01:08.002412+00:00",
-  "run_tag": "20260606T123538Z"
+  "deploy_commit_verified": true,
+  "delivery_blocker": "no_missing_reminder_types_on_pilot_ledgers; live send only fires on newly created events (pre-live manual events are not upgraded)",
+  "classified_at_utc": "2026-06-06T14:46:07.008160+00:00",
+  "run_tag": "20260606T143514Z"
 }

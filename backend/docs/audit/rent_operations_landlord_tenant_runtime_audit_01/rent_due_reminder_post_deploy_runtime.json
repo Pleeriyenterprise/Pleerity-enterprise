@@ -1,0 +1,23 @@
+{
+  "at_utc": "2026-06-06T14:39:46.168138+00:00",
+  "candidate": {
+    "ledger_id": null,
+    "missing_type": null,
+    "due_date": null
+  },
+  "job_reminders": {},
+  "new_tenant_sent_count": 0,
+  "tenant_sent_logs": [],
+  "message_detail_redacted": {
+    "status": null,
+    "template_key": null,
+    "recipient": null,
+    "subject": "",
+    "body_has_amount": false,
+    "body_has_due_date": false
+  },
+  "reminder_events_sent": [],
+  "content_accurate": false,
+  "pass": false,
+  "note": "Requires new due_soon/due_today event for live send; existing manual events are not upgraded"
+}

@@ -129,3 +129,70 @@ Local mongo probe: `skipped`
 2. Wait for admin job rate limit window to clear
 3. `python rent_reminder_live_delivery_closeout_01_execute.py`
 4. Expect `RENT_REMINDER` rows in `/admin/message-logs` to `f7-ops-wales@yopmail.com` with `status: sent`
+
+---
+
+## RENT-REMINDER-LIVE-DELIVERY-CLOSEOUT-01 closeout (20260606T131535Z)
+
+**Classification:** `PARTIAL`
+
+### Closeout checklist
+- setup: PASS
+- due_delivery: FAIL
+- overdue_delivery: FAIL
+- suppression: PASS
+- partial_payment: PASS
+- audit_delivery: PASS
+- tenant_visibility: PASS
+- retry: FAIL
+- regression: PASS
+
+**Blockers:** due_delivery, overdue_delivery, retry
+
+Local mongo probe: `skipped`
+
+---
+
+## RENT-REMINDER-LIVE-DELIVERY-POST-DEPLOY-PROOF-01 (20260606T135207Z)
+
+**Classification:** `FAIL_OPERATIONAL`
+
+### Post-deploy checklist
+- env_proof: FAIL
+- due_delivery: FAIL
+- overdue_delivery: FAIL
+- idempotency: FAIL
+- tenant_delivery: PASS
+- regression: PASS
+
+**Blockers:** env_proof, due_delivery, overdue_delivery, idempotency
+
+Commit probe: `1dfcc85ad93d`
+Missing reminder candidates: 0
+
+---
+
+## RENT-REMINDER-LIVE-DELIVERY-POST-DEPLOY-PROOF-01 (20260606T143514Z)
+
+**Classification:** `PARTIAL` (not `VERIFIED_OPERATIONALLY` — no live `sent` delivery evidence)
+
+### Post-deploy checklist
+- env_proof: PASS — commit `1dfcc85a` deployed; admin job 200; rate limit cleared
+- due_delivery: FAIL
+- overdue_delivery: FAIL
+- idempotency: PASS — duplicate job 200; no duplicate sends
+- tenant_delivery: PASS
+- regression: PASS — 28 pytest passed
+
+**Blockers:** due_delivery, overdue_delivery
+
+### Findings
+- Staging backend at commit `1dfcc85ad93dcd4918d648be630064b655549b1b`
+- `rent_operations_daily_job` executed successfully (processed=1) after rate limit cleared
+- **Zero missing reminder types** on pilot payable ledgers — all applicable due/overdue events already exist with `delivery_status: manual` from pre-live era
+- Live send path only attempts delivery when **new** reminder events are created; existing manual events are skipped by design
+- No `RENT_REMINDER` message_logs with `status=sent` to `f7-ops-wales@yopmail.com`
+- Harness: `backend/rent_reminder_live_delivery_post_deploy_proof_01_execute.py`
+
+### Next proof window
+Re-run when a pilot ledger crosses due_soon/due_today/overdue threshold **without** an existing reminder event (e.g. new period or calendar boundary on un-evented ledger).

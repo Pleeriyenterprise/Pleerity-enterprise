@@ -1,0 +1,10 @@
+{
+  "at_utc": "2026-06-06T14:43:49.868502+00:00",
+  "duplicate_job_status": 200,
+  "new_sent_after_duplicate_run": 0,
+  "duplicate_idempotency_keys": 0,
+  "paid_ledger_count": 9,
+  "paid_ledgers_suppressed": true,
+  "blocked_or_failed_logs": 0,
+  "pass": true
+}
