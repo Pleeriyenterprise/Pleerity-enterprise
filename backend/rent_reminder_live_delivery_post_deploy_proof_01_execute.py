@@ -70,9 +70,10 @@ def req(method: str, path: str, token: str = "", **kwargs) -> httpx.Response:
     time.sleep(PACE)
     url = path if path.startswith("http") else f"{API}{path}"
     headers = kwargs.pop("headers", None) or (h(token) if token else h())
+    timeout = kwargs.pop("timeout", 120)
     for attempt in range(5):
         try:
-            resp = getattr(httpx, method)(url, headers=headers, timeout=kwargs.pop("timeout", 120), **kwargs)
+            resp = getattr(httpx, method)(url, headers=headers, timeout=timeout, **kwargs)
             if resp.status_code == 429 and attempt < 4:
                 wait = min(120, 30 * (attempt + 1))
                 time.sleep(wait)
