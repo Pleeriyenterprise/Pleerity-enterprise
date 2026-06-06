@@ -1,21 +1,23 @@
 # Rent operations landlord-tenant watchlist
 
 - Classification: `PARTIAL`
-- Fresh event run tag: `20260606T151019Z`
+- Live-send final run tag: `20260606T154220Z`
 
-## Fresh event checklist
-- [x] fixture
-- [ ] due_delivery
-- [ ] overdue_delivery
+## Live-send final checklist
+- [ ] env_proof
+- [ ] due_live_send
+- [ ] overdue_live_send
 - [x] dedupe
 - [x] payment_suppression
-- [ ] partial_payment_copy
-- [x] tenant_targeting
 - [x] regression
 
-## Remaining
-- [ ] **Apply `RENT_REMINDERS_LIVE_SEND=true` on Render `pleerity-api` service** (render.yaml alone does not update existing services)
-- [ ] Re-run `python backend/rent_reminder_fresh_event_proof_01_execute.py` with new marker after env active
-- [ ] Expect fresh events `delivery_status=sent` and `RENT_REMINDER` message_logs to `f7-ops-wales@yopmail.com`
+## Remaining — Render env (use **code** variable names)
+- [ ] `RENT_REMINDERS_LIVE_SEND=true`
+- [ ] `RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST=6fd5ac4c-3fd4-4112-ade7-156977deb49f` (not `RENT_REMINDERS_LIVE_CLIENT_ALLOWLIST`)
+- [ ] `RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS=yopmail.com` (not `RENT_REMINDERS_SAFE_EMAIL_DOMAINS`)
+- [ ] `SMS_ENABLED` unset or `false` (not `RENT_REMINDERS_SMS_ENABLED`)
+- [ ] Redeploy/restart `pleerity-api` on Render
+- [ ] Re-run `python backend/rent_reminder_live_send_env_final_proof_01_execute.py`
+- [ ] Expect `delivery_status=sent` + `RENT_REMINDER` message_logs to `f7-ops-wales@yopmail.com`
 - [ ] Tenant in-app notification surface when enabled
 - [ ] SMS proof only with configured safe test number

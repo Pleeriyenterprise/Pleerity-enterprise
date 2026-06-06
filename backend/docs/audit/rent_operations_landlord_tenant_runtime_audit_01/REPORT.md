@@ -219,3 +219,34 @@ Re-run when a pilot ledger crosses due_soon/due_today/overdue threshold **withou
 Fresh events prove fixture and job path work, but **`RENT_REMINDERS_LIVE_SEND` is not active on staging runtime** (events created as `manual`, not `pending`/`sent`). `render.yaml` documents the env vars; they must be applied on the live Render web service, then re-run with a new marker.
 
 Harness: `backend/rent_reminder_fresh_event_proof_01_execute.py`
+
+---
+
+## RENT-REMINDER-LIVE-SEND-ENV-FINAL-PROOF-01 (20260606T154220Z)
+
+**Classification:** `PARTIAL` (not `VERIFIED_OPERATIONALLY`)
+
+### Live-send final checklist
+- env_proof: FAIL — `live_send_inferred_active: false`; fresh events still `manual`
+- due_live_send: FAIL — `rlp_f852ee8e80cd` due_today event manual; no message_log
+- overdue_live_send: FAIL — `rlp_9210a6de4e4a` overdue events manual; no message_log
+- dedupe: PASS
+- payment_suppression: PASS
+- regression: PASS — 28 pytest passed
+
+**Blockers:** env_proof, due_live_send, overdue_live_send
+
+### Runtime evidence
+- Commit: `def8b989`
+- Marker: `RENT-LIVE-ENV-20260606T154220Z`
+- Job run 1: **200** (processed=1)
+- Prior / after `RENT_REMINDER` message_logs: **0 / 0**
+
+### Env key mapping (Render must use **code** names)
+| User/doc alias | Code env var |
+|----------------|--------------|
+| `RENT_REMINDERS_LIVE_CLIENT_ALLOWLIST` | `RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST` |
+| `RENT_REMINDERS_SAFE_EMAIL_DOMAINS` | `RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS` |
+| `RENT_REMINDERS_SMS_ENABLED=false` | `SMS_ENABLED` unset or `false` |
+
+Harness: `backend/rent_reminder_live_send_env_final_proof_01_execute.py`

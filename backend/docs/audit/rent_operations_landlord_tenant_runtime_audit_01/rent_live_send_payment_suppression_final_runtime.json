@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-06-06T15:52:58.481893+00:00",
+  "ledger_id": "rlp_9210a6de4e4a",
+  "payment_status": 200,
+  "ledger_status_after": "PAID",
+  "outstanding_after": 0,
+  "prior_reminders_retained": 3,
+  "new_sent_after_paid": 0,
+  "job_after_payment_status": 200,
+  "pass": true
+}

@@ -1,0 +1,35 @@
+{
+  "at_utc": "2026-06-06T15:46:49.114759+00:00",
+  "run_tag": "20260606T154220Z",
+  "marker": "RENT-LIVE-ENV-20260606T154220Z",
+  "commit_sha": "def8b9894e3a7c058f4b3cdb44675c9a2b2830d7",
+  "environment": "production",
+  "code_env_expected": {
+    "RENT_REMINDERS_LIVE_SEND": "true",
+    "RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS": "yopmail.com",
+    "SMS_ENABLED": "false (absent or false)"
+  },
+  "render_aliases_note": {
+    "RENT_REMINDERS_LIVE_CLIENT_ALLOWLIST": "use RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST in code",
+    "RENT_REMINDERS_SAFE_EMAIL_DOMAINS": "use RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS in code",
+    "RENT_REMINDERS_SMS_ENABLED": "use SMS_ENABLED=false or unset in code"
+  },
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "tenant_recipient": "f7-ops-wales@yopmail.com",
+  "fixture": {
+    "due_ledger_id": "rlp_f852ee8e80cd",
+    "overdue_ledger_id": "rlp_9210a6de4e4a",
+    "due_schedule_id": "rs_29802234262f",
+    "overdue_schedule_id": "rs_d0de645a19b7"
+  },
+  "job_run_1_status": 200,
+  "job_run_1_detail": "{\"success\":true,\"job\":\"rent_operations_daily_job\",\"message\":\"Rent operations daily: processed=1 skipped=0 failed=0\",\"result\":{\"message\":\"Rent operations daily: processed=1 skipped=0 failed=0\",\"count\":1,\"outcome_status\":\"success\",\"outcome_metrics\":{\"processed\":1,\"skipped_no_flag\":0,\"clients_failed\":0",
+  "live_send_inferred_active": false,
+  "sms_sent_logs": 0,
+  "tenant_api_blocked": true,
+  "prior_message_logs": 0,
+  "after_message_logs": 0,
+  "tenant_sent_after_job": 0,
+  "pass": false
+}

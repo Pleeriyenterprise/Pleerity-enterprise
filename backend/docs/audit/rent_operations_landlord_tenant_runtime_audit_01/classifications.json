@@ -1,5 +1,5 @@
 {
-  "programme": "RENT-REMINDER-FRESH-EVENT-PROOF-01",
+  "programme": "RENT-REMINDER-LIVE-SEND-ENV-FINAL-PROOF-01",
   "parent_audit": "RENT-OPERATIONS-LANDLORD-TENANT-RUNTIME-AUDIT-01",
   "prior_classification": "PARTIAL",
   "classification": "PARTIAL",
@@ -8,21 +8,19 @@
     "DELIVERY_DRIFT"
   ],
   "blockers": [
-    "due_delivery",
-    "overdue_delivery",
-    "partial_payment_copy"
+    "env_proof",
+    "due_live_send",
+    "overdue_live_send"
   ],
   "checklist": {
-    "fixture": true,
-    "due_delivery": false,
-    "overdue_delivery": false,
+    "env_proof": false,
+    "due_live_send": false,
+    "overdue_live_send": false,
     "dedupe": true,
     "payment_suppression": true,
-    "partial_payment_copy": false,
-    "tenant_targeting": true,
     "regression": true
   },
-  "delivery_note": "Fresh reminder events created with delivery_status=manual — RENT_REMINDERS_LIVE_SEND not active on staging runtime; set env on Render service and re-run with new marker",
-  "classified_at_utc": "2026-06-06T15:23:24.651341+00:00",
-  "run_tag": "20260606T151019Z"
+  "note": "Events still delivery_status=manual after fresh fixtures — RENT_REMINDERS_LIVE_SEND not active on running Render service. Use code env keys (not aliases): RENT_REMINDERS_LIVE_SEND, RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST, RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS; SMS_ENABLED unset/false",
+  "classified_at_utc": "2026-06-06T15:55:07.067190+00:00",
+  "run_tag": "20260606T154220Z"
 }

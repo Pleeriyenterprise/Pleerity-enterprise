@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-06-06T15:46:38.909111+00:00",
+  "ledger_id": "rlp_f852ee8e80cd",
+  "ledger_due_date": "2026-06-06",
+  "ledger_outstanding": 126500,
+  "reminder_events": [
+    {
+      "reminder_type": "due_today",
+      "delivery_status": "manual",
+      "recipient_email": null,
+      "reminder_key": "RENT_DUE_TODAY_rlp_f852ee8e80cd_2026-06"
+    }
+  ],
+  "sent_events_count": 0,
+  "created_as_manual": true,
+  "tenant_sent_logs": [],
+  "message_detail": {
+    "status": null,
+    "template_key": null,
+    "recipient": null,
+    "subject": "",
+    "body_preview": ""
+  },
+  "content_accurate": false,
+  "non_tenant_sent": 0,
+  "pass": false,
+  "job_run_status": 200
+}

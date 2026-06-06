@@ -1,0 +1,40 @@
+{
+  "at_utc": "2026-06-06T15:46:44.456016+00:00",
+  "ledger_id": "rlp_9210a6de4e4a",
+  "ledger_due_date": "2026-02-01",
+  "ledger_outstanding": 119900,
+  "reminder_events": [
+    {
+      "reminder_type": "overdue_14d",
+      "delivery_status": "manual",
+      "recipient_email": null,
+      "reminder_key": "RENT_OVERDUE_14D_rlp_9210a6de4e4a_2026-02"
+    },
+    {
+      "reminder_type": "overdue_7d",
+      "delivery_status": "manual",
+      "recipient_email": null,
+      "reminder_key": "RENT_OVERDUE_7D_rlp_9210a6de4e4a_2026-02"
+    },
+    {
+      "reminder_type": "overdue_3d",
+      "delivery_status": "manual",
+      "recipient_email": null,
+      "reminder_key": "RENT_OVERDUE_3D_rlp_9210a6de4e4a_2026-02"
+    }
+  ],
+  "sent_events_count": 0,
+  "created_as_manual": true,
+  "tenant_sent_logs": [],
+  "message_detail": {
+    "status": null,
+    "template_key": null,
+    "recipient": null,
+    "subject": "",
+    "body_preview": ""
+  },
+  "content_accurate": false,
+  "non_tenant_sent": 0,
+  "pass": false,
+  "job_run_status": 200
+}
