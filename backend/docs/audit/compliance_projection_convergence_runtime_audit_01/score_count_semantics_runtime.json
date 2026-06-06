@@ -1,0 +1,91 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "2026-06-06T23:09:37.570015+00:00",
+  "staging": {
+    "today": {
+      "urgent_count": 0,
+      "in_progress_count": 4,
+      "summary": {
+        "urgent_count": 0,
+        "upcoming_count": 0,
+        "in_progress_count": 4,
+        "recently_completed_count": 0,
+        "snoozed_count": 0,
+        "hidden_count": 0,
+        "habit": {
+          "urgent_open_total": 0,
+          "items_due_or_expiring_in_7_days": 0,
+          "tasks_acknowledged_last_7_days": 0
+        }
+      }
+    },
+    "score": {
+      "score": 93,
+      "operational_recommendations": 4,
+      "assurance_opportunities": 0,
+      "has_score_confidence": false,
+      "stats": {
+        "total_requirements": 8,
+        "compliant": 8,
+        "pending": 4,
+        "missing_evidence": 0,
+        "expiring_soon": 0,
+        "overdue": 0,
+        "critical_overdue": 0,
+        "documents_uploaded": 8,
+        "documents_verified": 8,
+        "verified_coverage_percent": 50.0,
+        "total_coverage_percent": 50.0,
+        "document_coverage_percent": 50.0,
+        "days_until_next_expiry": 1090,
+        "nearest_expiry_type": "eicr",
+        "hmo_properties": 0,
+        "gap_engine": {
+          "by_kind": {
+            "MISSING_EVIDENCE": 5
+          },
+          "by_severity": {
+            "LOW": 5
+          },
+          "total_open": 5,
+          "policy": {
+            "critical_mandatory_breach_count": 0,
+            "high_risk_gap_count": 0,
+            "attention_only_gap_count": 0,
+            "unknown_or_stale_signal_count": 0,
+            "policy_fields_present_count": 5,
+            "policy_coverage_percent": 100.0,
+            "top_reason_codes": {},
+            "policy_versions": {
+              "v1": 5
+            },
+            "total_open": 5
+          }
+        },
+        "properties_at_risk_count": 0
+      },
+      "reporting_semantics_counts": {
+        "tracked_requirement_count": 8,
+        "score_tracked_requirement_count": 8,
+        "compliant_requirement_count": 8,
+        "missing_document_count": 0,
+        "expiring_requirement_count": 0,
+        "satisfied_requirement_count": 4,
+        "verified_requirement_count": 4,
+        "platform_review_pending_count": 0,
+        "self_recorded_count": 4,
+        "pending": 4,
+        "overdue": 0
+      }
+    },
+    "dashboard_compliance_summary": {
+      "total_requirements": 10,
+      "compliant": 6,
+      "overdue": 0,
+      "expiring_soon": 0
+    },
+    "requirements_visible": 10,
+    "properties_green": true
+  },
+  "pass": false
+}

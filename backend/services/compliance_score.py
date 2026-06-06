@@ -567,6 +567,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         stats = {
             "total_requirements": total_reqs,
             "compliant": compliant,
+            "satisfied": _counts.get("satisfied", compliant),
             "pending": pending,
             "missing_evidence": missing_evidence,
             "expiring_soon": expiring_soon,
@@ -918,44 +919,16 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             code_key = str(r.get("requirement_code") or r.get("requirement_type") or "").strip().lower()
             if code_key:
                 req_by_code.setdefault((str(r.get("property_id") or ""), code_key), r)
-        recommendations = []
-        for action in aggregated_actions:
-            if len(recommendations) >= 5:
-                break
-            code = action.get("requirement_code") or ""
-            pid = str(action.get("property_id") or "")
-            rid = str(action.get("requirement_id") or "")
-            match = req_by_id.get((pid, rid)) if rid else None
-            if match is None and code:
-                match = req_by_code.get((pid, str(code).strip().lower()))
-            if match is not None:
-                window_days = resolve_expiring_soon_days_for_requirement(
-                    match,
-                    property_doc=prop_map.get(pid, {}),
-                    client_doc=client_row if isinstance(client_row, dict) else None,
-                )
-                if not requirement_has_active_negative_actionability(
-                    match,
-                    now=now,
-                    expiring_window_days=window_days,
-                ):
-                    continue
-            display = action.get("display_label")
-            if not display and code:
-                from presentation.label_service import requirement_label
+        from services.assurance_actionability_service import (
+            build_score_confidence_explanation,
+            partition_score_recommendations,
+        )
 
-                display = requirement_label(code, audience="client")
-            recommendations.append(
-                {
-                    "priority": action.get("priority") or "medium",
-                    "action": action.get("action") or f"Improve {display or code or 'compliance evidence'}",
-                    "impact": f"+{int(round(float(action.get('impact_points') or 0)))} points",
-                    "requirement_code": code or None,
-                    "display_label": display,
-                    "property_id": pid or None,
-                    "requirement_id": rid or None,
-                }
-            )
+        recommendations, assurance_opportunities = partition_score_recommendations(
+            aggregated_actions,
+            req_by_id,
+            req_by_code,
+        )
         if not recommendations:
             if overdue > 0:
                 recommendations.append({"priority": "high", "action": f"Address {overdue} overdue requirement(s)", "impact": "+10-20 points"})
@@ -982,12 +955,26 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         applicable_points = sum(float(p.get("compliance_applicable_points") or 0) for p in properties)
         _pending_snap = portfolio_pending_score_recalc_snapshot(properties)
         from services.reporting_semantics_v1 import (
+            METRIC_SCORE_TRACKED,
+            METRIC_TRACKED,
             build_reporting_semantics_payload,
             compute_reporting_semantic_counts,
+            requirement_row_in_tracked_attention_views,
         )
+        from services.requirement_satisfaction_service import is_requirement_satisfied
 
-        _reporting_semantics = build_reporting_semantics_payload(
-            compute_reporting_semantic_counts(portal_reqs)
+        _semantic_counts = compute_reporting_semantic_counts(portal_reqs)
+        _reporting_semantics = build_reporting_semantics_payload(_semantic_counts)
+        stats["tracked_requirement_count"] = int(_semantic_counts.get(METRIC_TRACKED) or 0)
+        stats["score_tracked_requirement_count"] = int(_semantic_counts.get(METRIC_SCORE_TRACKED) or total_reqs)
+        stats["lifecycle_satisfied_count"] = sum(
+            1
+            for r in portal_reqs
+            if requirement_row_in_tracked_attention_views(r) and is_requirement_satisfied(r)
+        )
+        _score_confidence = build_score_confidence_explanation(
+            score=client_score,
+            semantic_counts=_semantic_counts,
         )
         result = {
             "score": client_score,
@@ -1020,6 +1007,8 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "stats": stats,
             "reporting_semantics": _reporting_semantics,
             "recommendations": recommendations[:5],
+            "assurance_opportunities": assurance_opportunities[:5],
+            "score_confidence": _score_confidence,
             "properties_count": len(properties),
             "score_last_calculated_at": score_last_calculated_at.isoformat() if isinstance(score_last_calculated_at, datetime) else score_last_calculated_at,
             "score_model_version": "1.2",

@@ -1,0 +1,40 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "2026-06-06T23:08:56.053842+00:00",
+  "surfaces": {
+    "today_api": {
+      "route": "GET /api/today/items",
+      "gate": "today_task_is_actionable + assurance_actionability_service"
+    },
+    "today_browser": {
+      "component": "todayExecutionWorkspace + portalRequirementAttention",
+      "gate": "isTaskAssuranceOnly / filterInboxTasksForOperationalActionability"
+    },
+    "quick_actions": {
+      "source": "compliance_score.recommendations + assurance_opportunities",
+      "gate": "partition_score_recommendations"
+    },
+    "score_page": {
+      "fields": [
+        "score_confidence",
+        "reporting_semantics",
+        "assurance_opportunities"
+      ]
+    },
+    "dashboard_summary": {
+      "route": "GET /api/client/dashboard",
+      "gate": "enrich + is_requirement_satisfied"
+    },
+    "persisted_actions": {
+      "source": "compliance_top_next_actions",
+      "classifier": "classify_score_action"
+    }
+  },
+  "action_kinds": [
+    "OPERATIONAL_ACTION",
+    "ASSURANCE_CONFIDENCE_OPPORTUNITY",
+    "INTERNAL_REVIEW_ITEM",
+    "INFORMATIONAL",
+    "STALE_INVALID"
+  ]
+}

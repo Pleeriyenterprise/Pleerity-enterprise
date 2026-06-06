@@ -2827,9 +2827,12 @@ const ClientDashboard = () => {
                 <h3 className="font-semibold text-midnight-blue">Quick Actions to Improve Your Score</h3>
               </div>
               
-              {complianceScore?.recommendations?.length > 0 ? (
+              {(complianceScore?.recommendations?.length > 0 || complianceScore?.assurance_opportunities?.length > 0) ? (
                 <div className="space-y-3">
-                  {(complianceScore?.recommendations ?? []).slice(0, 3).map((rec, idx) => {
+                  {[
+                    ...(complianceScore?.recommendations ?? []),
+                    ...(complianceScore?.assurance_opportunities ?? []),
+                  ].slice(0, 3).map((rec, idx) => {
                     let actionDisplay = rec.action || '';
                     const code = rec.requirement_code;
                     const displayLbl = rec.display_label || (code ? requirementLabel(code) : '');
@@ -2858,6 +2861,8 @@ const ClientDashboard = () => {
                     const bestPropertyId = recPropertyId || normalizeRouteId(bestReq?.property_id);
                     actionDisplay = resolveQuickActionDisplayText(actionDisplay, bestReq, displayLbl, sorted);
                     const isAssuranceAction =
+                      rec.action_kind === 'ASSURANCE_CONFIDENCE_OPPORTUNITY' ||
+                      rec.priority === 'info' ||
                       isAssuranceQuickAction(actionDisplay, bestReq) ||
                       sorted.some((r) => isAssuranceQuickAction(actionDisplay, r));
                     const fixNowPath = buildEntityRoute(

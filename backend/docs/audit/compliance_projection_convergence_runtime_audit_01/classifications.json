@@ -1,14 +1,20 @@
 {
-  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01",
-  "generated_at": "2026-06-06T21:50:45.293984+00:00",
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "2026-06-06T23:10:52.864471+00:00",
   "classification": "PARTIAL",
-  "local_validation_pass": true,
-  "regression_pass": true,
-  "staging_probe": true,
-  "root_causes_addressed": [
-    "PROPERTY_HEALTH_DRIFT: stale DB compliance_status on GET /properties",
-    "OPERATIONAL_INBOX_DRIFT: assurance review treated as urgent action",
-    "SCORE_AGGREGATION_DRIFT: valid count used legacy COMPLIANT/VALID only",
-    "QUICK_ACTIONS: stale persisted top_next_actions not filtered"
-  ]
+  "prior_closeout": "SCORE_DRIFT",
+  "local_validation": true,
+  "staging_session": true,
+  "regression": true,
+  "staging_api_deployed": false,
+  "checks": {
+    "today_api_urgent_zero": true,
+    "today_browser_no_do_this_next": true,
+    "quick_actions_split": false,
+    "score_confidence_api": false,
+    "dashboard_summary_enriched": false,
+    "properties_green": true,
+    "requirements_10_visible": true
+  },
+  "notes": "Code fix complete; staging API still serves legacy recommendations (4 HIGH) without assurance_opportunities or score_confidence until deploy."
 }

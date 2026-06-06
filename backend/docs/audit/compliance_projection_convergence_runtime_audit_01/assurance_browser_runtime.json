@@ -1,0 +1,16 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "2026-06-06T23:10:47.180607+00:00",
+  "screenshots": {
+    "today": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_convergence_screenshots\\assurance_01_today.png",
+    "dashboard": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_convergence_screenshots\\assurance_02_dashboard.png",
+    "compliance_score": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_convergence_screenshots\\assurance_03_score.png",
+    "requirements": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_convergence_screenshots\\assurance_04_requirements.png",
+    "properties": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\assurance_convergence_screenshots\\assurance_05_properties.png"
+  },
+  "findings": {
+    "do_this_next": false,
+    "needs_action_positive": false
+  },
+  "pass": true
+}

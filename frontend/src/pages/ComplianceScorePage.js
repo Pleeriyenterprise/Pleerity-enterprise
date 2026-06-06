@@ -78,6 +78,12 @@ import {
   getGovernanceUxPilotPortfolioSupplementLine,
 } from '../utils/governanceUxPilotAdapter';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
+import {
+  isAssuranceQuickAction,
+  quickActionSupportingCopy,
+  SCORE_WIDGET_LABEL_VALID,
+  SCORE_WIDGET_TOOLTIP_VALID,
+} from '../utils/dashboardScoreWidgetLabels';
 
 function scoreDriverStatusLabel(raw) {
   const s = String(raw || '').trim().toUpperCase();
@@ -586,8 +592,24 @@ const ComplianceScorePage = () => {
                     </p>
                   ) : null}
                   <p className="text-sm text-gray-600 mt-1">{SCORE_HEADLINE_DISCLAIMER}</p>
+                  {scoreData?.score_confidence?.detail ? (
+                    <p
+                      className="text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-md px-2 py-1.5 mt-2 leading-snug"
+                      data-testid="compliance-score-confidence-explanation"
+                    >
+                      {scoreData.score_confidence.headline ? (
+                        <span className="font-medium block">{scoreData.score_confidence.headline} </span>
+                      ) : null}
+                      {scoreData.score_confidence.detail}
+                    </p>
+                  ) : null}
                   <p className="text-sm text-gray-500 mt-1">
-                    Based on {scoreData?.stats?.total_requirements ?? 0} tracked items across {scoreData?.properties_count ?? 0} {scoreData?.properties_count === 1 ? 'property' : 'properties'}.
+                    Based on {scoreData?.stats?.score_tracked_requirement_count ?? scoreData?.stats?.total_requirements ?? 0} score-tracked obligations across {scoreData?.properties_count ?? 0} {scoreData?.properties_count === 1 ? 'property' : 'properties'}.
+                    {(scoreData?.stats?.lifecycle_satisfied_count ?? 0) > 0 ? (
+                      <span className="block mt-0.5">
+                        {scoreData.stats.lifecycle_satisfied_count} lifecycle requirements satisfied on file.
+                      </span>
+                    ) : null}
                     {scoreData?.properties_count != null && scoreData.properties_count > 1 && (
                       <span className="block mt-0.5">{SCORE_METHODOLOGY_PORTFOLIO}</span>
                     )}
@@ -919,7 +941,7 @@ const ComplianceScorePage = () => {
             <CardHeader>
               <CardTitle className="text-midnight-blue flex items-center gap-2">
                 <Zap className="w-5 h-5 text-electric-teal" />
-                Actions to Improve Your Score
+                Operational actions
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -927,7 +949,7 @@ const ComplianceScorePage = () => {
                 {scoreData.recommendations.map((rec, idx) => {
                   const pri = (rec.priority != null && rec.priority !== '') ? String(rec.priority).toLowerCase() : 'low';
                   return (
-                  <div 
+                  <div
                     key={idx}
                     className={`flex items-start gap-3 p-4 rounded-lg border ${
                       pri === 'high' || pri === 'critical' ? 'bg-red-50 border-red-200' :
@@ -942,7 +964,7 @@ const ComplianceScorePage = () => {
                     }`} />
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{rec.action || '—'}</p>
-                      <p className="text-sm text-gray-500 mt-1">Completing this can help improve your score.</p>
+                      <p className="text-sm text-gray-500 mt-1">Completing this addresses an active compliance obligation.</p>
                     </div>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       pri === 'high' || pri === 'critical' ? 'bg-red-100 text-red-700' :
@@ -955,6 +977,48 @@ const ComplianceScorePage = () => {
                   );
                 })}
               </div>
+            </CardContent>
+          </Card>
+        )}
+        {scoreData?.assurance_opportunities?.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-midnight-blue flex items-center gap-2">
+                <Info className="w-5 h-5 text-slate-500" />
+                Assurance confidence opportunities
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-3">
+                Optional steps to improve score confidence. Your obligations are recorded on file — these are not urgent operational actions.
+              </p>
+              <div className="space-y-3">
+                {scoreData.assurance_opportunities.map((rec, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3 p-4 rounded-lg border bg-gray-50 border-gray-200"
+                    data-testid={`assurance-opportunity-${idx}`}
+                  >
+                    <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-gray-400" />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">{rec.action || '—'}</p>
+                      <p className="text-sm text-gray-500 mt-1">{quickActionSupportingCopy(true)}</p>
+                    </div>
+                    <span className="px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                      OPTIONAL
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {!scoreData?.recommendations?.length && !scoreData?.assurance_opportunities?.length && (
+          <Card className="mb-8">
+            <CardContent className="py-6">
+              <p className="text-sm text-gray-700" data-testid="no-operational-score-actions">
+                No operational actions required. Your tracked obligations are in good standing.
+              </p>
             </CardContent>
           </Card>
         )}

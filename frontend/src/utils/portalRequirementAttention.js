@@ -9,6 +9,7 @@ import {
   isRequirementNotApplicableLifecycle,
   isRequirementPendingReviewAttention,
   isRequirementUrgentActionAttention,
+  resolveClientRequirementLifecycle,
 } from './clientRequirementLifecycle';
 
 export {
@@ -118,7 +119,11 @@ export function alignTodayPayloadTaskSections(todayPayload, requirementsById) {
     todayPayload && typeof todayPayload === 'object' && todayPayload.tasks && typeof todayPayload.tasks === 'object'
       ? todayPayload.tasks
       : {};
-  const align = (key) => filterInboxTasksForTrackedRequirements(raw[key] || [], requirementsById);
+  const align = (key) =>
+    filterInboxTasksForOperationalActionability(
+      filterInboxTasksForTrackedRequirements(raw[key] || [], requirementsById),
+      requirementsById,
+    );
   return {
     urgent: align('urgent'),
     upcoming: align('upcoming'),

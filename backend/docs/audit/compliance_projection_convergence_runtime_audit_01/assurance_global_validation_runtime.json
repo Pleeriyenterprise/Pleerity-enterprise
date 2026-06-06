@@ -1,0 +1,24 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "2026-06-06T23:08:56.492710+00:00",
+  "scenarios": [
+    {
+      "id": "B_satisfied_self_recorded",
+      "classify": "ASSURANCE_CONFIDENCE_OPPORTUNITY",
+      "today_issue_suppressed": true,
+      "pass": true
+    },
+    {
+      "id": "C_missing_evidence",
+      "classify": "OPERATIONAL_ACTION",
+      "today_actionable": true,
+      "pass": true
+    },
+    {
+      "id": "A_fully_verified",
+      "classify": "STALE_INVALID",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

@@ -1,6 +1,8 @@
 import {
   buildFalseEmptyStateDisclosure,
   classifyTaskOperationalBucket,
+  isTaskAssuranceOnly,
+  pickPrimaryExecutionTask,
   visibleOpenCount,
 } from './todayExecutionWorkspace';
 
@@ -26,6 +28,23 @@ describe('todayExecutionWorkspace', () => {
     });
     expect(d.isFalseCalm).toBe(true);
     expect(d.message).toMatch(/Command Centre/);
+  });
+
+  it('does not elevate assurance-only issue tasks to primary execution', () => {
+    const reqMap = new Map([
+      ['r1', { requirement_id: 'r1', client_lifecycle_state: 'SATISFIED_UNVERIFIED' }],
+    ]);
+    const tasks = [
+      {
+        id: 'issue:r1',
+        source_type: 'issue',
+        metadata: { requirement_id: 'r1' },
+        section: 'in_progress',
+        impact_score: 99,
+      },
+    ];
+    expect(isTaskAssuranceOnly(tasks[0], reqMap)).toBe(true);
+    expect(pickPrimaryExecutionTask(tasks, reqMap, new Map())).toBeNull();
   });
 
   it('sums visible open operational sections', () => {

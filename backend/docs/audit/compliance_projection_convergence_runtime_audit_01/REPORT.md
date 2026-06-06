@@ -1,24 +1,44 @@
-# COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01
+# COMPLIANCE-ASSURANCE-ACTIONABILITY-CONVERGENCE-01
 
-**Classification:** PARTIAL
-**Generated:** 2026-06-06T21:50:45.294983+00:00
+**Classification:** `PARTIAL` (code complete; staging API deploy pending)  
+**Prior closeout:** `SCORE_DRIFT` from post-deploy closeout  
+**Target reference:** Sophie Walker (`PLE-CVP-2026-000023`)
 
 ## Summary
 
-Converged operational projections across Today inbox, compliance score stats, property health RAG, dashboard quick actions, and scheduled compliance status jobs.
+Implemented global separation of **assurance-confidence opportunities** from **operational actionability** across Today, score recommendations, dashboard summary, and client UI. Local validation and regression pass. Staging API probe (pre-deploy) still returns legacy `recommendations` without `assurance_opportunities` / `score_confidence`; browser Today no longer shows “Do this next” for the target account.
 
-## Fixes
+## Changes
 
-1. **Property health** — `GET /client/properties` now computes live RAG via `property_compliance_status_service` (enriched requirements). Scheduled job aligned.
-2. **Today / inbox** — `requirement_has_active_negative_actionability` limited to `OPERATIONAL_INBOX_ATTENTION_REASONS`; assurance-only review suppressed when obligation recorded on file.
-3. **Score stats** — `stats.compliant` / `stats.satisfied` use `is_requirement_satisfied` (includes declaration/recorded-on-file paths).
-4. **Quick actions** — Recommendations from `compliance_top_next_actions` filtered when requirement no longer has operational negative actionability.
-5. **Dashboard** — `/client/dashboard` compliance summary uses `compute_client_portal_requirement_stats` on enriched rows.
+| Area | Fix |
+|------|-----|
+| `assurance_actionability_service.py` | Central classifier; partitions score actions; Today issue suppression |
+| `today_projection_service.py` | `today_task_is_actionable` uses assurance gate |
+| `compliance_score.py` | `recommendations` vs `assurance_opportunities`; `score_confidence`; stats semantics |
+| `routes/client.py` dashboard | Enrich + `is_requirement_satisfied` for compliance_summary |
+| `todayExecutionWorkspace.js` | No assurance hero; operational bucket filter |
+| `portalRequirementAttention.js` | `filterInboxTasksForOperationalActionability` |
+| `ComplianceScorePage.js` | Confidence copy; optional assurance section |
+| `ClientDashboard.js` | Renders `assurance_opportunities` as optional |
 
-## Regression
+## Part results
 
-`projection_regression_runtime.json`: exit_code=0
+| Part | Result |
+|------|--------|
+| 1 Inventory | `assurance_actionability_inventory_runtime.json` |
+| 2 Today convergence | API urgent=0 ✓; browser no Do this next ✓ (see screenshots) |
+| 3 Quick actions | Code ✓; staging API still 4 legacy HIGH cards ✗ |
+| 4 Score counts | Code adds lifecycle/score-tracked labels; staging pre-deploy |
+| 5 Score confidence copy | Code ✓; `score_confidence` absent on staging API until deploy |
+| 6 Global validation | All scenarios pass locally |
+| 7 Browser proof | `assurance_browser_runtime.json` + screenshots |
+| 8 Regression | 60 tests pass |
+| 9 Classification | `PARTIAL` |
 
-## Staging
+## Post-deploy verification
 
-See `projection_browser_runtime.json`.
+After deploy, re-run:
+
+`python scripts/compliance_assurance_actionability_convergence_01_execute.py`
+
+Expect: `assurance_opportunities` > 0, `recommendations` operational-only empty, `score_confidence.detail` present, dashboard `satisfied_requirements` = 10.

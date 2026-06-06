@@ -561,6 +561,10 @@ def dedupe_tasks_by_requirement(tasks: List[Dict[str, Any]]) -> List[Dict[str, A
 
 def today_task_is_actionable(task: Dict[str, Any]) -> bool:
     """Has at least one business action or primary deep link; suppresses satisfied requirement tasks."""
+    from services.assurance_actionability_service import task_is_assurance_only_inbox_item
+
+    if task_is_assurance_only_inbox_item(task):
+        return False
     meta = task.get("metadata") if isinstance(task.get("metadata"), dict) else {}
     ta = meta.get("take_action") if isinstance(meta.get("take_action"), dict) else {}
     if ta.get("suppressed"):
@@ -575,6 +579,9 @@ def today_task_is_actionable(task: Dict[str, Any]) -> bool:
             "take_action": ta,
             "status": meta.get("legacy_status") or meta.get("status"),
             "evidence_authority": meta.get("evidence_authority"),
+            "client_lifecycle_state": meta.get("client_lifecycle_state"),
+            "assurance_tier": meta.get("assurance_tier"),
+            "requirement_satisfied": meta.get("requirement_satisfied"),
         }
         from services.requirement_attention_eligibility_service import is_requirement_attention_eligible
 

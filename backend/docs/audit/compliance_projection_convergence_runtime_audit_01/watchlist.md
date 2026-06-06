@@ -1,6 +1,6 @@
-# Watchlist
+# Watchlist — assurance actionability convergence
 
-- Deploy backend for live property RAG on Properties page
-- Re-run scheduled compliance_status job or trigger manual scan after deploy
-- 93/100 may remain correct when assurance confidence < 100% (self-recorded evidence); distinguish in UI copy
-- Manual browser verification on Sophie Walker / 2-property staging account after deploy
+- **Deploy backend + frontend** for `assurance_opportunities`, `score_confidence`, and enriched dashboard `compliance_summary`.
+- **Re-run** `compliance_assurance_actionability_convergence_01_execute.py` after deploy; expect `VERIFIED_OPERATIONALLY`.
+- **Score-tracked vs tracked counts:** Staging shows 8 score-tracked / 10 requirements visible — confirm alias-family deduplication is intentional in `reporting_semantics_v1`.
+- **Gap engine MISSING_EVIDENCE (5 LOW):** Informational gaps; ensure they do not resurface as operational Today tasks after deploy.

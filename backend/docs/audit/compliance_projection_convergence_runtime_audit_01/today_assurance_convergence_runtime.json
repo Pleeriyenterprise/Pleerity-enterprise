@@ -1,0 +1,22 @@
+{
+  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-CONVERGENCE-01",
+  "generated_at": "2026-06-06T23:09:37.570015+00:00",
+  "staging": {
+    "urgent_count": 0,
+    "in_progress_count": 4,
+    "summary": {
+      "urgent_count": 0,
+      "upcoming_count": 0,
+      "in_progress_count": 4,
+      "recently_completed_count": 0,
+      "snoozed_count": 0,
+      "hidden_count": 0,
+      "habit": {
+        "urgent_open_total": 0,
+        "items_due_or_expiring_in_7_days": 0,
+        "tasks_acknowledged_last_7_days": 0
+      }
+    }
+  },
+  "pass": true
+}

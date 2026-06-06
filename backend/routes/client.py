@@ -512,14 +512,32 @@ async def get_dashboard(
             client_doc=client or {},
             properties=properties,
         )
-        projected = [project_requirement_row_client_runtime(r) for r in requirements]
+        from services.requirement_truth import enrich_requirements_for_client
+        from services.requirement_client_runtime_surface import compute_client_portal_requirement_stats
+        from services.reporting_semantics_v1 import (
+            METRIC_SCORE_TRACKED,
+            METRIC_TRACKED,
+            compute_reporting_semantic_counts,
+            requirement_row_in_tracked_attention_views,
+        )
+        from services.requirement_satisfaction_service import is_requirement_satisfied
+
+        enriched, _ = await enrich_requirements_for_client(db, user["client_id"], list(requirements))
+        projected = [project_requirement_row_client_runtime(r) for r in enriched]
         visible_reqs = [r for r in projected if client_portal_surface_visible_row(r)]
 
-        # Calculate compliance summary (portal-visible rows only; aligns with /client/compliance-score stats)
-        total_requirements = len(visible_reqs)
-        compliant = sum(1 for r in visible_reqs if (r.get("status") or "") == "COMPLIANT")
-        overdue = sum(1 for r in visible_reqs if (r.get("status") or "") in ("OVERDUE", "EXPIRED"))
-        expiring = sum(1 for r in visible_reqs if (r.get("status") or "") == "EXPIRING_SOON")
+        # Compliance summary — enrich + satisfaction authority (aligns with Requirements + score semantics)
+        _dash_counts = compute_client_portal_requirement_stats(visible_reqs)
+        _dash_semantic = compute_reporting_semantic_counts(visible_reqs)
+        total_requirements = int(_dash_semantic.get(METRIC_TRACKED) or len(visible_reqs))
+        compliant = sum(
+            1
+            for r in visible_reqs
+            if requirement_row_in_tracked_attention_views(r) and is_requirement_satisfied(r)
+        )
+        overdue = _dash_counts["overdue"]
+        expiring = _dash_counts["expiring_soon"]
+        score_tracked = int(_dash_semantic.get(METRIC_SCORE_TRACKED) or _dash_counts["total_requirements"])
 
         # Group requirements by property so Properties page status matches Compliance Score
         reqs_by_property = {}
@@ -596,8 +614,10 @@ async def get_dashboard(
             "compliance_summary": {
                 "total_requirements": total_requirements,
                 "compliant": compliant,
+                "satisfied_requirements": compliant,
+                "score_tracked_requirements": score_tracked,
                 "overdue": overdue,
-                "expiring_soon": expiring
+                "expiring_soon": expiring,
             },
             "onboarding_checklist": checklist,
             "compliance_score_headline": compliance_score_headline,
