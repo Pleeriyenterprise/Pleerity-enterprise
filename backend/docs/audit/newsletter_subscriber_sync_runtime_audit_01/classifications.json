@@ -1,0 +1,29 @@
+{
+  "programme": "NEWSLETTER-SUBSCRIBER-SYNC-RUNTIME-AUDIT-01",
+  "classification": "ADMIN_DASHBOARD_DRIFT",
+  "secondary_flags": [
+    "ADMIN_DASHBOARD_DRIFT",
+    "BACKFILL_GAP"
+  ],
+  "blockers": [
+    "public_subscribe",
+    "admin_dashboard",
+    "backfill",
+    "edge_cases"
+  ],
+  "checklist": {
+    "architecture": true,
+    "public_subscribe": false,
+    "local_db": true,
+    "kit_sync": true,
+    "admin_dashboard": false,
+    "sync_direction": true,
+    "backfill": false,
+    "permissions": true,
+    "edge_cases": false,
+    "regression": true
+  },
+  "classified_at_utc": "2026-06-06T16:54:26.608857+00:00",
+  "run_tag": "20260606T165125Z",
+  "note": "Admin UI uses localStorage key 'token' but auth stores 'auth_token' — silent 401, dashboard shows 0 while admin API/DB have subscribers. Local capture and Kit push work on staging. No Kit backfill."
+}

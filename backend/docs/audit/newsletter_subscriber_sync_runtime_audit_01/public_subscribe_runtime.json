@@ -1,0 +1,23 @@
+{
+  "at_utc": "2026-06-06T16:52:45.171825+00:00",
+  "test_email": "newsletter-audit-20260606t165125z@yopmail.com",
+  "marker": "NEWSLETTER-AUDIT-20260606T165125Z",
+  "api_subscribe_status": 200,
+  "api_subscribe_body": {
+    "success": true,
+    "message": "Subscribed successfully"
+  },
+  "duplicate_status": 200,
+  "duplicate_body": {
+    "success": true,
+    "message": "Already subscribed"
+  },
+  "duplicate_safe": true,
+  "browser": {
+    "pass": false,
+    "test_email": "newsletter-browser-20260606t165125z@yopmail.com",
+    "email_field_present": true,
+    "error": "Timeout 60000ms exceeded while waiting for event \"response\""
+  },
+  "pass": false
+}

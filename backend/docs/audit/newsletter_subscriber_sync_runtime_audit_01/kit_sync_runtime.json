@@ -1,0 +1,13 @@
+{
+  "at_utc": "2026-06-06T16:52:52.498813+00:00",
+  "test_email": "newsletter-audit-20260606t165125z@yopmail.com",
+  "kit_sync_status": "SYNCED",
+  "kit_sync_error_redacted": null,
+  "kit_synced_at": "2026-06-06T16:51:32.543469+00:00",
+  "kit_api_key_configured_inferred": true,
+  "kit_subscriber_id_stored_locally": false,
+  "note": "No kit_subscriber_id field in model; verification via kit_sync_status only",
+  "retry_mechanism": "none \u2014 failed sync not retried automatically",
+  "list_form_tag_ids_in_code": "none",
+  "pass": true
+}

@@ -1,0 +1,58 @@
+{
+  "at_utc": "2026-06-06T16:51:25.340897+00:00",
+  "programme": "NEWSLETTER-SUBSCRIBER-SYNC-RUNTIME-AUDIT-01",
+  "commit_sha": "728dd4d3a22b2b430091be229a28ee1a3b7eb1fb",
+  "intended_flow": "Website form \u2192 POST /api/newsletter/subscribe \u2192 MongoDB newsletter_subscribers \u2192 Kit API v4 POST /subscribers",
+  "source_of_truth": {
+    "admin_dashboard": "MongoDB collection newsletter_subscribers (local DB)",
+    "email_campaigns": "Kit.com (external)",
+    "note": "Kit is NOT read back into admin; one-way push only"
+  },
+  "collections": {
+    "newsletter_subscribers": {
+      "fields": [
+        "subscriber_id",
+        "email",
+        "status",
+        "source",
+        "kit_sync_status",
+        "kit_sync_error",
+        "kit_synced_at",
+        "subscribed_at",
+        "unsubscribed_at"
+      ]
+    }
+  },
+  "api_endpoints": {
+    "public_subscribe": "POST /api/newsletter/subscribe?email=&source=",
+    "admin_list": "GET /api/admin/newsletter/subscribers (admin_route_guard)",
+    "legacy_admin_list": "GET /api/newsletter/subscribers (admin_route_guard, same data)"
+  },
+  "frontend": {
+    "public_page": "https://pleerityenterprise.co.uk/newsletter \u2192 NewsletterPage.js",
+    "admin_page": "https://pleerityenterprise.co.uk/admin/marketing/newsletter \u2192 AdminNewsletterPage.jsx",
+    "footer": "PublicFooter links to /newsletter (no inline form)",
+    "insights": "InsightsHubPage links to /newsletter",
+    "checklist_modal": "POST /api/leads/capture/compliance-checklist \u2192 leads collection (NOT newsletter_subscribers)"
+  },
+  "environment_variables": {
+    "KIT_API_KEY": "required for Kit sync; never logged",
+    "KIT_API_BASE": "default https://api.kit.com/v4",
+    "REACT_APP_BACKEND_URL": "frontend backend base"
+  },
+  "kit_integration": {
+    "service": "backend/services/kit_integration.py",
+    "api": "POST {KIT_API_BASE}/subscribers",
+    "auth_header": "X-Kit-Api-Key",
+    "custom_field": "Source",
+    "list_form_tag_ids": "none configured in code \u2014 global subscriber create only",
+    "webhook": "none implemented",
+    "backfill_import": "none implemented"
+  },
+  "admin_ui_token_key": {
+    "AdminNewsletterPage": "localStorage.getItem('token')",
+    "AuthContext_standard": "localStorage.getItem('auth_token')",
+    "drift_detected": true
+  },
+  "pass": true
+}

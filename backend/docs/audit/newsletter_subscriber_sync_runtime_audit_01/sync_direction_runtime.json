@@ -1,0 +1,18 @@
+{
+  "at_utc": "2026-06-06T16:53:14.750765+00:00",
+  "intended_design": "A: Website \u2192 local DB \u2192 Kit (one-way push)",
+  "actual_behaviour": "A_website_local_then_kit_push",
+  "kit_to_local_sync": false,
+  "two_way_sync": false,
+  "webhook_present": false,
+  "admin_reads": "local MongoDB only (not Kit API)",
+  "local_counts": {
+    "total": 6,
+    "synced": 4,
+    "failed": 2,
+    "pending": 0
+  },
+  "if_kit_has_more_than_local": "BACKFILL_GAP \u2014 no import/webhook; Kit-only subscribers invisible to admin",
+  "notes": [],
+  "pass": true
+}

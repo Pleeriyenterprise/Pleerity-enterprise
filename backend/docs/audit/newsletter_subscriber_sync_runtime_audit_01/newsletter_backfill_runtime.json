@@ -1,0 +1,15 @@
+{
+  "at_utc": "2026-06-06T16:53:21.076185+00:00",
+  "kit_import_script_exists": false,
+  "kit_backfill_endpoint_exists": false,
+  "relevant_scripts": [
+    "kit_integration.py"
+  ],
+  "dedupe_on_subscribe": "email exact match in newsletter_subscribers.find_one",
+  "status_mapping": "SUBSCRIBED default; UNSUBSCRIBED field exists but no public flow",
+  "unsubscribe_mapping": "not implemented",
+  "source_mapping": "passed as Kit custom field Source",
+  "sync_audit_trail": "create_audit_log NEWSLETTER_SUBSCRIBED metadata",
+  "classification": "BACKFILL_GAP",
+  "pass": false
+}

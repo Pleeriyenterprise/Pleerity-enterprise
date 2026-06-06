@@ -1,0 +1,36 @@
+{
+  "at_utc": "2026-06-06T16:53:11.418262+00:00",
+  "admin_api_status": 200,
+  "admin_api_count": 6,
+  "admin_api_has_test_subscriber": true,
+  "browser_wrong_token_key": {
+    "pass": false,
+    "token_key_used": "token",
+    "ui_subscriber_count": 0,
+    "shows_no_subscribers": false,
+    "shows_test_email": false,
+    "kit_sync_column_visible": false,
+    "export_button_visible": false,
+    "screenshot": "screenshots/admin/newsletter_admin_token.png",
+    "api_fetch_ok": false
+  },
+  "browser_correct_token_key": {
+    "pass": false,
+    "token_key_used": "auth_token",
+    "ui_subscriber_count": 0,
+    "shows_no_subscribers": true,
+    "shows_test_email": false,
+    "kit_sync_column_visible": true,
+    "export_button_visible": true,
+    "screenshot": "screenshots/admin/newsletter_admin_auth_token.png",
+    "api_fetch_ok": false
+  },
+  "admin_ui_token_drift": true,
+  "csv_export": {
+    "row_count_sample": 3,
+    "header": "Email,Status,Source,Subscribed Date",
+    "secrets_leaked": false,
+    "pass": true
+  },
+  "pass": false
+}

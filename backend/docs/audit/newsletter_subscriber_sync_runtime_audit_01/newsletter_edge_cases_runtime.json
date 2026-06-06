@@ -1,0 +1,36 @@
+{
+  "at_utc": "2026-06-06T16:54:09.711901+00:00",
+  "cases": [
+    {
+      "case": "invalid_email",
+      "status": 500,
+      "pass": false
+    },
+    {
+      "case": "uppercase_email",
+      "status": 200,
+      "body": {
+        "success": true,
+        "message": "Subscribed successfully"
+      }
+    },
+    {
+      "case": "plus_address",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "case": "duplicate_plus",
+      "status": 200,
+      "message": "Already subscribed"
+    },
+    {
+      "case": "export_with_subscribers",
+      "admin_count": 9,
+      "pass": true
+    }
+  ],
+  "kit_failure_handling": "local row saved with kit_sync_status FAILED if Kit fails",
+  "local_db_write_before_kit": true,
+  "pass": false
+}

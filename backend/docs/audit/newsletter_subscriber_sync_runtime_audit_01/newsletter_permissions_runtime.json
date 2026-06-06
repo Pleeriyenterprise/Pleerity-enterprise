@@ -1,0 +1,31 @@
+{
+  "at_utc": "2026-06-06T16:53:47.797361+00:00",
+  "probes": [
+    {
+      "check": "public_can_subscribe",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "check": "admin_list_no_auth",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "check": "client_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "check": "contractor_blocked",
+      "status": 403,
+      "pass": true
+    },
+    {
+      "check": "admin_can_list",
+      "status": 200,
+      "pass": true
+    }
+  ],
+  "pass": true
+}
