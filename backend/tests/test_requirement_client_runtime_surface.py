@@ -430,6 +430,8 @@ def test_compute_client_portal_requirement_stats_buckets():
     c = compute_client_portal_requirement_stats(rows)
     assert c["total_requirements"] == 7
     assert c["compliant"] == 2
+    assert c["satisfied"] == 2
+    assert c["status_valid"] == 2
     assert c["pending"] == 1
     assert c["missing_evidence"] == 2
     assert c["expiring_soon"] == 1
@@ -453,6 +455,8 @@ def test_compute_client_portal_requirement_stats_excludes_satisfied_pending_from
     c = compute_client_portal_requirement_stats(rows)
     assert c["pending"] == 3
     assert c["missing_evidence"] == 2
+    assert c["satisfied"] == 2
+    assert c["compliant"] == 2
 
 
 def test_client_portal_surface_visible_excludes_hidden_overdue_from_portal_slice():

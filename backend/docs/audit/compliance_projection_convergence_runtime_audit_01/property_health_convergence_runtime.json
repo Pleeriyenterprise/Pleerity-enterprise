@@ -1,0 +1,6 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-06T21:49:30.840800+00:00",
+  "fix": "GET /client/properties uses attach_live_compliance_status_to_properties; jobs scheduler enriches before RAG persist",
+  "pass": true
+}

@@ -1,0 +1,12 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-06T21:49:30.838800+00:00",
+  "checks": {
+    "satisfied_portfolio_green": true,
+    "stats_satisfied_equals_total": true,
+    "assurance_review_not_inbox": true,
+    "verified_gas_suppressed": true,
+    "is_requirement_satisfied_honors_enrich_flag": true
+  },
+  "pass": true
+}

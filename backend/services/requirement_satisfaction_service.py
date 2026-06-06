@@ -120,6 +120,14 @@ def is_requirement_satisfied(row: Dict[str, Any]) -> bool:
     if lifecycle == NOT_APPLICABLE:
         return True
 
+    if r.get("requirement_satisfied") is True:
+        from services.requirement_attention_eligibility_service import OPERATIONAL_INBOX_ATTENTION_REASONS
+
+        eligible, reason, _ = is_requirement_attention_eligible(r)
+        if eligible and reason in OPERATIONAL_INBOX_ATTENTION_REASONS:
+            return False
+        return True
+
     eligible, _, suppression = is_requirement_attention_eligible(r)
     if eligible:
         return False

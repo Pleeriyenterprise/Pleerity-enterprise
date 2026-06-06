@@ -1,0 +1,7 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-06T21:49:30.842196+00:00",
+  "invalidation": "operational_surface_cache.invalidate_client_operational_surfaces on authority sync",
+  "jobs": "check_compliance_status_changes now enriches before RAG write",
+  "pass": true
+}

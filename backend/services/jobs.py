@@ -1534,9 +1534,19 @@ class JobScheduler:
                         client_doc=client,
                         properties=properties,
                     )
-                    
-                    # Calculate current compliance status based on requirements
-                    new_status = self._calculate_property_compliance(requirements)
+                    from services.property_compliance_status_service import compute_property_compliance_rag
+                    from services.requirement_client_runtime_surface import (
+                        client_portal_surface_visible_row,
+                        project_requirement_row_client_runtime,
+                    )
+                    from services.requirement_truth import enrich_requirements_for_client
+
+                    enriched_reqs, _ = await enrich_requirements_for_client(
+                        self.db, client["client_id"], list(requirements)
+                    )
+                    projected = [project_requirement_row_client_runtime(r) for r in enriched_reqs]
+                    visible_reqs = [r for r in projected if client_portal_surface_visible_row(r)]
+                    new_status = compute_property_compliance_rag(visible_reqs)
                     old_status = prop.get("compliance_status", "GREEN")
                     previous_notified_status = prop.get("last_notified_status", old_status)
                     
@@ -1672,46 +1682,11 @@ class JobScheduler:
             return False
     
     def _calculate_property_compliance(self, requirements):
-        """Calculate overall compliance status for a property based on its requirements.
-        OVERDUE/EXPIRED → RED; EXPIRING_SOON or PENDING (missing evidence) → AMBER; else GREEN.
-        """
-        if not requirements:
-            return "GREEN"  # No requirements = compliant
+        """Calculate property RAG from enriched projected rows (delegates to shared service)."""
+        from services.property_compliance_status_service import compute_property_compliance_rag
 
-        now = datetime.now(timezone.utc)
-        has_overdue = False
-        has_expiring_soon = False
-        has_pending = False
+        return compute_property_compliance_rag(requirements)
 
-        for req in requirements:
-            status = authority_runtime_requirement_status(req) or req.get("status", "PENDING")
-
-            if status in ["OVERDUE", "EXPIRED"]:
-                has_overdue = True
-            elif status == "EXPIRING_SOON":
-                has_expiring_soon = True
-            elif status == "PENDING":
-                has_pending = True
-                # Also check due date: if past due or within 30 days, upgrade to overdue/expiring
-                due_date = get_effective_expiry_date(req)
-                if due_date:
-                    try:
-                        days_until_due = (due_date - now).days
-
-                        if days_until_due < 0:
-                            has_overdue = True
-                        elif days_until_due <= 30:
-                            has_expiring_soon = True
-                    except Exception:
-                        pass
-
-        if has_overdue:
-            return "RED"
-        elif has_expiring_soon or has_pending:
-            return "AMBER"
-        else:
-            return "GREEN"
-    
     def _get_status_change_reason(self, requirements, new_status):
         """Generate a human-readable reason for the status change."""
         if new_status == "RED":

@@ -906,11 +906,40 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         for p in properties:
             for action in (p.get("compliance_top_next_actions") or []):
                 if isinstance(action, dict):
-                    aggregated_actions.append(action)
+                    aggregated_actions.append({**action, "property_id": action.get("property_id") or p.get("property_id")})
         aggregated_actions.sort(key=lambda a: float(a.get("impact_points") or 0), reverse=True)
+        req_by_id = {
+            (str(r.get("property_id") or ""), str(r.get("requirement_id") or "")): r
+            for r in portal_reqs
+            if r.get("requirement_id")
+        }
+        req_by_code = {}
+        for r in portal_reqs:
+            code_key = str(r.get("requirement_code") or r.get("requirement_type") or "").strip().lower()
+            if code_key:
+                req_by_code.setdefault((str(r.get("property_id") or ""), code_key), r)
         recommendations = []
-        for action in aggregated_actions[:5]:
+        for action in aggregated_actions:
+            if len(recommendations) >= 5:
+                break
             code = action.get("requirement_code") or ""
+            pid = str(action.get("property_id") or "")
+            rid = str(action.get("requirement_id") or "")
+            match = req_by_id.get((pid, rid)) if rid else None
+            if match is None and code:
+                match = req_by_code.get((pid, str(code).strip().lower()))
+            if match is not None:
+                window_days = resolve_expiring_soon_days_for_requirement(
+                    match,
+                    property_doc=prop_map.get(pid, {}),
+                    client_doc=client_row if isinstance(client_row, dict) else None,
+                )
+                if not requirement_has_active_negative_actionability(
+                    match,
+                    now=now,
+                    expiring_window_days=window_days,
+                ):
+                    continue
             display = action.get("display_label")
             if not display and code:
                 from presentation.label_service import requirement_label
@@ -923,6 +952,8 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                     "impact": f"+{int(round(float(action.get('impact_points') or 0)))} points",
                     "requirement_code": code or None,
                     "display_label": display,
+                    "property_id": pid or None,
+                    "requirement_id": rid or None,
                 }
             )
         if not recommendations:

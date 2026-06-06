@@ -1,0 +1,61 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-06T21:49:30.127643+00:00",
+  "surfaces": {
+    "today_inbox": {
+      "routes": [
+        "GET /api/today/items",
+        "GET /api/client/tasks"
+      ],
+      "services": [
+        "today_projection_service.build_today_payload_from_unified",
+        "unified_tasks_service.get_unified_tasks_for_client",
+        "client_priority_stream.fetch_client_priority_actions"
+      ],
+      "collections": [
+        "requirements",
+        "client_task_overrides",
+        "work_orders",
+        "maintenance_issues"
+      ],
+      "cache": "operational_surface_cache 45s",
+      "authority": "requirement_attention_eligibility_service + requirement_has_active_negative_actionability"
+    },
+    "compliance_score": {
+      "routes": [
+        "GET /api/client/compliance-score"
+      ],
+      "services": [
+        "compliance_score.calculate_compliance_score",
+        "compliance_scoring_v2.compute_property_score_v2"
+      ],
+      "collections": [
+        "properties",
+        "requirements",
+        "compliance_recalc_queue"
+      ],
+      "stats_authority": "compute_client_portal_requirement_stats (satisfied count)"
+    },
+    "property_health": {
+      "routes": [
+        "GET /api/client/properties",
+        "GET /api/client/dashboard"
+      ],
+      "services": [
+        "property_compliance_status_service.compute_property_compliance_rag"
+      ],
+      "fix": "live RAG on GET /properties (was stale DB compliance_status)"
+    },
+    "quick_actions": {
+      "source": "compliance_top_next_actions + live requirement match filter",
+      "fix": "recommendations filtered by requirement_has_active_negative_actionability"
+    }
+  },
+  "convergence_chain": [
+    "requirement_truth.enrich_requirements_for_client",
+    "project_requirement_row_client_runtime",
+    "is_requirement_satisfied / is_requirement_attention_eligible",
+    "operational vs assurance inbox reasons",
+    "portfolio stats + property RAG + Today inbox"
+  ]
+}

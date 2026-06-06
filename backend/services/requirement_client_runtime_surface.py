@@ -117,13 +117,16 @@ def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str
     """
     total = len(portal_projected_rows)
     compliant = 0
+    satisfied = 0
     pending = 0
     missing_evidence = 0
     expiring_soon = 0
     overdue = 0
-    from services.requirement_satisfaction_service import row_counts_as_missing_evidence
+    from services.requirement_satisfaction_service import is_requirement_satisfied, row_counts_as_missing_evidence
 
     for r in portal_projected_rows:
+        if is_requirement_satisfied(r):
+            satisfied += 1
         s = (str(r.get("status") or "PENDING")).strip().upper()
         if s in ("COMPLIANT", "VALID"):
             compliant += 1
@@ -140,7 +143,10 @@ def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str
             overdue += 1
     return {
         "total_requirements": total,
-        "compliant": compliant,
+        # Authoritative satisfied count for portfolio KPIs (includes recorded-on-file / declaration paths).
+        "compliant": satisfied,
+        "satisfied": satisfied,
+        "status_valid": compliant,
         "pending": pending,
         "missing_evidence": missing_evidence,
         "expiring_soon": expiring_soon,

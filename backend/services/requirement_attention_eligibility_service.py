@@ -47,6 +47,30 @@ ATTENTION_TRUTH_STAGES = frozenset(
     }
 )
 
+# Operational deficiencies that warrant property-level "Attention needed" (AMBER).
+OPERATIONAL_PROPERTY_ATTENTION_REASONS = frozenset(
+    {
+        "action_required",
+        "collect_evidence",
+        "additional_action_required",
+        "renewal_due",
+        "follow_up_required",
+        "followup_required",
+        "operational_incomplete",
+        "legacy_overdue",
+        "legacy_expired",
+        "legacy_expiring_soon",
+        "legacy_missing",
+        "legacy_incomplete",
+        "legacy_awaiting_user_confirm",
+    }
+)
+
+# Inbox/today operational urgency — excludes assurance-only review when obligation is met.
+OPERATIONAL_INBOX_ATTENTION_REASONS = frozenset(OPERATIONAL_PROPERTY_ATTENTION_REASONS) | frozenset(
+    {"rejected", "expired", "escalation_review"}
+)
+
 SATISFIED_SEMANTIC_STATES = frozenset(
     {
         "DECLARATION_RECORDED",
@@ -161,6 +185,8 @@ def derive_attention_reason(
     if truth_stage == "escalation_review" or str(row.get("review_owner") or "") == "platform_admin_escalation":
         return "escalation_review"
     if truth_stage == "platform_verification_pending":
+        if str(row.get("client_lifecycle_state") or "").upper() in ("VERIFIED", "SATISFIED_UNVERIFIED"):
+            return None
         return truth_stage
     if truth_stage == "org_verification_pending":
         return "declaration_recorded"
@@ -176,6 +202,11 @@ def derive_attention_reason(
     if truth_stage == "action_required" or truth_stage == "collect_evidence":
         return truth_stage
     if ea_st in (EA_PENDING_ADMIN_REVIEW, "UPLOADED_UNCONFIRMED", "EXTRACTION_PENDING_CONFIRMATION"):
+        if truth_stage in SATISFIED_TRUTH_STAGES:
+            return None
+        sem_early = str(row.get("semantic_state") or "").upper()
+        if sem_early in SATISFIED_SEMANTIC_STATES:
+            return None
         return "platform_verification_pending"
     sem = str(row.get("semantic_state") or "").upper()
     if sem in ("COMPLETENESS_PENDING", "FOLLOWUP_REQUIRED", "FOLLOW_UP_REQUIRED"):
@@ -277,6 +308,12 @@ def is_requirement_attention_eligible(
 
     # Unsynced legacy bridge: only when no authoritative satisfied truth above.
     if not _authority_synced(row):
+        if row.get("requirement_satisfied") is True:
+            return False, None, SUPPRESSION_NO_CURRENT_ACTION
+        if truth_stage in SATISFIED_TRUTH_STAGES:
+            return False, None, SUPPRESSION_EVIDENCE_ACCEPTED
+        if sem in SATISFIED_SEMANTIC_STATES:
+            return False, None, SUPPRESSION_EVIDENCE_ACCEPTED
         if status in ("OVERDUE", "EXPIRED", "EXPIRING_SOON", "PENDING", "MISSING", "INCOMPLETE", "AWAITING_USER_CONFIRM"):
             return True, f"legacy_{status.lower()}", None
         if status in ("VALID", "COMPLIANT", "VERIFIED", "RESOLVED"):

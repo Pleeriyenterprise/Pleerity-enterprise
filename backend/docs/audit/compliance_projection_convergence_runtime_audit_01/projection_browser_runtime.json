@@ -1,0 +1,79 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-06T21:50:45.292982+00:00",
+  "portfolio_score": 26,
+  "stats": {
+    "total_requirements": 43,
+    "compliant": 2,
+    "pending": 41,
+    "missing_evidence": 20,
+    "expiring_soon": 0,
+    "overdue": 0,
+    "critical_overdue": 0,
+    "documents_uploaded": 29,
+    "documents_verified": 25,
+    "verified_coverage_percent": 11.6,
+    "total_coverage_percent": 11.6,
+    "document_coverage_percent": 11.6,
+    "days_until_next_expiry": 2,
+    "nearest_expiry_type": "hmo_license",
+    "hmo_properties": 4,
+    "gap_engine": {
+      "by_kind": {
+        "MISMATCHED_EVIDENCE": 1,
+        "EVIDENCE_UPLOADED_UNCONFIRMED": 5,
+        "MISSING_EVIDENCE": 30
+      },
+      "by_severity": {
+        "MEDIUM": 13,
+        "LOW": 18,
+        "HIGH": 5
+      },
+      "total_open": 36,
+      "policy": {
+        "critical_mandatory_breach_count": 0,
+        "high_risk_gap_count": 0,
+        "attention_only_gap_count": 5,
+        "unknown_or_stale_signal_count": 0,
+        "policy_fields_present_count": 36,
+        "policy_coverage_percent": 100.0,
+        "top_reason_codes": {
+          "ATTENTION_ONLY_GAP": 5
+        },
+        "policy_versions": {
+          "v1": 36
+        },
+        "total_open": 36
+      }
+    },
+    "properties_at_risk_count": 7
+  },
+  "recommendations_count": 5,
+  "drivers_count": 40,
+  "property_rag": {
+    "GREEN": 0,
+    "AMBER": 7,
+    "RED": 0
+  },
+  "today_urgent_count": 24,
+  "today_in_progress_count": 8,
+  "today_summary": {
+    "urgent_count": 24,
+    "upcoming_count": 1,
+    "in_progress_count": 86,
+    "recently_completed_count": 4,
+    "snoozed_count": 0,
+    "hidden_count": 0,
+    "habit": {
+      "urgent_open_total": 24,
+      "items_due_or_expiring_in_7_days": 9,
+      "tasks_acknowledged_last_7_days": 0
+    }
+  },
+  "convergence_checks": {
+    "stats_satisfied_matches_total_when_compliant": false,
+    "no_amber_when_all_green": null,
+    "today_no_urgent_when_satisfied": null
+  },
+  "skipped": false
+}

@@ -72,6 +72,23 @@ def test_rejected_evidence_remains_attention_eligible():
     assert reason == "rejected"
 
 
+def test_admin_review_suppressed_when_recorded_on_file():
+    row = {
+        "requirement_id": "r-smoke",
+        "requirement_type": "smoke_heat_alarms",
+        "status": "PENDING",
+        "truth_presentation_stage": "recorded_on_file",
+        "semantic_state": "EVIDENCE_ACCEPTED",
+        "evidence_authority_synced_at": "2026-01-01T00:00:00+00:00",
+        "evidence_authority": {"version": 1, "state": "PENDING_ADMIN_REVIEW"},
+    }
+    eligible, reason, suppression = is_requirement_attention_eligible(row)
+    assert eligible is False
+    assert reason is None
+    assert suppression is not None
+    assert requirement_has_active_negative_actionability(row) is False
+
+
 def test_expiring_verified_remains_attention_eligible():
     row = _verified_gas_row()
     row["evidence_authority"]["effective_expiry_date"] = "2026-06-15T00:00:00+00:00"

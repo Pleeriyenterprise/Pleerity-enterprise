@@ -467,12 +467,16 @@ def requirement_has_active_negative_actionability(
     """
     from services.requirement_attention_eligibility_service import is_requirement_attention_eligible
 
-    eligible, _, _ = is_requirement_attention_eligible(
+    from services.requirement_attention_eligibility_service import OPERATIONAL_INBOX_ATTENTION_REASONS
+
+    eligible, reason, _ = is_requirement_attention_eligible(
         requirement,
         now=now,
         expiring_window_days=expiring_window_days,
     )
-    return eligible
+    if not eligible or not reason:
+        return False
+    return reason in OPERATIONAL_INBOX_ATTENTION_REASONS
 
 
 def build_date_presentation(

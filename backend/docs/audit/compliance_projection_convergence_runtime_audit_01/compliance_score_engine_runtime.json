@@ -1,0 +1,6 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-06T21:49:30.841800+00:00",
+  "fix": "stats.compliant uses is_requirement_satisfied count; recommendations filtered against live attention eligibility",
+  "pass": true
+}

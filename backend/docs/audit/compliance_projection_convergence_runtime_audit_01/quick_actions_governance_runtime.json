@@ -1,0 +1,6 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-06T21:49:30.842196+00:00",
+  "fix": "Stale compliance_top_next_actions dropped when requirement no longer has negative actionability",
+  "pass": true
+}

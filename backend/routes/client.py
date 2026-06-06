@@ -53,44 +53,10 @@ async def _resolved_jurisdiction_settings_for_client(db, client_id: str) -> Dict
 
 
 def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> str:
-    """Compute property-level compliance status from **projected** portal-visible requirement rows.
+    """Live property RAG from enriched requirement rows (delegates to shared service)."""
+    from services.property_compliance_status_service import compute_property_compliance_rag
 
-    Uses the same effective status semantics as ``calculate_compliance_score`` (authority, else legacy
-    ``status``). OVERDUE/EXPIRED → RED; EXPIRING_SOON or PENDING with due within 30 days → AMBER;
-    PENDING without near-term due → AMBER (missing evidence attention); else GREEN.
-    Calendar-overdue while still ``PENDING`` is not treated as RED here so property cards match
-    score/header overdue counts (single source of truth).
-    """
-    if not requirements:
-        return "GREEN"
-    now = datetime.now(timezone.utc)
-    has_overdue = False
-    has_expiring_soon = False
-    has_pending = False
-    for req in requirements:
-        status = (req.get("status") or "PENDING").strip().upper()
-        if status in ("OVERDUE", "EXPIRED"):
-            has_overdue = True
-        elif status == "EXPIRING_SOON":
-            has_expiring_soon = True
-        elif status == "PENDING":
-            has_pending = True
-            due_date_str = req.get("due_date")
-            if due_date_str:
-                try:
-                    due_date = datetime.fromisoformat(due_date_str.replace("Z", "+00:00")) if isinstance(due_date_str, str) else due_date_str
-                    if due_date.tzinfo is None:
-                        due_date = due_date.replace(tzinfo=timezone.utc)
-                    days_until_due = (due_date - now).days
-                    if days_until_due <= 30:
-                        has_expiring_soon = True
-                except Exception:
-                    pass
-    if has_overdue:
-        return "RED"
-    if has_expiring_soon or has_pending:
-        return "AMBER"
-    return "GREEN"
+    return compute_property_compliance_rag(requirements)
 
 @router.get("/compliance-score")
 async def get_compliance_score(request: Request):
@@ -1705,11 +1671,18 @@ async def get_properties(request: Request):
             jurisdiction_attribution_for_property,
             property_jurisdiction_requirement_flags,
         )
+        from services.property_compliance_status_service import attach_live_compliance_status_to_properties
 
         client_doc = await db.clients.find_one(
             {"client_id": user["client_id"]},
             {"_id": 0, "default_jurisdiction": 1},
         ) or {}
+        properties = await attach_live_compliance_status_to_properties(
+            db,
+            client_id=user["client_id"],
+            client_doc=client_doc,
+            properties=properties,
+        )
         for p in properties:
             att = jurisdiction_attribution_for_property(p, client_doc)
             p["compliance_basis"] = att["compliance_basis"]
