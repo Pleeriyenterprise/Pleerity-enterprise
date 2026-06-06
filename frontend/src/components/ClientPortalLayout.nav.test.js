@@ -1,4 +1,4 @@
-import { PORTAL_TABS } from './ClientPortalLayout';
+import { PORTAL_TABS } from '../config/portalNavigationConfig';
 
 describe('ClientPortalLayout top navigation', () => {
   it('keeps Tenants and Reports tabs and removes Tenant Delivery tab', () => {

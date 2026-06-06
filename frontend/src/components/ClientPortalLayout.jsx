@@ -9,82 +9,36 @@ import { branding, BRAND_LOGO_URL } from '../config/branding';
 import { toast } from '@/utils/portalNotifications';
 import SessionIdleGuard from './SessionIdleGuard';
 import {
-  LayoutDashboard,
-  Building2,
-  FileCheck,
-  FileText,
-  Calendar,
-  BarChart3,
-  Settings,
   MessageSquare,
   LogOut,
   Copy,
   Menu,
   X,
-  User,
   Bell,
-  CreditCard,
   HelpCircle,
-  ChevronDown,
-  ChevronRight,
   History,
-  Users,
-  Wrench,
-  Briefcase,
-  AlertCircle,
-  TrendingUp,
-  ClipboardCheck,
-  ListTodo,
-  Inbox,
-  Gauge,
-  PoundSterling,
 } from 'lucide-react';
 import { resolveNotificationTarget } from '../utils/notificationDeepLink';
-import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import {
   COMPLIANCE_REPORT_HINT_COOLDOWN_MS,
   shouldSuggestComplianceReportHint,
   complianceReportNudgeToastCopy,
 } from '../utils/confidenceUxCopy';
+import {
+  PORTAL_TABS,
+  TENANT_PORTAL_TABS,
+  buildPortalNavigationModel,
+  isOperationsPath,
+  isSecondaryNavPath,
+} from '../config/portalNavigationConfig';
+import {
+  PortalNavDropdown,
+  PortalNavLink,
+  PortalMobileNavLink,
+  PortalMobileNavSection,
+} from './portal/PortalNavPrimitives';
 
-// Operations sub-items (feature-gated). Shown under Operations group; no standalone Maintenance/Contractors.
-const OPERATIONS_CHILDREN = [
-  { path: '/operations/issues', label: 'Issues', icon: AlertCircle, feature: 'maintenance_workflows' },
-  { path: '/operations/work-orders', label: PORTAL_COPY.jobs, icon: Wrench, feature: 'maintenance_workflows' },
-  { path: '/operations/contractors', label: 'Contractors', icon: Briefcase, feature: 'contractor_network' },
-  { path: '/operations/risk-signals', label: 'Risk signals', icon: TrendingUp, feature: 'predictive_maintenance' },
-  { path: '/operations/rent', label: 'Rent Operations', icon: PoundSterling, feature: 'rent_operations' },
-  { path: '/operations/approvals', label: 'Approvals', icon: ClipboardCheck, feature: 'invoicing' },
-];
-
-/** Top-level client portal nav tabs (feature-gated entries may be filtered at render). Exported for tests. */
-export const PORTAL_TABS = [
-  { path: '/today', label: 'Today', icon: ListTodo },
-  { path: '/command-center', label: 'Command center', icon: Gauge },
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/properties', label: 'Properties', icon: Building2 },
-  { path: '/requirements', label: 'Requirements', icon: FileCheck },
-  { path: '/documents', label: 'Documents', icon: FileText },
-  { path: '/calendar', label: 'Calendar', icon: Calendar },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-  { type: 'group', label: 'Operations', icon: Wrench, children: OPERATIONS_CHILDREN },
-  { path: '/tenants', label: 'Tenants', icon: Users, feature: 'tenant_portal' },
-  { path: '/settings/billing', label: 'Billing', icon: CreditCard, feature: 'invoicing' },
-  { path: '/settings', label: 'Settings', icon: Settings, end: true },
-];
-
-const TENANT_PORTAL_TABS = [
-  { path: '/tenant', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { path: '/tenant/properties', label: 'Properties', icon: Building2 },
-  { path: '/tenant/settings', label: 'Settings', icon: Settings },
-];
-
-const SETTINGS_SUB = [
-  { path: '/settings/profile', label: 'Profile', icon: User },
-  { path: '/settings/inbox', label: 'Inbox', icon: Inbox },
-  { path: '/settings/notifications', label: 'Notifications', icon: Bell },
-  { path: '/settings/billing', label: 'Billing', icon: CreditCard },
-];
+export { PORTAL_TABS };
 
 export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { user, logout, isClient } = useAuth();
@@ -95,6 +49,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const isTenant = user?.role === 'ROLE_TENANT';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [operationsDropdownOpen, setOperationsDropdownOpen] = useState(false);
+  const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const [crnState, setCrnState] = useState(crnProp);
   const [profile, setProfile] = useState(null);
   const [headerAvatarUrl, setHeaderAvatarUrl] = useState(null);
@@ -257,43 +212,31 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
 
   const location = useLocation();
   const showReports = navHasFeature('reports_pdf') || navHasFeature('reports_csv');
+  const invoicingEnabled = navHasFeature('invoicing');
 
-  // Build tabs: filter by feature; for Operations group, show only if at least one child is enabled and filter children
-  const tabs = isTenant
-    ? TENANT_PORTAL_TABS
-    : PORTAL_TABS.map((t) => {
-        if (t.type === 'group' && t.children) {
-          const children = t.children.filter((c) => {
-            if (c.orgReviewerOnly && String(user?.role || '').toUpperCase() !== 'ROLE_CLIENT_ADMIN') {
-              return false;
-            }
-            return c.feature ? navHasFeature(c.feature) : true;
-          });
-          if (children.length === 0) return null;
-          return { ...t, children };
-        }
-        if (t.path === '/reports') return showReports ? t : null;
-        if (t.feature) return navHasFeature(t.feature) ? t : null;
-        return t;
-      }).filter(Boolean);
+  const tenantTabs = isTenant ? TENANT_PORTAL_TABS : null;
+  const navModel = isTenant
+    ? null
+    : buildPortalNavigationModel({
+        navHasFeature,
+        showReports,
+        userRole: user?.role,
+      });
+  const { primaryLinks = [], operationsGroup = null, secondaryItems = [] } = navModel || {};
 
-  const operationsOpen = location.pathname.startsWith('/operations');
-  const hasOperationsAccess = tabs.some((t) => t.type === 'group' && t.label === 'Operations');
-
-  const isOperationsActive = (pathname) => {
-    const p = pathname || location.pathname;
-    return p.startsWith('/operations');
+  const closeNavMenus = () => {
+    setMobileNavOpen(false);
+    setOperationsDropdownOpen(false);
+    setMoreDropdownOpen(false);
   };
 
-  const isSettingsActive = (pathname) => {
-    const p = pathname || location.pathname;
-    if (isTenant) return p === '/tenant/settings' || p.startsWith('/tenant/settings/');
-    // When Billing has its own top-level tab (invoicing enabled), don't mark Settings active on /settings/billing
-    if (hasFeature('invoicing') && (p === '/settings/billing' || p.startsWith('/settings/billing/'))) {
-      return false;
-    }
-    return p === '/settings' || p.startsWith('/settings/');
-  };
+  useEffect(() => {
+    closeNavMenus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  const operationsActive = isOperationsPath(location.pathname);
+  const moreActive = isSecondaryNavPath(location.pathname);
 
   const handleStopImpersonation = async () => {
     try {
@@ -498,87 +441,115 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
           </div>
         </div>
 
-        {/* Tabs: visible on desktop; collapsible on mobile */}
-        <nav className={`border-t border-white/10 ${mobileNavOpen ? 'block' : 'hidden'} lg:block`}>
+        {/* Hierarchy nav: desktop single-line (no horizontal scroll); mobile drawer sections */}
+        <nav
+          className={`border-t border-white/10 ${mobileNavOpen ? 'block' : 'hidden'} lg:block`}
+          aria-label="Portal navigation"
+          data-testid="portal-main-nav"
+        >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col divide-y divide-white/10 lg:divide-y-0 lg:flex-row lg:items-stretch lg:space-x-1 lg:overflow-x-auto lg:scroll-smooth lg:[scrollbar-width:thin]">
-              {tabs.map((tab) => {
-                if (tab.type === 'group' && tab.children?.length > 0) {
-                  const Icon = tab.icon;
-                  const isActive = isOperationsActive(location.pathname);
-                  return (
-                    <div
-                      key="operations-group"
-                      className="relative"
-                      onMouseEnter={() => setOperationsDropdownOpen(true)}
-                      onMouseLeave={() => setOperationsDropdownOpen(false)}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOperationsDropdownOpen((o) => !o)}
-                        className={`flex items-center min-h-[48px] px-3 py-3.5 lg:py-4 text-sm font-medium border-b-2 transition-colors w-full lg:w-auto ${
-                          isActive
-                            ? 'border-electric-teal text-electric-teal bg-white/[0.06] lg:bg-transparent'
-                            : 'border-transparent text-slate-300 hover:text-white hover:border-white/25'
-                        }`}
-                      >
-                        <Icon className="w-4 h-4 mr-2" />
-                        {tab.label}
-                        <ChevronDown className={`w-4 h-4 ml-1 transition-transform ${operationsDropdownOpen ? 'rotate-180' : ''}`} />
-                      </button>
-                      <div
-                        className={`lg:absolute lg:left-0 lg:top-full lg:pt-0 lg:bg-midnight-blue lg:border lg:border-white/10 lg:rounded-b-lg lg:shadow-lg lg:min-w-[180px] z-40 ${
-                          operationsDropdownOpen ? 'block' : 'hidden'
-                        }`}
-                      >
-                        {tab.children.map((child) => {
-                          const ChildIcon = child.icon;
-                          return (
-                            <NavLink
-                              key={child.path}
-                              to={child.path}
-                              onClick={() => {
-                                setMobileNavOpen(false);
-                                setOperationsDropdownOpen(false);
-                              }}
-                              className={({ isActive: childActive }) =>
-                                `flex items-center px-3 py-2.5 text-sm border-l-2 lg:border-l-0 lg:border-b-0 transition-colors ${
-                                  childActive
-                                    ? 'border-electric-teal text-electric-teal bg-white/10'
-                                    : 'border-transparent text-gray-300 hover:text-white hover:bg-white/5'
-                                }`
-                              }
-                            >
-                              <ChildIcon className="w-4 h-4 mr-2 shrink-0" />
-                              {child.label}
-                            </NavLink>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                }
-                const { path, label, icon: Icon, end } = tab;
-                return (
-                  <NavLink
-                    key={path}
-                    to={path}
-                    end={end}
-                    onClick={() => setMobileNavOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center min-h-[48px] px-3 py-3.5 lg:py-4 text-sm font-medium border-b-2 lg:border-b-2 transition-colors ${
-                        isActive || ((path === '/settings' || path === '/tenant/settings') && isSettingsActive(location.pathname))
-                          ? 'border-electric-teal text-electric-teal bg-white/[0.06] lg:bg-transparent'
-                          : 'border-transparent text-slate-300 hover:text-white hover:border-white/25'
-                      }`
-                    }
-                  >
-                    <Icon className="w-4 h-4 mr-2" />
-                    {label}
-                  </NavLink>
-                );
-              })}
-            </div>
+            {isTenant ? (
+              <div className="flex flex-col divide-y divide-white/10 lg:divide-y-0 lg:flex-row lg:items-stretch lg:gap-0.5 lg:overflow-visible">
+                {tenantTabs.map((tab) => (
+                  <PortalNavLink
+                    key={tab.path}
+                    to={tab.path}
+                    label={tab.label}
+                    icon={tab.icon}
+                    end={tab.end}
+                    isTenant
+                    onNavigate={closeNavMenus}
+                  />
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* Desktop: primary + Operations + More — no overflow scroll */}
+                <div
+                  className="hidden lg:flex lg:items-stretch lg:gap-0.5 lg:overflow-visible lg:flex-nowrap"
+                  data-testid="portal-desktop-nav"
+                >
+                  {primaryLinks.map((item) => (
+                    <PortalNavLink
+                      key={item.path}
+                      to={item.path}
+                      label={item.label}
+                      icon={item.icon}
+                      invoicingEnabled={invoicingEnabled}
+                      onNavigate={closeNavMenus}
+                    />
+                  ))}
+                  {operationsGroup ? (
+                    <PortalNavDropdown
+                      menuId="portal-operations"
+                      label={operationsGroup.label}
+                      icon={operationsGroup.icon}
+                      isActive={operationsActive}
+                      isOpen={operationsDropdownOpen}
+                      onOpenChange={setOperationsDropdownOpen}
+                      items={[{ type: 'group', children: operationsGroup.children }]}
+                      invoicingEnabled={invoicingEnabled}
+                      onNavigate={closeNavMenus}
+                    />
+                  ) : null}
+                  {secondaryItems.length > 0 ? (
+                    <PortalNavDropdown
+                      menuId="portal-more"
+                      label="More"
+                      isActive={moreActive}
+                      isOpen={moreDropdownOpen}
+                      onOpenChange={setMoreDropdownOpen}
+                      items={secondaryItems}
+                      invoicingEnabled={invoicingEnabled}
+                      onNavigate={closeNavMenus}
+                    />
+                  ) : null}
+                </div>
+
+                {/* Mobile/tablet: sectioned drawer — intentional hierarchy, not overflow inheritance */}
+                <div className="lg:hidden max-h-[min(70vh,32rem)] overflow-y-auto overscroll-y-contain" data-testid="portal-mobile-nav">
+                  {primaryLinks.map((item) => (
+                    <PortalMobileNavLink
+                      key={item.path}
+                      to={item.path}
+                      label={item.label}
+                      icon={item.icon}
+                      invoicingEnabled={invoicingEnabled}
+                      onNavigate={closeNavMenus}
+                    />
+                  ))}
+                  {operationsGroup ? (
+                    <PortalMobileNavSection title="Operations" isActiveSection={operationsActive} defaultOpen={operationsActive}>
+                      {operationsGroup.children.map((child) => (
+                        <PortalMobileNavLink
+                          key={child.path}
+                          to={child.path}
+                          label={child.label}
+                          icon={child.icon}
+                          invoicingEnabled={invoicingEnabled}
+                          onNavigate={closeNavMenus}
+                        />
+                      ))}
+                    </PortalMobileNavSection>
+                  ) : null}
+                  {secondaryItems.length > 0 ? (
+                    <PortalMobileNavSection title="More" isActiveSection={moreActive} defaultOpen={moreActive}>
+                      {secondaryItems.map((item) => (
+                        <PortalMobileNavLink
+                          key={item.path}
+                          to={item.path}
+                          label={item.label}
+                          icon={item.icon}
+                          end={item.end}
+                          invoicingEnabled={invoicingEnabled}
+                          onNavigate={closeNavMenus}
+                        />
+                      ))}
+                    </PortalMobileNavSection>
+                  ) : null}
+                </div>
+              </>
+            )}
           </div>
         </nav>
       </header>
