@@ -433,3 +433,38 @@ async def test_get_ledger_returns_none_for_wrong_client():
         doc = await rent_ledger_service.get_ledger("rlp_other", "c_a_iso")
     assert doc is None
 
+
+def test_live_send_client_allowlist(monkeypatch):
+    from services import rent_reminder_service
+
+    monkeypatch.setenv("RENT_REMINDERS_LIVE_SEND", "true")
+    monkeypatch.setenv("RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST", "client-a,client-b")
+    assert rent_reminder_service._live_send_enabled_for_client("client-a") is True
+    assert rent_reminder_service._live_send_enabled_for_client("client-c") is False
+
+
+def test_safe_recipient_domain_guard(monkeypatch):
+    from services import rent_reminder_service
+
+    monkeypatch.setenv("RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS", "yopmail.com")
+    assert rent_reminder_service.recipient_allowed_for_live_send("f7-ops-wales@yopmail.com") is True
+    assert rent_reminder_service.recipient_allowed_for_live_send("tenant@example.com") is False
+
+
+def test_partial_payment_message_notes_remaining_balance():
+    from services import rent_reminder_service
+
+    msg = rent_reminder_service.build_reminder_message(
+        {
+            "tenant_name": "Alex",
+            "due_date": "2026-06-01",
+            "expected_amount_minor": 120000,
+            "outstanding_balance_minor": 45000,
+            "status": "PARTIALLY_PAID",
+        },
+        "overdue_3d",
+    )
+    assert "partial payment" in msg.lower()
+    assert "£450.00" in msg
+    assert "£1,200.00" not in msg
+

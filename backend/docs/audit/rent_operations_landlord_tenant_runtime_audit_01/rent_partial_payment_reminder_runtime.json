@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-06-06T12:47:55.260779+00:00",
+  "ledger_id": "rlp_fa9a214da74a",
+  "payment_status": 200,
+  "status_after": "PARTIALLY_PAID",
+  "outstanding_after": 123500,
+  "behaviour": "partial periods remain eligible for overdue/due reminder types while outstanding > 0",
+  "message_claims_partial": true,
+  "message_preview": "<p>Dear mat,</p><p><strong>Rent overdue</strong></p><p>Rent of \u00a31250.00 was due on 2026-06-01. The outstanding balance is \u00a31235.00. A partial payment has already been recorded; this notice relates to the remaining balance.</p><p>Please arra",
+  "pass": true
+}

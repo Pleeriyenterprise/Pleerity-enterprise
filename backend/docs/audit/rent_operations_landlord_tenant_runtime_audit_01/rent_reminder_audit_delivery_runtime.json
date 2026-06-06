@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-06-06T12:48:02.096405+00:00",
+  "message_logs_status": 200,
+  "rent_message_logs": [],
+  "rent_audit_actions": [
+    "RENT_REMINDER_AUTO_CREATED"
+  ],
+  "idempotency_keys_present": 0,
+  "secret_leak_detected": false,
+  "pass": true
+}

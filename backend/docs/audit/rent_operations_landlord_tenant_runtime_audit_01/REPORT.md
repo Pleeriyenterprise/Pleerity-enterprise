@@ -91,3 +91,41 @@ Backend 27 passed; `ClientRentOperationsPage.test.js` passed (getRentCapabilitie
 ## Classification rationale
 
 Per audit rules, `VERIFIED_OPERATIONALLY` requires proven automatic reminder behaviour or explicit confirmation with correct classification. Manual workflow passes; live send does not — therefore **`RENT_REMINDER_GAP`**, not `VERIFIED_OPERATIONALLY`.
+
+---
+
+## RENT-REMINDER-LIVE-DELIVERY-CLOSEOUT-01 closeout (20260606T123538Z)
+
+**Classification:** `PARTIAL`
+
+### Closeout checklist
+- setup: PASS
+- due_delivery: FAIL
+- overdue_delivery: FAIL
+- suppression: PASS
+- partial_payment: PASS
+- audit_delivery: PASS
+- tenant_visibility: PASS
+- retry: FAIL
+- regression: PASS
+
+**Blockers:** due_delivery, overdue_delivery, retry
+
+Local mongo probe: `skipped`
+
+### Closeout implementation delivered
+- Safe live send guards: client allowlist, yopmail recipient domain guard, tenant email resolution
+- `RENT_REMINDER` notification template seeded
+- `render.yaml` staging env: `RENT_REMINDERS_LIVE_SEND`, client allowlist, safe domains
+- Harness: `backend/rent_reminder_live_delivery_closeout_01_execute.py` (step-up + confirmation for job runs)
+
+### Runtime blockers observed
+- Admin scoped job runs returned **403** (missing step-up; fixed in harness) then **429 rate limit** after repeated closeout probes
+- Staging not yet redeployed with live-send env + template seed at time of run
+- Existing reminder events on pilot ledgers show `delivery_status: manual` from pre-live era
+
+### Re-run after deploy
+1. Confirm Render deploy includes env vars and commit
+2. Wait for admin job rate limit window to clear
+3. `python rent_reminder_live_delivery_closeout_01_execute.py`
+4. Expect `RENT_REMINDER` rows in `/admin/message-logs` to `f7-ops-wales@yopmail.com` with `status: sent`

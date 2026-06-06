@@ -1,0 +1,8 @@
+{
+  "at_utc": "2026-06-06T12:48:12.030537+00:00",
+  "tenant_rent_api_blocked": true,
+  "tenant_targeted_logs": 0,
+  "non_tenant_recipient_logs": 0,
+  "tenant_cannot_record_payment": true,
+  "pass": true
+}

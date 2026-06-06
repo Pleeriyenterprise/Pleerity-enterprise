@@ -1,31 +1,30 @@
 {
-  "programme": "RENT-OPERATIONS-LANDLORD-TENANT-RUNTIME-AUDIT-01",
-  "classification": "RENT_REMINDER_GAP",
+  "programme": "RENT-REMINDER-LIVE-DELIVERY-CLOSEOUT-01",
+  "parent_audit": "RENT-OPERATIONS-LANDLORD-TENANT-RUNTIME-AUDIT-01",
+  "classification": "PARTIAL",
+  "prior_classification": "RENT_REMINDER_GAP",
   "secondary_flags": [
-    "RENT_REMINDER_GAP"
+    "RENT_REMINDER_GAP",
+    "DELIVERY_DRIFT"
   ],
-  "blockers": [],
+  "blockers": [
+    "due_delivery",
+    "overdue_delivery",
+    "retry"
+  ],
   "checklist": {
     "setup": true,
-    "tracking_setup": true,
-    "status_logic": true,
-    "payments": true,
-    "tenant": true,
-    "reminders": true,
-    "arrears_risk": true,
-    "cross_surface": true,
-    "mobile": true,
-    "audit_trail": true,
-    "permissions": true,
-    "edge_resilience": true,
+    "due_delivery": false,
+    "overdue_delivery": false,
+    "suppression": true,
+    "partial_payment": true,
+    "audit_delivery": true,
+    "tenant_visibility": true,
+    "retry": false,
     "regression": true
   },
-  "reminder_mode": {
-    "daily_job": "rent_operations_daily_job",
-    "auto_event_creation": true,
-    "live_email_sms": false,
-    "default_mode": "manual mark-sent + auto-created events when job runs"
-  },
-  "classified_at_utc": "2026-06-06T12:11:03.888309+00:00",
-  "run_tag": "20260606T115547Z"
+  "delivery_blocker": "admin_job_rate_limit_429_during_closeout; staging deploy pending for RENT_REMINDERS_LIVE_SEND + RENT_REMINDER template seed",
+  "code_ready": true,
+  "classified_at_utc": "2026-06-06T13:01:08.002412+00:00",
+  "run_tag": "20260606T123538Z"
 }

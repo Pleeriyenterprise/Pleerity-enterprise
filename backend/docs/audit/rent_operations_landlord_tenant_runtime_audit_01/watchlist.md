@@ -1,26 +1,29 @@
 # Rent operations landlord-tenant watchlist
 
-- Classification: `RENT_REMINDER_GAP`
-- Run tag: `20260606T115547Z`
+- Classification: `PARTIAL` (closeout)
+- Prior audit: `RENT_REMINDER_GAP`
+- Closeout run tag: `20260606T123538Z`
 
-## Checklist
+## Closeout checklist
 - [x] setup
-- [x] tracking_setup
-- [x] status_logic
-- [x] payments
-- [x] tenant
-- [x] reminders
-- [x] arrears_risk
-- [x] cross_surface
-- [x] mobile
-- [x] audit_trail
-- [x] permissions
-- [x] edge_resilience
+- [ ] due_delivery
+- [ ] overdue_delivery
+- [x] suppression
+- [x] partial_payment
+- [x] audit_delivery
+- [x] tenant_visibility
+- [ ] retry
 - [x] regression
 
-## Gaps / follow-up
-- [ ] Tenant portal rent due surface (not implemented — by design today)
-- [ ] RENT_REMINDERS_LIVE_SEND on staging for automatic email/SMS proof
+## Code delivered (pending deploy proof)
+- [x] Safe live send: client allowlist + yopmail domain guard
+- [x] Tenant recipient resolution from tenancy assignments
+- [x] RENT_REMINDER notification template seed
+- [x] render.yaml staging env flags
+
+## Remaining
+- [ ] Deploy to staging and re-run closeout harness after admin job rate limit clears
+- [ ] Verify `RENT_REMINDER` message_logs with status `sent` to `f7-ops-wales@yopmail.com`
+- [ ] Tenant portal in-app notification surface when enabled
+- [ ] SMS proof only with configured safe test number
 - [ ] Real-device Safari bottom-bar overlap on enable-tracking modal
-- [ ] Timezone boundary tests around midnight UTC due dates
-- [ ] Prove live due/overdue reminder delivery when RENT_REMINDERS_LIVE_SEND enabled

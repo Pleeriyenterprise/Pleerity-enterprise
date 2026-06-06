@@ -1,0 +1,23 @@
+{
+  "at_utc": "2026-06-06T12:36:06.791401+00:00",
+  "run_tag": "20260606T123538Z",
+  "marker": "RENT-REM-LIVE-20260606T123538Z",
+  "env_expected": {
+    "RENT_REMINDERS_LIVE_SEND": "true",
+    "RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS": "yopmail.com",
+    "sms_disabled_unless_safe_number": true
+  },
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "tenancy_id": "pty_9ec2e1723d7b",
+  "schedule_id": "rs_da9f62d77236",
+  "tenant_recipient": "f7-ops-wales@yopmail.com",
+  "channels_enabled": [
+    "email"
+  ],
+  "channel_safety": "yopmail.com domain allowlist; client allowlist; scoped job run",
+  "prior_rent_reminder_logs": 0,
+  "message_logs_status": 200,
+  "pass": true
+}

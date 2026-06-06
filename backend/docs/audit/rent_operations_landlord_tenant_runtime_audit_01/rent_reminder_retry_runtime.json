@@ -1,0 +1,11 @@
+{
+  "at_utc": "2026-06-06T12:58:59.597551+00:00",
+  "runs": [
+    429,
+    429,
+    429
+  ],
+  "duplicate_idempotency_keys": 0,
+  "manual_intervention": "landlord mark-sent remains available when auto send blocked",
+  "pass": false
+}

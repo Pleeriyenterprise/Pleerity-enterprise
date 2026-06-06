@@ -1,0 +1,53 @@
+{
+  "at_utc": "2026-06-06T12:45:16.686931+00:00",
+  "ledger_id": "rlp_c598c3e6e1cf",
+  "status": "SEVERELY_OVERDUE",
+  "outstanding": 125000,
+  "due_date": "2026-05-01",
+  "job_run_status": 403,
+  "overdue_reminders": [
+    {
+      "reminder_key": "RENT_OVERDUE_14D_rlp_c598c3e6e1cf_2026-05",
+      "ledger_id": "rlp_c598c3e6e1cf",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "reminder_type": "overdue_14d",
+      "channel": "system",
+      "sent_at": null,
+      "marked_sent_by": null,
+      "message_preview": null,
+      "delivery_status": "manual",
+      "created_at": "2026-05-26T04:46:31.877531+00:00"
+    },
+    {
+      "reminder_key": "RENT_OVERDUE_7D_rlp_c598c3e6e1cf_2026-05",
+      "ledger_id": "rlp_c598c3e6e1cf",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "reminder_type": "overdue_7d",
+      "channel": "system",
+      "sent_at": null,
+      "marked_sent_by": null,
+      "message_preview": null,
+      "delivery_status": "manual",
+      "created_at": "2026-05-26T04:46:31.515831+00:00"
+    },
+    {
+      "reminder_key": "RENT_OVERDUE_3D_rlp_c598c3e6e1cf_2026-05",
+      "ledger_id": "rlp_c598c3e6e1cf",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "reminder_type": "overdue_3d",
+      "channel": "system",
+      "sent_at": null,
+      "marked_sent_by": null,
+      "message_preview": null,
+      "delivery_status": "manual",
+      "created_at": "2026-05-26T04:46:31.142683+00:00"
+    }
+  ],
+  "new_overdue_events": 0,
+  "tenant_sent_logs": 0,
+  "duplicate_job_count_stable": true,
+  "pass": false
+}

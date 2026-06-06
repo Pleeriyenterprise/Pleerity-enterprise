@@ -1,0 +1,13 @@
+{
+  "at_utc": "2026-06-06T12:40:38.205372+00:00",
+  "target_ledger_id": null,
+  "reminder_type": null,
+  "job_run_1_status": 403,
+  "job_run_2_status": 403,
+  "duplicate_job_safe": false,
+  "tenant_message_logs_sent": 0,
+  "new_message_logs": 0,
+  "ledger_reminders": [],
+  "pass": false,
+  "note": "Uses due_soon/due_today candidate when present; otherwise job idempotency still verified"
+}
