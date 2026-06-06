@@ -1,0 +1,12 @@
+{
+  "pass": true,
+  "ui_subscriber_count": 11,
+  "kit_sync_column_visible": true,
+  "export_button_visible": true,
+  "refresh_button_visible": true,
+  "shows_prior_test_email": true,
+  "shows_no_subscribers_misleading": false,
+  "refresh_preserves_count": true,
+  "csv_download_filename": "newsletter_subscribers.csv",
+  "csv_export_works": true
+}

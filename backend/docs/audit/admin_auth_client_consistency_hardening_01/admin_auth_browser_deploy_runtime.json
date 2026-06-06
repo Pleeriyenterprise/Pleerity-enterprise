@@ -1,0 +1,24 @@
+{
+  "at_utc": "2026-06-06T17:45:46.833025+00:00",
+  "frontend_url": "https://pleerityenterprise.co.uk",
+  "hardening_commit_expected": "b0d7bd41",
+  "html_status": 200,
+  "api_health_status": 200,
+  "main_bundle_hash": "db99e2f1",
+  "bundle_urls_sample": [
+    "/static/js/main.db99e2f1.js"
+  ],
+  "hardened_markers_in_bundle": {
+    "listNewsletterSubscribers": true,
+    "no_subscribers_yet_copy": true,
+    "session_expired_message": true,
+    "useAuthenticatedQuery_literal": false,
+    "authStorage_literal": false
+  },
+  "legacy_drift_in_bundle": {
+    "getItem_token": false,
+    "legacy_no_subscribers_only": false
+  },
+  "deployed_hardened_bundle": true,
+  "pass": true
+}

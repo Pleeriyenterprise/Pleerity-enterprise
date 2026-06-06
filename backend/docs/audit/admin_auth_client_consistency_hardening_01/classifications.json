@@ -1,20 +1,17 @@
 {
-  "programme": "ADMIN-AUTH-CLIENT-CONSISTENCY-HARDENING-01",
-  "classification": "PARTIAL",
-  "secondary_flags": [
-    "ERROR_VISIBILITY_DRIFT"
-  ],
-  "blockers": [
-    "staging_browser_deploy"
-  ],
+  "programme": "ADMIN-AUTH-CLIENT-CONSISTENCY-BROWSER-CLOSEOUT-01",
+  "parent_programme": "ADMIN-AUTH-CLIENT-CONSISTENCY-HARDENING-01",
+  "prior_classification": "PARTIAL",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
+  "blockers": [],
   "checklist": {
-    "token_audit": true,
-    "auth_client": true,
-    "admin_pages": true,
-    "newsletter_closeout": true,
-    "error_visibility": true,
+    "deploy_proof": true,
+    "newsletter_browser": true,
+    "auth_error_visibility": true,
     "regression": true
   },
-  "run_tag": "20260606T172720Z",
-  "classified_at_utc": "2026-06-06T17:28:40.053740+00:00"
+  "hardening_commit": "b0d7bd41",
+  "run_tag": "20260606T174543Z",
+  "classified_at_utc": "2026-06-06T17:47:24.732713+00:00"
 }

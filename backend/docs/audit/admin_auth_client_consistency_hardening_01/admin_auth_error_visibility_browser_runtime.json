@@ -1,0 +1,33 @@
+{
+  "at_utc": "2026-06-06T17:47:16.575663+00:00",
+  "probes": [
+    {
+      "page": "newsletter",
+      "path": "/admin/marketing/newsletter",
+      "pass": true,
+      "shows_session_auth_error": true,
+      "shows_retry_or_signin": true,
+      "misleading_zero_subscribers": false,
+      "misleading_no_subscribers_empty": false
+    },
+    {
+      "page": "faq",
+      "path": "/admin/content/faqs",
+      "pass": true,
+      "shows_session_auth_error": true,
+      "shows_retry_or_signin": true,
+      "misleading_zero_subscribers": false,
+      "misleading_no_subscribers_empty": false
+    },
+    {
+      "page": "insights",
+      "path": "/admin/content/feedback",
+      "pass": true,
+      "shows_session_auth_error": true,
+      "shows_retry_or_signin": true,
+      "misleading_zero_subscribers": false,
+      "misleading_no_subscribers_empty": false
+    }
+  ],
+  "pass": true
+}

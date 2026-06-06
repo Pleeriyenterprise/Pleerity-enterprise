@@ -1,73 +1,77 @@
 # Admin Auth Client Consistency Hardening
 
 **Programme:** ADMIN-AUTH-CLIENT-CONSISTENCY-HARDENING-01  
-**Run tag:** `20260606T172720Z`  
-**Classification:** `PARTIAL` (code + tests complete; staging browser pending frontend deploy)
+**Browser closeout:** ADMIN-AUTH-CLIENT-CONSISTENCY-BROWSER-CLOSEOUT-01  
+**Hardening commit:** `b0d7bd41`  
+**Final classification:** `VERIFIED_OPERATIONALLY`  
+**Browser closeout run:** `20260606T174543Z`
 
 ## Root cause (recap)
 
 `AdminNewsletterPage`, `AdminFAQPage`, and `AdminInsightsFeedbackPage` used `localStorage.getItem('token')` while `AuthContext` stores `auth_token`. Authenticated admin API calls returned 401; pages swallowed errors and rendered misleading empty states (e.g. "0 subscribers").
 
-## PART 1 — Token usage audit
+## Hardening delivered (`b0d7bd41`)
 
-| Result | Detail |
-|--------|--------|
-| Legacy `token` key reads | **0** (cleared) |
-| Canonical layer | `frontend/src/api/authStorage.js` |
-| Axios interceptor | Uses `getAuthToken()` / `getContractorToken()` |
+- `authStorage.js` — canonical token retrieval
+- `client.js` interceptor uses `getAuthToken()` / `getContractorToken()`
+- `useAuthenticatedQuery`, `adminFetchState`, `AdminFetchStatePanel`
+- Marketing admin pages migrated to `adminAPI`
 
-Artifact: `auth_token_usage_inventory.json`
+## Browser closeout — VERIFIED_OPERATIONALLY
 
-## PART 2 — Centralized auth client
-
-- `authStorage.js` — single token retrieval API
-- `client.js` — interceptor wired to authStorage; exports `classifyAxiosError`, `ADMIN_FETCH_STATE`
-- `adminAPI` — `listNewsletterSubscribers`, `listFaqsAdmin`, `listInsightsFeedback`, FAQ CRUD
-- `useAuthenticatedQuery` hook — axios fetch with structured errors
-- `adminFetchState.js` — loading / empty / auth / server / network classification
-- `AdminFetchStatePanel` — operational error UI with retry + sign-in
-
-Artifact: `auth_client_hardening_runtime.json`
-
-## PART 3 — Admin page hardening
-
-| Page | adminAPI | useAuthenticatedQuery | Error surface |
-|------|----------|----------------------|---------------|
-| AdminNewsletterPage | Yes | Yes | AdminFetchStatePanel |
-| AdminFAQPage | Yes | Yes | Inline + save errors |
-| AdminInsightsFeedbackPage | Yes | Yes | AdminFetchStatePanel |
-
-Artifact: `admin_page_hardening_runtime.json`
-
-## PART 4 — Newsletter dashboard closeout
+### PART 1 — Deploy proof
 
 | Check | Result |
 |-------|--------|
-| Public subscribe API | 200 |
-| Admin API count | 9 → 10 |
-| Kit sync | SYNCED |
-| Duplicate | Already subscribed |
-| Staging browser UI | Pending frontend deploy (old bundle) |
-| Component unit test | Pass — renders rows; 401 shows auth error not empty |
+| Frontend | `https://pleerityenterprise.co.uk` — 200 |
+| API health | 200 |
+| Main bundle hash | `db99e2f1` |
+| `listNewsletterSubscribers` in bundle | Yes |
+| `No subscribers yet` copy | Yes |
+| `Session expired or not signed in` | Yes |
+| Legacy `getItem('token')` | **Absent** |
 
-Artifact: `newsletter_dashboard_closeout_runtime.json`
+Artifact: `admin_auth_browser_deploy_runtime.json`
 
-## PART 5 — Error visibility governance
+### PART 2 — Newsletter dashboard browser
 
-- Fixed marketing admin pages: **SAFE**
-- Remaining manual `fetch` + `auth_token` on contact/blog/catalogue pages: tracked (not `AUTH_DRIFT`)
+| Check | Result |
+|-------|--------|
+| UI subscriber count | **11** |
+| Prior audit email visible | Yes |
+| Kit Sync column | Yes |
+| Export CSV | `newsletter_subscribers.csv` |
+| Refresh | Preserves count |
+| Misleading "0 subscribers" | **No** |
 
-Artifact: `admin_error_visibility_runtime.json`
+Artifact: `newsletter_dashboard_browser_closeout_runtime.json`
 
-## PART 6 — Regression
+### PART 3 — Auth error visibility (invalid JWT)
 
-- `test_admin_auth_client_consistency.py`: **5 passed**
-- Frontend: `authStorage`, `adminFetchState`, `AdminNewsletterPage` tests — **11 passed**
+| Page | Auth error shown | Retry/sign-in | Fake empty |
+|------|------------------|---------------|------------|
+| Newsletter | Yes | Yes | No |
+| FAQ | Yes | Yes | No |
+| Insights Feedback | Yes | Yes | No |
 
-Artifact: `auth_client_regression_runtime.json`
+Artifact: `admin_auth_error_visibility_browser_runtime.json`
 
-## Classification
+### PART 4 — Regression
 
-`PARTIAL` — blocker: `staging_browser_deploy` until frontend bundle with hardened pages is live on staging.
+- Backend `test_admin_auth_client_consistency.py`: **5 passed**
+- Frontend auth tests: **11 passed**
 
-Harness: `backend/admin_auth_client_consistency_hardening_01_execute.py`
+Artifact: `admin_auth_browser_regression_runtime.json`
+
+## Prior artefacts (hardening run `20260606T172720Z`)
+
+- `auth_token_usage_inventory.json`
+- `auth_client_hardening_runtime.json`
+- `admin_page_hardening_runtime.json`
+- `newsletter_dashboard_closeout_runtime.json` (API)
+- `admin_error_visibility_runtime.json` (static)
+- `auth_client_regression_runtime.json`
+
+Harnesses:
+- `backend/admin_auth_client_consistency_hardening_01_execute.py`
+- `backend/admin_auth_client_consistency_browser_closeout_01_execute.py`
