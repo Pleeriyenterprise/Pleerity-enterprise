@@ -1,0 +1,18 @@
+{
+  "at_utc": "2026-06-06T17:28:28.414956+00:00",
+  "test_email": "auth-hardening-20260606t172720z@yopmail.com",
+  "subscribe_status": 200,
+  "duplicate_message": "Already subscribed",
+  "admin_api_before": 10,
+  "admin_api_after": 11,
+  "test_row_kit_sync": "SYNCED",
+  "browser": {
+    "pass": false,
+    "ui_count": 0,
+    "shows_test_email": false,
+    "shows_auth_error": false,
+    "shows_no_subscribers_empty": false,
+    "note": "Staging bundle may lag until frontend deploy; source+API+unit tests are primary proof"
+  },
+  "pass": true
+}

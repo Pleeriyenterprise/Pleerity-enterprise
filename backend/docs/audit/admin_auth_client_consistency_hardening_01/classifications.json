@@ -1,0 +1,20 @@
+{
+  "programme": "ADMIN-AUTH-CLIENT-CONSISTENCY-HARDENING-01",
+  "classification": "PARTIAL",
+  "secondary_flags": [
+    "ERROR_VISIBILITY_DRIFT"
+  ],
+  "blockers": [
+    "staging_browser_deploy"
+  ],
+  "checklist": {
+    "token_audit": true,
+    "auth_client": true,
+    "admin_pages": true,
+    "newsletter_closeout": true,
+    "error_visibility": true,
+    "regression": true
+  },
+  "run_tag": "20260606T172720Z",
+  "classified_at_utc": "2026-06-06T17:28:40.053740+00:00"
+}

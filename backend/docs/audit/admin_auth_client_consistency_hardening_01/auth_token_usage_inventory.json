@@ -1,0 +1,198 @@
+{
+  "at_utc": "2026-06-06T17:27:20.977249+00:00",
+  "entries_sample": [
+    {
+      "file": "frontend/src/api/authStorage.js",
+      "classification": "correct",
+      "pattern": "auth_layer"
+    },
+    {
+      "file": "frontend/src/api/client.js",
+      "classification": "correct",
+      "pattern": "axios_interceptor"
+    },
+    {
+      "file": "frontend/src/pages/AdminAutomationCentrePage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminClientControlPanelPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminClientControlPanelPage.paymentHistory.test.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminControlCentrePage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminControlCentrePage.test.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminDashboard.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminDashboard.pendingVerification.test.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminEscalationReviewQueuePage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminExtractionQueuePage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminFAQPage.jsx",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminInsightsFeedbackPage.jsx",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminNewsletterPage.jsx",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminNotificationInboxPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminPendingPaymentsPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminSecurityDashboardPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/AdminUnresolvedEvidenceQueuePage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/components/admin/AdminClientSupportSearch.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/components/admin/UnifiedAdminLayout.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminCommunicationsPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminComplianceRegistryEditorPage.evidencePolicy.test.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminComplianceRegistryEditorPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminComplianceRegistryPublishQueuePage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminComplianceRegistryPublishQueuePage.test.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminIdentityLifecyclePage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminOpsActionLinksPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminOpsContractorsPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminOpsFeatureControlsPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminOpsMaintenancePage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminPilotAccountDetailPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminPilotAnomaliesPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminPilotInviteDetailPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminPilotInvitesPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminPilotOperationsPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminRiskDashboardPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminWorkOrderDetailPage.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    },
+    {
+      "file": "frontend/src/pages/admin/AdminWorkOrderDetailPage.test.js",
+      "classification": "correct",
+      "pattern": "centralized_admin_api"
+    }
+  ],
+  "drift_count": 0,
+  "drift_files": [],
+  "pass": true
+}

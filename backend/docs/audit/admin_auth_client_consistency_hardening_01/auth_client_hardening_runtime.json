@@ -1,0 +1,12 @@
+{
+  "at_utc": "2026-06-06T17:27:20.978250+00:00",
+  "checks": {
+    "authStorage_js": true,
+    "adminFetchState_js": true,
+    "useAuthenticatedQuery": true,
+    "AdminFetchStatePanel": true,
+    "adminAPI_newsletter": true,
+    "client_uses_authStorage": true
+  },
+  "pass": true
+}

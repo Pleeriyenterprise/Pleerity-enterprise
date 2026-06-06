@@ -1,0 +1,27 @@
+{
+  "at_utc": "2026-06-06T17:27:20.978250+00:00",
+  "pages": [
+    {
+      "page": "AdminNewsletterPage.jsx",
+      "uses_adminAPI": true,
+      "uses_useAuthenticatedQuery": true,
+      "legacy_token": false,
+      "has_error_surface": true
+    },
+    {
+      "page": "AdminFAQPage.jsx",
+      "uses_adminAPI": true,
+      "uses_useAuthenticatedQuery": true,
+      "legacy_token": false,
+      "has_error_surface": true
+    },
+    {
+      "page": "AdminInsightsFeedbackPage.jsx",
+      "uses_adminAPI": true,
+      "uses_useAuthenticatedQuery": true,
+      "legacy_token": false,
+      "has_error_surface": true
+    }
+  ],
+  "pass": true
+}

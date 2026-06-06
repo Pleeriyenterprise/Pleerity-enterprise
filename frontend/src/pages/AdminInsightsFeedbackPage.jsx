@@ -1,38 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import AdminFetchStatePanel from '../components/admin/AdminFetchStatePanel';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, RefreshCw } from 'lucide-react';
+import { adminAPI } from '../api/client';
+import { useAuthenticatedQuery } from '../hooks/useAuthenticatedQuery';
+
+const STATUS_COLORS = {
+  NEW: 'bg-blue-100 text-blue-700',
+  REVIEWED: 'bg-gray-100 text-gray-700',
+  ACTIONED: 'bg-green-100 text-green-700',
+  ARCHIVED: 'bg-gray-100 text-gray-500',
+};
 
 const AdminInsightsFeedbackPage = () => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const API = process.env.REACT_APP_BACKEND_URL;
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const res = await fetch(`${API}/api/admin/feedback/list`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
-        if (cancelled) return;
-        if (res.ok) setData(await res.json());
-      } catch (e) {}
-      finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [API]);
-
-  const colors = {'NEW':'bg-blue-100 text-blue-700','REVIEWED':'bg-gray-100 text-gray-700','ACTIONED':'bg-green-100 text-green-700','ARCHIVED':'bg-gray-100 text-gray-500'};
+  const { data, loading, error, reload } = useAuthenticatedQuery(
+    () => adminAPI.listInsightsFeedback(),
+    [],
+  );
+  const rows = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
   return (
     <UnifiedAdminLayout>
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-2">Insights Feedback</h1>
-        <p className="text-gray-600 mb-8">User feedback on blog articles and insights</p>
+        <div className="flex justify-between items-center mb-2">
+          <div>
+            <h1 className="text-3xl font-bold">Insights Feedback</h1>
+            <p className="text-gray-600 mb-8">User feedback on blog articles and insights</p>
+          </div>
+          <Button variant="outline" onClick={reload} disabled={loading}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
 
         <Card>
           <table className="w-full">
@@ -46,17 +48,32 @@ const AdminInsightsFeedbackPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {loading ? <tr><td colSpan="5" className="px-4 py-8 text-center">Loading...</td></tr> :
-              data.length === 0 ? <tr><td colSpan="5" className="px-4 py-8 text-center">No feedback</td></tr> :
-              data.map(f => (
-                <tr key={f.feedback_id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm">{new Date(f.created_at).toLocaleDateString()}</td>
-                  <td className="px-4 py-3 text-sm">{f.article_title}</td>
-                  <td className="px-4 py-3">{f.was_helpful ? <ThumbsUp className="w-4 h-4 text-green-600"/> : <ThumbsDown className="w-4 h-4 text-red-600"/>}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{f.comment || '-'}</td>
-                  <td className="px-4 py-3"><Badge className={colors[f.status]}>{f.status}</Badge></td>
-                </tr>
-              ))}
+              <AdminFetchStatePanel
+                loading={loading}
+                error={error}
+                isEmpty={!loading && !error && rows.length === 0}
+                emptyMessage="No feedback submitted yet."
+                colSpan={5}
+                onRetry={reload}
+              >
+                {rows.map((f) => (
+                  <tr key={f.feedback_id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm">{new Date(f.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-sm">{f.article_title}</td>
+                    <td className="px-4 py-3">
+                      {f.was_helpful ? (
+                        <ThumbsUp className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <ThumbsDown className="w-4 h-4 text-red-600" />
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{f.comment || '—'}</td>
+                    <td className="px-4 py-3">
+                      <Badge className={STATUS_COLORS[f.status] || 'bg-gray-100'}>{f.status}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </AdminFetchStatePanel>
             </tbody>
           </table>
         </Card>

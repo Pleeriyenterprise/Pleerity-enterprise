@@ -1,5 +1,9 @@
 import axios from 'axios';
+import { getAuthToken, getContractorToken } from './authStorage';
 import { buildClientLoginSessionExpiredUrl, isClientPortalPath } from '../utils/clientLoginRedirect';
+
+export { getAuthToken, getContractorToken } from './authStorage';
+export { classifyAxiosError, classifyHttpStatus, ADMIN_FETCH_STATE } from '../utils/adminFetchState';
 
 // Backend base URL: required in deployed env; fallback to relative /api for same-origin/proxy
 const _raw = process.env.REACT_APP_BACKEND_URL;
@@ -66,7 +70,7 @@ function applyPortalAuthHeader(config) {
   if (typeof window === 'undefined') return;
   const path = normalizedApiUrlPath(config);
   if (path.startsWith('contractor/')) {
-    const ct = localStorage.getItem('contractor_token');
+    const ct = getContractorToken();
     if (ct) {
       config.headers.Authorization = `Bearer ${ct}`;
     } else {
@@ -78,7 +82,7 @@ function applyPortalAuthHeader(config) {
     delete config.headers.Authorization;
     return;
   }
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   } else {
@@ -1278,6 +1282,13 @@ export const adminAPI = {
     apiClient.post(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/onboarding-fee-policy`, body),
   patchPilotNotes: (clientId, body) =>
     apiClient.patch(`/admin/pilot-lifecycle/accounts/${encodeURIComponent(clientId)}/notes`, body),
+  /** Marketing / public modules admin surfaces */
+  listNewsletterSubscribers: () => apiClient.get('/admin/newsletter/subscribers'),
+  listFaqsAdmin: () => apiClient.get('/admin/faqs/admin'),
+  createFaq: (body) => apiClient.post('/admin/faqs', body),
+  updateFaq: (faqId, body) => apiClient.put(`/admin/faqs/${encodeURIComponent(faqId)}`, body),
+  deleteFaq: (faqId) => apiClient.delete(`/admin/faqs/${encodeURIComponent(faqId)}`),
+  listInsightsFeedback: () => apiClient.get('/admin/feedback/list'),
 };
 
 // Contractor portal API (use with contractor token from contractor login/set-password)

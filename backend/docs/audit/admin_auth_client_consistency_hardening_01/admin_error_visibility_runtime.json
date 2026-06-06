@@ -1,0 +1,113 @@
+{
+  "at_utc": "2026-06-06T17:28:28.439124+00:00",
+  "pages_audited": 48,
+  "summary": {
+    "SAFE": 43,
+    "MISLEADING_EMPTY_STATE": 1,
+    "AUTH_DRIFT": 0,
+    "NETWORK_DRIFT": 4
+  },
+  "sample": [
+    {
+      "file": "frontend/src/pages/AdminClearFormDocumentsPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminClearFormUsersPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminContactEnquiriesPage.jsx",
+      "classification": "MISLEADING_EMPTY_STATE"
+    },
+    {
+      "file": "frontend/src/pages/AdminFAQPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminInsightsFeedbackPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminLegalContentPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminNewsletterPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminPartnershipEnquiriesPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminRiskLeadsPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminRiskReportPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminSubmissionDetailPage.jsx",
+      "classification": "NETWORK_DRIFT"
+    },
+    {
+      "file": "frontend/src/pages/AdminTalentPoolPage.jsx",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminAnalyticsDashboard.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminAssistantPage.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminAutomationCentrePage.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminBillingPage.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminBlogPage.js",
+      "classification": "NETWORK_DRIFT"
+    },
+    {
+      "file": "frontend/src/pages/AdminCannedResponsesPage.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminClientControlPanelPage.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminConsentDashboard.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminControlCentrePage.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminDashboard.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminEnablementDashboard.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminEscalationReviewQueuePage.js",
+      "classification": "SAFE"
+    },
+    {
+      "file": "frontend/src/pages/AdminExecutiveOverviewPage.js",
+      "classification": "SAFE"
+    }
+  ],
+  "pass": true
+}
