@@ -1,0 +1,37 @@
+{
+  "programme": "ADMIN-BILLING-EVENT-EMAIL-NOTIFICATION-AUDIT-01",
+  "generated_at": "2026-06-06T18:50:20.320914+00:00",
+  "classification": "RECIPIENT_MISSING",
+  "issues": [
+    "RECIPIENT_MISSING"
+  ],
+  "admin_billing_notification_recipient": {
+    "env_primary": "ADMIN_ALERT_EMAILS",
+    "env_fallback": "OPS_ALERT_EMAIL",
+    "staging_alerting_configured": false,
+    "recipient_values_not_exported": true
+  },
+  "message_provider": {
+    "provider": "postmark",
+    "configured": true,
+    "from_address": "no-reply@pleerityenterprise.co.uk"
+  },
+  "template_keys": {
+    "INTERNAL_ALERT": true,
+    "STRIPE_WEBHOOK_FAILURE_ADMIN": true,
+    "PROVISIONING_FAILED_ADMIN": true,
+    "SUBSCRIPTION_CONFIRMED": "customer only",
+    "PAYMENT_FAILED": "customer only",
+    "SUBSCRIPTION_RENEWAL_PAID": "customer only"
+  },
+  "environment_variables": {
+    "ADMIN_ALERT_EMAILS": "primary admin billing alert recipient list (comma-separated)",
+    "OPS_ALERT_EMAIL": "fallback single ops recipient",
+    "SUPPORT_EMAIL": "customer-facing support (not admin billing alerts)",
+    "POSTMARK_SERVER_TOKEN": "(secret \u2014 not exported)",
+    "EMAIL_SENDER": "from address",
+    "SUBSCRIPTION_OPS_HIGH_AMOUNT_PENCE": "threshold for immediate renewal alert (default 50000)",
+    "SUBSCRIPTION_OPS_FAILURE_SUPPRESS_HOURS": "repeat failure suppression (default 24)"
+  },
+  "staging_safe_recipient_note": "Use yopmail or ops inbox in ADMIN_ALERT_EMAILS for staging verification"
+}

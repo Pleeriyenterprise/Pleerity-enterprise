@@ -9,6 +9,38 @@ logger = logging.getLogger(__name__)
 SUBSCRIPTION_RENEWAL_BILLING_REASONS = frozenset({"subscription_cycle", "subscription_update"})
 
 
+async def on_checkout_completed(
+    *,
+    client_id: str,
+    session: Dict[str, Any],
+    event: Dict[str, Any],
+    stripe_subscription_id: Optional[str] = None,
+    stripe_customer_id: Optional[str] = None,
+) -> None:
+    """Non-blocking admin alert for successful subscription signup / first payment."""
+    try:
+        amount_pence = int(session.get("amount_total") or 0)
+        currency = (session.get("currency") or "gbp").lower()
+        from services.subscription_operational_events import record_subscription_first_payment
+
+        await record_subscription_first_payment(
+            client_id=client_id,
+            event=event,
+            amount_pence=amount_pence,
+            currency=currency,
+            checkout_session_id=str(session.get("id") or "").strip() or None,
+            stripe_subscription_id=stripe_subscription_id,
+            stripe_customer_id=stripe_customer_id,
+        )
+    except Exception as exc:
+        logger.warning(
+            "subscription ops on_checkout_completed failed client_id=%s: %s",
+            client_id,
+            exc,
+            exc_info=True,
+        )
+
+
 async def on_invoice_paid(
     *,
     client_id: str,

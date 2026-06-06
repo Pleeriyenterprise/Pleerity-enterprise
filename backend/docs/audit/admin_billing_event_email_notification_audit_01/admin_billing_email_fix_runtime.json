@@ -1,0 +1,11 @@
+{
+  "applied": true,
+  "generated_at": "2026-06-06T18:50:43.743746+00:00",
+  "changes": [
+    "SUBSCRIPTION_FIRST_PAYMENT operational event type",
+    "record_subscription_first_payment in subscription_operational_events.py",
+    "on_checkout_completed bridge hook from checkout.session.completed",
+    "Unit tests for first payment notify and dedupe"
+  ],
+  "billing_state_impact": "none \u2014 notification only, non-blocking try/except"
+}

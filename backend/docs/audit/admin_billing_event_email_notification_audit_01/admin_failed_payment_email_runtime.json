@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-06-06T18:50:43.678566+00:00",
+  "proof_mode": "trace_only",
+  "admin_email_intended": false,
+  "notes": "Failed signup/checkout has no admin email dispatch path",
+  "customer_path": "None for incomplete checkout",
+  "staging_sample": {
+    "total": 0,
+    "sample": []
+  }
+}

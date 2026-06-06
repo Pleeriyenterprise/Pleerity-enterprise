@@ -8,12 +8,14 @@ import pytest
 
 from services.subscription_operational_constants import (
     OPERATIONAL_EVENT_LABELS,
+    SUBSCRIPTION_FIRST_PAYMENT,
     SUBSCRIPTION_RENEWAL_FAILED,
     SUBSCRIPTION_RENEWED,
     PAYMENT_RECONCILIATION_MISMATCH,
 )
 from services.subscription_operational_events import (
     operational_label,
+    record_subscription_first_payment,
     record_subscription_renewal_failed,
     record_subscription_renewed,
     list_recent_operational_events,
@@ -69,6 +71,49 @@ async def test_operational_presentation_labels():
     assert operational_label(SUBSCRIPTION_RENEWED) == "Subscription renewed successfully"
     assert "renewal payment failed" in operational_label(SUBSCRIPTION_RENEWAL_FAILED).lower()
     assert OPERATIONAL_EVENT_LABELS[PAYMENT_RECONCILIATION_MISMATCH]
+
+
+@pytest.mark.asyncio
+@patch("services.subscription_operational_events.database.get_db")
+@patch("services.subscription_operational_notifications.send_subscription_ops_admin_alert", new_callable=AsyncMock)
+async def test_first_payment_triggers_immediate_admin_notify(mock_alert, mock_get_db, mock_db):
+    mock_get_db.return_value = mock_db
+
+    result = await record_subscription_first_payment(
+        client_id="client-1",
+        event={"id": "evt_checkout_1"},
+        amount_pence=4900,
+        currency="gbp",
+        checkout_session_id="cs_test_1",
+        stripe_subscription_id="sub_1",
+    )
+    assert result["created"] is True
+    assert result["immediate_admin_notify"] is True
+    assert result["operational_event_type"] == SUBSCRIPTION_FIRST_PAYMENT
+    mock_alert.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("services.subscription_operational_events.database.get_db")
+@patch("services.subscription_operational_notifications.send_subscription_ops_admin_alert", new_callable=AsyncMock)
+async def test_first_payment_deduped_on_replay(mock_alert, mock_get_db, mock_db):
+    mock_get_db.return_value = mock_db
+
+    async def find_one_events(query, *args, **kwargs):
+        if isinstance(query, dict) and query.get("dedupe_key"):
+            return {"_id": "existing"}
+        return None
+
+    mock_db.subscription_operational_events.find_one = AsyncMock(side_effect=find_one_events)
+
+    result = await record_subscription_first_payment(
+        client_id="client-1",
+        event={"id": "evt_checkout_dup"},
+        amount_pence=4900,
+        checkout_session_id="cs_dup",
+    )
+    assert result["created"] is False
+    mock_alert.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,20 @@
+{
+  "proof_mode": "in_process_mock",
+  "first_call": {
+    "created": true,
+    "event_id": "evt-fail-1",
+    "immediate_admin_notify": true,
+    "suppressed": false
+  },
+  "repeat_call": {
+    "created": false,
+    "event_id": "incident",
+    "immediate_admin_notify": false,
+    "suppressed": true
+  },
+  "admin_alert_count": 1,
+  "template_key": "INTERNAL_ALERT",
+  "event_type": "subscription_ops_subscription_renewal_failed",
+  "repeat_suppressed": true,
+  "idempotent_repeat_failure": true
+}

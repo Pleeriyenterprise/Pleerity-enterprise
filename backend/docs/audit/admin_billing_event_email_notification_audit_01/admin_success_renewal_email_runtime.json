@@ -1,0 +1,40 @@
+{
+  "proof_mode": "in_process_mock",
+  "notify_expected": true,
+  "first_call": {
+    "created": true,
+    "event_id": "evt-ren-1",
+    "immediate_admin_notify": true,
+    "operational_event_type": "SUBSCRIPTION_RENEWED"
+  },
+  "replay_call": {
+    "created": false,
+    "event_id": "dup",
+    "immediate_admin_notify": false,
+    "operational_event_type": "SUBSCRIPTION_RENEWED"
+  },
+  "admin_alert_count": 1,
+  "template_key": "INTERNAL_ALERT",
+  "event_type": "subscription_ops_subscription_renewed",
+  "idempotent_on_replay": true,
+  "routine_renewal": {
+    "proof_mode": "in_process_mock",
+    "notify_expected": false,
+    "first_call": {
+      "created": true,
+      "event_id": "evt-ren-1",
+      "immediate_admin_notify": false,
+      "operational_event_type": "SUBSCRIPTION_RENEWED"
+    },
+    "replay_call": {
+      "created": false,
+      "event_id": "dup",
+      "immediate_admin_notify": false,
+      "operational_event_type": "SUBSCRIPTION_RENEWED"
+    },
+    "admin_alert_count": 0,
+    "template_key": "INTERNAL_ALERT",
+    "event_type": "subscription_ops_subscription_renewed",
+    "idempotent_on_replay": true
+  }
+}

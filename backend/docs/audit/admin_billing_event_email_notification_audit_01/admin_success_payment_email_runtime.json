@@ -1,0 +1,105 @@
+{
+  "proof_mode": "in_process_mock",
+  "first_call": {
+    "created": true,
+    "event_id": "evt-fp-1",
+    "immediate_admin_notify": true,
+    "operational_event_type": "SUBSCRIPTION_FIRST_PAYMENT"
+  },
+  "replay_call": {
+    "created": false,
+    "event_id": "existing",
+    "immediate_admin_notify": false,
+    "operational_event_type": "SUBSCRIPTION_FIRST_PAYMENT"
+  },
+  "admin_alert_dispatched": true,
+  "template_key": "INTERNAL_ALERT",
+  "event_type": "subscription_ops_subscription_first_payment",
+  "idempotent_on_replay": true,
+  "billing_state_unchanged": true,
+  "staging_message_logs": {
+    "total": 757,
+    "sample": [
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T18:35:40.790000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T18:30:06.135000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T17:30:05.742000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T17:00:29.778000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T16:50:27.823000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T16:50:04.358000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T16:37:57.615000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T16:32:26.817000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T16:32:11.380000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      },
+      {
+        "template_key": "INTERNAL_ALERT",
+        "status": "DELIVERED",
+        "event_type": null,
+        "created_at": "2026-06-06T16:10:29.020000",
+        "recipient_masked": "i***o@pleerityenterprise.co.uk",
+        "client_id": null
+      }
+    ]
+  }
+}

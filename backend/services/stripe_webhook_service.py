@@ -1431,6 +1431,19 @@ class StripeWebhookService:
                 exc_info=True,
             )
 
+        try:
+            from services.subscription_operational_bridge import on_checkout_completed
+
+            await on_checkout_completed(
+                client_id=client_id,
+                session=session,
+                event=event,
+                stripe_subscription_id=stripe_subscription_id,
+                stripe_customer_id=str(stripe_customer_id or ""),
+            )
+        except Exception as ops_chk_exc:
+            logger.warning("subscription operational bridge checkout.completed: %s", ops_chk_exc)
+
         return {
             "handled": True,
             "client_id": client_id,

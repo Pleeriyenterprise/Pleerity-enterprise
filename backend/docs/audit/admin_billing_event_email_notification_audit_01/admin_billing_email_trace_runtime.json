@@ -1,0 +1,144 @@
+{
+  "programme": "ADMIN-BILLING-EVENT-EMAIL-NOTIFICATION-AUDIT-01",
+  "generated_at": "2026-06-06T18:50:10.544896+00:00",
+  "events": [
+    {
+      "event": "successful_signup_first_payment",
+      "stripe_triggers": [
+        "checkout.session.completed"
+      ],
+      "admin_email_intended": true,
+      "customer_template": "SUBSCRIPTION_CONFIRMED",
+      "admin_template": "INTERNAL_ALERT",
+      "admin_event_type": "subscription_ops_subscription_first_payment",
+      "handler": "stripe_webhook_service._handle_subscription_checkout \u2192 subscription_operational_bridge.on_checkout_completed \u2192 record_subscription_first_payment \u2192 send_subscription_ops_admin_alert",
+      "template_present": true,
+      "message_log_written": true,
+      "send_attempted": true,
+      "recipient_source": "ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL (comma-separated)",
+      "failures_logged": true,
+      "idempotency": "dedupe_key ops_first_payment:{client_id}:{stripe_event_id}; idempotency_key SUB_OPS_{dedupe}_{suffix}_{recipient}",
+      "notes": "Fix applied in this audit: admin ops alert on checkout completion (non-blocking)."
+    },
+    {
+      "event": "failed_signup_failed_checkout",
+      "stripe_triggers": [
+        "(no registered webhook handler for checkout.session.expired or checkout payment_intent failure)"
+      ],
+      "admin_email_intended": false,
+      "customer_template": null,
+      "admin_template": null,
+      "handler": "checkout_failed analytics events only (intake.py log_event); pending_payment_lifecycle job marks abandoned \u2014 no admin email",
+      "template_present": false,
+      "message_log_written": false,
+      "send_attempted": false,
+      "recipient_source": null,
+      "failures_logged": false,
+      "idempotency": null,
+      "notes": "GAP: failed/abandoned checkout does not dispatch admin billing alert."
+    },
+    {
+      "event": "successful_subscription_renewal",
+      "stripe_triggers": [
+        "invoice.paid",
+        "invoice.payment_succeeded"
+      ],
+      "admin_email_intended": "conditional",
+      "customer_template": "SUBSCRIPTION_RENEWAL_PAID",
+      "admin_template": "INTERNAL_ALERT",
+      "admin_event_type": "subscription_ops_subscription_renewed",
+      "handler": "subscription_operational_bridge.on_invoice_paid \u2192 record_subscription_renewed (notify when first renewal, annual, high amount, recovered, mismatch, pilot)",
+      "template_present": true,
+      "message_log_written": true,
+      "send_attempted": "conditional",
+      "recipient_source": "ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL",
+      "failures_logged": true,
+      "idempotency": "dedupe_key ops_renewed:{client_id}:{invoice_id}",
+      "notes": "Routine monthly renewals go to daily digest (subscription_ops_digest), not immediate email."
+    },
+    {
+      "event": "failed_renewal_payment",
+      "stripe_triggers": [
+        "invoice.payment_failed"
+      ],
+      "admin_email_intended": true,
+      "customer_template": "PAYMENT_FAILED",
+      "admin_template": "INTERNAL_ALERT",
+      "admin_event_type": "subscription_ops_subscription_renewal_failed",
+      "handler": "stripe_webhook_service._handle_payment_failed \u2192 subscription_operational_bridge.on_payment_failed \u2192 record_subscription_renewal_failed",
+      "template_present": true,
+      "message_log_written": true,
+      "send_attempted": true,
+      "recipient_source": "ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL",
+      "failures_logged": true,
+      "idempotency": "dedupe_key ops_fail_incident:{client_id}; repeat failures suppressed 24h",
+      "notes": "First failure in incident sends admin alert; repeats suppressed."
+    },
+    {
+      "event": "subscription_cancelled",
+      "stripe_triggers": [
+        "customer.subscription.deleted"
+      ],
+      "admin_email_intended": true,
+      "admin_template": "INTERNAL_ALERT",
+      "admin_event_type": "subscription_ops_subscription_cancelled",
+      "handler": "subscription_operational_bridge.on_subscription_deleted \u2192 record_subscription_cancelled",
+      "template_present": true,
+      "message_log_written": true,
+      "send_attempted": true,
+      "recipient_source": "ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL",
+      "failures_logged": true,
+      "idempotency": "dedupe_key ops_cancelled:{client_id}:{source_event_id}"
+    },
+    {
+      "event": "payment_recovery_after_failure",
+      "stripe_triggers": [
+        "invoice.paid with recovered=True (PAST_DUE/UNPAID \u2192 active)"
+      ],
+      "admin_email_intended": true,
+      "admin_template": "INTERNAL_ALERT",
+      "handler": "record_subscription_renewed(recovered=True) \u2192 immediate notify",
+      "template_present": true,
+      "message_log_written": true,
+      "send_attempted": true,
+      "recipient_source": "ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL",
+      "failures_logged": true
+    },
+    {
+      "event": "billing_recovery_required",
+      "stripe_triggers": [
+        "billing_recovery_service (internal state machine)"
+      ],
+      "admin_email_intended": false,
+      "admin_template": null,
+      "handler": "billing_recovery_service \u2014 dashboard/continuation emails to customer only",
+      "template_present": false,
+      "message_log_written": false,
+      "send_attempted": false,
+      "notes": "No admin email for recovery-required state; admin UI only."
+    },
+    {
+      "event": "stripe_webhook_handler_failure",
+      "stripe_triggers": [
+        "webhook processing exception"
+      ],
+      "admin_email_intended": true,
+      "admin_template": "STRIPE_WEBHOOK_FAILURE_ADMIN",
+      "handler": "routes/webhooks.py fire-and-forget",
+      "template_present": true,
+      "message_log_written": true,
+      "send_attempted": true,
+      "recipient_source": "ADMIN_ALERT_EMAILS or OPS_ALERT_EMAIL",
+      "failures_logged": true
+    }
+  ],
+  "key_files": [
+    "services/stripe_webhook_service.py",
+    "services/subscription_operational_bridge.py",
+    "services/subscription_operational_events.py",
+    "services/subscription_operational_notifications.py",
+    "services/subscription_ops_digest.py",
+    "routes/webhooks.py",
+    "services/notification_orchestrator.py"
+  ]
+}

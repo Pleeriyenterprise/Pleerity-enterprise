@@ -1,0 +1,22 @@
+{
+  "generated_at": "2026-06-06T18:50:31.585871+00:00",
+  "events": {
+    "cancelled_admin": {
+      "implemented": true,
+      "message_log_total": 757
+    },
+    "recovery_admin": {
+      "implemented": true,
+      "message_log_total": 757
+    },
+    "checkout_abandoned_admin": {
+      "implemented": false,
+      "notes": "No checkout.session.expired webhook handler or admin alert path"
+    }
+  },
+  "subscription_operational_events_sample": {
+    "count": 0,
+    "by_type": {},
+    "recent_labels": []
+  }
+}

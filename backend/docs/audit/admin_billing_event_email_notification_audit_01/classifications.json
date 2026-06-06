@@ -1,0 +1,9 @@
+{
+  "classification": "PARTIAL",
+  "gaps": [
+    "RECIPIENT_CONFIG_GAP",
+    "failed_checkout_no_admin_email"
+  ],
+  "rationale": "First-payment admin alert fixed; failed checkout still has no admin email; routine renewals are digest-only by design.",
+  "generated_at": "2026-06-06T18:51:58.239481+00:00"
+}

@@ -21,6 +21,7 @@ from services.subscription_operational_constants import (
     PAYMENT_RECONCILIATION_MISMATCH,
     REFUND_ISSUED,
     SUBSCRIPTION_CANCELLED,
+    SUBSCRIPTION_FIRST_PAYMENT,
     SUBSCRIPTION_DOWNGRADED,
     SUBSCRIPTION_REACTIVATED,
     SUBSCRIPTION_RENEWAL_FAILED,
@@ -181,6 +182,62 @@ async def _insert_operational_event(db, doc: Dict[str, Any]) -> Tuple[bool, Opti
             return False, str(existing["_id"])
     result = await db.subscription_operational_events.insert_one(doc)
     return True, str(result.inserted_id)
+
+
+async def record_subscription_first_payment(
+    *,
+    client_id: str,
+    event: Dict[str, Any],
+    amount_pence: int = 0,
+    currency: str = "gbp",
+    checkout_session_id: Optional[str] = None,
+    stripe_subscription_id: Optional[str] = None,
+    stripe_customer_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Record successful signup / first subscription payment; always notify admins."""
+    db = database.get_db()
+    client, billing = await _load_client_context(db, client_id)
+    occurred_at = datetime.now(timezone.utc)
+    source_event_id = (event or {}).get("id")
+    dedupe_key = (
+        f"ops_first_payment:{client_id}:{source_event_id}"
+        if source_event_id
+        else f"ops_first_payment:{client_id}:{checkout_session_id or stripe_subscription_id}"
+    )
+    payment_status, provisioning_status, reconciliation_status = _payment_and_provisioning_status(
+        billing, payment_ok=True
+    )
+    doc = _normalize_event_doc(
+        operational_event_type=SUBSCRIPTION_FIRST_PAYMENT,
+        client=client,
+        billing=billing,
+        occurred_at=occurred_at,
+        amount_pence=amount_pence,
+        currency=currency,
+        payment_status=payment_status,
+        provisioning_status=provisioning_status,
+        reconciliation_status=reconciliation_status,
+        source_event_id=source_event_id,
+        stripe_customer_id=stripe_customer_id,
+        stripe_subscription_id=stripe_subscription_id,
+        dedupe_key=dedupe_key,
+        extra={
+            "checkout_session_id": checkout_session_id,
+            "digest_date": occurred_at.strftime("%Y-%m-%d"),
+            "immediate_admin_notify": True,
+        },
+    )
+    created, event_id = await _insert_operational_event(db, doc)
+    if created:
+        from services.subscription_operational_notifications import send_subscription_ops_admin_alert
+
+        await send_subscription_ops_admin_alert(doc, idempotency_suffix="first_payment")
+    return {
+        "created": created,
+        "event_id": event_id,
+        "immediate_admin_notify": created,
+        "operational_event_type": SUBSCRIPTION_FIRST_PAYMENT,
+    }
 
 
 async def record_subscription_renewed(
