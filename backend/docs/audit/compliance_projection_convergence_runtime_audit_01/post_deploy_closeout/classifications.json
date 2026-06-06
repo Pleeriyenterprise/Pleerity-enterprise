@@ -1,0 +1,26 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T22:16:37.609709+00:00",
+  "deploy_commit": "103649d4",
+  "classification": "SCORE_DRIFT",
+  "target_client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+  "target_crn": "PLE-CVP-2026-000023",
+  "checks": {
+    "target_snapshot": {
+      "two_properties": true,
+      "ten_visible_requirements": true,
+      "all_properties_green": true,
+      "no_overdue": true,
+      "no_expiring": true,
+      "satisfied_equals_total": true
+    },
+    "today": true,
+    "property": true,
+    "score": false,
+    "quick_actions": false,
+    "live_convergence": false,
+    "refresh": true,
+    "browser": false,
+    "regression": true
+  }
+}

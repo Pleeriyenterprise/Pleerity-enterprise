@@ -1,0 +1,58 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T22:14:22.596977+00:00",
+  "urgent_count": 0,
+  "in_progress_count": 4,
+  "summary": {
+    "urgent_count": 0,
+    "upcoming_count": 0,
+    "in_progress_count": 4,
+    "recently_completed_count": 0,
+    "snoozed_count": 0,
+    "hidden_count": 0,
+    "habit": {
+      "urgent_open_total": 0,
+      "items_due_or_expiring_in_7_days": 0,
+      "tasks_acknowledged_last_7_days": 0
+    }
+  },
+  "urgent_requirement_tasks": [],
+  "in_progress_requirement_tasks": [
+    {
+      "id": "issue:45a823ba-139a-4b91-ac9e-5c8dc0957d62",
+      "title": "Please review the uploaded file and confirm it is the correct certificate or record for this property.",
+      "section": "in_progress",
+      "requirement_id": "45a823ba-139a-4b91-ac9e-5c8dc0957d62",
+      "leak": false
+    },
+    {
+      "id": "issue:cd7a06a1-edca-4b82-b173-8bc93de4f463",
+      "title": "Please review the uploaded file and confirm it is the correct certificate or record for this property.",
+      "section": "in_progress",
+      "requirement_id": "cd7a06a1-edca-4b82-b173-8bc93de4f463",
+      "leak": false
+    },
+    {
+      "id": "issue:38808600-ae51-4531-8064-5bc86d13de73",
+      "title": "Upload the correct certificate or record so this requirement can be confirmed.",
+      "section": "in_progress",
+      "requirement_id": "38808600-ae51-4531-8064-5bc86d13de73",
+      "leak": false
+    },
+    {
+      "id": "issue:f8354c33-85a0-4d8e-9f24-45fee70e1e8f",
+      "title": "Upload the correct certificate or record so this requirement can be confirmed.",
+      "section": "in_progress",
+      "requirement_id": "f8354c33-85a0-4d8e-9f24-45fee70e1e8f",
+      "leak": false
+    }
+  ],
+  "satisfied_requirement_leaks": [],
+  "do_this_next_phrase_present": false,
+  "checks": {
+    "no_urgent_requirement_leaks": true,
+    "urgent_count_zero": true,
+    "no_do_this_next_for_satisfied_portfolio": true
+  },
+  "pass": true
+}

@@ -1,0 +1,23 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T22:14:22.596977+00:00",
+  "properties": [
+    {
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "nickname": "Brixton Hill",
+      "compliance_status": "GREEN",
+      "requirement_count": 5,
+      "satisfied_count": 5
+    },
+    {
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "nickname": "Willow Grove",
+      "compliance_status": "GREEN",
+      "requirement_count": 5,
+      "satisfied_count": 5
+    }
+  ],
+  "amber_count": 0,
+  "green_count": 2,
+  "pass": true
+}

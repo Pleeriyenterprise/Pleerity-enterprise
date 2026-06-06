@@ -1,0 +1,15 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T22:14:49.574079+00:00",
+  "properties_api_rag": {
+    "6b33492c-5e24-453b-bcde-49844fd4aede": "GREEN",
+    "fedac677-cd2b-41fe-b5b8-b00f00ddfe67": "GREEN"
+  },
+  "dashboard_rag": {
+    "6b33492c-5e24-453b-bcde-49844fd4aede": "GREEN",
+    "fedac677-cd2b-41fe-b5b8-b00f00ddfe67": "GREEN"
+  },
+  "api_dashboard_aligned": true,
+  "portfolio_score_pending": null,
+  "pass": true
+}

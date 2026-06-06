@@ -1,0 +1,89 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T22:14:09.428404+00:00",
+  "deploy_commit": "103649d4",
+  "target": {
+    "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+    "crn": "PLE-CVP-2026-000023",
+    "name": "Sophie Walker",
+    "session_client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+    "session_crn": null,
+    "auth_method": "impersonation"
+  },
+  "property_count": 2,
+  "properties": [
+    {
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "nickname": "Brixton Hill",
+      "compliance_status": "GREEN",
+      "requirement_count": 5,
+      "satisfied_count": 5
+    },
+    {
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "nickname": "Willow Grove",
+      "compliance_status": "GREEN",
+      "requirement_count": 5,
+      "satisfied_count": 5
+    }
+  ],
+  "requirements_visible": 10,
+  "requirements_satisfied_visible": 10,
+  "score": 93,
+  "grade": "A",
+  "stats": {
+    "total_requirements": 8,
+    "compliant": 8,
+    "pending": 4,
+    "missing_evidence": 0,
+    "expiring_soon": 0,
+    "overdue": 0,
+    "critical_overdue": 0,
+    "documents_uploaded": 8,
+    "documents_verified": 8,
+    "verified_coverage_percent": 50.0,
+    "total_coverage_percent": 50.0,
+    "document_coverage_percent": 50.0,
+    "days_until_next_expiry": 1090,
+    "nearest_expiry_type": "eicr",
+    "hmo_properties": 0,
+    "gap_engine": {
+      "by_kind": {
+        "MISSING_EVIDENCE": 5
+      },
+      "by_severity": {
+        "LOW": 5
+      },
+      "total_open": 5,
+      "policy": {
+        "critical_mandatory_breach_count": 0,
+        "high_risk_gap_count": 0,
+        "attention_only_gap_count": 0,
+        "unknown_or_stale_signal_count": 0,
+        "policy_fields_present_count": 5,
+        "policy_coverage_percent": 100.0,
+        "top_reason_codes": {},
+        "policy_versions": {
+          "v1": 5
+        },
+        "total_open": 5
+      }
+    },
+    "properties_at_risk_count": 0
+  },
+  "dashboard_compliance_summary": {
+    "total_requirements": 10,
+    "compliant": 6,
+    "overdue": 0,
+    "expiring_soon": 0
+  },
+  "portfolio_score_pending": null,
+  "checks": {
+    "two_properties": true,
+    "ten_visible_requirements": true,
+    "all_properties_green": true,
+    "no_overdue": true,
+    "no_expiring": true,
+    "satisfied_equals_total": true
+  }
+}

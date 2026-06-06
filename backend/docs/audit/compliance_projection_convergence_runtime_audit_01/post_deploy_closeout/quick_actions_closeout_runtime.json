@@ -1,0 +1,45 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T22:14:42.133490+00:00",
+  "recommendations_count": 4,
+  "stale_assurance_cards": [],
+  "recommendations": [
+    {
+      "priority": "high",
+      "action": "Some evidence for Smoke, heat and carbon monoxide alarms is self-recorded or awaiting verification",
+      "impact": "+2 points",
+      "requirement_code": "FIRE_DETECTION",
+      "display_label": "Smoke, heat and carbon monoxide alarms",
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "requirement_id": null
+    },
+    {
+      "priority": "high",
+      "action": "Some evidence for Smoke, heat and carbon monoxide alarms is self-recorded or awaiting verification",
+      "impact": "+2 points",
+      "requirement_code": "FIRE_DETECTION",
+      "display_label": "Smoke, heat and carbon monoxide alarms",
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "requirement_id": null
+    },
+    {
+      "priority": "high",
+      "action": "Review compliance evidence for Gas Safety Certificate (CP12)",
+      "impact": "+1 points",
+      "requirement_code": "GAS_SAFETY",
+      "display_label": "Gas Safety Certificate (CP12)",
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "requirement_id": null
+    },
+    {
+      "priority": "high",
+      "action": "Review compliance evidence for Gas Safety Certificate (CP12)",
+      "impact": "+1 points",
+      "requirement_code": "GAS_SAFETY",
+      "display_label": "Gas Safety Certificate (CP12)",
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "requirement_id": null
+    }
+  ],
+  "pass": false
+}

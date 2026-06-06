@@ -1,0 +1,17 @@
+{
+  "programme": "COMPLIANCE-PROJECTION-CONVERGENCE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-06T22:16:31.579809+00:00",
+  "screenshots": {
+    "dashboard": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\post_deploy_closeout\\screenshots\\01_dashboard.png",
+    "properties": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\post_deploy_closeout\\screenshots\\02_properties.png",
+    "requirements": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\post_deploy_closeout\\screenshots\\03_requirements.png",
+    "compliance_score": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\post_deploy_closeout\\screenshots\\04_compliance_score.png",
+    "today": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\post_deploy_closeout\\screenshots\\05_today.png"
+  },
+  "findings": {
+    "attention_needed_count": 2,
+    "do_this_next": true,
+    "need_action_label": true
+  },
+  "pass": false
+}
