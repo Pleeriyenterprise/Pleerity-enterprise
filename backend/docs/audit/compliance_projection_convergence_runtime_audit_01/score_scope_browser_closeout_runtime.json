@@ -1,15 +1,15 @@
 {
   "programme": "SCORE-SCOPE-BACKEND-DEPLOY-CLOSEOUT-01",
-  "generated_at": "2026-06-07T13:24:25.561066+00:00",
+  "generated_at": "2026-06-07T15:07:22.532656+00:00",
   "findings": {
     "error_boundary": false,
-    "lifecycle_satisfied_10": false,
+    "lifecycle_satisfied_10": true,
     "score_tracked_8": true,
-    "grouping_note": false,
+    "grouping_note": true,
     "score_93": true,
     "confidence_explanation": true,
     "achievability_copy": true
   },
   "screenshot": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\score_scope_backend_closeout_screenshots\\01_compliance_score.png",
-  "pass": false
+  "pass": true
 }

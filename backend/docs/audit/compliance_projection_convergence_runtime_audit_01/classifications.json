@@ -1,16 +1,18 @@
 {
-  "programme": "SCORE-SCOPE-DEPLOYMENT-AND-CODEPATH-DIAGNOSTIC-01",
-  "generated_at": "2026-06-07T14:29:14.201769+00:00",
-  "classification": "INPUT_SCOPE_DRIFT",
+  "programme": "SCORE-SCOPE-BACKEND-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T15:09:22.313718+00:00",
+  "deploy_commit": "0dbe58a1",
+  "fix_commits": ["b0510957", "fefa72bd", "0dbe58a1"],
+  "classification": "VERIFIED_OPERATIONALLY",
   "target_client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
   "target_crn": "PLE-CVP-2026-000023",
   "checks": {
-    "root_cause_identified": true,
-    "minimal_fix_applied": true,
-    "simulation_pass": true,
-    "regression": true,
-    "staging_live_api_pass": false
+    "backend_deploy": true,
+    "api_closeout": true,
+    "browser_closeout": true,
+    "surface_parity": true,
+    "regression": true
   },
-  "prior_programme": "SCORE-SCOPE-BACKEND-DEPLOY-CLOSEOUT-01",
+  "prior_programme": "TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01",
   "prior_classification": "SCORE_COUNT_SEMANTIC_DRIFT"
 }
