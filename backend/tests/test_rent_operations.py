@@ -446,9 +446,37 @@ def test_live_send_client_allowlist(monkeypatch):
 def test_safe_recipient_domain_guard(monkeypatch):
     from services import rent_reminder_service
 
+    monkeypatch.delenv("RENT_REMINDERS_PRODUCTION_MODE", raising=False)
     monkeypatch.setenv("RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS", "yopmail.com")
     assert rent_reminder_service.recipient_allowed_for_live_send("f7-ops-wales@yopmail.com") is True
     assert rent_reminder_service.recipient_allowed_for_live_send("tenant@example.com") is False
+
+
+def test_production_mode_allows_all_clients_and_domains(monkeypatch):
+    from services import rent_reminder_service
+
+    monkeypatch.setenv("RENT_REMINDERS_LIVE_SEND", "true")
+    monkeypatch.setenv("RENT_REMINDERS_PRODUCTION_MODE", "true")
+    monkeypatch.setenv("RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST", "other-client-only")
+    monkeypatch.delenv("RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS", raising=False)
+
+    assert rent_reminder_service._live_send_enabled_for_client("any-client") is True
+    assert rent_reminder_service.recipient_allowed_for_live_send("tenant@gmail.com") is True
+
+    cfg = rent_reminder_service.get_live_send_config()
+    assert cfg["production_mode"] is True
+    assert cfg["client_allowlist_enforced"] is False
+    assert cfg["safe_recipient_domains_enforced"] is False
+
+
+def test_staging_default_blocks_non_yopmail_when_domains_unset(monkeypatch):
+    from services import rent_reminder_service
+
+    monkeypatch.delenv("RENT_REMINDERS_PRODUCTION_MODE", raising=False)
+    monkeypatch.delenv("RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS", raising=False)
+
+    assert rent_reminder_service.recipient_allowed_for_live_send("f7-ops-wales@yopmail.com") is True
+    assert rent_reminder_service.recipient_allowed_for_live_send("tenant@gmail.com") is False
 
 
 def test_partial_payment_message_notes_remaining_balance():

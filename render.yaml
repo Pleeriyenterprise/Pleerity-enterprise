@@ -32,10 +32,13 @@ services:
         value: /var/data/uploads/intake
       - key: INTAKE_QUARANTINE_DIR
         value: /var/data/uploads/intake_quarantine
-      # Rent reminder live delivery — staging-safe: allowlisted client + yopmail recipients only
+      # Rent reminder live delivery — staging-safe: allowlisted client + yopmail recipients only.
+      # Production: set RENT_REMINDERS_PRODUCTION_MODE=true (all RENT_OPERATIONS clients, any tenant domain).
       - key: RENT_REMINDERS_LIVE_SEND
         value: "true"
       - key: RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST
         value: "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
       - key: RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS
         value: "yopmail.com"
+      # - key: RENT_REMINDERS_PRODUCTION_MODE
+      #   value: "true"

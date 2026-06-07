@@ -48,6 +48,17 @@ All amounts stored as **integer minor units** (pence), default currency `GBP`.
 
 Live reminder send requires `RENT_REMINDERS_LIVE_SEND=true` and notification templates; default is tracked/manual send.
 
+**Production rollout** (all `RENT_OPERATIONS` clients, any linked tenant email):
+
+```text
+RENT_REMINDERS_LIVE_SEND=true
+RENT_REMINDERS_PRODUCTION_MODE=true
+```
+
+This ignores the client allowlist and does not default to `yopmail.com` when `RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS` is unset. Optional: set `RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS=` explicitly to allow all domains in non-production mode.
+
+**Staging-safe** (allowlisted client + yopmail only): omit `RENT_REMINDERS_PRODUCTION_MODE` and set allowlist + `RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS=yopmail.com`.
+
 ## Deferred (Phase 2+)
 
 Bank feeds, reconciliation, Stripe rent collection, tenant payment portal, first-class tenancy entity, accounting statements, compliance score integration.

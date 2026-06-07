@@ -51,13 +51,24 @@ def build_reminder_key(reminder_type: str, ledger_id: str, period_key: str) -> s
     return f"{prefix}_{ledger_id}_{period_key}"
 
 
+def _env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def _live_send_enabled() -> bool:
-    return os.environ.get("RENT_REMINDERS_LIVE_SEND", "").strip().lower() in ("1", "true", "yes", "on")
+    return _env_flag("RENT_REMINDERS_LIVE_SEND")
+
+
+def _production_mode_enabled() -> bool:
+    """Production intent: all RENT_OPERATIONS clients, any linked tenant email domain."""
+    return _env_flag("RENT_REMINDERS_PRODUCTION_MODE")
 
 
 def _live_send_enabled_for_client(client_id: str) -> bool:
     if not _live_send_enabled():
         return False
+    if _production_mode_enabled():
+        return True
     allowlist = os.environ.get("RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST", "").strip()
     if not allowlist:
         return True
@@ -66,7 +77,10 @@ def _live_send_enabled_for_client(client_id: str) -> bool:
 
 
 def _safe_recipient_domains() -> List[str]:
-    raw = os.environ.get("RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS", "yopmail.com")
+    raw = os.environ.get("RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS")
+    if raw is None:
+        # Staging-safe default unless production mode explicitly opts into all domains.
+        raw = "" if _production_mode_enabled() else "yopmail.com"
     return [item.strip().lower() for item in raw.split(",") if item.strip()]
 
 
@@ -81,11 +95,16 @@ def recipient_allowed_for_live_send(email: str) -> bool:
 
 
 def get_live_send_config() -> Dict[str, Any]:
+    allowlist = os.environ.get("RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST", "")
+    production_mode = _production_mode_enabled()
     return {
         "global_live_send": _live_send_enabled(),
-        "client_allowlist": os.environ.get("RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST", ""),
+        "production_mode": production_mode,
+        "client_allowlist": allowlist,
+        "client_allowlist_enforced": bool(allowlist.strip()) and not production_mode,
         "safe_recipient_domains": _safe_recipient_domains(),
-        "sms_live_send": os.environ.get("SMS_ENABLED", "").strip().lower() in ("1", "true", "yes", "on"),
+        "safe_recipient_domains_enforced": bool(_safe_recipient_domains()),
+        "sms_live_send": _env_flag("SMS_ENABLED"),
     }
 
 
