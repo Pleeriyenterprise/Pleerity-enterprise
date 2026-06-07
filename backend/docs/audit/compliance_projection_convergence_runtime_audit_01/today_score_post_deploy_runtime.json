@@ -1,0 +1,30 @@
+{
+  "programme": "TODAY-UI-AND-SCORE-COUNT-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T12:02:42.121447+00:00",
+  "expected_commit": "0b8582ca",
+  "frontend": {
+    "frontend_url": "https://pleerityenterprise.co.uk",
+    "html_status": 200,
+    "main_bundle_hash": "776a71bb",
+    "markers": {
+      "filterInboxTasksForOperationalActionability": false,
+      "isTaskAssuranceOnly": false,
+      "score_tracked_obligation_groups": true,
+      "grouping_note_copy": false,
+      "alignTodayPayloadTaskSections": false
+    },
+    "deployed_today_fix": true
+  },
+  "api": {
+    "has_visible_requirement_count": true,
+    "visible_requirement_count": 8,
+    "lifecycle_satisfied_count": 8,
+    "score_tracked_requirement_count": 8,
+    "has_grouping_note": false,
+    "grouping_note": null,
+    "score": 93,
+    "score_confidence_headline": "Your requirements are satisfied."
+  },
+  "pass": false,
+  "notes": "Frontend deploy inferred from score-page copy markers when minifier strips export names. Backend visible_requirement_count field confirms API deploy; lifecycle=10 and grouping_note require score pipeline to include all 10 visible requirement rows."
+}

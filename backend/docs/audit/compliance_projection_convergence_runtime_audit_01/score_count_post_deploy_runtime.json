@@ -1,0 +1,34 @@
+{
+  "programme": "TODAY-UI-AND-SCORE-COUNT-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T12:04:30.667121+00:00",
+  "api": {
+    "score": 93,
+    "lifecycle_satisfied_count": 8,
+    "visible_requirement_count": 8,
+    "score_tracked_requirement_count": 8,
+    "grouping_note": null,
+    "score_confidence": {
+      "score": 93.0,
+      "headline": "Your requirements are satisfied.",
+      "detail": "Your score is below 100 because some evidence is self-recorded or awaiting assurance review. This reflects assurance confidence, not an active compliance breach.",
+      "achievability_note": "100/100 is achievable when evidence is platform-verified where verification applies.",
+      "visible_requirement_count": 8,
+      "lifecycle_satisfied_count": 8,
+      "tracked_requirement_count": 8,
+      "score_tracked_requirement_count": 8,
+      "self_recorded_count": 4,
+      "verified_requirement_count": 4,
+      "obligations_satisfied_on_file": true,
+      "assurance_explains_sub_100": true,
+      "grouping_note": null
+    }
+  },
+  "browser": {
+    "lifecycle_satisfied_10": false,
+    "score_tracked_8": true,
+    "grouping_note": false,
+    "score_confidence_visible": true,
+    "assurance_gap_93": true
+  },
+  "pass": false
+}

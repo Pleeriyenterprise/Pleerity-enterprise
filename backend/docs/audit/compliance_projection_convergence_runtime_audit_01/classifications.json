@@ -1,15 +1,17 @@
 {
-  "programme": "TODAY-UI-AND-SCORE-COUNT-SEMANTICS-CLOSEOUT-01",
-  "generated_at": "2026-06-07T11:44:10.915987+00:00",
-  "classification": "TODAY_UI_DRIFT",
+  "programme": "TODAY-UI-AND-SCORE-COUNT-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T12:04:38.245532+00:00",
+  "deploy_commit": "0b8582ca",
+  "classification": "PARTIAL",
+  "primary_drift": "TODAY_UI_DRIFT",
+  "secondary_drift": "SCORE_COUNT_SEMANTIC_DRIFT",
   "target_client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
   "target_crn": "PLE-CVP-2026-000023",
   "checks": {
-    "root_cause_documented": true,
-    "today_ui_fix": true,
-    "today_browser": false,
-    "score_count_root_cause": true,
-    "score_count_clarity": true,
+    "deploy_proof": false,
+    "today_page": false,
+    "score_count_semantics": false,
+    "browser_proof": false,
     "regression": true
   }
 }
