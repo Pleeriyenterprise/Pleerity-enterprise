@@ -1,0 +1,186 @@
+{
+  "programme": "PLAN-OUTCOME-DETERMINISTIC-FIXTURE-SEED-CLOSEOUT-01",
+  "generated_at": "2026-06-07T19:53:54.914147+00:00",
+  "marker": "PLAN-DETERMINISTIC-FIXTURE-20260607T193018Z",
+  "fixtures": [
+    {
+      "scenario": "A",
+      "label": "Solo 1 property same jurisdiction all satisfied",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "crn": "PLE-CVP-2026-000023",
+      "email": null,
+      "name": "Sophie Walker",
+      "plan": "PLAN_1_SOLO",
+      "property_count": 2,
+      "jurisdictions": [
+        "England"
+      ],
+      "requirement_count": 8,
+      "satisfied_count": 8,
+      "unsatisfied_count": 0,
+      "score": 93,
+      "today_urgent_count": 0,
+      "today_in_progress_count": 0,
+      "today_calm": true,
+      "property_rag": {
+        "GREEN": 2,
+        "AMBER": 0,
+        "RED": 0
+      },
+      "properties_valid": true,
+      "entitlements_plan": "PLAN_1_SOLO",
+      "features_enabled": 10,
+      "criteria_match": false,
+      "gaps": [
+        "property_count>1"
+      ],
+      "exact_fixture": false,
+      "expected_user_outcome": "calm"
+    },
+    {
+      "scenario": "D",
+      "label": "Portfolio 5 properties same jurisdiction all satisfied",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_2_PORTFOLIO",
+      "property_count": 1,
+      "jurisdictions": [],
+      "requirement_count": 4,
+      "satisfied_count": 0,
+      "unsatisfied_count": 4,
+      "score": 18,
+      "today_urgent_count": 1,
+      "today_in_progress_count": 0,
+      "today_calm": false,
+      "property_rag": {
+        "GREEN": 0,
+        "AMBER": 1,
+        "RED": 0
+      },
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_2_PORTFOLIO",
+      "features_enabled": 18,
+      "criteria_match": false,
+      "gaps": [
+        "property_count<5",
+        "not_all_satisfied"
+      ],
+      "exact_fixture": false,
+      "expected_user_outcome": "calm"
+    },
+    {
+      "scenario": "E",
+      "label": "Portfolio 5-10 mixed jurisdictions all satisfied",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_2_PORTFOLIO",
+      "property_count": 2,
+      "jurisdictions": [
+        "England"
+      ],
+      "requirement_count": 8,
+      "satisfied_count": 8,
+      "unsatisfied_count": 0,
+      "score": 93,
+      "today_urgent_count": 0,
+      "today_in_progress_count": 0,
+      "today_calm": true,
+      "property_rag": {
+        "GREEN": 2,
+        "AMBER": 0,
+        "RED": 0
+      },
+      "properties_valid": true,
+      "entitlements_plan": "PLAN_1_SOLO",
+      "features_enabled": 10,
+      "criteria_match": false,
+      "gaps": [
+        "plan_mismatch:PLAN_1_SOLO!=PLAN_2_PORTFOLIO",
+        "property_count<5",
+        "not_mixed_jurisdiction"
+      ],
+      "exact_fixture": false,
+      "expected_user_outcome": "calm"
+    },
+    {
+      "scenario": "G",
+      "label": "Professional 3-5 same jurisdiction all satisfied",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_3_PRO",
+      "property_count": 7,
+      "jurisdictions": [
+        "Wales",
+        "Scotland",
+        "England"
+      ],
+      "requirement_count": 43,
+      "satisfied_count": 5,
+      "unsatisfied_count": 38,
+      "score": 27,
+      "today_urgent_count": 24,
+      "today_in_progress_count": 8,
+      "today_calm": false,
+      "property_rag": {
+        "GREEN": 1,
+        "AMBER": 6,
+        "RED": 0
+      },
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_3_PRO",
+      "features_enabled": 29,
+      "criteria_match": false,
+      "gaps": [
+        "property_count>5",
+        "not_all_satisfied",
+        "unexpected_mixed_jurisdiction"
+      ],
+      "exact_fixture": false,
+      "expected_user_outcome": "calm"
+    },
+    {
+      "scenario": "H",
+      "label": "Professional 5-10 mixed all satisfied",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_3_PRO",
+      "property_count": 7,
+      "jurisdictions": [
+        "Wales",
+        "Scotland",
+        "England"
+      ],
+      "requirement_count": 43,
+      "satisfied_count": 5,
+      "unsatisfied_count": 38,
+      "score": 27,
+      "today_urgent_count": 24,
+      "today_in_progress_count": 8,
+      "today_calm": false,
+      "property_rag": {
+        "GREEN": 1,
+        "AMBER": 6,
+        "RED": 0
+      },
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_3_PRO",
+      "features_enabled": 29,
+      "criteria_match": false,
+      "gaps": [
+        "not_all_satisfied"
+      ],
+      "exact_fixture": false,
+      "expected_user_outcome": "calm"
+    }
+  ],
+  "exact_count": "0/5",
+  "pass": false
+}

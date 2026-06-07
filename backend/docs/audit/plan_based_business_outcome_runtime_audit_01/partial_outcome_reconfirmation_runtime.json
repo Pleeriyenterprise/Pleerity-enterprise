@@ -1,0 +1,161 @@
+{
+  "programme": "PLAN-OUTCOME-DETERMINISTIC-FIXTURE-SEED-CLOSEOUT-01",
+  "generated_at": "2026-06-07T20:22:14.872586+00:00",
+  "B": {
+    "fixture": {
+      "scenario": "B",
+      "label": "Solo partial unsatisfied",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_1_SOLO",
+      "property_count": 2,
+      "jurisdictions": [],
+      "requirement_count": 8,
+      "satisfied_count": 0,
+      "unsatisfied_count": 8,
+      "score": 19,
+      "today_urgent_count": 0,
+      "today_in_progress_count": 0,
+      "today_calm": true,
+      "property_rag": {
+        "GREEN": 0,
+        "AMBER": 2,
+        "RED": 0
+      },
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_1_SOLO",
+      "features_enabled": 10,
+      "criteria_match": true,
+      "gaps": [],
+      "exact_fixture": true,
+      "expected_user_outcome": "operational_action"
+    },
+    "closeout": {
+      "checks": {
+        "has_unsatisfied": true,
+        "today_not_calm": false,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": false
+    },
+    "checks": {
+      "has_unsatisfied": true,
+      "today_not_calm": false,
+      "score_confidence": true,
+      "dashboard_score_parity": true,
+      "entitlement_plan_match": true
+    },
+    "pass": false
+  },
+  "F": {
+    "fixture": {
+      "scenario": "F",
+      "label": "Portfolio 5-10 mixed partial",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_2_PORTFOLIO",
+      "property_count": 8,
+      "jurisdictions": [
+        "Scotland",
+        "England",
+        "Northern Ireland",
+        "Wales"
+      ],
+      "requirement_count": 48,
+      "satisfied_count": 29,
+      "unsatisfied_count": 19,
+      "score": 76,
+      "today_urgent_count": 9,
+      "today_in_progress_count": 0,
+      "today_calm": false,
+      "property_rag": {
+        "GREEN": 3,
+        "AMBER": 4,
+        "RED": 1
+      },
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_2_PORTFOLIO",
+      "features_enabled": 18,
+      "criteria_match": true,
+      "gaps": [],
+      "exact_fixture": true,
+      "expected_user_outcome": "operational_action"
+    },
+    "closeout": {
+      "checks": {
+        "has_unsatisfied": true,
+        "today_not_calm": true,
+        "score_confidence": true,
+        "dashboard_score_parity": false
+      },
+      "pass": false
+    },
+    "checks": {
+      "has_unsatisfied": true,
+      "today_not_calm": true,
+      "score_confidence": true,
+      "dashboard_score_parity": false,
+      "entitlement_plan_match": true
+    },
+    "pass": false
+  },
+  "I": {
+    "fixture": {
+      "scenario": "I",
+      "label": "Professional 5-10 mixed partial",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_3_PRO",
+      "property_count": 7,
+      "jurisdictions": [
+        "Wales",
+        "Scotland",
+        "England"
+      ],
+      "requirement_count": 43,
+      "satisfied_count": 5,
+      "unsatisfied_count": 38,
+      "score": 27,
+      "today_urgent_count": 24,
+      "today_in_progress_count": 8,
+      "today_calm": false,
+      "property_rag": {
+        "GREEN": 1,
+        "AMBER": 6,
+        "RED": 0
+      },
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_3_PRO",
+      "features_enabled": 29,
+      "criteria_match": true,
+      "gaps": [],
+      "exact_fixture": true,
+      "expected_user_outcome": "operational_action"
+    },
+    "closeout": {
+      "checks": {
+        "has_unsatisfied": true,
+        "today_not_calm": true,
+        "score_confidence": true,
+        "dashboard_score_parity": false
+      },
+      "pass": false
+    },
+    "checks": {
+      "has_unsatisfied": true,
+      "today_not_calm": true,
+      "score_confidence": true,
+      "dashboard_score_parity": false,
+      "entitlement_plan_match": true
+    },
+    "pass": false
+  },
+  "pass": true
+}

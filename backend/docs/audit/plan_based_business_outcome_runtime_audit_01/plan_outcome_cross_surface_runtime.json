@@ -1,0 +1,87 @@
+{
+  "programme": "PLAN-OUTCOME-DETERMINISTIC-FIXTURE-SEED-CLOSEOUT-01",
+  "generated_at": "2026-06-07T20:14:44.956360+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "dashboard_total": 10,
+      "dashboard_satisfied": 10,
+      "score_total": 8,
+      "requirements_visible": 10,
+      "properties_count": 2,
+      "today_calm": true,
+      "pass": false
+    },
+    {
+      "scenario": "D",
+      "dashboard_total": 5,
+      "dashboard_satisfied": 0,
+      "score_total": 4,
+      "requirements_visible": 5,
+      "properties_count": 1,
+      "today_calm": false,
+      "pass": false
+    },
+    {
+      "scenario": "E",
+      "dashboard_total": 10,
+      "dashboard_satisfied": 10,
+      "score_total": 8,
+      "requirements_visible": 10,
+      "properties_count": 2,
+      "today_calm": true,
+      "pass": false
+    },
+    {
+      "scenario": "G",
+      "dashboard_total": 49,
+      "dashboard_satisfied": 4,
+      "score_total": 43,
+      "requirements_visible": 47,
+      "properties_count": 7,
+      "today_calm": false,
+      "pass": false
+    },
+    {
+      "scenario": "H",
+      "dashboard_total": 49,
+      "dashboard_satisfied": 4,
+      "score_total": 43,
+      "requirements_visible": 47,
+      "properties_count": 7,
+      "today_calm": false,
+      "pass": false
+    },
+    {
+      "scenario": "B",
+      "dashboard_total": 10,
+      "dashboard_satisfied": 0,
+      "score_total": 8,
+      "requirements_visible": 10,
+      "properties_count": 2,
+      "today_calm": true,
+      "pass": false
+    },
+    {
+      "scenario": "F",
+      "dashboard_total": 71,
+      "dashboard_satisfied": 46,
+      "score_total": 48,
+      "requirements_visible": 62,
+      "properties_count": 8,
+      "today_calm": false,
+      "pass": false
+    },
+    {
+      "scenario": "I",
+      "dashboard_total": 49,
+      "dashboard_satisfied": 4,
+      "score_total": 43,
+      "requirements_visible": 47,
+      "properties_count": 7,
+      "today_calm": false,
+      "pass": false
+    }
+  ],
+  "pass": false
+}

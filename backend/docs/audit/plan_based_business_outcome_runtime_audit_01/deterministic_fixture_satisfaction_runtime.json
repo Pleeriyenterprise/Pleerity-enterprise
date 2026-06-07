@@ -1,0 +1,91 @@
+{
+  "programme": "PLAN-OUTCOME-DETERMINISTIC-FIXTURE-SEED-CLOSEOUT-01",
+  "generated_at": "2026-06-07T19:53:54.914147+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "checks": {
+        "all_satisfied": true,
+        "overdue_zero": true,
+        "today_calm": true,
+        "properties_valid": true,
+        "score_confidence": true
+      },
+      "pass": false
+    },
+    {
+      "scenario": "D",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "checks": {
+        "all_satisfied": false,
+        "overdue_zero": true,
+        "today_calm": false,
+        "properties_valid": false,
+        "score_confidence": true
+      },
+      "pass": false
+    },
+    {
+      "scenario": "E",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "checks": {
+        "all_satisfied": true,
+        "overdue_zero": true,
+        "today_calm": true,
+        "properties_valid": true,
+        "score_confidence": true
+      },
+      "pass": false
+    },
+    {
+      "scenario": "G",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "checks": {
+        "all_satisfied": false,
+        "overdue_zero": true,
+        "today_calm": false,
+        "properties_valid": false,
+        "score_confidence": false
+      },
+      "pass": false
+    },
+    {
+      "scenario": "H",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "checks": {
+        "all_satisfied": false,
+        "overdue_zero": true,
+        "today_calm": false,
+        "properties_valid": false,
+        "score_confidence": false
+      },
+      "pass": false
+    },
+    {
+      "scenario": "B",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "checks": {
+        "has_unsatisfied": true
+      },
+      "pass": true
+    },
+    {
+      "scenario": "F",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "checks": {
+        "has_unsatisfied": true
+      },
+      "pass": true
+    },
+    {
+      "scenario": "I",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "checks": {
+        "has_unsatisfied": true
+      },
+      "pass": true
+    }
+  ],
+  "pass": false
+}

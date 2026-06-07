@@ -1,0 +1,60 @@
+{
+  "programme": "PLAN-OUTCOME-DETERMINISTIC-FIXTURE-SEED-CLOSEOUT-01",
+  "generated_at": "2026-06-07T19:53:54.914147+00:00",
+  "A": {
+    "fixture": {
+      "scenario": "A",
+      "label": "Solo 1 property same jurisdiction all satisfied",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "crn": "PLE-CVP-2026-000023",
+      "email": null,
+      "name": "Sophie Walker",
+      "plan": "PLAN_1_SOLO",
+      "property_count": 2,
+      "jurisdictions": [
+        "England"
+      ],
+      "requirement_count": 8,
+      "satisfied_count": 8,
+      "unsatisfied_count": 0,
+      "score": 93,
+      "today_urgent_count": 0,
+      "today_in_progress_count": 0,
+      "today_calm": true,
+      "property_rag": {
+        "GREEN": 2,
+        "AMBER": 0,
+        "RED": 0
+      },
+      "properties_valid": true,
+      "entitlements_plan": "PLAN_1_SOLO",
+      "features_enabled": 10,
+      "criteria_match": false,
+      "gaps": [
+        "property_count>1"
+      ],
+      "exact_fixture": false,
+      "expected_user_outcome": "calm"
+    },
+    "closeout": {
+      "checks": {
+        "today_calm": true,
+        "properties_valid": true,
+        "all_satisfied": true,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": true
+    },
+    "checks": {
+      "today_calm": true,
+      "properties_valid": true,
+      "all_satisfied": true,
+      "score_confidence": true,
+      "dashboard_score_parity": true,
+      "entitlement_plan_match": true
+    },
+    "pass": true
+  },
+  "pass": true
+}

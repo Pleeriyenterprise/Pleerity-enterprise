@@ -1,18 +1,27 @@
 {
-  "programme": "TODAY-STALE-COMPLIANCE-ISSUE-SUPPRESSION-CLOSEOUT-01",
-  "prior_programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
-  "generated_at": "2026-06-07T19:15:00.000000+00:00",
-  "marker": "TODAY-STALE-ISSUE-CLOSEOUT-20260607T185255Z",
-  "classification": "VERIFIED_OPERATIONALLY",
-  "secondary_flags": [],
+  "programme": "PLAN-OUTCOME-DETERMINISTIC-FIXTURE-SEED-CLOSEOUT-01",
+  "prior_programme": "TODAY-STALE-COMPLIANCE-ISSUE-SUPPRESSION-CLOSEOUT-01",
+  "generated_at": "2026-06-07T20:22:14.872586+00:00",
+  "marker": "PLAN-DETERMINISTIC-FIXTURE-20260607T193018Z",
+  "classification": "PLAN_FIXTURE_GAP",
+  "secondary_flags": [
+    "CROSS_SURFACE_DRIFT",
+    "PLAN_FIXTURE_GAP"
+  ],
   "results": {
-    "deploy": true,
-    "sophie_today": true,
-    "gap_reconciliation": true,
-    "non_regression": true,
-    "regression": true,
+    "fixtures_exact": false,
+    "satisfaction": false,
+    "solo_all": true,
+    "portfolio_all": false,
+    "professional_all": false,
+    "partial": true,
+    "cross_surface": false,
     "browser": true,
-    "verified": true
+    "regression": true,
+    "verified": false
   },
-  "deploy_commit": "93ec5951"
+  "exact_fixtures": "0/5",
+  "reference_fixtures": {
+    "A": "Sophie Walker \u2014 2 props, Today calm, all satisfied"
+  }
 }
