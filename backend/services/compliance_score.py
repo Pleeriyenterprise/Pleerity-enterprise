@@ -965,9 +965,13 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         )
         from services.requirement_satisfaction_service import is_requirement_satisfied
 
-        # Registry display semantics use full client context (dashboard/Requirements parity).
+        # Registry display semantics use full client + property context (dashboard/Requirements parity).
         # Score-scoped portal_reqs above stay unchanged for score_tracked obligation counts.
         full_client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or client_row
+        registry_properties = await mongo_find_to_list(
+            db.properties.find({"client_id": client_id}, {"_id": 0}),
+            cap=_MAX_TENANT_FETCH,
+        )
         registry_raw = await mongo_find_to_list(
             db.requirements.find({"client_id": client_id}, {"_id": 0}),
             cap=_MAX_TENANT_FETCH,
@@ -977,7 +981,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             client_id=client_id,
             requirements=registry_raw,
             client_doc=full_client_row,
-            properties=properties,
+            properties=registry_properties,
         )
         registry_enriched, _registry_pres = await enrich_requirements_for_client(
             db, client_id, list(registry_raw)
