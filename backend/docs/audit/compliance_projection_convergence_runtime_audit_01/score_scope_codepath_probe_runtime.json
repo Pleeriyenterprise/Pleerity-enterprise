@@ -1,0 +1,79 @@
+{
+  "programme": "SCORE-SCOPE-DEPLOYMENT-AND-CODEPATH-DIAGNOSTIC-01",
+  "generated_at": "2026-06-07T14:28:55.373144+00:00",
+  "staging_api_counts": {
+    "compliance_score": {
+      "visible": 8,
+      "lifecycle": 8,
+      "score_tracked": 8,
+      "grouping_note": null
+    },
+    "dashboard": {
+      "total_requirements": 10,
+      "compliant": 10,
+      "satisfied_requirements": 10,
+      "score_tracked_requirements": 10,
+      "overdue": 0,
+      "expiring_soon": 0
+    },
+    "requirements_full": {
+      "visible_requirement_count": 10,
+      "lifecycle_satisfied_count": 10,
+      "tracked_requirement_count": 10,
+      "score_tracked_requirement_count": 10,
+      "compliant_requirement_count": 6,
+      "missing_document_count": 0,
+      "expiring_requirement_count": 0,
+      "satisfied_requirement_count": 4,
+      "verified_requirement_count": 6,
+      "platform_review_pending_count": 0,
+      "self_recorded_count": 4,
+      "pending": 4,
+      "overdue": 0
+    }
+  },
+  "row_counts": {
+    "requirements_full_enriched": 10,
+    "requirements_list_projected": 10,
+    "portal_full_projected_visible": 10,
+    "simulated_score_portal_rows": 8
+  },
+  "apply_registry_called_in_code": true,
+  "staging_input_to_apply_registry_was_score_scoped_enriched": true,
+  "registry_override_from_full_enriched": {
+    "visible_requirement_count": 10,
+    "lifecycle_satisfied_count": 10
+  },
+  "compute_before_merge": {
+    "visible_requirement_count": 8,
+    "lifecycle_satisfied_count": 8,
+    "tracked_requirement_count": 8,
+    "score_tracked_requirement_count": 8,
+    "compliant_requirement_count": 5,
+    "missing_document_count": 0,
+    "expiring_requirement_count": 0,
+    "satisfied_requirement_count": 3,
+    "verified_requirement_count": 5,
+    "platform_review_pending_count": 0,
+    "self_recorded_count": 3,
+    "pending": 3,
+    "overdue": 0
+  },
+  "merged_after_fix_simulation": {
+    "visible_requirement_count": 10,
+    "lifecycle_satisfied_count": 10,
+    "tracked_requirement_count": 8,
+    "score_tracked_requirement_count": 8,
+    "compliant_requirement_count": 5,
+    "missing_document_count": 0,
+    "expiring_requirement_count": 0,
+    "satisfied_requirement_count": 3,
+    "verified_requirement_count": 5,
+    "platform_review_pending_count": 0,
+    "self_recorded_count": 3,
+    "pending": 3,
+    "overdue": 0
+  },
+  "grouping_note_null_because": "visible == score_tracked on staging API (8==8); after fix simulation: visible=10 score_tracked=8",
+  "collapse_point": "filter_requirement_rows_for_client_runtime_surfaces with partial client_row in calculate_compliance_score"
+}

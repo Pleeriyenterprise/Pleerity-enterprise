@@ -1,95 +1,66 @@
-# SCORE-SCOPE-BACKEND-DEPLOY-CLOSEOUT-01
+# SCORE-SCOPE-DEPLOYMENT-AND-CODEPATH-DIAGNOSTIC-01
 
-**Classification:** `SCORE_COUNT_SEMANTIC_DRIFT`  
-**Deploy commit (expected):** `b0510957`  
-**Generated:** 2026-06-07T13:26:08Z  
-**Target:** Sophie Walker (`PLE-CVP-2026-000023`, `10b2ddba-e952-4484-91d1-a8f0299d0824`)
+**Classification:** `INPUT_SCOPE_DRIFT`  
+**Generated:** 2026-06-07T14:29:14Z  
+**Target:** Sophie Walker (`PLE-CVP-2026-000023`)
 
 ## Executive summary
 
-Backend score-scope fix from `b0510957` is present in repository source but **not live on staging Render API** after 12 deploy polls (~6 minutes). Frontend and Today convergence remain verified; Compliance Score page and API still expose score-scoped counts (8/8) instead of registry-visible lifecycle counts (10/8 with grouping note).
+Render **is** deployed with post-`b0510957` code (`/api/version` commit `9fe393b0`). Root cause is **not** deployment mismatch. `apply_registry_display_semantics` was called in `calculate_compliance_score`, but received **score-scoped enriched rows (8)** from a partial `client_row` Mongo projection while dashboard/requirements use the **full client document (10 rows)**. Registry display overrides never saw the 2 excluded Willow Grove requirements (`epc`, `fire_alarm`).
 
-## PART 1 — Backend deploy proof
+**Fix applied:** load `registry_enriched` via full-client filter solely for `apply_registry_display_semantics`; score-scoped `portal_reqs` pipeline unchanged (score formula untouched).
 
-| Check | Result |
-|-------|--------|
-| Source: `apply_registry_display_semantics` | **PASS** (repo) |
-| Source: `compute_registry_display_semantic_overrides` | **PASS** (repo) |
-| Source: `compliance_score.py` merge | **PASS** (repo) |
-| Source: `routes/client.py` merge | **PASS** (repo) |
-| Staging API health | **PASS** — 200 |
-| `visible_requirement_count=10` | **FAIL** — 8 |
-| `lifecycle_satisfied_count=10` | **FAIL** — 8 |
-| `score_tracked_requirement_count=8` | **PASS** — 8 |
-| `grouping_note` present | **FAIL** — null |
-| Deploy poll (12 × 30s) | **FAIL** — no convergence |
-
-**Artifact:** `score_scope_backend_deploy_runtime.json`
-
-## PART 2 — Score API closeout
+## PART 1 — Deployment identity
 
 | Check | Result |
 |-------|--------|
-| Score 93/100 | **PASS** |
-| Lifecycle satisfied = 10 | **FAIL** — 8 |
-| Score-tracked groups = 8 | **PASS** |
-| Grouping note | **FAIL** |
-| No missing implication | **FAIL** — 8/8 understates registry |
-| Assurance explanation | **PASS** — headline + detail present |
+| `/api/version` commit | `9fe393b0` (includes b0510957) |
+| `/api/health` commit SHA | **Not exposed** (observability gap on health only) |
+| Service | `pleerity-api` on Render |
 
-**Artifact:** `score_scope_api_closeout_runtime.json`
+**Ruled out:** `DEPLOYMENT_MISMATCH`
 
-## PART 3 — Score page browser closeout
+## PART 2 — API route trace
 
-| Check | Result |
-|-------|--------|
-| 10 requirements satisfied on file | **FAIL** — shows 8 |
-| 8 score-tracked obligation groups | **PASS** |
-| Grouping note (dedupe copy) | **FAIL** |
-| 93/100 + confidence explanation | **PASS** |
-| 100/100 achievability path | **PASS** — optional assurance opportunities visible |
+Compliance Score page → `GET /client/compliance-score` → `calculate_compliance_score`. Same route (not bypass). Dashboard uses `GET /client/dashboard` with full client doc for semantics.
 
-**Artifact:** `score_scope_browser_closeout_runtime.json`  
-**Screenshot:** `score_scope_backend_closeout_screenshots/01_compliance_score.png`
+## PART 3 — Codepath probe
 
-## PART 4 — Surface parity
+| Surface | visible | lifecycle | score_tracked | grouping_note |
+|---------|---------|-----------|---------------|---------------|
+| Staging compliance-score API | 8 | 8 | 8 | null |
+| Dashboard API | 10 | 10 | 10 | — |
+| Requirements full API | 10 | 10 | 10 | null |
+| **Post-fix simulation** | **10** | **10** | **8** | **present** |
 
-| Surface | Expected | Observed |
-|---------|----------|----------|
-| Dashboard | 10 active / 8 score-tracked | **PASS** |
-| Compliance Score | 10 satisfied / 8 score-tracked + note | **FAIL** |
-| Requirements | 10/10 satisfied | **PASS** |
-| Properties | 2 Valid / 0 Attention | **PASS** |
-| Today | No urgent action | **PASS** — urgent_count=0, Needs action 0 |
+Collapse point: `filter_requirement_rows_for_client_runtime_surfaces(..., client_doc=partial_client_row)` in `calculate_compliance_score`.
 
-**Artifact:** `score_scope_surface_parity_runtime.json`
+## PART 4 — Data scope trace
 
-## PART 5 — Regression
+10 visible registry rows; 2 excluded from score-scoped portal projection (Willow Grove `epc` + `fire_alarm`) due to partial client context in planner filter. Both remain lifecycle-satisfied and visible on Requirements page.
 
-40 backend + 9 frontend targeted tests **PASS**.
+## PART 5 — Root cause
 
-**Artifact:** `score_scope_backend_regression_runtime.json`
+**`INPUT_SCOPE_DRIFT`** — correct code deployed, wrong input scope to display semantics merge.
 
-## Classification rationale
+## PART 6 — Minimal fix
 
-`SCORE_COUNT_SEMANTIC_DRIFT` — staging Render backend has not deployed `b0510957` score-scope semantics despite fix being on `main`. All non-score surfaces align; only Compliance Score API/page remain on pre-fix lifecycle counts.
+`compliance_score.py`: separate `registry_enriched` load with full client doc for `apply_registry_display_semantics` only.
 
-Not `VERIFIED_OPERATIONALLY` — backend API and score page checks fail.  
-Not `FAIL_OPERATIONAL` — Today, Requirements, Properties, Dashboard operational parity confirmed.
+## PART 7 — Verification
 
-## Required action
+Local simulation on staging Requirements full data: **PASS** (10/10/8 + grouping note). Staging live API: **pending redeploy**.
 
-Manually redeploy **`pleerity-api`** on Render from `main` (commit `b0510957` or later), then re-run:
+## PART 8 — Regression
+
+41 backend targeted tests **PASS** (including new registry/score-tracked preservation test).
+
+## Next step
+
+Redeploy Render backend and re-run:
 
 ```bash
-cd backend
 python scripts/score_scope_backend_deploy_closeout_01_execute.py
 ```
 
-## Programme history
-
-| Programme | Classification |
-|-----------|----------------|
-| TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01 | PARTIAL |
-| TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01 | SCORE_COUNT_SEMANTIC_DRIFT |
-| SCORE-SCOPE-BACKEND-DEPLOY-CLOSEOUT-01 | SCORE_COUNT_SEMANTIC_DRIFT |
+Expected: `VERIFIED_OPERATIONALLY`

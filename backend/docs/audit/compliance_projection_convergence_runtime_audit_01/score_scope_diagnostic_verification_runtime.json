@@ -1,0 +1,13 @@
+{
+  "programme": "SCORE-SCOPE-DEPLOYMENT-AND-CODEPATH-DIAGNOSTIC-01",
+  "generated_at": "2026-06-07T14:29:08.686125+00:00",
+  "mode": "local_simulation_on_staging_requirements_full_data",
+  "api_simulation": {
+    "visible_requirement_count": 10,
+    "lifecycle_satisfied_count": 10,
+    "score_tracked_requirement_count": 8,
+    "grouping_note_present": true
+  },
+  "staging_api_still_pre_fix_until_redeploy": true,
+  "pass": true
+}

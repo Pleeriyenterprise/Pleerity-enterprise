@@ -1,0 +1,11 @@
+{
+  "programme": "SCORE-SCOPE-DEPLOYMENT-AND-CODEPATH-DIAGNOSTIC-01",
+  "generated_at": "2026-06-07T14:29:08.686125+00:00",
+  "classification": "INPUT_SCOPE_DRIFT",
+  "rationale": "Render deploy includes b0510957+ (/api/version). apply_registry_display_semantics is present but calculate_compliance_score passed score-scoped enriched_portal (8 rows) from partial client_row filter while dashboard/requirements use full client doc (10 rows). Registry display overrides never saw the 2 excluded requirements.",
+  "ruled_out": {
+    "DEPLOYMENT_MISMATCH": "commit_sha on /api/version is post-b0510957",
+    "ROUTE_BYPASS_DRIFT": "Compliance Score page calls GET /client/compliance-score",
+    "DATA_EXPECTATION_ERROR": "Requirements full API confirms 10 visible registry rows"
+  }
+}

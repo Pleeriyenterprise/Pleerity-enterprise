@@ -965,9 +965,27 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         )
         from services.requirement_satisfaction_service import is_requirement_satisfied
 
+        # Registry display semantics use full client context (dashboard/Requirements parity).
+        # Score-scoped portal_reqs above stay unchanged for score_tracked obligation counts.
+        full_client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or client_row
+        registry_raw = await mongo_find_to_list(
+            db.requirements.find({"client_id": client_id}, {"_id": 0}),
+            cap=_MAX_TENANT_FETCH,
+        )
+        registry_raw = await filter_requirement_rows_for_client_runtime_surfaces(
+            db,
+            client_id=client_id,
+            requirements=registry_raw,
+            client_doc=full_client_row,
+            properties=properties,
+        )
+        registry_enriched, _registry_pres = await enrich_requirements_for_client(
+            db, client_id, list(registry_raw)
+        )
+
         _semantic_counts = apply_registry_display_semantics(
             compute_reporting_semantic_counts(portal_reqs),
-            enriched_portal,
+            registry_enriched,
         )
         _reporting_semantics = build_reporting_semantics_payload(_semantic_counts)
         stats["visible_requirement_count"] = int(_semantic_counts.get(METRIC_VISIBLE) or total_reqs)

@@ -1,0 +1,41 @@
+{
+  "programme": "SCORE-SCOPE-DEPLOYMENT-AND-CODEPATH-DIAGNOSTIC-01",
+  "generated_at": "2026-06-07T14:28:34.064688+00:00",
+  "compliance_score_page": {
+    "frontend_file": "frontend/src/pages/ComplianceScorePage.js",
+    "api_calls": [
+      "GET /client/compliance-score",
+      "GET /client/dashboard",
+      "GET /client/requirements (projection=list default)"
+    ],
+    "primary_score_authority": "GET /client/compliance-score"
+  },
+  "backend_route": {
+    "path": "GET /client/compliance-score",
+    "handler": "routes/client.py::get_compliance_score",
+    "service": "services/compliance_score.py::calculate_compliance_score"
+  },
+  "semantics_chain": [
+    "filter_requirement_rows_for_client_runtime_surfaces (score-scoped portal_reqs)",
+    "enrich_requirements_for_client \u2192 enriched_portal",
+    "project_requirement_row_client_runtime \u2192 portal_reqs",
+    "compute_reporting_semantic_counts(portal_reqs)",
+    "apply_registry_display_semantics(..., registry_enriched) [fix: full client registry rows]",
+    "build_reporting_semantics_payload",
+    "build_score_confidence_explanation"
+  ],
+  "dashboard_route": {
+    "path": "GET /client/dashboard",
+    "handler": "routes/client.py::get_dashboard",
+    "semantics": "full client doc \u2192 filter \u2192 enrich \u2192 apply_registry_display_semantics",
+    "fields": "compliance_summary.total_requirements, score_tracked_requirements"
+  },
+  "requirements_route": {
+    "path": "GET /client/requirements?projection=full",
+    "handler": "routes/client.py::get_all_requirements",
+    "semantics": "full client doc \u2192 filter \u2192 enrich \u2192 reporting_semantics payload"
+  },
+  "same_route_for_score_page": true,
+  "dashboard_uses_different_client_doc_than_compliance_score": true,
+  "root_cause_hint": "compliance_score used partial client_row projection for filter; dashboard/requirements use full client doc"
+}

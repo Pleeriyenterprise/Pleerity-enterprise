@@ -135,6 +135,38 @@ def test_registry_display_overrides_enriched_visible_rows():
     assert merged["score_tracked_requirement_count"] == 1
 
 
+def test_apply_registry_preserves_score_tracked_while_expanding_visible():
+    """Score-scoped portal rows (8) + full registry enriched (10) → display parity without score drift."""
+    score_portal = [
+        {
+            "client_surface_visible": True,
+            "client_lifecycle_state": "VERIFIED",
+            "status": "COMPLIANT",
+            "applicability": "MANDATORY",
+            "compliance_requirement_class": "DOCUMENT",
+        }
+        for _ in range(8)
+    ]
+    registry_enriched = [
+        {
+            "client_surface_visible": True,
+            "client_lifecycle_state": "VERIFIED" if i < 6 else "SATISFIED_UNVERIFIED",
+            "status": "COMPLIANT",
+            "applicability": "MANDATORY",
+            "compliance_requirement_class": "DOCUMENT",
+        }
+        for i in range(10)
+    ]
+    base = compute_reporting_semantic_counts(score_portal)
+    assert base["score_tracked_requirement_count"] == 8
+    merged = apply_registry_display_semantics(base, registry_enriched)
+    assert merged["visible_requirement_count"] == 10
+    assert merged["lifecycle_satisfied_count"] == 10
+    assert merged["score_tracked_requirement_count"] == 8
+    payload = build_reporting_semantics_payload(merged)
+    assert payload.get("grouping_note")
+
+
 def test_legacy_stats_alias_score_tracked():
     counts = {
         METRIC_SCORE_TRACKED: 10,

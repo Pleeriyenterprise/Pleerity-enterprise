@@ -1,0 +1,13 @@
+{
+  "programme": "SCORE-SCOPE-DEPLOYMENT-AND-CODEPATH-DIAGNOSTIC-01",
+  "generated_at": "2026-06-07T14:29:08.686125+00:00",
+  "applied": true,
+  "file": "services/compliance_score.py",
+  "change": "Load registry_enriched via full client doc filter for apply_registry_display_semantics only; leave portal_reqs score-scoped pipeline untouched (score formula unchanged).",
+  "expected_api_after_deploy": {
+    "visible_requirement_count": 10,
+    "lifecycle_satisfied_count": 10,
+    "score_tracked_requirement_count": 8,
+    "grouping_note": "populated when visible > score_tracked"
+  }
+}

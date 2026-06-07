@@ -1,0 +1,25 @@
+{
+  "programme": "SCORE-SCOPE-DEPLOYMENT-AND-CODEPATH-DIAGNOSTIC-01",
+  "generated_at": "2026-06-07T14:28:34.064688+00:00",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "frontend": "https://pleerityenterprise.co.uk",
+  "service_name": "pleerity-api (Render)",
+  "health_status": 200,
+  "health_body": {
+    "status": "healthy",
+    "environment": "production",
+    "readiness": {
+      "stage": "ready",
+      "degraded": false,
+      "last_error": null
+    }
+  },
+  "version_status": 200,
+  "commit_sha": "9fe393b0c2a3db99020ed4528cad7d93e9dfb2af",
+  "commit_short": "9fe393b",
+  "environment": "production",
+  "health_has_commit_sha": false,
+  "observability_gap": "health_lacks_commit_sha",
+  "includes_b0510957_or_later": false,
+  "note": "Render exposes commit via /api/version (GIT_COMMIT_SHA/RENDER_GIT_COMMIT); /api/health has no build SHA."
+}
