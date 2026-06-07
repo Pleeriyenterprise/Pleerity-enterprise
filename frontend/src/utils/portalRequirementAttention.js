@@ -110,6 +110,36 @@ export function filterInboxTasksForTrackedRequirements(tasks, requirementsById) 
 }
 
 /**
+ * Assurance-only inbox items (satisfied obligation, optional confidence gap) — not operational urgency.
+ * @param {Record<string, unknown>|null|undefined} task
+ * @param {Map<string, Record<string, unknown>>} requirementsById
+ */
+export function isTaskAssuranceOnly(task, requirementsById) {
+  if (!task || !(requirementsById instanceof Map) || requirementsById.size === 0) return false;
+  const rid = inboxTaskLinkedRequirementId(task);
+  if (!rid) return false;
+  const req = requirementsById.get(String(rid));
+  if (!req) return false;
+  if (isRequirementUrgentActionAttention(req)) return false;
+  const life = resolveClientRequirementLifecycle(req).state;
+  if (life === 'SATISFIED_UNVERIFIED' || life === 'PENDING_REVIEW' || life === 'VERIFIED') {
+    const src = String(task.source_type || '').toLowerCase();
+    if (src === 'issue' || src === 'requirement' || src === 'priority_action') return true;
+  }
+  return false;
+}
+
+/**
+ * Remove assurance-confidence-only tasks from operational Today lanes (API may still list in_progress).
+ * @param {unknown[]|null|undefined} tasks
+ * @param {Map<string, Record<string, unknown>>} requirementsById
+ */
+export function filterInboxTasksForOperationalActionability(tasks, requirementsById) {
+  if (!Array.isArray(tasks)) return [];
+  return tasks.filter((t) => !isTaskAssuranceOnly(t, requirementsById));
+}
+
+/**
  * Today inbox sections after tracked-requirement alignment (same logic on Today + Dashboard).
  * @param {Record<string, unknown>|null|undefined} todayPayload GET /client/today/items response body
  * @param {Map<string, Record<string, unknown>>} requirementsById from {@link requirementMapFromList}

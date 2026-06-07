@@ -10,9 +10,17 @@ export const REPORTING_SEMANTICS_LABELS = {
       'Items in scope on this page (registry attention view). May differ from score-tracked obligations on the dashboard.',
   },
   score_tracked_requirement_count: {
-    label: 'Score-tracked obligations',
+    label: 'Score-tracked obligation groups',
     tooltip:
-      'Obligations counted in the compliance score projection. See Requirements for the full tracked registry.',
+      'Obligations grouped for the compliance score (related requirements may be combined to avoid double-counting). See Requirements for the full visible count.',
+  },
+  lifecycle_satisfied_count: {
+    label: 'Requirements satisfied',
+    tooltip: 'Visible requirements with recorded evidence on file — your lifecycle completion count.',
+  },
+  visible_requirement_count: {
+    label: 'Visible requirements',
+    tooltip: 'Requirement rows shown on the Requirements page.',
   },
   compliant_requirement_count: {
     label: 'Valid for scoring',

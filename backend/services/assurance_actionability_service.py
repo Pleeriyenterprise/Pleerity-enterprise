@@ -220,12 +220,17 @@ def build_score_confidence_explanation(
 ) -> Dict[str, Any]:
     """Client copy explaining sub-100 scores driven by assurance confidence."""
     from services.reporting_semantics_v1 import (
+        METRIC_LIFECYCLE_SATISFIED,
         METRIC_SCORE_TRACKED,
         METRIC_TRACKED,
         METRIC_SELF_RECORDED,
         METRIC_VERIFIED,
+        METRIC_VISIBLE,
+        SCORE_OBLIGATION_GROUPING_NOTE,
     )
 
+    visible = int(semantic_counts.get(METRIC_VISIBLE) or 0)
+    lifecycle_satisfied = int(semantic_counts.get(METRIC_LIFECYCLE_SATISFIED) or 0)
     tracked = int(semantic_counts.get(METRIC_TRACKED) or 0)
     score_tracked = int(semantic_counts.get(METRIC_SCORE_TRACKED) or 0)
     self_recorded = int(semantic_counts.get(METRIC_SELF_RECORDED) or 0)
@@ -248,15 +253,24 @@ def build_score_confidence_explanation(
             "Completing verification where available can improve your score."
         )
 
+    grouping_note = None
+    if visible > 0 and score_tracked > 0 and score_tracked < visible:
+        grouping_note = SCORE_OBLIGATION_GROUPING_NOTE
+    elif visible > 0 and tracked > 0 and tracked < visible:
+        grouping_note = SCORE_OBLIGATION_GROUPING_NOTE
+
     return {
         "score": score_val,
         "headline": headline,
         "detail": detail,
         "achievability_note": achievability,
+        "visible_requirement_count": visible,
+        "lifecycle_satisfied_count": lifecycle_satisfied,
         "tracked_requirement_count": tracked,
         "score_tracked_requirement_count": score_tracked,
         "self_recorded_count": self_recorded,
         "verified_requirement_count": verified,
         "obligations_satisfied_on_file": obligations_met,
         "assurance_explains_sub_100": bool(below_100 and (self_recorded > 0 or obligations_met)),
+        "grouping_note": grouping_note,
     }

@@ -31,6 +31,8 @@ def test_metric_definitions_cover_required_keys():
         "expiring_requirement_count",
         "platform_review_pending_count",
         "self_recorded_count",
+        "visible_requirement_count",
+        "lifecycle_satisfied_count",
     }
     assert required == set(REPORTING_METRIC_DEFINITIONS.keys())
 
@@ -74,6 +76,37 @@ def test_semantic_counts_score_vs_tracked_diverge_by_design():
     assert counts[METRIC_TRACKED] == 2
     assert counts[METRIC_COMPLIANT_SCORING] == 1
     assert counts[METRIC_VERIFIED] == 1
+
+
+def test_lifecycle_satisfied_counts_all_visible_satisfied_rows():
+    from services.requirement_satisfaction_service import is_requirement_satisfied
+
+    rows = [
+        {
+            "client_surface_visible": True,
+            "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+            "status": "COMPLIANT",
+            "applicability": "MANDATORY",
+            "compliance_requirement_class": "OBLIGATION",
+        },
+        {
+            "client_surface_visible": True,
+            "client_lifecycle_state": "VERIFIED",
+            "status": "COMPLIANT",
+            "applicability": "MANDATORY",
+            "compliance_requirement_class": "DOCUMENT",
+        },
+    ]
+    counts = compute_reporting_semantic_counts(rows)
+    assert counts["visible_requirement_count"] == 2
+    assert counts["lifecycle_satisfied_count"] == sum(1 for r in rows if is_requirement_satisfied(r))
+
+
+def test_grouping_note_when_visible_exceeds_score_tracked():
+    payload = build_reporting_semantics_payload(
+        {"visible_requirement_count": 10, "score_tracked_requirement_count": 8, "tracked_requirement_count": 8}
+    )
+    assert payload.get("grouping_note")
 
 
 def test_legacy_stats_alias_score_tracked():

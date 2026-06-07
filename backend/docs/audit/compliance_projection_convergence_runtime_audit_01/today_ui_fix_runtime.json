@@ -1,0 +1,10 @@
+{
+  "programme": "TODAY-UI-AND-SCORE-COUNT-SEMANTICS-CLOSEOUT-01",
+  "generated_at": "2026-06-07T11:42:11.143762+00:00",
+  "fix_files": [
+    "frontend/src/utils/portalRequirementAttention.js",
+    "frontend/src/utils/todayExecutionWorkspace.js"
+  ],
+  "fix_summary": "Added isTaskAssuranceOnly and filterInboxTasksForOperationalActionability exports",
+  "pass": true
+}

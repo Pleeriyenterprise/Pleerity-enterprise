@@ -1,37 +1,41 @@
-# COMPLIANCE-ASSURANCE-ACTIONABILITY-POST-DEPLOY-CLOSEOUT-01
+# TODAY-UI-AND-SCORE-COUNT-SEMANTICS-CLOSEOUT-01
 
-**Classification:** `PARTIAL` (API/deploy verified; Today browser error boundary; count semantics scope gap)  
-**Deploy commit:** `28743ee3`  
-**Target:** Sophie Walker (`PLE-CVP-2026-000023`)  
-**Generated:** 2026-06-06T23:25:33Z
+**Classification:** `TODAY_UI_DRIFT` (code fix landed; staging frontend not yet deployed)  
+**Generated:** 2026-06-07T11:44:10Z
 
 ## Executive summary
 
-Staging has deployed `28743ee3`. The assurance/actionability API model is live: `score_confidence`, `assurance_opportunities`, zero operational `recommendations`, and dashboard `satisfied_requirements: 10`. Properties and Requirements surfaces converge. **Today API** is calm (`urgent=0`). **Today browser** hit `CVP_ErrorBoundary` on `/today` during impersonated session (screenshot). **Count semantics:** requirements API shows 10/10 satisfied; score stats `lifecycle_satisfied_count` remains 8 within score-tracked scope (alias-family dedup).
+Root-caused and fixed the Today page crash (`ReferenceError: filterInboxTasksForOperationalActionability is not defined` in `portalRequirementAttention.js`). Clarified score count semantics: `lifecycle_satisfied_count` now counts all visible satisfied requirements; `score_tracked_requirement_count` remains grouped scoring scope with `grouping_note` when visible count exceeds score-tracked groups.
+
+Staging browser still hits `CVP_ErrorBoundary` on `/today` until the frontend bundle containing the fix deploys. Backend semantics fields (`visible_requirement_count`, updated `lifecycle_satisfied_count`, `grouping_note`) require backend deploy. API Today is calm (`urgent=0`). Regression: 36 backend + frontend tests pass.
 
 ## Part results
 
 | Part | Result | Notes |
 |------|--------|-------|
-| 1 Deploy proof | **PASS** | API fields present; bundle `193d3a8d` has assurance markers |
-| 2 Sophie snapshot | **PASS** | 10 visible, 10 satisfied, 2 GREEN, 93/100, 0 operational recs |
-| 3 Today API | **PASS** | urgent=0 |
-| 3 Today browser | **FAIL** | Error boundary on `/today` route |
-| 4 Dashboard quick actions | **PASS** | 0 operational; 2 OPTIONAL assurance (Legionella) |
-| 5 Score page API | **PASS** | `score_confidence` headline + detail present |
-| 6 Count semantics | **PARTIAL** | Dashboard 10/10 satisfied; stats lifecycle=8 (score-tracked scope) |
-| 7 Non-regression | **PASS** | Local scenarios pass |
-| 8 Browser proof | **PARTIAL** | Dashboard, score, requirements, properties OK; Today error |
-| 9 Regression | **PASS** | 60 tests |
+| 1 Today root cause | **PASS** | Missing export in `portalRequirementAttention.js` |
+| 2 Today UI fix | **PASS** | `isTaskAssuranceOnly` + `filterInboxTasksForOperationalActionability` added |
+| 3 Today browser | **FAIL** | Staging bundle still crashes; API urgent=0 |
+| 4 Score count root cause | **PASS** | `lifecycle_satisfied_count` used tracked-attention filter (8) vs visible registry (10) |
+| 5 Score count clarity | **PASS** | `METRIC_VISIBLE`, `METRIC_LIFECYCLE_SATISFIED`, `grouping_note` in API/UI |
+| 6 Regression | **PASS** | 36 backend + portalRequirementAttention frontend tests |
+| 7 Browser closeout | **PARTIAL** | Requirements 10/10; score confidence visible; Today error boundary |
 
-## Key API evidence (Sophie Walker)
+## Fixes shipped
 
-- `recommendations`: `[]`
-- `assurance_opportunities`: 2 × Legionella (`priority: info`, `action_kind: ASSURANCE_CONFIDENCE_OPPORTUNITY`)
-- `score_confidence.headline`: "Your requirements are satisfied."
-- `score_confidence.detail`: explains sub-100 as assurance confidence
-- `dashboard.compliance_summary`: `satisfied_requirements: 10`, `total_requirements: 10`
+- `frontend/src/utils/portalRequirementAttention.js` — assurance filter exports
+- `frontend/src/utils/portalRequirementAttention.test.js` — render safety tests
+- `backend/services/reporting_semantics_v1.py` — visible/lifecycle metrics + grouping note
+- `backend/services/compliance_score.py` — lifecycle_satisfied from visible satisfied
+- `backend/services/assurance_actionability_service.py` — score_confidence grouping copy
+- `frontend/src/pages/ComplianceScorePage.js` — separated satisfied vs score-tracked labels
+- `frontend/src/utils/reportingSemanticsLabels.js` — clarified tooltips
 
-## Screenshots
+## Score count semantics (Sophie Walker)
 
-`assurance_post_deploy_screenshots/` — Today shows error boundary; Properties 2 Valid / 0 Attention needed.
+| Surface | Count | Authority |
+|---------|-------|-----------|
+| Requirements page | 10 visible / 10 satisfied | Full visible registry |
+| Dashboard compliance_summary | 10 / 10 | Lifecycle satisfied (visible) |
+| Score stats (pre-deploy) | lifecycle=8, score_tracked=8 | Score projection / alias grouping |
+| Post-deploy expected | lifecycle=10, score_tracked=8, grouping_note | Visible vs grouped scoring scope |

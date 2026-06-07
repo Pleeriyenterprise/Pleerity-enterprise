@@ -955,22 +955,23 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         applicable_points = sum(float(p.get("compliance_applicable_points") or 0) for p in properties)
         _pending_snap = portfolio_pending_score_recalc_snapshot(properties)
         from services.reporting_semantics_v1 import (
+            METRIC_LIFECYCLE_SATISFIED,
             METRIC_SCORE_TRACKED,
             METRIC_TRACKED,
+            METRIC_VISIBLE,
             build_reporting_semantics_payload,
             compute_reporting_semantic_counts,
-            requirement_row_in_tracked_attention_views,
         )
         from services.requirement_satisfaction_service import is_requirement_satisfied
 
         _semantic_counts = compute_reporting_semantic_counts(portal_reqs)
         _reporting_semantics = build_reporting_semantics_payload(_semantic_counts)
+        stats["visible_requirement_count"] = int(_semantic_counts.get(METRIC_VISIBLE) or total_reqs)
         stats["tracked_requirement_count"] = int(_semantic_counts.get(METRIC_TRACKED) or 0)
         stats["score_tracked_requirement_count"] = int(_semantic_counts.get(METRIC_SCORE_TRACKED) or total_reqs)
-        stats["lifecycle_satisfied_count"] = sum(
-            1
-            for r in portal_reqs
-            if requirement_row_in_tracked_attention_views(r) and is_requirement_satisfied(r)
+        stats["lifecycle_satisfied_count"] = int(
+            _semantic_counts.get(METRIC_LIFECYCLE_SATISFIED)
+            or sum(1 for r in portal_reqs if is_requirement_satisfied(r))
         )
         _score_confidence = build_score_confidence_explanation(
             score=client_score,

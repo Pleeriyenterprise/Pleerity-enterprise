@@ -1,0 +1,14 @@
+{
+  "programme": "TODAY-UI-AND-SCORE-COUNT-SEMANTICS-CLOSEOUT-01",
+  "generated_at": "2026-06-07T11:42:11.143762+00:00",
+  "root_cause": "ReferenceError: filterInboxTasksForOperationalActionability is not defined",
+  "location": "frontend/src/utils/portalRequirementAttention.js alignTodayPayloadTaskSections",
+  "mechanism": "Commit 28743ee3 called filterInboxTasksForOperationalActionability in alignTodayPayloadTaskSections but the function was never defined or imported. Today page crashes on render while API urgent=0 is fine.",
+  "stack": [
+    "portalRequirementAttention.js:alignTodayPayloadTaskSections",
+    "ClientTasksPage.js:pickPrimaryExecutionTask / operational sections",
+    "CVP_ErrorBoundary"
+  ],
+  "fix": "Define filterInboxTasksForOperationalActionability and isTaskAssuranceOnly in portalRequirementAttention.js",
+  "pass": true
+}

@@ -604,10 +604,19 @@ const ComplianceScorePage = () => {
                     </p>
                   ) : null}
                   <p className="text-sm text-gray-500 mt-1">
-                    Based on {scoreData?.stats?.score_tracked_requirement_count ?? scoreData?.stats?.total_requirements ?? 0} score-tracked obligations across {scoreData?.properties_count ?? 0} {scoreData?.properties_count === 1 ? 'property' : 'properties'}.
-                    {(scoreData?.stats?.lifecycle_satisfied_count ?? 0) > 0 ? (
-                      <span className="block mt-0.5">
-                        {scoreData.stats.lifecycle_satisfied_count} lifecycle requirements satisfied on file.
+                    {(scoreData?.stats?.lifecycle_satisfied_count ?? scoreData?.score_confidence?.lifecycle_satisfied_count ?? 0) > 0 ? (
+                      <span className="block">
+                        {scoreData.stats?.lifecycle_satisfied_count ?? scoreData.score_confidence?.lifecycle_satisfied_count} requirements satisfied on file across your portfolio.
+                      </span>
+                    ) : null}
+                    <span className="block mt-0.5">
+                      Based on {scoreData?.stats?.score_tracked_requirement_count ?? scoreData?.stats?.total_requirements ?? 0} score-tracked obligation
+                      {(scoreData?.stats?.score_tracked_requirement_count ?? scoreData?.stats?.total_requirements ?? 0) === 1 ? '' : ' groups'} across{' '}
+                      {scoreData?.properties_count ?? 0} {scoreData?.properties_count === 1 ? 'property' : 'properties'}.
+                    </span>
+                    {(scoreData?.score_confidence?.grouping_note || scoreData?.reporting_semantics?.grouping_note) ? (
+                      <span className="block mt-0.5 text-xs text-slate-600">
+                        {scoreData.score_confidence?.grouping_note || scoreData.reporting_semantics?.grouping_note}
                       </span>
                     ) : null}
                     {scoreData?.properties_count != null && scoreData.properties_count > 1 && (

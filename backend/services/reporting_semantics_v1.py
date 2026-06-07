@@ -29,6 +29,8 @@ METRIC_MISSING_DOCUMENT = "missing_document_count"
 METRIC_EXPIRING = "expiring_requirement_count"
 METRIC_PLATFORM_REVIEW_PENDING = "platform_review_pending_count"
 METRIC_SELF_RECORDED = "self_recorded_count"
+METRIC_VISIBLE = "visible_requirement_count"
+METRIC_LIFECYCLE_SATISFIED = "lifecycle_satisfied_count"
 
 REPORTING_METRIC_DEFINITIONS: Dict[str, Dict[str, str]] = {
     METRIC_TRACKED: {
@@ -85,7 +87,22 @@ REPORTING_METRIC_DEFINITIONS: Dict[str, Dict[str, str]] = {
         "short_help": "Self-recorded or on-file assurance without platform verification.",
         "authority": "assurance_tier_and_lifecycle",
     },
+    METRIC_VISIBLE: {
+        "label": "Visible requirements",
+        "short_help": "Requirement rows shown on the Requirements page for this portfolio.",
+        "authority": "tracked_registry_projection",
+    },
+    METRIC_LIFECYCLE_SATISFIED: {
+        "label": "Requirements satisfied",
+        "short_help": "Visible requirements with recorded evidence on file (lifecycle satisfied).",
+        "authority": "client_lifecycle_state",
+    },
 }
+
+SCORE_OBLIGATION_GROUPING_NOTE = (
+    "Some related requirements are grouped for scoring to avoid double-counting. "
+    "Your Requirements page shows the full visible count; the score uses grouped obligation scope."
+)
 
 # Export grades (report surfaces)
 GRADE_OPERATIONAL = "OPERATIONAL_EXPORT"
@@ -302,10 +319,16 @@ def compute_reporting_semantic_counts(
         if tier == "SELF_RECORDED" or (life == "SATISFIED_UNVERIFIED" and tier != "VERIFIED"):
             self_recorded += 1
 
+    from services.requirement_satisfaction_service import is_requirement_satisfied
+
+    lifecycle_satisfied = sum(1 for r in enriched_portal_rows if is_requirement_satisfied(r))
+
     return {
+        METRIC_VISIBLE: len(enriched_portal_rows),
+        METRIC_LIFECYCLE_SATISFIED: lifecycle_satisfied,
         METRIC_TRACKED: len(tracked_rows),
         METRIC_SCORE_TRACKED: buckets["total_requirements"],
-        METRIC_COMPLIANT_SCORING: buckets["compliant"],
+        METRIC_COMPLIANT_SCORING: buckets["status_valid"],
         METRIC_MISSING_DOCUMENT: buckets["missing_evidence"],
         METRIC_EXPIRING: buckets["expiring_soon"],
         METRIC_SATISFIED: satisfied,
@@ -319,6 +342,12 @@ def compute_reporting_semantic_counts(
 
 
 def build_reporting_semantics_payload(counts: Dict[str, int]) -> Dict[str, Any]:
+    visible = int(counts.get(METRIC_VISIBLE) or 0)
+    score_tracked = int(counts.get(METRIC_SCORE_TRACKED) or 0)
+    tracked = int(counts.get(METRIC_TRACKED) or 0)
+    grouping_note = None
+    if visible > 0 and (score_tracked < visible or tracked < visible):
+        grouping_note = SCORE_OBLIGATION_GROUPING_NOTE
     return {
         "version": REPORTING_SEMANTICS_VERSION,
         "scoring_semantics_version": SCORING_SEMANTICS_VERSION,
@@ -328,6 +357,7 @@ def build_reporting_semantics_payload(counts: Dict[str, int]) -> Dict[str, Any]:
             "score_tracked_requirement_count and compliant_requirement_count align with dashboard "
             "compliance-score stats when the same enrich+projection pipeline is used."
         ),
+        "grouping_note": grouping_note,
     }
 
 

@@ -1,28 +1,15 @@
 {
-  "programme": "COMPLIANCE-ASSURANCE-ACTIONABILITY-POST-DEPLOY-CLOSEOUT-01",
-  "generated_at": "2026-06-06T23:25:33.525194+00:00",
-  "deploy_commit": "28743ee3",
-  "classification": "PARTIAL",
-  "primary_drift": "TODAY_UI_DRIFT",
-  "secondary_drift": "SCORE_COUNT_SEMANTIC_DRIFT",
+  "programme": "TODAY-UI-AND-SCORE-COUNT-SEMANTICS-CLOSEOUT-01",
+  "generated_at": "2026-06-07T11:44:10.915987+00:00",
+  "classification": "TODAY_UI_DRIFT",
   "target_client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
   "target_crn": "PLE-CVP-2026-000023",
   "checks": {
-    "deploy_proof": true,
-    "sophie_snapshot": {
-      "ten_visible": true,
-      "ten_satisfied": true,
-      "two_properties": true,
-      "all_green": true,
-      "no_overdue": true
-    },
-    "today": true,
-    "dashboard": true,
-    "score_page": true,
-    "count_semantics": false,
-    "non_regression": true,
-    "browser": false,
-    "today_browser_error_boundary": true,
+    "root_cause_documented": true,
+    "today_ui_fix": true,
+    "today_browser": false,
+    "score_count_root_cause": true,
+    "score_count_clarity": true,
     "regression": true
   }
 }

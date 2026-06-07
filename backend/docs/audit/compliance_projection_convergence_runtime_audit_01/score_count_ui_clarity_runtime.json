@@ -1,0 +1,15 @@
+{
+  "programme": "TODAY-UI-AND-SCORE-COUNT-SEMANTICS-CLOSEOUT-01",
+  "generated_at": "2026-06-07T11:42:29.172388+00:00",
+  "backend_changes": [
+    "reporting_semantics_v1.py: METRIC_VISIBLE, METRIC_LIFECYCLE_SATISFIED, grouping_note",
+    "compliance_score.py: lifecycle_satisfied_count from visible satisfied",
+    "assurance_actionability_service.py: score_confidence grouping_note",
+    "client.py: dashboard lifecycle counts from visible satisfied"
+  ],
+  "frontend_changes": [
+    "ComplianceScorePage.js",
+    "reportingSemanticsLabels.js"
+  ],
+  "pass": true
+}

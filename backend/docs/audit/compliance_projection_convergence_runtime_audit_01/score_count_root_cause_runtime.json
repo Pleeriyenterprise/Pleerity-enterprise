@@ -1,0 +1,17 @@
+{
+  "programme": "TODAY-UI-AND-SCORE-COUNT-SEMANTICS-CLOSEOUT-01",
+  "generated_at": "2026-06-07T11:42:29.172388+00:00",
+  "requirements_visible": 10,
+  "requirements_satisfied_visible": 6,
+  "lifecycle_satisfied_count": 8,
+  "visible_requirement_count": null,
+  "score_tracked_requirement_count": 8,
+  "tracked_requirement_count": 8,
+  "dashboard_satisfied": 10,
+  "dashboard_total": 10,
+  "excluded_from_score_tracked_scope": [],
+  "grouping_note": null,
+  "conclusion": "lifecycle_satisfied_count previously used requirement_row_in_tracked_attention_views filter while Requirements page shows all visible rows. Fix: lifecycle_satisfied_count counts all visible satisfied; score_tracked remains scoring scope with grouping_note when counts diverge.",
+  "alias_dedupe_suspected": false,
+  "pass": true
+}
