@@ -1,0 +1,12 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01",
+  "generated_at": "2026-06-07T12:27:20.080753+00:00",
+  "fix_files": [
+    "backend/services/reporting_semantics_v1.py",
+    "backend/services/compliance_score.py",
+    "backend/routes/client.py",
+    "frontend/src/pages/ComplianceScorePage.js"
+  ],
+  "fix_summary": "apply_registry_display_semantics merges enriched registry visible counts for lifecycle display; score_tracked unchanged; Compliance Score copy shows N satisfied / M score-tracked groups + grouping note.",
+  "pass": true
+}

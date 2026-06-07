@@ -959,12 +959,16 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             METRIC_SCORE_TRACKED,
             METRIC_TRACKED,
             METRIC_VISIBLE,
+            apply_registry_display_semantics,
             build_reporting_semantics_payload,
             compute_reporting_semantic_counts,
         )
         from services.requirement_satisfaction_service import is_requirement_satisfied
 
-        _semantic_counts = compute_reporting_semantic_counts(portal_reqs)
+        _semantic_counts = apply_registry_display_semantics(
+            compute_reporting_semantic_counts(portal_reqs),
+            enriched_portal,
+        )
         _reporting_semantics = build_reporting_semantics_payload(_semantic_counts)
         stats["visible_requirement_count"] = int(_semantic_counts.get(METRIC_VISIBLE) or total_reqs)
         stats["tracked_requirement_count"] = int(_semantic_counts.get(METRIC_TRACKED) or 0)

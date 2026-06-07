@@ -1,0 +1,18 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01",
+  "generated_at": "2026-06-07T12:28:50.181058+00:00",
+  "scenarios": [
+    {
+      "id": "missing_evidence",
+      "classify": "OPERATIONAL_ACTION",
+      "pass": true
+    },
+    {
+      "id": "assurance_only_issue",
+      "task_suppressed": true,
+      "classify": "ASSURANCE_CONFIDENCE_OPPORTUNITY",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

@@ -109,22 +109,85 @@ export function filterInboxTasksForTrackedRequirements(tasks, requirementsById) 
   return tasks.filter((t) => !taskLinksExcludedRequirement(t, requirementsById));
 }
 
+const ASSURANCE_REVIEW_TRIGGERS = new Set([
+  'MISMATCHED_EVIDENCE',
+  'RECONCILIATION_PENDING',
+  'AUTHORITY_UNSYNCED',
+  'EVIDENCE_UPLOADED_UNCONFIRMED',
+]);
+
+function taskMetadataSkeleton(task) {
+  if (!task || typeof task !== 'object') return {};
+  const meta = task.metadata && typeof task.metadata === 'object' ? task.metadata : {};
+  const st = String(task.source_type || task.source_entity_type || '').toLowerCase();
+  let rid = meta.requirement_id ?? meta.linked_property_requirement_id ?? meta.related_requirement_id;
+  if (!rid && st === 'requirement') {
+    rid = task.source_id ?? task.source_entity_id;
+  }
+  return {
+    requirement_id: rid,
+    property_id: task.property_id,
+    client_lifecycle_state: meta.client_lifecycle_state,
+    requirement_satisfied: meta.requirement_satisfied,
+    truth_presentation_stage: meta.truth_presentation_stage,
+    assurance_tier: meta.assurance_tier,
+    issue_triggering_rule: meta.issue_triggering_rule ?? meta.triggering_rule,
+  };
+}
+
+function textSuggestsAssuranceReview(task) {
+  const text = `${task?.title || ''} ${task?.description || ''}`.toLowerCase();
+  return (
+    text.includes('review the uploaded file') ||
+    text.includes('confirm it is the correct certificate') ||
+    text.includes('assurance confidence') ||
+    text.includes('awaiting assurance') ||
+    text.includes('awaiting platform verification')
+  );
+}
+
+function skeletonSatisfiedForAssurance(skeleton) {
+  if (skeleton.requirement_satisfied === true) return true;
+  const life = String(skeleton.client_lifecycle_state || '').toUpperCase();
+  return life === 'SATISFIED_UNVERIFIED' || life === 'VERIFIED' || life === 'PENDING_REVIEW';
+}
+
 /**
  * Assurance-only inbox items (satisfied obligation, optional confidence gap) — not operational urgency.
  * @param {Record<string, unknown>|null|undefined} task
  * @param {Map<string, Record<string, unknown>>} requirementsById
  */
 export function isTaskAssuranceOnly(task, requirementsById) {
-  if (!task || !(requirementsById instanceof Map) || requirementsById.size === 0) return false;
-  const rid = inboxTaskLinkedRequirementId(task);
-  if (!rid) return false;
-  const req = requirementsById.get(String(rid));
-  if (!req) return false;
-  if (isRequirementUrgentActionAttention(req)) return false;
-  const life = resolveClientRequirementLifecycle(req).state;
-  if (life === 'SATISFIED_UNVERIFIED' || life === 'PENDING_REVIEW' || life === 'VERIFIED') {
-    const src = String(task.source_type || '').toLowerCase();
-    if (src === 'issue' || src === 'requirement' || src === 'priority_action') return true;
+  if (!task) return false;
+  const skeleton = taskMetadataSkeleton(task);
+  const rid = skeleton.requirement_id != null ? String(skeleton.requirement_id) : inboxTaskLinkedRequirementId(task);
+  const req =
+    rid && requirementsById instanceof Map && requirementsById.size > 0
+      ? requirementsById.get(String(rid))
+      : null;
+  if (req && isRequirementUrgentActionAttention(req)) return false;
+  const life = req
+    ? resolveClientRequirementLifecycle(req).state
+    : String(skeleton.client_lifecycle_state || '').toUpperCase();
+  const src = String(task.source_type || '').toLowerCase();
+
+  if (req) {
+    if (life === 'SATISFIED_UNVERIFIED' || life === 'PENDING_REVIEW' || life === 'VERIFIED') {
+      if (src === 'issue' || src === 'requirement' || src === 'priority_action') return true;
+    }
+  }
+
+  if (src === 'issue' || src === 'priority_action') {
+    const trigger = String(skeleton.issue_triggering_rule || '').toUpperCase();
+    if (trigger && ASSURANCE_REVIEW_TRIGGERS.has(trigger) && skeletonSatisfiedForAssurance(skeleton)) {
+      return true;
+    }
+    if (textSuggestsAssuranceReview(task) && skeletonSatisfiedForAssurance(skeleton)) {
+      return true;
+    }
+    if (rid && skeletonSatisfiedForAssurance(skeleton) && life !== 'ACTION_REQUIRED') {
+      return true;
+    }
   }
   return false;
 }

@@ -4,7 +4,10 @@
  */
 import { compareTopPriority } from './clientTopPriorityRanking';
 import { buildRequirementShapedRowFromPriorityTask } from './taskRequirementRowAdapter';
-import { inboxTaskLinkedRequirementId } from './portalRequirementAttention';
+import {
+  inboxTaskLinkedRequirementId,
+  isTaskAssuranceOnly,
+} from './portalRequirementAttention';
 import {
   isRequirementPendingReviewAttention,
   isRequirementUrgentActionAttention,
@@ -13,25 +16,7 @@ import {
 import { getOperationalCognition, heroPrimaryFromCognition } from './operationalCognition';
 import { getPropertyDisplayName } from './propertyDisplayName';
 
-/**
- * Assurance-only inbox items (satisfied obligation, optional confidence gap) — not operational urgency.
- * @param {Record<string, unknown>|null|undefined} task
- * @param {Map<string, Record<string, unknown>>} requirementsById
- */
-export function isTaskAssuranceOnly(task, requirementsById) {
-  if (!task || !(requirementsById instanceof Map) || requirementsById.size === 0) return false;
-  const rid = inboxTaskLinkedRequirementId(task);
-  if (!rid) return false;
-  const req = requirementsById.get(String(rid));
-  if (!req) return false;
-  if (isRequirementUrgentActionAttention(req)) return false;
-  const life = resolveClientRequirementLifecycle(req).state;
-  if (life === 'SATISFIED_UNVERIFIED' || life === 'PENDING_REVIEW' || life === 'VERIFIED') {
-    const src = String(task.source_type || '').toLowerCase();
-    if (src === 'issue' || src === 'requirement' || src === 'priority_action') return true;
-  }
-  return false;
-}
+export { isTaskAssuranceOnly } from './portalRequirementAttention';
 
 /**
  * @param {Map<string, Record<string, unknown>>} propertyById
@@ -79,7 +64,8 @@ export function enrichTaskForExecution(task, requirementsById, propertyById) {
 }
 
 /**
- * Highest-confidence next action from existing urgent + upcoming + in-progress pool.
+ * Highest-confidence next action from the API urgent lane only (operational hero).
+ * In-progress tasks must not become "Do this next" when urgent_count is zero.
  */
 export function pickPrimaryExecutionTask(tasks, requirementsById, propertyById) {
   if (!Array.isArray(tasks) || !tasks.length) return null;
@@ -95,7 +81,7 @@ export function pickPrimaryExecutionTask(tasks, requirementsById, propertyById) 
     const ta = enriched?.take_action?.primary || enriched?.metadata?.take_action?.primary;
     if (ta?.label) return enriched;
   }
-  return enrichTaskForExecution(sorted[0], requirementsById, propertyById);
+  return null;
 }
 
 /** @returns {'needs_action_now'|'waiting_on_others'|'in_progress'|'recently_completed'|'snoozed'} */

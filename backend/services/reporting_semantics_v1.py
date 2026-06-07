@@ -295,6 +295,33 @@ async def load_score_projection_portal_rows(
     return [r for r in projected if client_portal_surface_visible_row(r)]
 
 
+def compute_registry_display_semantic_overrides(
+    enriched_rows: List[Dict[str, Any]],
+) -> Dict[str, int]:
+    """
+    Requirements-page parity: visible registry rows in attention views (pre-score dedupe scope).
+    Used for lifecycle satisfied / visible counts on score surfaces without changing score_tracked.
+    """
+    from services.requirement_satisfaction_service import is_requirement_satisfied
+
+    visible = [r for r in enriched_rows if r.get("client_surface_visible") is not False]
+    registry = [r for r in visible if requirement_row_in_tracked_attention_views(r)]
+    return {
+        METRIC_VISIBLE: len(registry),
+        METRIC_LIFECYCLE_SATISFIED: sum(1 for r in registry if is_requirement_satisfied(r)),
+    }
+
+
+def apply_registry_display_semantics(
+    counts: Dict[str, int],
+    enriched_rows: List[Dict[str, Any]],
+) -> Dict[str, int]:
+    """Merge registry display overrides into score semantic counts."""
+    merged = dict(counts)
+    merged.update(compute_registry_display_semantic_overrides(enriched_rows))
+    return merged
+
+
 def compute_reporting_semantic_counts(
     enriched_portal_rows: List[Dict[str, Any]],
 ) -> Dict[str, int]:

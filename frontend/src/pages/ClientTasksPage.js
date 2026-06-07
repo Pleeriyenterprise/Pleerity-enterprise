@@ -1110,10 +1110,13 @@ export default function ClientTasksPage() {
     [sections],
   );
 
-  const primaryExecutionTask = useMemo(
-    () => pickPrimaryExecutionTask(applyFilter(allOpenTasks), inboxRequirementById, propertyById),
-    [allOpenTasks, applyFilter, inboxRequirementById, propertyById],
-  );
+  const urgentHeroTasks = useMemo(() => applyFilter(sections.urgent || []), [sections.urgent, applyFilter]);
+
+  const primaryExecutionTask = useMemo(() => {
+    const apiUrgent = Number(payload?.summary?.urgent_count ?? 0);
+    if (apiUrgent === 0 && urgentHeroTasks.length === 0) return null;
+    return pickPrimaryExecutionTask(urgentHeroTasks, inboxRequirementById, propertyById);
+  }, [payload?.summary?.urgent_count, urgentHeroTasks, inboxRequirementById, propertyById]);
 
   const primaryExecutionId = primaryExecutionTask?.id;
 

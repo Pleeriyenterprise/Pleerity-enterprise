@@ -20,6 +20,21 @@ describe('portalRequirementAttention operational actionability', () => {
     expect(filtered.map((t) => t.id)).toEqual(['t2']);
   });
 
+  it('detects assurance-only file review from task metadata without requirement map', () => {
+    const task = {
+      id: 'issue:r1',
+      source_type: 'issue',
+      metadata: {
+        requirement_id: 'r1',
+        client_lifecycle_state: 'SATISFIED_UNVERIFIED',
+        requirement_satisfied: true,
+        issue_triggering_rule: 'MISMATCHED_EVIDENCE',
+      },
+      title: 'Please review the uploaded file and confirm it is the correct certificate',
+    };
+    expect(isTaskAssuranceOnly(task, new Map())).toBe(true);
+  });
+
   it('alignTodayPayloadTaskSections does not throw when urgent is empty', () => {
     const reqMap = new Map([
       ['r1', { requirement_id: 'r1', client_lifecycle_state: 'SATISFIED_UNVERIFIED' }],

@@ -10,7 +10,9 @@ from services.reporting_semantics_v1 import (
     METRIC_VERIFIED,
     REPORTING_METRIC_DEFINITIONS,
     SURFACE_EXPORT_REGISTRY,
+    apply_registry_display_semantics,
     build_reporting_semantics_payload,
+    compute_registry_display_semantic_overrides,
     compute_reporting_semantic_counts,
     csv_semantics_preamble_rows,
     requirement_row_in_tracked_attention_views,
@@ -107,6 +109,30 @@ def test_grouping_note_when_visible_exceeds_score_tracked():
         {"visible_requirement_count": 10, "score_tracked_requirement_count": 8, "tracked_requirement_count": 8}
     )
     assert payload.get("grouping_note")
+
+
+def test_registry_display_overrides_enriched_visible_rows():
+    rows = [
+        {
+            "client_surface_visible": True,
+            "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+            "status": "COMPLIANT",
+            "applicability": "MANDATORY",
+            "compliance_requirement_class": "DOCUMENT",
+        },
+        {
+            "client_surface_visible": True,
+            "client_lifecycle_state": "VERIFIED",
+            "status": "COMPLIANT",
+            "applicability": "MANDATORY",
+            "compliance_requirement_class": "DOCUMENT",
+        },
+    ]
+    overrides = compute_registry_display_semantic_overrides(rows)
+    assert overrides["visible_requirement_count"] == 2
+    merged = apply_registry_display_semantics({"score_tracked_requirement_count": 1}, rows)
+    assert merged["visible_requirement_count"] == 2
+    assert merged["score_tracked_requirement_count"] == 1
 
 
 def test_legacy_stats_alias_score_tracked():

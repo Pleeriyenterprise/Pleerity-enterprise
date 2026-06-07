@@ -603,25 +603,44 @@ const ComplianceScorePage = () => {
                       {scoreData.score_confidence.detail}
                     </p>
                   ) : null}
-                  <p className="text-sm text-gray-500 mt-1">
-                    {(scoreData?.stats?.lifecycle_satisfied_count ?? scoreData?.score_confidence?.lifecycle_satisfied_count ?? 0) > 0 ? (
-                      <span className="block">
-                        {scoreData.stats?.lifecycle_satisfied_count ?? scoreData.score_confidence?.lifecycle_satisfied_count} requirements satisfied on file across your portfolio.
-                      </span>
-                    ) : null}
-                    <span className="block mt-0.5">
-                      Based on {scoreData?.stats?.score_tracked_requirement_count ?? scoreData?.stats?.total_requirements ?? 0} score-tracked obligation
-                      {(scoreData?.stats?.score_tracked_requirement_count ?? scoreData?.stats?.total_requirements ?? 0) === 1 ? '' : ' groups'} across{' '}
-                      {scoreData?.properties_count ?? 0} {scoreData?.properties_count === 1 ? 'property' : 'properties'}.
-                    </span>
-                    {(scoreData?.score_confidence?.grouping_note || scoreData?.reporting_semantics?.grouping_note) ? (
-                      <span className="block mt-0.5 text-xs text-slate-600">
-                        {scoreData.score_confidence?.grouping_note || scoreData.reporting_semantics?.grouping_note}
-                      </span>
-                    ) : null}
-                    {scoreData?.properties_count != null && scoreData.properties_count > 1 && (
-                      <span className="block mt-0.5">{SCORE_METHODOLOGY_PORTFOLIO}</span>
-                    )}
+                  <p className="text-sm text-gray-500 mt-1" data-testid="compliance-score-scope-copy">
+                    {(() => {
+                      const lifecycleSatisfied =
+                        scoreData?.stats?.lifecycle_satisfied_count ??
+                        scoreData?.score_confidence?.lifecycle_satisfied_count ??
+                        0;
+                      const scoreTracked =
+                        scoreData?.stats?.score_tracked_requirement_count ??
+                        scoreData?.stats?.total_requirements ??
+                        0;
+                      const groupingNote =
+                        scoreData?.score_confidence?.grouping_note ||
+                        scoreData?.reporting_semantics?.grouping_note ||
+                        (lifecycleSatisfied > scoreTracked && scoreTracked > 0
+                          ? 'Some related requirements are grouped for scoring to avoid double-counting. Your Requirements page shows the full visible count; the score uses grouped obligation scope.'
+                          : null);
+                      return (
+                        <>
+                          {lifecycleSatisfied > 0 ? (
+                            <span className="block">
+                              {lifecycleSatisfied} requirements satisfied on file across your portfolio.
+                            </span>
+                          ) : null}
+                          {scoreTracked > 0 ? (
+                            <span className="block mt-0.5">
+                              Score based on {scoreTracked} score-tracked obligation
+                              {scoreTracked === 1 ? '' : ' groups'}.
+                            </span>
+                          ) : null}
+                          {groupingNote ? (
+                            <span className="block mt-0.5 text-xs text-slate-600">{groupingNote}</span>
+                          ) : null}
+                          {scoreData?.properties_count != null && scoreData.properties_count > 1 ? (
+                            <span className="block mt-0.5">{SCORE_METHODOLOGY_PORTFOLIO}</span>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </p>
                   {pilotPortfolioSupplement ? (
                     <p

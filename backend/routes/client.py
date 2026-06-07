@@ -515,10 +515,11 @@ async def get_dashboard(
         from services.requirement_truth import enrich_requirements_for_client
         from services.requirement_client_runtime_surface import compute_client_portal_requirement_stats
         from services.reporting_semantics_v1 import (
+            METRIC_LIFECYCLE_SATISFIED,
             METRIC_SCORE_TRACKED,
-            METRIC_TRACKED,
+            METRIC_VISIBLE,
+            apply_registry_display_semantics,
             compute_reporting_semantic_counts,
-            requirement_row_in_tracked_attention_views,
         )
         from services.requirement_satisfaction_service import is_requirement_satisfied
 
@@ -526,14 +527,16 @@ async def get_dashboard(
         projected = [project_requirement_row_client_runtime(r) for r in enriched]
         visible_reqs = [r for r in projected if client_portal_surface_visible_row(r)]
 
-        # Compliance summary — enrich + satisfaction authority (aligns with Requirements + score semantics)
+        # Compliance summary — lifecycle truth from full visible registry (Requirements page parity)
         _dash_counts = compute_client_portal_requirement_stats(visible_reqs)
-        _dash_semantic = compute_reporting_semantic_counts(visible_reqs)
-        total_requirements = int(_dash_semantic.get(METRIC_TRACKED) or len(visible_reqs))
-        compliant = sum(
-            1
-            for r in visible_reqs
-            if requirement_row_in_tracked_attention_views(r) and is_requirement_satisfied(r)
+        _dash_semantic = apply_registry_display_semantics(
+            compute_reporting_semantic_counts(visible_reqs),
+            enriched,
+        )
+        total_requirements = int(_dash_semantic.get(METRIC_VISIBLE) or len(visible_reqs))
+        compliant = int(
+            _dash_semantic.get(METRIC_LIFECYCLE_SATISFIED)
+            or sum(1 for r in visible_reqs if is_requirement_satisfied(r))
         )
         overdue = _dash_counts["overdue"]
         expiring = _dash_counts["expiring_soon"]
@@ -2003,6 +2006,7 @@ async def get_all_requirements(
         from services.reporting_semantics_v1 import (
             build_reporting_semantics_payload,
             compute_reporting_semantic_counts,
+            apply_registry_display_semantics,
         )
 
         projected = [project_requirement_row_client_runtime(r) for r in enriched]
@@ -2010,7 +2014,10 @@ async def get_all_requirements(
             "requirements": enriched,
             "presentation": presentation,
             "reporting_semantics": build_reporting_semantics_payload(
-                compute_reporting_semantic_counts(projected)
+                apply_registry_display_semantics(
+                    compute_reporting_semantic_counts(projected),
+                    enriched,
+                )
             ),
         }
     

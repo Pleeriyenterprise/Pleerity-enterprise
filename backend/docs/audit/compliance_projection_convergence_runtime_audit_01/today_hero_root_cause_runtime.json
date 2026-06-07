@@ -1,0 +1,13 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01",
+  "generated_at": "2026-06-07T12:27:07.281555+00:00",
+  "root_cause": "pickPrimaryExecutionTask fallback + in_progress pool elevation",
+  "mechanism": "Today API urgent_count=0 but ClientTasksPage passed urgent+upcoming+in_progress into pickPrimaryExecutionTask. Fallback returned sorted[0] even without operational cognition. File-review issue tasks in in_progress were not classified assurance-only when requirement map lookup failed or metadata-only skeleton was insufficient.",
+  "file_review_task": {
+    "title": "Please review the uploaded file and confirm it is the correct certificate or record for this property.",
+    "source_type": "issue",
+    "section": "in_progress",
+    "trigger": "MISMATCHED_EVIDENCE"
+  },
+  "pass": true
+}

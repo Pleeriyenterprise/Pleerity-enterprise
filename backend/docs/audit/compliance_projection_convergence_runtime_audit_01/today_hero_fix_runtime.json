@@ -1,0 +1,11 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01",
+  "generated_at": "2026-06-07T12:27:07.281555+00:00",
+  "fix_files": [
+    "frontend/src/utils/todayExecutionWorkspace.js",
+    "frontend/src/utils/portalRequirementAttention.js",
+    "frontend/src/pages/ClientTasksPage.js"
+  ],
+  "fix_summary": "Hero limited to API urgent lane when urgent_count=0; removed sorted[0] fallback; metadata-based assurance classification for file-review issue tasks.",
+  "pass": true
+}

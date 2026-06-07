@@ -1,0 +1,11 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01",
+  "generated_at": "2026-06-07T12:27:20.078753+00:00",
+  "root_cause": "Score page used portal_reqs/score-scoped lifecycle_satisfied_count (8) instead of registry visible satisfied (10)",
+  "score_lifecycle_satisfied": 8,
+  "score_visible_requirement_count": 8,
+  "score_tracked_requirement_count": 8,
+  "requirements_visible": 10,
+  "grouping_note": null,
+  "pass": true
+}

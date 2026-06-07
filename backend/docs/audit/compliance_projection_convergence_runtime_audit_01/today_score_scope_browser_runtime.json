@@ -1,0 +1,26 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01",
+  "generated_at": "2026-06-07T12:28:49.778197+00:00",
+  "screenshots": {
+    "today": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\today_score_scope_closeout_screenshots\\01_today.png",
+    "dashboard": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\today_score_scope_closeout_screenshots\\02_dashboard.png",
+    "compliance_score": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\today_score_scope_closeout_screenshots\\03_compliance_score.png",
+    "requirements": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\today_score_scope_closeout_screenshots\\04_requirements.png",
+    "properties": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\today_score_scope_closeout_screenshots\\05_properties.png"
+  },
+  "findings": {
+    "today_error_boundary": false,
+    "do_this_next": true,
+    "needs_action_nonzero": true,
+    "dashboard_error_boundary": false,
+    "compliance_score_error_boundary": false,
+    "lifecycle_satisfied_10": false,
+    "score_tracked_8": true,
+    "grouping_note": false,
+    "requirements_error_boundary": false,
+    "lifecycle_valid_10": true,
+    "properties_error_boundary": false,
+    "attention_needed_zero": true
+  },
+  "pass": false
+}
