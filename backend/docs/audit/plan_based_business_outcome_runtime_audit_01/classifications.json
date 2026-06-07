@@ -1,37 +1,25 @@
 {
-  "programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
-  "prior_programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
-  "generated_at": "2026-06-07T17:10:00.000000+00:00",
-  "marker": "PLAN-FIXTURE-CLOSEOUT-20260607T163807Z",
+  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "prior_programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:33:43.826727+00:00",
+  "marker": "PLAN-OUTCOME-SEED-CLOSEOUT-20260607T180254Z",
   "classification": "PLAN_FIXTURE_GAP",
   "secondary_flags": [
-    "USER_OUTCOME_DRIFT",
     "CROSS_SURFACE_DRIFT",
-    "BUSINESS_OUTCOME_DRIFT"
+    "PLAN_FIXTURE_GAP",
+    "USER_OUTCOME_DRIFT"
   ],
   "results": {
-    "fixture_resolution": false,
-    "fixtures_exact_match": "4/9 (B,C,F,I)",
-    "satisfaction_paths": true,
-    "solo_closeout": false,
-    "portfolio_closeout": false,
-    "professional_closeout": false,
+    "seed": false,
+    "satisfaction": false,
+    "sophie_today": false,
+    "all_satisfied_closeout": false,
+    "partial_reconfirmation": true,
+    "semantics": false,
     "entitlements": true,
-    "cross_surface": false,
     "browser": true,
     "regression": true,
-    "harness_resilience": true
+    "verified": false
   },
-  "reference_fixtures": {
-    "solo_all_satisfied_reference": {
-      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
-      "crn": "PLE-CVP-2026-000023",
-      "plan": "PLAN_1_SOLO",
-      "note": "All requirements satisfied, properties GREEN, but 2 properties and Today in_progress=4"
-    },
-    "solo_partial": "616258a5-51a6-4def-aa00-baa1598b2557",
-    "portfolio_partial_mixed": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
-    "professional_partial_mixed": "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
-  },
-  "note": "Not VERIFIED_OPERATIONALLY — staging lacks exact all-satisfied fixtures per plan/property-count matrix; Sophie Walker is closest Solo reference"
+  "code_fix": "stale_compliance_issue_suppression + today_filter_before_compact"
 }

@@ -1,66 +1,47 @@
-# PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01
+# PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01
 
 **Classification:** `PLAN_FIXTURE_GAP`  
-**Marker:** `PLAN-FIXTURE-CLOSEOUT-20260607T163807Z`  
-**Prior:** `PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01` (PARTIAL)
+**Marker:** `PLAN-OUTCOME-SEED-CLOSEOUT-20260607T180254Z`  
+**Prior:** PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01
 
-## Executive summary
+## Summary
 
-Deterministic fixture discovery ran against staging with resilient pacing and fresh step-up per browser target. **Partial and entitlement outcomes are proven**; **exact all-satisfied fixtures per plan matrix are not available on staging** without new seed accounts.
+Staging discovery found **no exact all-satisfied fixtures** for scenarios A, D, E, G, H. Partial fixtures **B, F, I** reconfirmed for operational urgency. Entitlements, browser proof (5/6 personas with client), and regression (58 tests) pass. Sophie Walker Today `in_progress=4` root-caused as **stale compliance-gap bridge issues**; global suppression fix implemented locally (pending deploy).
 
-Browser proof captured for 4 resolved/reference personas (28 screenshots). Regression **50 tests pass**.
+## All-satisfied fixture seed (0/5 exact)
 
-**Not `VERIFIED_OPERATIONALLY`** — missing exact fixtures for Solo 1-prop all-satisfied, Portfolio 5-prop all-satisfied, Portfolio mixed all-satisfied, and Professional all-satisfied scenarios.
+| ID | Best candidate | Gap |
+|----|----------------|-----|
+| A | Sophie Walker `10b2ddba…` | 2 properties; Today not calm |
+| D | `80f83edd…` | 1 property; not all satisfied |
+| E | — | No match in scan |
+| G | — | Impersonation/session exhaustion |
+| H | — | No match in scan |
 
-## Fixture resolution (Part 1)
+## Sophie Walker Today investigation
 
-| ID | Scenario | Resolved | Client | Pass |
-|----|----------|----------|--------|------|
-| A | Solo 1 prop all satisfied | Best-effort | Sophie Walker `10b2ddba…` | No — 2 props; Today in_progress=4 |
-| B | Solo partial | Yes | David Harrison `616258a5…` | **Yes** |
-| C | Solo property limit | Local | max 2 | **Yes** |
-| D | Portfolio 5 all satisfied | No | — | No |
-| E | Portfolio mixed all satisfied | No | — | No |
-| F | Portfolio mixed partial | Yes | David Miller `6bcc43c0…` | **Yes** |
-| G | Professional 3–5 all satisfied | No | Nancy partial only | No |
-| H | Professional mixed all satisfied | No | — | No |
-| I | Professional mixed partial | Yes | Nancy `6fd5ac4c…` | **Yes** |
+- Requirements: 8/8 score-tracked satisfied; properties GREEN
+- Today: `urgent_count=0`, `in_progress_count=4`
+- Tasks: 4 open `issue` rows (document review/upload) — **stale gap-bridge issues**, not assurance-only
+- Gap engine: 5 open LOW `MISSING_EVIDENCE` gaps despite satisfied requirements
+- **Fix (code):** `_suppress_stale_compliance_issue_tasks` + Today filter-before-compact metadata
 
-### Sophie Walker reference (PLE-CVP-2026-000023)
+## Partial reconfirmation
 
-- Plan: **PLAN_1_SOLO**
-- 2 properties, England, score **93**
-- Requirements: 10/10 dashboard, 8/8 score API — all satisfied
-- Properties: 2 GREEN
-- **Today not calm:** in_progress=4 (USER_OUTCOME_DRIFT for all-satisfied calm expectation)
+| ID | Client | Result |
+|----|--------|--------|
+| B | David Harrison `616258a5…` | PASS — real action, routing |
+| F | David Miller `6bcc43c0…` | PASS — mixed jurisdiction urgency |
+| I | Nancy `6fd5ac4c…` | PASS — Professional partial urgency |
 
-## Satisfaction paths (Part 2)
+## Count semantics (F, I)
 
-Verified via live API probe — no fake status patching. Sophie Walker satisfaction through valid evidence/declaration paths (prior convergence programme).
+Dashboard `lifecycle_satisfied` / `visible_registry` (71 / 49) differs from score-tracked obligations (48 / 43). **Verdict:** registry vs score-tracked — labels must stay separate; not a logic bug for partial outcomes.
 
-## Entitlements (Part 6) — **PASS**
+## Browser proof
 
-Billing plan matches API entitlements for Solo B, Portfolio F, Professional I (10 / 18 / 29 features enabled).
+6 slugs targeted; 5 captured with client (solo_partial re-captured for B). Screenshots in `closeout_screenshots/`.
 
-## Cross-surface (Part 7) — **PARTIAL**
+## Regression
 
-- Sophie A/E: dashboard/score parity within tolerance
-- Portfolio F / Professional G–I: dashboard vs requirement count drift (registry semantics)
-
-## Browser proof (Part 8) — **PASS**
-
-Screenshots in `closeout_screenshots/`:
-
-- `solo_all_ref_*` — Sophie Walker
-- `solo_partial_*` — David Harrison
-- `portfolio_partial_*` — David Miller
-- `pro_partial_*` — Nancy (Professional)
-
-## Regression (Part 10) — **PASS**
-
-50 targeted tests.
-
-## Harness (Part 9)
-
-`backend/scripts/plan_based_business_outcome_fixture_closeout_01_execute.py`  
-`backend/scripts/plan_fixture_browser_capture_01.py`
+58 tests pass including `test_today_projection_quality` and `test_assurance_actionability_service`.

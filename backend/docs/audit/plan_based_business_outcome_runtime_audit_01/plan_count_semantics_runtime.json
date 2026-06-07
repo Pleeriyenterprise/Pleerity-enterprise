@@ -1,0 +1,34 @@
+{
+  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:29:50.818287+00:00",
+  "rows": [
+    {
+      "scenario": "F",
+      "dashboard_total": 71,
+      "score_tracked": 48,
+      "visible_registry": 71,
+      "lifecycle_satisfied": 46,
+      "requirements_page": 62,
+      "requirement_api_total": 48,
+      "drift": 23,
+      "semantics_present": true,
+      "verdict": "registry_vs_score_tracked",
+      "pass": false
+    },
+    {
+      "scenario": "I",
+      "dashboard_total": 49,
+      "score_tracked": 43,
+      "visible_registry": 49,
+      "lifecycle_satisfied": 4,
+      "requirements_page": 47,
+      "requirement_api_total": 43,
+      "drift": 6,
+      "semantics_present": true,
+      "verdict": "registry_vs_score_tracked",
+      "pass": false
+    }
+  ],
+  "note": "Dashboard may show lifecycle_satisfied/visible_registry; score uses score_tracked group",
+  "pass": false
+}

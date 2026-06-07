@@ -1,0 +1,57 @@
+{
+  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:23:15.349288+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "all_satisfied": true,
+      "today_calm": false,
+      "properties_green": 2,
+      "overdue": 0,
+      "score": 93,
+      "pass": false
+    },
+    {
+      "scenario": "D",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "all_satisfied": false,
+      "today_calm": false,
+      "properties_green": 0,
+      "overdue": 0,
+      "score": 18,
+      "pass": false
+    },
+    {
+      "scenario": "E",
+      "client_id": null,
+      "all_satisfied": null,
+      "today_calm": null,
+      "properties_green": null,
+      "overdue": null,
+      "score": null,
+      "pass": false
+    },
+    {
+      "scenario": "G",
+      "client_id": null,
+      "all_satisfied": null,
+      "today_calm": null,
+      "properties_green": null,
+      "overdue": null,
+      "score": null,
+      "pass": false
+    },
+    {
+      "scenario": "H",
+      "client_id": null,
+      "all_satisfied": null,
+      "today_calm": null,
+      "properties_green": null,
+      "overdue": null,
+      "score": null,
+      "pass": false
+    }
+  ],
+  "pass": false
+}

@@ -1,0 +1,81 @@
+{
+  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:24:12.063630+00:00",
+  "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+  "crn": "PLE-CVP-2026-000023",
+  "name": "Sophie Walker",
+  "summary": {
+    "urgent_count": 0,
+    "upcoming_count": 0,
+    "in_progress_count": 4,
+    "recently_completed_count": 0,
+    "snoozed_count": 0,
+    "hidden_count": 0,
+    "habit": {
+      "urgent_open_total": 0,
+      "items_due_or_expiring_in_7_days": 0,
+      "tasks_acknowledged_last_7_days": 0
+    }
+  },
+  "in_progress_tasks": [
+    {
+      "id": "issue:45a823ba-139a-4b91-ac9e-5c8dc0957d62",
+      "title": "Please review the uploaded file and confirm it is the correct certificate or record for this property.",
+      "source_type": "issue",
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "issue_triggering_rule": null,
+      "operational_root_key": null,
+      "requirement_satisfied": null,
+      "attention_class": "open_operational_debt",
+      "business_actions": 2
+    },
+    {
+      "id": "issue:cd7a06a1-edca-4b82-b173-8bc93de4f463",
+      "title": "Please review the uploaded file and confirm it is the correct certificate or record for this property.",
+      "source_type": "issue",
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "issue_triggering_rule": null,
+      "operational_root_key": null,
+      "requirement_satisfied": null,
+      "attention_class": "open_operational_debt",
+      "business_actions": 2
+    },
+    {
+      "id": "issue:38808600-ae51-4531-8064-5bc86d13de73",
+      "title": "Upload the correct certificate or record so this requirement can be confirmed.",
+      "source_type": "issue",
+      "property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "issue_triggering_rule": null,
+      "operational_root_key": null,
+      "requirement_satisfied": null,
+      "attention_class": "open_operational_debt",
+      "business_actions": 2
+    },
+    {
+      "id": "issue:f8354c33-85a0-4d8e-9f24-45fee70e1e8f",
+      "title": "Upload the correct certificate or record so this requirement can be confirmed.",
+      "source_type": "issue",
+      "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+      "issue_triggering_rule": null,
+      "operational_root_key": null,
+      "requirement_satisfied": null,
+      "attention_class": "open_operational_debt",
+      "business_actions": 2
+    }
+  ],
+  "score": 93,
+  "stats": {
+    "total_requirements": 8,
+    "satisfied": 8,
+    "lifecycle_satisfied_count": 10,
+    "visible_requirement_count": 10,
+    "tracked_requirement_count": 8,
+    "gap_engine_open": 5
+  },
+  "root_cause": "stale_compliance_gap_bridge_issues",
+  "classification": "stale_gap_bridge_issues_not_suppressed",
+  "user_anxiety": true,
+  "recommended_fix": "suppress_stale_compliance_issue_tasks + filter_before_compact_today",
+  "today_calm": false,
+  "pass": false
+}

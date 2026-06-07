@@ -403,6 +403,9 @@ def _action_to_task(
         task_metadata["issue_created_from"] = a.get("created_from")
     if a.get("triggering_rule"):
         task_metadata["issue_triggering_rule"] = a.get("triggering_rule")
+    if a.get("operational_root_key"):
+        task_metadata["operational_root_key"] = a.get("operational_root_key")
+        task_metadata["gap_key"] = str(a.get("operational_root_key"))
     if a.get("maintenance_escalation_allowed") is not None:
         task_metadata["maintenance_escalation_allowed"] = bool(a.get("maintenance_escalation_allowed"))
     if action_type == ACTION_PENDING_APPROVAL:
@@ -1131,6 +1134,144 @@ async def _enforce_canonical_requirement_task_guard(
     return out
 
 
+def _requirement_id_from_gap_key(gap_key: str) -> Optional[str]:
+    """Parse requirement_id from stable_gap_key (client:property:requirement_id:kind)."""
+    parts = [p.strip() for p in str(gap_key or "").split(":") if p.strip()]
+    if len(parts) < 4:
+        return None
+    return parts[2] or None
+
+
+async def _suppress_stale_compliance_issue_tasks(
+    *,
+    client_id: str,
+    tasks: List[Dict[str, Any]],
+    db: Any,
+) -> List[Dict[str, Any]]:
+    """
+    Drop open compliance-gap issues when the linked requirement is satisfied and has no
+    negative operational actionability — prevents stale gap-bridge issues from alarming
+    all-satisfied portfolios on Today.
+    """
+    if not tasks:
+        return tasks
+
+    issue_indices: List[int] = []
+    issue_ids: List[str] = []
+    for i, t in enumerate(tasks):
+        if str(t.get("source_type") or "").lower() != "issue":
+            continue
+        issue_indices.append(i)
+        meta = t.get("metadata") if isinstance(t.get("metadata"), dict) else {}
+        iid = str(meta.get("related_issue_id") or t.get("source_entity_id") or "").strip()
+        if iid:
+            issue_ids.append(iid)
+    if not issue_indices:
+        return tasks
+
+    issues_by_id: Dict[str, Dict[str, Any]] = {}
+    if issue_ids:
+        try:
+            rows = await db.maintenance_issues.find(
+                {"client_id": client_id, "issue_id": {"$in": list(set(issue_ids))}},
+                {"_id": 0, "issue_id": 1, "operational_root_key": 1, "triggering_rule": 1, "created_from": 1},
+            ).to_list(length=max(1, len(set(issue_ids)) * 2))
+            issues_by_id = {str(r.get("issue_id") or ""): r for r in rows if r.get("issue_id")}
+        except Exception as e:
+            logger.debug("unified_tasks: stale issue load skipped: %s", e)
+
+    requirement_ids: Set[str] = set()
+    for i in issue_indices:
+        t = tasks[i]
+        meta = t.get("metadata") if isinstance(t.get("metadata"), dict) else {}
+        iid = str(meta.get("related_issue_id") or t.get("source_entity_id") or "").strip()
+        iss = issues_by_id.get(iid) or {}
+        gap_key = str(meta.get("gap_key") or meta.get("operational_root_key") or iss.get("operational_root_key") or "").strip()
+        rid = _requirement_id_from_gap_key(gap_key)
+        if rid:
+            requirement_ids.add(rid)
+
+    row_by_requirement_id: Dict[str, Dict[str, Any]] = {}
+    if requirement_ids:
+        try:
+            requirement_rows = await db.requirements.find(
+                {"client_id": client_id, "requirement_id": {"$in": list(requirement_ids)}},
+                {"_id": 0},
+            ).to_list(length=max(1, len(requirement_ids) * 2))
+            for rr in requirement_rows:
+                rid = str(rr.get("requirement_id") or "").strip()
+                if rid:
+                    row_by_requirement_id[rid] = project_requirement_row_client_runtime(rr)
+        except Exception as e:
+            logger.debug("unified_tasks: stale issue requirement load skipped: %s", e)
+
+    client_doc: Dict[str, Any] = {}
+    prop_by_id: Dict[str, Dict[str, Any]] = {}
+    try:
+        client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
+        pids = {str(row_by_requirement_id[r].get("property_id") or "") for r in row_by_requirement_id}
+        pids.discard("")
+        if pids:
+            props = await db.properties.find(
+                {"client_id": client_id, "property_id": {"$in": list(pids)}},
+                {"_id": 0, "property_id": 1, "jurisdiction": 1, "tenancy_active": 1, "furnished": 1, "is_hmo": 1},
+            ).to_list(length=max(1, len(pids) * 2))
+            prop_by_id = {str(p.get("property_id") or "").strip(): p for p in props if str(p.get("property_id") or "").strip()}
+    except Exception as e:
+        logger.debug("unified_tasks: stale issue property load skipped: %s", e)
+
+    drop: Set[int] = set()
+    now = datetime.now(timezone.utc)
+    for i in issue_indices:
+        t = tasks[i]
+        meta = t.get("metadata") if isinstance(t.get("metadata"), dict) else {}
+        iid = str(meta.get("related_issue_id") or t.get("source_entity_id") or "").strip()
+        iss = issues_by_id.get(iid) or {}
+        trigger = str(meta.get("issue_triggering_rule") or iss.get("triggering_rule") or "").lower()
+        created_from = str(meta.get("issue_created_from") or iss.get("created_from") or "").lower()
+        gap_key = str(meta.get("gap_key") or meta.get("operational_root_key") or iss.get("operational_root_key") or "").strip()
+        if not gap_key and "compliance_gap" not in trigger and created_from not in ("compliance", "system"):
+            continue
+        rid = _requirement_id_from_gap_key(gap_key)
+        if not rid:
+            continue
+        req_row = row_by_requirement_id.get(rid)
+        if not isinstance(req_row, dict):
+            continue
+        pid = str(req_row.get("property_id") or "").strip()
+        window_days = resolve_expiring_soon_days_for_requirement(
+            req_row,
+            property_doc=prop_by_id.get(pid) if isinstance(prop_by_id.get(pid), dict) else None,
+            client_doc=client_doc if isinstance(client_doc, dict) else None,
+        )
+        if requirement_has_active_negative_actionability(
+            req_row,
+            now=now,
+            expiring_window_days=window_days,
+        ):
+            continue
+        from services.requirement_satisfaction_service import is_requirement_satisfied
+
+        if is_requirement_satisfied(req_row):
+            drop.add(i)
+            logger.info(
+                "unified_tasks: suppressed stale compliance issue task (requirement satisfied)",
+                extra=compliance_fanout_extra(
+                    op="stale_compliance_issue_suppress",
+                    stage="partial",
+                    client_id=client_id,
+                    property_id=pid or None,
+                    requirement_id=rid,
+                    correlation_id=str(t.get("id") or ""),
+                    trigger_reason=trigger or created_from or "gap_bridge",
+                ),
+            )
+
+    if not drop:
+        return tasks
+    return [t for i, t in enumerate(tasks) if i not in drop]
+
+
 def digest_from_unified_tasks_full(
     full: Dict[str, Any],
     *,
@@ -1219,6 +1360,11 @@ async def get_unified_tasks_for_client(
         tasks.append(tr)
 
     tasks = await _enforce_canonical_requirement_task_guard(
+        client_id=client_id,
+        tasks=tasks,
+        db=db,
+    )
+    tasks = await _suppress_stale_compliance_issue_tasks(
         client_id=client_id,
         tasks=tasks,
         db=db,

@@ -1,0 +1,208 @@
+{
+  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:33:37.474681+00:00",
+  "captures": [
+    {
+      "slug": "solo_all",
+      "scenario": "A",
+      "label": "Solo all satisfied",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "solo_all_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "solo_all_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "solo_all_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "solo_all_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "solo_all_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "solo_all_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "solo_all_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "slug": "solo_partial",
+      "scenario": "B",
+      "label": "Solo partial",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "solo_partial_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "solo_partial_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "solo_partial_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "solo_partial_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "solo_partial_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "solo_partial_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "solo_partial_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "slug": "portfolio_all",
+      "scenario": "D",
+      "label": "Portfolio all satisfied",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "portfolio_all_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "portfolio_all_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "portfolio_all_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "portfolio_all_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "portfolio_all_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "portfolio_all_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "portfolio_all_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "slug": "portfolio_partial",
+      "scenario": "F",
+      "label": "Portfolio partial",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "portfolio_partial_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "portfolio_partial_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "portfolio_partial_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "portfolio_partial_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "portfolio_partial_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "portfolio_partial_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "portfolio_partial_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "slug": "pro_all",
+      "scenario": "G",
+      "label": "Professional all satisfied",
+      "client_id": null,
+      "pages": [],
+      "pass": false,
+      "status": "skipped",
+      "error": "no_fixture"
+    },
+    {
+      "slug": "pro_partial",
+      "scenario": "I",
+      "label": "Professional partial",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "pro_partial_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "pro_partial_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "pro_partial_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "pro_partial_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "pro_partial_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "pro_partial_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "pro_partial_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    }
+  ],
+  "pass": true,
+  "screenshot_dir": "docs\\audit\\plan_based_business_outcome_runtime_audit_01\\closeout_screenshots"
+}

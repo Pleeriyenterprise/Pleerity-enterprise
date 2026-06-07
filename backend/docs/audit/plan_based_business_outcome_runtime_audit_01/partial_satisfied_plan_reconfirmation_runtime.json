@@ -1,0 +1,107 @@
+{
+  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:24:12.064627+00:00",
+  "B": {
+    "fixture": {
+      "scenario": "B",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "plan": "PLAN_1_SOLO",
+      "property_count": 2,
+      "jurisdictions": [],
+      "requirement_total": 8,
+      "requirement_satisfied": 0,
+      "requirement_unsatisfied": 8,
+      "score": 19,
+      "today_calm": false,
+      "entitlements_plan": "PLAN_1_SOLO",
+      "resolved": true
+    },
+    "closeout": {
+      "checks": {
+        "has_unsatisfied": true,
+        "today_not_calm": true,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": true
+    }
+  },
+  "F": {
+    "fixture": {
+      "scenario": "F",
+      "label": "Portfolio 5-10 mixed partial",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_2_PORTFOLIO",
+      "property_count": 8,
+      "jurisdictions": [
+        "Scotland",
+        "England",
+        "Northern Ireland",
+        "Wales"
+      ],
+      "requirement_count": 48,
+      "satisfied_count": 29,
+      "unsatisfied_count": 19,
+      "score": 76,
+      "today_calm": false,
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_2_PORTFOLIO",
+      "features_enabled": 18,
+      "criteria_match": true,
+      "gaps": [],
+      "resolved": true,
+      "seed_method": "discovered"
+    },
+    "closeout": {
+      "checks": {
+        "has_unsatisfied": true,
+        "today_not_calm": true,
+        "score_confidence": true,
+        "dashboard_score_parity": false
+      },
+      "pass": false
+    }
+  },
+  "I": {
+    "fixture": {
+      "scenario": "I",
+      "label": "Professional 5-10 mixed partial",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_3_PRO",
+      "property_count": 7,
+      "jurisdictions": [
+        "Wales",
+        "Scotland",
+        "England"
+      ],
+      "requirement_count": 43,
+      "satisfied_count": 5,
+      "unsatisfied_count": 38,
+      "score": 27,
+      "today_calm": false,
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_3_PRO",
+      "features_enabled": 29,
+      "criteria_match": true,
+      "gaps": [],
+      "resolved": true,
+      "seed_method": "discovered"
+    },
+    "closeout": {
+      "checks": {
+        "has_unsatisfied": true,
+        "today_not_calm": true,
+        "score_confidence": true,
+        "dashboard_score_parity": false
+      },
+      "pass": false
+    }
+  },
+  "pass": true
+}

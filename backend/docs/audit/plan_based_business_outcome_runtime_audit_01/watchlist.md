@@ -1,8 +1,8 @@
-# Watchlist — Plan-based business outcome
+# Watchlist — Plan outcome seeding closeout
 
 ## Status: PLAN_FIXTURE_GAP
 
-### Staging fixture gaps (seed or identify)
+### Seed staging accounts (all-satisfied matrix)
 
 - [ ] **A** Solo 1 property, 1 jurisdiction, all satisfied, Today calm
 - [ ] **D** Portfolio 5 properties, same jurisdiction, all satisfied
@@ -10,27 +10,24 @@
 - [ ] **G** Professional 3–5 properties, same jurisdiction, all satisfied
 - [ ] **H** Professional 5–10 mixed jurisdictions, all satisfied
 
-### Verified fixtures (use for regression)
+### Deploy + verify code fix
 
-- [x] **B** Solo partial — `616258a5-51a6-4def-aa00-baa1598b2557` (David Harrison)
-- [x] **C** Solo property limit — local max 2
-- [x] **F** Portfolio partial mixed — `6bcc43c0-16f4-46a5-adf4-26693a0919d0` (David Miller)
-- [x] **I** Professional partial mixed — `6fd5ac4c-3fd4-4112-ade7-156977deb49f` (Nancy)
+- [ ] Deploy `_suppress_stale_compliance_issue_tasks` + Today filter-before-compact
+- [ ] Re-probe Sophie Walker — expect `in_progress_count=0` when requirements satisfied
 
-### Reference (not exact fixture)
+### Verified partial fixtures (regression)
 
-- [x] Sophie Walker `10b2ddba…` — Solo all-satisfied reference; **Today in_progress=4** needs investigation
+- [x] **B** Solo partial — `616258a5-51a6-4def-aa00-baa1598b2557`
+- [x] **F** Portfolio partial mixed — `6bcc43c0-16f4-46a5-adf4-26693a0919d0`
+- [x] **I** Professional partial mixed — `6fd5ac4c-3fd4-4112-ade7-156977deb49f`
 
-### Follow-up
+### Count semantics follow-up
 
-- [ ] Investigate why all-satisfied Sophie Walker shows Today in_progress=4 with urgent_count=0
-- [ ] Seed Portfolio 5-property all-satisfied account for scenario D/E
-- [ ] Seed Professional all-satisfied account for G/H
+- [ ] Dashboard copy: ensure visible registry vs score-tracked labels on large portfolios (F, I)
 
 ## Re-run
 
 ```bash
 cd backend
-python scripts/plan_based_business_outcome_fixture_closeout_01_execute.py
-python scripts/plan_fixture_browser_capture_01.py
+python scripts/plan_outcome_fixture_seeding_and_closeout_01_execute.py
 ```

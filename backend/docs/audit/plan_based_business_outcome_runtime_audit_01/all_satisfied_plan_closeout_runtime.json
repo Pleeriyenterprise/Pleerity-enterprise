@@ -1,0 +1,169 @@
+{
+  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:24:12.064627+00:00",
+  "A": {
+    "fixture": {
+      "scenario": "A",
+      "label": "Solo 1 property same jurisdiction all satisfied",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "crn": "PLE-CVP-2026-000023",
+      "email": null,
+      "name": "Sophie Walker",
+      "plan": "PLAN_1_SOLO",
+      "property_count": 2,
+      "jurisdictions": [
+        "England"
+      ],
+      "requirement_count": 8,
+      "satisfied_count": 8,
+      "unsatisfied_count": 0,
+      "score": 93,
+      "today_calm": false,
+      "properties_valid": true,
+      "entitlements_plan": "PLAN_1_SOLO",
+      "features_enabled": 10,
+      "criteria_match": false,
+      "gaps": [
+        "property_count>1"
+      ],
+      "resolved": false,
+      "seed_method": "gap"
+    },
+    "closeout": {
+      "checks": {
+        "today_calm": false,
+        "properties_valid": true,
+        "all_satisfied": true,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": false
+    }
+  },
+  "D": {
+    "fixture": {
+      "scenario": "D",
+      "label": "Portfolio 5 properties same jurisdiction all satisfied",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_2_PORTFOLIO",
+      "property_count": 1,
+      "jurisdictions": [],
+      "requirement_count": 4,
+      "satisfied_count": 0,
+      "unsatisfied_count": 4,
+      "score": 18,
+      "today_calm": false,
+      "properties_valid": false,
+      "entitlements_plan": "PLAN_2_PORTFOLIO",
+      "features_enabled": 18,
+      "criteria_match": false,
+      "gaps": [
+        "property_count<5",
+        "not_all_satisfied"
+      ],
+      "resolved": false,
+      "seed_method": "gap"
+    },
+    "closeout": {
+      "checks": {
+        "today_calm": false,
+        "properties_valid": false,
+        "all_satisfied": false,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": false
+    }
+  },
+  "E": {
+    "fixture": {
+      "scenario": "E",
+      "label": "Portfolio 5-10 mixed jurisdictions all satisfied",
+      "client_id": null,
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_2_PORTFOLIO",
+      "property_count": null,
+      "jurisdictions": null,
+      "requirement_count": null,
+      "satisfied_count": null,
+      "unsatisfied_count": null,
+      "score": null,
+      "today_calm": null,
+      "properties_valid": null,
+      "entitlements_plan": null,
+      "features_enabled": null,
+      "criteria_match": null,
+      "gaps": null,
+      "resolved": false,
+      "seed_method": "gap"
+    },
+    "closeout": {
+      "pass": false,
+      "reason": "no_probe"
+    }
+  },
+  "G": {
+    "fixture": {
+      "scenario": "G",
+      "label": "Professional 3-5 same jurisdiction all satisfied",
+      "client_id": null,
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_3_PRO",
+      "property_count": null,
+      "jurisdictions": null,
+      "requirement_count": null,
+      "satisfied_count": null,
+      "unsatisfied_count": null,
+      "score": null,
+      "today_calm": null,
+      "properties_valid": null,
+      "entitlements_plan": null,
+      "features_enabled": null,
+      "criteria_match": null,
+      "gaps": null,
+      "resolved": false,
+      "seed_method": "gap"
+    },
+    "closeout": {
+      "pass": false,
+      "reason": "no_probe"
+    }
+  },
+  "H": {
+    "fixture": {
+      "scenario": "H",
+      "label": "Professional 5-10 mixed all satisfied",
+      "client_id": null,
+      "crn": null,
+      "email": null,
+      "name": null,
+      "plan": "PLAN_3_PRO",
+      "property_count": null,
+      "jurisdictions": null,
+      "requirement_count": null,
+      "satisfied_count": null,
+      "unsatisfied_count": null,
+      "score": null,
+      "today_calm": null,
+      "properties_valid": null,
+      "entitlements_plan": null,
+      "features_enabled": null,
+      "criteria_match": null,
+      "gaps": null,
+      "resolved": false,
+      "seed_method": "gap"
+    },
+    "closeout": {
+      "pass": false,
+      "reason": "no_probe"
+    }
+  },
+  "pass": false
+}

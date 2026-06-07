@@ -676,15 +676,26 @@ def enrich_task_bucket(
 ) -> List[Dict[str, Any]]:
     if not tasks:
         return []
-    enricher = compact_task_for_today_list if compact else enrich_task_for_today
-    enriched = [enricher(dict(x), now) for x in tasks]
-    enriched = dedupe_tasks_by_requirement(enriched)
+    working = [dict(x) for x in tasks]
     if filter_non_actionable:
-        before = len(enriched)
-        enriched = [x for x in enriched if today_task_is_actionable(x)]
-        dropped = before - len(enriched)
+        before = len(working)
+
+        def _task_for_actionability_check(task: Dict[str, Any]) -> Dict[str, Any]:
+            t = dict(task)
+            if not (t.get("business_actions") or (t.get("primary_action_url") or "").strip()):
+                t["business_actions"] = cap_and_order_business_actions(
+                    build_business_actions_for_task(t),
+                    max_actions=2,
+                )
+            return t
+
+        working = [x for x in working if today_task_is_actionable(_task_for_actionability_check(x))]
+        dropped = before - len(working)
         if dropped:
             logger.debug("today_projection: dropped %s non-actionable tasks from open bucket", dropped)
+    enricher = compact_task_for_today_list if compact else enrich_task_for_today
+    enriched = [enricher(dict(x), now) for x in working]
+    enriched = dedupe_tasks_by_requirement(enriched)
     if not compact:
         for t in enriched:
             if not t.get("attention_authority"):

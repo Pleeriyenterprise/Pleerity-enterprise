@@ -1,0 +1,35 @@
+{
+  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:29:50.820299+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "plan": "PLAN_1_SOLO",
+      "api_plan": "PLAN_1_SOLO",
+      "features_enabled": 10,
+      "pass": true
+    },
+    {
+      "scenario": "D",
+      "plan": "PLAN_2_PORTFOLIO",
+      "api_plan": "PLAN_2_PORTFOLIO",
+      "features_enabled": 18,
+      "pass": true
+    },
+    {
+      "scenario": "F",
+      "plan": "PLAN_2_PORTFOLIO",
+      "api_plan": "PLAN_2_PORTFOLIO",
+      "features_enabled": 18,
+      "pass": true
+    },
+    {
+      "scenario": "I",
+      "plan": "PLAN_3_PRO",
+      "api_plan": "PLAN_3_PRO",
+      "features_enabled": 29,
+      "pass": true
+    }
+  ],
+  "pass": true
+}

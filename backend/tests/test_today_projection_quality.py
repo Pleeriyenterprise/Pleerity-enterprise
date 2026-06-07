@@ -160,3 +160,29 @@ def test_build_business_actions_issue_has_create_before_view():
     capped = cap_and_order_business_actions(raw, 2)
     assert capped[0]["id"] == "create_maintenance_job"
     assert capped[0].get("primary") is True
+
+
+def test_enrich_open_bucket_filters_assurance_issue_before_compact_slim():
+    """Actionability must be evaluated before compact strips issue_triggering_rule metadata."""
+    now = datetime.now(timezone.utc)
+    assurance_issue = {
+        "id": "issue:r1",
+        "source_type": "issue",
+        "source_entity_id": "r1",
+        "property_id": "p1",
+        "title": "Please review the uploaded file",
+        "section": "in_progress",
+        "impact_score": 45,
+        "metadata": {
+            "requirement_id": "req-1",
+            "issue_triggering_rule": "MISMATCHED_EVIDENCE",
+            "truth_presentation_stage": "recorded_on_file",
+            "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+            "assurance_tier": "SELF_RECORDED",
+            "requirement_satisfied": True,
+        },
+        "business_actions": [{"id": "view", "label": "Review"}],
+        "primary_action_url": "/requirements",
+    }
+    bucket = enrich_task_bucket([assurance_issue], now, filter_non_actionable=True, compact=True)
+    assert bucket == []
