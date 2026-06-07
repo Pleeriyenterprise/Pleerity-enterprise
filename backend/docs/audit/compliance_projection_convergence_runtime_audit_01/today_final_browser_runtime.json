@@ -1,0 +1,31 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T12:57:22.671788+00:00",
+  "api": {
+    "urgent_count": 0,
+    "in_progress_count": 4
+  },
+  "browser": {
+    "today_error_boundary": false,
+    "do_this_next": false,
+    "needs_action_count": 0,
+    "needs_action_zero": true,
+    "needs_action_nonzero": false,
+    "file_review_hero": false,
+    "dashboard_error_boundary": false,
+    "dashboard_10_active": true,
+    "dashboard_8_score_tracked": true,
+    "compliance_score_error_boundary": false,
+    "lifecycle_satisfied_10": false,
+    "score_tracked_8": true,
+    "grouping_note": false,
+    "score_93": true,
+    "achievability_copy": false,
+    "requirements_error_boundary": false,
+    "lifecycle_valid_10": true,
+    "properties_error_boundary": false,
+    "attention_needed_zero": true
+  },
+  "screenshot": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\today_score_scope_post_deploy_screenshots\\01_today.png",
+  "pass": true
+}

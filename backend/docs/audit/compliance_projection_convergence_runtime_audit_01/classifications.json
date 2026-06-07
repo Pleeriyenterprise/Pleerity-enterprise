@@ -1,18 +1,15 @@
 {
-  "programme": "TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01",
-  "generated_at": "2026-06-07T12:29:18.967995+00:00",
-  "classification": "PARTIAL",
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T12:57:30.770886+00:00",
+  "deploy_commit": "b0510957",
+  "classification": "SCORE_COUNT_SEMANTIC_DRIFT",
   "target_client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
   "target_crn": "PLE-CVP-2026-000023",
   "checks": {
-    "hero_root_cause": true,
-    "hero_fix": true,
-    "score_scope_root_cause": true,
-    "score_scope_fix": true,
-    "today_api_urgent_zero": true,
-    "today_browser_calm": false,
-    "score_scope_api": false,
-    "browser_proof": false,
+    "deploy_proof": false,
+    "today_final": true,
+    "score_scope_final": false,
+    "full_surface": false,
     "non_regression": true,
     "regression": true
   }

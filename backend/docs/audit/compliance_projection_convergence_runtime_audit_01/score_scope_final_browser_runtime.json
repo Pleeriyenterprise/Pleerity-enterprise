@@ -1,0 +1,14 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T12:57:22.671788+00:00",
+  "browser": {
+    "lifecycle_satisfied_10": false,
+    "score_tracked_8": true,
+    "grouping_note": false,
+    "score_93": true,
+    "achievability_copy": false,
+    "compliance_score_error_boundary": false
+  },
+  "screenshot": "docs\\audit\\compliance_projection_convergence_runtime_audit_01\\today_score_scope_post_deploy_screenshots\\03_compliance_score.png",
+  "pass": false
+}

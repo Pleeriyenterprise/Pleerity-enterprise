@@ -1,0 +1,32 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T12:57:23.072221+00:00",
+  "scenarios": [
+    {
+      "id": "missing_evidence_operational",
+      "classify": "OPERATIONAL_ACTION",
+      "pass": true
+    },
+    {
+      "id": "rejected_operational",
+      "classify": "OPERATIONAL_ACTION",
+      "pass": true
+    },
+    {
+      "id": "overdue_operational",
+      "classify": "OPERATIONAL_ACTION",
+      "pass": true
+    },
+    {
+      "id": "assurance_file_review_suppressed",
+      "assurance_only": true,
+      "pass": true
+    },
+    {
+      "id": "assurance_classified_not_operational",
+      "classify": "ASSURANCE_CONFIDENCE_OPPORTUNITY",
+      "pass": true
+    }
+  ],
+  "pass": true
+}

@@ -1,0 +1,28 @@
+{
+  "programme": "TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T12:55:45.373502+00:00",
+  "expected_commit": "b0510957",
+  "frontend": {
+    "frontend_url": "https://pleerityenterprise.co.uk",
+    "html_status": 200,
+    "main_bundle_hash": "239bf468",
+    "markers": {
+      "score_based_on_score_tracked": true,
+      "grouping_note_copy": true,
+      "urgent_hero_gate": true,
+      "no_sorted0_fallback_comment": true,
+      "registry_display_semantics": true
+    },
+    "deployed_score_scope_ui": true
+  },
+  "api": {
+    "score": 93,
+    "lifecycle_satisfied_count": 8,
+    "visible_requirement_count": 8,
+    "score_tracked_requirement_count": 8,
+    "has_grouping_note": false,
+    "grouping_note": null,
+    "registry_visible_lifecycle_deployed": false
+  },
+  "pass": false
+}
