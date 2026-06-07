@@ -1,0 +1,9 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:07:09.105474+00:00",
+  "mode": "all_satisfied",
+  "rows": [],
+  "gap": "No staging persona found with all visible requirements satisfied across Solo, Portfolio, or Professional in sampled clients",
+  "known_reference": "PLE-CVP-2026-000023 (Sophie Walker) verified all-satisfied in separate compliance convergence programme but not Portfolio-plan sampled here",
+  "pass": false
+}

@@ -1,0 +1,15 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:07:09.105474+00:00",
+  "supported_labels": ["England", "Northern Ireland", "Scotland", "Wales"],
+  "registry_buckets": ["SCOTLAND", "ENGLAND_WALES"],
+  "observed_on_staging": {
+    "Scotland": 1,
+    "England": 1,
+    "Northern Ireland": 1,
+    "Wales": 1
+  },
+  "mixed_jurisdiction_clients": ["6bcc43c0-16f4-46a5-adf4-26693a0919d0"],
+  "cross_jurisdiction_contamination": false,
+  "pass": true
+}

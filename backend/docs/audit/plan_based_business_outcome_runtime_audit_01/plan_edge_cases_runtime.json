@@ -1,0 +1,32 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:17:25.633867+00:00",
+  "property_limit_enforcement": [
+    {
+      "plan": "PLAN_1_SOLO",
+      "limit": 2,
+      "over_limit_blocked": true,
+      "note": "enforce_property_limit verified in test_plan_registry / staging add-property API"
+    },
+    {
+      "plan": "PLAN_2_PORTFOLIO",
+      "limit": 10,
+      "over_limit_blocked": true,
+      "note": "enforce_property_limit verified in test_plan_registry / staging add-property API"
+    },
+    {
+      "plan": "PLAN_3_PRO",
+      "limit": 25,
+      "over_limit_blocked": true,
+      "note": "enforce_property_limit verified in test_plan_registry / staging add-property API"
+    }
+  ],
+  "jurisdiction_labels": [
+    "England",
+    "Northern Ireland",
+    "Scotland",
+    "Wales"
+  ],
+  "self_recorded_not_verified_policy": "assurance confidence may reduce score; self-recorded does not imply external verification",
+  "pass": true
+}

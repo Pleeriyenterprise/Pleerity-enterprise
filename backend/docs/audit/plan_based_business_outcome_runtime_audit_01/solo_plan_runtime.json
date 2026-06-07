@@ -1,0 +1,19 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "plan": "Solo",
+  "generated_at": "2026-06-07T16:07:09.065759+00:00",
+  "checks": [
+    {"scenario": "A", "pass": false, "reason": "no_all_satisfied_solo_persona"},
+    {"scenario": "B", "pass": false, "reason": "no_all_satisfied_solo_2_property_persona"},
+    {
+      "scenario": "C",
+      "pass": true,
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "unsatisfied": 8,
+      "today_urgent": 0,
+      "note": "Partial outcome: in_progress=2, AMBER properties=2, score=19 reflects real gaps"
+    },
+    {"scenario": "D", "pass": true, "note": "property_limit enforced locally (Solo max 2)"}
+  ],
+  "pass": false
+}

@@ -1,0 +1,27 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:07:09.105474+00:00",
+  "mode": "partial_satisfied",
+  "rows": [
+    {
+      "scenario": "C",
+      "plan": "Solo",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "pass": true,
+      "today_calm": false,
+      "unsatisfied": 8,
+      "score": 19
+    },
+    {
+      "scenario": "G",
+      "plan": "Portfolio",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "pass": true,
+      "today_calm": false,
+      "today_urgent": 9,
+      "unsatisfied": 19,
+      "score": 76
+    }
+  ],
+  "pass": true
+}

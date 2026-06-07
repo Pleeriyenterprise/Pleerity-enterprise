@@ -1,0 +1,143 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:07:09.065759+00:00",
+  "marker": "PLAN-OUTCOME-AUDIT-20260607T155626Z",
+  "note": "Primary staging discovery run before API rate-limit (429) on re-run",
+  "client_inventory_counts": {
+    "solo": 11,
+    "portfolio": 7,
+    "professional": 30
+  },
+  "profiles_sampled": {
+    "solo": 11,
+    "portfolio": 7,
+    "professional": 20
+  },
+  "scenarios": {
+    "A": {
+      "plan": "Solo",
+      "plan_code": "PLAN_1_SOLO",
+      "criteria": {"min_properties": 1, "max_properties": 1, "all_satisfied": true, "mixed_jurisdiction": false},
+      "selected": null,
+      "found": false,
+      "gap": "No active PROVISIONED Solo client with 1 property and all requirements satisfied on staging"
+    },
+    "B": {
+      "plan": "Solo",
+      "plan_code": "PLAN_1_SOLO",
+      "criteria": {"min_properties": 2, "max_properties": 2, "all_satisfied": true, "mixed_jurisdiction": true},
+      "selected": null,
+      "found": false,
+      "gap": "No Solo 2-property all-satisfied mixed-jurisdiction persona on staging"
+    },
+    "C": {
+      "plan": "Solo",
+      "plan_code": "PLAN_1_SOLO",
+      "criteria": {"min_properties": 1, "max_properties": 2, "all_satisfied": false, "mixed_jurisdiction": null},
+      "selected": {
+        "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+        "crn": "PLE-CVP-2026-000020",
+        "name": "David Michael Harrison",
+        "plan_code": "PLAN_1_SOLO",
+        "property_count": 2,
+        "score": 19,
+        "requirement_total": 8,
+        "requirement_satisfied": 0,
+        "requirement_unsatisfied": 8,
+        "today_urgent_count": 0,
+        "today_in_progress_count": 2,
+        "today_calm": false,
+        "all_satisfied": false,
+        "properties_valid": false,
+        "property_rag": {"GREEN": 0, "AMBER": 2, "RED": 0}
+      },
+      "found": true
+    },
+    "D": {
+      "plan": "Solo",
+      "plan_code": "PLAN_1_SOLO",
+      "selected": {"note": "property_limit enforced locally; local_only": true},
+      "found": true
+    },
+    "E": {
+      "plan": "Portfolio",
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "criteria": {"min_properties": 5, "max_properties": 5, "all_satisfied": true, "mixed_jurisdiction": false},
+      "selected": null,
+      "found": false,
+      "gap": "No Portfolio 5-property all-satisfied persona; Sophie Walker (000023) not in sampled Portfolio list"
+    },
+    "F": {
+      "plan": "Portfolio",
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "criteria": {"min_properties": 5, "max_properties": 10, "all_satisfied": true, "mixed_jurisdiction": true},
+      "selected": null,
+      "found": false
+    },
+    "G": {
+      "plan": "Portfolio",
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "criteria": {"min_properties": 5, "max_properties": 10, "all_satisfied": false, "mixed_jurisdiction": true},
+      "selected": {
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "crn": "PLE-CVP-2026-000040",
+        "name": "David Miller",
+        "plan_code": "PLAN_2_PORTFOLIO",
+        "property_count": 8,
+        "jurisdictions": ["Scotland", "England", "Northern Ireland", "Wales"],
+        "score": 76,
+        "requirement_total": 48,
+        "requirement_satisfied": 29,
+        "requirement_unsatisfied": 19,
+        "today_urgent_count": 9,
+        "today_in_progress_count": 1,
+        "today_calm": false,
+        "all_satisfied": false,
+        "properties_valid": false,
+        "property_rag": {"GREEN": 3, "AMBER": 4, "RED": 1}
+      },
+      "found": true
+    },
+    "H": {
+      "plan": "Portfolio",
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "selected": {
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "crn": "PLE-CVP-2026-000040",
+        "name": "David Miller",
+        "plan_code": "PLAN_2_PORTFOLIO",
+        "property_count": 8,
+        "found": true
+      },
+      "found": true
+    },
+    "I": {
+      "plan": "Professional",
+      "plan_code": "PLAN_3_PRO",
+      "criteria": {"min_properties": 3, "max_properties": 25, "all_satisfied": true, "mixed_jurisdiction": false},
+      "selected": null,
+      "found": false,
+      "gap": "Professional tier profiling returned no all-satisfied candidate in first 20 sampled clients"
+    },
+    "J": {
+      "plan": "Professional",
+      "plan_code": "PLAN_3_PRO",
+      "selected": null,
+      "found": false
+    },
+    "K": {
+      "plan": "Professional",
+      "plan_code": "PLAN_3_PRO",
+      "selected": null,
+      "found": false,
+      "gap": "No Professional partial mixed-jurisdiction persona selected; impersonation/rate-limit blocked extended profiling"
+    },
+    "L": {
+      "plan": "Professional",
+      "plan_code": "PLAN_3_PRO",
+      "selected": null,
+      "found": false
+    }
+  },
+  "pass": true
+}

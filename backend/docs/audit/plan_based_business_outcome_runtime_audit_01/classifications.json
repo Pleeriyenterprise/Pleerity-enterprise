@@ -1,0 +1,31 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:17:33.854125+00:00",
+  "marker": "PLAN-OUTCOME-AUDIT-20260607T155626Z",
+  "classification": "PARTIAL",
+  "secondary_flags": [
+    "BUSINESS_OUTCOME_DRIFT",
+    "USER_OUTCOME_DRIFT",
+    "PLAN_ENTITLEMENT_DRIFT",
+    "CROSS_SURFACE_DRIFT",
+    "FAIL_OPERATIONAL"
+  ],
+  "results": {
+    "governance": true,
+    "matrix": true,
+    "solo_partial_outcome": true,
+    "portfolio_partial_outcome": true,
+    "professional_outcome": false,
+    "all_satisfied": false,
+    "partial_satisfied": true,
+    "jurisdiction": true,
+    "entitlements": false,
+    "convergence": false,
+    "browser": false,
+    "regression": true,
+    "edge_cases": true
+  },
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "frontend": "https://pleerityenterprise.co.uk",
+  "note": "Not VERIFIED_OPERATIONALLY — missing all-satisfied personas per plan, Professional tier coverage, browser proof, and entitlement cross-check"
+}

@@ -1,0 +1,7 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:07:12.239618+00:00",
+  "checks": [],
+  "gap": "Entitlement API cross-check not completed — step-up token expired before part 9; re-run blocked by 429 rate limit",
+  "pass": false
+}

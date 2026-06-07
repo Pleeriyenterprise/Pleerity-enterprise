@@ -1,0 +1,7 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:07:14.189043+00:00",
+  "rows": [],
+  "gap": "Dashboard vs compliance-score convergence not re-probed after impersonation expiry",
+  "pass": false
+}

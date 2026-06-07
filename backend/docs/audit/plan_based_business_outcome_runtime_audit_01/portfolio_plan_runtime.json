@@ -1,0 +1,25 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "plan": "Portfolio",
+  "generated_at": "2026-06-07T16:07:09.065759+00:00",
+  "checks": [
+    {"scenario": "E", "pass": false, "reason": "no_all_satisfied_portfolio_5_property_persona"},
+    {"scenario": "F", "pass": false, "reason": "no_all_satisfied_portfolio_mixed_jurisdiction_persona"},
+    {
+      "scenario": "G",
+      "pass": true,
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "unsatisfied": 19,
+      "today_urgent": 9,
+      "jurisdictions": ["Scotland", "England", "Northern Ireland", "Wales"],
+      "note": "Partial mixed-jurisdiction portfolio shows real operational urgency (not false calm)"
+    },
+    {
+      "scenario": "H",
+      "pass": true,
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "note": "Entitlement probe client for Portfolio tier"
+    }
+  ],
+  "pass": false
+}

@@ -1,0 +1,14 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "generated_at": "2026-06-07T16:07:17.021118+00:00",
+  "captures": [
+    {"slug": "solo_all", "scenario": "A", "pass": false, "error": "no_client"},
+    {"slug": "solo_partial", "scenario": "C", "client_id": "616258a5-51a6-4def-aa00-baa1598b2557", "pass": false, "error": "impersonation_failed_step_up_expired"},
+    {"slug": "portfolio_all", "scenario": "E", "pass": false, "error": "no_client"},
+    {"slug": "portfolio_partial", "scenario": "G", "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0", "pass": false, "error": "impersonation_failed_step_up_expired"},
+    {"slug": "professional_all", "scenario": "I", "pass": false, "error": "no_client"},
+    {"slug": "professional_partial", "scenario": "K", "pass": false, "error": "no_client"}
+  ],
+  "pass": false,
+  "note": "Browser proof requires fresh admin session; re-run after rate-limit cooldown"
+}

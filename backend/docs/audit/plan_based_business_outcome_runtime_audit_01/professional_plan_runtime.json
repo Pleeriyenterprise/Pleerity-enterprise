@@ -1,0 +1,13 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01",
+  "plan": "Professional",
+  "generated_at": "2026-06-07T16:07:09.065759+00:00",
+  "checks": [
+    {"scenario": "I", "pass": false, "reason": "no_professional_all_satisfied_persona_in_sample"},
+    {"scenario": "J", "pass": false, "reason": "no_professional_all_satisfied_mixed_jurisdiction_persona"},
+    {"scenario": "K", "pass": false, "reason": "no_professional_partial_persona_selected"},
+    {"scenario": "L", "pass": false, "reason": "professional_entitlement_probe_not_completed"}
+  ],
+  "inventory_note": "30 Professional clients on staging; extended profiling blocked by impersonation rate-limit after initial run",
+  "pass": false
+}
