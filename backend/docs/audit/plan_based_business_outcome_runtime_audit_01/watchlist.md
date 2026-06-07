@@ -1,31 +1,36 @@
 # Watchlist — Plan-based business outcome
 
-## Status: PARTIAL
+## Status: PLAN_FIXTURE_GAP
 
-### Staging persona gaps
+### Staging fixture gaps (seed or identify)
 
-- [ ] Seed or identify **Solo all-satisfied** client (1 property, calm Today)
-- [ ] Seed or identify **Portfolio all-satisfied** client (5–10 properties)
-- [ ] Seed or identify **Professional** partial + all-satisfied clients with 3+ properties
-- [ ] Include PLE-CVP-2026-000023 (Sophie Walker) in Portfolio all-satisfied probe if plan matches
+- [ ] **A** Solo 1 property, 1 jurisdiction, all satisfied, Today calm
+- [ ] **D** Portfolio 5 properties, same jurisdiction, all satisfied
+- [ ] **E** Portfolio 5–10 mixed jurisdictions, all satisfied
+- [ ] **G** Professional 3–5 properties, same jurisdiction, all satisfied
+- [ ] **H** Professional 5–10 mixed jurisdictions, all satisfied
 
-### Re-run blockers
+### Verified fixtures (use for regression)
 
-- [ ] Wait for API rate-limit cooldown (429 suspicious activity) before re-running harness
-- [ ] Re-run browser proof with fresh admin step-up per capture batch
-- [ ] Complete entitlements cross-check (Solo C, Portfolio G, one Professional)
+- [x] **B** Solo partial — `616258a5-51a6-4def-aa00-baa1598b2557` (David Harrison)
+- [x] **C** Solo property limit — local max 2
+- [x] **F** Portfolio partial mixed — `6bcc43c0-16f4-46a5-adf4-26693a0919d0` (David Miller)
+- [x] **I** Professional partial mixed — `6fd5ac4c-3fd4-4112-ade7-156977deb49f` (Nancy)
 
-### Verified in this run
+### Reference (not exact fixture)
 
-- [x] Plan governance inventory (plan_registry FEATURE_MATRIX + module flags)
-- [x] Partial satisfied outcomes show real urgency (not false calm)
-- [x] Mixed UK jurisdiction portfolio behaviour
-- [x] Property limits documented (Solo 2 / Portfolio 10 / Pro 25)
-- [x] 52 regression tests pass
+- [x] Sophie Walker `10b2ddba…` — Solo all-satisfied reference; **Today in_progress=4** needs investigation
+
+### Follow-up
+
+- [ ] Investigate why all-satisfied Sophie Walker shows Today in_progress=4 with urgent_count=0
+- [ ] Seed Portfolio 5-property all-satisfied account for scenario D/E
+- [ ] Seed Professional all-satisfied account for G/H
 
 ## Re-run
 
 ```bash
 cd backend
-python scripts/plan_based_business_outcome_runtime_audit_01_execute.py
+python scripts/plan_based_business_outcome_fixture_closeout_01_execute.py
+python scripts/plan_fixture_browser_capture_01.py
 ```

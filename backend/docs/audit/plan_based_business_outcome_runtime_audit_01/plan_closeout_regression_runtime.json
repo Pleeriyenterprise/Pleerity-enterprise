@@ -1,0 +1,14 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
+  "generated_at": "2026-06-07T17:10:00.000000+00:00",
+  "exit_code": 0,
+  "pass": true,
+  "tests_run": 50,
+  "suites": [
+    "test_reporting_semantics_v1.py",
+    "test_requirement_client_runtime_surface.py",
+    "test_property_compliance_status_service.py",
+    "test_today_projection_quality.py",
+    "test_billing_lifecycle_visibility_contract.py"
+  ]
+}

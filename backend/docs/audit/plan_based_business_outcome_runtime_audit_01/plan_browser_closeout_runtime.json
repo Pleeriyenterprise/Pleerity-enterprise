@@ -1,0 +1,151 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
+  "captures": [
+    {
+      "slug": "solo_all_ref",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "label": "Sophie Walker \u2014 Solo all-satisfied reference",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "solo_all_ref_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "solo_all_ref_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "solo_all_ref_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "solo_all_ref_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "solo_all_ref_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "solo_all_ref_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "solo_all_ref_billing.png"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "slug": "solo_partial",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "label": "David Harrison \u2014 Solo partial",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "solo_partial_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "solo_partial_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "solo_partial_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "solo_partial_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "solo_partial_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "solo_partial_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "solo_partial_billing.png"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "slug": "portfolio_partial",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "label": "David Miller \u2014 Portfolio partial mixed",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "portfolio_partial_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "portfolio_partial_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "portfolio_partial_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "portfolio_partial_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "portfolio_partial_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "portfolio_partial_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "portfolio_partial_billing.png"
+        }
+      ],
+      "pass": true
+    },
+    {
+      "slug": "pro_partial",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "label": "Nancy \u2014 Professional partial mixed",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "pro_partial_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "pro_partial_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "pro_partial_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "pro_partial_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "pro_partial_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "pro_partial_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "pro_partial_billing.png"
+        }
+      ],
+      "pass": true
+    }
+  ],
+  "pass": true,
+  "screenshot_dir": "docs\\audit\\plan_based_business_outcome_runtime_audit_01\\closeout_screenshots"
+}

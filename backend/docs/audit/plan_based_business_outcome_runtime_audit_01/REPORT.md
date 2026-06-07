@@ -1,65 +1,66 @@
-# PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01
+# PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01
 
-**Classification:** `PARTIAL`  
-**Run tag:** `20260607T155626Z`  
-**Marker:** `PLAN-OUTCOME-AUDIT-20260607T155626Z`  
-**Generated:** 2026-06-07
+**Classification:** `PLAN_FIXTURE_GAP`  
+**Marker:** `PLAN-FIXTURE-CLOSEOUT-20260607T163807Z`  
+**Prior:** `PLAN-BASED-BUSINESS-OUTCOME-RUNTIME-AUDIT-01` (PARTIAL)
 
 ## Executive summary
 
-Plan feature governance inventory and local regression **pass**. Staging discovery dynamically sampled **11 Solo**, **7 Portfolio**, and **30 Professional** active clients without hardcoding a single account.
+Deterministic fixture discovery ran against staging with resilient pacing and fresh step-up per browser target. **Partial and entitlement outcomes are proven**; **exact all-satisfied fixtures per plan matrix are not available on staging** without new seed accounts.
 
-**Not `VERIFIED_OPERATIONALLY`:** no all-satisfied staging persona was found per plan in the sampled set; Professional tier end-to-end was not completed; browser proof and entitlement cross-check were blocked by impersonation session expiry and subsequent API **429 rate limit**.
+Browser proof captured for 4 resolved/reference personas (28 screenshots). Regression **50 tests pass**.
 
-## Plan feature governance (Part 1)
+**Not `VERIFIED_OPERATIONALLY`** — missing exact fixtures for Solo 1-prop all-satisfied, Portfolio 5-prop all-satisfied, Portfolio mixed all-satisfied, and Professional all-satisfied scenarios.
 
-| Plan | Property limit | PDF reports | CSV reports | Tenant portal | Rent ops default | Contractor network |
-|------|----------------|-------------|-------------|---------------|------------------|-------------------|
-| Solo | 2 | No | No | No | No | No |
-| Portfolio | 10 | Yes | No | No | Yes | No |
-| Professional | 25 | Yes | Yes | Yes | Yes | Yes |
+## Fixture resolution (Part 1)
 
-Artifact: `plan_feature_governance_runtime.json`
+| ID | Scenario | Resolved | Client | Pass |
+|----|----------|----------|--------|------|
+| A | Solo 1 prop all satisfied | Best-effort | Sophie Walker `10b2ddba…` | No — 2 props; Today in_progress=4 |
+| B | Solo partial | Yes | David Harrison `616258a5…` | **Yes** |
+| C | Solo property limit | Local | max 2 | **Yes** |
+| D | Portfolio 5 all satisfied | No | — | No |
+| E | Portfolio mixed all satisfied | No | — | No |
+| F | Portfolio mixed partial | Yes | David Miller `6bcc43c0…` | **Yes** |
+| G | Professional 3–5 all satisfied | No | Nancy partial only | No |
+| H | Professional mixed all satisfied | No | — | No |
+| I | Professional mixed partial | Yes | Nancy `6fd5ac4c…` | **Yes** |
 
-## Test matrix (Part 2)
+### Sophie Walker reference (PLE-CVP-2026-000023)
 
-| Scenario | Plan | Found | Client |
-|----------|------|-------|--------|
-| A | Solo all satisfied 1 prop | No | — |
-| B | Solo all satisfied 2 prop mixed | No | — |
-| C | Solo partial | **Yes** | David Harrison `616258a5…` |
-| D | Solo property limit | Local | PLAN_DEFINITIONS max=2 |
-| E–F | Portfolio all satisfied | No | — |
-| G–H | Portfolio partial mixed | **Yes** | David Miller `6bcc43c0…` |
-| I–L | Professional | No | 30 clients inventoried; profiling incomplete |
+- Plan: **PLAN_1_SOLO**
+- 2 properties, England, score **93**
+- Requirements: 10/10 dashboard, 8/8 score API — all satisfied
+- Properties: 2 GREEN
+- **Today not calm:** in_progress=4 (USER_OUTCOME_DRIFT for all-satisfied calm expectation)
 
-## Business outcomes
+## Satisfaction paths (Part 2)
 
-### All satisfied (Part 7) — **FAIL**
+Verified via live API probe — no fake status patching. Sophie Walker satisfaction through valid evidence/declaration paths (prior convergence programme).
 
-No sampled Solo/Portfolio/Professional client had `all_satisfied=true` with calm Today. Reference account PLE-CVP-2026-000023 (Sophie Walker) is all-satisfied per prior convergence programme but was not in Portfolio sample criteria for this run.
+## Entitlements (Part 6) — **PASS**
 
-### Partial satisfied (Part 8) — **PASS**
+Billing plan matches API entitlements for Solo B, Portfolio F, Professional I (10 / 18 / 29 features enabled).
 
-- **Solo C:** 8/8 unsatisfied, score 19, 2 AMBER properties, Today in_progress=2 (real action, not false calm)
-- **Portfolio G:** 19/48 unsatisfied, score 76, 9 urgent Today items, 4 UK jurisdictions (Scotland, England, Wales, NI)
+## Cross-surface (Part 7) — **PARTIAL**
 
-## Jurisdiction (Part 6) — **PASS**
+- Sophie A/E: dashboard/score parity within tolerance
+- Portfolio F / Professional G–I: dashboard vs requirement count drift (registry semantics)
 
-Mixed-jurisdiction portfolio (David Miller) shows all four UK labels without cross-contamination in requirement rollups.
+## Browser proof (Part 8) — **PASS**
 
-## Regression (Part 13) — **PASS**
+Screenshots in `closeout_screenshots/`:
 
-52 targeted tests passed.
+- `solo_all_ref_*` — Sophie Walker
+- `solo_partial_*` — David Harrison
+- `portfolio_partial_*` — David Miller
+- `pro_partial_*` — Nancy (Professional)
 
-## Blockers
+## Regression (Part 10) — **PASS**
 
-1. **BUSINESS_OUTCOME_DRIFT** — no per-plan all-satisfied staging persona in discovery sample
-2. **USER_OUTCOME_DRIFT** — Professional tier scenarios I–L not proven
-3. **PLAN_ENTITLEMENT_DRIFT** — entitlements API vs FEATURE_MATRIX not cross-checked (session expired)
-4. **CROSS_SURFACE_DRIFT** — dashboard/score convergence not re-probed
-5. **FAIL_OPERATIONAL** — browser screenshots not captured; API 429 on re-run
+50 targeted tests.
 
-## Harness
+## Harness (Part 9)
 
-`backend/scripts/plan_based_business_outcome_runtime_audit_01_execute.py`
+`backend/scripts/plan_based_business_outcome_fixture_closeout_01_execute.py`  
+`backend/scripts/plan_fixture_browser_capture_01.py`

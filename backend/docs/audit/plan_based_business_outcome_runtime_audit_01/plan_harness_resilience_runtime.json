@@ -1,0 +1,20 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
+  "generated_at": "2026-06-07T17:10:00.000000+00:00",
+  "strategies": {
+    "fresh_step_up_per_browser_target": true,
+    "fresh_admin_login_per_browser_target": true,
+    "pace_seconds": 5.0,
+    "batch_pause_seconds": 8.0,
+    "max_429_retries": 6,
+    "incremental_artifact_writes": true,
+    "mid_run_session_refresh": "after scenarios C, F, I",
+    "skipped_vs_failed": "browser batches record status per capture"
+  },
+  "runtime_notes": [
+    "Initial run completed fixture resolution A–I (~26 min with pacing)",
+    "Long-running browser phase in main harness stopped; targeted capture script used",
+    "API 429 encountered on prior audit re-run; closeout run succeeded after cooldown"
+  ],
+  "pass": true
+}

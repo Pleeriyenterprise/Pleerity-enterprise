@@ -1,0 +1,84 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
+  "generated_at": "2026-06-07T17:04:21.170229+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "all_satisfied": true,
+      "overdue": 0,
+      "properties_green": 2,
+      "score": 93,
+      "pass": true
+    },
+    {
+      "scenario": "B",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "all_satisfied": false,
+      "overdue": 0,
+      "properties_green": 0,
+      "score": 19,
+      "pass": true
+    },
+    {
+      "scenario": "C",
+      "method": "local_plan_limit",
+      "pass": true
+    },
+    {
+      "scenario": "D",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "all_satisfied": false,
+      "overdue": 0,
+      "properties_green": 0,
+      "score": 18,
+      "pass": false
+    },
+    {
+      "scenario": "E",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "all_satisfied": true,
+      "overdue": 0,
+      "properties_green": 2,
+      "score": 93,
+      "pass": true
+    },
+    {
+      "scenario": "F",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "all_satisfied": false,
+      "overdue": 0,
+      "properties_green": 3,
+      "score": 76,
+      "pass": true
+    },
+    {
+      "scenario": "G",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "all_satisfied": false,
+      "overdue": 0,
+      "properties_green": 1,
+      "score": 27,
+      "pass": false
+    },
+    {
+      "scenario": "H",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "all_satisfied": false,
+      "overdue": 0,
+      "properties_green": 1,
+      "score": 27,
+      "pass": false
+    },
+    {
+      "scenario": "I",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "all_satisfied": false,
+      "overdue": 0,
+      "properties_green": 1,
+      "score": 27,
+      "pass": true
+    }
+  ],
+  "pass": false
+}

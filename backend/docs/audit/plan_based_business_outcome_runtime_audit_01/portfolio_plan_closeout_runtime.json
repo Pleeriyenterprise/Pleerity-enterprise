@@ -1,0 +1,290 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
+  "generated_at": "2026-06-07T17:04:21.186316+00:00",
+  "D": {
+    "fixture": {
+      "scenario": "D",
+      "label": "Portfolio 5 properties same jurisdiction all satisfied",
+      "resolved": true,
+      "selected": {
+        "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+        "source": "candidate",
+        "probe": {
+          "score": 18,
+          "property_count": 1,
+          "jurisdictions": [],
+          "requirement_total": 4,
+          "requirement_satisfied": 0,
+          "requirement_unsatisfied": 4,
+          "overdue": 0,
+          "property_rag": {
+            "GREEN": 0,
+            "AMBER": 1,
+            "RED": 0
+          },
+          "today_urgent_count": 1,
+          "today_in_progress_count": 1,
+          "today_calm": false,
+          "all_satisfied": false,
+          "properties_valid": false,
+          "score_confidence_present": true,
+          "score_confidence_headline": "Your requirements are satisfied.",
+          "entitlements_plan": "PLAN_2_PORTFOLIO",
+          "features_enabled": 18,
+          "dashboard_total": 5,
+          "dashboard_satisfied": 0
+        },
+        "criteria_match": false,
+        "gaps": [
+          "property_count<5",
+          "not_all_satisfied"
+        ]
+      },
+      "candidates_evaluated": [
+        {
+          "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+          "source": "candidate",
+          "probe": {
+            "score": 18,
+            "property_count": 1,
+            "jurisdictions": [],
+            "requirement_total": 4,
+            "requirement_satisfied": 0,
+            "requirement_unsatisfied": 4,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 0,
+              "AMBER": 1,
+              "RED": 0
+            },
+            "today_urgent_count": 1,
+            "today_in_progress_count": 1,
+            "today_calm": false,
+            "all_satisfied": false,
+            "properties_valid": false,
+            "score_confidence_present": true,
+            "score_confidence_headline": "Your requirements are satisfied.",
+            "entitlements_plan": "PLAN_2_PORTFOLIO",
+            "features_enabled": 18,
+            "dashboard_total": 5,
+            "dashboard_satisfied": 0
+          },
+          "criteria_match": false,
+          "gaps": [
+            "property_count<5",
+            "not_all_satisfied"
+          ]
+        }
+      ],
+      "tried": [
+        "80f83edd-ba12-41ed-929a-bbaf8c696a23"
+      ],
+      "pass": false,
+      "gap": "no_exact_fixture_match"
+    },
+    "closeout": {
+      "checks": {
+        "today_calm": false,
+        "properties_valid": false,
+        "all_satisfied": false,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": false
+    }
+  },
+  "E": {
+    "fixture": {
+      "scenario": "E",
+      "label": "Portfolio 5-10 mixed jurisdictions all satisfied",
+      "resolved": true,
+      "selected": {
+        "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+        "source": "candidate",
+        "probe": {
+          "score": 93,
+          "property_count": 2,
+          "jurisdictions": [
+            "England"
+          ],
+          "requirement_total": 8,
+          "requirement_satisfied": 8,
+          "requirement_unsatisfied": 0,
+          "overdue": 0,
+          "property_rag": {
+            "GREEN": 2,
+            "AMBER": 0,
+            "RED": 0
+          },
+          "today_urgent_count": 0,
+          "today_in_progress_count": 4,
+          "today_calm": false,
+          "all_satisfied": true,
+          "properties_valid": true,
+          "score_confidence_present": true,
+          "score_confidence_headline": "Your requirements are satisfied.",
+          "entitlements_plan": "PLAN_1_SOLO",
+          "features_enabled": 10,
+          "dashboard_total": 10,
+          "dashboard_satisfied": 10
+        },
+        "criteria_match": false,
+        "gaps": [
+          "plan_mismatch:PLAN_1_SOLO!=PLAN_2_PORTFOLIO",
+          "property_count<5",
+          "not_mixed_jurisdiction"
+        ]
+      },
+      "candidates_evaluated": [
+        {
+          "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+          "source": "candidate",
+          "probe": {
+            "score": 93,
+            "property_count": 2,
+            "jurisdictions": [
+              "England"
+            ],
+            "requirement_total": 8,
+            "requirement_satisfied": 8,
+            "requirement_unsatisfied": 0,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 2,
+              "AMBER": 0,
+              "RED": 0
+            },
+            "today_urgent_count": 0,
+            "today_in_progress_count": 4,
+            "today_calm": false,
+            "all_satisfied": true,
+            "properties_valid": true,
+            "score_confidence_present": true,
+            "score_confidence_headline": "Your requirements are satisfied.",
+            "entitlements_plan": "PLAN_1_SOLO",
+            "features_enabled": 10,
+            "dashboard_total": 10,
+            "dashboard_satisfied": 10
+          },
+          "criteria_match": false,
+          "gaps": [
+            "plan_mismatch:PLAN_1_SOLO!=PLAN_2_PORTFOLIO",
+            "property_count<5",
+            "not_mixed_jurisdiction"
+          ]
+        },
+        {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "source": "scan",
+          "probe": {
+            "score": 76,
+            "property_count": 8,
+            "jurisdictions": [
+              "Scotland",
+              "England",
+              "Northern Ireland",
+              "Wales"
+            ],
+            "requirement_total": 48,
+            "requirement_satisfied": 29,
+            "requirement_unsatisfied": 19,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 3,
+              "AMBER": 4,
+              "RED": 1
+            },
+            "today_urgent_count": 9,
+            "today_in_progress_count": 1,
+            "today_calm": false,
+            "all_satisfied": false,
+            "properties_valid": false,
+            "score_confidence_present": false,
+            "score_confidence_headline": null,
+            "entitlements_plan": "PLAN_2_PORTFOLIO",
+            "features_enabled": 18,
+            "dashboard_total": 71,
+            "dashboard_satisfied": 46
+          },
+          "criteria_match": false,
+          "gaps": [
+            "not_all_satisfied"
+          ]
+        }
+      ],
+      "tried": [
+        "10b2ddba-e952-4484-91d1-a8f0299d0824",
+        "6bcc43c0-16f4-46a5-adf4-26693a0919d0"
+      ],
+      "pass": false,
+      "gap": "no_exact_fixture_match"
+    },
+    "closeout": {
+      "checks": {
+        "today_calm": false,
+        "properties_valid": true,
+        "all_satisfied": true,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": false
+    }
+  },
+  "F": {
+    "fixture": {
+      "scenario": "F",
+      "label": "Portfolio 5-10 mixed partial",
+      "resolved": true,
+      "selected": {
+        "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+        "source": "candidate",
+        "probe": {
+          "score": 76,
+          "property_count": 8,
+          "jurisdictions": [
+            "Scotland",
+            "England",
+            "Northern Ireland",
+            "Wales"
+          ],
+          "requirement_total": 48,
+          "requirement_satisfied": 29,
+          "requirement_unsatisfied": 19,
+          "overdue": 0,
+          "property_rag": {
+            "GREEN": 3,
+            "AMBER": 4,
+            "RED": 1
+          },
+          "today_urgent_count": 9,
+          "today_in_progress_count": 1,
+          "today_calm": false,
+          "all_satisfied": false,
+          "properties_valid": false,
+          "score_confidence_present": false,
+          "score_confidence_headline": null,
+          "entitlements_plan": "PLAN_2_PORTFOLIO",
+          "features_enabled": 18,
+          "dashboard_total": 71,
+          "dashboard_satisfied": 46
+        },
+        "criteria_match": true,
+        "gaps": []
+      },
+      "tried": [
+        "6bcc43c0-16f4-46a5-adf4-26693a0919d0"
+      ],
+      "pass": true
+    },
+    "closeout": {
+      "checks": {
+        "has_unsatisfied": true,
+        "today_not_calm": true,
+        "score_confidence": true,
+        "dashboard_score_parity": false
+      },
+      "pass": false
+    }
+  },
+  "pass": false
+}

@@ -1,0 +1,71 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
+  "generated_at": "2026-06-07T17:04:21.189774+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "dashboard_total": 10,
+      "requirement_total": 8,
+      "dashboard_satisfied": 10,
+      "requirement_satisfied": 8,
+      "pass": true
+    },
+    {
+      "scenario": "B",
+      "dashboard_total": 10,
+      "requirement_total": 8,
+      "dashboard_satisfied": 0,
+      "requirement_satisfied": 0,
+      "pass": true
+    },
+    {
+      "scenario": "D",
+      "dashboard_total": 5,
+      "requirement_total": 4,
+      "dashboard_satisfied": 0,
+      "requirement_satisfied": 0,
+      "pass": true
+    },
+    {
+      "scenario": "E",
+      "dashboard_total": 10,
+      "requirement_total": 8,
+      "dashboard_satisfied": 10,
+      "requirement_satisfied": 8,
+      "pass": true
+    },
+    {
+      "scenario": "F",
+      "dashboard_total": 71,
+      "requirement_total": 48,
+      "dashboard_satisfied": 46,
+      "requirement_satisfied": 29,
+      "pass": false
+    },
+    {
+      "scenario": "G",
+      "dashboard_total": 49,
+      "requirement_total": 43,
+      "dashboard_satisfied": 4,
+      "requirement_satisfied": 5,
+      "pass": false
+    },
+    {
+      "scenario": "H",
+      "dashboard_total": 49,
+      "requirement_total": 43,
+      "dashboard_satisfied": 4,
+      "requirement_satisfied": 5,
+      "pass": false
+    },
+    {
+      "scenario": "I",
+      "dashboard_total": 49,
+      "requirement_total": 43,
+      "dashboard_satisfied": 4,
+      "requirement_satisfied": 5,
+      "pass": false
+    }
+  ],
+  "pass": false
+}

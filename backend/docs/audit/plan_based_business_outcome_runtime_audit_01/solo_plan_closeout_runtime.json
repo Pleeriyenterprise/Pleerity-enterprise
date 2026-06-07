@@ -1,0 +1,351 @@
+{
+  "programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
+  "generated_at": "2026-06-07T17:04:21.170229+00:00",
+  "A": {
+    "fixture": {
+      "scenario": "A",
+      "label": "Solo 1 property same jurisdiction all satisfied",
+      "resolved": true,
+      "selected": {
+        "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+        "crn": "PLE-CVP-2026-000023",
+        "name": "Sophie Walker",
+        "source": "search:000023",
+        "probe": {
+          "score": 93,
+          "property_count": 2,
+          "jurisdictions": [
+            "England"
+          ],
+          "requirement_total": 8,
+          "requirement_satisfied": 8,
+          "requirement_unsatisfied": 0,
+          "overdue": 0,
+          "property_rag": {
+            "GREEN": 2,
+            "AMBER": 0,
+            "RED": 0
+          },
+          "today_urgent_count": 0,
+          "today_in_progress_count": 4,
+          "today_calm": false,
+          "all_satisfied": true,
+          "properties_valid": true,
+          "score_confidence_present": true,
+          "score_confidence_headline": "Your requirements are satisfied.",
+          "entitlements_plan": "PLAN_1_SOLO",
+          "features_enabled": 10,
+          "dashboard_total": 10,
+          "dashboard_satisfied": 10
+        },
+        "criteria_match": false,
+        "gaps": [
+          "property_count>1"
+        ]
+      },
+      "candidates_evaluated": [
+        {
+          "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+          "crn": "PLE-CVP-2026-000023",
+          "name": "Sophie Walker",
+          "source": "search:000023",
+          "probe": {
+            "score": 93,
+            "property_count": 2,
+            "jurisdictions": [
+              "England"
+            ],
+            "requirement_total": 8,
+            "requirement_satisfied": 8,
+            "requirement_unsatisfied": 0,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 2,
+              "AMBER": 0,
+              "RED": 0
+            },
+            "today_urgent_count": 0,
+            "today_in_progress_count": 4,
+            "today_calm": false,
+            "all_satisfied": true,
+            "properties_valid": true,
+            "score_confidence_present": true,
+            "score_confidence_headline": "Your requirements are satisfied.",
+            "entitlements_plan": "PLAN_1_SOLO",
+            "features_enabled": 10,
+            "dashboard_total": 10,
+            "dashboard_satisfied": 10
+          },
+          "criteria_match": false,
+          "gaps": [
+            "property_count>1"
+          ]
+        },
+        {
+          "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+          "source": "scan",
+          "probe": {
+            "score": 77,
+            "property_count": 1,
+            "jurisdictions": [
+              "England"
+            ],
+            "requirement_total": 6,
+            "requirement_satisfied": 5,
+            "requirement_unsatisfied": 1,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 0,
+              "AMBER": 1,
+              "RED": 0
+            },
+            "today_urgent_count": 0,
+            "today_in_progress_count": 2,
+            "today_calm": false,
+            "all_satisfied": false,
+            "properties_valid": false,
+            "score_confidence_present": true,
+            "score_confidence_headline": "Your requirements are satisfied.",
+            "entitlements_plan": "PLAN_1_SOLO",
+            "features_enabled": 10,
+            "dashboard_total": 7,
+            "dashboard_satisfied": 5
+          },
+          "criteria_match": false,
+          "gaps": [
+            "not_all_satisfied"
+          ]
+        },
+        {
+          "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+          "source": "scan",
+          "probe": {
+            "score": 22,
+            "property_count": 1,
+            "jurisdictions": [
+              "Scotland"
+            ],
+            "requirement_total": 7,
+            "requirement_satisfied": 1,
+            "requirement_unsatisfied": 6,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 0,
+              "AMBER": 1,
+              "RED": 0
+            },
+            "today_urgent_count": 10,
+            "today_in_progress_count": 4,
+            "today_calm": false,
+            "all_satisfied": false,
+            "properties_valid": false,
+            "score_confidence_present": false,
+            "score_confidence_headline": null,
+            "entitlements_plan": "PLAN_1_SOLO",
+            "features_enabled": 14,
+            "dashboard_total": 8,
+            "dashboard_satisfied": 1
+          },
+          "criteria_match": false,
+          "gaps": [
+            "not_all_satisfied"
+          ]
+        },
+        {
+          "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+          "source": "scan",
+          "probe": {
+            "score": 41,
+            "property_count": 1,
+            "jurisdictions": [
+              "Scotland"
+            ],
+            "requirement_total": 7,
+            "requirement_satisfied": 1,
+            "requirement_unsatisfied": 6,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 0,
+              "AMBER": 1,
+              "RED": 0
+            },
+            "today_urgent_count": 0,
+            "today_in_progress_count": 0,
+            "today_calm": true,
+            "all_satisfied": false,
+            "properties_valid": false,
+            "score_confidence_present": false,
+            "score_confidence_headline": null,
+            "entitlements_plan": "PLAN_1_SOLO",
+            "features_enabled": 10,
+            "dashboard_total": 8,
+            "dashboard_satisfied": 1
+          },
+          "criteria_match": false,
+          "gaps": [
+            "not_all_satisfied"
+          ]
+        },
+        {
+          "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+          "source": "scan",
+          "probe": {
+            "score": 40,
+            "property_count": 1,
+            "jurisdictions": [
+              "England"
+            ],
+            "requirement_total": 6,
+            "requirement_satisfied": 3,
+            "requirement_unsatisfied": 3,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 0,
+              "AMBER": 0,
+              "RED": 1
+            },
+            "today_urgent_count": 0,
+            "today_in_progress_count": 1,
+            "today_calm": false,
+            "all_satisfied": false,
+            "properties_valid": false,
+            "score_confidence_present": false,
+            "score_confidence_headline": null,
+            "entitlements_plan": "PLAN_1_SOLO",
+            "features_enabled": 10,
+            "dashboard_total": 12,
+            "dashboard_satisfied": 3
+          },
+          "criteria_match": false,
+          "gaps": [
+            "not_all_satisfied"
+          ]
+        },
+        {
+          "client_id": "1e15cd2f-ee89-4905-aa96-1735f3ff99cc",
+          "source": "scan",
+          "probe": {
+            "score": 41,
+            "property_count": 1,
+            "jurisdictions": [
+              "Wales"
+            ],
+            "requirement_total": 7,
+            "requirement_satisfied": 0,
+            "requirement_unsatisfied": 7,
+            "overdue": 0,
+            "property_rag": {
+              "GREEN": 0,
+              "AMBER": 1,
+              "RED": 0
+            },
+            "today_urgent_count": 0,
+            "today_in_progress_count": 0,
+            "today_calm": true,
+            "all_satisfied": false,
+            "properties_valid": false,
+            "score_confidence_present": false,
+            "score_confidence_headline": null,
+            "entitlements_plan": "PLAN_1_SOLO",
+            "features_enabled": 10,
+            "dashboard_total": 13,
+            "dashboard_satisfied": 0
+          },
+          "criteria_match": false,
+          "gaps": [
+            "not_all_satisfied"
+          ]
+        }
+      ],
+      "tried": [
+        "10b2ddba-e952-4484-91d1-a8f0299d0824",
+        "1af75ae2-1ea5-43e5-a680-1c349a307166",
+        "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+        "921716dc-b0e0-4284-9d0a-4acd140fa6ff",
+        "ec0b091b-105d-4b78-9711-7ab143999cef",
+        "24e15552-df1e-4b1e-943d-82832554e1a8",
+        "a032036f-70a3-4fe5-b629-d9ce9c104165",
+        "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+        "1e15cd2f-ee89-4905-aa96-1735f3ff99cc"
+      ],
+      "pass": false,
+      "gap": "no_exact_fixture_match"
+    },
+    "closeout": {
+      "checks": {
+        "today_calm": false,
+        "properties_valid": true,
+        "all_satisfied": true,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": false
+    }
+  },
+  "B": {
+    "fixture": {
+      "scenario": "B",
+      "label": "Solo partial unsatisfied",
+      "resolved": true,
+      "selected": {
+        "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+        "source": "candidate",
+        "probe": {
+          "score": 19,
+          "property_count": 2,
+          "jurisdictions": [],
+          "requirement_total": 8,
+          "requirement_satisfied": 0,
+          "requirement_unsatisfied": 8,
+          "overdue": 0,
+          "property_rag": {
+            "GREEN": 0,
+            "AMBER": 2,
+            "RED": 0
+          },
+          "today_urgent_count": 0,
+          "today_in_progress_count": 2,
+          "today_calm": false,
+          "all_satisfied": false,
+          "properties_valid": false,
+          "score_confidence_present": false,
+          "score_confidence_headline": null,
+          "entitlements_plan": "PLAN_1_SOLO",
+          "features_enabled": 10,
+          "dashboard_total": 10,
+          "dashboard_satisfied": 0
+        },
+        "criteria_match": true,
+        "gaps": []
+      },
+      "tried": [
+        "616258a5-51a6-4def-aa00-baa1598b2557"
+      ],
+      "pass": true
+    },
+    "closeout": {
+      "checks": {
+        "has_unsatisfied": true,
+        "today_not_calm": true,
+        "score_confidence": true,
+        "dashboard_score_parity": true
+      },
+      "pass": true
+    }
+  },
+  "C": {
+    "fixture": {
+      "scenario": "C",
+      "label": "Solo property limit enforcement",
+      "resolved": true,
+      "local_only": true,
+      "property_limit": 2,
+      "pass": true
+    },
+    "closeout": {
+      "pass": true,
+      "note": "local_property_limit"
+    }
+  },
+  "pass": false
+}
