@@ -1,102 +1,95 @@
-# TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01
+# SCORE-SCOPE-BACKEND-DEPLOY-CLOSEOUT-01
 
 **Classification:** `SCORE_COUNT_SEMANTIC_DRIFT`  
-**Deploy commit verified:** `b0510957`  
-**Generated:** 2026-06-07T12:57:30Z  
+**Deploy commit (expected):** `b0510957`  
+**Generated:** 2026-06-07T13:26:08Z  
 **Target:** Sophie Walker (`PLE-CVP-2026-000023`, `10b2ddba-e952-4484-91d1-a8f0299d0824`)
 
 ## Executive summary
 
-Post-deploy staging verification shows **Today hero convergence is operationally verified** on the Sophie Walker account, but **score scope display semantics remain on pre-fix backend behaviour**. Frontend bundle `main.239bf468.js` includes fix markers; staging API still returns score-scoped lifecycle counts (`lifecycle_satisfied_count=8`) without registry display grouping note. Compliance Score page therefore renders **8 requirements satisfied on file** instead of **10**, with legacy portfolio-average grouping copy.
+Backend score-scope fix from `b0510957` is present in repository source but **not live on staging Render API** after 12 deploy polls (~6 minutes). Frontend and Today convergence remain verified; Compliance Score page and API still expose score-scoped counts (8/8) instead of registry-visible lifecycle counts (10/8 with grouping note).
 
-## PART 1 — Deploy proof
-
-| Check | Result |
-|-------|--------|
-| Frontend bundle deployed | **PASS** — score scope copy markers, urgent hero gate, no `sorted[0]` fallback |
-| Backend registry lifecycle counts | **FAIL** — `lifecycle_satisfied_count=8`, `visible_requirement_count=8` |
-| API grouping note | **FAIL** — `grouping_note` null |
-| Score unchanged | **PASS** — 93/100 |
-
-**Artifact:** `today_score_scope_post_deploy_runtime.json`
-
-## PART 2 — Today final proof
+## PART 1 — Backend deploy proof
 
 | Check | Result |
 |-------|--------|
-| `/today` loads | **PASS** |
-| Error boundary | **PASS** — none |
-| `urgent_count` | **PASS** — 0 |
-| Needs action | **PASS** — 0 |
-| Do this next | **PASS** — absent |
-| File-review assurance hero | **PASS** — not elevated |
-| Calm state | **PASS** — optional in-progress (4) only |
+| Source: `apply_registry_display_semantics` | **PASS** (repo) |
+| Source: `compute_registry_display_semantic_overrides` | **PASS** (repo) |
+| Source: `compliance_score.py` merge | **PASS** (repo) |
+| Source: `routes/client.py` merge | **PASS** (repo) |
+| Staging API health | **PASS** — 200 |
+| `visible_requirement_count=10` | **FAIL** — 8 |
+| `lifecycle_satisfied_count=10` | **FAIL** — 8 |
+| `score_tracked_requirement_count=8` | **PASS** — 8 |
+| `grouping_note` present | **FAIL** — null |
+| Deploy poll (12 × 30s) | **FAIL** — no convergence |
 
-**Artifact:** `today_final_browser_runtime.json`  
-**Screenshot:** `today_score_scope_post_deploy_screenshots/01_today.png`
+**Artifact:** `score_scope_backend_deploy_runtime.json`
 
-## PART 3 — Score scope final proof
+## PART 2 — Score API closeout
 
 | Check | Result |
 |-------|--------|
-| 10 requirements satisfied on file | **FAIL** — page shows 8 |
-| 8 score-tracked obligation groups | **PASS** |
-| Grouping note (dedupe / double-counting) | **FAIL** — legacy portfolio-average note only |
 | Score 93/100 | **PASS** |
-| No false missing implication | **PARTIAL** — 8/8 wording may imply full portfolio coverage |
-| 100/100 achievability path | **PARTIAL** — assurance opportunities visible; achievability copy not detected by harness |
+| Lifecycle satisfied = 10 | **FAIL** — 8 |
+| Score-tracked groups = 8 | **PASS** |
+| Grouping note | **FAIL** |
+| No missing implication | **FAIL** — 8/8 understates registry |
+| Assurance explanation | **PASS** — headline + detail present |
 
-**Artifact:** `score_scope_final_browser_runtime.json`  
-**Screenshot:** `today_score_scope_post_deploy_screenshots/03_compliance_score.png`
+**Artifact:** `score_scope_api_closeout_runtime.json`
 
-## PART 4 — Full surface proof
+## PART 3 — Score page browser closeout
+
+| Check | Result |
+|-------|--------|
+| 10 requirements satisfied on file | **FAIL** — shows 8 |
+| 8 score-tracked obligation groups | **PASS** |
+| Grouping note (dedupe copy) | **FAIL** |
+| 93/100 + confidence explanation | **PASS** |
+| 100/100 achievability path | **PASS** — optional assurance opportunities visible |
+
+**Artifact:** `score_scope_browser_closeout_runtime.json`  
+**Screenshot:** `score_scope_backend_closeout_screenshots/01_compliance_score.png`
+
+## PART 4 — Surface parity
 
 | Surface | Expected | Observed |
 |---------|----------|----------|
-| Today | Calm | **PASS** — Needs action 0, no hero |
-| Dashboard | 10 active / 8 score-tracked | **PASS** — "10 active in Requirements", 8 score-tracked |
-| Compliance Score | 10 satisfied / 8 score-tracked | **FAIL** — 8 satisfied / 8 score-tracked |
-| Requirements | 10/10 | **PASS** |
+| Dashboard | 10 active / 8 score-tracked | **PASS** |
+| Compliance Score | 10 satisfied / 8 score-tracked + note | **FAIL** |
+| Requirements | 10/10 satisfied | **PASS** |
 | Properties | 2 Valid / 0 Attention | **PASS** |
+| Today | No urgent action | **PASS** — urgent_count=0, Needs action 0 |
 
-**Artifact:** `today_score_scope_full_surface_runtime.json`  
-**Screenshots:** `today_score_scope_post_deploy_screenshots/`
+**Artifact:** `score_scope_surface_parity_runtime.json`
 
-## PART 5 — Non-regression check
-
-| Scenario | Result |
-|----------|--------|
-| Missing evidence → operational | **PASS** |
-| Rejected evidence → operational | **PASS** |
-| Overdue/expiring → operational | **PASS** |
-| Assurance-only file-review suppressed | **PASS** |
-| Assurance classified not operational | **PASS** |
-
-**Artifact:** `today_score_scope_non_regression_post_deploy_runtime.json`
-
-## PART 6 — Regression
+## PART 5 — Regression
 
 40 backend + 9 frontend targeted tests **PASS**.
 
-**Artifact:** `today_score_scope_post_deploy_regression_runtime.json`
+**Artifact:** `score_scope_backend_regression_runtime.json`
 
 ## Classification rationale
 
-`SCORE_COUNT_SEMANTIC_DRIFT` because:
+`SCORE_COUNT_SEMANTIC_DRIFT` — staging Render backend has not deployed `b0510957` score-scope semantics despite fix being on `main`. All non-score surfaces align; only Compliance Score API/page remain on pre-fix lifecycle counts.
 
-- Today browser and API prove calm operational state (no false hero, `urgent_count=0`).
-- Score page and API still expose score-scoped lifecycle count (8) instead of registry-visible satisfied count (10).
-- Backend `apply_registry_display_semantics` merge not yet live on staging despite frontend deploy.
+Not `VERIFIED_OPERATIONALLY` — backend API and score page checks fail.  
+Not `FAIL_OPERATIONAL` — Today, Requirements, Properties, Dashboard operational parity confirmed.
 
-Not `VERIFIED_OPERATIONALLY` — score scope browser/API checks fail.  
-Not `TODAY_UI_DRIFT` — Today convergence confirmed post-deploy.
+## Required action
 
-## Next action
-
-Redeploy backend containing `b0510957` (`reporting_semantics_v1.apply_registry_display_semantics`, `compliance_score.py`, `routes/client.py`) and re-run:
+Manually redeploy **`pleerity-api`** on Render from `main` (commit `b0510957` or later), then re-run:
 
 ```bash
-python scripts/today_hero_and_score_scope_post_deploy_closeout_01_execute.py
+cd backend
+python scripts/score_scope_backend_deploy_closeout_01_execute.py
 ```
 
-Expected post-backend-deploy: Compliance Score shows **10 requirements satisfied on file**, **Score based on 8 score-tracked obligation groups**, grouping note visible, classification `VERIFIED_OPERATIONALLY`.
+## Programme history
+
+| Programme | Classification |
+|-----------|----------------|
+| TODAY-HERO-AND-SCORE-SCOPE-FINAL-CONVERGENCE-01 | PARTIAL |
+| TODAY-HERO-AND-SCORE-SCOPE-POST-DEPLOY-CLOSEOUT-01 | SCORE_COUNT_SEMANTIC_DRIFT |
+| SCORE-SCOPE-BACKEND-DEPLOY-CLOSEOUT-01 | SCORE_COUNT_SEMANTIC_DRIFT |

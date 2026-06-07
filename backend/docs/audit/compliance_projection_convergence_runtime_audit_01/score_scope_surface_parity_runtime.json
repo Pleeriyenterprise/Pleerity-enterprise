@@ -1,0 +1,36 @@
+{
+  "programme": "SCORE-SCOPE-BACKEND-DEPLOY-CLOSEOUT-01",
+  "generated_at": "2026-06-07T13:26:00.770560+00:00",
+  "surfaces": {
+    "dashboard": {
+      "ten_active": true,
+      "eight_score_tracked": true
+    },
+    "compliance_score": {
+      "ten_satisfied": false,
+      "eight_score_tracked": true,
+      "grouping_note": false
+    },
+    "requirements": {
+      "ten_ten": true
+    },
+    "properties": {
+      "two_valid": true,
+      "attention_zero": true
+    },
+    "today": {
+      "urgent_count_api": 0,
+      "needs_action_count": 0,
+      "no_do_this_next": true,
+      "calm": true
+    }
+  },
+  "checks": {
+    "dashboard": true,
+    "compliance_score": false,
+    "requirements": true,
+    "properties": true,
+    "today": true
+  },
+  "pass": false
+}
