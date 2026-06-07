@@ -1,33 +1,22 @@
-# Watchlist — Plan outcome seeding closeout
+# Watchlist — Today stale compliance issue suppression
 
-## Status: PLAN_FIXTURE_GAP
+## Status: VERIFIED_OPERATIONALLY
 
-### Seed staging accounts (all-satisfied matrix)
+### Completed
 
-- [ ] **A** Solo 1 property, 1 jurisdiction, all satisfied, Today calm
-- [ ] **D** Portfolio 5 properties, same jurisdiction, all satisfied
-- [ ] **E** Portfolio 5–10 mixed jurisdictions, all satisfied
-- [ ] **G** Professional 3–5 properties, same jurisdiction, all satisfied
-- [ ] **H** Professional 5–10 mixed jurisdictions, all satisfied
+- [x] Deploy `93ec5951` stale issue suppression to staging
+- [x] Sophie Walker Today calm (`in_progress_count=0`)
+- [x] Partial F/I urgency preserved
+- [x] Browser proof captured
 
-### Deploy + verify code fix
+### Remaining (prior programme)
 
-- [ ] Deploy `_suppress_stale_compliance_issue_tasks` + Today filter-before-compact
-- [ ] Re-probe Sophie Walker — expect `in_progress_count=0` when requirements satisfied
-
-### Verified partial fixtures (regression)
-
-- [x] **B** Solo partial — `616258a5-51a6-4def-aa00-baa1598b2557`
-- [x] **F** Portfolio partial mixed — `6bcc43c0-16f4-46a5-adf4-26693a0919d0`
-- [x] **I** Professional partial mixed — `6fd5ac4c-3fd4-4112-ade7-156977deb49f`
-
-### Count semantics follow-up
-
-- [ ] Dashboard copy: ensure visible registry vs score-tracked labels on large portfolios (F, I)
+- [ ] Seed all-satisfied fixtures A, D, E, G, H
+- [ ] Optional: governed backfill to resolve 5 LOW `MISSING_EVIDENCE` gap-engine rows for Sophie (audit retention only)
 
 ## Re-run
 
 ```bash
 cd backend
-python scripts/plan_outcome_fixture_seeding_and_closeout_01_execute.py
+python scripts/today_stale_compliance_issue_suppression_closeout_01_execute.py
 ```

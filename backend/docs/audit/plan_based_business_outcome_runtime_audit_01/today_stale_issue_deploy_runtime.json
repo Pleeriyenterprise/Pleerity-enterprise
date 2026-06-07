@@ -1,0 +1,57 @@
+{
+  "programme": "TODAY-STALE-COMPLIANCE-ISSUE-SUPPRESSION-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:54:12.023309+00:00",
+  "marker": "TODAY-STALE-ISSUE-CLOSEOUT-20260607T185255Z",
+  "source": {
+    "deploy_commit": "93ec5951",
+    "repo_head": "93ec5951",
+    "fix_commit_in_history": true,
+    "markers": {
+      "suppress_stale_compliance_issue_tasks": true,
+      "suppress_called_in_get_unified": true,
+      "operational_root_key_in_action_to_task": true,
+      "today_filter_before_compact": true
+    },
+    "all_markers": true
+  },
+  "staging": {
+    "health_status": 200,
+    "health_ok": true,
+    "deployed_behavior": true,
+    "final_metrics": {
+      "all_satisfied": true,
+      "today_calm": true,
+      "urgent_count": 0,
+      "in_progress_count": 0,
+      "today_in_progress_titles": [],
+      "unified_in_progress_count": 0,
+      "unified_in_progress_titles": [],
+      "score": 93,
+      "gap_engine_open": 5,
+      "gap_engine_by_kind": {
+        "MISSING_EVIDENCE": 5
+      }
+    },
+    "attempts": [
+      {
+        "attempt": 1,
+        "generated_at": "2026-06-07T18:54:12.023309+00:00",
+        "all_satisfied": true,
+        "today_calm": true,
+        "urgent_count": 0,
+        "in_progress_count": 0,
+        "today_in_progress_titles": [],
+        "unified_in_progress_count": 0,
+        "unified_in_progress_titles": [],
+        "score": 93,
+        "gap_engine_open": 5,
+        "gap_engine_by_kind": {
+          "MISSING_EVIDENCE": 5
+        },
+        "deployed_behavior": true
+      }
+    ],
+    "pass": true
+  },
+  "pass": true
+}

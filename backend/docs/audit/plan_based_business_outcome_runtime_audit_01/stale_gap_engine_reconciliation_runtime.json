@@ -1,0 +1,21 @@
+{
+  "programme": "TODAY-STALE-COMPLIANCE-ISSUE-SUPPRESSION-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:57:31.800582+00:00",
+  "gap_engine": {
+    "total_open": 5,
+    "by_kind": {
+      "MISSING_EVIDENCE": 5
+    },
+    "by_severity": {
+      "LOW": 5
+    }
+  },
+  "open_maintenance_issues_count": 0,
+  "issue_sample": [],
+  "unified_in_progress_count": 0,
+  "today_in_progress_count": 0,
+  "stored_but_suppressed": false,
+  "governed_cleanup_needed": false,
+  "governed_cleanup_note": "Historical issue rows may remain for audit; user-facing inbox must not surface them when requirement satisfied",
+  "pass": true
+}

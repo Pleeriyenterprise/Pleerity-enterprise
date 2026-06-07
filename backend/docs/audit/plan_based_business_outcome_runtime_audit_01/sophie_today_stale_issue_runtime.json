@@ -1,0 +1,33 @@
+{
+  "programme": "TODAY-STALE-COMPLIANCE-ISSUE-SUPPRESSION-CLOSEOUT-01",
+  "generated_at": "2026-06-07T18:56:07.691953+00:00",
+  "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+  "crn": "PLE-CVP-2026-000023",
+  "name": "Sophie Walker",
+  "metrics": {
+    "all_satisfied": true,
+    "today_calm": true,
+    "urgent_count": 0,
+    "in_progress_count": 0,
+    "today_in_progress_titles": [],
+    "unified_in_progress_count": 0,
+    "unified_in_progress_titles": [],
+    "score": 93,
+    "gap_engine_open": 5,
+    "gap_engine_by_kind": {
+      "MISSING_EVIDENCE": 5
+    }
+  },
+  "checks": {
+    "all_satisfied": true,
+    "urgent_zero": true,
+    "in_progress_zero": true,
+    "today_calm": true,
+    "no_stale_issue_titles": true,
+    "no_do_this_next": true,
+    "no_needs_action": true
+  },
+  "hero_snapshot": {},
+  "screenshot": "sophie_today_stale_issue_closeout.png",
+  "pass": true
+}

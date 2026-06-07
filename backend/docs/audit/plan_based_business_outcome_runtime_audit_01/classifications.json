@@ -1,25 +1,18 @@
 {
-  "programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
-  "prior_programme": "PLAN-BASED-BUSINESS-OUTCOME-FIXTURE-CLOSEOUT-01",
-  "generated_at": "2026-06-07T18:33:43.826727+00:00",
-  "marker": "PLAN-OUTCOME-SEED-CLOSEOUT-20260607T180254Z",
-  "classification": "PLAN_FIXTURE_GAP",
-  "secondary_flags": [
-    "CROSS_SURFACE_DRIFT",
-    "PLAN_FIXTURE_GAP",
-    "USER_OUTCOME_DRIFT"
-  ],
+  "programme": "TODAY-STALE-COMPLIANCE-ISSUE-SUPPRESSION-CLOSEOUT-01",
+  "prior_programme": "PLAN-OUTCOME-FIXTURE-SEEDING-AND-CLOSEOUT-01",
+  "generated_at": "2026-06-07T19:15:00.000000+00:00",
+  "marker": "TODAY-STALE-ISSUE-CLOSEOUT-20260607T185255Z",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "secondary_flags": [],
   "results": {
-    "seed": false,
-    "satisfaction": false,
-    "sophie_today": false,
-    "all_satisfied_closeout": false,
-    "partial_reconfirmation": true,
-    "semantics": false,
-    "entitlements": true,
-    "browser": true,
+    "deploy": true,
+    "sophie_today": true,
+    "gap_reconciliation": true,
+    "non_regression": true,
     "regression": true,
-    "verified": false
+    "browser": true,
+    "verified": true
   },
-  "code_fix": "stale_compliance_issue_suppression + today_filter_before_compact"
+  "deploy_commit": "93ec5951"
 }
