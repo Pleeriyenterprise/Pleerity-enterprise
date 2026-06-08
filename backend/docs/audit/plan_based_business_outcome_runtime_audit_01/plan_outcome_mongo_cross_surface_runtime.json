@@ -1,0 +1,92 @@
+{
+  "programme": "PLAN-OUTCOME-MONGO-BACKED-FIXTURE-SATISFACTION-CLOSEOUT-01",
+  "generated_at": "2026-06-08T17:42:42.233020+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "dashboard_total": 10,
+      "score_total": 8,
+      "today_calm": true,
+      "all_satisfied": true,
+      "properties_valid": true,
+      "pass": true
+    },
+    {
+      "scenario": "B",
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "dashboard_total": 10,
+      "score_total": 8,
+      "today_calm": true,
+      "all_satisfied": false,
+      "properties_valid": false,
+      "pass": true
+    },
+    {
+      "scenario": "C",
+      "local_only": true,
+      "pass": true
+    },
+    {
+      "scenario": "D",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "dashboard_total": 29,
+      "score_total": 28,
+      "today_calm": false,
+      "all_satisfied": false,
+      "properties_valid": false,
+      "pass": true
+    },
+    {
+      "scenario": "E",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "dashboard_total": 10,
+      "score_total": 8,
+      "today_calm": true,
+      "all_satisfied": true,
+      "properties_valid": true,
+      "pass": true
+    },
+    {
+      "scenario": "F",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "dashboard_total": 65,
+      "score_total": 41,
+      "today_calm": false,
+      "all_satisfied": false,
+      "properties_valid": false,
+      "pass": false
+    },
+    {
+      "scenario": "G",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "dashboard_total": 49,
+      "score_total": 43,
+      "today_calm": false,
+      "all_satisfied": false,
+      "properties_valid": false,
+      "pass": false
+    },
+    {
+      "scenario": "H",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "dashboard_total": 49,
+      "score_total": 43,
+      "today_calm": false,
+      "all_satisfied": false,
+      "properties_valid": false,
+      "pass": false
+    },
+    {
+      "scenario": "I",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "dashboard_total": 49,
+      "score_total": 43,
+      "today_calm": false,
+      "all_satisfied": false,
+      "properties_valid": false,
+      "pass": false
+    }
+  ],
+  "pass": false
+}

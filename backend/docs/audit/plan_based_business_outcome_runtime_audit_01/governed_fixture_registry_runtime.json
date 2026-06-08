@@ -1,21 +1,32 @@
 {
   "programme": "PLAN-OUTCOME-GOVERNED-STAGING-FIXTURE-SEEDING-01",
-  "generated_at": "2026-06-07T22:10:00.000000+00:00",
+  "generated_at": "2026-06-08T17:30:00.000000+00:00",
   "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
   "fixtures": {
     "A": {
       "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
-      "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
-      "seeded_at": "2026-06-07T21:01:14.828204+00:00",
       "pass": true,
-      "note": "Sophie Walker — archived surplus property; 1 active England property; all satisfied; Today calm"
+      "note": "Solo exact — Sophie Walker"
     },
     "D": {
       "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
-      "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
-      "seeded_at": "2026-06-07T21:44:16.079496+00:00",
       "pass": false,
-      "note": "5 England properties provisioned; satisfaction blocked on document-only requirements without STAGING_MONGO_URL"
+      "note": "Portfolio 5 England — satisfaction pending mongo seed"
+    },
+    "E": {
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "pass": false,
+      "note": "Portfolio mixed — David Miller"
+    },
+    "G": {
+      "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "pass": false,
+      "note": "Professional Wales same-jurisdiction"
+    },
+    "H": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "pass": false,
+      "note": "Professional mixed — Nancy Wales pilot"
     }
   }
 }

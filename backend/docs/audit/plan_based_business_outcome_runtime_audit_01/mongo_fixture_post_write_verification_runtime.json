@@ -1,0 +1,216 @@
+{
+  "programme": "PLAN-OUTCOME-MONGO-BACKED-FIXTURE-SATISFACTION-CLOSEOUT-01",
+  "generated_at": "2026-06-08T17:42:52.469198+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "probe": {
+        "score": 93,
+        "property_count": 1,
+        "jurisdictions": [
+          "England"
+        ],
+        "requirement_total": 8,
+        "requirement_satisfied": 8,
+        "requirement_unsatisfied": 0,
+        "overdue": 0,
+        "property_rag": {
+          "GREEN": 2,
+          "AMBER": 0,
+          "RED": 0
+        },
+        "today_urgent_count": 0,
+        "today_in_progress_count": 0,
+        "today_calm": true,
+        "all_satisfied": true,
+        "properties_valid": true,
+        "score_confidence_present": true,
+        "entitlements_plan": "PLAN_1_SOLO"
+      },
+      "checks": {
+        "all_satisfied": true,
+        "today_calm": true,
+        "today_urgent_zero": true,
+        "today_in_progress_zero": true,
+        "properties_valid": true,
+        "overdue_zero": true,
+        "score_confidence": true,
+        "criteria_match": true
+      },
+      "gaps": [],
+      "pass": true
+    },
+    {
+      "scenario": "D",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "probe": {
+        "score": 38,
+        "property_count": 5,
+        "jurisdictions": [
+          "England"
+        ],
+        "requirement_total": 28,
+        "requirement_satisfied": 3,
+        "requirement_unsatisfied": 25,
+        "overdue": 0,
+        "property_rag": {
+          "GREEN": 0,
+          "AMBER": 5,
+          "RED": 0
+        },
+        "today_urgent_count": 5,
+        "today_in_progress_count": 0,
+        "today_calm": false,
+        "all_satisfied": false,
+        "properties_valid": false,
+        "score_confidence_present": false,
+        "entitlements_plan": "PLAN_2_PORTFOLIO"
+      },
+      "checks": {
+        "all_satisfied": false,
+        "today_calm": false,
+        "today_urgent_zero": false,
+        "today_in_progress_zero": true,
+        "properties_valid": false,
+        "overdue_zero": true,
+        "score_confidence": false,
+        "criteria_match": false
+      },
+      "gaps": [
+        "not_all_satisfied"
+      ],
+      "pass": false
+    },
+    {
+      "scenario": "E",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "probe": {
+        "score": 76,
+        "property_count": 8,
+        "jurisdictions": [
+          "England",
+          "Wales",
+          "Scotland"
+        ],
+        "requirement_total": 41,
+        "requirement_satisfied": 23,
+        "requirement_unsatisfied": 18,
+        "overdue": 0,
+        "property_rag": {
+          "GREEN": 1,
+          "AMBER": 7,
+          "RED": 0
+        },
+        "today_urgent_count": 8,
+        "today_in_progress_count": 3,
+        "today_calm": false,
+        "all_satisfied": false,
+        "properties_valid": false,
+        "score_confidence_present": false,
+        "entitlements_plan": "PLAN_2_PORTFOLIO"
+      },
+      "checks": {
+        "all_satisfied": false,
+        "today_calm": false,
+        "today_urgent_zero": false,
+        "today_in_progress_zero": false,
+        "properties_valid": false,
+        "overdue_zero": true,
+        "score_confidence": false,
+        "criteria_match": false
+      },
+      "gaps": [
+        "not_all_satisfied"
+      ],
+      "pass": false
+    },
+    {
+      "scenario": "G",
+      "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "probe": {
+        "score": 18,
+        "property_count": 1,
+        "jurisdictions": [
+          "Wales"
+        ],
+        "requirement_total": 5,
+        "requirement_satisfied": 0,
+        "requirement_unsatisfied": 5,
+        "overdue": 0,
+        "property_rag": {
+          "GREEN": 0,
+          "AMBER": 1,
+          "RED": 0
+        },
+        "today_urgent_count": 1,
+        "today_in_progress_count": 1,
+        "today_calm": false,
+        "all_satisfied": false,
+        "properties_valid": false,
+        "score_confidence_present": true,
+        "entitlements_plan": "PLAN_3_PRO"
+      },
+      "checks": {
+        "all_satisfied": false,
+        "today_calm": false,
+        "today_urgent_zero": false,
+        "today_in_progress_zero": false,
+        "properties_valid": false,
+        "overdue_zero": true,
+        "score_confidence": true,
+        "criteria_match": false
+      },
+      "gaps": [
+        "property_count<3",
+        "not_all_satisfied"
+      ],
+      "pass": false
+    },
+    {
+      "scenario": "H",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "probe": {
+        "score": 38,
+        "property_count": 7,
+        "jurisdictions": [
+          "Wales",
+          "Scotland",
+          "England"
+        ],
+        "requirement_total": 43,
+        "requirement_satisfied": 14,
+        "requirement_unsatisfied": 29,
+        "overdue": 0,
+        "property_rag": {
+          "GREEN": 1,
+          "AMBER": 6,
+          "RED": 0
+        },
+        "today_urgent_count": 24,
+        "today_in_progress_count": 8,
+        "today_calm": false,
+        "all_satisfied": false,
+        "properties_valid": false,
+        "score_confidence_present": false,
+        "entitlements_plan": "PLAN_3_PRO"
+      },
+      "checks": {
+        "all_satisfied": false,
+        "today_calm": false,
+        "today_urgent_zero": false,
+        "today_in_progress_zero": false,
+        "properties_valid": false,
+        "overdue_zero": true,
+        "score_confidence": false,
+        "criteria_match": false
+      },
+      "gaps": [
+        "not_all_satisfied"
+      ],
+      "pass": false
+    }
+  ],
+  "exact_count": "1/5",
+  "pass": false
+}

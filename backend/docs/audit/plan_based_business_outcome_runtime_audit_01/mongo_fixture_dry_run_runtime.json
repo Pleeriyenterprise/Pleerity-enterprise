@@ -1,0 +1,1590 @@
+{
+  "programme": "PLAN-OUTCOME-MONGO-BACKED-FIXTURE-SATISFACTION-CLOSEOUT-01",
+  "generated_at": "2026-06-08T17:15:59.768277+00:00",
+  "marker": "PLAN-OUTCOME-MONGO-SAT-20260608",
+  "fixtures": [
+    {
+      "scenario": "D",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "plan": "PLAN_2_PORTFOLIO",
+      "property_count": 5,
+      "jurisdictions": [
+        "England"
+      ],
+      "requirements_total": 28,
+      "requirements_satisfied": 3,
+      "document_only_pending": 26,
+      "pending_count": 26,
+      "requirement_actions": [
+        {
+          "property_id": "bd318edf-9c77-4437-b120-129c91836359",
+          "requirement_id": "9322a481-4c89-4b54-b61a-b4fee7623015",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "bd318edf-9c77-4437-b120-129c91836359",
+          "requirement_id": "436cfc91-f2d2-4f55-99b4-752849c792ed",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "bd318edf-9c77-4437-b120-129c91836359",
+          "requirement_id": "b94c65eb-ecab-4a60-ab7e-21f3b3c9d1ad",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "bd318edf-9c77-4437-b120-129c91836359",
+          "requirement_id": "77a7de59-1753-4bfb-8c28-1c9922533c98",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "bd318edf-9c77-4437-b120-129c91836359",
+          "requirement_id": "7cd0a636-16f1-495d-bf1a-7aa6a2bba9b3",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "37b67192-fd12-4104-8407-bde058535198",
+          "requirement_id": "a2bda457-b48b-4061-8636-4c186dd35183",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "37b67192-fd12-4104-8407-bde058535198",
+          "requirement_id": "a9669cfe-b737-43e8-9234-91f8f017d03e",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "37b67192-fd12-4104-8407-bde058535198",
+          "requirement_id": "e340efca-d84c-42d8-84ab-a63994e06588",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "37b67192-fd12-4104-8407-bde058535198",
+          "requirement_id": "3063f3d7-d0ae-436f-a0f8-84a7e4232240",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "37b67192-fd12-4104-8407-bde058535198",
+          "requirement_id": "df7de641-3b22-4810-9b3a-6dd9d00bbf4e",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "37b67192-fd12-4104-8407-bde058535198",
+          "requirement_id": "f6020962-122f-4c81-b800-f88b5e811836",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "c7b0a913-60d6-4e36-a6e0-29ede6cb1fb2",
+          "requirement_id": "82cebf0c-aa72-49b1-a334-430271ad2c67",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "c7b0a913-60d6-4e36-a6e0-29ede6cb1fb2",
+          "requirement_id": "3cd0e74d-bed1-49e6-909f-384ad122a0d5",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "c7b0a913-60d6-4e36-a6e0-29ede6cb1fb2",
+          "requirement_id": "1dcefefb-444f-4c9e-a3a8-aeaf95b88fde",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "c7b0a913-60d6-4e36-a6e0-29ede6cb1fb2",
+          "requirement_id": "db3de3ea-0bce-4fa1-9bf9-ad1ad82aabca",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "c7b0a913-60d6-4e36-a6e0-29ede6cb1fb2",
+          "requirement_id": "e277a725-9960-44fc-9359-215ca46a495f",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "c7b0a913-60d6-4e36-a6e0-29ede6cb1fb2",
+          "requirement_id": "2488d53b-8e3e-44c9-8be8-a7023a09f3d6",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "349369b7-5086-4fac-9d6c-a223f773b56c",
+          "requirement_id": "1ce53a7f-6d96-47a4-aade-3e1bfbca3b56",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "349369b7-5086-4fac-9d6c-a223f773b56c",
+          "requirement_id": "aabe13b0-a670-416a-a89e-e0ba759637c3",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "349369b7-5086-4fac-9d6c-a223f773b56c",
+          "requirement_id": "53c32d25-1691-4320-bca5-3415e2cc2a6c",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "349369b7-5086-4fac-9d6c-a223f773b56c",
+          "requirement_id": "686de9a9-1ed9-4b52-8e13-dd576ad4fae9",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "349369b7-5086-4fac-9d6c-a223f773b56c",
+          "requirement_id": "3357ba68-01bb-4541-aeee-dc46bcdd76b2",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "349369b7-5086-4fac-9d6c-a223f773b56c",
+          "requirement_id": "3b675f88-0fea-4edf-9b1f-67e93e46fc49",
+          "requirement_type": "fire_alarm",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "323230f6-2990-48d8-9ba5-e75629f82e24",
+          "requirement_id": "6c4fade4-1c9e-44a8-8be8-4e33d99ba362",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "323230f6-2990-48d8-9ba5-e75629f82e24",
+          "requirement_id": "70ba3839-7571-4c41-8210-142aeefec4a1",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "323230f6-2990-48d8-9ba5-e75629f82e24",
+          "requirement_id": "499cc84a-e885-45cc-9db5-c8fcce977727",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "323230f6-2990-48d8-9ba5-e75629f82e24",
+          "requirement_id": "33fe1204-51f9-4d1a-9abe-5e32e30717b4",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "323230f6-2990-48d8-9ba5-e75629f82e24",
+          "requirement_id": "53ea03fe-742c-46a1-abec-7732fdfce519",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "323230f6-2990-48d8-9ba5-e75629f82e24",
+          "requirement_id": "f056e9b5-8a10-4f97-a03e-9b3c75684d7f",
+          "requirement_type": "fire_alarm",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        }
+      ],
+      "expected_post_run": {
+        "all_satisfied": true,
+        "today_calm": true,
+        "properties_green": true,
+        "score_confidence": true
+      },
+      "pass": true
+    },
+    {
+      "scenario": "E",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "plan": "PLAN_2_PORTFOLIO",
+      "property_count": 8,
+      "jurisdictions": [
+        "England",
+        "Wales",
+        "Scotland"
+      ],
+      "requirements_total": 41,
+      "requirements_satisfied": 23,
+      "document_only_pending": 27,
+      "pending_count": 27,
+      "requirement_actions": [
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "ea6dca3a-705a-4cd8-95f1-2e3d1c45ed86",
+          "requirement_type": "gas_safety",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "af20c799-943a-4d7b-a13c-f724b410d189",
+          "requirement_type": "eicr",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "a51351e8-06ae-4a60-8b24-ba1b7780ac62",
+          "requirement_type": "epc",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "6c1533be-d545-47a0-baf3-1711bbb7db0b",
+          "requirement_type": "legionella",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "92e19eb9-4688-4260-b38d-ec40b90d638f",
+          "requirement_type": "hmo_license",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "fe07d2c6-ffd2-4e35-b550-98d6d952ff7b",
+          "requirement_type": "tenancy_agreement",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "491b5e67-0c8d-4c4e-81bc-4cc52d53fbcb",
+          "requirement_type": "how_to_rent",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "c72dbd55-e71a-41e5-8ace-4910652f599d",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "a661a2bc-ddf5-4afb-bb8d-9722c3a3377b",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "6bd80ee4-6baf-4338-9778-8bd028993839",
+          "requirement_type": "hmo_fire_risk",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "2eff2091-9f60-48d5-aa0e-b931a39e367a",
+          "requirement_type": "deposit_pi",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+          "requirement_id": "0ce2b242-392d-4e98-b067-b31e8f828809",
+          "requirement_type": "right_to_rent",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "6a546f1b-84ee-44e6-a032-86fed2bf9044",
+          "requirement_type": "gas_safety",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "9630a9de-47da-4810-8abb-ada61dd5edcf",
+          "requirement_type": "eicr",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "aa40f412-4990-466d-8052-c392d3adc161",
+          "requirement_type": "epc",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "791864ff-9688-4cf9-a61b-005308d4dd9b",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "e47d1c2d-ccae-4f2b-94ca-3ca2fc5c2b40",
+          "requirement_type": "tenancy_agreement",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "53cfffcb-b5de-4982-adc5-117493c865f4",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "14678d6e-f00f-4c43-88fe-5ecf59fb4b23",
+          "requirement_type": "occupation_contract",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "a9bf3fb6-6911-482f-928f-6dfd77b17005",
+          "requirement_type": "wales_occupation_contract",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "1e9b7901-3c05-410f-a7c3-926453bcb185",
+          "requirement_type": "rent_smart_wales",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "fb213701-15b9-46aa-9619-4c36564dbfd5",
+          "requirement_type": "fire_alarm",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "requirement_id": "f3b23246-806c-4ba1-ad3b-117ef0bed33b",
+          "requirement_type": "deposit_pi",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "1544795e-65b0-4187-bfeb-6227525c0b2c",
+          "requirement_type": "gas_safety",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "b79b1368-0094-413a-84bb-d1f751045932",
+          "requirement_type": "eicr",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "414025cd-8346-4f82-baa2-1c4769567dab",
+          "requirement_type": "epc",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "0e3bdabf-18d4-4c69-97bb-de09878edc52",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "b16ac998-9053-4456-8d01-73db1e62f101",
+          "requirement_type": "hmo_license",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "678504c6-9780-44b0-a150-f98cc29e8eb2",
+          "requirement_type": "tenancy_agreement",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "cf1b0e2b-e501-4089-98e3-8cf7eb8727db",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "c73066d6-0337-4626-bca5-5d1db373a125",
+          "requirement_type": "scotland_landlord_registration",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "fe3d240f-248f-4ebd-a1ff-de2c24ef4d8f",
+          "requirement_type": "fire_alarm",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "459121aa-2caa-4689-8614-885334603b23",
+          "requirement_type": "hmo_fire_risk",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+          "requirement_id": "6910a525-1d52-42c6-9551-2c2b93ee6a60",
+          "requirement_type": "deposit_pi",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "5bc3b42e-94ae-4584-be0b-4f7e2287952d",
+          "requirement_type": "gas_safety",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "85795be4-1eab-416e-8f91-7e884362ecde",
+          "requirement_type": "eicr",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "8d653e3d-17d5-459f-a7b3-f7bec198df85",
+          "requirement_type": "epc",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "c9ccde0e-cbe5-4bb3-a84f-8b84c2a33870",
+          "requirement_type": "legionella",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "da8fc2be-39c6-42fc-870f-77df968c8fcd",
+          "requirement_type": "tenancy_agreement",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "8795dd97-1b39-4c96-8582-3303f5748f48",
+          "requirement_type": "how_to_rent",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "fc79067c-27ac-4085-965a-347f12ee7e89",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "5992b964-2d32-4504-b6ae-2c04eb1a204e",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "b7a12498-67e3-475a-aa06-88aeda8c328f",
+          "requirement_type": "deposit_pi",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+          "requirement_id": "ae03d099-993f-4e17-ab2f-0b44039b8d09",
+          "requirement_type": "right_to_rent",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
+          "requirement_id": "949151d0-1aac-4627-a899-3e9d2f95fc61",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
+          "requirement_id": "d0d78ebd-20cd-470f-a49f-0227b8aad06f",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
+          "requirement_id": "8e5d189b-8c16-4c4a-b3f7-a171bd4a2acc",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
+          "requirement_id": "c7ac9d01-ce62-45b1-91a2-9bb67daca285",
+          "requirement_type": "occupation_contract",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
+          "requirement_id": "2be72379-950b-489d-91e6-2863052c0323",
+          "requirement_type": "fire_alarm",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "62717cb8-0d1f-475d-b17a-867b1094a072",
+          "requirement_id": "40d6cef6-5409-42a9-96cd-69d9808e8fac",
+          "requirement_type": "eicr",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "62717cb8-0d1f-475d-b17a-867b1094a072",
+          "requirement_id": "e20d9fe8-17cf-4089-ae07-7b4741fbc830",
+          "requirement_type": "epc",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "62717cb8-0d1f-475d-b17a-867b1094a072",
+          "requirement_id": "35db2e6f-a592-4b50-ad4c-d334fd2a9ea2",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "62717cb8-0d1f-475d-b17a-867b1094a072",
+          "requirement_id": "6832ef4e-c657-4418-8e8f-807af6a7d628",
+          "requirement_type": "scotland_landlord_registration",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "62717cb8-0d1f-475d-b17a-867b1094a072",
+          "requirement_id": "468d94cf-7c20-4786-89a1-ca2f4c09878a",
+          "requirement_type": "fire_alarm",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+          "requirement_id": "372c0bc4-68fd-408d-9744-2d4e693af77d",
+          "requirement_type": "eicr",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+          "requirement_id": "a05b9dae-a9bd-4fce-8932-b4766f510a32",
+          "requirement_type": "epc",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+          "requirement_id": "6d263460-a753-4c5a-a477-01ea8740786a",
+          "requirement_type": "legionella",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+          "requirement_id": "fcaca995-4cfa-4afd-aaf9-736efe771898",
+          "requirement_type": "fire_risk_assessment",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+          "requirement_id": "1298eb19-f38d-48f4-a0f6-9ff299a81af6",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+          "requirement_id": "daf8b5ee-d604-429b-b527-b97cea3d6b8b",
+          "requirement_type": "hmo_fire_risk",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5",
+          "requirement_id": "c51b9d69-36f8-45a7-8e9e-b5506b675612",
+          "requirement_type": "eicr",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5",
+          "requirement_id": "0cae859d-b2f0-45e5-bd5c-b94470aac28c",
+          "requirement_type": "epc",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5",
+          "requirement_id": "d515f698-61db-4f2f-b8f5-c9003b9c3772",
+          "requirement_type": "legionella",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5",
+          "requirement_id": "f8cfb4b3-e3f4-4205-8da6-9630203c15b0",
+          "requirement_type": "occupation_contract",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5",
+          "requirement_id": "a98549bd-f289-4616-a99e-07b411d8772d",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        }
+      ],
+      "expected_post_run": {
+        "all_satisfied": true,
+        "today_calm": true,
+        "properties_green": true,
+        "score_confidence": true
+      },
+      "pass": true
+    },
+    {
+      "scenario": "G",
+      "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "plan": "PLAN_3_PRO",
+      "property_count": 1,
+      "jurisdictions": [
+        "Wales"
+      ],
+      "requirements_total": 5,
+      "requirements_satisfied": 0,
+      "document_only_pending": 6,
+      "pending_count": 6,
+      "requirement_actions": [
+        {
+          "property_id": "f63a7b05-9b58-4a22-8aeb-8a874574011b",
+          "requirement_id": "a1d71f4e-0eef-4316-a99d-ec4fe7861ca4",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "f63a7b05-9b58-4a22-8aeb-8a874574011b",
+          "requirement_id": "841c10de-c34b-4d8f-a006-8e3aa8734bdd",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "f63a7b05-9b58-4a22-8aeb-8a874574011b",
+          "requirement_id": "2ec15d42-5c47-4e2b-a6c7-11b5c3288ed0",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "f63a7b05-9b58-4a22-8aeb-8a874574011b",
+          "requirement_id": "62920e6a-0a13-4349-9c4a-cefea930eada",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "f63a7b05-9b58-4a22-8aeb-8a874574011b",
+          "requirement_id": "cf312527-8b2d-4bc8-aa76-d00ca857a915",
+          "requirement_type": "occupation_contract",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "f63a7b05-9b58-4a22-8aeb-8a874574011b",
+          "requirement_id": "e2ef8244-fcd4-4512-a6c3-16f9f61e0740",
+          "requirement_type": "fire_alarm",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        }
+      ],
+      "expected_post_run": {
+        "all_satisfied": true,
+        "today_calm": true,
+        "properties_green": true,
+        "score_confidence": true
+      },
+      "pass": true
+    },
+    {
+      "scenario": "H",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "plan": "PLAN_3_PRO",
+      "property_count": 7,
+      "jurisdictions": [
+        "Wales",
+        "Scotland",
+        "England"
+      ],
+      "requirements_total": 43,
+      "requirements_satisfied": 14,
+      "document_only_pending": 36,
+      "pending_count": 36,
+      "requirement_actions": [
+        {
+          "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "requirement_id": "e76b95d8-d652-470e-ab0b-fcd25e6fb3e9",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "requirement_id": "cb63e083-ba4c-4244-8549-de757960cdcf",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "requirement_id": "77f4422f-099e-48f8-a61f-18ca9a3f57f3",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "requirement_id": "d13a0b57-ad3f-4edd-99d6-6b6e38d85071",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "requirement_id": "ef6abb19-75a0-4382-a846-ff4c51dcddfa",
+          "requirement_type": "hmo_license",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "requirement_id": "d1a70f19-94d1-4eca-8a4c-dab8bfc2c05b",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+          "requirement_id": "23e41bf3-2839-4644-8e16-7e574ccacf25",
+          "requirement_type": "hmo_fire_risk",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "abf48f3d-a3df-4205-8666-1df11687cf30",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "33d417bd-26b3-4d02-a750-52b105307329",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "5dfd5abf-8642-4d2a-b25e-54afd9d5a9de",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "b713877f-b8fc-4505-9947-40f7d960c0eb",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "91ad1f2d-e267-44df-b7f9-6e9a2230f4b5",
+          "requirement_type": "landlord_registration_ni",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "b2f4cc3b-5a10-4274-b6fb-83f0f4681385",
+          "requirement_type": "hmo_license",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "edf564a2-ea75-4919-88f5-85aab93b42a5",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+          "requirement_id": "524648e3-60e0-4888-985a-d014f0bb7a94",
+          "requirement_type": "hmo_fire_risk_evidence",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+          "requirement_type": "legionella",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "71e89158-5de0-422a-970c-5a2163fcc823",
+          "requirement_type": "hmo_license",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+          "requirement_type": "gas_safety",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "488269bb-1be7-47e7-a030-98accf6dffc4",
+          "requirement_type": "occupation_contract",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+          "requirement_type": "fire_alarm",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+          "requirement_type": "hmo_fire_risk_evidence",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "requirement_id": "2eb01d80-9fa6-472c-b845-f3b2bb38e382",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "requirement_id": "e7540d87-2ae8-4231-b142-311bcf0b370b",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "requirement_id": "43a6a5ac-060f-4aae-9766-835e40106788",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "requirement_id": "4fde5533-ba46-4245-b55a-7e45f8c72557",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "requirement_id": "81cef5bd-cccf-421c-8758-ae916898b0bb",
+          "requirement_type": "landlord_registration_ni",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+          "requirement_id": "69042628-c672-44dd-9bd7-cb51768f9730",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "f8af19ed-0da9-40a8-9d8a-ce4446ecbb66",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "57e66e0c-3288-47f6-95ef-6b4d59e715bf",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "901564f9-fab0-4550-99ba-e13432ee845e",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "b1f7d382-e434-4d5f-86b9-00fded1a3a82",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "0b317b5b-a760-4f76-baf0-9cbee75f983e",
+          "requirement_type": "hmo_license",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "40ddb2cc-4c36-474f-981d-296e0248ab31",
+          "requirement_type": "landlord_registration_ni",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "89308629-f183-44e4-b07d-71c564a14eca",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+          "requirement_id": "33338b85-c5c3-45c9-a575-d04e0f278729",
+          "requirement_type": "hmo_fire_risk",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "requirement_id": "6c819fb6-a069-4979-9953-353c4b74abb3",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "requirement_id": "ea22a50c-1421-4516-bcbe-e65f54cf7b25",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "requirement_id": "e3f6459c-cf42-40d9-bfc8-37507affeffb",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "requirement_id": "43375303-fdfc-46f4-b153-2bc8e8ad53ee",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "requirement_id": "ad878819-8de2-4a32-85f2-9ee21f09817c",
+          "requirement_type": "scotland_landlord_registration",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+          "requirement_id": "ec6a13b9-4b1b-4b32-8c49-94268bbaea20",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+          "requirement_id": "9d3ad68d-a130-4cc9-b58f-d6e0d7629ffc",
+          "requirement_type": "eicr",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+          "requirement_id": "9aaddf03-86c5-42c7-b42d-63d94f94239f",
+          "requirement_type": "epc",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+          "requirement_id": "1638fcdf-5bb5-4016-87db-a5549cc4d1b4",
+          "requirement_type": "legionella",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+          "requirement_id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+          "requirement_type": "portable_appliance_test",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+          "requirement_id": "bb32fac0-c219-4401-8739-13ded9511721",
+          "requirement_type": "gas_safety",
+          "satisfied": false,
+          "action_required": "governed_document_seed_authority_sync",
+          "evidence_method": "governed_fixture_document",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        },
+        {
+          "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+          "requirement_id": "c17146e4-cff6-4265-bec6-ecb0c55f2523",
+          "requirement_type": "fire_alarm",
+          "satisfied": true,
+          "action_required": "already_satisfied",
+          "evidence_method": "cer_structured_declaration",
+          "authority_sync": "sync_requirement_evidence_authority",
+          "recalc": "enqueue_compliance_recalc"
+        }
+      ],
+      "expected_post_run": {
+        "all_satisfied": true,
+        "today_calm": true,
+        "properties_green": true,
+        "score_confidence": true
+      },
+      "pass": true
+    }
+  ],
+  "pass": true
+}

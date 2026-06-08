@@ -1,0 +1,6 @@
+{
+  "programme": "PLAN-OUTCOME-MONGO-BACKED-FIXTURE-SATISFACTION-CLOSEOUT-01",
+  "skipped": true,
+  "pass": false,
+  "reason": "STAGING_MONGO_URL not configured"
+}
