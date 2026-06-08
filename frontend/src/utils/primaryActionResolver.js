@@ -34,7 +34,7 @@ export function resolveRiskSignalPrimaryKey(signal, hasMaintenanceWorkflows, has
   const fromCognition = heroPrimaryFromCognition(getOperationalCognition(signal));
   if (fromCognition?.label) {
     return {
-      key: fromCognition.key || 'next_action',
+      key: normalizeOperationalPrimaryKey(fromCognition.key || 'next_action'),
       label: fromCognition.label,
       url: fromCognition.url,
       continuation: fromCognition.continuation,
@@ -44,7 +44,7 @@ export function resolveRiskSignalPrimaryKey(signal, hasMaintenanceWorkflows, has
   if (cont?.has_active_lineage && cont?.continuation_cta) {
     const cta = cont.continuation_cta;
     return {
-      key: cta.key || 'view_workflow',
+      key: normalizeOperationalPrimaryKey(cta.key || 'view_workflow'),
       label: cta.label || OUTCOME_PRIMARY.viewWorkflow,
       url: cta.url,
       continuation: true,
@@ -70,6 +70,22 @@ export function resolveRiskSignalPrimaryKey(signal, hasMaintenanceWorkflows, has
 }
 
 /**
+ * Normalize server cognition primary keys to client executor keys.
+ * @param {string} key
+ */
+export function normalizeOperationalPrimaryKey(key) {
+  const k = String(key || '').trim();
+  const map = {
+    create_work_order: 'maintenance_job',
+    schedule_inspection: 'compliance_inspection',
+    create_issue: 'maintenance_issue',
+    assign_contractor: 'assign_contractor',
+    assign: 'assign_contractor',
+  };
+  return map[k] || k;
+}
+
+/**
  * @param {Record<string, unknown>|null|undefined} issue
  * @returns {{ key: string, label: string, url?: string, continuation?: boolean }|null}
  */
@@ -77,7 +93,7 @@ export function resolveIssuePrimaryAction(issue) {
   const fromCognition = heroPrimaryFromCognition(getOperationalCognition(issue));
   if (fromCognition?.label) {
     return {
-      key: fromCognition.key || 'next_action',
+      key: normalizeOperationalPrimaryKey(fromCognition.key || 'next_action'),
       label: fromCognition.label,
       url: fromCognition.url,
       continuation: fromCognition.continuation,
@@ -87,19 +103,31 @@ export function resolveIssuePrimaryAction(issue) {
   if (cont?.has_active_lineage && cont?.continuation_cta) {
     const cta = cont.continuation_cta;
     return {
-      key: cta.key || 'view_workflow',
+      key: normalizeOperationalPrimaryKey(cta.key || 'view_workflow'),
       label: cta.label || OUTCOME_PRIMARY.viewWorkflow,
       url: cta.url,
       continuation: true,
     };
   }
+  const st = String(issue?.status || '').toLowerCase();
+  const linkedWo =
+    issue?.linked_work_order_id ||
+    issue?.operational_continuation?.existing_work_order_id;
+  if (st === 'ready_for_work_order' && linkedWo) {
+    return {
+      key: 'assign_contractor',
+      label: 'Assign contractor',
+      url: `/operations/jobs/${linkedWo}`,
+      continuation: true,
+    };
+  }
   if (
     issue &&
-    issue.status !== 'closed' &&
-    issue.status !== 'cancelled' &&
-    !issue.linked_work_order_id
+    st !== 'closed' &&
+    st !== 'cancelled' &&
+    !linkedWo
   ) {
-    return { key: 'create_work_order', label: 'Create maintenance job' };
+    return { key: 'maintenance_job', label: 'Create maintenance job' };
   }
   return null;
 }

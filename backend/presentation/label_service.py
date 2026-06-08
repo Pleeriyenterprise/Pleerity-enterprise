@@ -150,6 +150,13 @@ def enrich_risk_signal(signal: Dict[str, Any]) -> Dict[str, Any]:
     signal["risk_type_label_client"] = risk_type_client_label(rt)
     signal["risk_type_label_admin"] = risk_type_admin_label(rt)
     signal["recommended_action_client"] = recommended_action_client_text(rt, ra)
+    try:
+        from services.risk_signal_operational_history_governance import customer_safe_reasons
+
+        if signal.get("reasons"):
+            signal["reasons"] = customer_safe_reasons(signal["reasons"], rt)
+    except Exception:
+        pass
     return signal
 
 

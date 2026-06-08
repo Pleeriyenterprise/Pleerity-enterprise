@@ -642,6 +642,18 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     requirements = await _fetch_requirements_overdue(db, property_id, client_id)
     requirements_expiring = await _fetch_requirements_expiring_soon(db, property_id, client_id)
 
+    from services.risk_signal_operational_history_governance import (
+        client_predictive_operational_history_eligible,
+        customer_safe_reasons,
+        filter_qualifying_operational_records,
+    )
+
+    predictive_ops_eligible, predictive_ops_metrics = await client_predictive_operational_history_eligible(
+        db, client_id
+    )
+    qualifying_work_orders_12 = filter_qualifying_operational_records(work_orders_12)
+    qualifying_issues_12 = filter_qualifying_operational_records(issues_12)
+
     all_signals: List[Dict[str, Any]] = []
 
     # Asset rules
@@ -651,14 +663,24 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     all_signals.extend(damp_signals)
     elec_signals = await _rule_electrical(db, property_id, client_id, property_doc, assets, work_orders_12, issues_12, requirements)
     all_signals.extend(elec_signals)
-    recur_signals = await _rule_recurring_repairs(db, property_id, client_id, property_doc, assets, work_orders_12, issues_12)
-    all_signals.extend(recur_signals)
-    maint_signals = await _rule_maintenance_frequency(db, property_id, client_id, work_orders_12, issues_12)
-    all_signals.extend(maint_signals)
-
-    # Operational
-    sla_signals = await _rule_sla_breach(db, property_id, client_id, work_orders_breached_30, work_orders_breached_60)
-    all_signals.extend(sla_signals)
+    if predictive_ops_eligible:
+        recur_signals = await _rule_recurring_repairs(
+            db, property_id, client_id, property_doc, assets, qualifying_work_orders_12, qualifying_issues_12
+        )
+        all_signals.extend(recur_signals)
+        maint_signals = await _rule_maintenance_frequency(
+            db, property_id, client_id, qualifying_work_orders_12, qualifying_issues_12
+        )
+        all_signals.extend(maint_signals)
+        sla_signals = await _rule_sla_breach(db, property_id, client_id, work_orders_breached_30, work_orders_breached_60)
+        all_signals.extend(sla_signals)
+    else:
+        logger.debug(
+            "predictive operational risk suppressed client_id=%s property_id=%s metrics=%s",
+            client_id,
+            property_id,
+            predictive_ops_metrics,
+        )
 
     # Compliance
     comp_signals = await _rule_compliance_churn(db, property_id, client_id, requirements)
@@ -705,9 +727,10 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     merged_count = 0
 
     for s in unique_signals:
+        s["reasons"] = customer_safe_reasons(s.get("reasons") or [], s.get("risk_type") or "")
         key = stable_signal_key(s["risk_type"], s.get("asset_id"))
         first_reason = (s["reasons"][0] if s.get("reasons") else "").strip()
-        description = f"{s['risk_type']}: {first_reason}" if first_reason else s.get("recommended_action") or s["risk_type"]
+        description = first_reason or s.get("recommended_action") or "Risk signal requires review"
         suggested_actions = _suggested_actions_for_signal(s["signal_category"], s["risk_type"])
         refresh_fields: Dict[str, Any] = {
             "signal_category": s["signal_category"],

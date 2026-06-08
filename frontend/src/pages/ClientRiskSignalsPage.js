@@ -68,7 +68,7 @@ import {
 } from '../utils/riskPresentation';
 import { assetIdParts } from '../utils/assetDisplay';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
-import { resolveRiskSignalPrimaryKey } from '../utils/primaryActionResolver';
+import { resolveRiskSignalPrimaryKey, normalizeOperationalPrimaryKey } from '../utils/primaryActionResolver';
 import NextActionHero from '../components/operational/NextActionHero';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
 import { getTrackedRequirementsForProperty } from '../utils/portalRequirementAttention';
@@ -366,26 +366,34 @@ function ClientRiskSignalsPageInner() {
     const hasMaint = hasFeature('maintenance_workflows');
     const hasComp = hasFeature('compliance_engine');
     const { key, url, continuation } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
-    if (key === 'view_workflow' || continuation) {
+    const normalizedKey = normalizeOperationalPrimaryKey(key);
+
+    if (
+      url &&
+      (normalizedKey === 'view_workflow' ||
+        normalizedKey === 'assign_contractor' ||
+        normalizedKey === 'next_action' ||
+        continuation)
+    ) {
+      navigate(url.startsWith('/') ? url : `/${url}`);
+      return;
+    }
+    if (normalizedKey === 'view_workflow' || continuation) {
       const woId =
         s?.operational_continuation?.existing_work_order_id ||
         s?.propagation?.work_order_id;
-      if (url) {
-        navigate(url.startsWith('/') ? url : `/${url}`);
-        return;
-      }
       if (woId) {
         navigate(`/operations/jobs/${woId}`);
         return;
       }
     }
-    if (key === 'compliance_inspection') {
+    if (normalizedKey === 'compliance_inspection') {
       signalIdForArrangeRef.current = s.signal_id;
       setDrawerSignalId(s.signal_id);
       await openArrangeInspection(s.property_id);
       return;
     }
-    if (key === 'log_inspection_issue') {
+    if (normalizedKey === 'log_inspection_issue') {
       try {
         await clientAPI.logInspectionIssueFromRiskSignal(s.signal_id, {});
         toast.success('Logged for follow-up');
@@ -395,7 +403,7 @@ function ClientRiskSignalsPageInner() {
       }
       return;
     }
-    if (key === 'maintenance_job') {
+    if (normalizedKey === 'maintenance_job') {
       if (hasMaint) {
         try {
           const res = await clientAPI.createWorkOrderFromRiskSignal(s.signal_id, {});
@@ -419,7 +427,7 @@ function ClientRiskSignalsPageInner() {
       }
       return;
     }
-    if (key === 'maintenance_issue') {
+    if (normalizedKey === 'maintenance_issue') {
       try {
         const res = await clientAPI.createIssueFromRiskSignal(s.signal_id, {});
         toast.success('Logged for follow-up');

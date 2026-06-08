@@ -63,7 +63,15 @@ def build_continuation_envelope(
             "mode": "create",
             "has_active_lineage": False,
         }
-    label = _continuation_label_for_work_order(wo) if wo else "View workflow"
+    from services.compliance_workflow_service import next_job_actions
+
+    actions = next_job_actions(wo) if wo else []
+    first_action = actions[0] if actions else {}
+    label = str(
+        first_action.get("label")
+        or (_continuation_label_for_work_order(wo) if wo else "View workflow")
+    )
+    action_key = str(first_action.get("id") or "view_workflow")
     state = _continuation_state_for_work_order(wo) if wo else "ACTIVE"
     reason = user_safe_reason or (
         "An active maintenance workflow already exists for this operational objective. "
@@ -76,7 +84,7 @@ def build_continuation_envelope(
         "existing_issue_id": existing_issue_id,
         "continuation_state": state,
         "continuation_cta": {
-            "key": "view_workflow",
+            "key": action_key,
             "label": label,
             "url": _job_path(str(wo_id)),
         },

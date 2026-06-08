@@ -871,7 +871,9 @@ def build_envelope_for_rent_ledger(ledger: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def attach_cognition_to_issue(issue: Dict[str, Any]) -> Dict[str, Any]:
-    out = dict(issue)
+    from services.customer_operational_language_service import sanitize_issue_for_customer
+
+    out = sanitize_issue_for_customer(issue)
     out["operational_cognition"] = build_envelope_for_issue(issue)
     return out
 
@@ -957,7 +959,9 @@ def attach_cognition_to_work_order(wo: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def attach_cognition_to_issue_sync(issue: Dict[str, Any]) -> Dict[str, Any]:
-    out = dict(issue)
+    from services.customer_operational_language_service import sanitize_issue_for_customer
+
+    out = sanitize_issue_for_customer(issue)
     out["operational_cognition"] = build_envelope_for_issue(issue)
     return out
 

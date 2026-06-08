@@ -18,6 +18,8 @@ import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
+import NextActionHero from '../components/operational/NextActionHero';
+import { resolveIssuePrimaryAction, normalizeOperationalPrimaryKey } from '../utils/primaryActionResolver';
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
@@ -44,6 +46,7 @@ function ClientIssuesPageInner() {
   const [issueDetailData, setIssueDetailData] = useState(null);
   const [issueDetailLoading, setIssueDetailLoading] = useState(false);
   const [creatingWoFromIssue, setCreatingWoFromIssue] = useState(null);
+  const [issuePrimaryBusy, setIssuePrimaryBusy] = useState(false);
   const [planJobGate, setPlanJobGate] = useState(null);
   const createIssueInFlightRef = useRef(false);
   const createWoFromIssueInFlightRef = useRef(false);
@@ -123,6 +126,12 @@ function ClientIssuesPageInner() {
     if (!s) return '—';
     try { return new Date(s).toLocaleDateString(undefined, { dateStyle: 'short' }); } catch { return s; }
   };
+
+  const issueDisplayTitle = (iss) =>
+    iss?.customer_safe_title || iss?.customer_safe_description || iss?.description || 'Maintenance issue';
+
+  const issueSourceLabel = (iss) =>
+    iss?.source_display || (iss?.source === 'system' ? 'Compliance follow-up' : (iss?.source || '—'));
 
   const summary = useMemo(() => {
     const open = issues.filter((i) => (i.status || '').toLowerCase() !== 'closed');
@@ -244,6 +253,29 @@ function ClientIssuesPageInner() {
         createWoFromIssueInFlightRef.current = false;
         setCreatingWoFromIssue(null);
       });
+  };
+
+  const runIssuePrimaryAction = async (issue) => {
+    if (!issue?.issue_id) return;
+    const primary = resolveIssuePrimaryAction(issue);
+    if (!primary) return;
+    setIssuePrimaryBusy(true);
+    try {
+      const key = normalizeOperationalPrimaryKey(primary.key);
+      if (primary.url && (key === 'assign_contractor' || key === 'view_workflow' || primary.continuation)) {
+        navigate(primary.url.startsWith('/') ? primary.url : `/${primary.url}`);
+        return;
+      }
+      if (key === 'maintenance_job' || key === 'create_work_order') {
+        handleCreateWoFromIssue(issue.issue_id);
+        return;
+      }
+      if (key === 'review_evidence' && primary.url) {
+        navigate(primary.url.startsWith('/') ? primary.url : `/${primary.url}`);
+      }
+    } finally {
+      setIssuePrimaryBusy(false);
+    }
   };
 
   const applyFilter = (key, value) => {
@@ -424,13 +456,15 @@ function ClientIssuesPageInner() {
           ) : (
             <>
               <div className="md:hidden space-y-3">
-                {filteredBySearch.map((iss) => (
+                {filteredBySearch.map((iss) => {
+                  const primary = resolveIssuePrimaryAction(iss);
+                  return (
                   <div key={iss.issue_id} className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 shadow-sm">
                     <div className="flex justify-between gap-2 text-xs text-gray-500">
-                      <span className="font-mono truncate">{iss.issue_id?.slice(0, 12)}</span>
                       <span className="shrink-0">{formatDate(iss.created_at)}</span>
+                      <span>{issueSourceLabel(iss)}</span>
                     </div>
-                    <p className="font-medium text-midnight-blue text-sm break-words">{iss.description || '—'}</p>
+                    <p className="font-medium text-midnight-blue text-sm break-words">{issueDisplayTitle(iss)}</p>
                     <p className="text-sm text-gray-600 break-words">{propertyLabel(iss.property_id)}</p>
                     <div className="flex flex-wrap gap-2 text-xs">
                       <span className="px-2 py-1 rounded-md bg-slate-100 text-slate-800">{issueStatusLabel(iss.status)}</span>
@@ -443,18 +477,22 @@ function ClientIssuesPageInner() {
                       </span>
                     </div>
                     <div className="flex flex-col gap-2 pt-1">
-                      <Button className="w-full min-h-11 justify-center bg-midnight-blue hover:bg-midnight-blue/90" onClick={() => setIssueDetailDrawer(iss.issue_id)}>
-                        View details
-                      </Button>
-                      {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
-                        <Button variant="outline" className="w-full min-h-11 justify-center" onClick={() => handleCreateWoFromIssue(iss.issue_id)} disabled={creatingWoFromIssue === iss.issue_id}>
-                          {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4 mr-2 shrink-0" />}
-                          Start maintenance job
+                      {primary && iss.status !== 'closed' && (
+                        <Button
+                          className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90"
+                          onClick={() => runIssuePrimaryAction(iss)}
+                          disabled={creatingWoFromIssue === iss.issue_id || issuePrimaryBusy}
+                        >
+                          {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-4 h-4 animate-spin" /> : primary.label}
                         </Button>
                       )}
+                      <Button className="w-full min-h-11 justify-center" variant="outline" onClick={() => setIssueDetailDrawer(iss.issue_id)}>
+                        View details
+                      </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
@@ -475,11 +513,12 @@ function ClientIssuesPageInner() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBySearch.map((iss) => (
+                  {filteredBySearch.map((iss) => {
+                    const primary = resolveIssuePrimaryAction(iss);
+                    return (
                     <tr key={iss.issue_id} className="border-b hover:bg-gray-50">
                       <td className="p-2 max-w-[200px]">
-                        <span className="text-xs text-gray-500 block truncate">{iss.issue_id?.slice(0, 8)}</span>
-                        <span className="font-medium truncate block" title={iss.description}>{iss.description || '—'}</span>
+                        <span className="font-medium truncate block" title={issueDisplayTitle(iss)}>{issueDisplayTitle(iss)}</span>
                       </td>
                       <td className="p-2 text-gray-600">{propertyLabel(iss.property_id)}</td>
                       <td className="p-2 text-gray-600">{operationalLabelForToken(iss.category, { emptyLabel: '—' })}</td>
@@ -489,23 +528,23 @@ function ClientIssuesPageInner() {
                         </span>
                       </td>
                       <td className="p-2">{iss.priority_score != null ? iss.priority_score : '—'}</td>
-                      <td className="p-2 text-gray-600">{iss.asset_id ? (iss.asset_id.slice(0, 8) + '…') : 'Unlinked'}</td>
-                      <td className="p-2 text-gray-600">{(iss.source || '—').toLowerCase()}</td>
+                      <td className="p-2 text-gray-600">{iss.asset_id ? 'Linked' : 'Unlinked'}</td>
+                      <td className="p-2 text-gray-600">{issueSourceLabel(iss)}</td>
                       <td className="p-2">{issueStatusLabel(iss.status)}</td>
                       <td className="p-2"><ListCognitionChip entity={iss} /></td>
                       <td className="p-2 text-gray-600">{formatDate(iss.created_at)}</td>
                       <td className="p-2 text-gray-600">{iss.triage?.sla_hours != null ? `${iss.triage.sla_hours}h` : '—'}</td>
                       <td className="p-2 text-right">
-                        <Button size="sm" variant="ghost" className="min-h-9" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
-                        {iss.status !== 'ready_for_work_order' && iss.status !== 'closed' && (
-                          <Button size="sm" variant="outline" className="ml-1 min-h-9" onClick={() => handleCreateWoFromIssue(iss.issue_id)} disabled={creatingWoFromIssue === iss.issue_id}>
-                            {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wrench className="w-3 h-3 mr-1" />}
-                            Start job
+                        {primary && iss.status !== 'closed' && (
+                          <Button size="sm" className="min-h-9 bg-electric-teal hover:bg-electric-teal/90 text-white mr-1" onClick={() => runIssuePrimaryAction(iss)} disabled={creatingWoFromIssue === iss.issue_id || issuePrimaryBusy}>
+                            {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-3 h-3 animate-spin" /> : primary.label}
                           </Button>
                         )}
+                        <Button size="sm" variant="ghost" className="min-h-9" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -551,7 +590,12 @@ function ClientIssuesPageInner() {
                 <div className="flex gap-2 text-gray-500 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading…</div>
               ) : issueDetailData ? (
                 <>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">{issueDetailData.description || '—'}</p>
+                  <NextActionHero
+                    entity={issueDetailData}
+                    onPrimaryClick={() => runIssuePrimaryAction(issueDetailData)}
+                    primaryBusy={issuePrimaryBusy || creatingWoFromIssue === issueDetailData.issue_id}
+                  />
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap mb-4">{issueDisplayTitle(issueDetailData)}</p>
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-4">
                     <dt className="text-gray-500">Property</dt>
                     <dd>{propertyLabel(issueDetailData.property_id)}</dd>
@@ -562,11 +606,11 @@ function ClientIssuesPageInner() {
                     <dt className="text-gray-500">Priority score</dt>
                     <dd>{issueDetailData.priority_score != null ? issueDetailData.priority_score : '—'}</dd>
                     <dt className="text-gray-500">Source</dt>
-                    <dd>{(issueDetailData.source || '—').toLowerCase()}</dd>
+                    <dd>{issueSourceLabel(issueDetailData)}</dd>
                     <dt className="text-gray-500">Status</dt>
                     <dd>{issueDetailData.status ? issueStatusLabel(issueDetailData.status) : '—'}</dd>
                     <dt className="text-gray-500">Asset</dt>
-                    <dd>{issueDetailData.asset_id ? issueDetailData.asset_id.slice(0, 12) + '…' : 'Unlinked'}</dd>
+                    <dd>{issueDetailData.asset_id ? 'Linked' : 'Unlinked'}</dd>
                     <dt className="text-gray-500">Created</dt>
                     <dd>{formatDate(issueDetailData.created_at)}</dd>
                     <dt className="text-gray-500">SLA</dt>
@@ -585,12 +629,6 @@ function ClientIssuesPageInner() {
                     </p>
                   )}
                   <div className="flex flex-wrap gap-2 pt-2">
-                    {issueDetailData.status !== 'ready_for_work_order' && issueDetailData.status !== 'closed' && (
-                      <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90" onClick={() => handleCreateWoFromIssue(issueDetailData.issue_id)} disabled={creatingWoFromIssue === issueDetailData.issue_id}>
-                        {creatingWoFromIssue === issueDetailData.issue_id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wrench className="w-4 h-4 mr-1" />}
-                        {PORTAL_COPY.startMaintenanceJob}
-                      </Button>
-                    )}
                     <Button size="sm" variant="outline" onClick={() => { navigate(resolvePropertyPath(issueDetailData.property_id)); setIssueDetailDrawer(null); }}>
                       <Building2 className="w-4 h-4 mr-1" />
                       View property

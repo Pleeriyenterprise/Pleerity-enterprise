@@ -401,6 +401,50 @@ def sanitize_task_for_customer(task: Dict[str, Any], *, role: Optional[str] = No
     return sanitize_customer_visible_payload(task, role=role, surface="task")
 
 
+def sanitize_issue_for_customer(issue: Dict[str, Any], *, role: Optional[str] = None) -> Dict[str, Any]:
+    """Sanitise maintenance issue payloads for client portal list/detail surfaces."""
+    if not isinstance(issue, dict):
+        return issue
+    out = deepcopy(issue)
+    issue_ctx = _issue_context_from_payload(out)
+
+    safe_summary = derive_customer_safe_issue_summary(issue_ctx, role=role)
+    safe_detail = derive_customer_safe_issue_detail(issue_ctx, role=role)
+    out["customer_safe_title"] = safe_summary
+    out["customer_safe_description"] = safe_detail
+    out["description"] = safe_detail
+
+    triage = out.get("triage")
+    if isinstance(triage, dict):
+        reasoning = triage.get("reasoning") or []
+        if isinstance(reasoning, list):
+            triage["reasoning"] = [
+                translate_internal_operational_message(str(r), internal_code=issue_ctx.get("gap_kind"), role=role)
+                for r in reasoning
+                if str(r or "").strip()
+            ]
+
+    source = str(out.get("source") or "").strip().lower()
+    created_from = str(out.get("created_from") or "").strip().lower()
+    if source == "system" or created_from == "compliance":
+        out["source_display"] = "Compliance follow-up"
+    elif source == "tenant" or source == "tenant_request":
+        out["source_display"] = "Tenant report"
+    elif source == "client":
+        out["source_display"] = "Your report"
+    else:
+        out["source_display"] = "Maintenance"
+
+    out = suppress_internal_operational_fields(out)
+    for k in ("triggering_rule", "created_from", "operational_root_key", "gap_kind", "severity"):
+        out.pop(k, None)
+    meta = out.get("metadata")
+    if isinstance(meta, dict):
+        for k in POST_TRANSLATION_METADATA_STRIP:
+            meta.pop(k, None)
+    return out
+
+
 def translation_matrix_export() -> Dict[str, Any]:
     return {"version": 1, "mappings": _TRANSLATIONS}
 
