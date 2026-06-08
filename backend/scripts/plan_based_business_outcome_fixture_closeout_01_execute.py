@@ -116,6 +116,21 @@ FIXTURE_REGISTRY: Dict[str, Dict[str, Any]] = {
 PLAN_KEY = {"PLAN_1_SOLO": "solo", "PLAN_2_PORTFOLIO": "portfolio", "PLAN_3_PRO": "professional"}
 
 
+def effective_fixture_registry() -> Dict[str, Dict[str, Any]]:
+    """Harness registry with optional governed seed overrides (not production runtime)."""
+    reg = dict(FIXTURE_REGISTRY)
+    override = OUT / "governed_fixture_registry_runtime.json"
+    if override.is_file():
+        try:
+            data = json.loads(override.read_text(encoding="utf-8"))
+            for sid, row in (data.get("fixtures") or {}).items():
+                if sid in reg and row.get("client_id"):
+                    reg[sid]["candidate_client_ids"] = [row["client_id"]]
+        except (json.JSONDecodeError, OSError):
+            pass
+    return reg
+
+
 def utc() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -223,6 +238,7 @@ def probe_client(token: str) -> Dict[str, Any]:
     today = req("get", "/today/items", token).json()
     ent = req("get", "/client/entitlements", token).json()
     properties = props.get("properties") or []
+    active_properties = [p for p in properties if p.get("is_active", True) is not False]
     stats = score.get("stats") or dash.get("compliance_summary") or {}
     tasks = today.get("tasks") or {}
     urgent = list(tasks.get("urgent") or [])
@@ -230,19 +246,19 @@ def probe_client(token: str) -> Dict[str, Any]:
     total = int(stats.get("total_requirements") or stats.get("visible_requirement_count") or 0)
     satisfied = int(stats.get("satisfied") or stats.get("compliant") or stats.get("lifecycle_satisfied_count") or 0)
     jurisdictions: List[str] = []
-    for p in properties:
+    for p in active_properties:
         j = (p.get("jurisdiction") or p.get("portfolio_jurisdiction") or "").strip()
         if j and j not in jurisdictions:
             jurisdictions.append(j)
     rag = {"GREEN": 0, "AMBER": 0, "RED": 0}
-    for p in properties:
+    for p in active_properties:
         st = (p.get("compliance_status") or "").upper()
         if st in rag:
             rag[st] += 1
     sc = score.get("score_confidence") or {}
     return {
         "score": score.get("score"),
-        "property_count": len(properties),
+        "property_count": len(active_properties),
         "jurisdictions": jurisdictions,
         "requirement_total": total,
         "requirement_satisfied": satisfied,
@@ -515,8 +531,9 @@ def main() -> int:
     resilience["admin_login"] = login_err or "ok"
 
     fixtures: Dict[str, Any] = {}
+    fixture_registry = effective_fixture_registry()
     if admin_t:
-        for sid, spec in FIXTURE_REGISTRY.items():
+        for sid, spec in fixture_registry.items():
             print(f"resolve {sid}...")
             fixtures[sid] = resolve_fixture(admin_t, step_up, sid, spec, resilience)
             write_artifact("plan_fixture_setup_runtime.json", {"programme": PROGRAMME, "generated_at": utc(), "marker": MARKER, "fixtures": fixtures, "resilience": resilience})

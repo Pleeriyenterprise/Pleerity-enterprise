@@ -1,0 +1,194 @@
+{
+  "programme": "PLAN-OUTCOME-GOVERNED-STAGING-FIXTURE-SEEDING-01",
+  "generated_at": "2026-06-07T22:04:29.228540+00:00",
+  "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
+  "captures": [
+    {
+      "scenario": "A",
+      "slug": "solo_all_sat",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "solo_all_sat_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "solo_all_sat_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "solo_all_sat_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "solo_all_sat_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "solo_all_sat_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "solo_all_sat_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "solo_all_sat_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "scenario": "D",
+      "slug": "portfolio_all_same",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "portfolio_all_same_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "portfolio_all_same_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "portfolio_all_same_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "portfolio_all_same_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "portfolio_all_same_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "portfolio_all_same_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "portfolio_all_same_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "scenario": "E",
+      "slug": "portfolio_all_mixed",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "portfolio_all_mixed_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "portfolio_all_mixed_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "portfolio_all_mixed_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "portfolio_all_mixed_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "portfolio_all_mixed_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "portfolio_all_mixed_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "portfolio_all_mixed_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "scenario": "G",
+      "slug": "pro_all_same",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "pro_all_same_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "pro_all_same_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "pro_all_same_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "pro_all_same_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "pro_all_same_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "pro_all_same_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "pro_all_same_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    },
+    {
+      "scenario": "H",
+      "slug": "pro_all_mixed",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "pages": [
+        {
+          "page": "dashboard",
+          "screenshot": "pro_all_mixed_dashboard.png"
+        },
+        {
+          "page": "today",
+          "screenshot": "pro_all_mixed_today.png"
+        },
+        {
+          "page": "requirements",
+          "screenshot": "pro_all_mixed_requirements.png"
+        },
+        {
+          "page": "properties",
+          "screenshot": "pro_all_mixed_properties.png"
+        },
+        {
+          "page": "compliance_score",
+          "screenshot": "pro_all_mixed_compliance_score.png"
+        },
+        {
+          "page": "reports",
+          "screenshot": "pro_all_mixed_reports.png"
+        },
+        {
+          "page": "billing",
+          "screenshot": "pro_all_mixed_billing.png"
+        }
+      ],
+      "pass": true,
+      "status": "pass"
+    }
+  ],
+  "pass": true,
+  "screenshot_dir": "docs\\audit\\plan_based_business_outcome_runtime_audit_01\\closeout_screenshots"
+}

@@ -1,0 +1,119 @@
+{
+  "programme": "PLAN-OUTCOME-GOVERNED-STAGING-FIXTURE-SEEDING-01",
+  "generated_at": "2026-06-08T16:15:27.335843+00:00",
+  "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
+  "fixtures": {
+    "A": {
+      "label": "Solo exact \u2014 1 property, 1 jurisdiction, all satisfied, Today calm",
+      "plan_code": "PLAN_1_SOLO",
+      "base_client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "keep_property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+      "property_count": 1,
+      "jurisdictions": [
+        "England"
+      ],
+      "mixed_jurisdiction": false,
+      "evidence_method": "existing_satisfied_reference; archive surplus property",
+      "assurance": "verified_documents + declarations already satisfied",
+      "score_range": "85-95",
+      "today": "calm",
+      "reports": "no unresolved operational obligations",
+      "cleanup": "reactivate archived property only with governed marker audit",
+      "actions": [
+        "archive_surplus_properties"
+      ]
+    },
+    "D": {
+      "label": "Portfolio 5 same jurisdiction all satisfied",
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "base_client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "property_count": 5,
+      "jurisdictions": [
+        "England"
+      ],
+      "mixed_jurisdiction": false,
+      "evidence_method": "property_create + requirements_sync + governed declaration/document seed",
+      "assurance": "HUMAN_ACCEPTED documents + structured declarations",
+      "score_range": "80-95",
+      "today": "calm",
+      "reports": "no unresolved operational obligations",
+      "cleanup": "archive seeded properties tagged with marker",
+      "actions": [
+        "ensure_property_count",
+        "sync_requirements",
+        "satisfy_all_requirements"
+      ]
+    },
+    "E": {
+      "label": "Portfolio 5-10 mixed jurisdiction all satisfied",
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "base_client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "property_count": 6,
+      "jurisdictions": [
+        "England",
+        "Wales",
+        "Scotland"
+      ],
+      "mixed_jurisdiction": true,
+      "evidence_method": "property_create + jurisdiction patch + requirements_sync + governed seed",
+      "assurance": "mixed-jurisdiction registry obligations satisfied via valid paths",
+      "score_range": "75-92",
+      "today": "calm",
+      "reports": "no unresolved operational obligations",
+      "cleanup": "archive seeded properties tagged with marker",
+      "actions": [
+        "ensure_property_count",
+        "assign_mixed_jurisdictions",
+        "sync_requirements",
+        "satisfy_all_requirements"
+      ]
+    },
+    "G": {
+      "label": "Professional 3-5 same jurisdiction all satisfied",
+      "plan_code": "PLAN_3_PRO",
+      "base_client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "property_count": 4,
+      "jurisdictions": [
+        "Wales"
+      ],
+      "mixed_jurisdiction": false,
+      "plan_override_note": "commercial entitlement upgrade to PLAN_3_PRO if base is portfolio",
+      "evidence_method": "plan upgrade + property focus + governed seed",
+      "assurance": "Wales same-jurisdiction professional obligations",
+      "score_range": "80-94",
+      "today": "calm",
+      "reports": "no unresolved operational obligations",
+      "cleanup": "revert plan only via governed commercial entitlement",
+      "actions": [
+        "ensure_pro_plan",
+        "ensure_property_count",
+        "align_jurisdiction",
+        "sync_requirements",
+        "satisfy_all_requirements"
+      ]
+    },
+    "H": {
+      "label": "Professional 5-10 mixed jurisdiction all satisfied",
+      "plan_code": "PLAN_3_PRO",
+      "base_client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_count": 7,
+      "jurisdictions": [
+        "England",
+        "Wales",
+        "Scotland"
+      ],
+      "mixed_jurisdiction": true,
+      "evidence_method": "retain mixed portfolio + governed bulk satisfaction",
+      "assurance": "mixed professional portfolio all satisfied",
+      "score_range": "75-93",
+      "today": "calm",
+      "reports": "no unresolved operational obligations",
+      "cleanup": "do not delete pilot data; satisfaction reversible via audit",
+      "actions": [
+        "sync_requirements",
+        "satisfy_all_requirements"
+      ]
+    }
+  },
+  "pass": true
+}

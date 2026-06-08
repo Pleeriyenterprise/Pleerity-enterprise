@@ -1,0 +1,42 @@
+{
+  "programme": "PLAN-OUTCOME-GOVERNED-STAGING-FIXTURE-SEEDING-01",
+  "generated_at": "2026-06-08T16:24:51.219427+00:00",
+  "rows": [
+    {
+      "scenario": "A",
+      "expected_plan": "PLAN_1_SOLO",
+      "api_plan": "PLAN_1_SOLO",
+      "features_enabled": null,
+      "pass": true
+    },
+    {
+      "scenario": "D",
+      "expected_plan": "PLAN_2_PORTFOLIO",
+      "api_plan": "PLAN_2_PORTFOLIO",
+      "features_enabled": null,
+      "pass": true
+    },
+    {
+      "scenario": "E",
+      "expected_plan": "PLAN_2_PORTFOLIO",
+      "api_plan": "PLAN_2_PORTFOLIO",
+      "features_enabled": null,
+      "pass": true
+    },
+    {
+      "scenario": "G",
+      "expected_plan": "PLAN_3_PRO",
+      "api_plan": "PLAN_3_PRO",
+      "features_enabled": null,
+      "pass": true
+    },
+    {
+      "scenario": "H",
+      "expected_plan": "PLAN_3_PRO",
+      "api_plan": null,
+      "features_enabled": null,
+      "pass": false
+    }
+  ],
+  "pass": false
+}

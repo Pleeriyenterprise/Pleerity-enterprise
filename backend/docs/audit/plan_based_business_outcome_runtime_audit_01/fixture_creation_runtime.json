@@ -1,0 +1,63 @@
+{
+  "programme": "PLAN-OUTCOME-GOVERNED-STAGING-FIXTURE-SEEDING-01",
+  "generated_at": "2026-06-08T16:26:00.000000+00:00",
+  "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
+  "fixtures": {
+    "A": {
+      "scenario": "A",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "status": "seeded",
+      "actions": [
+        {
+          "archived": [
+            {
+              "property_id": "fedac677-cd2b-41fe-b5b8-b00f00ddfe67",
+              "action": "archived"
+            }
+          ],
+          "kept": "6b33492c-5e24-453b-bcde-49844fd4aede",
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "note": "Sophie Walker — archived surplus property; exact Solo all-satisfied fixture"
+    },
+    "D": {
+      "scenario": "D",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "status": "partial",
+      "actions": [
+        {
+          "target_count": 5,
+          "active_count": 5,
+          "created": 4,
+          "pass": true
+        }
+      ],
+      "pass": false,
+      "note": "5 England properties provisioned; satisfaction incomplete without STAGING_MONGO_URL document seed"
+    },
+    "E": {
+      "scenario": "E",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "status": "not_seeded",
+      "pass": false,
+      "note": "David Miller partial — 8 mixed props; requires governed satisfaction pass"
+    },
+    "G": {
+      "scenario": "G",
+      "client_id": "f68d4f4b-8007-43c6-84cb-a20c4ab69891",
+      "status": "not_seeded",
+      "pass": false,
+      "note": "Pro client 1 Wales property; needs 3-5 props + satisfaction"
+    },
+    "H": {
+      "scenario": "H",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "status": "partial",
+      "pass": false,
+      "note": "Nancy Wales pilot — 7 mixed props; satisfaction incomplete"
+    }
+  },
+  "pass": false
+}

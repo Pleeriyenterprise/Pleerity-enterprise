@@ -1,0 +1,19 @@
+{
+  "programme": "PLAN-OUTCOME-GOVERNED-STAGING-FIXTURE-SEEDING-01",
+  "generated_at": "2026-06-08T16:15:27.335843+00:00",
+  "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
+  "environment_guard": true,
+  "api_host": "pleerity-enterprise.onrender.com",
+  "dry_run": false,
+  "confirm_write": false,
+  "write_allowed": false,
+  "production_db_access": false,
+  "real_customer_mutation": false,
+  "staging_only": true,
+  "mongo_url_present": false,
+  "mongo_safety": "api_only_mode",
+  "idempotency_marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
+  "cleanup_notes": "Archive or marker-tagged properties; satisfaction via authority sync + recalc queue",
+  "audit_rows": "clients/properties/requirements/evidence/audit_logs tagged with fixture marker",
+  "pass": true
+}

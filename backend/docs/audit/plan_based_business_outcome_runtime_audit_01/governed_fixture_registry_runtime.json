@@ -1,0 +1,21 @@
+{
+  "programme": "PLAN-OUTCOME-GOVERNED-STAGING-FIXTURE-SEEDING-01",
+  "generated_at": "2026-06-07T22:10:00.000000+00:00",
+  "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
+  "fixtures": {
+    "A": {
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
+      "seeded_at": "2026-06-07T21:01:14.828204+00:00",
+      "pass": true,
+      "note": "Sophie Walker — archived surplus property; 1 active England property; all satisfied; Today calm"
+    },
+    "D": {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "marker": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602",
+      "seeded_at": "2026-06-07T21:44:16.079496+00:00",
+      "pass": false,
+      "note": "5 England properties provisioned; satisfaction blocked on document-only requirements without STAGING_MONGO_URL"
+    }
+  }
+}
