@@ -1,0 +1,112 @@
+{
+  "programme": "OPERATIONS-LIFECYCLE-POST-DEPLOY-VERIFY-01",
+  "deploy_commit": "625efb5d",
+  "deploy_commit_full": "625efb5dc322277196dc2e09e4572bcf6141f6fd",
+  "generated_at_utc": "2026-06-08T20:25:00.000000+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "deploy_proof": {
+    "backend_version_status": 200,
+    "commit_sha": "625efb5dc322277196dc2e09e4572bcf6141f6fd",
+    "backend_deploy_match": true,
+    "health_status": 200,
+    "frontend_bundle": {
+      "main_js": "/static/js/main.eaf0b76a.js",
+      "markers_present": [
+        "Start maintenance job",
+        "Assign contractor",
+        "create_work_order",
+        "maintenance_job",
+        "next-action-hero-primary"
+      ]
+    },
+    "pass": true
+  },
+  "onboarding_risk_signal": {
+    "fixture": "Sophie Walker (10b2ddba-e952-4484-91d1-a8f0299d0824)",
+    "risk_signals_status": 403,
+    "predictive_ops_absent": true,
+    "today_calm": true,
+    "today_urgent": 0,
+    "today_in_progress": 0,
+    "command_center_status": 200,
+    "browser_today_calm": true,
+    "browser_no_predictive_ops": true,
+    "browser_detail": "maintenance surfaces gated; no recurring/frequency predictive ops visible",
+    "pass": true
+  },
+  "cta_clickability": {
+    "risk_signal_list_cta": {
+      "label": "Start maintenance job",
+      "api_primary_key": "create_work_order",
+      "normalized_to": "maintenance_job",
+      "browser_result": "toast_job_started",
+      "silent_noop": false,
+      "pass": true
+    },
+    "risk_signal_api_create": {
+      "status": 200,
+      "work_order_created": true,
+      "pass": true
+    },
+    "pass": true
+  },
+  "contractor_assignment": {
+    "ready_for_work_order_count": 50,
+    "api_all_assign_exposed": true,
+    "browser_row_cta": {
+      "label": "Assign contractor",
+      "navigated_to": "https://pleerityenterprise.co.uk/operations/jobs/6371ae34-9a70-4804-a79b-fb3338f8ab70",
+      "pass": true
+    },
+    "browser_drawer_cta": {
+      "row_index": 2,
+      "navigated_to": "https://pleerityenterprise.co.uk/operations/jobs/6371ae34-9a70-4804-a79b-fb3338f8ab70",
+      "pass": true
+    },
+    "dead_end": false,
+    "pass": true
+  },
+  "language_cleanup": {
+    "sophie_forbidden_hits": [],
+    "nancy_issues_forbidden_hits": [],
+    "david_forbidden_hits": [],
+    "browser_issues_clean": true,
+    "source_display_example": "Your report",
+    "pass": true
+  },
+  "stale_predictive_signals": {
+    "nancy_stale_reason_signals": [],
+    "regen_triggered": false,
+    "stale_db_records": false,
+    "pass": true
+  },
+  "regression": {
+    "suites_run": 9,
+    "passed": 66,
+    "failed": 1,
+    "failed_test": "tests/test_operational_cognition_service.py::test_requirement_envelope_false_progression",
+    "failed_pre_existing": true,
+    "pass": true
+  },
+  "browser_artifacts": [
+    "post_deploy_screenshots/sophie_today_v2.png",
+    "post_deploy_screenshots/nancy_risk_final.png",
+    "post_deploy_screenshots/nancy_issues_final.png",
+    "browser_proof_final_20260608T201219Z.json",
+    "issues_drawer_proof_20260608T202123Z.json",
+    "post_deploy_verify_20260608T200343Z.json"
+  ],
+  "commit_push_result": {
+    "docs_updated": true,
+    "committed": false,
+    "pushed": false,
+    "note": "Verification artifact only; no commit requested"
+  },
+  "remaining_watchlist": [
+    "Legacy harness tmp_operations_lifecycle_post_deploy_verify_01.py browser steps need entitlements wait + issues-loaded wait; raw run can false-fail.",
+    "Issues drawer harness must scope View click to table row with Assign contractor (recurring-section View opens wrong drawer).",
+    "PropertyDetailPage issue drawer may still use legacy guards — out of scope for this deploy.",
+    "Pre-existing regression: test_requirement_envelope_false_progression (unrelated to 625efb5d).",
+    "Nancy staging has 50+ OPS-RESIL ready_for_work_order rows; workflow-correct Mark in progress vs Assign contractor varies by job state."
+  ]
+}
