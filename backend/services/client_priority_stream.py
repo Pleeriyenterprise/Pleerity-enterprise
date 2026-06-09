@@ -327,6 +327,8 @@ async def fetch_client_priority_actions(client_id: str, property_id_filter: Opti
                 act["triggering_rule"] = iss.get("triggering_rule")
                 act["operational_root_key"] = iss.get("operational_root_key")
                 act["maintenance_escalation_allowed"] = maint_ok
+                if iss.get("risk_signal_id"):
+                    act["related_risk_signal_id"] = iss.get("risk_signal_id")
                 actions.append(act)
     except Exception as e:
         logger.debug("Priority stream: issues fetch failed for client %s: %s", client_id, e)

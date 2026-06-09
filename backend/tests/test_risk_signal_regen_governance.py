@@ -35,6 +35,10 @@ async def test_collect_operational_debt_signal_ids_from_issue_and_wo():
 
     mock_db.maintenance_issues.find.return_value = issue_iter()
     mock_db.work_orders.find.return_value = wo_iter()
+    mock_db.clients.find_one = AsyncMock(return_value={"default_jurisdiction": "england"})
+    mock_db.properties.find_one = AsyncMock(
+        return_value={"property_id": "p1", "jurisdiction": "england"}
+    )
 
     debt = await collect_operational_debt_signal_ids(mock_db, "c1", "p1")
     assert debt == {"rs_issue_debt", "rs_wo_debt"}

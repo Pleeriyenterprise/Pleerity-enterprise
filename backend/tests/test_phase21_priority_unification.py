@@ -187,7 +187,7 @@ async def test_tenant_request_tasks_enter_unified_priority_stream():
     ), patch(
         "services.client_task_state_service.list_hidden_inbox_items", new=AsyncMock(return_value=[])
     ):
-        out = await uts.get_unified_tasks_for_client("phase21-client")
+        out = await uts.get_unified_tasks_for_client("phase21-client", bypass_cache=True)
     all_ids = [x["id"] for x in out["tasks"]["upcoming"] + out["tasks"]["in_progress"] + out["tasks"]["urgent"]]
     assert "tenant_request:tr1" in all_ids
 
@@ -226,7 +226,7 @@ async def test_requirement_like_task_reclassified_when_requirement_id_not_canoni
     ), patch(
         "services.client_task_state_service.list_hidden_inbox_items", new=AsyncMock(return_value=[])
     ):
-        out = await uts.get_unified_tasks_for_client("phase21-client")
+        out = await uts.get_unified_tasks_for_client("phase21-client", bypass_cache=True)
     rows = out["tasks"]["urgent"] + out["tasks"]["upcoming"] + out["tasks"]["in_progress"]
     assert len(rows) == 1
     row = rows[0]
@@ -271,7 +271,7 @@ async def test_requirement_like_task_keeps_requirement_source_when_canonical_val
     ), patch(
         "services.client_task_state_service.list_hidden_inbox_items", new=AsyncMock(return_value=[])
     ):
-        out = await uts.get_unified_tasks_for_client("phase21-client")
+        out = await uts.get_unified_tasks_for_client("phase21-client", bypass_cache=True)
     rows = out["tasks"]["urgent"] + out["tasks"]["upcoming"] + out["tasks"]["in_progress"]
     assert len(rows) == 1
     row = rows[0]
@@ -371,7 +371,7 @@ async def test_requirement_lifecycle_guard_hides_valid_shows_incomplete():
     ), patch(
         "services.client_task_state_service.list_hidden_inbox_items", new=AsyncMock(return_value=[])
     ):
-        out = await uts.get_unified_tasks_for_client("phase21-client")
+        out = await uts.get_unified_tasks_for_client("phase21-client", bypass_cache=True)
     rows = out["tasks"]["urgent"] + out["tasks"]["upcoming"] + out["tasks"]["in_progress"]
     ids = {r.get("requirement_id") for r in rows}
     assert "r-valid" not in ids

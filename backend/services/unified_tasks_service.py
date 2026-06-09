@@ -391,6 +391,8 @@ def _action_to_task(
         "related_work_order_id": a.get("related_work_order_id"),
         "related_issue_id": a.get("related_issue_id"),
     }
+    if a.get("related_risk_signal_id"):
+        task_metadata["related_risk_signal_id"] = a.get("related_risk_signal_id")
     if req_engine is not None:
         task_metadata["compliance_engine"] = req_engine
     ce_book = _compliance_execution_booking_meta(action_type, a)
@@ -1364,11 +1366,17 @@ async def get_unified_tasks_for_client(
         tasks=tasks,
         db=db,
     )
-    tasks = await _suppress_stale_compliance_issue_tasks(
+    from services.unified_tasks_operational_convergence import (
+        dedupe_operational_lineage_tasks,
+        suppress_stale_operational_residue_tasks,
+    )
+
+    tasks = await suppress_stale_operational_residue_tasks(
         client_id=client_id,
         tasks=tasks,
         db=db,
     )
+    tasks = dedupe_operational_lineage_tasks(tasks)
 
     overrides = await client_task_state.load_active_overrides(client_id, portal_user_id=portal_user_id)
     visible, snoozed = client_task_state.partition_tasks_by_override(tasks, overrides, now)

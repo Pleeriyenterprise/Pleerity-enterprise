@@ -535,6 +535,25 @@ async def _rule_compliance_churn(
     if current_bad_count < 1 and cycles < 2 and max_bad < 4:
         return []
 
+    # Recovered obligations with no active operational workflows — historical churn only.
+    if current_bad_count == 0:
+        open_wo = await db.work_orders.count_documents(
+            {
+                "client_id": client_id,
+                "property_id": property_id,
+                "status": {"$nin": ["COMPLETED", "VERIFIED", "CLOSED", "CANCELLED"]},
+            }
+        )
+        open_issues = await db.maintenance_issues.count_documents(
+            {
+                "client_id": client_id,
+                "property_id": property_id,
+                "status": {"$nin": ["closed", "cancelled", "resolved"]},
+            }
+        )
+        if open_wo == 0 and open_issues == 0:
+            return []
+
     reasons: List[str] = []
     if max_bad >= 3:
         reasons.append(

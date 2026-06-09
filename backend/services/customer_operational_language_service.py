@@ -148,6 +148,42 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
     },
 }
 
+_RISK_TYPE_ISSUE_SUMMARIES: Dict[str, str] = {
+    "Compliance Churn Risk": "Compliance follow-up still unresolved",
+    "Compliance Churn": "Compliance follow-up still unresolved",
+    "Recurring Repairs Risk": "Repeated repair history detected",
+    "Recurring Repairs": "Repeated repair history detected",
+    "Maintenance Frequency Risk": "Frequent maintenance issues detected on this property",
+    "Maintenance Frequency": "Frequent maintenance issues detected on this property",
+    "Electrical Risk": "Electrical safety evidence still needs review",
+    "Electrical": "Electrical safety evidence still needs review",
+    "SLA Breach Risk": "Open contractor job awaiting progress",
+    "SLA Breach": "Open contractor job awaiting progress",
+    "Boiler Failure Risk": "Heating system follow-up still needs attention",
+    "Damp/Moisture Risk": "Damp or moisture follow-up still needs attention",
+    "Certificate Expiry Soon": "Certificate renewal still needs planning",
+}
+
+
+def _risk_type_from_issue_description(description: str) -> Optional[str]:
+    desc = str(description or "").strip()
+    if not desc:
+        return None
+    head = desc.split(":", 1)[0].strip()
+    if head in _RISK_TYPE_ISSUE_SUMMARIES:
+        return head
+    low = desc.lower()
+    if "compliance churn" in low:
+        return "Compliance Churn Risk"
+    if "recurring repair" in low:
+        return "Recurring Repairs Risk"
+    if "maintenance frequency" in low:
+        return "Maintenance Frequency Risk"
+    if "electrical" in low and "risk" in low:
+        return "Electrical Risk"
+    return None
+
+
 _EVIDENCE_GAP_KINDS = frozenset(
     {
         "MISMATCHED_EVIDENCE",
@@ -218,6 +254,13 @@ def derive_customer_safe_issue_summary(
     *,
     role: Optional[str] = None,
 ) -> str:
+    if issue.get("risk_signal_id"):
+        explicit = str(issue.get("risk_type") or "").strip()
+        if explicit in _RISK_TYPE_ISSUE_SUMMARIES:
+            return _RISK_TYPE_ISSUE_SUMMARIES[explicit]
+        inferred = _risk_type_from_issue_description(str(issue.get("description") or ""))
+        if inferred and inferred in _RISK_TYPE_ISSUE_SUMMARIES:
+            return _RISK_TYPE_ISSUE_SUMMARIES[inferred]
     trig = str(issue.get("triggering_rule") or "")
     gap_kind = trig.split(":", 1)[-1].strip().upper() if trig.startswith("compliance_gap:") else None
     if not gap_kind:
@@ -233,9 +276,14 @@ def derive_customer_safe_issue_summary(
             return _TRANSLATIONS["MISSING_EVIDENCE"]["summary"]
         return row["summary"]
     desc = _strip_internal_leaks(str(issue.get("description") or ""))
+    inferred = _risk_type_from_issue_description(desc)
+    if inferred and inferred in _RISK_TYPE_ISSUE_SUMMARIES:
+        return _RISK_TYPE_ISSUE_SUMMARIES[inferred]
     if desc and not FORBIDDEN_CUSTOMER_TERMS.search(desc):
         first = desc.split("\n")[0].strip()
-        if len(first) > 12 and "Gap:" not in first:
+        if ":" in first and first.split(":", 1)[0].strip() in _RISK_TYPE_ISSUE_SUMMARIES:
+            return _RISK_TYPE_ISSUE_SUMMARIES[first.split(":", 1)[0].strip()]
+        if len(first) > 12 and "Gap:" not in first and "risk" not in first.lower():
             return first[:160]
     return "A maintenance item needs review on this property."
 

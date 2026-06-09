@@ -22,7 +22,14 @@ def stable_signal_key(risk_type: str, asset_id: Optional[str]) -> Tuple[str, Opt
 
 async def collect_operational_debt_signal_ids(db, client_id: str, property_id: str) -> Set[str]:
     """Signal IDs linked to unresolved propagated issues or work orders."""
+    from services.unified_tasks_operational_convergence import issue_is_stale_operational_residue
+
     debt: Set[str] = set()
+    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "default_jurisdiction": 1}) or {}
+    prop_doc = await db.properties.find_one(
+        {"client_id": client_id, "property_id": property_id},
+        {"_id": 0, "property_id": 1, "jurisdiction": 1, "tenancy_active": 1, "furnished": 1, "is_hmo": 1},
+    ) or {}
     async for issue in db.maintenance_issues.find(
         {
             "client_id": client_id,
@@ -30,8 +37,16 @@ async def collect_operational_debt_signal_ids(db, client_id: str, property_id: s
             "risk_signal_id": {"$exists": True, "$nin": [None, ""]},
             "status": {"$nin": list(ISSUE_TERMINAL_STATUSES)},
         },
-        {"_id": 0, "risk_signal_id": 1},
+        {"_id": 0},
     ):
+        if await issue_is_stale_operational_residue(
+            db,
+            client_id=client_id,
+            issue=issue,
+            client_doc=client_doc if isinstance(client_doc, dict) else {},
+            prop_doc=prop_doc if isinstance(prop_doc, dict) else {},
+        ):
+            continue
         sid = (issue.get("risk_signal_id") or "").strip()
         if sid:
             debt.add(sid)
