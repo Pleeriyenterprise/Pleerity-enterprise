@@ -66,6 +66,22 @@ def _raise_rent_value_error(code: str) -> None:
             status_code=404,
             detail=structured_error("TENANCY_NOT_FOUND", "Tenancy not found for this property."),
         )
+    if code == "NO_OCCUPANCY_FOR_TENANCY":
+        raise HTTPException(
+            status_code=400,
+            detail=structured_error(
+                code,
+                "No tenant is linked to this property. Link a tenant under Occupancy or Tenants before creating tenancy authority.",
+            ),
+        )
+    if code == "TENANCY_PROPERTY_MISMATCH":
+        raise HTTPException(
+            status_code=403,
+            detail=structured_error(
+                code,
+                "Selected tenancy does not belong to this property.",
+            ),
+        )
     if code in ("TENANCY_ID_REQUIRED", "EXTERNAL_PAYER_NAME_REQUIRED", "TENANCY_NOT_ACTIVE", "TENANCY_LINEAGE_INVALID"):
         raise HTTPException(status_code=400, detail=structured_error(code, code.replace("_", " ").title()))
     if code in (

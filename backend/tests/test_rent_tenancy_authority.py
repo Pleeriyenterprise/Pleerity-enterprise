@@ -161,6 +161,95 @@ async def test_payment_requires_ledger_or_full_authority():
 
 
 @pytest.mark.asyncio
+async def test_create_tenancy_requires_occupancy():
+    client_id = "c_no_occ"
+    property_id = "p_no_occ"
+    mock_db = MagicMock()
+    tenancies = MagicMock()
+    tenancies.find_one = AsyncMock(return_value=None)
+    props = MagicMock()
+    props.find_one = AsyncMock(return_value={"property_id": property_id, "client_id": client_id})
+    portal_users = MagicMock()
+    portal_users.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+    assignments = MagicMock()
+    assignments.find = MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[])))
+    mock_db.properties = props
+    mock_db.portal_users = portal_users
+    mock_db.tenant_assignments = assignments
+    mock_db.__getitem__ = MagicMock(return_value=tenancies)
+
+    with patch("services.rent_tenancy_authority_service.database.get_db", return_value=mock_db):
+        with pytest.raises(ValueError, match="NO_OCCUPANCY_FOR_TENANCY"):
+            await tenancy_authority.resolve_or_create_active_tenancy(
+                client_id,
+                property_id,
+                rent_tracking_enabled=True,
+            )
+
+
+@pytest.mark.asyncio
+async def test_schedule_rejects_cross_property_tenancy():
+    mock_db = MagicMock()
+    mock_db.properties.find_one = AsyncMock(
+        return_value={"property_id": "p1", "client_id": "c1"}
+    )
+    tenancies_coll = MagicMock()
+    tenancies_coll.find_one = AsyncMock(
+        return_value={
+            "tenancy_id": "pty_other",
+            "client_id": "c1",
+            "property_id": "p2",
+            "status": "active",
+        }
+    )
+    mock_db.__getitem__ = MagicMock(
+        side_effect=lambda k: tenancies_coll if k == "property_tenancies" else MagicMock()
+    )
+
+    with patch("services.rent_tenancy_authority_service.database.get_db", return_value=mock_db):
+        with pytest.raises(ValueError, match="TENANCY_PROPERTY_MISMATCH"):
+            await tenancy_authority.validate_schedule_authority(
+                "c1",
+                {
+                    "property_id": "p1",
+                    "tenancy_id": "pty_other",
+                    "expected_amount_minor": 100000,
+                    "start_date": "2026-01-01",
+                },
+            )
+
+
+@pytest.mark.asyncio
+async def test_duplicate_active_tenancy_returns_existing():
+    client_id = "c_dup"
+    property_id = "p_dup"
+    existing = {
+        "tenancy_id": "pty_existing",
+        "client_id": client_id,
+        "property_id": property_id,
+        "status": "active",
+        "rent_tracking_enabled": False,
+    }
+    mock_db = MagicMock()
+    tenancies = MagicMock()
+    tenancies.find_one = AsyncMock(return_value=existing)
+    tenancies.update_one = AsyncMock()
+    props = MagicMock()
+    props.find_one = AsyncMock(return_value={"property_id": property_id, "client_id": client_id})
+    mock_db.properties = props
+    mock_db.__getitem__ = MagicMock(return_value=tenancies)
+
+    with patch("services.rent_tenancy_authority_service.database.get_db", return_value=mock_db):
+        doc = await tenancy_authority.resolve_or_create_active_tenancy(
+            client_id,
+            property_id,
+            rent_tracking_enabled=True,
+        )
+    assert doc["tenancy_id"] == "pty_existing"
+    tenancies.insert_one.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_new_tenancy_links_lineage_after_move_out():
     """Replacement tenancy after move-out must reference prior tenancy lineage."""
     client_id = "c_lineage"
@@ -190,6 +279,7 @@ async def test_new_tenancy_links_lineage_after_move_out():
         doc = await tenancy_authority.resolve_or_create_active_tenancy(
             client_id,
             property_id,
+            tenant_ids=["tenant_1"],
             tenant_display_name="New tenant",
             rent_tracking_enabled=False,
             actor_id="actor-1",

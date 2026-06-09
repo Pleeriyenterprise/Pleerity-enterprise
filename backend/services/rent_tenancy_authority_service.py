@@ -114,8 +114,17 @@ async def resolve_or_create_active_tenancy(
         if not display:
             display = _tenant_display_from_assignments(assignments, tenant_map)
 
+    if not resolved_tenant_ids:
+        raise ValueError("NO_OCCUPANCY_FOR_TENANCY")
+
     if not display:
-        display = "Occupancy tenant"
+        display = _tenant_display_from_assignments(
+            [{"tenant_id": tid} for tid in resolved_tenant_ids],
+            {t["portal_user_id"]: t for t in await db.portal_users.find(
+                {"client_id": client_id, "portal_user_id": {"$in": resolved_tenant_ids}},
+                {"_id": 0, "password_hash": 0},
+            ).to_list(20)},
+        )
 
     parent_row = await db[COLLECTION_TENANCIES].find_one(
         {
@@ -266,8 +275,10 @@ async def validate_schedule_authority(
         raise ValueError("TENANCY_ID_REQUIRED")
 
     tenancy = await get_tenancy(tenancy_id, client_id)
-    if not tenancy or tenancy.get("property_id") != property_id:
+    if not tenancy:
         raise ValueError("TENANCY_NOT_FOUND")
+    if tenancy.get("property_id") != property_id:
+        raise ValueError("TENANCY_PROPERTY_MISMATCH")
     if tenancy.get("status") in (TENANCY_STATUS_MOVED_OUT, TENANCY_STATUS_ARCHIVED):
         raise ValueError("TENANCY_NOT_ACTIVE")
     return prop, tenancy, False
@@ -295,6 +306,8 @@ async def assert_payment_authority(
         raise ValueError("PAYMENT_AUTHORITY_INCOMPLETE")
     await _load_property(db, client_id, property_id)
     tenancy = await get_tenancy(tenancy_id, client_id)
-    if not tenancy or tenancy.get("property_id") != property_id:
+    if not tenancy:
         raise ValueError("TENANCY_NOT_FOUND")
+    if tenancy.get("property_id") != property_id:
+        raise ValueError("TENANCY_PROPERTY_MISMATCH")
     raise ValueError("LEDGER_ID_REQUIRED")
