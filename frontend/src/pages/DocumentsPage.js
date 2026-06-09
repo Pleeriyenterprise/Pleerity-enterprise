@@ -307,7 +307,7 @@ const DocumentsPage = () => {
     try {
       const [docsData, propsData] = await Promise.all([
         fetchOperational(OPERATIONAL_CACHE_KEYS.documents, () =>
-          api.get('/documents', { params: { projection: 'list', limit: 120 } }).then((r) => r.data),
+          api.get('/documents', { params: { projection: 'full', limit: 120 } }).then((r) => r.data),
         ).then((r) => r.data),
         fetchOperational(OPERATIONAL_CACHE_KEYS.properties, () =>
           clientAPI.getProperties().then((r) => r.data),

@@ -2,6 +2,7 @@
  * Operational document visibility — queue vs property evidence registry grouping.
  * Consumes canonical backend projections when present; falls back to client derivation.
  */
+import { linkageReconciliationRequired } from './documentClientPresentation';
 
 /** @typedef {'attention' | 'all' | 'active_evidence' | 'operational_attachments' | 'historical'} DocumentsQueueView */
 
@@ -27,7 +28,9 @@ export const REGISTRY_SECTION_ORDER = [
 export function documentAttentionRequired(doc = {}) {
   if (doc.document_attention_required === true) return true;
   const vis = String(doc.document_client_visibility_state || '').toUpperCase();
-  return vis === DOCUMENT_VISIBILITY_STATES.ATTENTION_REQUIRED;
+  if (vis === DOCUMENT_VISIBILITY_STATES.ATTENTION_REQUIRED) return true;
+  if (linkageReconciliationRequired(doc)) return true;
+  return false;
 }
 
 /**
