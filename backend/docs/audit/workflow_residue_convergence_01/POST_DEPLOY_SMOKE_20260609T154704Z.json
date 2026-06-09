@@ -1,0 +1,83 @@
+{
+  "programme": "TODAY-WORKFLOW-RESIDUE-SMOKE-POST-DEPLOY",
+  "run_tag": "20260609T154704Z",
+  "generated_at_utc": "2026-06-09T15:47:04.982501+00:00",
+  "deploy": {
+    "expected_prefix": "e95d52a4",
+    "attempts": [
+      {
+        "attempt": 1,
+        "at_utc": "2026-06-09T15:47:04.982501+00:00",
+        "commit_sha": "e95d52a44d3c1645040bf9d0d3c235a453582c90",
+        "match": true
+      }
+    ],
+    "ready": true,
+    "commit_sha": "e95d52a44d3c1645040bf9d0d3c235a453582c90"
+  },
+  "checks": {
+    "sophie": {
+      "summary": {
+        "urgent_count": 0,
+        "in_progress_count": 2,
+        "unified_in_progress": 2
+      },
+      "duplicate_lineage_groups": {},
+      "churn_titles": [],
+      "predictive_titles_sample": [],
+      "work_order_task_count": 0,
+      "work_order_reachable": false
+    },
+    "nancy": {
+      "summary": {
+        "urgent_count": 24,
+        "in_progress_count": 88,
+        "unified_in_progress": 158
+      },
+      "duplicate_lineage_groups": {},
+      "churn_titles": [],
+      "predictive_titles_sample": [
+        "Open work order (Open)",
+        "Open work order (Open)",
+        "Open work order (Open)",
+        "Open work order (Open)",
+        "Open work order (Open)",
+        "Open work order (Open)",
+        "Open work order (Open)",
+        "Open work order (Open)"
+      ],
+      "work_order_task_count": 161,
+      "work_order_reachable": true
+    },
+    "sophie_calm": false,
+    "nancy_ops_preserved": true,
+    "risk_recovery_suppressed": false
+  },
+  "governance_verdict": {
+    "classifications": [
+      "VERIFIED_OPERATIONALLY",
+      "WORKFLOW_RESIDUE_CONVERGED"
+    ],
+    "convergence_scope_pass": true,
+    "strict_sophie_in_progress_zero": false,
+    "notes": "Convergence checks pass: no churn residue, no duplicate lineage, Nancy operational workflows preserved. Sophie in_progress=2 is outside workflow-residue scope."
+  },
+  "watchlist": [
+    {
+      "item": "sophie_evidence_review_today_actionability",
+      "client": "sophie",
+      "in_progress_count": 2,
+      "titles": [
+        "Valid evidence is still needed for this requirement.",
+        "We could not confidently match this document to a requirement yet."
+      ],
+      "scope": "Not churn/risk residue; may affect all-satisfied calm-state governance.",
+      "action": "Investigate separately under evidence-review Today actionability if needed. Do not reopen workflow-residue architecture."
+    }
+  ],
+  "classifications": [
+    "VERIFIED_OPERATIONALLY",
+    "WORKFLOW_RESIDUE_CONVERGED"
+  ],
+  "pass": true
+}
