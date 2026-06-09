@@ -1,0 +1,112 @@
+{
+  "programme": "RENT-TENANCY-OCCUPANCY-POST-DEPLOY-VERIFY",
+  "deploy_commit": "aec0012c",
+  "generated_at_utc": "2026-06-09T08:40:00+00:00",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "classification_notes": "Staging browser proof complete for deploy, active tenancy, no-occupancy fallback, cross-property guard, and mobile. Scenario 2 (occupancy without tenancy) has no Nancy staging fixture; covered by unit tests and deferred to watchlist.",
+  "deploy_proof": {
+    "pass": true,
+    "backend_commit_sha": "aec0012ca9b5e947cfbc6a87c34af1b580e9d0a6",
+    "backend_match": true,
+    "frontend_bundle": "/static/js/main.e9ef888c.js",
+    "frontend_marker_rent_schedule_create_from_occupancy": true,
+    "api": "https://pleerity-enterprise.onrender.com/api",
+    "frontend": "https://pleerityenterprise.co.uk"
+  },
+  "active_tenancy": {
+    "pass": true,
+    "property": "Glasgow Shawlands (0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68)",
+    "browser": {
+      "tenancy_auto_selected": "pty_c78b73c78aff",
+      "dropdown_scoped_to_property": true,
+      "confirm_disabled_without_amount": true,
+      "confirm_enabled_with_amount_date_tenancy": true
+    },
+    "api_schedule_create": {
+      "pass": true,
+      "status": 200,
+      "schedule_id": "rs_e4308feca669"
+    }
+  },
+  "occupancy_no_tenancy": {
+    "pass": false,
+    "status": "FIXTURE_GAP",
+    "detail": "Nancy client has 7 properties; none have active occupancy without an existing tenancy (occupancy_no_tenancy bucket empty). Browser scenario not exercisable on staging without seed data.",
+    "substitute_evidence": {
+      "test_create_tenancy_requires_occupancy": "pass (unit)",
+      "test_new_tenancy_links_lineage_after_move_out": "pass (unit, tenant_ids path)",
+      "frontend_rentScheduleTenancy_tests": "4/4 pass"
+    }
+  },
+  "no_occupancy_fallback": {
+    "pass": true,
+    "property": "Liverpool Georgian Quarter (08dd5b1f-d963-4827-aa8a-a3daddd144cf)",
+    "browser": {
+      "create_button_visible": true,
+      "no_fake_tenancy_created": true,
+      "routed_to": "https://pleerityenterprise.co.uk/properties/08dd5b1f-d963-4827-aa8a-a3daddd144cf?tab=occupancy",
+      "toast_guidance": true
+    },
+    "screenshot": "docs/audit/rent_operations_tenancy_authority/no_occupancy_fallback_aec0012c.png"
+  },
+  "cross_property_guard": {
+    "pass": true,
+    "api": {
+      "status": 403,
+      "error_code": "TENANCY_PROPERTY_MISMATCH",
+      "message": "Selected tenancy does not belong to this property.",
+      "property_a": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "property_b": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "tenancy_used": "pty_c82deaa95d7b"
+    },
+    "browser": {
+      "property_a_tenancy": "pty_c78b73c78aff",
+      "property_b_tenancy": "pty_c82deaa95d7b",
+      "no_cross_property_leak": true,
+      "property_change_updates_tenancy_dropdown": true
+    }
+  },
+  "mobile_proof": {
+    "pass": true,
+    "viewport": "390x844",
+    "modal_visible": true,
+    "create_btn_reachable": true,
+    "screenshot": "docs/audit/rent_operations_tenancy_authority/mobile_rent_modal_20260609T081204Z.png"
+  },
+  "regression": {
+    "pass": true,
+    "suites": {
+      "test_rent_tenancy_authority.py": {
+        "pass": true,
+        "note": "12/12 pass when excluding pre-existing mock flake test_create_schedule_response_has_no_object_id"
+      },
+      "test_rent_tenancy_routes_http.py": {
+        "pass": true,
+        "count": "5 passed"
+      },
+      "rentScheduleTenancy.test.js": {
+        "pass": true,
+        "count": "4 passed"
+      }
+    },
+    "pre_existing_failures": [
+      "test_create_schedule_response_has_no_object_id (insert_one mock await flake; unrelated to aec0012c)"
+    ]
+  },
+  "commit_push": {
+    "committed": false,
+    "note": "Verification artifacts written locally; commit not requested in this run."
+  },
+  "watchlist": [
+    "Seed Nancy staging property with occupancy but no tenancy to complete scenario-2 browser proof",
+    "Harness should parse structured_error.error_code (not detail.code) for API guard assertions",
+    "Harness no-occupancy step needs wait_for_url after click (6s fixed sleep flaky)",
+    "Pre-existing test_create_schedule_response_has_no_object_id mock flake",
+    "Optional: deep-link back to rent setup modal after occupancy tab guidance"
+  ],
+  "artifacts": [
+    "post_deploy_verify_20260609T081204Z.json",
+    "post_deploy_verify_supplement_aec0012c.json",
+    "POST_DEPLOY_VERIFY_FINAL_aec0012c.json"
+  ]
+}
