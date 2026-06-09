@@ -190,6 +190,7 @@ class ProfessionalReportGenerator:
         client_id: str,
         include_details: bool = True,
         artifact_lineage: Optional[Dict[str, Any]] = None,
+        property_id: Optional[str] = None,
     ) -> io.BytesIO:
         """Generate a professionally formatted compliance summary PDF.
 
@@ -210,8 +211,14 @@ class ProfessionalReportGenerator:
         
         # Fetch data
         client = await db.clients.find_one({"client_id": client_id}, {"_id": 0})
-        properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
-        requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(10000)
+        prop_query: Dict[str, Any] = {"client_id": client_id}
+        if property_id:
+            prop_query["property_id"] = property_id
+        properties = await db.properties.find(prop_query, {"_id": 0}).to_list(1000)
+        req_query: Dict[str, Any] = {"client_id": client_id}
+        if property_id:
+            req_query["property_id"] = property_id
+        requirements = await db.requirements.find(req_query, {"_id": 0}).to_list(10000)
         from services.requirement_client_runtime_surface import compute_client_portal_requirement_stats
         from services.reporting_semantics_v1 import load_score_projection_portal_rows
 
@@ -275,6 +282,13 @@ class ProfessionalReportGenerator:
         
         client_row = client or {}
         crn = client_row.get("customer_reference") or client_id
+        scope_label = "property" if property_id else "portfolio"
+        scope_detail = ""
+        if property_id and properties:
+            p0 = properties[0]
+            scope_detail = ", ".join(
+                x for x in [p0.get("address_line_1"), p0.get("postcode")] if x
+            ) or property_id
         append_report_cover_block(
             elements,
             report_title="Compliance Summary Report",
@@ -285,8 +299,27 @@ class ProfessionalReportGenerator:
                 f"<b>Account:</b> {_professional_compliance_summary_escape_xml(branding.get('company_name') or '')}"
                 f" &nbsp;|&nbsp; <b>CRN:</b> {_professional_compliance_summary_escape_xml(crn)}"
             ),
-            scope_line="<b>Scope:</b> portfolio",
+            scope_line=(
+                f"<b>Scope:</b> {scope_label}"
+                + (f" — {_professional_compliance_summary_escape_xml(scope_detail)}" if scope_detail else "")
+            ),
         )
+        from services.report_pdf_templates import (
+            append_action_priority_section,
+            append_central_evidence_matrix,
+            append_exception_summaries_section,
+            append_frozen_snapshot_notice,
+            append_intended_use_section,
+            append_readiness_indicators_section,
+            build_matrix_rows,
+            classify_exceptions,
+            compute_readiness_indicators,
+            create_enterprise_table_style,
+            group_by_action_priority,
+        )
+
+        append_frozen_snapshot_notice(elements, generated_at_iso=now.isoformat(), styles=styles)
+        append_intended_use_section(elements, report_kind="compliance_summary", styles=styles)
 
         snap_ts = now.strftime("%d %B %Y at %H:%M UTC")
         elements.append(
@@ -373,8 +406,62 @@ class ProfessionalReportGenerator:
         • <b>{missing_evidence}</b> need evidence or confirmation (missing / pending within that same scope, at export time)
         """
         elements.append(Paragraph(summary_text, styles["body"]))
-        elements.append(Spacer(1, 20))
-        
+        if overdue == 0 and missing_evidence == 0:
+            elements.append(
+                Paragraph(
+                    "No mandatory compliance gaps were detected within the export scope at generation time.",
+                    styles["small"],
+                )
+            )
+        else:
+            elements.append(
+                Paragraph(
+                    "Action is required for overdue or missing-evidence obligations listed in the evidence matrix.",
+                    styles["small"],
+                )
+            )
+        elements.append(
+            Paragraph(
+                "Evidence remains subject to independent verification of source documents and issuing authorities.",
+                styles["small"],
+            )
+        )
+        elements.append(Spacer(1, 16))
+
+        ent_table_style = create_enterprise_table_style(styles)
+        matrix_rows = build_matrix_rows(
+            requirements=portal_reqs,
+            properties=properties,
+            client_doc=client_doc,
+            now=now,
+            property_filter_id=property_id,
+        )
+        readiness = compute_readiness_indicators(
+            requirements=portal_reqs,
+            properties=properties,
+            client_doc=client_doc,
+            now=now,
+        )
+        exceptions = classify_exceptions(
+            requirements=portal_reqs,
+            properties=properties,
+            client_doc=client_doc,
+            now=now,
+        )
+        append_readiness_indicators_section(
+            elements, indicators=readiness, styles=styles, table_style=ent_table_style
+        )
+        append_central_evidence_matrix(
+            elements, matrix_rows=matrix_rows, styles=styles, table_style=ent_table_style
+        )
+        append_action_priority_section(
+            elements, groups=group_by_action_priority(matrix_rows), styles=styles
+        )
+        append_exception_summaries_section(
+            elements, exceptions=exceptions, styles=styles, table_style=ent_table_style
+        )
+        elements.append(Spacer(1, 12))
+
         # Property Status Table
         elements.append(Paragraph("Property Compliance Status", styles["heading"]))
         

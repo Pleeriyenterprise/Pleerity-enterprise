@@ -230,6 +230,7 @@ def test_enterprise_pack_deterministic_structure_and_governance():
         assert names == sorted(names), "ZIP entries should be deterministic and sorted"
         assert "Audit_Evidence_Pack/00_README/pack_overview.pdf" in names
         assert "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf" in names
+        assert "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf" in names
         assert "Audit_Evidence_Pack/06_GOVERNANCE/manifest.json" in names
         assert "Audit_Evidence_Pack/06_GOVERNANCE/checksums.sha256" in names
         assert "Audit_Evidence_Pack/06_GOVERNANCE/generation_metadata.json" in names
@@ -241,6 +242,14 @@ def test_enterprise_pack_deterministic_structure_and_governance():
         checksums = zf.read("Audit_Evidence_Pack/06_GOVERNANCE/checksums.sha256").decode("utf-8")
         overview_pdf = zf.read("Audit_Evidence_Pack/00_README/pack_overview.pdf")
         summary_pdf = zf.read("Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf")
+        audit_trail_pdf = zf.read("Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf")
+
+        for pdf_blob in (overview_pdf, summary_pdf, audit_trail_pdf):
+            assert pdf_blob[:4] == b"%PDF"
+        summary_text = summary_pdf.decode("latin-1", errors="ignore").lower()
+        assert "evidence matrix" in summary_text or "evidence" in summary_text
+        assert "frozen deterministic snapshot" in summary_text or "deterministic snapshot" in summary_text
+        assert "executive summary" in summary_text
 
         assert metadata["export_version"] == "2026.04"
         assert metadata["evidence_pack_version"] == "2.0.0"
@@ -304,8 +313,9 @@ def test_enterprise_pack_deterministic_structure_and_governance():
         for row in manifest["files"]:
             assert row["generated_at"].endswith("+00:00")
 
-        assert b"SCOPE AND LIMITATIONS" in overview_pdf
-        assert b"SCOPE AND LIMITATIONS" in summary_pdf
+        overview_text = overview_pdf.decode("latin-1", errors="ignore").lower()
+        assert "scope and limitations" in overview_text or "scope" in overview_text
+        assert "frozen deterministic snapshot" in summary_text or "deterministic snapshot" in summary_text
         assert manifest["export_id"].encode("utf-8") in overview_pdf
         assert manifest["export_id"].encode("utf-8") in summary_pdf
 

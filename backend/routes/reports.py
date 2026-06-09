@@ -4,7 +4,7 @@ import csv
 import io
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Any, Dict, Optional, List
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -1117,6 +1117,7 @@ async def toggle_report_schedule(request: Request, schedule_id: str):
 async def download_compliance_summary_pdf(
     request: Request,
     artifact_id: Optional[str] = None,
+    property_id: Optional[str] = None,
 ):
     """Download professional compliance summary PDF (immutable artifact per generation).
 
@@ -1165,8 +1166,17 @@ async def download_compliance_summary_pdf(
         db = database.get_db()
         client_id = user["client_id"]
         client = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
-        properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
-        requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(10000)
+        prop_query: Dict[str, Any] = {"client_id": client_id}
+        if property_id:
+            prop_query["property_id"] = property_id
+            prop_row = await db.properties.find_one(prop_query, {"_id": 0, "property_id": 1})
+            if not prop_row:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+        properties = await db.properties.find(prop_query, {"_id": 0}).to_list(1000)
+        req_query: Dict[str, Any] = {"client_id": client_id}
+        if property_id:
+            req_query["property_id"] = property_id
+        requirements = await db.requirements.find(req_query, {"_id": 0}).to_list(10000)
         portal_reqs = await load_score_projection_portal_rows(
             db,
             client_id=client_id,
@@ -1174,22 +1184,25 @@ async def download_compliance_summary_pdf(
             properties=properties,
             requirements=requirements,
         )
+        scope = "property" if property_id else "portfolio"
         report_data = {
             "client": client,
             "properties": properties,
             "requirements": portal_reqs,
+            "property_id": property_id,
             "now_iso": datetime.now(timezone.utc).isoformat(),
         }
         embed_lineage = prepare_artifact_identity(
             client_id=client_id,
             report_type="professional_compliance",
-            scope="portfolio",
+            scope=scope,
             report_data=report_data,
         )
         pdf_buffer = await professional_report_generator.generate_compliance_summary_pdf(
             client_id=client_id,
             include_details=True,
             artifact_lineage=embed_lineage,
+            property_id=property_id,
         )
         pdf_bytes = pdf_buffer.getvalue()
         now = datetime.now(timezone.utc)
@@ -1199,7 +1212,7 @@ async def download_compliance_summary_pdf(
             report_type="professional_compliance",
             pdf_bytes=pdf_bytes,
             filename=filename,
-            scope="portfolio",
+            scope=scope,
             report_data=report_data,
             preset_artifact_id=embed_lineage.get("artifact_id"),
             preset_lineage=embed_lineage,

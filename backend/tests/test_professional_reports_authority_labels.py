@@ -139,11 +139,26 @@ async def test_compliance_summary_pdf_snapshot_honesty_and_headline_note(monkeyp
             "score_coverage": {},
         }
 
+    portal_rows = [
+        {
+            "requirement_id": "r1",
+            "property_id": "p1",
+            "requirement_type": "EPC",
+            "status": "COMPLIANT",
+            "due_date": (now + timedelta(days=120)).isoformat(),
+            "client_surface_visible": True,
+            "requirement_generation_source": REQUIREMENT_GENERATION_SOURCE_DB_RULE,
+        }
+    ]
     gen = ProfessionalReportGenerator()
     with patch("services.professional_reports.database.get_db", return_value=db), patch(
         "services.branding_resolver_service.resolve_branding",
         new_callable=AsyncMock,
         return_value=branding_profile,
+    ), patch(
+        "services.reporting_semantics_v1.load_score_projection_portal_rows",
+        new_callable=AsyncMock,
+        return_value=portal_rows,
     ), patch(
         "services.compliance_score.calculate_compliance_score",
         new_callable=AsyncMock,

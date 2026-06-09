@@ -340,6 +340,86 @@ def _top_risk_drivers(
     return out[:limit]
 
 
+def _append_evidence_readiness_governance_sections(
+    elements: List[Any],
+    *,
+    requirements: List[dict],
+    properties: List[dict],
+    client: dict,
+    now: datetime,
+    styles: Dict[str, Any],
+    property_filter_id: Optional[str] = None,
+    audit_logs: Optional[List[dict]] = None,
+) -> Any:
+    """Central evidence matrix, readiness indicators, exceptions, and audit trail."""
+    from services.report_pdf_templates import (
+        append_action_priority_section,
+        append_audit_trail_narrative,
+        append_central_evidence_matrix,
+        append_exception_summaries_section,
+        append_frozen_snapshot_notice,
+        append_intended_use_section,
+        append_readiness_indicators_section,
+        build_matrix_rows,
+        classify_exceptions,
+        compute_readiness_indicators,
+        create_enterprise_table_style,
+        group_by_action_priority,
+    )
+
+    append_frozen_snapshot_notice(elements, generated_at_iso=now.isoformat(), styles=styles)
+    append_intended_use_section(elements, report_kind="evidence_readiness", styles=styles)
+    ent_table_style = create_enterprise_table_style(styles)
+    matrix_rows = build_matrix_rows(
+        requirements=requirements,
+        properties=properties,
+        client_doc=client,
+        now=now,
+        property_filter_id=property_filter_id,
+    )
+    readiness = compute_readiness_indicators(
+        requirements=requirements,
+        properties=properties,
+        client_doc=client,
+        now=now,
+    )
+    exceptions = classify_exceptions(
+        requirements=requirements,
+        properties=properties,
+        client_doc=client,
+        now=now,
+    )
+    append_readiness_indicators_section(
+        elements, indicators=readiness, styles=styles, table_style=ent_table_style
+    )
+    append_central_evidence_matrix(
+        elements, matrix_rows=matrix_rows, styles=styles, table_style=ent_table_style
+    )
+    append_action_priority_section(
+        elements, groups=group_by_action_priority(matrix_rows), styles=styles
+    )
+    append_exception_summaries_section(
+        elements, exceptions=exceptions, styles=styles, table_style=ent_table_style
+    )
+    elements.append(Spacer(1, 12))
+    if audit_logs:
+        audit_events = [
+            {
+                "timestamp": log.get("timestamp"),
+                "action": log.get("action"),
+                "actor_role": log.get("actor_role"),
+                "resource_id": log.get("resource_id"),
+                "metadata": log.get("metadata") if isinstance(log.get("metadata"), dict) else {},
+            }
+            for log in audit_logs[:50]
+        ]
+        if audit_events:
+            append_audit_trail_narrative(
+                elements, events=audit_events, styles=styles, table_style=ent_table_style
+            )
+    return ent_table_style
+
+
 def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     """
     Build Evidence Readiness PDF for full portfolio. Sync; deterministic.
@@ -421,7 +501,15 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     Missing evidence: <b>{derived['missing_count']}</b>
     """
     elements.append(Paragraph(summary_text, styles["body"]))
-    elements.append(Spacer(1, 16))
+    elements.append(Spacer(1, 8))
+    ent_table_style = _append_evidence_readiness_governance_sections(
+        elements,
+        requirements=requirements,
+        properties=properties,
+        client=client,
+        now=now,
+        styles=styles,
+    )
     elements.append(Paragraph("Jurisdiction scope", styles["heading"]))
     elements.append(Paragraph(portfolio_jurisdiction_summary_sentence(client, properties), styles["body"]))
     elements.append(Spacer(1, 12))
@@ -475,62 +563,14 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
         elements.append(Paragraph("No properties in scope.", styles["body"]))
     elements.append(Spacer(1, 20))
 
-    # Property detail – requirement matrix
-    elements.append(Paragraph("Property detail – requirement matrix", styles["heading"]))
-    reqs_by_prop: Dict[str, List[Dict]] = {}
-    for r in requirements:
-        reqs_by_prop.setdefault(r["property_id"], []).append(r)
-    for p in properties[:20]:
-        elements.append(Paragraph(f"<b>{p.get('address_line_1') or p.get('property_id')}</b>", styles["body"]))
-        rows = [["Requirement", "Status", "Due date", "Days to expiry"]]
-        for r in reqs_by_prop.get(p["property_id"], [])[:30]:
-            due = get_effective_expiry_date(r)
-            due_for_days = due if due is not None else r.get("due_date")
-            if due and hasattr(due, "isoformat"):
-                due_str = due.date().isoformat() if hasattr(due, "date") else due.isoformat()[:10]
-            elif isinstance(r.get("due_date"), str) and r.get("due_date"):
-                due_str = str(r.get("due_date"))[:10]
-            else:
-                due_str = "—"
-            days = _days_to_expiry(due_for_days, now)
-            days_str = str(days) if days is not None else "—"
-            cs = get_computed_status(r, property_doc=p, client_doc=client)
-            rows.append([
-                (r.get("description") or r.get("requirement_type") or "—")[:35],
-                _status_label(cs),
-                due_str,
-                days_str,
-            ])
-        if len(rows) > 1:
-            tb = Table(rows, colWidths=[180, 100, 80, 70])
-            tb.setStyle(table_style)
-            elements.append(tb)
-        elements.append(Spacer(1, 12))
-    elements.append(Spacer(1, 12))
-
     # Methodology
     elements.append(Paragraph("Scoring methodology summary", styles["heading"]))
     elements.append(Paragraph(SCORE_PDF_METHODOLOGY_SUMMARY, styles["body"]))
     elements.append(Spacer(1, 20))
 
-    # Audit snapshot
-    elements.append(Paragraph("Audit activity snapshot (last 30 days)", styles["heading"]))
-    audit_data = [["Time", "Action", "Resource", "Details"]]
-    for log in audit_logs[:50]:
-        ts = log.get("timestamp") or "—"
-        if isinstance(ts, str) and len(ts) > 19:
-            ts = ts[:19].replace("T", " ")
-        action = (log.get("action") or "—")[:30]
-        res = f"{log.get('resource_type') or '-'}/{log.get('resource_id') or '-'}"[:25]
-        meta = str((log.get("metadata") or {}).get("reason", ""))[:30]
-        audit_data.append([ts, action, res, meta])
-    if len(audit_data) > 1:
-        at = Table(audit_data, colWidths=[90, 100, 100, 120])
-        at.setStyle(table_style)
-        elements.append(at)
-    else:
+    if not audit_logs:
         elements.append(Paragraph("No audit activity in the last 30 days.", styles["body"]))
-    elements.append(Spacer(1, 24))
+        elements.append(Spacer(1, 24))
 
     # Footer disclaimer
     elements.append(HRFlowable(width="100%", thickness=1, color=colors.gray, spaceAfter=12))
@@ -958,7 +998,17 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     Missing evidence: <b>{derived['missing_count']}</b>
     """
     elements.append(Paragraph(summary_text, styles["body"]))
-    elements.append(Spacer(1, 16))
+    elements.append(Spacer(1, 8))
+    _append_evidence_readiness_governance_sections(
+        elements,
+        requirements=requirements,
+        properties=properties,
+        client=client,
+        now=now,
+        styles=styles,
+        property_filter_id=property_id,
+        audit_logs=audit_logs,
+    )
     elements.append(Paragraph("Jurisdiction scope", styles["heading"]))
     elements.append(Paragraph(portfolio_jurisdiction_summary_sentence(client, properties), styles["body"]))
     elements.append(Spacer(1, 12))
@@ -982,35 +1032,6 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
         elements.append(rt)
         elements.append(Spacer(1, 20))
 
-    # Property requirement matrix with days_to_expiry
-    elements.append(Paragraph("Requirement matrix", styles["heading"]))
-    rows = [["Requirement", "Status", "Due date", "Days to expiry"]]
-    for r in requirements[:50]:
-        due = get_effective_expiry_date(r)
-        due_for_days = due if due is not None else r.get("due_date")
-        if due and hasattr(due, "isoformat"):
-            due_str = due.date().isoformat() if hasattr(due, "date") else due.isoformat()[:10]
-        elif isinstance(r.get("due_date"), str) and r.get("due_date"):
-            due_str = str(r.get("due_date"))[:10]
-        else:
-            due_str = "—"
-        days = _days_to_expiry(due_for_days, now)
-        days_str = str(days) if days is not None else "—"
-        cs = get_computed_status(r, property_doc=prop, client_doc=client)
-        rows.append([
-            (r.get("description") or r.get("requirement_type") or "—")[:40],
-            _status_label(cs),
-            due_str,
-            days_str,
-        ])
-    if len(rows) > 1:
-        tb = Table(rows, colWidths=[220, 120, 90, 80])
-        tb.setStyle(table_style)
-        elements.append(tb)
-    else:
-        elements.append(Paragraph("No requirements for this property.", styles["body"]))
-    elements.append(Spacer(1, 20))
-
     # Methodology
     elements.append(Paragraph("Scoring methodology summary", styles["heading"]))
     elements.append(Paragraph(
@@ -1020,25 +1041,6 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
         styles["body"],
     ))
     elements.append(Spacer(1, 20))
-
-    # Audit snapshot
-    elements.append(Paragraph("Audit activity snapshot (last 30 days)", styles["heading"]))
-    audit_data = [["Time", "Action", "Resource", "Details"]]
-    for log in audit_logs[:30]:
-        ts = log.get("timestamp") or "—"
-        if isinstance(ts, str) and len(ts) > 19:
-            ts = ts[:19].replace("T", " ")
-        action = (log.get("action") or "—")[:30]
-        res = f"{log.get('resource_type') or '-'}/{log.get('resource_id') or '-'}"[:25]
-        meta = str((log.get("metadata") or {}).get("reason", ""))[:30]
-        audit_data.append([ts, action, res, meta])
-    if len(audit_data) > 1:
-        at = Table(audit_data, colWidths=[90, 100, 100, 120])
-        at.setStyle(table_style)
-        elements.append(at)
-    else:
-        elements.append(Paragraph("No audit activity in the last 30 days.", styles["body"]))
-    elements.append(Spacer(1, 24))
 
     # Footer
     elements.append(HRFlowable(width="100%", thickness=1, color=colors.gray, spaceAfter=12))

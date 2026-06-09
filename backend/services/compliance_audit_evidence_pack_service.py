@@ -15,11 +15,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from bson import ObjectId
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from database import database
 from models import AuditAction, UserRole
@@ -180,6 +175,39 @@ def _build_scope_statement_lines(*, generated_at: str, jurisdiction: str) -> Lis
     ]
 
 
+def _property_address_line(property_doc: Dict[str, Any]) -> str:
+    return ", ".join(
+        [x for x in [property_doc.get("address_line_1"), property_doc.get("city"), property_doc.get("postcode")] if x]
+    )
+
+
+def _audit_pack_gov_ctx(*, generated_at: str, export_identity: Dict[str, str], jurisdiction: str) -> Any:
+    from services.report_layout_governance import GovernancePdfContext
+    from services.reporting_semantics_v1 import (
+        EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
+        GRADE_REGULATORY,
+        EXPORT_GRADE_DEFINITIONS,
+    )
+
+    grade_def = EXPORT_GRADE_DEFINITIONS.get(GRADE_REGULATORY) or {}
+    try:
+        gen_dt = datetime.fromisoformat(str(generated_at).replace("Z", "+00:00"))
+        if gen_dt.tzinfo is None:
+            gen_dt = gen_dt.replace(tzinfo=timezone.utc)
+    except Exception:
+        gen_dt = datetime.now(timezone.utc)
+    return GovernancePdfContext(
+        export_grade=GRADE_REGULATORY,
+        export_grade_label=grade_def.get("label") or "Regulatory / evidential",
+        generated_at=gen_dt,
+        determinism=EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
+        jurisdiction_summary=(jurisdiction or "")[:90],
+        artifact_id=export_identity.get("export_id") or "",
+        report_scope="property",
+        immutable_status="frozen",
+    )
+
+
 def _build_pack_overview_pdf_bytes(
     *,
     branding: Dict[str, Any],
@@ -187,44 +215,49 @@ def _build_pack_overview_pdf_bytes(
     metadata: Dict[str, Any],
     export_identity: Dict[str, str],
     jurisdiction: str,
+    property_doc: Optional[Dict[str, Any]] = None,
 ) -> bytes:
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf,
-        pagesize=A4,
-        topMargin=20 * mm,
-        bottomMargin=20 * mm,
-        leftMargin=18 * mm,
-        rightMargin=18 * mm,
-        pageCompression=0,
+    from services.report_pdf_templates import FormalReportSpec, build_formal_report_pdf
+
+    prop = property_doc or {}
+    addr = _property_address_line(prop)
+    gov = _audit_pack_gov_ctx(generated_at=generated_at, export_identity=export_identity, jurisdiction=jurisdiction)
+    spec = FormalReportSpec(
+        report_title="Audit Evidence Pack Overview",
+        report_classification="Evidentiary Export",
+        report_kind="audit_evidence_pack",
+        branding=branding,
+        gov_ctx=gov,
+        generated_at_iso=generated_at,
+        jurisdiction=jurisdiction,
+        scope_line=f"<b>Property:</b> {addr or 'Property reference'}",
+        export_id=export_identity.get("export_id") or "",
+        export_generation_id=export_identity.get("export_generation_id") or "",
+        include_matrix=False,
+        include_executive_summary=False,
+        include_readiness_indicators=False,
+        include_action_priorities=False,
+        include_exception_summaries=False,
     )
-    styles = getSampleStyleSheet()
-    title = ParagraphStyle("t", parent=styles["Title"], fontSize=20, textColor=colors.HexColor(branding.get("primary_color", "#0B1D3A")))
-    body = ParagraphStyle("b", parent=styles["BodyText"], fontSize=10, leading=14)
-    h2 = ParagraphStyle("h2", parent=styles["Heading2"], fontSize=13, textColor=colors.HexColor(branding.get("primary_color", "#0B1D3A")))
-    st = []
-    st.append(Paragraph("Audit Evidence Pack Overview", title))
-    st.append(Paragraph(f"Generated at (UTC): {generated_at}", body))
-    st.append(Paragraph(f"Export version: {metadata.get('export_version')} • Evidence pack version: {metadata.get('evidence_pack_version')}", body))
-    st.append(Paragraph("Export Identity Metadata", h2))
-    st.append(Paragraph(f"Export ID: {export_identity.get('export_id')}", body))
-    st.append(Paragraph(f"Export Generated At (UTC): {export_identity.get('export_generated_at')}", body))
-    st.append(Paragraph(f"Export Generation ID: {export_identity.get('export_generation_id')}", body))
-    st.append(Paragraph(f"Export Rules Version: {export_identity.get('export_rules_version')}", body))
-    st.append(Paragraph(f"Registry Version Used: {export_identity.get('registry_version_used')}", body))
-    st.append(Spacer(1, 5 * mm))
-    st.append(Paragraph("SCOPE AND LIMITATIONS", h2))
-    for ln in _build_scope_statement_lines(generated_at=generated_at, jurisdiction=jurisdiction):
-        st.append(Paragraph(f"- {ln}", body))
-    st.append(Spacer(1, 4 * mm))
-    st.append(Paragraph("Branding and Provenance", h2))
-    st.append(Paragraph(
-        f"Document brand: {branding.get('brand_company_name') or branding.get('company_name')}. "
-        "System provenance metadata is retained in governance files regardless of white-label presentation.",
-        body,
-    ))
-    doc.build(st)
-    return buf.getvalue()
+    metrics = [
+        ("Export version", str(metadata.get("export_version") or "")),
+        ("Evidence pack version", str(metadata.get("evidence_pack_version") or "")),
+        ("Export rules version", str(export_identity.get("export_rules_version") or "")),
+        ("Registry version used", str(export_identity.get("registry_version_used") or "")),
+    ]
+    return build_formal_report_pdf(
+        spec,
+        metrics=metrics,
+        posture_lines=[
+            f"Governed audit evidence pack for property review. "
+            f"Contract version: {metadata.get('contract_version') or CONTRACT_VERSION}.",
+        ],
+        interpretation=[
+            "Governance files (manifest, checksums, generation metadata) in folder 06_GOVERNANCE "
+            "retain system provenance regardless of white-label presentation.",
+        ],
+        scope_lines=_build_scope_statement_lines(generated_at=generated_at, jurisdiction=jurisdiction),
+    )
 
 
 def _build_compliance_summary_pdf_bytes(
@@ -235,83 +268,149 @@ def _build_compliance_summary_pdf_bytes(
     generated_at: str,
     risk_summary: Dict[str, Any],
     export_identity: Dict[str, str],
+    visible_reqs: List[Dict[str, Any]],
+    docs_in_pack: List[Dict[str, Any]],
+    deliveries: List[Dict[str, Any]],
+    client_doc: Dict[str, Any],
 ) -> bytes:
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf,
-        pagesize=A4,
-        topMargin=18 * mm,
-        bottomMargin=16 * mm,
-        leftMargin=16 * mm,
-        rightMargin=16 * mm,
-        pageCompression=0,
+    from services.report_pdf_templates import (
+        FormalReportSpec,
+        build_formal_report_pdf,
+        build_matrix_rows,
+        classify_exceptions,
+        compute_readiness_indicators,
+        delivery_proof_by_requirement,
+        docs_by_requirement,
+        group_by_action_priority,
     )
-    styles = getSampleStyleSheet()
-    c_primary = colors.HexColor(branding.get("primary_color", "#0B1D3A"))
-    body = ParagraphStyle("body", parent=styles["BodyText"], fontSize=10, leading=14)
-    heading = ParagraphStyle("heading", parent=styles["Heading2"], textColor=c_primary, fontSize=13)
-    title = ParagraphStyle("title", parent=styles["Title"], textColor=c_primary, fontSize=20)
-    st: List[Any] = []
 
-    addr = ", ".join([x for x in [property_doc.get("address_line_1"), property_doc.get("city"), property_doc.get("postcode")] if x])
     jurisdiction = str(property_doc.get("effective_jurisdiction_label") or property_doc.get("jurisdiction") or "Unknown")
-    st.append(Paragraph("Compliance Summary", title))
-    st.append(Paragraph(f"Property: {addr or 'Property reference unavailable'}", body))
-    st.append(Paragraph(f"Jurisdiction: {jurisdiction}", body))
-    st.append(Paragraph(f"Generated at (UTC): {generated_at}", body))
-    st.append(Paragraph(f"Export ID: {export_identity.get('export_id')}", body))
-    st.append(Paragraph(f"Export Generation ID: {export_identity.get('export_generation_id')}", body))
-    st.append(Paragraph(f"Export Rules Version: {export_identity.get('export_rules_version')}", body))
-    st.append(Paragraph(f"Registry Version Used: {export_identity.get('registry_version_used')}", body))
-    st.append(Spacer(1, 3 * mm))
-    st.append(Paragraph(f"Overall Compliance Status: <b>{status_result.status}</b>", body))
-    st.append(Spacer(1, 4 * mm))
-
-    table_data = [
-        ["Metric", "Value"],
-        ["Total obligations in scope", str(status_result.total_requirements)],
-        ["Compliant obligations", str(status_result.compliant_count)],
-        ["Overdue obligations", str(status_result.overdue_count)],
-        ["Pending obligations", str(status_result.pending_count)],
-        ["Mandatory unresolved", str(status_result.mandatory_missing_or_pending_count)],
-        ["Critical unresolved", str(status_result.critical_missing_or_pending_count)],
-        ["Expiring soon", str(status_result.expiring_soon_count)],
-    ]
-    t = Table(table_data, colWidths=[100 * mm, 55 * mm])
-    t.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), c_primary),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#D1D5DB")),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
+    addr = _property_address_line(property_doc)
+    now = datetime.now(timezone.utc)
+    docs_map = docs_by_requirement(docs_in_pack)
+    delivery_map = delivery_proof_by_requirement(deliveries)
+    matrix_rows = build_matrix_rows(
+        requirements=visible_reqs,
+        properties=[property_doc],
+        client_doc=client_doc,
+        docs_by_req=docs_map,
+        delivery_by_req=delivery_map,
+        now=now,
+        property_filter_id=str(property_doc.get("property_id") or ""),
     )
-    st.append(t)
-    st.append(Spacer(1, 4 * mm))
-    st.append(Paragraph("Risk Summary", heading))
-    st.append(Paragraph(f"- High-risk unresolved obligations: {risk_summary.get('high_risk_count', 0)}", body))
-    st.append(Paragraph(f"- Action-required obligations: {risk_summary.get('action_required_count', 0)}", body))
-    st.append(Paragraph(f"- Mandatory obligations unresolved: {risk_summary.get('mandatory_unresolved_count', 0)}", body))
-    st.append(Spacer(1, 3 * mm))
-    st.append(Paragraph("SCOPE AND LIMITATIONS", heading))
-    for ln in _build_scope_statement_lines(generated_at=generated_at, jurisdiction=jurisdiction):
-        st.append(Paragraph(f"- {ln}", body))
-    st.append(Spacer(1, 4 * mm))
-    st.append(Paragraph("Footer", heading))
-    st.append(Paragraph(
-        f"{branding.get('pdf_footer_generated_by', 'Generated by Pleerity Enterprise Ltd')} • "
-        f"{branding.get('pdf_footer_contact_line', 'pleerityenterprise.co.uk')}",
-        body,
-    ))
-    doc.build(st)
-    return buf.getvalue()
+    readiness = compute_readiness_indicators(
+        requirements=visible_reqs,
+        properties=[property_doc],
+        client_doc=client_doc,
+        deliveries=deliveries,
+        docs_by_req=docs_map,
+        now=now,
+    )
+    exceptions = classify_exceptions(
+        requirements=visible_reqs,
+        properties=[property_doc],
+        client_doc=client_doc,
+        docs_by_req=docs_map,
+        deliveries=deliveries,
+        now=now,
+    )
+    action_groups = group_by_action_priority(matrix_rows)
+    gov = _audit_pack_gov_ctx(generated_at=generated_at, export_identity=export_identity, jurisdiction=jurisdiction)
+    spec = FormalReportSpec(
+        report_title="Compliance Summary",
+        report_classification="Compliance Summary",
+        report_kind="compliance_summary",
+        branding=branding,
+        gov_ctx=gov,
+        generated_at_iso=generated_at,
+        jurisdiction=jurisdiction,
+        scope_line=f"<b>Property:</b> {addr or 'Property reference'}",
+        export_id=export_identity.get("export_id") or "",
+        export_generation_id=export_identity.get("export_generation_id") or "",
+    )
+    action_required = (
+        status_result.overdue_count > 0
+        or status_result.mandatory_missing_or_pending_count > 0
+        or status_result.critical_missing_or_pending_count > 0
+    )
+    if action_required:
+        posture = (
+            f"Overall compliance status: <b>{status_result.status}</b>. "
+            "Mandatory or time-critical obligations require attention within export scope."
+        )
+    else:
+        posture = (
+            f"Overall compliance status: <b>{status_result.status}</b>. "
+            "No mandatory compliance gaps were detected within the export scope at generation time."
+        )
+    metrics = [
+        ("Total obligations in scope", str(status_result.total_requirements)),
+        ("Compliant obligations", str(status_result.compliant_count)),
+        ("Overdue obligations", str(status_result.overdue_count)),
+        ("Pending obligations", str(status_result.pending_count)),
+        ("Mandatory unresolved", str(status_result.mandatory_missing_or_pending_count)),
+        ("Critical unresolved", str(status_result.critical_missing_or_pending_count)),
+        ("Expiring soon", str(status_result.expiring_soon_count)),
+        ("High-risk unresolved", str(risk_summary.get("high_risk_count", 0))),
+    ]
+    interpretation = [
+        "Compliance metrics above reflect runtime-visible obligations at the generation boundary.",
+        "The evidence matrix below maps each obligation to evidentiary records and delivery proof.",
+        "Evidence remains subject to independent verification of source documents and issuing authorities.",
+    ]
+    if action_required:
+        interpretation.append("Immediate action is recommended for critical or overdue obligations listed in the matrix.")
+    else:
+        interpretation.append("No immediate mandatory action is indicated from export-scope metrics alone.")
+    return build_formal_report_pdf(
+        spec,
+        posture_lines=[posture],
+        metrics=metrics,
+        interpretation=interpretation,
+        matrix_rows=matrix_rows,
+        readiness=readiness,
+        exceptions=exceptions,
+        action_groups=action_groups,
+        scope_lines=_build_scope_statement_lines(generated_at=generated_at, jurisdiction=jurisdiction),
+    )
+
+
+def _build_audit_trail_pdf_bytes(
+    *,
+    branding: Dict[str, Any],
+    generated_at: str,
+    export_identity: Dict[str, str],
+    jurisdiction: str,
+    property_doc: Dict[str, Any],
+    timeline_slice: List[Dict[str, Any]],
+) -> bytes:
+    from services.report_pdf_templates import FormalReportSpec, build_formal_report_pdf
+
+    addr = _property_address_line(property_doc)
+    gov = _audit_pack_gov_ctx(generated_at=generated_at, export_identity=export_identity, jurisdiction=jurisdiction)
+    spec = FormalReportSpec(
+        report_title="Audit Trail",
+        report_classification="Regulatory Review",
+        report_kind="audit_trail",
+        branding=branding,
+        gov_ctx=gov,
+        generated_at_iso=generated_at,
+        jurisdiction=jurisdiction,
+        scope_line=f"<b>Property:</b> {addr or 'Property reference'}",
+        export_id=export_identity.get("export_id") or "",
+        export_generation_id=export_identity.get("export_generation_id") or "",
+        include_matrix=False,
+        include_executive_summary=False,
+        include_readiness_indicators=False,
+        include_action_priorities=False,
+        include_exception_summaries=False,
+        include_audit_trail=True,
+    )
+    return build_formal_report_pdf(
+        spec,
+        audit_events=timeline_slice,
+        scope_lines=_build_scope_statement_lines(generated_at=generated_at, jurisdiction=jurisdiction),
+    )
 
 
 def _slug_for_filename(raw: str, max_len: int = 48) -> str:
@@ -573,6 +672,7 @@ async def build_compliance_audit_pack(
         metadata=generation_metadata,
         export_identity=export_identity,
         jurisdiction=str(generation_metadata.get("jurisdiction") or ""),
+        property_doc=prop,
     )
     summary_pdf = _build_compliance_summary_pdf_bytes(
         branding=branding,
@@ -581,6 +681,18 @@ async def build_compliance_audit_pack(
         generated_at=now_iso,
         risk_summary=risk_summary,
         export_identity=export_identity,
+        visible_reqs=visible_reqs,
+        docs_in_pack=docs_in_pack,
+        deliveries=deliveries,
+        client_doc=client_doc,
+    )
+    audit_trail_pdf = _build_audit_trail_pdf_bytes(
+        branding=branding,
+        generated_at=now_iso,
+        export_identity=export_identity,
+        jurisdiction=str(generation_metadata.get("jurisdiction") or ""),
+        property_doc=prop,
+        timeline_slice=timeline_slice,
     )
 
     property_profile = {
@@ -630,6 +742,7 @@ async def build_compliance_audit_pack(
         f"{ROOT_DIR}/02_PROPERTY_PROFILE/property_profile.json": _json_bytes(property_profile),
         f"{ROOT_DIR}/04_DELIVERY_PROOF/tenant_delivery_records.json": _json_bytes(deliveries),
         f"{ROOT_DIR}/05_AUDIT_TIMELINE/audit_timeline.json": _json_bytes(timeline_slice),
+        f"{ROOT_DIR}/05_AUDIT_TIMELINE/audit_trail.pdf": audit_trail_pdf,
         f"{ROOT_DIR}/06_GOVERNANCE/generation_metadata.json": _json_bytes(generation_metadata),
         f"{ROOT_DIR}/07_EXCEPTIONS/missing_or_pending_items.json": _json_bytes(exceptions_payload),
     }

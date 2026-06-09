@@ -389,11 +389,14 @@ def make_page_callbacks(ctx: GovernancePdfContext) -> Tuple[Callable, Callable]:
             footer_y + 4 * mm,
             f"Page {page_num} | Generated {utc_display(ctx.generated_at)[:16]}",
         )
-        canvas.drawCentredString(
-            width / 2,
-            footer_y,
-            LIVE_REGENERATED_DISCLOSURE[:120],
+        from services.report_pdf_templates import FROZEN_SNAPSHOT_WORDING
+
+        footer_mid = (
+            FROZEN_SNAPSHOT_WORDING[:120]
+            if ctx.is_immutable_artifact
+            else LIVE_REGENERATED_DISCLOSURE[:120]
         )
+        canvas.drawCentredString(width / 2, footer_y, footer_mid)
         canvas.restoreState()
 
     return _draw, _draw

@@ -1,0 +1,1017 @@
+{
+  "programme": "AUDIT-EVIDENCE-PACK-PRECOMMIT-VERIFY",
+  "run_tag": "20260609T184021Z",
+  "generated_at_utc": "2026-06-09T18:41:11.958025+00:00",
+  "local_scenarios": {
+    "compliant": {
+      "file_count": 11,
+      "names_sorted": true,
+      "missing_required": [],
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "issues": [],
+      "export_id": "exp_c06e6a4e5fdc4513853642a767d6b0b1",
+      "pack_id": "cap_0ea05c22627249cca9904d4f",
+      "pdf_inspections": [
+        {
+          "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+          "bytes": 9574,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2327,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 2
+        },
+        {
+          "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+          "bytes": 26870,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2299,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2278,
+              "line_count": 124,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 1979,
+              "line_count": 79,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 4,
+              "char_count": 627,
+              "line_count": 8,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 4 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "evidence matrix",
+            "executive summary",
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 4
+        },
+        {
+          "label": "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf",
+          "bytes": 12005,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2257,
+              "line_count": 37,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1515,
+              "line_count": 52,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations",
+            "audit trail",
+            "timestamp"
+          ],
+          "page_count": 2
+        }
+      ],
+      "pass": true,
+      "scenario": "compliant"
+    },
+    "high_risk_overdue": {
+      "file_count": 11,
+      "names_sorted": true,
+      "missing_required": [],
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "issues": [],
+      "export_id": "exp_5d27a331df1e422ca1872ca074e00b4c",
+      "pack_id": "cap_af0f71fc68344df08c5b21c3",
+      "pdf_inspections": [
+        {
+          "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+          "bytes": 9574,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2327,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 2
+        },
+        {
+          "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+          "bytes": 29590,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2299,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2291,
+              "line_count": 124,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 2055,
+              "line_count": 119,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 4,
+              "char_count": 1151,
+              "line_count": 16,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 4 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "evidence matrix",
+            "executive summary",
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 4
+        },
+        {
+          "label": "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf",
+          "bytes": 12005,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2257,
+              "line_count": 37,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1515,
+              "line_count": 52,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations",
+            "audit trail",
+            "timestamp"
+          ],
+          "page_count": 2
+        }
+      ],
+      "pass": true,
+      "scenario": "high_risk_overdue"
+    },
+    "missing_evidence": {
+      "file_count": 11,
+      "names_sorted": true,
+      "missing_required": [],
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "issues": [],
+      "export_id": "exp_eb06f41fac72430d8ddecf0092763cb6",
+      "pack_id": "cap_5a365c53794d48d8be18e4af",
+      "pdf_inspections": [
+        {
+          "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+          "bytes": 9574,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2327,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 2
+        },
+        {
+          "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+          "bytes": 28228,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2299,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2302,
+              "line_count": 124,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 1846,
+              "line_count": 97,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 4,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 4 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "evidence matrix",
+            "executive summary",
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 4
+        },
+        {
+          "label": "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf",
+          "bytes": 12005,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2257,
+              "line_count": 37,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1515,
+              "line_count": 52,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations",
+            "audit trail",
+            "timestamp"
+          ],
+          "page_count": 2
+        }
+      ],
+      "pass": true,
+      "scenario": "missing_evidence"
+    },
+    "missing_delivery_proof": {
+      "file_count": 11,
+      "names_sorted": true,
+      "missing_required": [],
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "issues": [],
+      "export_id": "exp_bcf66e51b411427a88d25e102160cf2c",
+      "pack_id": "cap_8a6f74a7551946c7b7c462fc",
+      "pdf_inspections": [
+        {
+          "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+          "bytes": 9574,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2327,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 2
+        },
+        {
+          "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+          "bytes": 23634,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2299,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2278,
+              "line_count": 124,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 1976,
+              "line_count": 49,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "evidence matrix",
+            "executive summary",
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 3
+        },
+        {
+          "label": "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf",
+          "bytes": 12005,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2257,
+              "line_count": 37,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1515,
+              "line_count": 52,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations",
+            "audit trail",
+            "timestamp"
+          ],
+          "page_count": 2
+        }
+      ],
+      "pass": true,
+      "scenario": "missing_delivery_proof"
+    },
+    "large_timeline": {
+      "file_count": 11,
+      "names_sorted": true,
+      "missing_required": [],
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "issues": [],
+      "export_id": "exp_e09237e2f34b499b8b7faf72bb9b31dc",
+      "pack_id": "cap_fe46d0c9e5044327a9344cca",
+      "pdf_inspections": [
+        {
+          "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+          "bytes": 9574,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2327,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 2
+        },
+        {
+          "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+          "bytes": 22957,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2299,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2271,
+              "line_count": 114,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 1833,
+              "line_count": 47,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "evidence matrix",
+            "executive summary",
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 3
+        },
+        {
+          "label": "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf",
+          "bytes": 31756,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2283,
+              "line_count": 37,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2314,
+              "line_count": 195,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 2180,
+              "line_count": 183,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 4,
+              "char_count": 1151,
+              "line_count": 16,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 4 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations",
+            "audit trail",
+            "timestamp"
+          ],
+          "page_count": 4
+        }
+      ],
+      "pass": true,
+      "scenario": "large_timeline"
+    },
+    "obligations_100_plus": {
+      "file_count": 11,
+      "names_sorted": true,
+      "missing_required": [],
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "issues": [],
+      "export_id": "exp_7009928361c14ae1afdb374fecc1f88f",
+      "pack_id": "cap_f97bf5dac6af43839cbe6de4",
+      "pdf_inspections": [
+        {
+          "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+          "bytes": 9574,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2327,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 2
+        },
+        {
+          "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+          "bytes": 46134,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2299,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2346,
+              "line_count": 124,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 3487,
+              "line_count": 355,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 4,
+              "char_count": 1822,
+              "line_count": 88,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 4 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 5,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 5 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "evidence matrix",
+            "executive summary",
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 5
+        },
+        {
+          "label": "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf",
+          "bytes": 31727,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2282,
+              "line_count": 37,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2283,
+              "line_count": 195,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 2183,
+              "line_count": 183,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 4,
+              "char_count": 1151,
+              "line_count": 16,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 4 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations",
+            "audit trail",
+            "timestamp"
+          ],
+          "page_count": 4
+        }
+      ],
+      "pass": true,
+      "scenario": "obligations_100_plus"
+    },
+    "sparse_metadata": {
+      "file_count": 11,
+      "names_sorted": true,
+      "missing_required": [],
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "issues": [],
+      "export_id": "exp_a62de69af4f848dd8e9bf8ecd042b32d",
+      "pack_id": "cap_3f310ac06271477099ef3338",
+      "pdf_inspections": [
+        {
+          "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+          "bytes": 9574,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2327,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 2
+        },
+        {
+          "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+          "bytes": 20210,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2299,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1918,
+              "line_count": 73,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 1505,
+              "line_count": 40,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "evidence matrix",
+            "executive summary",
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 3
+        },
+        {
+          "label": "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf",
+          "bytes": 9512,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2274,
+              "line_count": 37,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations",
+            "audit trail",
+            "timestamp"
+          ],
+          "page_count": 2
+        }
+      ],
+      "pass": true,
+      "scenario": "sparse_metadata"
+    },
+    "large_portfolio": {
+      "file_count": 11,
+      "names_sorted": true,
+      "missing_required": [],
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "issues": [],
+      "export_id": "exp_6f6e8b19c46d485bbd64c7cde82d9411",
+      "pack_id": "cap_e89f68fde5f649159548fad5",
+      "pdf_inspections": [
+        {
+          "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+          "bytes": 9574,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2327,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 2
+        },
+        {
+          "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+          "bytes": 46126,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2299,
+              "line_count": 38,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2309,
+              "line_count": 124,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 3501,
+              "line_count": 355,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 4,
+              "char_count": 1828,
+              "line_count": 88,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 4 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 5,
+              "char_count": 1056,
+              "line_count": 14,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 5 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "evidence matrix",
+            "executive summary",
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations"
+          ],
+          "page_count": 5
+        },
+        {
+          "label": "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf",
+          "bytes": 31702,
+          "valid_pdf": true,
+          "pages": [
+            {
+              "page": 1,
+              "char_count": 2257,
+              "line_count": 37,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 1 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 2,
+              "char_count": 2283,
+              "line_count": 195,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 2 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 3,
+              "char_count": 2183,
+              "line_count": 183,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 3 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            },
+            {
+              "page": 4,
+              "char_count": 1151,
+              "line_count": 16,
+              "preview": "Grade: REGULATORY_SUBMISSION | This report does not constitute legal advice.\u2026 | England\nPage 4 | Generated 09 June 2026 at \nThis report is a frozen deterministic snapshot generated from system records available as at the generation timestam"
+            }
+          ],
+          "issues": [],
+          "markers_found": [
+            "frozen deterministic snapshot",
+            "intended use",
+            "scope and limitations",
+            "audit trail",
+            "timestamp"
+          ],
+          "page_count": 4
+        }
+      ],
+      "pass": true,
+      "scenario": "large_portfolio"
+    },
+    "immutability": {
+      "stored_zip_sha256": "2a906996c01def3d94f5f2f07d32f53748de1bb4d58699e0a98e46ce9e108f6c",
+      "redownload_sha256": "2a906996c01def3d94f5f2f07d32f53748de1bb4d58699e0a98e46ce9e108f6c",
+      "redownload_byte_equal": true,
+      "checksum_ok": true,
+      "manifest_files_ok": true,
+      "names_sorted": true,
+      "manifest_file_order_stable": true,
+      "governance_pass": true,
+      "note": "Fresh generations receive new export_id/pack_id by design; immutability applies to stored GridFS artifact re-download.",
+      "byte_equal": true
+    }
+  },
+  "staging_probes": {
+    "clients": {
+      "sophie_calm": {
+        "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+        "property_count": 2,
+        "probe_property_id": "6b33492c-5e24-453b-bcde-49844fd4aede",
+        "generate_status": 403,
+        "generate_body": "{\"detail\":{\"error_code\":\"PLAN_NOT_ELIGIBLE\",\"message\":\"PDF Reports requires Portfolio Landlord plan or higher\",\"feature\":\"reports_pdf\",\"upgrade_required\":true,\"current_plan\":\"PLAN_1_SOLO\",\"required_plan\":\"PLAN_2_PORTFOLIO\",\"required_plan_name\":\"Portfolio Landlord\",\"feature_key\":\"reports_pdf\",\"featur"
+      },
+      "partial_b": {
+        "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+        "property_count": 2,
+        "probe_property_id": "0d9119a8-7679-462c-8422-dca5fce2cbc9",
+        "generate_status": 403,
+        "generate_body": "{\"detail\":{\"error_code\":\"PLAN_NOT_ELIGIBLE\",\"message\":\"PDF Reports requires Portfolio Landlord plan or higher\",\"feature\":\"reports_pdf\",\"upgrade_required\":true,\"current_plan\":\"PLAN_1_SOLO\",\"required_plan\":\"PLAN_2_PORTFOLIO\",\"required_plan_name\":\"Portfolio Landlord\",\"feature_key\":\"reports_pdf\",\"featur"
+      },
+      "nancy_ops": {
+        "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "property_count": 7,
+        "probe_property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+        "generate_status": 200,
+        "pack_id": "cap_ddde55fc892b435ead820305",
+        "download_bytes": 36723,
+        "redownload_byte_equal": true,
+        "zip_sha256": "6c42f0f7884bb367258ba1efb579ec1838040298b574825ef9c91d96a5331f6d",
+        "governance": {
+          "file_count": 10,
+          "names_sorted": true,
+          "missing_required": [
+            "Audit_Evidence_Pack/05_AUDIT_TIMELINE/audit_trail.pdf"
+          ],
+          "checksum_ok": true,
+          "manifest_files_ok": true,
+          "issues": [
+            "missing_required_paths"
+          ],
+          "export_id": "exp_b2fdc12e3b044da9bd2455f018ee21a0",
+          "pack_id": "cap_ddde55fc892b435ead820305",
+          "pdf_inspections": [
+            {
+              "label": "Audit_Evidence_Pack/00_README/pack_overview.pdf",
+              "bytes": 4634,
+              "valid_pdf": true,
+              "pages": [
+                {
+                  "page": 1,
+                  "char_count": 1351,
+                  "line_count": 24,
+                  "preview": "Audit Evidence Pack Overview\nGenerated at (UTC): 2026-06-09T18:41:03.310605+00:00\nExport version: 2026.04 \u007f Evidence pack version: 2.0.0\nExport Identity Metadata\nExport ID: exp_b2fdc12e3b044da9bd2455f018ee21a0\nExport Generated At (UTC): 202"
+                }
+              ],
+              "issues": [],
+              "markers_found": [
+                "scope and limitations"
+              ],
+              "page_count": 1
+            },
+            {
+              "label": "Audit_Evidence_Pack/01_EXECUTIVE_SUMMARY/compliance_summary.pdf",
+              "bytes": 6658,
+              "valid_pdf": true,
+              "pages": [
+                {
+                  "page": 1,
+                  "char_count": 1414,
+                  "line_count": 40,
+                  "preview": "Compliance Summary\nProperty: 4, Mill Groove, Glasgow, G4\nJurisdiction: Unknown\nGenerated at (UTC): 2026-06-09T18:41:03.310605+00:00\nExport ID: exp_b2fdc12e3b044da9bd2455f018ee21a0\nExport Generation ID: cap_ddde55fc892b435ead820305\nExport Ru"
+                },
+                {
+                  "page": 2,
+                  "char_count": 110,
+                  "line_count": 2,
+                  "preview": "Footer\nGenerated by Pleerity Enterprise Ltd \u007f https://pleerityenterprise.co.uk | info@pleerityenterprise.co.uk"
+                }
+              ],
+              "issues": [],
+              "markers_found": [
+                "scope and limitations"
+              ],
+              "page_count": 2
+            }
+          ],
+          "pass": false
+        },
+        "has_audit_trail_pdf": false
+      }
+    },
+    "deploy_has_audit_trail_pdf": false
+  },
+  "verdict": {
+    "local_governance_pass": true,
+    "local_immutability_pass": true,
+    "pdf_heuristic_issues": [],
+    "pdf_heuristic_issue_count": 0,
+    "staging_any_pass": false,
+    "staging_deploy_has_new_pdf": false,
+    "ready_for_commit": true,
+    "ready_for_push_after_deploy": false,
+    "classifications": [
+      "LOCAL_PRECOMMIT_VERIFIED",
+      "VISUAL_HEURISTICS_PASS"
+    ]
+  },
+  "note": "Local verification uses current workspace code. Staging probes reflect deployed backend; audit_trail.pdf requires deploy before staging matches local."
+}
