@@ -1,0 +1,405 @@
+{
+  "programme": "EVIDENCE-READINESS-OPERATIONAL-PRESENTATION-VERIFY",
+  "run_tag": "20260609T203035Z",
+  "generated_at_utc": "2026-06-09T20:30:36.221686+00:00",
+  "scenarios": {
+    "mixed_12_property": {
+      "scenario": "mixed_12_property",
+      "pdf_info": {
+        "page_count": 7,
+        "bytes": 40738,
+        "valid_pdf": true,
+        "pages": [
+          {
+            "page": 1,
+            "chars": 870,
+            "lines": 15,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 1 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nPresentation Verify"
+          },
+          {
+            "page": 2,
+            "chars": 2511,
+            "lines": 48,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 2 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nExecutive Summary\nS"
+          },
+          {
+            "page": 3,
+            "chars": 1712,
+            "lines": 102,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 3 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\n\u007f Upload Obligation"
+          },
+          {
+            "page": 4,
+            "chars": 1487,
+            "lines": 103,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 4 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nObligation\nCategory"
+          },
+          {
+            "page": 5,
+            "chars": 1348,
+            "lines": 46,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 5 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nAction priority sum"
+          },
+          {
+            "page": 6,
+            "chars": 1365,
+            "lines": 56,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 6 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nWhen (UTC)\nActivity"
+          },
+          {
+            "page": 7,
+            "chars": 331,
+            "lines": 6,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 7 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\n This report does n"
+          }
+        ],
+        "markers": {
+          "operational_matrix": true,
+          "metadata_appendix": true,
+          "remediation": true,
+          "audit_chronology": true,
+          "readiness_indicators": true,
+          "frozen_snapshot_once": true,
+          "compact_footer_live": true,
+          "compact_footer_frozen": false
+        }
+      },
+      "markers": {
+        "operational_matrix": true,
+        "metadata_appendix": true,
+        "remediation": true,
+        "audit_chronology": true,
+        "readiness_indicators": true,
+        "frozen_snapshot_once": true,
+        "compact_footer_live": true,
+        "compact_footer_frozen": false
+      },
+      "issues": [],
+      "pass": true,
+      "pdf_path": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_mixed_12_property_20260609T203035Z.pdf"
+    },
+    "sparse_1_property": {
+      "scenario": "sparse_1_property",
+      "pdf_info": {
+        "page_count": 4,
+        "bytes": 19142,
+        "valid_pdf": true,
+        "pages": [
+          {
+            "page": 1,
+            "chars": 870,
+            "lines": 15,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 1 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nPresentation Verify"
+          },
+          {
+            "page": 2,
+            "chars": 2319,
+            "lines": 46,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 2 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nExecutive Summary\nS"
+          },
+          {
+            "page": 3,
+            "chars": 1353,
+            "lines": 65,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 3 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nObligation\nStatus\nE"
+          },
+          {
+            "page": 4,
+            "chars": 643,
+            "lines": 10,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 4 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nScoring methodology"
+          }
+        ],
+        "markers": {
+          "operational_matrix": true,
+          "metadata_appendix": true,
+          "remediation": true,
+          "audit_chronology": false,
+          "readiness_indicators": true,
+          "frozen_snapshot_once": true,
+          "compact_footer_live": true,
+          "compact_footer_frozen": false
+        }
+      },
+      "markers": {
+        "operational_matrix": true,
+        "metadata_appendix": true,
+        "remediation": true,
+        "audit_chronology": false,
+        "readiness_indicators": true,
+        "frozen_snapshot_once": true,
+        "compact_footer_live": true,
+        "compact_footer_frozen": false
+      },
+      "issues": [],
+      "pass": true,
+      "pdf_path": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_sparse_1_property_20260609T203035Z.pdf"
+    },
+    "portfolio_75_plus": {
+      "scenario": "portfolio_75_plus",
+      "pdf_info": {
+        "page_count": 14,
+        "bytes": 105246,
+        "valid_pdf": true,
+        "pages": [
+          {
+            "page": 1,
+            "chars": 856,
+            "lines": 15,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 1 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nPresentation Verify"
+          },
+          {
+            "page": 2,
+            "chars": 2523,
+            "lines": 48,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 2 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nExecutive Summary\nS"
+          },
+          {
+            "page": 3,
+            "chars": 2112,
+            "lines": 81,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 3 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\n\u007f Upload Obligation"
+          },
+          {
+            "page": 4,
+            "chars": 1703,
+            "lines": 142,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 4 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nObligation\nStatus\nE"
+          },
+          {
+            "page": 5,
+            "chars": 1521,
+            "lines": 126,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 5 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nObligation\nStatus\nE"
+          },
+          {
+            "page": 6,
+            "chars": 1355,
+            "lines": 122,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 6 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nObligation\nCategory"
+          },
+          {
+            "page": 7,
+            "chars": 1563,
+            "lines": 82,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 7 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nObligation\nCategory"
+          },
+          {
+            "page": 8,
+            "chars": 1464,
+            "lines": 34,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 8 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\n\u007f Obligation 15 \u2014 F"
+          },
+          {
+            "page": 9,
+            "chars": 1574,
+            "lines": 63,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 9 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\n\u007f Obligation 20 \u2014 E"
+          },
+          {
+            "page": 10,
+            "chars": 2562,
+            "lines": 125,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 10 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nTop risk drivers\nR"
+          },
+          {
+            "page": 11,
+            "chars": 4338,
+            "lines": 206,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 11 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nRequirement\nProper"
+          },
+          {
+            "page": 12,
+            "chars": 2135,
+            "lines": 100,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 12 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nRequirement\nProper"
+          },
+          {
+            "page": 13,
+            "chars": 1534,
+            "lines": 81,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 13 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\n104 Portfolio Stre"
+          },
+          {
+            "page": 14,
+            "chars": 580,
+            "lines": 9,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 14 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nYour score reflect"
+          }
+        ],
+        "markers": {
+          "operational_matrix": true,
+          "metadata_appendix": true,
+          "remediation": true,
+          "audit_chronology": true,
+          "readiness_indicators": true,
+          "frozen_snapshot_once": true,
+          "compact_footer_live": true,
+          "compact_footer_frozen": false
+        }
+      },
+      "markers": {
+        "operational_matrix": true,
+        "metadata_appendix": true,
+        "remediation": true,
+        "audit_chronology": true,
+        "readiness_indicators": true,
+        "frozen_snapshot_once": true,
+        "compact_footer_live": true,
+        "compact_footer_frozen": false
+      },
+      "issues": [],
+      "pass": true,
+      "pdf_path": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_portfolio_75_plus_20260609T203035Z.pdf"
+    },
+    "long_obligation_names": {
+      "scenario": "long_obligation_names",
+      "pdf_info": {
+        "page_count": 5,
+        "bytes": 28092,
+        "valid_pdf": true,
+        "pages": [
+          {
+            "page": 1,
+            "chars": 870,
+            "lines": 15,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 1 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nPresentation Verify"
+          },
+          {
+            "page": 2,
+            "chars": 2508,
+            "lines": 48,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 2 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nExecutive Summary\nS"
+          },
+          {
+            "page": 3,
+            "chars": 1540,
+            "lines": 100,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 3 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\n\u007f Upload Obligation"
+          },
+          {
+            "page": 4,
+            "chars": 1515,
+            "lines": 50,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 4 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nException type\nCoun"
+          },
+          {
+            "page": 5,
+            "chars": 831,
+            "lines": 24,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 5 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nRequirement type\nSt"
+          }
+        ],
+        "markers": {
+          "operational_matrix": true,
+          "metadata_appendix": true,
+          "remediation": true,
+          "audit_chronology": true,
+          "readiness_indicators": true,
+          "frozen_snapshot_once": true,
+          "compact_footer_live": true,
+          "compact_footer_frozen": false
+        }
+      },
+      "markers": {
+        "operational_matrix": true,
+        "metadata_appendix": true,
+        "remediation": true,
+        "audit_chronology": true,
+        "readiness_indicators": true,
+        "frozen_snapshot_once": true,
+        "compact_footer_live": true,
+        "compact_footer_frozen": false
+      },
+      "issues": [],
+      "pass": true,
+      "pdf_path": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_long_obligation_names_20260609T203035Z.pdf"
+    },
+    "large_audit_log": {
+      "scenario": "large_audit_log",
+      "pdf_info": {
+        "page_count": 6,
+        "bytes": 37094,
+        "valid_pdf": true,
+        "pages": [
+          {
+            "page": 1,
+            "chars": 870,
+            "lines": 15,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 1 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nPresentation Verify"
+          },
+          {
+            "page": 2,
+            "chars": 2508,
+            "lines": 48,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 2 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nExecutive Summary\nS"
+          },
+          {
+            "page": 3,
+            "chars": 1692,
+            "lines": 103,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 3 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\n\u007f Upload Obligation"
+          },
+          {
+            "page": 4,
+            "chars": 1485,
+            "lines": 68,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 4 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nObligation\nCategory"
+          },
+          {
+            "page": 5,
+            "chars": 1446,
+            "lines": 65,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 5 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nOperational activit"
+          },
+          {
+            "page": 6,
+            "chars": 811,
+            "lines": 22,
+            "preview": "Grade: CLIENT_PRESENTATION | This report does not constitute legal advice.\u2026 | Several propertie\nPage 6 | Generated 09 June 2026 at \nPoint-in-time export \u00b7 may differ on re-download\nepc\nExpired / overd"
+          }
+        ],
+        "markers": {
+          "operational_matrix": true,
+          "metadata_appendix": true,
+          "remediation": true,
+          "audit_chronology": true,
+          "readiness_indicators": true,
+          "frozen_snapshot_once": true,
+          "compact_footer_live": true,
+          "compact_footer_frozen": false
+        }
+      },
+      "markers": {
+        "operational_matrix": true,
+        "metadata_appendix": true,
+        "remediation": true,
+        "audit_chronology": true,
+        "readiness_indicators": true,
+        "frozen_snapshot_once": true,
+        "compact_footer_live": true,
+        "compact_footer_frozen": false
+      },
+      "issues": [],
+      "pass": true,
+      "pdf_path": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_large_audit_log_20260609T203035Z.pdf"
+    }
+  },
+  "audit_pack_unchanged": {
+    "pass": true,
+    "has_audit_trail_pdf": true,
+    "has_evidence_matrix_archive_wording": true,
+    "has_operational_matrix_wording": false,
+    "zip_file_count": 11
+  },
+  "pdf_paths": {
+    "mixed_12_property": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_mixed_12_property_20260609T203035Z.pdf",
+    "sparse_1_property": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_sparse_1_property_20260609T203035Z.pdf",
+    "portfolio_75_plus": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_portfolio_75_plus_20260609T203035Z.pdf",
+    "long_obligation_names": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_long_obligation_names_20260609T203035Z.pdf",
+    "large_audit_log": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_large_audit_log_20260609T203035Z.pdf"
+  },
+  "primary_sample": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\evidence_readiness_operational_presentation\\evidence_readiness_mixed_12_property_20260609T203035Z.pdf",
+  "all_scenarios_pass": true,
+  "watch_items": []
+}

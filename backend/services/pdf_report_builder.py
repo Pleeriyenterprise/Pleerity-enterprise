@@ -140,6 +140,7 @@ def _build_styles_and_table_style(branding: dict) -> tuple:
         "title": ParagraphStyle("T", parent=base["Title"], fontSize=24, spaceAfter=12, alignment=TA_LEFT),
         "subtitle": ParagraphStyle("S", parent=base["Normal"], fontSize=12, spaceAfter=20),
         "heading": ParagraphStyle("H", parent=base["Heading2"], fontSize=14, spaceBefore=12, spaceAfter=6),
+        "subheading": ParagraphStyle("H3", parent=base["Heading3"], fontSize=11, spaceBefore=8, spaceAfter=4),
         "body": ParagraphStyle("B", parent=base["Normal"], fontSize=10),
         "small": ParagraphStyle("Sm", parent=base["Normal"], fontSize=8),
         "footer": ParagraphStyle("F", parent=base["Normal"], fontSize=8, alignment=TA_CENTER),
@@ -351,73 +352,20 @@ def _append_evidence_readiness_governance_sections(
     property_filter_id: Optional[str] = None,
     audit_logs: Optional[List[dict]] = None,
 ) -> Any:
-    """Central evidence matrix, readiness indicators, exceptions, and audit trail."""
-    from services.report_pdf_templates import (
-        append_action_priority_section,
-        append_audit_trail_narrative,
-        append_central_evidence_matrix,
-        append_exception_summaries_section,
-        append_frozen_snapshot_notice,
-        append_intended_use_section,
-        append_readiness_indicators_section,
-        build_matrix_rows,
-        classify_exceptions,
-        compute_readiness_indicators,
-        create_enterprise_table_style,
-        group_by_action_priority,
-    )
+    """Operational audit-readiness sections (distinct from Audit Evidence Pack archive layout)."""
+    from services.report_evidence_readiness_operational import append_evidence_readiness_operational_sections
 
-    append_frozen_snapshot_notice(elements, generated_at_iso=now.isoformat(), styles=styles)
-    append_intended_use_section(elements, report_kind="evidence_readiness", styles=styles)
-    ent_table_style = create_enterprise_table_style(styles)
-    matrix_rows = build_matrix_rows(
+    append_evidence_readiness_operational_sections(
+        elements,
         requirements=requirements,
         properties=properties,
-        client_doc=client,
+        client=client,
         now=now,
+        styles=styles,
         property_filter_id=property_filter_id,
+        audit_logs=audit_logs,
     )
-    readiness = compute_readiness_indicators(
-        requirements=requirements,
-        properties=properties,
-        client_doc=client,
-        now=now,
-    )
-    exceptions = classify_exceptions(
-        requirements=requirements,
-        properties=properties,
-        client_doc=client,
-        now=now,
-    )
-    append_readiness_indicators_section(
-        elements, indicators=readiness, styles=styles, table_style=ent_table_style
-    )
-    append_central_evidence_matrix(
-        elements, matrix_rows=matrix_rows, styles=styles, table_style=ent_table_style
-    )
-    append_action_priority_section(
-        elements, groups=group_by_action_priority(matrix_rows), styles=styles
-    )
-    append_exception_summaries_section(
-        elements, exceptions=exceptions, styles=styles, table_style=ent_table_style
-    )
-    elements.append(Spacer(1, 12))
-    if audit_logs:
-        audit_events = [
-            {
-                "timestamp": log.get("timestamp"),
-                "action": log.get("action"),
-                "actor_role": log.get("actor_role"),
-                "resource_id": log.get("resource_id"),
-                "metadata": log.get("metadata") if isinstance(log.get("metadata"), dict) else {},
-            }
-            for log in audit_logs[:50]
-        ]
-        if audit_events:
-            append_audit_trail_narrative(
-                elements, events=audit_events, styles=styles, table_style=ent_table_style
-            )
-    return ent_table_style
+    return None
 
 
 def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
@@ -452,7 +400,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
         crn=crn,
         report_scope="portfolio",
     )
-    on_first, on_later = make_page_callbacks(gov_ctx)
+    on_first, on_later = make_page_callbacks(gov_ctx, footer_mode="compact")
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -502,13 +450,14 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
     """
     elements.append(Paragraph(summary_text, styles["body"]))
     elements.append(Spacer(1, 8))
-    ent_table_style = _append_evidence_readiness_governance_sections(
+    _append_evidence_readiness_governance_sections(
         elements,
         requirements=requirements,
         properties=properties,
         client=client,
         now=now,
         styles=styles,
+        audit_logs=audit_logs,
     )
     elements.append(Paragraph("Jurisdiction scope", styles["heading"]))
     elements.append(Paragraph(portfolio_jurisdiction_summary_sentence(client, properties), styles["body"]))
@@ -938,7 +887,7 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
         crn=crn,
         report_scope=f"property:{property_id}",
     )
-    on_first, on_later = make_page_callbacks(gov_ctx)
+    on_first, on_later = make_page_callbacks(gov_ctx, footer_mode="compact")
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(

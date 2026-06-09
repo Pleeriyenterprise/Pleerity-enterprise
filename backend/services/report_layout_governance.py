@@ -370,7 +370,11 @@ def live_regenerated_disclosure_paragraphs(ctx: GovernancePdfContext, styles: Di
     return export_disclosure_paragraphs(ctx, styles)
 
 
-def make_page_callbacks(ctx: GovernancePdfContext) -> Tuple[Callable, Callable]:
+def make_page_callbacks(
+    ctx: GovernancePdfContext,
+    *,
+    footer_mode: str = "standard",
+) -> Tuple[Callable, Callable]:
     """ReportLab onFirstPage / onLaterPages with page numbers and governance footer."""
 
     def _draw(canvas, _doc):
@@ -389,14 +393,26 @@ def make_page_callbacks(ctx: GovernancePdfContext) -> Tuple[Callable, Callable]:
             footer_y + 4 * mm,
             f"Page {page_num} | Generated {utc_display(ctx.generated_at)[:16]}",
         )
-        from services.report_pdf_templates import FROZEN_SNAPSHOT_WORDING
+        if footer_mode == "compact":
+            from services.report_evidence_readiness_operational import (
+                COMPACT_FOOTER_LIVE,
+                COMPACT_FOOTER_SNAPSHOT,
+            )
 
-        footer_mid = (
-            FROZEN_SNAPSHOT_WORDING[:120]
-            if ctx.is_immutable_artifact
-            else LIVE_REGENERATED_DISCLOSURE[:120]
-        )
-        canvas.drawCentredString(width / 2, footer_y, footer_mid)
+            footer_mid = (
+                COMPACT_FOOTER_SNAPSHOT
+                if ctx.is_immutable_artifact
+                else COMPACT_FOOTER_LIVE
+            )
+        else:
+            from services.report_pdf_templates import FROZEN_SNAPSHOT_WORDING
+
+            footer_mid = (
+                FROZEN_SNAPSHOT_WORDING[:120]
+                if ctx.is_immutable_artifact
+                else LIVE_REGENERATED_DISCLOSURE[:120]
+            )
+        canvas.drawCentredString(width / 2, footer_y, footer_mid[:95])
         canvas.restoreState()
 
     return _draw, _draw
