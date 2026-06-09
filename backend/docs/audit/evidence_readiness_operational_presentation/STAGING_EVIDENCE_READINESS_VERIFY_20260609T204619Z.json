@@ -1,0 +1,179 @@
+{
+  "programme": "EVIDENCE-READINESS-OPERATIONAL-STAGING-VERIFY",
+  "run_tag": "20260609T204619Z",
+  "expected_commit_prefix": "28b6926b",
+  "generated_at_utc": "2026-06-09T20:46:20.059687+00:00",
+  "deploy_version": {
+    "commit_sha": "28b6926b2ab07be75983e3eb0bda12e18a946f07",
+    "environment": "production"
+  },
+  "nancy_ops": {
+    "property_count": 7,
+    "property_er": {
+      "status": 200,
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "inspect": {
+        "valid_pdf": true,
+        "bytes": 104704,
+        "page_count": 5,
+        "markers": {
+          "operational evidence matrix": true,
+          "reference metadata appendix": true,
+          "recommended remediation actions": true,
+          "audit readiness indicators": true,
+          "compact_footer": true
+        },
+        "matrix_six_columns": true,
+        "chronology_grouped": true,
+        "no_raw_telemetry": true,
+        "frozen_wording_limited": true,
+        "pass": true
+      },
+      "redownload_byte_equal": true,
+      "artifact_id": "rpt_9127b9fa3a254a3f97d8efb474b4c60a"
+    },
+    "sparse_property_er": {
+      "status": 200,
+      "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+      "inspect": {
+        "valid_pdf": true,
+        "bytes": 104052,
+        "page_count": 5,
+        "markers": {
+          "operational evidence matrix": true,
+          "reference metadata appendix": true,
+          "recommended remediation actions": true,
+          "audit readiness indicators": true,
+          "compact_footer": true
+        },
+        "matrix_six_columns": true,
+        "chronology_grouped": true,
+        "no_raw_telemetry": true,
+        "frozen_wording_limited": true,
+        "pass": true
+      }
+    },
+    "portfolio_er": {
+      "status": 429
+    },
+    "audit_pack": {
+      "generate_status": 200,
+      "inspect": {
+        "zip_file_count": 26,
+        "has_audit_trail_pdf": true,
+        "has_archive_evidence_matrix": true,
+        "no_operational_matrix_wording": true,
+        "pass": true
+      },
+      "redownload_byte_equal": true
+    },
+    "legacy_pack": {
+      "redownload_byte_equal": true,
+      "bytes": 36349,
+      "sha256": "a5ffdf45454b89f95a9152299ceb05bdbc4b09dc1f3deb08f4cd21bcf00ae504"
+    }
+  },
+  "gates": {
+    "deploy_commit_matches": {
+      "pass": true,
+      "commit_sha": "28b6926b2ab07be75983e3eb0bda12e18a946f07",
+      "expected_prefix": "28b6926b"
+    },
+    "auth": {
+      "pass": true
+    },
+    "property_evidence_readiness": {
+      "pass": true,
+      "detail": {
+        "status": 200,
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "inspect": {
+          "valid_pdf": true,
+          "bytes": 104704,
+          "page_count": 5,
+          "markers": {
+            "operational evidence matrix": true,
+            "reference metadata appendix": true,
+            "recommended remediation actions": true,
+            "audit readiness indicators": true,
+            "compact_footer": true
+          },
+          "matrix_six_columns": true,
+          "chronology_grouped": true,
+          "no_raw_telemetry": true,
+          "frozen_wording_limited": true,
+          "pass": true
+        },
+        "redownload_byte_equal": true,
+        "artifact_id": "rpt_9127b9fa3a254a3f97d8efb474b4c60a"
+      }
+    },
+    "portfolio_evidence_readiness": {
+      "pass": false,
+      "detail": {
+        "status": 429
+      }
+    },
+    "sparse_property_evidence_readiness": {
+      "pass": true,
+      "detail": {
+        "status": 200,
+        "property_id": "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+        "inspect": {
+          "valid_pdf": true,
+          "bytes": 104052,
+          "page_count": 5,
+          "markers": {
+            "operational evidence matrix": true,
+            "reference metadata appendix": true,
+            "recommended remediation actions": true,
+            "audit readiness indicators": true,
+            "compact_footer": true
+          },
+          "matrix_six_columns": true,
+          "chronology_grouped": true,
+          "no_raw_telemetry": true,
+          "frozen_wording_limited": true,
+          "pass": true
+        }
+      }
+    },
+    "large_portfolio_evidence_readiness": {
+      "pass": false,
+      "detail": {
+        "property_count": 7,
+        "portfolio_er": {
+          "status": 429
+        }
+      }
+    },
+    "audit_pack_archive_wording": {
+      "pass": true,
+      "detail": {
+        "generate_status": 200,
+        "inspect": {
+          "zip_file_count": 26,
+          "has_audit_trail_pdf": true,
+          "has_archive_evidence_matrix": true,
+          "no_operational_matrix_wording": true,
+          "pass": true
+        },
+        "redownload_byte_equal": true
+      }
+    },
+    "immutable_redownload_property_er": {
+      "pass": true,
+      "detail": true
+    },
+    "legacy_pack_byte_stable": {
+      "pass": true,
+      "detail": {
+        "redownload_byte_equal": true,
+        "bytes": 36349,
+        "sha256": "a5ffdf45454b89f95a9152299ceb05bdbc4b09dc1f3deb08f4cd21bcf00ae504"
+      }
+    }
+  },
+  "all_gates_pass": false,
+  "push_safe": false
+}
