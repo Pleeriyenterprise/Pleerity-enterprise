@@ -440,10 +440,16 @@ async def assemble_monthly_digest_payload(
     except Exception:
         urgent_items = []
 
+    from services.monthly_digest_operational_intelligence import (
+        build_digest_intelligence,
+        humanize_recommendation,
+        humanize_risk_driver,
+    )
+
     drivers = score_block.get("drivers") or []
-    top_risk_drivers = [str(d) for d in drivers[:5] if d]
+    top_risk_drivers = [line for d in drivers[:8] if (line := humanize_risk_driver(d))]
     recs = score_block.get("recommendations") or []
-    top_next_actions = [str(x) for x in recs[:5] if x]
+    top_next_actions = [line for x in recs[:8] if (line := humanize_recommendation(x))]
 
     fingerprints = build_fingerprint_map(applicable)
 
@@ -649,9 +655,11 @@ async def assemble_monthly_digest_payload(
         except Exception:
             payload["command_centre_digest_included"] = False
 
-    subj_suffix = " (selected properties)" if pid_filter else ""
-    payload["subject"] = f"Monthly Compliance Summary — {reporting_month_label}{subj_suffix}"
-    payload["email_header_title"] = f"Monthly Compliance Summary — {reporting_month_label}{subj_suffix}"
+    from services.monthly_digest_naming import DIGEST_REPORT_TITLE, digest_email_subject
+
+    payload["subject"] = digest_email_subject(reporting_month_label, subset=bool(pid_filter))
+    payload["email_header_title"] = payload["subject"]
+    payload["digest_report_title"] = DIGEST_REPORT_TITLE
     payload["_requirement_fingerprints"] = fingerprints
 
     trunc_reasons: List[str] = []
@@ -691,4 +699,5 @@ async def assemble_monthly_digest_payload(
     payload["digest_pdf_requirement_rows_total"] = n_req_rows
     payload["digest_pdf_requirement_rows_omitted"] = max(0, n_req_rows - DIGEST_PDF_MAX_REQUIREMENT_ROWS)
 
+    payload["digest_intelligence"] = build_digest_intelligence(payload)
     return attach_semantics_contract(payload)

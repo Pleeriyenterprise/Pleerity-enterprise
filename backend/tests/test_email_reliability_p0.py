@@ -164,7 +164,7 @@ async def test_monthly_digest_calls_send_email_and_writes_audit():
         "period_start": "2025-01-01T00:00:00",
         "period_end": "2025-01-31T23:59:59",
         "report_month_key": "2025-01",
-        "subject": "Monthly Compliance Summary — January 2025",
+        "subject": "Monthly Operations Intelligence Digest — January 2025",
         "properties_count": 2,
         "total_requirements": 10,
         "compliant": 8,
@@ -251,7 +251,7 @@ async def test_monthly_digest_skips_and_audits_when_no_recipient():
         "expiring_soon": 1,
         "documents_uploaded": 0,
         "report_month_key": "2025-01",
-        "subject": "Monthly Compliance Summary — January 2025",
+        "subject": "Monthly Operations Intelligence Digest — January 2025",
     }
 
     create_audit_log_mock = AsyncMock(return_value="aid")

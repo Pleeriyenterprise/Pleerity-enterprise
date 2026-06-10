@@ -9,7 +9,7 @@ export const CONTROL_CENTRE_JOB_DISPLAY_NAMES = {
   stripe_subscription_reconcile: 'Stripe subscription reconcile',
   daily_reminders: 'Daily reminders',
   pending_verification_digest: 'Pending verification digest',
-  monthly_digest: 'Monthly digest',
+  monthly_digest: 'Monthly Operations Intelligence Digest',
   compliance_check_morning: 'Compliance check (morning)',
   compliance_check_evening: 'Compliance check (evening)',
   scheduled_reports: 'Scheduled reports',

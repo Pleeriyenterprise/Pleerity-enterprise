@@ -625,7 +625,7 @@ async def lifespan(app: FastAPI):
             "job_runner:run_scheduled_job",
             CronTrigger(hour=10, minute=0, timezone=SCHEDULER_TIMEZONE),
             id="monthly_digest",
-            name="Monthly Compliance Digest",
+            name="Monthly Operations Intelligence Digest",
             replace_existing=True,
             args=["monthly_digest"],
             kwargs={"run_type": "schedule"},

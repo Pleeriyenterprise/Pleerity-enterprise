@@ -1,0 +1,74 @@
+{
+  "programme": "MONTHLY-DIGEST-OPERATIONAL-PRESENTATION-VERIFY",
+  "run_tag": "20260610T065251Z",
+  "generated_at_utc": "2026-06-10T06:52:52.161385+00:00",
+  "artifact_dir": "backend/docs/audit/monthly_digest_operational_presentation",
+  "scenarios": {
+    "first_time_report": {
+      "pdf_artifact": "monthly_digest_first_time_report_20260610T065251Z.pdf",
+      "page_count": 4,
+      "bytes": 15064,
+      "issues": [],
+      "has_trajectory": true,
+      "appendix_present": false,
+      "pass": true
+    },
+    "improving_portfolio": {
+      "pdf_artifact": "monthly_digest_improving_portfolio_20260610T065251Z.pdf",
+      "page_count": 4,
+      "bytes": 16005,
+      "issues": [],
+      "has_trajectory": true,
+      "appendix_present": false,
+      "pass": true
+    },
+    "deteriorating_portfolio": {
+      "pdf_artifact": "monthly_digest_deteriorating_portfolio_20260610T065251Z.pdf",
+      "page_count": 4,
+      "bytes": 17543,
+      "issues": [],
+      "has_trajectory": true,
+      "appendix_present": true,
+      "pass": true
+    },
+    "sparse_portfolio": {
+      "pdf_artifact": "monthly_digest_sparse_portfolio_20260610T065251Z.pdf",
+      "page_count": 4,
+      "bytes": 14349,
+      "issues": [],
+      "has_trajectory": true,
+      "appendix_present": false,
+      "pass": true
+    },
+    "large_portfolio": {
+      "pdf_artifact": "monthly_digest_large_portfolio_20260610T065251Z.pdf",
+      "page_count": 5,
+      "bytes": 25321,
+      "issues": [],
+      "has_trajectory": true,
+      "appendix_present": true,
+      "pass": true
+    },
+    "onboarding_heavy": {
+      "pdf_artifact": "monthly_digest_onboarding_heavy_20260610T065251Z.pdf",
+      "page_count": 4,
+      "bytes": 19380,
+      "issues": [],
+      "has_trajectory": true,
+      "appendix_present": true,
+      "pass": true
+    }
+  },
+  "naming": {
+    "email_subject_sample": "Monthly Operations Intelligence Digest — March 2026",
+    "attachment_sample": "monthly-operations-intelligence-digest-2026-03.pdf",
+    "legacy_in_subject": false,
+    "pass": true
+  },
+  "all_scenarios_pass": true,
+  "all_pass": true,
+  "watch_items": [],
+  "deferred_audit_tooling": [
+    "backend/scripts/reporting_governance_and_presentation_audit_01.py still references legacy Monthly Compliance Digest label (internal audit script only; not client-facing)."
+  ]
+}

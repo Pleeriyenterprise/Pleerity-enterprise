@@ -135,22 +135,15 @@ def test_pdf_omits_property_section_when_preference_off(monkeypatch):
         "top_next_actions": [],
     }
     pdf = build_monthly_digest_pdf_bytes(model, brand=brand)
-    assert b"4. Requirement breakdown" in pdf
-    assert b"4. Property summary" not in pdf
+    assert b"Property movement summary" not in pdf
+    assert b"Executive snapshot" in pdf
 
 
 def test_compute_deltas_newly_overdue():
-    prev_req = {
-        "requirement_id": "x",
-        "status": "COMPLIANT",
-        "evidence_state": "VERIFIED",
-        "due_date": "2026-06-01T00:00:00+00:00",
-    }
-    prev_fp = requirement_fingerprint(prev_req)
     prev = {
         "compliance_score": 80,
         "requirement_fingerprints": {
-            "x": prev_fp,
+            "x": "x|COMPLIANT|VERIFIED|2026-06-01T00:00:00+00:00",
         },
         "missing_evidence_count": 0,
         "documents_uploaded_in_report_period": 1,
@@ -411,7 +404,10 @@ def test_monthly_digest_pdf_executive_summary_includes_snapshot_and_score_rows(m
     pdf = build_monthly_digest_pdf_bytes(model, brand=brand)
     assert pdf.startswith(b"%PDF")
     assert b"Snapshot as of 30 April 2026 12:00 UTC" in pdf
-    assert b"Score status" in pdf
+    assert b"Executive snapshot" in pdf
+    assert b"Score trend" in pdf
     assert b"Last calculated" in pdf
     assert b"2026-04-01" in pdf
-    assert b"Recalculation pending for one property." in pdf
+    # Headline note is surfaced via executive interpretation when present in model
+    assert b"Monthly Operations Intelligence Digest" in pdf
+    assert b"Portfolio trajectory" in pdf

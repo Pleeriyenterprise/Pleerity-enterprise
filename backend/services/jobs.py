@@ -1242,7 +1242,9 @@ class JobScheduler:
         from services.monthly_digest_pdf_service import build_monthly_digest_pdf_bytes, write_monthly_digest_pdf_to_storage
         from services.branding_resolver_service import resolve_branding, BrandingContext
 
-        subj = (content.get("subject") or "Monthly Compliance Summary").strip()
+        from services.monthly_digest_naming import DIGEST_REPORT_TITLE, digest_attachment_filename
+
+        subj = (content.get("subject") or DIGEST_REPORT_TITLE).strip()
         report_mk = (content.get("report_month_key") or "").strip()
 
         def _fail(delivery_status: str, reason: str, pdf_storage_relpath: Optional[str] = None):
@@ -1301,7 +1303,7 @@ class JobScheduler:
                 )
                 return _fail("failed_pdf", str(pdf_err))
 
-            safe_fname = f"monthly-compliance-summary-{report_mk or 'report'}.pdf"
+            safe_fname = digest_attachment_filename(report_mk or "report")
             template_model["attachments"] = [
                 {
                     "Name": safe_fname,

@@ -182,7 +182,7 @@ async def test_monthly_digest_mongo_pdf_snapshot_and_second_send_delta(tmp_path)
         log1 = _rows[0] if _rows else None
         assert log1 is not None
         assert log1.get("delivery_status") == "sent"
-        assert "Monthly Compliance Summary" in (log1.get("email_subject") or "")
+        assert "Monthly Operations Intelligence Digest" in (log1.get("email_subject") or "")
         assert log1.get("pdf_storage_relpath")
 
         c1 = log1.get("content") or {}

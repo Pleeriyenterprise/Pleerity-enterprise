@@ -185,16 +185,16 @@ View in your portal: {{portal_link}}
     },
     {
         "alias": EmailTemplateAlias.MONTHLY_DIGEST.value,
-        "name": "Monthly Compliance Digest",
-        "subject": "Your Monthly Compliance Summary - {{month_year}}",
+        "name": "Monthly Operations Intelligence Digest",
+        "subject": "Monthly Operations Intelligence Digest — {{month_year}}",
         "available_variables": ["client_name", "month_year", "compliant_count", "pending_count", "overdue_count", "properties_count", "portal_link", "company_name"],
         "html_body": """
 <html>
 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
     <div style="background-color: white; border-radius: 8px; padding: 40px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <h1 style="color: #1a2744; margin-bottom: 24px;">Monthly Compliance Digest</h1>
+        <h1 style="color: #1a2744; margin-bottom: 24px;">Monthly Operations Intelligence Digest</h1>
         <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hello {{client_name}},</p>
-        <p style="color: #374151; font-size: 16px; line-height: 1.6;">Here's your compliance summary for {{month_year}}:</p>
+        <p style="color: #374151; font-size: 16px; line-height: 1.6;">Your portfolio operations briefing for {{month_year}}:</p>
         
         <div style="display: flex; gap: 16px; margin: 24px 0;">
             <div style="flex: 1; background-color: #ecfdf5; padding: 16px; border-radius: 8px; text-align: center;">
@@ -228,11 +228,11 @@ View in your portal: {{portal_link}}
 </html>
         """,
         "text_body": """
-Monthly Compliance Digest
+Monthly Operations Intelligence Digest
 
 Hello {{client_name}},
 
-Here's your compliance summary for {{month_year}}:
+Your portfolio operations briefing for {{month_year}}:
 
 - Compliant: {{compliant_count}}
 - Pending: {{pending_count}}

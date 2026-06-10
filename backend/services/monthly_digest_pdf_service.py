@@ -1,6 +1,8 @@
 """
-Branded monthly compliance PDF (audit layer). ReportLab; uses resolve_branding for letterhead.
-Structured sections complement the action email — not a duplicate layout.
+Monthly Operations Intelligence Digest PDF (ReportLab).
+
+Executive operational briefing — distinct from Evidence Readiness, Requirements
+Reports, and Audit Evidence Packs.
 """
 from __future__ import annotations
 
@@ -14,9 +16,9 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from services.monthly_digest_limits import DIGEST_PDF_MAX_REQUIREMENT_ROWS
+from services.monthly_digest_operational_intelligence import build_digest_intelligence
 from services.report_branding_layout import ACCESSIBILITY_ENHANCED_NOTICE, append_report_cover_block
 from services.report_layout_governance import GovernancePdfContext, make_page_callbacks
 from services.reporting_semantics_v1 import (
@@ -25,12 +27,14 @@ from services.reporting_semantics_v1 import (
     GRADE_EXECUTIVE,
     REPORTING_SEMANTICS_VERSION,
 )
-from services.scoring_explanation_copy import email_score_delta_line
-from services.report_human_language_v1 import human_score_status_label
-from services.scoring_semantics_v1 import headline_score_display_for_export
 from utils.storage_paths import resolve_data_dir
 
 logger = logging.getLogger(__name__)
+
+_DIGEST_FROZEN_NOTE = (
+    "This report is a point-in-time operational intelligence snapshot. "
+    "Figures reflect data held at generation; re-download of a stored artifact returns the same bytes."
+)
 
 
 def _hex_color(raw: Optional[str], fallback: str = "#0B1D3A") -> colors.Color:
@@ -43,13 +47,48 @@ def _hex_color(raw: Optional[str], fallback: str = "#0B1D3A") -> colors.Color:
     return colors.HexColor(fallback if fallback.startswith("#") else "#" + fallback)
 
 
+def _table_style() -> TableStyle:
+    return TableStyle(
+        [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]
+    )
+
+
+def _priority_section(
+    body: List[Any],
+    title: str,
+    items: List[Dict[str, str]],
+    styles: Any,
+    h3: ParagraphStyle,
+) -> None:
+    if not items:
+        return
+    body.append(Paragraph(f"<b>{html.escape(title)}</b>", h3))
+    for item in items:
+        prop = html.escape(item.get("property") or "Portfolio")
+        issue = html.escape(item.get("issue") or "")
+        action = html.escape(item.get("action") or "")
+        urgency = html.escape(item.get("urgency") or "")
+        block = (
+            f"<b>{prop}</b> — {issue}<br/>"
+            f"<font size=8>Recommended: {action} &nbsp;|&nbsp; Urgency: {urgency}</font>"
+        )
+        body.append(Paragraph(block, styles["Normal"]))
+        body.append(Spacer(1, 0.12 * cm))
+
+
 def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> bytes:
-    """
-    Full audit PDF from digest assembly model.
-    ``brand`` is ResolvedBrandingProfile from branding_resolver_service.
-    """
+    """Build Monthly Operations Intelligence Digest PDF from assembly model."""
     from datetime import datetime, timezone
 
+    intelligence = build_digest_intelligence(model)
     now = datetime.now(timezone.utc)
     grade_def = EXPORT_GRADE_DEFINITIONS.get(GRADE_EXECUTIVE) or {}
     gov_ctx = GovernancePdfContext(
@@ -62,7 +101,7 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         semantics_version=REPORTING_SEMANTICS_VERSION,
         report_scope="portfolio",
     )
-    on_first, on_later = make_page_callbacks(gov_ctx)
+    on_first, on_later = make_page_callbacks(gov_ctx, footer_mode="compact")
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -71,7 +110,7 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         leftMargin=1.8 * cm,
         topMargin=1.8 * cm,
         bottomMargin=2.2 * cm,
-        title="Monthly Compliance Summary",
+        title="Monthly Operations Intelligence Digest",
     )
     styles = getSampleStyleSheet()
     primary = _hex_color(getattr(brand, "primary_color", None))
@@ -91,6 +130,15 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
     h2 = digest_styles["heading"]
     h3 = ParagraphStyle(name="H3", parent=styles["Heading3"], spaceBefore=8, spaceAfter=6)
     small = digest_styles["small"]
+    interpret_style = ParagraphStyle(
+        name="DigestInterpret",
+        parent=styles["Normal"],
+        fontSize=10,
+        textColor=colors.HexColor("#1e293b"),
+        spaceBefore=4,
+        spaceAfter=10,
+        leading=14,
+    )
 
     branding_dict: Dict[str, Any] = {}
     if hasattr(brand, "to_report_dict") and callable(getattr(brand, "to_report_dict")):
@@ -110,13 +158,16 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
             "secondary_color": getattr(brand, "secondary_color", None),
             "tagline": getattr(brand, "tagline", None),
         }
+
     body: List[Any] = []
     report_period = str(model.get("reporting_month_label") or "Monthly report")
     crn = model.get("customer_reference")
     account = str(model.get("account_name") or model.get("client_name") or "")
+    report_class = intelligence.get("report_class") or "Monthly Operations Intelligence Digest"
+
     append_report_cover_block(
         body,
-        report_title="Monthly Compliance Summary",
+        report_title=report_class,
         branding=branding_dict,
         gov_ctx=gov_ctx,
         styles=digest_styles,
@@ -126,8 +177,12 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         f"<b>Properties:</b> {int(model.get('properties_count') or 0)}",
         extra_metadata_lines=[
             f"<b>Generated:</b> {html.escape(str(model.get('generated_at_display') or model.get('data_as_of') or ''))}",
+            f"<b>Report class:</b> {html.escape(report_class)}",
         ],
     )
+    body.append(Paragraph(html.escape(_DIGEST_FROZEN_NOTE), small))
+    body.append(Spacer(1, 0.2 * cm))
+
     if model.get("digest_truncated") and model.get("digest_truncation_display_lines"):
         warn_style = ParagraphStyle(
             name="DigestTruncWarn",
@@ -144,96 +199,42 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
             )
         )
     if model.get("digest_score_scope_note"):
-        info_style = ParagraphStyle(
-            name="DigestScopeInfo",
-            parent=styles["Normal"],
-            fontSize=9,
-            textColor=colors.HexColor("#1e40af"),
-            spaceBefore=4,
-            spaceAfter=6,
-        )
-        body.append(Paragraph(html.escape(str(model["digest_score_scope_note"])), info_style))
+        body.append(Paragraph(html.escape(str(model["digest_score_scope_note"])), small))
     if model.get("digest_jurisdiction_framing"):
-        jur_style = ParagraphStyle(
-            name="DigestJurisdiction",
-            parent=styles["Normal"],
-            fontSize=9,
-            textColor=colors.HexColor("#0f172a"),
-            spaceBefore=6,
-            spaceAfter=6,
-        )
         body.append(
             Paragraph(
                 "<b>Jurisdiction context:</b> " + html.escape(str(model["digest_jurisdiction_framing"])),
-                jur_style,
+                small,
             )
         )
     if model.get("digest_jurisdiction_fallback_disclaimer"):
-        fb_style = ParagraphStyle(
-            name="DigestJurFallback",
-            parent=styles["Normal"],
-            fontSize=8,
-            textColor=colors.HexColor("#92400e"),
-            spaceBefore=8,
-            spaceAfter=6,
-        )
         body.append(
             Paragraph(
                 "<b>Default jurisdiction:</b> " + html.escape(str(model["digest_jurisdiction_fallback_disclaimer"])),
-                fb_style,
+                small,
             )
         )
     dhl = model.get("digest_hiua_line")
     dhfn = model.get("digest_hiua_report_framing_notice")
     if dhl or dhfn:
-        hiua_style = ParagraphStyle(
-            name="DigestHiua",
-            parent=styles["Normal"],
-            fontSize=9,
-            textColor=colors.HexColor("#4c1d95"),
-            spaceBefore=8,
-            spaceAfter=4,
-        )
-        hiua_sub = ParagraphStyle(
-            name="DigestHiuaSub",
-            parent=styles["Normal"],
-            fontSize=8,
-            textColor=colors.HexColor("#5b21b6"),
-            spaceBefore=2,
-            spaceAfter=6,
-        )
         body.append(Paragraph("<b>Operational follow-up (applicability)</b>", h3))
         if dhl:
-            body.append(
-                Paragraph(
-                    "<b>Summary:</b> " + html.escape(str(dhl)),
-                    hiua_style,
-                )
-            )
+            body.append(Paragraph("<b>Summary:</b> " + html.escape(str(dhl)), small))
         if dhfn:
-            body.append(Paragraph(html.escape(str(dhfn)), hiua_sub))
+            body.append(Paragraph(html.escape(str(dhfn)), small))
+
     body.append(PageBreak())
 
-    # Section 2 — Executive summary
-    body.append(Paragraph("2. Executive summary", h2))
+    # B — Executive snapshot
+    body.append(Paragraph("Executive snapshot", h2))
     snap_line = (model.get("digest_snapshot_framing_line") or "").strip()
-    if not snap_line:
-        _gd = str(model.get("generated_at_display") or model.get("data_as_of") or "").strip()
-        if _gd:
-            snap_line = f"Snapshot as of {_gd}"
     if snap_line:
-        snap_style = ParagraphStyle(
-            name="DigestSnapshotBanner",
-            parent=styles["Normal"],
-            fontSize=9,
-            textColor=colors.HexColor("#475569"),
-            spaceBefore=0,
-            spaceAfter=10,
-            fontName="Helvetica-Bold",
-        )
-        body.append(Paragraph(html.escape(snap_line), snap_style))
+        body.append(Paragraph(html.escape(snap_line), small))
+    body.append(Paragraph(html.escape(intelligence.get("executive_interpretation") or ""), interpret_style))
+
+    trends = intelligence.get("trend_indicators") or {}
+    stability = intelligence.get("portfolio_stability") or {}
     _lc_headline = model.get("last_calculated_at") or model.get("portfolio_last_calculated_at")
-    _ssm_pdf = (model.get("score_status_message") or "").strip()
     exec_rows = [
         ["Metric", "Value"],
         [
@@ -246,222 +247,130 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
                 )
             ),
         ],
+        ["Portfolio trajectory", html.escape(str(stability.get("trajectory") or "—"))],
+        ["Score trend (vs prior month)", html.escape(str(trends.get("score_trend") or "—"))],
+        ["Risk level", html.escape(str(model.get("risk_level") or "—"))],
+        ["Overdue obligations", str(int(model.get("overdue") or 0))],
+        ["Missing evidence", str(int(model.get("missing_evidence_count") or 0))],
+        ["Expiring soon", str(int(model.get("expiring_soon") or 0))],
+        ["Evidence uploads (period)", str(int(model.get("documents_uploaded_period") or 0))],
+        ["Upload activity trend", html.escape(str(trends.get("upload_activity") or "—"))],
+        ["Resolved items (period)", html.escape(str(trends.get("resolved_items") or "—"))],
+        ["New risk items (period)", html.escape(str(trends.get("new_risk_items") or "—"))],
         [
-            "Score status",
-            html.escape(human_score_status_label(model.get("score_status"))),
-        ],
-        [
-            "Last calculated (headline)",
+            "Last calculated",
             html.escape(str(_lc_headline) if _lc_headline not in (None, "") else "—"),
         ],
     ]
+    _ssm_pdf = (model.get("score_status_message") or "").strip()
     if _ssm_pdf:
         exec_rows.append(["Headline note", html.escape(_ssm_pdf)])
-    exec_rows.extend(
-        [
-        ["Risk level", html.escape(str(model.get("risk_level") or "—"))],
-        ["Total tracked requirements", str(int(model.get("total_requirements") or 0))],
-        ["Valid (compliant)", str(int(model.get("valid_count") or model.get("compliant") or 0))],
-        ["Expiring soon", str(int(model.get("expiring_soon") or 0))],
-        ["Overdue", str(int(model.get("overdue") or 0))],
-        ["Missing evidence", str(int(model.get("missing_evidence_count") or 0))],
-        ["Open compliance jobs", str(int(model.get("open_compliance_jobs") or 0))],
-        ["Open maintenance jobs", str(int(model.get("open_maintenance_jobs") or 0))],
-        ]
-    )
     t_exec = Table([[Paragraph(cell, styles["Normal"]) for cell in row] for row in exec_rows], colWidths=[9 * cm, 7 * cm])
-    t_exec.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
+    t_exec.setStyle(_table_style())
     body.append(t_exec)
-    body.append(Spacer(1, 0.4 * cm))
+    body.append(Spacer(1, 0.35 * cm))
 
-    # Section 3 — What changed
-    body.append(Paragraph("3. What changed since your last report", h2))
-    d = model.get("deltas") or {}
-    if not d.get("has_prior_snapshot"):
-        body.append(
-            Paragraph(
-                "This is your first stored monthly compliance report for this account. "
-                "Future reports will compare score, overdue items, and document activity against this baseline.",
-                styles["Normal"],
-            )
-        )
-    else:
-        lines: List[str] = []
-        sd = d.get("score_delta")
-        if sd is not None:
-            lines.append(email_score_delta_line(sd))
-        if d.get("newly_overdue_labels"):
-            lines.append("Newly overdue: " + "; ".join(html.escape(x) for x in d["newly_overdue_labels"][:6]))
-        if d.get("resolved_improved_labels"):
-            lines.append("Resolved or improved: " + "; ".join(html.escape(x) for x in d["resolved_improved_labels"][:6]))
-        if d.get("newly_expiring_labels"):
-            lines.append("Newly expiring soon: " + "; ".join(html.escape(x) for x in d["newly_expiring_labels"][:6]))
-        doc_delta = d.get("documents_uploaded_delta_vs_prev_period")
-        if doc_delta is not None:
-            try:
-                ddi = int(doc_delta)
-                lines.append(f"Document uploads vs prior reporting period: {ddi:+d}.")
-            except (TypeError, ValueError):
-                lines.append(f"Document uploads vs prior reporting period: {doc_delta}.")
-        elif model.get("include_recent_documents", True):
-            lines.append(f"Documents uploaded in this reporting period: {int(model.get('documents_uploaded_period') or 0)}")
-        nmd = d.get("newly_missing_evidence_delta")
-        if nmd is not None and nmd != 0:
-            try:
-                nmdi = int(nmd)
-                lines.append(f"Missing evidence items vs last report: {nmdi:+d}.")
-            except (TypeError, ValueError):
-                lines.append(f"Missing evidence items vs last report: {nmd}.")
-        if model.get("digest_period_activity_included") and model.get("include_audit_summary"):
-            pal = model.get("digest_period_activity_lines") or []
-            if pal:
-                lines.append("Operational activity (period): " + "; ".join(html.escape(str(x)) for x in pal[:4]))
-        if not lines:
-            lines.append("No material score or status movements were detected against your previous report snapshot.")
-        for line in lines:
-            body.append(Paragraph(line, styles["Normal"]))
-    body.append(Spacer(1, 0.3 * cm))
+    # C — What changed this month
+    body.append(Paragraph("What changed this month", h2))
+    for line in intelligence.get("what_changed") or []:
+        body.append(Paragraph(html.escape(line), styles["Normal"]))
+    body.append(Spacer(1, 0.25 * cm))
 
-    show_property_breakdown = model.get("include_property_breakdown", True)
-    # Section 4 — Property summary (optional per notification preference)
-    if show_property_breakdown:
-        body.append(Paragraph("4. Property summary", h2))
-        prop_rows: List[List[str]] = [
-            ["Property", "Score", "Risk", "Overdue", "Expiring", "Missing ev.", "Open jobs"]
-        ]
-        for pr in model.get("property_rows_pdf") or []:
-            prop_rows.append(
-                [
-                    html.escape(str(pr.get("name") or "—"))[:45],
-                    headline_score_display_for_export(pr.get("score"), pr.get("score_status")),
-                    html.escape(str(pr.get("risk_level") or "—"))[:14],
-                    str(int(pr.get("overdue_count") or 0)),
-                    str(int(pr.get("expiring_soon_count") or 0)),
-                    str(int(pr.get("missing_evidence_count") or 0)),
-                    str(int(pr.get("open_jobs_count") or 0)),
-                ]
-            )
-        if len(prop_rows) == 1:
-            body.append(Paragraph("No properties in scope.", styles["Normal"]))
-        else:
-            pt = Table(prop_rows, repeatRows=1, colWidths=[3.8 * cm, 1.2 * cm, 2 * cm, 1.2 * cm, 1.2 * cm, 1.3 * cm, 1.3 * cm])
-            pt.setStyle(
-                TableStyle(
-                    [
-                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
-                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                        ("FONTSIZE", (0, 0), (-1, -1), 7),
-                        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
-                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ]
-                )
-            )
-            body.append(pt)
+    # D — Priority actions for next 30 days
+    if model.get("include_recommendations", True) or model.get("include_action_items", True):
+        body.append(Paragraph("Priority actions — next 30 days", h2))
+        priorities = intelligence.get("priority_actions") or {}
+        _priority_section(body, "Immediate attention", priorities.get("immediate") or [], styles, h3)
+        _priority_section(body, "Upcoming actions", priorities.get("upcoming") or [], styles, h3)
+        _priority_section(body, "Monitoring only", priorities.get("monitoring") or [], styles, h3)
+        body.append(Spacer(1, 0.2 * cm))
+
     body.append(PageBreak())
 
-    s_req, s_risk, s_method, s_foot = (5, 6, 7, 8) if show_property_breakdown else (4, 5, 6, 7)
+    # E — Portfolio risk highlights
+    body.append(Paragraph("Portfolio risk highlights", h2))
+    highlights = intelligence.get("risk_highlights") or []
+    if highlights:
+        for hl in highlights:
+            body.append(Paragraph(f"• {html.escape(hl)}", styles["Normal"]))
+    else:
+        body.append(Paragraph("No elevated operational risks beyond routine monitoring.", styles["Normal"]))
+    body.append(Spacer(1, 0.3 * cm))
 
-    # Requirements (paragraph list to avoid clipped wide tables)
-    body.append(Paragraph(f"{s_req}. Requirement breakdown", h2))
+    # F — Property movement summary
+    if model.get("include_property_breakdown", True):
+        body.append(Paragraph("Property movement summary", h2))
+        movement = intelligence.get("property_movement") or []
+        if not movement:
+            body.append(Paragraph("No properties in scope.", styles["Normal"]))
+        else:
+            mov_rows = [["Property", "Prior score", "Current", "Direction", "Key change"]]
+            for row in movement:
+                mov_rows.append(
+                    [
+                        html.escape(row.get("property") or "—")[:40],
+                        html.escape(row.get("previous_score") or "—"),
+                        html.escape(row.get("current_score") or "—"),
+                        html.escape(row.get("direction") or "—"),
+                        html.escape(row.get("key_change") or "—")[:50],
+                    ]
+                )
+            mt = Table(mov_rows, repeatRows=1, colWidths=[3.2 * cm, 2 * cm, 2 * cm, 2.2 * cm, 5.6 * cm])
+            mt.setStyle(_table_style())
+            body.append(mt)
+        body.append(Spacer(1, 0.3 * cm))
+
+    # G — Evidence activity summary
+    if model.get("include_recent_documents", True):
+        body.append(Paragraph("Evidence activity summary", h2))
+        for line in (intelligence.get("evidence_activity") or {}).get("lines") or []:
+            body.append(Paragraph(f"• {html.escape(line)}", styles["Normal"]))
+        body.append(Spacer(1, 0.3 * cm))
+
+    # H — Optional condensed appendix (high-risk only)
+    appendix = intelligence.get("condensed_appendix") or []
+    if appendix:
+        body.append(Paragraph("High-priority obligations (condensed)", h2))
+        body.append(
+            Paragraph(
+                "Selected high-risk items only. Full requirement detail is available in the portal and dedicated reports.",
+                small,
+            )
+        )
+        app_rows = [["Property", "Obligation", "Status", "Evidence"]]
+        for row in appendix:
+            app_rows.append(
+                [
+                    html.escape(row.get("property") or "—")[:36],
+                    html.escape(row.get("obligation") or "—")[:40],
+                    html.escape(row.get("status") or "—")[:18],
+                    html.escape(row.get("evidence") or "—")[:16],
+                ]
+            )
+        at = Table(app_rows, repeatRows=1, colWidths=[3.5 * cm, 5 * cm, 2.8 * cm, 2.7 * cm])
+        at.setStyle(_table_style())
+        body.append(at)
+
+    body.append(PageBreak())
+
+    body.append(Paragraph("Method and limitations", h2))
     body.append(
         Paragraph(
-            "Each row reflects live requirement state, evidence, and effective dates as held in Compliance Vault Pro.",
+            "This digest is an operational intelligence briefing — not legal advice, not an audit evidence pack, "
+            "and not a complete requirement register. Figures reflect tracked obligations and evidence states "
+            "held in Compliance Vault Pro at generation time.",
+            styles["Normal"],
+        )
+    )
+    body.append(
+        Paragraph(
+            "<b>Estimated vs verified dates:</b> Estimated dates are derived from renewal rules until verified "
+            "evidence is on file. Uploading and verifying evidence improves accuracy.",
             small,
         )
     )
-    reqs = model.get("requirement_rows_pdf") or []
-    if not reqs:
-        body.append(Paragraph("No applicable requirements to list.", styles["Normal"]))
-    else:
-        cap = DIGEST_PDF_MAX_REQUIREMENT_ROWS
-        for i, rr in enumerate(reqs[:cap]):
-            prop = html.escape(str(rr.get("property_name") or ""))
-            name = html.escape(str(rr.get("requirement_name") or ""))
-            st = html.escape(str(rr.get("state") or ""))
-            ev = html.escape(str(rr.get("evidence_state") or ""))
-            du = html.escape(str(rr.get("date_used") or "—"))
-            dk = "verified" if rr.get("date_kind") == "verified" else "estimated"
-            dv = rr.get("days_value")
-            dd = rr.get("days_direction")
-            day_part = ""
-            if dv is not None and dd == "remaining":
-                day_part = f", {int(dv)} day(s) remaining"
-            elif dv is not None and dd == "overdue":
-                day_part = f", {int(dv)} day(s) overdue"
-            na = html.escape(str(rr.get("next_action") or ""))
-            block = (
-                f"<b>{name}</b> — {prop}<br/>"
-                f"<font size=8>State: {st} | Evidence: {ev} | Date used: {du} ({dk}){day_part}<br/>"
-                f"Recommended next action: {na}</font>"
-            )
-            body.append(Paragraph(block, styles["Normal"]))
-            if i < min(len(reqs), cap) - 1:
-                body.append(Spacer(1, 0.15 * cm))
-        if len(reqs) > cap:
-            body.append(
-                Paragraph(
-                    f"<i>… plus {len(reqs) - cap} further requirements (view full detail in the portal).</i>",
-                    small,
-                )
-            )
-
-    body.append(PageBreak())
-
-    body.append(Paragraph(f"{s_risk}. Risk and operational guidance", h2))
-    body.append(Paragraph("<b>Top risk drivers</b>", h3))
-    drivers = model.get("top_risk_drivers") or []
-    if drivers:
-        for dr in drivers[:8]:
-            body.append(Paragraph(f"• {html.escape(str(dr))}", styles["Normal"]))
-    else:
-        body.append(Paragraph("No additional risk drivers beyond your summary scores.", styles["Normal"]))
-    body.append(Paragraph("<b>Recommended priorities</b>", h3))
-    acts = model.get("top_next_actions") or []
-    if acts:
-        for ac in acts[:8]:
-            body.append(Paragraph(f"• {html.escape(str(ac))}", styles["Normal"]))
-    else:
-        body.append(
-            Paragraph(
-                "Keep monitoring expiries in the calendar, maintain verified evidence, and clear overdue items first.",
-                styles["Normal"],
-            )
-        )
-
-    body.append(Paragraph(f"{s_method}. Method and limitations", h2))
-    body.append(
-        Paragraph(
-            "<b>Estimated vs verified dates:</b> Dates marked as estimated are derived from renewal rules or extracted data "
-            "until you confirm a date or supply verified evidence. Verified dates come from confirmed expiry data or "
-            "verified documents. Uploading and verifying evidence improves accuracy across your portfolio.",
-            styles["Normal"],
-        )
-    )
-    body.append(
-        Paragraph(
-            "<b>Scope:</b> This report is generated from tracked requirements, evidence states, and dates recorded in "
-            "Compliance Vault Pro. It is operational and informational — not legal advice. Seek professional counsel where needed.",
-            styles["Normal"],
-        )
-    )
-
-    body.append(Paragraph(f"{s_foot}. Footer", h2))
-    body.append(Spacer(1, 0.2 * cm))
-    foot = [
-        f"Generated {html.escape(str(model.get('generated_at_display') or ''))}.",
-    ]
+    body.append(Spacer(1, 0.3 * cm))
+    foot = [f"Generated {html.escape(str(model.get('generated_at_display') or ''))}."]
     if model.get("customer_reference"):
         foot.append(f"Client reference: {html.escape(str(model.get('customer_reference')))}.")
     if getattr(brand, "include_pleerity_attribution", True) and getattr(brand, "powered_by_text", None):
@@ -476,10 +385,7 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
 
 
 def write_monthly_digest_pdf_to_storage(client_id: str, report_month_key: str, pdf_bytes: bytes) -> str:
-    """
-    Persist PDF under DATA_DIR/monthly_digest_pdfs/{client_id}/{report_month_key}.pdf.
-    Returns relative path from DATA_DIR for storage in digest_logs.
-    """
+    """Persist PDF under DATA_DIR/monthly_digest_pdfs/{client_id}/{report_month_key}.pdf."""
     data_dir = resolve_data_dir()
     rel = Path("monthly_digest_pdfs") / client_id / f"{report_month_key}.pdf"
     dest = Path(data_dir) / rel

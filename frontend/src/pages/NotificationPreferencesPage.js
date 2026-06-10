@@ -332,8 +332,8 @@ const NotificationPreferencesPage = () => {
       icon: Mail,
       iconColor: 'text-purple-500',
       bgColor: 'bg-purple-50',
-      title: 'Monthly Compliance Digest',
-      description: 'A monthly summary of your compliance status and upcoming actions'
+      title: 'Monthly Operations Intelligence Digest',
+      description: 'A monthly portfolio briefing: what changed, what needs attention, and operational priorities'
     },
     {
       key: 'document_updates',

@@ -573,42 +573,28 @@ class EmailService:
             cards += metric_card("Missing evidence", html_module.escape(str(miss)))
 
         d = m.get("deltas") or {}
+        intel = m.get("digest_intelligence") if isinstance(m.get("digest_intelligence"), dict) else {}
+        what_changed_intel = intel.get("what_changed") or []
         delta_block = ""
-        if d.get("has_prior_snapshot"):
-            delta_block = '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">What changed since your last report</p><ul style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.5;">'
+        if what_changed_intel:
+            delta_block = (
+                '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">What changed this month</p>'
+                '<ul style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.5;">'
+            )
+            for line in what_changed_intel[:8]:
+                delta_block += f"<li>{html_module.escape(str(line))}</li>"
+            delta_block += "</ul>"
+        elif d.get("has_prior_snapshot"):
+            delta_block = '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">What changed this month</p><ul style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.5;">'
             sd = d.get("score_delta")
             if sd is not None:
                 delta_block += f"<li>{html_module.escape(email_score_delta_line(sd))}</li>"
-            if d.get("newly_overdue_labels"):
-                for x in d["newly_overdue_labels"][:5]:
-                    delta_block += f"<li>Newly overdue: {html_module.escape(str(x))}</li>"
-            if d.get("resolved_improved_labels"):
-                for x in d["resolved_improved_labels"][:5]:
-                    delta_block += f"<li>Resolved or improved: {html_module.escape(str(x))}</li>"
-            if d.get("newly_expiring_labels"):
-                for x in d["newly_expiring_labels"][:4]:
-                    delta_block += f"<li>Newly expiring soon: {html_module.escape(str(x))}</li>"
-            docd = d.get("documents_uploaded_delta_vs_prev_period")
-            if docd is not None:
-                try:
-                    delta_block += f"<li>Document uploads vs your prior reporting period: {int(docd):+d}.</li>"
-                except (TypeError, ValueError):
-                    delta_block += f"<li>Document upload activity changed vs your prior reporting period.</li>"
-            elif m.get("include_recent_documents", True):
-                delta_block += f"<li>Documents uploaded this reporting period: {int(m.get('documents_uploaded_period') or 0)}.</li>"
-            nmd = d.get("newly_missing_evidence_delta")
-            if nmd is not None:
-                try:
-                    nmdi = int(nmd)
-                    if nmdi != 0:
-                        delta_block += f"<li>Missing evidence count vs last report: {nmdi:+d}.</li>"
-                except (TypeError, ValueError):
-                    pass
             delta_block += "</ul>"
         else:
             delta_block = (
                 '<p style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 14px;color:#1e3a5f;font-size:14px;line-height:1.5;">'
-                "This is your first monthly compliance summary on record. Next month we will compare changes against this report."
+                "Baseline established: this is your first Monthly Operations Intelligence Digest on record. "
+                "Next month will compare movement against this snapshot."
                 "</p>"
             )
 
@@ -641,7 +627,7 @@ class EmailService:
         if m.get("digest_pdf_attached"):
             pdf_note = (
                 '<p style="margin:16px 0;font-size:14px;color:#334155;">'
-                "A detailed <strong>PDF audit report</strong> is attached for your records, lenders, or advisers."
+                "The <strong>Monthly Operations Intelligence Digest PDF</strong> is attached for your records."
                 "</p>"
             )
 
@@ -667,8 +653,22 @@ class EmailService:
             "</p>"
         )
 
+        report_title = html_module.escape(
+            str(m.get("digest_report_title") or "Monthly Operations Intelligence Digest")
+        )
+        stability = intel.get("portfolio_stability") or {}
+        stability_html = ""
+        if stability.get("trajectory"):
+            stability_html = (
+                '<p style="margin:12px 0;padding:10px 12px;background:#f8fafc;border-left:4px solid #334155;'
+                'font-size:13px;color:#1e293b;line-height:1.55;">'
+                f"<strong>Portfolio trajectory:</strong> {html_module.escape(str(stability.get('trajectory')))}. "
+                f"{html_module.escape(str(stability.get('interpretation') or ''))}"
+                "</p>"
+            )
+
         return f"""
-<p style="margin:0 0 8px 0;color:#64748b;font-size:13px;">Monthly Compliance Summary — {label}</p>
+<p style="margin:0 0 8px 0;color:#64748b;font-size:13px;">{report_title} — {label}</p>
 <p style="margin:0 0 4px 0;font-size:16px;color:#0f172a;"><strong>{acct}</strong></p>
 {crn_line}
 <p style="margin:8px 0 0 0;color:#64748b;font-size:13px;">Properties in scope: <strong>{props}</strong> · Generated: {gen}</p>
@@ -677,6 +677,7 @@ class EmailService:
 {jur_fb_html}
 {hiua_html}
 {snapshot_html}
+{stability_html}
 <div style="height:16px;"></div>
 {cards}
 {top_prop_html}
@@ -1177,7 +1178,7 @@ class EmailService:
             body = body_inner + extra_cc + period_html
             greeting = _format_greeting(model.get("client_name"))
             header = html_module.escape(
-                str(model.get("email_header_title") or model.get("subject") or "Monthly Compliance Summary")
+                str(model.get("email_header_title") or model.get("subject") or "Monthly Operations Intelligence Digest")
             )
             return _customer_email_html(
                 model,
@@ -2059,8 +2060,9 @@ Open the admin dashboard pending-verification list to process these documents.
             """
         elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
             label = model.get("reporting_month_label") or ""
+            report_title = model.get("digest_report_title") or "Monthly Operations Intelligence Digest"
             lines = [
-                f"MONTHLY COMPLIANCE SUMMARY — {label}",
+                f"{report_title.upper()} — {label}",
                 "",
                 f"Account: {model.get('account_name') or model.get('client_name', '')}",
             ]
@@ -2107,27 +2109,29 @@ Open the admin dashboard pending-verification list to process these documents.
                 if dhfn_txt:
                     lines.append(str(dhfn_txt))
                 lines.append("")
-            d = model.get("deltas") or {}
-            if d.get("has_prior_snapshot"):
-                lines.append("Changes since your last report:")
-                if d.get("score_delta") is not None:
-                    lines.append(f"- Score delta: {d.get('score_delta')}")
-                for x in (d.get("newly_overdue_labels") or [])[:4]:
-                    lines.append(f"- Newly overdue: {x}")
-                for x in (d.get("resolved_improved_labels") or [])[:4]:
-                    lines.append(f"- Resolved/improved: {x}")
-                docd = d.get("documents_uploaded_delta_vs_prev_period")
-                if docd is not None:
-                    lines.append(f"- Document uploads vs prior period: {docd}")
+            intel = model.get("digest_intelligence") if isinstance(model.get("digest_intelligence"), dict) else {}
+            stability = intel.get("portfolio_stability") or {}
+            if stability.get("trajectory"):
+                lines.append(f"Portfolio trajectory: {stability.get('trajectory')}")
+                if stability.get("interpretation"):
+                    lines.append(str(stability.get("interpretation")))
+            what_changed = intel.get("what_changed") or []
+            if what_changed:
+                lines.append("")
+                lines.append("What changed this month:")
+                for wc in what_changed[:8]:
+                    lines.append(f"- {wc}")
             else:
-                lines.append("First monthly summary on record; comparison starts next month.")
+                d = model.get("deltas") or {}
+                if not d.get("has_prior_snapshot"):
+                    lines.append("Baseline established; month-on-month comparison starts next period.")
             lines.append("")
             for it in (model.get("urgent_items") or [])[:5]:
                 lines.append(f"* {it.get('line') or it.get('title')} — {it.get('url')}")
             lines.append("")
             lines.append(f"Open command centre: {model.get('primary_cta_url') or model.get('portal_link', '')}")
             if model.get("digest_pdf_attached"):
-                lines.append("PDF audit report attached.")
+                lines.append("Monthly Operations Intelligence Digest PDF attached.")
             lines.append("")
             lines.append(
                 "Generated from tracked requirements and evidence in Compliance Vault Pro. Not legal advice."

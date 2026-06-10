@@ -520,7 +520,9 @@ async def download_portal_digest_pdf(request: Request, digest_id: str):
 
     if not pdf_bytes:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="PDF not available")
-    fname = f"monthly-compliance-summary-{digest_id[:8]}.pdf"
+    from services.monthly_digest_naming import digest_download_filename
+
+    fname = digest_download_filename(digest_id=digest_id)
     from fastapi.responses import Response
 
     return Response(

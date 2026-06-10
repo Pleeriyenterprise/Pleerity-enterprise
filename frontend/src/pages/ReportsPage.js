@@ -523,12 +523,12 @@ const ReportsPage = () => {
         const link = document.createElement('a');
         link.href = url;
         const periodEnd = (digest.digest_period_end || digest.content?.period_end || '').slice(0, 10);
-        link.setAttribute('download', `monthly_digest_${periodEnd || 'report'}.pdf`);
+        link.setAttribute('download', `monthly-operations-intelligence-digest-${periodEnd || 'report'}.pdf`);
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
-        toast.success('Monthly digest PDF downloaded', {
+        toast.success('Operations intelligence digest downloaded', {
           description: res.headers['x-report-engine'] === 'reportlab_server'
             ? 'Server-rendered report with governance footer.'
             : undefined,
@@ -548,7 +548,7 @@ const ReportsPage = () => {
     doc.rect(0, 0, pageWidth, 32, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
-    doc.text('Monthly Compliance Digest', 14, 14);
+    doc.text('Monthly Operations Intelligence Digest', 14, 14);
     doc.setFontSize(9);
     const periodStart = (digest.digest_period_start || digest.content?.period_start || '').slice(0, 10);
     const periodEnd = (digest.digest_period_end || digest.content?.period_end || '').slice(0, 10);
@@ -575,7 +575,7 @@ const ReportsPage = () => {
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
     doc.text('Data as of ' + (periodEnd || 'N/A') + '. This summary is for information only and does not constitute legal advice.', 14, y, { maxWidth: pageWidth - 28 });
-    doc.save(`monthly_digest_${periodEnd || 'report'}.pdf`);
+    doc.save(`monthly-operations-intelligence-digest-${periodEnd || 'report'}.pdf`);
   };
 
   const createSchedule = async (e) => {
@@ -887,17 +887,17 @@ const ReportsPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="w-5 h-5 text-electric-teal" />
-              Monthly Digests
+              Monthly Operations Intelligence Digests
             </CardTitle>
             <p className="text-sm text-gray-500 mt-1">
-              Past monthly compliance digests sent to your email. View summary or download as PDF.
+              Past monthly portfolio briefings sent to your email. View summary or download the digest PDF.
             </p>
           </CardHeader>
           <CardContent>
             {loading ? (
               <p className="text-sm text-gray-500">Loading digests…</p>
             ) : digests.length === 0 ? (
-              <p className="text-sm text-gray-500">No digests yet. Enable Monthly Digest in Notification Preferences to receive them.</p>
+              <p className="text-sm text-gray-500">No digests yet. Enable Monthly Operations Intelligence Digest in Notification Preferences to receive them.</p>
             ) : (
               <>
                 <div className="md:hidden space-y-3">
@@ -1103,7 +1103,7 @@ const ReportsPage = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDigestView(null)}>
             <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[min(90dvh,90vh)] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="font-semibold text-midnight-blue">Monthly Digest</h3>
+                <h3 className="font-semibold text-midnight-blue">Monthly Operations Intelligence Digest</h3>
                 <button type="button" onClick={() => setDigestView(null)} className="p-2 hover:bg-gray-100 rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
