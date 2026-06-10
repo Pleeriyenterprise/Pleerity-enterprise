@@ -35,6 +35,53 @@ def _strip_html_to_text(html: str) -> str:
     return text[:5000] if len(text) > 5000 else text
 
 
+def _trim_email_prose(text: str, *, max_sentences: int = 2) -> str:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return ""
+    parts = re.split(r"(?<=[.!?])\s+", cleaned)
+    return " ".join(parts[:max_sentences]).strip()
+
+
+def _filter_email_what_changed(lines: List[str], overview_text: str) -> List[str]:
+    """Drop month-on-month lines that repeat the portfolio overview."""
+    overview_low = (overview_text or "").lower()
+    filtered: List[str] = []
+    for line in lines:
+        raw = str(line or "").strip()
+        if not raw:
+            continue
+        low = raw.lower()
+        if low.startswith("portfolio trajectory:"):
+            body = low.replace("portfolio trajectory:", "", 1).strip()
+            if body and body[:72] in overview_low:
+                continue
+        if raw in filtered:
+            continue
+        filtered.append(raw)
+    return filtered[:6]
+
+
+def _dedupe_email_themes(themes: List[Dict[str, Any]], *, limit: int = 5) -> List[Dict[str, Any]]:
+    seen: set = set()
+    out: List[Dict[str, Any]] = []
+    for th in themes:
+        label = str(th.get("theme") or "").strip()
+        if not label or label.lower() in seen:
+            continue
+        seen.add(label.lower())
+        out.append(th)
+        if len(out) >= limit:
+            break
+    return out
+
+
+# Monthly digest email rhythm — tuned for mobile scan readability.
+_DIGEST_SECTION_STYLE = "font-weight:600;color:#0f172a;margin:24px 0 10px 0;font-size:15px;"
+_DIGEST_BODY_STYLE = "margin:0 0 14px 0;color:#334155;font-size:14px;line-height:1.5;"
+_DIGEST_LIST_STYLE = "margin:0 0 18px 0;padding-left:20px;color:#334155;font-size:14px;line-height:1.5;"
+
+
 def _customer_email_html(model: Dict[str, Any], **kwargs: Any) -> str:
     """Apply ``_email_branding`` from notification context, then explicit kwargs."""
     merged = merge_branding_kwargs(model, **kwargs)
@@ -422,7 +469,13 @@ class EmailService:
         """
 
     def _build_monthly_digest_action_body_html(self, model: Dict[str, Any]) -> str:
-        """Mobile-first action layer: summary, deltas, urgent items, steps — no wide data tables."""
+        """Executive monthly briefing — grouped themes, calm posture, no metric-wall or alert spam."""
+        from services.monthly_digest_operational_intelligence import (
+            build_digest_intelligence,
+            build_email_operational_themes,
+            operational_posture_label,
+        )
+
         m = model
         label = html_module.escape(str(m.get("reporting_month_label") or "this period"))
         acct = html_module.escape(str(m.get("account_name") or m.get("client_name") or "Your account"))
@@ -434,201 +487,187 @@ class EmailService:
         )
         gen = html_module.escape(str(m.get("generated_at_display") or m.get("data_as_of") or ""))
         props = int(m.get("properties_count") or 0)
-        scope_note_html = ""
-        dsn = m.get("digest_score_scope_note")
-        if dsn:
-            scope_note_html = (
-                '<p style="margin:12px 0;padding:10px 12px;background:#eff6ff;border-left:4px solid #2563eb;'
-                'font-size:13px;color:#1e3a5f;line-height:1.5;">'
-                f"{html_module.escape(str(dsn))}"
-                "</p>"
-            )
-        jur_note_html = ""
-        djn = m.get("digest_jurisdiction_framing")
-        if djn:
-            jur_note_html = (
-                '<p style="margin:12px 0;padding:10px 12px;background:#f1f5f9;border-left:4px solid #0f172a;'
-                'font-size:13px;color:#0f172a;line-height:1.5;">'
-                f"<strong>Jurisdiction context:</strong> {html_module.escape(str(djn))}"
-                "</p>"
-            )
-        jur_fb_html = ""
-        djfb = m.get("digest_jurisdiction_fallback_disclaimer")
-        if djfb:
-            jur_fb_html = (
-                '<p style="margin:12px 0;padding:10px 12px;background:#fffbeb;border-left:4px solid #d97706;'
-                'font-size:13px;color:#78350f;line-height:1.5;">'
-                f"<strong>Default jurisdiction notice:</strong> {html_module.escape(str(djfb))}"
-                "</p>"
-            )
-        hiua_html = ""
-        dhl = m.get("digest_hiua_line")
-        dhfn = m.get("digest_hiua_report_framing_notice")
-        if dhl or dhfn:
-            inner_hiua = ""
-            if dhl:
-                inner_hiua += (
-                    '<p style="margin:12px 0 0 0;padding:10px 12px;background:#f5f3ff;border-left:4px solid #6d28d9;'
-                    'font-size:13px;color:#4c1d95;line-height:1.55;">'
-                    f"<strong>Operational follow-up (applicability):</strong> {html_module.escape(str(dhl))}"
-                    "</p>"
-                )
-            if dhfn:
-                inner_hiua += (
-                    '<p style="margin:8px 0 0 0;padding:8px 12px 10px 12px;background:#faf5ff;border-left:4px solid #a78bfa;'
-                    'font-size:12px;color:#5b21b6;line-height:1.5;">'
-                    f"{html_module.escape(str(dhfn))}"
-                    "</p>"
-                )
-            hiua_html = f'<div style="margin:4px 0 8px 0;">{inner_hiua}</div>'
+        intel = m.get("digest_intelligence") if isinstance(m.get("digest_intelligence"), dict) else {}
+        if not intel:
+            intel = build_digest_intelligence(m)
+
+        posture = html_module.escape(
+            str(intel.get("operational_posture_label") or operational_posture_label(str(m.get("risk_level") or "")))
+        )
         score_display = html_module.escape(
             str(m.get("compliance_score_display") or headline_score_display_for_export(m.get("compliance_score"), m.get("score_status")))
         )
-        score_status = m.get("score_status")
-        score_status_esc = html_module.escape(str(score_status)) if score_status else ""
-        last_calc = m.get("last_calculated_at")
-        last_calc_esc = html_module.escape(str(last_calc)) if last_calc else ""
-        risk = html_module.escape(str(m.get("risk_level") or "—"))
-        total = int(m.get("total_requirements") or 0)
-        valid = int(m.get("valid_count") or m.get("compliant") or 0)
-        exp = int(m.get("expiring_soon") or 0)
         ovd = int(m.get("overdue") or 0)
         miss = int(m.get("missing_evidence_count") or 0)
+        exp = int(m.get("expiring_soon") or 0)
 
-        tpr = m.get("digest_email_top_properties_at_risk") or []
+        context_bits: List[str] = []
+        dsn = m.get("digest_score_scope_note")
+        if dsn:
+            context_bits.append(str(dsn))
+        djn = m.get("digest_jurisdiction_framing")
+        if djn:
+            context_bits.append(f"Jurisdiction context: {djn}")
+        djfb = m.get("digest_jurisdiction_fallback_disclaimer")
+        if djfb:
+            context_bits.append(f"Default jurisdiction notice: {djfb}")
+        dhl = m.get("digest_hiua_line")
+        dhfn = m.get("digest_hiua_report_framing_notice")
+        if dhl:
+            context_bits.append(f"Applicability follow-up: {dhl}")
+        if dhfn:
+            context_bits.append(str(dhfn))
+        context_html = ""
+        if context_bits:
+            context_paras = "".join(
+                f'<p style="margin:0 0 8px 0;font-size:13px;color:#475569;line-height:1.5;">'
+                f"{html_module.escape(x)}</p>"
+                for x in context_bits[:3]
+            )
+            context_html = (
+                '<div style="margin:14px 0;padding:12px 14px;background:#f8fafc;border-left:3px solid #64748b;">'
+                f"{context_paras}</div>"
+            )
+
         gen_raw = str(m.get("generated_at_display") or m.get("data_as_of") or "").strip()
         snapshot_framing = (m.get("digest_snapshot_framing_line") or "").strip()
         if not snapshot_framing and gen_raw:
             snapshot_framing = f"Snapshot as of {gen_raw}"
-        show_score_snapshot_banner = m.get("include_compliance_summary", True) or (
-            bool(tpr) and m.get("include_property_breakdown", True)
-        )
         snapshot_html = ""
-        if snapshot_framing and show_score_snapshot_banner:
+        if snapshot_framing:
             snapshot_html = (
-                '<p style="margin:0 0 12px 0;padding:8px 12px;background:#f1f5f9;border-radius:8px;'
-                'font-size:13px;color:#334155;line-height:1.45;">'
+                '<p style="margin:0 0 12px 0;font-size:13px;color:#64748b;line-height:1.45;">'
                 f"{html_module.escape(snapshot_framing)}"
                 "</p>"
             )
 
-        def metric_card(title: str, value: str) -> str:
-            return (
-                f'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin:0 0 10px 0;">'
-                f'<div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.04em;">{title}</div>'
-                f'<div style="font-size:20px;font-weight:700;color:#0f172a;margin-top:4px;">{value}</div></div>'
+        stability = intel.get("portfolio_stability") or {}
+        trajectory = str(stability.get("trajectory") or "").strip()
+        exec_raw = _trim_email_prose(str(intel.get("executive_interpretation") or ""), max_sentences=2)
+        overview_parts: List[str] = []
+        if trajectory:
+            overview_parts.append(f"<strong>{html_module.escape(trajectory)}.</strong>")
+        if exec_raw:
+            overview_parts.append(html_module.escape(exec_raw))
+        overview_body = " ".join(overview_parts)
+        overview_html = (
+            f'<p style="{_DIGEST_SECTION_STYLE}">Portfolio overview</p>'
+            f'<p style="{_DIGEST_BODY_STYLE}">{overview_body}</p>'
+        )
+
+        snapshot_metrics = ""
+        if m.get("include_compliance_summary", True):
+            metric_lines = [
+                f"Headline score: {score_display}",
+                f"Operational posture: {posture}",
+            ]
+            if ovd:
+                metric_lines.append(f"Overdue obligations: {ovd}")
+            if miss:
+                metric_lines.append(f"Unresolved documentation gaps: {miss}")
+            if exp:
+                metric_lines.append(f"Renewals approaching: {exp}")
+            ssm_raw = (m.get("score_status_message") or "").strip()
+            if ssm_raw:
+                metric_lines.append(f"Headline note: {ssm_raw}")
+            snapshot_metrics = (
+                f'<ul style="{_DIGEST_LIST_STYLE}">'
+                + "".join(f"<li>{html_module.escape(ln)}</li>" for ln in metric_lines)
+                + "</ul>"
             )
 
+        what_changed_intel = _filter_email_what_changed(
+            list(intel.get("what_changed") or []),
+            f"{trajectory}. {exec_raw}",
+        )
+        delta_block = ""
+        if what_changed_intel:
+            delta_block = (
+                f'<p style="{_DIGEST_SECTION_STYLE}">What changed this month</p>'
+                f'<ul style="{_DIGEST_LIST_STYLE}">'
+            )
+            for line in what_changed_intel:
+                delta_block += f"<li>{html_module.escape(str(line))}</li>"
+            delta_block += "</ul>"
+        else:
+            d = m.get("deltas") or {}
+            if d.get("has_prior_snapshot"):
+                delta_block = (
+                    f'<p style="{_DIGEST_SECTION_STYLE}">What changed this month</p>'
+                    f'<ul style="{_DIGEST_LIST_STYLE}">'
+                )
+                sd = d.get("score_delta")
+                if sd is not None:
+                    delta_block += f"<li>{html_module.escape(email_score_delta_line(sd))}</li>"
+                delta_block += "</ul>"
+            else:
+                delta_block = (
+                    f'<p style="{_DIGEST_SECTION_STYLE}">What changed this month</p>'
+                    f'<p style="{_DIGEST_BODY_STYLE}">'
+                    "First digest on record — month-on-month comparison begins next period."
+                    "</p>"
+                )
+
+        themes_block = ""
+        if m.get("include_action_items", True):
+            themes = _dedupe_email_themes(
+                intel.get("email_operational_themes") or build_email_operational_themes(m)
+            )
+            if themes:
+                themes_block = f'<p style="{_DIGEST_SECTION_STYLE}">Priority operational themes</p><ul style="{_DIGEST_LIST_STYLE}">'
+                for th in themes:
+                    theme = html_module.escape(str(th.get("theme") or "Operational theme"))
+                    summary = html_module.escape(str(th.get("summary") or ""))
+                    themes_block += (
+                        f'<li style="margin-bottom:10px;"><strong>{theme}</strong><br/>'
+                        f'<span style="color:#475569;">{summary}</span></li>'
+                    )
+                themes_block += "</ul>"
+
+        tpr = m.get("digest_email_top_properties_at_risk") or []
         top_prop_html = ""
         if tpr and m.get("include_property_breakdown", True):
             parts = [
-                '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">'
-                "Properties needing the most attention</p>",
-                '<ul style="margin:0;padding-left:20px;color:#334155;font-size:14px;line-height:1.55;">',
+                f'<p style="{_DIGEST_SECTION_STYLE}">Properties with concentrated follow-up</p>',
+                f'<ul style="{_DIGEST_LIST_STYLE}">',
             ]
-            for row in tpr:
+            for row in tpr[:4]:
                 nm = html_module.escape(str(row.get("name") or "Property"))
-                rk = html_module.escape(str(row.get("risk_level") or "—"))
+                posture_row = operational_posture_label(str(row.get("risk_level") or ""))
                 sc = row.get("score")
                 sc_s = html_module.escape(
                     str(headline_score_display_for_export(sc, row.get("score_status")))
                 )
-                ovd = int(row.get("overdue_count") or 0)
-                miss = int(row.get("missing_evidence_count") or 0)
-                bits = [f"Headline score {sc_s}", rk]
-                if ovd:
-                    bits.append(f"{ovd} overdue")
-                if miss:
-                    bits.append(f"{miss} missing evidence")
+                row_ovd = int(row.get("overdue_count") or 0)
+                row_miss = int(row.get("missing_evidence_count") or 0)
+                bits = [f"Headline score {sc_s}", posture_row]
+                if row_ovd:
+                    bits.append(f"{row_ovd} overdue")
+                if row_miss:
+                    bits.append(f"{row_miss} unresolved documentation gap{'s' if row_miss != 1 else ''}")
                 parts.append(f"<li><strong>{nm}</strong> — {html_module.escape(' · '.join(bits))}</li>")
             parts.append("</ul>")
             top_prop_html = "".join(parts)
 
-        cards = ""
-        if m.get("include_compliance_summary", True):
-            cards += metric_card("Compliance score (headline)", score_display)
-            ssm_raw = (m.get("score_status_message") or "").strip()
-            if score_status_esc or last_calc_esc or ssm_raw:
-                meta_bits: List[str] = []
-                if score_status_esc:
-                    meta_bits.append(f"Status: {score_status_esc}")
-                if last_calc_esc:
-                    meta_bits.append(f"Last calculated: {last_calc_esc}")
-                if ssm_raw:
-                    meta_bits.append(html_module.escape(ssm_raw))
-                cards += metric_card("Score semantics", " · ".join(meta_bits))
-            cov = m.get("score_coverage")
-            if isinstance(cov, dict) and int(cov.get("properties_missing_score") or 0) > 0:
-                cards += metric_card(
-                    "Score coverage",
-                    html_module.escape(
-                        f"{int(cov.get('properties_with_score') or 0)} of {int(cov.get('properties_total') or 0)} properties with stored scores; "
-                        f"{int(cov.get('properties_missing_score') or 0)} without."
-                    ),
-                )
-            cards += metric_card("Risk level", risk)
-            cards += metric_card("Tracked requirements", html_module.escape(str(total)))
-            cards += metric_card("Valid", html_module.escape(str(valid)))
-            cards += metric_card("Expiring soon", html_module.escape(str(exp)))
-            cards += metric_card("Overdue", html_module.escape(str(ovd)))
-            cards += metric_card("Missing evidence", html_module.escape(str(miss)))
-
-        d = m.get("deltas") or {}
-        intel = m.get("digest_intelligence") if isinstance(m.get("digest_intelligence"), dict) else {}
-        what_changed_intel = intel.get("what_changed") or []
-        delta_block = ""
-        if what_changed_intel:
-            delta_block = (
-                '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">What changed this month</p>'
-                '<ul style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.5;">'
-            )
-            for line in what_changed_intel[:8]:
-                delta_block += f"<li>{html_module.escape(str(line))}</li>"
-            delta_block += "</ul>"
-        elif d.get("has_prior_snapshot"):
-            delta_block = '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">What changed this month</p><ul style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.5;">'
-            sd = d.get("score_delta")
-            if sd is not None:
-                delta_block += f"<li>{html_module.escape(email_score_delta_line(sd))}</li>"
-            delta_block += "</ul>"
-        else:
-            delta_block = (
-                '<p style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 14px;color:#1e3a5f;font-size:14px;line-height:1.5;">'
-                "Baseline established: this is your first Monthly Operations Intelligence Digest on record. "
-                "Next month will compare movement against this snapshot."
-                "</p>"
-            )
-
-        urgent_block = ""
-        if m.get("include_action_items", True):
-            items = m.get("urgent_items") or []
-            if items:
-                urgent_block = '<p style="font-weight:600;color:#92400e;margin:20px 0 8px 0;">Items to review soon</p><ul style="margin:0;padding-left:0;list-style:none;">'
-                for it in items[:5]:
-                    url = html_module.escape(str(it.get("url") or m.get("primary_cta_url") or m.get("portal_link") or "#"))
-                    line = html_module.escape(str(it.get("line") or it.get("title") or "Action item"))
-                    urgent_block += (
-                        f'<li style="margin:0 0 12px 0;"><a href="{url}" style="display:block;padding:12px 14px;'
-                        f'background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;color:#92400e;text-decoration:none;'
-                        f'font-size:15px;font-weight:600;">{line}</a></li>'
-                    )
-                urgent_block += "</ul>"
-
         steps = ""
         if m.get("include_recommendations", True):
-            steps = '<p style="font-weight:600;color:#0f172a;margin:20px 0 8px 0;">Recommended next steps</p><ol style="margin:0;padding-left:20px;color:#334155;font-size:15px;line-height:1.55;">'
+            steps = (
+                f'<p style="{_DIGEST_SECTION_STYLE}">Recommended next actions</p>'
+                f'<ol style="{_DIGEST_LIST_STYLE}">'
+            )
             if miss > 0:
-                steps += "<li>Upload missing evidence and complete any review steps your administrator requires.</li>"
+                steps += "<li>Close documentation gaps and complete verification in the portal.</li>"
             if ovd > 0:
-                steps += "<li>Clear overdue renewals or book a compliance job from the command centre.</li>"
-            steps += "<li>Review your dashboard and calendar for upcoming expiries.</li>"
+                steps += "<li>Prioritise overdue renewals and work-order follow-up.</li>"
+            steps += "<li>Review the attached digest PDF and portal calendar.</li>"
             steps += "</ol>"
 
         pdf_note = ""
         if m.get("digest_pdf_attached"):
             pdf_note = (
-                '<p style="margin:16px 0;font-size:14px;color:#334155;">'
-                "The <strong>Monthly Operations Intelligence Digest PDF</strong> is attached for your records."
+                f'<p style="margin:18px 0;font-size:14px;color:#475569;line-height:1.5;">'
+                "Attached: <strong>Monthly Operations Intelligence Digest PDF</strong> "
+                "for governance and operational review."
                 "</p>"
             )
 
@@ -638,8 +677,8 @@ class EmailService:
                 html_module.escape(str(x)) for x in (m.get("digest_truncation_display_lines") or [])
             )
             trunc_note = (
-                '<p style="margin:16px 0;padding:12px 14px;background:#fffbeb;border-left:4px solid #d97706;'
-                'font-size:13px;color:#78350f;line-height:1.5;">'
+                '<p style="margin:16px 0;padding:12px 14px;background:#f8fafc;border-left:3px solid #94a3b8;'
+                'font-size:13px;color:#475569;line-height:1.5;">'
                 "<strong>Data scope notice.</strong> "
                 f"{lines_esc}"
                 "</p>"
@@ -648,42 +687,28 @@ class EmailService:
         support = html_module.escape(str(m.get("support_email") or SUPPORT_EMAIL or "support@pleerityenterprise.co.uk"))
         disclaimer = (
             "<p style='font-size:12px;color:#64748b;margin-top:20px;line-height:1.5;'>"
-            "Figures are generated from tracked requirements, evidence states, and dates recorded in Compliance Vault Pro. "
+            "Figures reflect tracked requirements and evidence states recorded in Compliance Vault Pro at generation time. "
             f"Support: <a href='mailto:{support}' style='color:#00B8A9;'>{support}</a>. "
-            "This email is operational and informational — not legal advice."
+            "Operational and informational — not legal advice."
             "</p>"
         )
 
         report_title = html_module.escape(
             str(m.get("digest_report_title") or "Monthly Operations Intelligence Digest")
         )
-        stability = intel.get("portfolio_stability") or {}
-        stability_html = ""
-        if stability.get("trajectory"):
-            stability_html = (
-                '<p style="margin:12px 0;padding:10px 12px;background:#f8fafc;border-left:4px solid #334155;'
-                'font-size:13px;color:#1e293b;line-height:1.55;">'
-                f"<strong>Portfolio trajectory:</strong> {html_module.escape(str(stability.get('trajectory')))}. "
-                f"{html_module.escape(str(stability.get('interpretation') or ''))}"
-                "</p>"
-            )
 
         return f"""
 <p style="margin:0 0 8px 0;color:#64748b;font-size:13px;">{report_title} — {label}</p>
 <p style="margin:0 0 4px 0;font-size:16px;color:#0f172a;"><strong>{acct}</strong></p>
 {crn_line}
 <p style="margin:8px 0 0 0;color:#64748b;font-size:13px;">Properties in scope: <strong>{props}</strong> · Generated: {gen}</p>
-{scope_note_html}
-{jur_note_html}
-{jur_fb_html}
-{hiua_html}
 {snapshot_html}
-{stability_html}
-<div style="height:16px;"></div>
-{cards}
-{top_prop_html}
+{context_html}
+{overview_html}
+{snapshot_metrics}
 {delta_block}
-{urgent_block}
+{themes_block}
+{top_prop_html}
 {steps}
 {pdf_note}
 {trunc_note}
@@ -1154,30 +1179,41 @@ class EmailService:
             </html>
             """
         elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
+            from services.monthly_digest_naming import digest_primary_cta_label, digest_why_received
+
             body_inner = self._build_monthly_digest_action_body_html(model)
             extra_cc = ""
             if model.get("include_audit_summary") and model.get("command_centre_digest_included"):
                 u = int(model.get("command_centre_urgent_open") or 0)
                 up = int(model.get("command_centre_upcoming_open") or 0)
                 ip = int(model.get("command_centre_in_progress_open") or 0)
-                sn = int(model.get("command_centre_snoozed") or 0)
-                extra_cc = (
-                    "<p style=\"font-weight:600;margin:20px 0 8px 0;\">Today inbox snapshot</p>"
-                    "<ul style=\"margin:0;padding-left:20px;color:#334155;font-size:14px;\">"
-                    f"<li>Urgent: {u}</li><li>Upcoming: {up}</li><li>In progress: {ip}</li><li>Snoozed: {sn}</li></ul>"
-                )
+                open_total = u + up + ip
+                if open_total > 0:
+                    extra_cc = (
+                        f'<p style="{_DIGEST_SECTION_STYLE}">Command centre activity</p>'
+                        f'<p style="{_DIGEST_BODY_STYLE}">'
+                        f"Today inbox: {open_total} open "
+                        f"({u} immediate, {up} upcoming, {ip} in progress). "
+                        "Use the priority themes above to triage."
+                        "</p>"
+                    )
                 act_lines = model.get("command_centre_recent_activity_lines") or []
                 if act_lines:
-                    lis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in act_lines)
-                    extra_cc += f"<p style=\"font-weight:600;margin:16px 0 6px 0;\">Recent inbox activity</p><ul style=\"margin:0;padding-left:20px;font-size:14px;\">{lis}</ul>"
+                    lis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in act_lines[:3])
+                    extra_cc += (
+                        f'<p style="font-weight:600;color:#0f172a;margin:16px 0 6px 0;font-size:14px;">'
+                        f"Recent inbox movement</p>"
+                        f'<ul style="margin:0 0 14px 0;padding-left:20px;font-size:13px;color:#64748b;line-height:1.5;">{lis}</ul>'
+                    )
             period_html = ""
             if model.get("include_audit_summary") and model.get("digest_period_activity_included"):
                 plines = model.get("digest_period_activity_lines") or []
                 if plines:
-                    plis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in plines)
-                    period_html = f"<p style=\"font-weight:600;margin:20px 0 8px 0;\">Operational activity (period)</p><ul style=\"margin:0;padding-left:20px;font-size:14px;\">{plis}</ul>"
-                else:
-                    period_html = "<p style=\"color:#64748b;font-size:14px;\">No qualifying operational activity lines for this window.</p>"
+                    plis = "".join(f"<li>{html_module.escape(str(line))}</li>" for line in plines[:6])
+                    period_html = (
+                        f'<p style="{_DIGEST_SECTION_STYLE}">Operational activity this period</p>'
+                        f'<ul style="margin:0 0 14px 0;padding-left:20px;font-size:13px;color:#64748b;line-height:1.5;">{plis}</ul>'
+                    )
             body = body_inner + extra_cc + period_html
             greeting = _format_greeting(model.get("client_name"))
             header = html_module.escape(
@@ -1188,9 +1224,9 @@ class EmailService:
                 greeting=greeting,
                 body_html=body,
                 header_title=header,
-                cta_label=str(model.get("primary_cta_label") or "Open portal for compliance summary"),
+                cta_label=str(model.get("primary_cta_label") or digest_primary_cta_label()),
                 cta_url=model.get("primary_cta_url") or model.get("portal_link") or "#",
-                why_received="you have monthly compliance reporting enabled for your account.",
+                why_received=digest_why_received(),
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
                 customer_reference=model.get("customer_reference"),
@@ -2062,8 +2098,21 @@ Open the admin dashboard pending-verification list to process these documents.
 {footer}
             """
         elif template_alias == EmailTemplateAlias.MONTHLY_DIGEST:
+            from services.monthly_digest_operational_intelligence import (
+                build_digest_intelligence,
+                build_email_operational_themes,
+                operational_posture_label,
+            )
+
             label = model.get("reporting_month_label") or ""
             report_title = model.get("digest_report_title") or "Monthly Operations Intelligence Digest"
+            intel = model.get("digest_intelligence") if isinstance(model.get("digest_intelligence"), dict) else {}
+            if not intel:
+                intel = build_digest_intelligence(model)
+            posture = operational_posture_label(str(model.get("risk_level") or ""))
+            stability = intel.get("portfolio_stability") or {}
+            trajectory = str(stability.get("trajectory") or "").strip()
+            overview = _trim_email_prose(str(intel.get("executive_interpretation") or ""), max_sentences=2)
             lines = [
                 f"{report_title.upper()} — {label}",
                 "",
@@ -2071,70 +2120,44 @@ Open the admin dashboard pending-verification list to process these documents.
             ]
             if model.get("customer_reference"):
                 lines.append(f"CRN: {model.get('customer_reference')}")
-            lines.extend(
-                [
-                    f"Properties: {model.get('properties_count', 0)}",
-                ]
-            )
+            lines.append(f"Properties: {model.get('properties_count', 0)}")
             snap_txt = (model.get("digest_snapshot_framing_line") or "").strip()
-            if not snap_txt:
-                _gr = str(model.get("generated_at_display") or model.get("data_as_of") or "").strip()
-                if _gr:
-                    snap_txt = f"Snapshot as of {_gr}"
             if snap_txt:
                 lines.append(snap_txt)
-                lines.append("")
-            lines.extend(
-                [
-                    f"Compliance score (headline): {model.get('compliance_score_display') or headline_score_display_for_export(model.get('compliance_score'), model.get('score_status'))}",
-                    f"Score status: {model.get('score_status') or '—'}",
-                    f"Last calculated (headline): {model.get('last_calculated_at') or model.get('portfolio_last_calculated_at') or '—'}",
-                ]
+            lines.extend(["", "PORTFOLIO OVERVIEW"])
+            if trajectory:
+                lines.append(f"{trajectory}. {overview}".strip())
+            elif overview:
+                lines.append(overview)
+            lines.append(f"Headline score: {model.get('compliance_score_display') or headline_score_display_for_export(model.get('compliance_score'), model.get('score_status'))}")
+            lines.append(f"Operational posture: {posture}")
+            what_changed = _filter_email_what_changed(
+                list(intel.get("what_changed") or []),
+                f"{trajectory}. {overview}",
             )
-            ssm_plain = (model.get("score_status_message") or "").strip()
-            if ssm_plain:
-                lines.append(f"Headline note: {ssm_plain}")
-            lines.extend(
-                [
-                    f"Risk: {model.get('risk_level', '')}",
-                    f"Requirements: {model.get('total_requirements', 0)} (valid {model.get('valid_count', model.get('compliant', 0))}, "
-                    f"expiring soon {model.get('expiring_soon', 0)}, overdue {model.get('overdue', 0)}, "
-                    f"missing evidence {model.get('missing_evidence_count', 0)})",
-                    "",
-                ]
+            if what_changed:
+                lines.extend(["", "WHAT CHANGED THIS MONTH"])
+                for wc in what_changed:
+                    lines.append(f"- {wc}")
+            themes = _dedupe_email_themes(
+                intel.get("email_operational_themes") or build_email_operational_themes(model)
             )
+            if themes:
+                lines.extend(["", "PRIORITY OPERATIONAL THEMES"])
+                for th in themes:
+                    lines.append(f"- {th.get('theme')}: {th.get('summary')}")
             dhl_txt = model.get("digest_hiua_line")
             dhfn_txt = model.get("digest_hiua_report_framing_notice")
             if dhl_txt or dhfn_txt:
-                lines.append("OPERATIONAL FOLLOW-UP (APPLICABILITY — NOT A CONFIRMED BREACH FLAG)")
+                lines.extend(["", "GOVERNANCE CONTEXT"])
                 if dhl_txt:
                     lines.append(str(dhl_txt))
                 if dhfn_txt:
                     lines.append(str(dhfn_txt))
-                lines.append("")
-            intel = model.get("digest_intelligence") if isinstance(model.get("digest_intelligence"), dict) else {}
-            stability = intel.get("portfolio_stability") or {}
-            if stability.get("trajectory"):
-                lines.append(f"Portfolio trajectory: {stability.get('trajectory')}")
-                if stability.get("interpretation"):
-                    lines.append(str(stability.get("interpretation")))
-            what_changed = intel.get("what_changed") or []
-            if what_changed:
-                lines.append("")
-                lines.append("What changed this month:")
-                for wc in what_changed[:8]:
-                    lines.append(f"- {wc}")
-            else:
-                d = model.get("deltas") or {}
-                if not d.get("has_prior_snapshot"):
-                    lines.append("Baseline established; month-on-month comparison starts next period.")
             lines.append("")
-            for it in (model.get("urgent_items") or [])[:5]:
-                lines.append(f"* {it.get('line') or it.get('title')} — {it.get('url')}")
-            lines.append("")
-            lines.append(f"Open command centre: {model.get('primary_cta_url') or model.get('portal_link', '')}")
+            lines.append(f"Open portal: {model.get('primary_cta_url') or model.get('portal_link', '')}")
             if model.get("digest_pdf_attached"):
-                lines.append("Monthly Operations Intelligence Digest PDF attached.")
+                lines.append("Monthly Operations Intelligence Digest PDF attached for governance review.")
             lines.append("")
             lines.append(
                 "Generated from tracked requirements and evidence in Compliance Vault Pro. Not legal advice."

@@ -20,6 +20,14 @@ def digest_attachment_filename(report_month_key: str) -> str:
     return f"{DIGEST_ATTACHMENT_BASENAME}-{key}.pdf"
 
 
+def digest_why_received() -> str:
+    return f"you have {DIGEST_REPORT_TITLE} delivery enabled for your account."
+
+
+def digest_primary_cta_label() -> str:
+    return "Review portfolio in portal"
+
+
 def digest_download_filename(*, period_end: str = "", digest_id: str = "") -> str:
     if period_end:
         pe = period_end[:10].replace("/", "-")

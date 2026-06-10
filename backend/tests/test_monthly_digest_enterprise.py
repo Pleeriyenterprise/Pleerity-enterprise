@@ -318,7 +318,7 @@ def test_monthly_digest_plain_text_includes_hiua_payload():
     )
     assert "PLAIN_HIUA_LINE" in txt
     assert "PLAIN_HIUA_FRAME" in txt
-    assert "OPERATIONAL FOLLOW-UP" in txt
+    assert "GOVERNANCE CONTEXT" in txt
     assert "Snapshot as of 01 April 2026 10:00 UTC" in txt
 
 
@@ -356,7 +356,8 @@ def test_monthly_digest_email_html_includes_hiua_payload():
     )
     assert "EMAIL_HIUA_LINE_MARKER" in html
     assert "EMAIL_HIUA_FRAME_MARKER" in html
-    assert "Operational follow-up (applicability)" in html
+    assert "Applicability follow-up" in html
+    assert "Portfolio overview" in html
     assert "Snapshot as of 01 April 2026 10:00 UTC" in html
     assert "Headline uses last completed batch." in html
 

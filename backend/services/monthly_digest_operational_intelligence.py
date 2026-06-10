@@ -640,7 +640,183 @@ def build_digest_intelligence(model: Dict[str, Any]) -> Dict[str, Any]:
         "condensed_appendix": build_condensed_appendix_rows(model),
         "trend_indicators": build_trend_indicators(model),
         "evidence_posture_counts": _count_evidence_postures(model),
+        "email_operational_themes": build_email_operational_themes(model),
+        "operational_posture_label": operational_posture_label(str(model.get("risk_level") or "")),
     }
+
+
+def operational_posture_label(risk_level: str) -> str:
+    """Calm operational posture wording for email — avoids alarm-feed risk shouting."""
+    s = (risk_level or "").strip().lower()
+    if "critical" in s:
+        return "Elevated operational exposure"
+    if "high" in s:
+        return "Significant operational follow-up required"
+    if "moderate" in s or "medium" in s:
+        return "Moderate operational attention"
+    if "low" in s:
+        return "Stable operational posture"
+    return "Operational posture under review"
+
+
+def _urgent_line_theme_key(line: str) -> Tuple[str, str]:
+    """Normalise an urgent inbox line to (theme_key, property_label)."""
+    raw = _safe_text(line, max_len=200)
+    if not raw:
+        return "", ""
+    prop = ""
+    if "(" in raw and raw.endswith(")"):
+        prop = raw[raw.rfind("(") + 1 : -1].strip()
+        raw = raw[: raw.rfind("(")].strip()
+    base = re.sub(
+        r"\s*—\s*(urgent|overdue|due soon|missing evidence)\s*$",
+        "",
+        raw,
+        flags=re.IGNORECASE,
+    ).strip()
+    if not base:
+        base = raw
+    theme_key = base.lower()
+    if "work order" in theme_key and "sla" in theme_key:
+        return "work_order_sla", prop
+    if "missing evidence" in theme_key or "upload" in theme_key:
+        return "evidence_gap", prop
+    if "licen" in theme_key:
+        return "licensing", prop
+    if "tenan" in theme_key:
+        return "tenancy_documentation", prop
+    if "renew" in theme_key or "expir" in theme_key:
+        return "renewals", prop
+    if "onboard" in theme_key:
+        return "onboarding_backlog", prop
+    return theme_key[:48], prop
+
+
+_THEME_LABELS = {
+    "work_order_sla": "Work-order follow-up",
+    "evidence_gap": "Evidence verification",
+    "licensing": "Licensing",
+    "tenancy_documentation": "Tenancy documentation",
+    "renewals": "Renewals",
+    "onboarding_backlog": "Onboarding backlog",
+}
+
+
+def build_email_operational_themes(model: Dict[str, Any], *, max_themes: int = 5) -> List[Dict[str, str]]:
+    """
+    Grouped operational themes for monthly digest email — replaces repetitive warning cards.
+    """
+    themes: List[Dict[str, str]] = []
+    seen_summaries: set = set()
+    seen_labels: set = set()
+
+    def _add(theme: str, summary: str) -> None:
+        label_key = theme.strip().lower()
+        summary_key = summary.strip().lower()[:96]
+        if not summary_key or label_key in seen_labels:
+            return
+        if summary_key in seen_summaries:
+            return
+        seen_labels.add(label_key)
+        seen_summaries.add(summary_key)
+        if len(themes) < max_themes:
+            themes.append({"theme": theme, "summary": summary.strip()})
+
+    intel = model.get("digest_intelligence") if isinstance(model.get("digest_intelligence"), dict) else {}
+    risk_highlights = intel.get("risk_highlights") or build_risk_highlights(model)
+    priority_actions = intel.get("priority_actions") or curate_priority_actions(model)
+    postures = intel.get("evidence_posture_counts") or _count_evidence_postures(model)
+
+    grouped: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "properties": set()})
+    for item in model.get("urgent_items") or []:
+        if not isinstance(item, dict):
+            continue
+        line = str(item.get("line") or item.get("title") or "")
+        theme_key, prop = _urgent_line_theme_key(line)
+        if not theme_key:
+            continue
+        grouped[theme_key]["count"] += 1
+        if prop:
+            grouped[theme_key]["properties"].add(prop)
+
+    for theme_key, data in sorted(grouped.items(), key=lambda x: -x[1]["count"]):
+        count = int(data["count"])
+        props = sorted(data["properties"])
+        label = _THEME_LABELS.get(theme_key, theme_key.replace("_", " ").title())
+        if theme_key == "work_order_sla" and count >= 2:
+            loc = f" at {props[0]}" if len(props) == 1 and props else ""
+            _add(
+                label,
+                f"{count} unresolved work-order item{'s' if count != 1 else ''}{loc} need follow-up.",
+            )
+        elif count >= 2:
+            loc = f" ({', '.join(props[:2])}{'…' if len(props) > 2 else ''})" if props else ""
+            _add(label, f"{count} related items need follow-up{loc}.")
+        elif count == 1 and props:
+            _add(label, f"One item at {props[0]} needs follow-up.")
+
+    missing = int(model.get("missing_evidence_count") or 0)
+    overdue = int(model.get("overdue") or 0)
+    expiring = int(model.get("expiring_soon") or 0)
+    pending_review = int(postures.get("Pending review", 0) or 0)
+    unverified = int(postures.get("Uploaded, unverified", 0) or 0)
+
+    evidence_bits: List[str] = []
+    if missing > 0:
+        evidence_bits.append(
+            f"{missing} obligation{'s' if missing != 1 else ''} lack accepted evidence — review may be outstanding"
+        )
+    if pending_review:
+        evidence_bits.append(f"{pending_review} pending verification")
+    if unverified:
+        evidence_bits.append(f"{unverified} uploaded awaiting verification")
+    if evidence_bits:
+        _add("Evidence verification", "; ".join(evidence_bits) + ".")
+
+    if overdue > 0:
+        _add(
+            "Overdue obligations",
+            f"{overdue} obligation{'s' if overdue != 1 else ''} overdue or expired.",
+        )
+    if expiring > 0:
+        _add("Renewals", f"{expiring} renewal{'s' if expiring != 1 else ''} approaching.")
+
+    existing_blob = " ".join(t["summary"].lower() for t in themes)
+    for highlight in risk_highlights[:2]:
+        t = _safe_text(highlight)
+        if not t:
+            continue
+        t = re.sub(r"\bcritical risk level\b", "elevated operational exposure", t, flags=re.IGNORECASE)
+        low = t.lower()
+        if any(
+            token in existing_blob
+            for token in (
+                "accepted evidence",
+                "renewal",
+                "approaching",
+                "overdue",
+                "work-order",
+            )
+            if token in low
+        ):
+            continue
+        _add("Portfolio concentration", t)
+
+    for bucket, bucket_label in (("immediate", "Immediate follow-up"), ("upcoming", "Upcoming attention")):
+        for action in (priority_actions or {}).get(bucket) or []:
+            if not isinstance(action, dict):
+                continue
+            issue = _safe_text(action.get("issue"))
+            act = _safe_text(action.get("action"))
+            if issue and act and "no urgent" not in issue.lower():
+                _add(bucket_label, f"{issue} — {act}")
+
+    if not themes:
+        _add(
+            "Operational monitoring",
+            "No concentrated follow-up themes — continue routine evidence and renewal monitoring.",
+        )
+    return themes[:max_themes]
 
 
 def assert_client_safe_text(text: str) -> bool:
