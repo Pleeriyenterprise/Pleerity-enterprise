@@ -127,6 +127,9 @@ def assert_executive_safe_text(text: str) -> None:
     for phrase in _FORBIDDEN_TRIAGE_PHRASES:
         if phrase in low:
             raise ValueError(f"requirements triage leak in compliance summary: {phrase!r}")
+    from services.vocabulary_contract_v1 import assert_semantic_safe_text
+
+    assert_semantic_safe_text(t, context="compliance_summary_executive", allow_stale=True)
 
 
 def classify_exposure_theme(row: Dict[str, Any]) -> str:

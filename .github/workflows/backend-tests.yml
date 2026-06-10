@@ -43,3 +43,9 @@ jobs:
         run: |
           cd backend
           PYTHONPATH=. python -m pytest tests -v
+
+      - name: Semantic governance gate (S2-A)
+        run: |
+          cd backend
+          PYTHONPATH=. python scripts/semantic_governance_ci_gate.py
+          PYTHONPATH=. python -m pytest tests/test_vocabulary_contract_v1.py tests/test_cross_surface_semantic_parity.py tests/test_report_semantics_s1.py -v --tb=short

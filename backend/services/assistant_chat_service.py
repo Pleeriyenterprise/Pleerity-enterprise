@@ -17,6 +17,7 @@ from utils.audit import create_audit_log
 
 from services.assistant_retrieval_service import get_portal_facts, get_kb_snippets
 from services.assistant_prompt import ASSISTANT_SYSTEM_PROMPT, get_portal_urls
+from services.vocabulary_contract_v1 import ai_verdict_patterns, find_prohibited_phrases
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +36,8 @@ def _should_suggest_handover(message: str) -> bool:
     return bool(message and ESCALATION_KEYWORDS.search(message.strip()))
 
 # Phrases that must not appear in assistant output (compliance verdict / legal)
-VERDICT_BLOCK_PATTERNS = [
-    re.compile(r"\byou\s+are\s+compliant\b", re.I),
-    re.compile(r"\byou\s+are\s+non[- ]?compliant\b", re.I),
-    re.compile(r"\byou\s+are\s+legally\s+required\s+to\b", re.I),
-    re.compile(r"\bthis\s+guarantees\s+compliance\b", re.I),
-    re.compile(r"\byou\s+will\s+be\s+fined\b", re.I),
-    re.compile(r"\bthis\s+is\s+illegal\b", re.I),
-]
+# Canonical patterns: vocabulary_contract_v1.ai_verdict_patterns()
+VERDICT_BLOCK_PATTERNS = list(ai_verdict_patterns())
 
 SAFE_FALLBACK_ANSWER = (
     "I can help, but I need you to rephrase. I can only describe what your portal currently shows "
@@ -68,6 +63,10 @@ def _rewrite_compliance_verdict_language(text: str) -> str:
                 out,
                 flags=re.I,
             )
+    for hit in find_prohibited_phrases(out):
+        phrase = hit.get("phrase") or ""
+        if phrase:
+            out = re.sub(re.escape(phrase), "operational status in the portal", out, flags=re.I)
     return out
 
 

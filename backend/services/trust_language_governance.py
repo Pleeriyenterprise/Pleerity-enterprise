@@ -114,6 +114,7 @@ COPY_AUTHORITY_REGISTRY: Dict[str, str] = {
     "backend_help_centre_seed": "backend/scripts/seed_kb_articles.py",
     "assistant_prompt": "backend/services/assistant_prompt.py",
     "assistant_score_context": "backend/services/assistant_retrieval_service.py",
+    "vocabulary_contract": "backend/services/vocabulary_contract_v1.py",
     "score_trend_explanation": "backend/services/compliance_trending.py",
 }
 

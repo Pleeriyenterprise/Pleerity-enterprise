@@ -129,12 +129,14 @@ _LEAK_RE = re.compile(
 def assert_client_safe_text(text: str) -> None:
     """Raise if presentation text leaks backend vocabulary."""
     from services.report_human_language_v1 import contains_internal_language_leak
+    from services.vocabulary_contract_v1 import assert_semantic_safe_text
 
     t = (text or "").strip()
     if not t:
         return
     if _LEAK_RE.search(t) or contains_internal_language_leak(t):
         raise ValueError(f"backend semantic leak in requirements presentation: {t[:80]!r}")
+    assert_semantic_safe_text(t, context="requirements_operational", allow_stale=True)
 
 
 def collect_all_client_text(model: Dict[str, Any]) -> List[str]:
