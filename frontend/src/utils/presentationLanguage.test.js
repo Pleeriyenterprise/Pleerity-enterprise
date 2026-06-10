@@ -34,7 +34,7 @@ describe('presentationLanguage', () => {
     expect(operationalLabelForToken('sla_breached')).toBe('SLA deadline missed');
     expect(operationalLabelForToken('breached')).toBe('SLA deadline missed');
     expect(operationalLabelForToken('near_breach')).toBe('Near SLA deadline');
-    expect(operationalLabelForToken('compliance_summary')).toBe('Compliance status summary');
-    expect(operationalLabelForToken('requirements')).toBe('Requirements report');
+    expect(operationalLabelForToken('compliance_summary')).toBe('Compliance Summary Report');
+    expect(operationalLabelForToken('requirements')).toBe('Requirements Report');
   });
 });

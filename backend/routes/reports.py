@@ -783,8 +783,8 @@ async def get_available_reports(request: Request):
     reports = [
         {
             "id": "compliance_summary",
-            "name": "Compliance Status Summary",
-            "description": "Overview of property compliance including statistics and breakdown",
+            "name": "Compliance Summary Report",
+            "description": "Executive compliance posture and portfolio overview",
             "formats": ["csv", "pdf"],
             "endpoint": "/reports/compliance-summary",
             "pdf_server_endpoint": "/reports/professional/compliance-summary",
@@ -793,7 +793,7 @@ async def get_available_reports(request: Request):
         {
             "id": "requirements",
             "name": "Requirements Report",
-            "description": "Detailed list of all requirements with status and due dates",
+            "description": "Operational obligation tracking and action-management report",
             "formats": ["csv", "pdf"],
             "endpoint": "/reports/requirements",
             "pdf_server_endpoint": "/reports/professional/requirements",
@@ -802,7 +802,7 @@ async def get_available_reports(request: Request):
         {
             "id": "evidence_readiness",
             "name": "Evidence Readiness Report",
-            "description": "PDF portfolio or property evidence readiness summary",
+            "description": "Operational audit-preparedness and remediation assessment",
             "formats": ["pdf"],
             "endpoint": "/reports/generate",
             **_meta("evidence_readiness_pdf"),
@@ -810,7 +810,7 @@ async def get_available_reports(request: Request):
         {
             "id": "audit_evidence_pack",
             "name": "Audit Evidence Pack",
-            "description": "Governed immutable ZIP for evidentiary review (property scope)",
+            "description": "Immutable evidentiary archive for regulatory, insurer, solicitor, or tribunal review",
             "formats": ["zip"],
             "endpoint": "/client/compliance/audit-pack/generate",
             **_meta("audit_evidence_pack_zip"),

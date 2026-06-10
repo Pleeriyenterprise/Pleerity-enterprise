@@ -7,8 +7,6 @@ import { UpgradeRequired } from '../components/UpgradePrompt';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from '@/utils/portalNotifications';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { 
   FileText, 
   ArrowLeft, 
@@ -35,12 +33,6 @@ import {
 } from 'lucide-react';
 import UpgradePrompt from '../components/UpgradePrompt';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
-import {
-  complianceRequirementStatusLabel,
-  propertyComplianceRagLabel,
-  propertyTypeLabel,
-  requirementLabel,
-} from '../domain/presentDomain';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
@@ -50,6 +42,16 @@ import { cn } from '../lib/utils';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { formatMinorUnits } from '../utils/rentMoney';
 import { LIVE_EXPORT_DISCLOSURE, OPERATIONAL_ZIP_DISCLOSURE } from '../utils/reportingSemanticsLabels';
+import {
+  REPORT_ECOSYSTEM_NOTE,
+  REPORT_CATALOG,
+  enrichReportFromApi,
+  sortReportsForCatalog,
+  isSpecialtyReport,
+  filenameFromContentDisposition,
+  canonicalReportFilename,
+} from '../utils/reportCatalogPresentation';
+import ReportCatalogCard, { ReportSpecialtyLinkCard } from '../components/reports/ReportCatalogCard';
 
 function reportPropertyOptionLabel(p) {
   const base = getPropertyDisplayName(p) || p.property_id;
@@ -114,7 +116,9 @@ const ReportsPage = () => {
         hasReportsAccess ? api.get('/reports').catch(() => ({ data: { reports: [] } })) : Promise.resolve({ data: { reports: [] } }),
         api.get('/portal/digests?limit=6').catch(() => ({ data: { digests: [] } }))
       ]);
-      setAvailableReports(reportsRes.data.reports || []);
+      setAvailableReports(
+        sortReportsForCatalog((reportsRes.data.reports || []).map(enrichReportFromApi)),
+      );
       setProperties(propsRes.data.properties || []);
       setSchedules(schedulesRes.data.schedules || []);
       setPreviousReports(previousRes?.data?.reports || []);
@@ -281,132 +285,11 @@ const ReportsPage = () => {
     }
   };
 
-  const generatePDF = (reportData, reportType) => {
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    
-    // Header
-    doc.setFillColor(26, 39, 68); // midnight-blue
-    doc.rect(0, 0, pageWidth, 35, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.text('Compliance Vault Pro', 14, 15);
-    doc.setFontSize(12);
-    doc.text(reportData.report_type || 'Report', 14, 25);
-    doc.setFontSize(10);
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - 50, 25);
-    
-    // Reset text color
-    doc.setTextColor(0, 0, 0);
-    
-    let yPosition = 45;
-    
-    if (reportType === 'compliance_summary' && reportData.summary) {
-      // Summary section
-      doc.setFontSize(14);
-      doc.text('Summary', 14, yPosition);
-      yPosition += 10;
-      
-      doc.setFontSize(10);
-      const summary = reportData.summary;
-      doc.text(`Total Properties: ${summary.total_properties}`, 14, yPosition);
-      yPosition += 6;
-      doc.text(`Compliance Rate: ${summary.compliance_rate}%`, 14, yPosition);
-      yPosition += 6;
-      
-      // Status breakdown
-      doc.setTextColor(34, 197, 94); // green
-      doc.text(`Green (Compliant): ${summary.compliance_breakdown?.green || 0}`, 14, yPosition);
-      yPosition += 6;
-      doc.setTextColor(245, 158, 11); // amber
-      doc.text(`Amber (Attention): ${summary.compliance_breakdown?.amber || 0}`, 14, yPosition);
-      yPosition += 6;
-      doc.setTextColor(220, 38, 38); // red
-      doc.text(`Red (Action Required): ${summary.compliance_breakdown?.red || 0}`, 14, yPosition);
-      yPosition += 12;
-      
-      doc.setTextColor(0, 0, 0);
-      
-      // Expiring requirements
-      doc.text(`Expiring in 30 days: ${summary.expiring_next_30_days}`, 14, yPosition);
-      yPosition += 6;
-      doc.text(`Expiring in 60 days: ${summary.expiring_next_60_days}`, 14, yPosition);
-      yPosition += 6;
-      doc.text(`Expiring in 90 days: ${summary.expiring_next_90_days}`, 14, yPosition);
-      yPosition += 15;
-      
-      // Properties table
-      if (reportData.properties && reportData.properties.length > 0) {
-        doc.setFontSize(14);
-        doc.text('Properties', 14, yPosition);
-        yPosition += 5;
-        
-        autoTable(doc, {
-          startY: yPosition,
-          head: [['Address', 'Type', 'Status', 'Requirements', 'Compliant', 'Overdue']],
-          body: reportData.properties.map(p => [
-            p.address,
-            propertyTypeLabel(p.property_type),
-            propertyComplianceRagLabel(p.compliance_status),
-            p.total_requirements,
-            p.compliant,
-            p.overdue
-          ]),
-          styles: { fontSize: 8 },
-          headStyles: { fillColor: [26, 39, 68] }
-        });
-      }
-    } else if (reportType === 'requirements' && reportData.requirements) {
-      // Requirements table
-      doc.setFontSize(14);
-      doc.text(`Requirements Report (${reportData.requirements.length} items)`, 14, yPosition);
-      yPosition += 10;
-      
-      autoTable(doc, {
-        startY: yPosition,
-        head: [['Property', 'Jurisdiction', 'Src', 'Type', 'Description', 'Status', 'Due']],
-        body: reportData.requirements.map(r => [
-          r.property_address?.substring(0, 24) || 'N/A',
-          (r.effective_jurisdiction_label || '—').substring(0, 12),
-          r.jurisdiction_source ? jurisdictionSourceLabel(r.jurisdiction_source).substring(0, 14) : '—',
-          requirementLabel(r.requirement_type),
-          r.description?.substring(0, 20) || 'N/A',
-          complianceRequirementStatusLabel(r.status),
-          r.due_date || 'N/A'
-        ]),
-        styles: { fontSize: 7 },
-        headStyles: { fillColor: [26, 39, 68] },
-        columnStyles: {
-          0: { cellWidth: 32 },
-          1: { cellWidth: 22 },
-          2: { cellWidth: 24 },
-          3: { cellWidth: 22 },
-          4: { cellWidth: 32 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 18 }
-        }
-      });
-    }
-    
-    // Footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(128, 128, 128);
-      doc.text(
-        `Page ${i} of ${pageCount} | Compliance Vault Pro | Pleerity Enterprise Ltd`,
-        pageWidth / 2,
-        doc.internal.pageSize.getHeight() - 10,
-        { align: 'center' }
-      );
-    }
-    
-    return doc;
-  };
-
   const downloadReport = async (reportId, endpoint) => {
+    if (isSpecialtyReport(reportId)) {
+      toast.info('Open the dedicated section for this report type.');
+      return;
+    }
     setGenerating(reportId);
     
     try {
@@ -441,13 +324,10 @@ const ReportsPage = () => {
         
         // Extract filename from Content-Disposition header or use default
         const contentDisposition = response.headers['content-disposition'];
-        let filename = `report_${reportId}_${new Date().toISOString().split('T')[0]}.csv`;
-        if (contentDisposition) {
-          const match = contentDisposition.match(/filename=([^;]+)/);
-          if (match) {
-            filename = match[1].replace(/"/g, '');
-          }
-        }
+        const filename = filenameFromContentDisposition(
+          contentDisposition,
+          canonicalReportFilename(reportId, 'csv'),
+        );
         
         link.download = filename;
         document.body.appendChild(link);
@@ -458,48 +338,43 @@ const ReportsPage = () => {
         toast.success('Report ready', {
           description: 'Snapshot of your current compliance position.',
         });
+      } else if (!hasReportsPdf) {
+        toast.info('Professional PDF exports are included on portfolio-scale plans. CSV export remains available.', {
+          tier: 'important',
+        });
       } else {
         const serverPdfByReport = {
           compliance_summary: '/reports/professional/compliance-summary',
           requirements: '/reports/professional/requirements',
         };
-        const serverPath = hasReportsPdf ? serverPdfByReport[reportId] : null;
-
-        if (serverPath) {
-          const pdfParams = new URLSearchParams();
-          if (reportId === 'requirements' && selectedFilters.property_id) {
-            pdfParams.append('property_id', selectedFilters.property_id);
-          }
-          const qs = pdfParams.toString();
-          const response = await api.get(qs ? `${serverPath}?${qs}` : serverPath, {
-            responseType: 'blob',
-          });
-          const blob = new Blob([response.data], { type: 'application/pdf' });
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          const contentDisposition = response.headers['content-disposition'];
-          let filename = `report_${reportId}_${new Date().toISOString().split('T')[0]}.pdf`;
-          if (contentDisposition) {
-            const match = contentDisposition.match(/filename=([^;]+)/);
-            if (match) {
-              filename = match[1].replace(/"/g, '');
-            }
-          }
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-        } else {
-          const response = await api.get(`${endpoint}?${params.toString()}`);
-          const reportData = response.data.data || response.data;
-          const doc = generatePDF(reportData, reportId);
-          doc.save(`report_${reportId}_${new Date().toISOString().split('T')[0]}.pdf`);
+        const serverPath = serverPdfByReport[reportId];
+        if (!serverPath) {
+          toast.error('PDF export is not available for this report.');
+          return;
         }
+        const pdfParams = new URLSearchParams();
+        if (reportId === 'requirements' && selectedFilters.property_id) {
+          pdfParams.append('property_id', selectedFilters.property_id);
+        }
+        const qs = pdfParams.toString();
+        const response = await api.get(qs ? `${serverPath}?${qs}` : serverPath, {
+          responseType: 'blob',
+        });
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filenameFromContentDisposition(
+          response.headers['content-disposition'],
+          canonicalReportFilename(reportId, 'pdf'),
+        );
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
 
         toast.success('Report ready', {
-          description: 'Snapshot of your current compliance position.',
+          description: 'Point-in-time server export with governance presentation.',
         });
       }
     } catch (error) {
@@ -542,40 +417,9 @@ const ReportsPage = () => {
         setDownloadingDigestId(null);
       }
     }
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    doc.setFillColor(26, 39, 68);
-    doc.rect(0, 0, pageWidth, 32, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.text('Monthly Operations Intelligence Digest', 14, 14);
-    doc.setFontSize(9);
-    const periodStart = (digest.digest_period_start || digest.content?.period_start || '').slice(0, 10);
-    const periodEnd = (digest.digest_period_end || digest.content?.period_end || '').slice(0, 10);
-    doc.text(`Period: ${periodStart} to ${periodEnd}`, 14, 22);
-    doc.setTextColor(0, 0, 0);
-    let y = 42;
-    const c = digest.content || {};
-    doc.setFontSize(11);
-    doc.text('Summary (counts only)', 14, y);
-    y += 8;
-    doc.setFontSize(10);
-    doc.text(`Properties: ${c.properties_count ?? 0}`, 14, y);
-    y += 6;
-    doc.text(`Total requirements: ${c.total_requirements ?? 0}`, 14, y);
-    y += 6;
-    doc.text(`Compliant: ${c.compliant ?? 0}`, 14, y);
-    y += 6;
-    doc.text(`Overdue: ${c.overdue ?? 0}`, 14, y);
-    y += 6;
-    doc.text(`Expiring soon: ${c.expiring_soon ?? 0}`, 14, y);
-    y += 6;
-    doc.text(`Documents uploaded (period): ${c.documents_uploaded ?? 0}`, 14, y);
-    y += 14;
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Data as of ' + (periodEnd || 'N/A') + '. This summary is for information only and does not constitute legal advice.', 14, y, { maxWidth: pageWidth - 28 });
-    doc.save(`monthly-operations-intelligence-digest-${periodEnd || 'report'}.pdf`);
+    toast.info('Server-rendered digest PDF requires portfolio-scale PDF reports. View the digest summary in the portal.', {
+      tier: 'important',
+    });
   };
 
   const createSchedule = async (e) => {
@@ -690,7 +534,7 @@ const ReportsPage = () => {
               </button>
               <div className="min-w-0">
                 <h1 className="text-xl font-bold">Reports</h1>
-                <p className="text-sm text-slate-200">Generate and download compliance reports</p>
+                <p className="text-sm text-slate-200">Coherent compliance reporting — choose the right export for your audience</p>
               </div>
             </div>
             {hasScheduledReportsAccess ? (
@@ -718,34 +562,155 @@ const ReportsPage = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <p className="text-sm text-gray-600 mb-6 leading-relaxed" data-testid="reports-operating-helper">
-          Use reports to review and share compliance status.
+        <p className="text-sm text-gray-600 mb-4 leading-relaxed" data-testid="reports-operating-helper">
+          Each report serves a distinct purpose — executive posture, operational management, audit preparedness, portfolio intelligence, or evidentiary archive.
         </p>
-        <Card className="mb-6 border border-blue-100 bg-blue-50/40" data-testid="reports-choose-guide">
+        <Card className="mb-6 border border-gray-200 bg-gray-50/50" data-testid="reports-ecosystem-guide">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Choose the right report</CardTitle>
+            <CardTitle className="text-base font-medium text-midnight-blue">How reports work together</CardTitle>
           </CardHeader>
-          <CardContent className="pt-0">
-            <ul className="text-sm text-gray-700 space-y-1">
-              <li><strong>Council / tribunal / lender / insurer:</strong> Audit Evidence Pack</li>
-              <li><strong>Internal compliance review:</strong> Compliance Reports</li>
-              <li><strong>CSV or external-system data:</strong> Regulatory/System Exports</li>
-              <li><strong>Recurring monitoring:</strong> Scheduled Reports</li>
+          <CardContent className="pt-0 space-y-3">
+            <p className="text-sm text-gray-600 leading-relaxed">{REPORT_ECOSYSTEM_NOTE}</p>
+            <ul className="text-sm text-gray-700 grid gap-1 sm:grid-cols-2">
+              <li><span className="text-gray-500">External review:</span> Audit Evidence Pack</li>
+              <li><span className="text-gray-500">Executive briefing:</span> Compliance Summary Report</li>
+              <li><span className="text-gray-500">Day-to-day obligations:</span> Requirements Report</li>
+              <li><span className="text-gray-500">Remediation prep:</span> Evidence Readiness Report</li>
+              <li><span className="text-gray-500">Monthly oversight:</span> Monthly Operations Intelligence Digest</li>
+              <li><span className="text-gray-500">Structured data:</span> CSV exports where available</li>
             </ul>
           </CardContent>
         </Card>
+
+        {hasReportsAccess && (
+          <>
+            <Card className="mb-6" data-testid="format-selection-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base font-medium">
+                  <Filter className="w-4 h-4" />
+                  Export settings
+                </CardTitle>
+                <p className="text-xs text-gray-500 mt-1 font-normal">
+                  PDF — presentation and governance view · CSV — structured operational export
+                </p>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
+                    <select
+                      value={selectedFilters.format}
+                      onChange={(e) => setSelectedFilters({ ...selectedFilters, format: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal text-sm"
+                      data-testid="format-select"
+                    >
+                      <option value="csv">CSV — structured data</option>
+                      <option value="pdf">PDF — presentation view</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Property filter</label>
+                    <select
+                      value={selectedFilters.property_id}
+                      onChange={(e) => setSelectedFilters({ ...selectedFilters, property_id: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal text-sm"
+                      data-testid="property-filter"
+                    >
+                      <option value="">All properties</option>
+                      {properties.map((p) => (
+                        <option key={p.property_id} value={p.property_id}>
+                          {reportPropertyOptionLabel(p)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {isAdmin && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date range (audit log)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="date"
+                          value={selectedFilters.start_date}
+                          onChange={(e) => setSelectedFilters({ ...selectedFilters, start_date: e.target.value })}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          data-testid="start-date"
+                        />
+                        <input
+                          type="date"
+                          value={selectedFilters.end_date}
+                          onChange={(e) => setSelectedFilters({ ...selectedFilters, end_date: e.target.value })}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                          data-testid="end-date"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-catalog">
+              Report catalog
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8" data-testid="reports-grid">
+              {availableReports.map((report) => {
+                if (report.id === 'audit_evidence_pack') {
+                  return (
+                    <ReportSpecialtyLinkCard
+                      key={report.id}
+                      report={report}
+                      icon={getReportIcon(report.id)}
+                      to="/reports/audit-pack"
+                      label="Open Audit Evidence Pack"
+                    />
+                  );
+                }
+                if (report.id === 'evidence_readiness') {
+                  return (
+                    <ReportCatalogCard
+                      key={report.id}
+                      report={report}
+                      icon={getReportIcon(report.id)}
+                      selectedFormat="pdf"
+                      generating={generating}
+                      specialtyAction={
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => document.getElementById('evidence-readiness-card')?.scrollIntoView({ behavior: 'smooth' })}
+                          data-testid="report-scroll-evidence-readiness"
+                        >
+                          Generate Evidence Readiness PDF
+                        </Button>
+                      }
+                    />
+                  );
+                }
+                return (
+                  <ReportCatalogCard
+                    key={report.id}
+                    report={report}
+                    icon={getReportIcon(report.id)}
+                    selectedFormat={selectedFilters.format}
+                    generating={generating}
+                    onDownload={downloadReport}
+                  />
+                );
+              })}
+            </div>
+          </>
+        )}
         <h2 className="text-lg font-semibold text-midnight-blue mb-3" data-testid="reports-section-audit-evidence-packs">
           Audit Evidence Packs
         </h2>
         {hasReportsPdf && (
           <Card className="mb-6 border border-teal-100 bg-teal-50/40" data-testid="reports-audit-evidence-pack-cta">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Audit evidence pack (property ZIP)</CardTitle>
+              <CardTitle className="text-base">{REPORT_CATALOG.audit_evidence_pack.canonicalName}</CardTitle>
             </CardHeader>
             <CardContent className="pt-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-gray-700 max-w-2xl">
-                Build a governed audit evidence ZIP for one property (summary, certificates, timeline, manifest). This is
-                for evidence and regulators — not tenant email delivery.
+                {REPORT_CATALOG.audit_evidence_pack.purpose} Governed ZIP with manifest checksums — for external review, not tenant delivery.
               </p>
               <Button asChild className="bg-electric-teal hover:bg-teal-600 shrink-0 w-full sm:w-auto">
                 <Link to="/reports/audit-pack">Open audit evidence pack</Link>
@@ -1141,16 +1106,20 @@ const ReportsPage = () => {
         )}
         {/* Evidence Readiness PDF */}
         {hasReportsAccess && (
-          <Card className="mb-6" data-testid="evidence-readiness-card">
+          <Card className="mb-6" id="evidence-readiness-card" data-testid="evidence-readiness-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 flex-wrap">
                 <FileText className="w-5 h-5 text-electric-teal" />
-                Evidence Readiness Report
+                {REPORT_CATALOG.evidence_readiness.canonicalName}
+                <span className="text-[11px] uppercase tracking-wide text-gray-500 border border-gray-200 rounded px-1.5 py-0.5 font-medium">
+                  {REPORT_CATALOG.evidence_readiness.exportGrade}
+                </span>
               </CardTitle>
-              <p className="text-sm text-gray-500 mt-1">
-                PDF with cover, executive summary, portfolio breakdown, property requirement matrix, methodology, and audit snapshot. Risk level and evidence readiness only; not legal advice.{' '}
-                <span className="text-gray-600" data-testid="evidence-readiness-live-disclosure">{LIVE_EXPORT_DISCLOSURE}</span>
+              <p className="text-sm text-gray-600 mt-1">
+                {REPORT_CATALOG.evidence_readiness.purpose}{' '}
+                <span className="text-gray-500" data-testid="evidence-readiness-live-disclosure">{LIVE_EXPORT_DISCLOSURE}</span>
               </p>
+              <p className="text-xs text-gray-500 mt-1">{REPORT_CATALOG.evidence_readiness.governanceNote}</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex flex-wrap items-center gap-3">
@@ -1243,10 +1212,10 @@ const ReportsPage = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5" />
-                Previous reports
+                Evidence Readiness history
               </CardTitle>
               <p className="text-sm text-gray-500 mt-1">
-                Immutable snapshots — re-download returns the same frozen PDF bytes. Use &quot;New snapshot&quot; for current portfolio state.
+                Archived immutable snapshots — labels and scores reflect the generation boundary. Re-download returns the same frozen PDF. Use &quot;New snapshot&quot; for current portfolio state.
               </p>
             </CardHeader>
             <CardContent>
@@ -1478,136 +1447,12 @@ const ReportsPage = () => {
           </Card>
         )}
 
-        {/* Format Selection */}
-        <Card className="mb-6" data-testid="format-selection-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Filter className="w-5 h-5" />
-              Report Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
-                <select
-                  value={selectedFilters.format}
-                  onChange={(e) => setSelectedFilters({...selectedFilters, format: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
-                  data-testid="format-select"
-                >
-                  <option value="csv">CSV (Spreadsheet)</option>
-                  <option value="pdf">PDF (Document)</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Property Filter</label>
-                <select
-                  value={selectedFilters.property_id}
-                  onChange={(e) => setSelectedFilters({...selectedFilters, property_id: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
-                  data-testid="property-filter"
-                >
-                  <option value="">All Properties</option>
-                  {properties.map(p => (
-                    <option key={p.property_id} value={p.property_id}>
-                      {reportPropertyOptionLabel(p)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {isAdmin && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="date"
-                        value={selectedFilters.start_date}
-                        onChange={(e) => setSelectedFilters({...selectedFilters, start_date: e.target.value})}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal text-sm"
-                        placeholder="Start"
-                        data-testid="start-date"
-                      />
-                      <input
-                        type="date"
-                        value={selectedFilters.end_date}
-                        onChange={(e) => setSelectedFilters({...selectedFilters, end_date: e.target.value})}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal text-sm"
-                        placeholder="End"
-                        data-testid="end-date"
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Available Reports */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="reports-grid">
-          {availableReports.map((report) => (
-            <Card 
-              key={report.id}
-              className="hover:shadow-lg transition-shadow"
-              data-testid={`report-card-${report.id}`}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    {getReportIcon(report.id)}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-midnight-blue text-lg">{report.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1 mb-4">{report.description}</p>
-                    
-                    <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
-                      <span>Available formats:</span>
-                      {report.formats.map(f => (
-                        <span key={f} className="px-2 py-0.5 bg-gray-100 rounded uppercase">{f}</span>
-                      ))}
-                    </div>
-                    
-                    <Button
-                      onClick={() => downloadReport(report.id, report.endpoint)}
-                      disabled={generating === report.id}
-                      className="w-full"
-                      data-testid={`download-${report.id}-btn`}
-                    >
-                      {generating === report.id ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <Download className="w-4 h-4 mr-2" />
-                          Download {selectedFilters.format.toUpperCase()}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Help Text */}
-        <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h4 className="font-medium text-blue-800 mb-2">About Reports</h4>
-          <ul className="text-sm text-blue-700 space-y-1">
-            <li>• <strong>Compliance Summary:</strong> Overall status of your properties and requirements</li>
-            <li>• <strong>Requirements Report:</strong> Detailed list of all compliance requirements with due dates</li>
-            {isAdmin && (
-              <li>• <strong>Audit Log Extract:</strong> System activity trail for compliance auditing (Admin only)</li>
-            )}
-          </ul>
-          <p className="text-xs text-blue-600 mt-3">
-            Schedule reports to receive them automatically via email.
+        <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200" data-testid="reports-trust-footer">
+          <h4 className="font-medium text-midnight-blue text-sm mb-2">Export trust and scope</h4>
+          <p className="text-xs text-gray-600 leading-relaxed">
+            Server-generated PDFs are authoritative for external sharing. CSV exports are point-in-time operational data.
+            Evidence Readiness history preserves immutable snapshots — re-download returns the same file.
+            Audit Evidence Pack is the governed evidentiary archive; other reports support monitoring and management.
           </p>
         </div>
       </main>

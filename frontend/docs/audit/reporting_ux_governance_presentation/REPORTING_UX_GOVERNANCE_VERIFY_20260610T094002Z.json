@@ -1,0 +1,51 @@
+{
+  "programme": "REPORTING-UX-GOVERNANCE-VERIFY",
+  "run_tag": "20260610T094002Z",
+  "generated_at_utc": "2026-06-10T09:40:02.315Z",
+  "artifact_dir": "frontend/docs/audit/reporting_ux_governance_presentation",
+  "gates": {
+    "catalog_five_report_classes": {
+      "pass": true
+    },
+    "catalog_no_semantic_leak": {
+      "pass": true
+    },
+    "export_grade_taxonomy": {
+      "pass": true
+    },
+    "no_jspdf_compliance_requirements": {
+      "pass": true
+    },
+    "ecosystem_guide": {
+      "pass": true
+    },
+    "report_catalog_section": {
+      "pass": true
+    },
+    "trust_footer": {
+      "pass": true
+    },
+    "historical_readiness_label": {
+      "pass": true
+    },
+    "canonical_scheduled_names": {
+      "pass": true
+    },
+    "digest_wording": {
+      "pass": true
+    },
+    "backend_catalog_descriptions": {
+      "pass": true
+    }
+  },
+  "all_gates_pass": true,
+  "touched_surfaces": [
+    "frontend/src/utils/reportCatalogPresentation.js",
+    "frontend/src/components/reports/ReportCatalogCard.jsx",
+    "frontend/src/pages/ReportsPage.js",
+    "frontend/src/utils/presentationLanguage.js",
+    "frontend/src/pages/NotificationPreferencesPage.js",
+    "backend/routes/reports.py (/available descriptions only)"
+  ],
+  "screenshot_note": "Run frontend locally and capture Reports page — catalog cards with export-grade labels."
+}

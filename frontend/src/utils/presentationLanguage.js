@@ -64,8 +64,8 @@ const OPERATIONAL_LABEL_BY_KEY = {
   on_track: 'On track',
 
   // Scheduled report types (display only; API values unchanged)
-  compliance_summary: 'Compliance status summary',
-  requirements: 'Requirements report',
+  compliance_summary: 'Compliance Summary Report',
+  requirements: 'Requirements Report',
 
   // Score headline status (API values unchanged)
   calculating: 'Score updating',

@@ -9,12 +9,6 @@ import ReportsPage from './ReportsPage';
 const mockHasFeature = jest.fn();
 const mockApiGet = jest.fn();
 
-jest.mock('jspdf', () => ({
-  jsPDF: jest.fn(),
-}));
-
-jest.mock('jspdf-autotable', () => jest.fn());
-
 jest.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({
     user: { role: 'ROLE_CLIENT_ADMIN', client_id: 'c1' },
@@ -76,7 +70,7 @@ describe('ReportsPage audit evidence pack CTA', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByTestId('reports-choose-guide')).toBeInTheDocument();
+    expect(await screen.findByTestId('reports-ecosystem-guide')).toBeInTheDocument();
     expect(screen.getByTestId('reports-section-audit-evidence-packs')).toBeInTheDocument();
     expect(screen.getByTestId('reports-section-compliance-reports')).toBeInTheDocument();
     expect(screen.getByTestId('reports-section-regulatory-system-exports')).toBeInTheDocument();

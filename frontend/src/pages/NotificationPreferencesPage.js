@@ -580,17 +580,17 @@ const NotificationPreferencesPage = () => {
                 </div>
                 <div>
                   <h2 className="font-semibold text-midnight-blue">Email Digest Content</h2>
-                  <p className="text-sm text-gray-500">Customize what's included in your monthly compliance digest</p>
+                  <p className="text-sm text-gray-500">Customize portfolio intelligence sections in your Monthly Operations Intelligence Digest</p>
                 </div>
               </div>
             </div>
             
             <div className="divide-y divide-gray-100">
               {[
-                { key: 'digest_compliance_summary', title: 'Compliance Summary', description: 'Overall compliance health and statistics' },
-                { key: 'digest_action_items', title: 'Action Items', description: 'Overdue, missing, and due soon requirements' },
-                { key: 'digest_upcoming_expiries', title: 'Upcoming Expiries', description: 'Certificates expiring in the next 30/60/90 days' },
-                { key: 'digest_property_breakdown', title: 'Property-by-Property Breakdown', description: 'Detailed status for each property' },
+                { key: 'digest_compliance_summary', title: 'Compliance Summary Report', description: 'Executive posture snapshot — portfolio health and statistics' },
+                { key: 'digest_action_items', title: 'Action Items', description: 'Operational obligations needing attention — overdue, missing, due soon' },
+                { key: 'digest_upcoming_expiries', title: 'Upcoming Renewals', description: 'Certificates and renewals approaching in the next 30/60/90 days' },
+                { key: 'digest_property_breakdown', title: 'Property-by-Property Breakdown', description: 'Per-property posture for monthly oversight' },
                 { key: 'digest_recent_documents', title: 'Recently Uploaded Documents', description: 'New documents uploaded and verified this period' },
                 { key: 'digest_recommendations', title: 'Recommendations', description: 'Suggested next actions to improve compliance' },
                 { key: 'digest_audit_summary', title: 'Audit & Activity Summary', description: 'Recent activity and changes (optional)', optional: true }
