@@ -180,3 +180,7 @@ async def test_compliance_summary_pdf_snapshot_honesty_and_headline_note(monkeyp
     assert "Persisted headline note for professional PDF export test." in text
     assert "live portal" not in text.lower()
     assert "real-time" not in text.lower()
+    low = text.lower()
+    assert "portfolio posture interpretation" in low
+    assert "evidence matrix" not in low
+    assert "immediate attention" not in low

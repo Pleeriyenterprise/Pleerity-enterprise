@@ -38,3 +38,4 @@ def test_compliance_summary_csv_includes_score_status_message_and_export_note():
     assert "export_snapshot_note," in text
     assert "last_calculated_at" in text
     assert "score_status,stale" in text
+    assert "csv_format_version,compliance_summary_executive_v1" in text

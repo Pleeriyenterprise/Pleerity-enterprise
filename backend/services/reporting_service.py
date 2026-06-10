@@ -202,6 +202,10 @@ class ReportingService:
                     "jurisdiction_source": _att.get("jurisdiction_source"),
                 })
             report_data["properties"] = property_details
+
+        report_data["portal_requirements"] = portal_reqs
+        report_data["properties_portal"] = properties
+        report_data["client_doc"] = client or {}
         
         if format == "csv":
             return self._generate_compliance_csv(report_data)
@@ -450,17 +454,43 @@ class ReportingService:
         output.write(f"Expiring in 60 days,{summary['expiring_next_60_days']}\n")
         output.write(f"Expiring in 90 days,{summary['expiring_next_90_days']}\n\n")
         
-        # Properties section
-        if 'properties' in data:
-            output.write("=== PROPERTIES ===\n")
-            writer = csv.DictWriter(output, fieldnames=[
-                'address', 'property_type', 'compliance_status',
-                'effective_jurisdiction_label', 'jurisdiction_source',
-                'total_requirements', 'compliant', 'overdue'
-            ])
+        from services.report_compliance_summary_executive import CSV_FORMAT_VERSION
+
+        output.write(f"csv_format_version,{CSV_FORMAT_VERSION}\n\n")
+
+        portal_reqs = data.get("portal_requirements") or []
+        properties_portal = data.get("properties_portal") or []
+        client_doc = data.get("client_doc") or {}
+        if portal_reqs or properties_portal:
+            from services.report_compliance_summary_executive import (
+                CSV_PROPERTY_FIELDS,
+                build_compliance_summary_executive_csv_rows,
+            )
+            from services.report_pdf_templates import compute_readiness_indicators
+
+            gen_at = data.get("generated_at") or ""
+            try:
+                now_dt = datetime.fromisoformat(gen_at.replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                now_dt = datetime.now(timezone.utc)
+            readiness = compute_readiness_indicators(
+                requirements=portal_reqs,
+                properties=properties_portal,
+                client_doc=client_doc,
+                now=now_dt,
+            )
+            exec_rows = build_compliance_summary_executive_csv_rows(
+                properties=properties_portal,
+                requirements=portal_reqs,
+                client_doc=client_doc,
+                readiness=readiness,
+            )
+            output.write("=== PORTFOLIO POSTURE (EXECUTIVE VIEW) ===\n")
+            writer = csv.DictWriter(output, fieldnames=CSV_PROPERTY_FIELDS)
             writer.writeheader()
-            for prop in data['properties']:
-                writer.writerow(prop)
+            for row in exec_rows:
+                writer.writerow(row)
+            output.write("\n")
         
         return {
             "content": output.getvalue(),

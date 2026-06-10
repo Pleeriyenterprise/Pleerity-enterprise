@@ -1,0 +1,112 @@
+{
+  "programme": "COMPLIANCE-SUMMARY-EXECUTIVE-PRESENTATION-VERIFY",
+  "run_tag": "20260610T085610Z",
+  "generated_at_utc": "2026-06-10T08:56:10.636704+00:00",
+  "artifact_dir": "backend/docs/audit/compliance_summary_executive_presentation",
+  "scenarios": {
+    "sparse": {
+      "scenario": "sparse",
+      "pdf_artifact": "compliance_summary_sparse_20260610T085610Z.pdf",
+      "csv_artifact": "compliance_summary_sparse_20260610T085610Z.csv",
+      "pdf_bytes": 13046,
+      "issues": [],
+      "pass": true,
+      "markers": {
+        "has_posture_interpretation": true,
+        "has_evidence_summary": true,
+        "no_full_matrix": true,
+        "no_triage": true
+      }
+    },
+    "mixed_risk": {
+      "scenario": "mixed_risk",
+      "pdf_artifact": "compliance_summary_mixed_risk_20260610T085610Z.pdf",
+      "csv_artifact": "compliance_summary_mixed_risk_20260610T085610Z.csv",
+      "pdf_bytes": 14633,
+      "issues": [],
+      "pass": true,
+      "markers": {
+        "has_posture_interpretation": true,
+        "has_evidence_summary": true,
+        "no_full_matrix": true,
+        "no_triage": true
+      }
+    },
+    "high_readiness": {
+      "scenario": "high_readiness",
+      "pdf_artifact": "compliance_summary_high_readiness_20260610T085610Z.pdf",
+      "csv_artifact": "compliance_summary_high_readiness_20260610T085610Z.csv",
+      "pdf_bytes": 14763,
+      "issues": [],
+      "pass": true,
+      "markers": {
+        "has_posture_interpretation": true,
+        "has_evidence_summary": true,
+        "no_full_matrix": true,
+        "no_triage": true
+      }
+    },
+    "evidence_gap_heavy": {
+      "scenario": "evidence_gap_heavy",
+      "pdf_artifact": "compliance_summary_evidence_gap_heavy_20260610T085610Z.pdf",
+      "csv_artifact": "compliance_summary_evidence_gap_heavy_20260610T085610Z.csv",
+      "pdf_bytes": 18875,
+      "issues": [],
+      "pass": true,
+      "markers": {
+        "has_posture_interpretation": true,
+        "has_evidence_summary": true,
+        "no_full_matrix": true,
+        "no_triage": true
+      }
+    },
+    "large": {
+      "scenario": "large",
+      "pdf_artifact": "compliance_summary_large_20260610T085610Z.pdf",
+      "csv_artifact": "compliance_summary_large_20260610T085610Z.csv",
+      "pdf_bytes": 20706,
+      "issues": [],
+      "pass": true,
+      "markers": {
+        "has_posture_interpretation": true,
+        "has_evidence_summary": true,
+        "no_full_matrix": true,
+        "no_triage": true
+      }
+    },
+    "mixed_jurisdiction": {
+      "scenario": "mixed_jurisdiction",
+      "pdf_artifact": "compliance_summary_mixed_jurisdiction_20260610T085610Z.pdf",
+      "csv_artifact": "compliance_summary_mixed_jurisdiction_20260610T085610Z.csv",
+      "pdf_bytes": 13856,
+      "issues": [],
+      "pass": true,
+      "markers": {
+        "has_posture_interpretation": true,
+        "has_evidence_summary": true,
+        "no_full_matrix": true,
+        "no_triage": true
+      }
+    }
+  },
+  "all_scenarios_pass": true,
+  "isolation": {
+    "ok": true,
+    "forbidden_touched": [],
+    "phase_b_touched": [
+      "backend/services/professional_reports.py",
+      "backend/services/reporting_service.py",
+      "backend/tests/test_professional_reports_authority_labels.py",
+      "backend/tests/test_reporting_compliance_export_snapshot.py"
+    ]
+  },
+  "all_gates_pass": true,
+  "report_class_isolation": {
+    "audit_evidence_pack_compliance_summary_pdf": "not_modified",
+    "requirements_report": "not_modified",
+    "evidence_readiness": "not_modified",
+    "monthly_digest": "not_modified",
+    "immutable_artifact_storage": "not_modified",
+    "shared_matrix_helpers_defaults": "not_modified"
+  }
+}

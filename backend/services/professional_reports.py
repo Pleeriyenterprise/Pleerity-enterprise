@@ -304,18 +304,16 @@ class ProfessionalReportGenerator:
                 + (f" — {_professional_compliance_summary_escape_xml(scope_detail)}" if scope_detail else "")
             ),
         )
+        from services.report_compliance_summary_executive import (
+            append_compliance_summary_executive_sections,
+            build_compliance_summary_executive_model,
+        )
         from services.report_pdf_templates import (
-            append_action_priority_section,
-            append_central_evidence_matrix,
-            append_exception_summaries_section,
             append_frozen_snapshot_notice,
             append_intended_use_section,
-            append_readiness_indicators_section,
             build_matrix_rows,
-            classify_exceptions,
             compute_readiness_indicators,
             create_enterprise_table_style,
-            group_by_action_priority,
         )
 
         append_frozen_snapshot_notice(elements, generated_at_iso=now.isoformat(), styles=styles)
@@ -392,42 +390,6 @@ class ProfessionalReportGenerator:
             )
             elements.append(Spacer(1, 16))
 
-        # Executive Summary
-        elements.append(Paragraph("Executive Summary", styles["heading"]))
-        
-        score_pct = round((compliant / total_reqs * 100) if total_reqs > 0 else 0)
-        summary_text = f"""
-        The following <b>{score_pct}%</b> figure is a <b>requirement-status completion rate</b> from requirements included in this report's scope — not the CVP headline score above.
-        Out of <b>{total_reqs}</b> total requirements across <b>{total_props}</b> properties:
-        <br/><br/>
-        • <b>{compliant}</b> requirements are fully compliant<br/>
-        • <b>{expiring}</b> are expiring soon and need renewal<br/>
-        • <b>{overdue}</b> are overdue and require immediate attention<br/>
-        • <b>{missing_evidence}</b> need evidence or confirmation (missing / pending within that same scope, at export time)
-        """
-        elements.append(Paragraph(summary_text, styles["body"]))
-        if overdue == 0 and missing_evidence == 0:
-            elements.append(
-                Paragraph(
-                    "No mandatory compliance gaps were detected within the export scope at generation time.",
-                    styles["small"],
-                )
-            )
-        else:
-            elements.append(
-                Paragraph(
-                    "Action is required for overdue or missing-evidence obligations listed in the evidence matrix.",
-                    styles["small"],
-                )
-            )
-        elements.append(
-            Paragraph(
-                "Evidence remains subject to independent verification of source documents and issuing authorities.",
-                styles["small"],
-            )
-        )
-        elements.append(Spacer(1, 16))
-
         ent_table_style = create_enterprise_table_style(styles)
         matrix_rows = build_matrix_rows(
             requirements=portal_reqs,
@@ -442,79 +404,25 @@ class ProfessionalReportGenerator:
             client_doc=client_doc,
             now=now,
         )
-        exceptions = classify_exceptions(
+        executive_model = build_compliance_summary_executive_model(
             requirements=portal_reqs,
             properties=properties,
             client_doc=client_doc,
-            now=now,
+            matrix_rows=matrix_rows,
+            readiness=readiness,
+            counts=counts,
+            total_props=total_props,
+            green=green,
+            amber=amber,
+            red=red,
         )
-        append_readiness_indicators_section(
-            elements, indicators=readiness, styles=styles, table_style=ent_table_style
+        append_compliance_summary_executive_sections(
+            elements,
+            model=executive_model,
+            styles=styles,
+            table_style=ent_table_style,
         )
-        append_central_evidence_matrix(
-            elements, matrix_rows=matrix_rows, styles=styles, table_style=ent_table_style
-        )
-        append_action_priority_section(
-            elements, groups=group_by_action_priority(matrix_rows), styles=styles
-        )
-        append_exception_summaries_section(
-            elements, exceptions=exceptions, styles=styles, table_style=ent_table_style
-        )
-        elements.append(Spacer(1, 12))
 
-        # Property Status Table
-        elements.append(Paragraph("Property Compliance Status", styles["heading"]))
-        
-        prop_data = [["Property Address", "City", "Postcode", "Status"]]
-        for prop in properties[:20]:  # Limit to first 20
-            status = prop.get("compliance_status", "UNKNOWN")
-            prop_data.append([
-                prop.get("address_line_1", ""),
-                prop.get("city", ""),
-                prop.get("postcode", ""),
-                status
-            ])
-        
-        prop_table = Table(prop_data, colWidths=[200, 80, 70, 70], repeatRows=1)
-        prop_table.setStyle(table_style)
-        
-        # Color-code status cells
-        for i, row in enumerate(prop_data[1:], start=1):
-            status = row[3]
-            if status == "GREEN":
-                prop_table.setStyle(TableStyle([
-                    ('TEXTCOLOR', (3, i), (3, i), colors.Color(*hex_to_rgb("#22C55E"))),
-                    ('FONTNAME', (3, i), (3, i), 'Helvetica-Bold'),
-                ]))
-            elif status == "AMBER":
-                prop_table.setStyle(TableStyle([
-                    ('TEXTCOLOR', (3, i), (3, i), colors.Color(*hex_to_rgb("#F59E0B"))),
-                    ('FONTNAME', (3, i), (3, i), 'Helvetica-Bold'),
-                ]))
-            elif status == "RED":
-                prop_table.setStyle(TableStyle([
-                    ('TEXTCOLOR', (3, i), (3, i), colors.Color(*hex_to_rgb("#EF4444"))),
-                    ('FONTNAME', (3, i), (3, i), 'Helvetica-Bold'),
-                ]))
-        
-        elements.append(prop_table)
-        elements.append(Spacer(1, 20))
-        
-        # Requirements Summary
-        elements.append(Paragraph("Requirements Overview", styles["heading"]))
-        
-        req_summary_data = [
-            ["Status", "Count", "Percentage"],
-            ["Compliant", str(compliant), f"{round(compliant/total_reqs*100) if total_reqs else 0}%"],
-            ["Expiring Soon", str(expiring), f"{round(expiring/total_reqs*100) if total_reqs else 0}%"],
-            ["Overdue", str(overdue), f"{round(overdue/total_reqs*100) if total_reqs else 0}%"],
-            ["Missing / pending evidence", str(missing_evidence), f"{round(missing_evidence/total_reqs*100) if total_reqs else 0}%"],
-        ]
-        
-        req_table = Table(req_summary_data, colWidths=[150, 100, 100])
-        req_table.setStyle(table_style)
-        elements.append(req_table)
-        
         # Footer
         elements.append(Spacer(1, 40))
         if branding.get("report_footer_text"):

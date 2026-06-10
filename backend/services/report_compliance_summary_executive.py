@@ -1,0 +1,609 @@
+"""
+Compliance Summary Report — executive posture presentation layer.
+
+Professional portfolio compliance overview for landlords, insurers, lenders,
+solicitors, and senior portfolio managers. Distinct from Requirements triage,
+Evidence Readiness remediation, Monthly Digest intelligence, and Audit Pack archives.
+"""
+from __future__ import annotations
+
+import re
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Tuple
+
+from reportlab.lib.units import mm
+from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+from xml.sax.saxutils import escape as _xml_escape
+
+from services.report_human_language_v1 import (
+    human_compliance_status_label,
+    human_operational_renewal_date,
+)
+from services.report_pdf_templates import append_section_block
+from utils.expiry_utils import get_computed_status
+
+COMPLIANCE_SUMMARY_REPORT_TITLE = "Compliance Summary Report"
+CSV_FORMAT_VERSION = "compliance_summary_executive_v1"
+
+CONDENSED_MATRIX_MAX = 12
+PROPERTY_POSTURE_MAX = 20
+RECOMMENDATION_MAX = 6
+
+# Executive wording — must not mirror Requirements Report triage labels
+_FORBIDDEN_TRIAGE_PHRASES = frozenset(
+    {
+        "immediate attention",
+        "triage at a glance",
+        "operational triage",
+        "upcoming renewals",
+        "evidence review required",
+        "monitoring only",
+    }
+)
+
+_LEAK_RE = re.compile(
+    r"\b(UNKNOWN_DATE|SELF_RECORDED|SATISFIED_UNVERIFIED|workflow_class|evidence_state)\b",
+    re.I,
+)
+
+_EXPOSURE_THEMES: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
+    ("Fire safety", ("gas", "fire", "smoke", "emergency lighting", "alarm")),
+    ("Licensing", ("licence", "license", "hmo", "selective", "registration")),
+    ("Tenancy documentation", ("tenancy", "deposit", "right to rent", "contract")),
+    ("Evidence verification", ("review", "verify", "upload", "certificate", "epc", "eicr")),
+    ("Onboarding", ("onboarding", "initial", "setup")),
+    ("Renewal scheduling", ("renewal", "expir")),
+)
+
+_STATUS_HUMAN = {
+    "GREEN": "On track",
+    "AMBER": "Attention advised",
+    "RED": "Elevated attention",
+    "UNKNOWN": "Status unclear",
+}
+
+
+def assert_executive_safe_text(text: str) -> None:
+    t = (text or "").strip()
+    if not t:
+        return
+    if _LEAK_RE.search(t):
+        raise ValueError(f"backend leak in compliance summary: {t[:80]!r}")
+    low = t.lower()
+    for phrase in _FORBIDDEN_TRIAGE_PHRASES:
+        if phrase in low:
+            raise ValueError(f"requirements triage leak in compliance summary: {phrase!r}")
+
+
+def classify_exposure_theme(row: Dict[str, Any]) -> str:
+    blob = " ".join(
+        str(row.get(k) or "") for k in ("description", "requirement_type", "category", "obligation")
+    ).lower()
+    for label, keywords in _EXPOSURE_THEMES:
+        if any(kw in blob for kw in keywords):
+            return label
+    return "General compliance"
+
+
+def human_property_dashboard_status(raw: Optional[str]) -> str:
+    key = str(raw or "UNKNOWN").strip().upper()
+    return _STATUS_HUMAN.get(key, "Status under review")
+
+
+def humanize_matrix_row(row: Dict[str, str]) -> Dict[str, str]:
+    out = dict(row)
+    st = str(row.get("status") or "")
+    if st and st.upper() not in ("—", "N/A"):
+        out["status"] = human_compliance_status_label(st.upper()) or st
+    out["expiry"] = human_operational_renewal_date({"due_date": row.get("expiry")}) if row.get("expiry") not in (None, "—", "") else "—"
+    for v in out.values():
+        if isinstance(v, str):
+            assert_executive_safe_text(v)
+    return out
+
+
+def _matrix_priority_score(row: Dict[str, str]) -> int:
+    risk = str(row.get("risk_level") or "")
+    action = str(row.get("action_required") or "")
+    pri = str(row.get("priority") or "")
+    score = 0
+    if risk == "Critical":
+        score += 100
+    elif risk == "High":
+        score += 80
+    elif pri in ("Critical", "High"):
+        score += 70
+    if action == "Yes":
+        score += 50
+    elif action == "Review":
+        score += 30
+    st = str(row.get("status") or "").lower()
+    if "overdue" in st or "expired" in st:
+        score += 40
+    if "renewal" in st or "expiring" in st:
+        score += 25
+    return score
+
+
+def select_condensed_matrix_rows(matrix_rows: List[Dict[str, str]]) -> Tuple[List[Dict[str, str]], int]:
+    """Highest-value obligations for executive evidence summary — not full registry dump."""
+    ranked = sorted(matrix_rows, key=_matrix_priority_score, reverse=True)
+    high_value = [r for r in ranked if _matrix_priority_score(r) >= 25]
+    if not high_value:
+        high_value = ranked[:CONDENSED_MATRIX_MAX]
+    shown = high_value[:CONDENSED_MATRIX_MAX]
+    omitted = max(0, len(matrix_rows) - len(shown))
+    return [humanize_matrix_row(r) for r in shown], omitted
+
+
+def build_portfolio_risk_concentration(
+    requirements: List[Dict[str, Any]],
+    properties: List[Dict[str, Any]],
+    client_doc: dict,
+) -> List[Dict[str, Any]]:
+    pmap = {p.get("property_id"): p for p in properties if p.get("property_id")}
+    by_theme: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"count": 0, "properties": set(), "unresolved": 0})
+    for r in requirements:
+        theme = classify_exposure_theme(r)
+        pd = pmap.get(r.get("property_id"))
+        cs = (get_computed_status(r, property_doc=pd, client_doc=client_doc) or "").upper()
+        by_theme[theme]["count"] += 1
+        if r.get("property_id"):
+            by_theme[theme]["properties"].add(str(r.get("property_id")))
+        if cs in ("OVERDUE", "EXPIRED", "MISSING", "PENDING", "ACTION_REQUIRED"):
+            by_theme[theme]["unresolved"] += 1
+    out = []
+    for theme, data in sorted(by_theme.items(), key=lambda x: (-x[1]["unresolved"], -x[1]["count"], x[0])):
+        n = data["count"]
+        props = len(data["properties"])
+        unresolved = data["unresolved"]
+        if unresolved:
+            line = (
+                f"{theme}: {unresolved} unresolved obligation{'s' if unresolved != 1 else ''} "
+                f"across {props} propert{'ies' if props != 1 else 'y'}."
+            )
+        elif n:
+            line = f"{theme}: {n} obligation{'s' if n != 1 else ''} in scope — no material unresolved exposure."
+        else:
+            continue
+        assert_executive_safe_text(line)
+        out.append({"theme": theme, "count": n, "properties": props, "unresolved": unresolved, "summary": line})
+    return out[:8]
+
+
+def build_executive_interpretation(
+    *,
+    counts: Dict[str, int],
+    readiness: Dict[str, Any],
+    risk_concentration: List[Dict[str, Any]],
+    overdue: int,
+    missing_evidence: int,
+    expiring: int,
+    completion_pct: int,
+    total_reqs: int,
+) -> List[str]:
+    lines: List[str] = []
+    if total_reqs > 0:
+        lines.append(
+            f"Within export scope, {completion_pct}% of {total_reqs} obligations show compliant status "
+            "at the generation boundary — distinct from the CVP headline score above."
+        )
+    top = [r for r in risk_concentration if r.get("unresolved", 0) > 0]
+    if top:
+        themes = ", ".join(r["theme"].lower() for r in top[:3])
+        lines.append(
+            f"Most unresolved exposure is concentrated in {themes}."
+        )
+    conf = str(readiness.get("audit_confidence") or "")
+    if conf == "High":
+        lines.append(
+            "Portfolio audit readiness remains substantially strong at the generation boundary."
+        )
+    elif conf == "Medium":
+        lines.append(
+            "Portfolio audit readiness is broadly sound with limited exceptions requiring professional review."
+        )
+    elif conf == "Low":
+        lines.append(
+            "Portfolio audit readiness shows material gaps that may affect third-party review confidence."
+        )
+    if overdue > missing_evidence and overdue > 0:
+        lines.append("Operational exposure is currently driven more by overdue renewals than missing evidence.")
+    elif missing_evidence > overdue and missing_evidence > 0:
+        lines.append("Operational exposure is currently driven more by evidence confidence gaps than calendar overdue items.")
+    elif expiring > 0 and overdue == 0:
+        lines.append("Near-term attention is primarily renewal scheduling rather than overdue failure.")
+    if not lines:
+        lines.append("No material compliance posture concerns were detected within export scope at generation time.")
+    for ln in lines:
+        assert_executive_safe_text(ln)
+    return lines[:4]
+
+
+def build_grouped_executive_recommendations(
+    risk_concentration: List[Dict[str, Any]],
+    *,
+    expiring: int,
+    missing_evidence: int,
+) -> List[str]:
+    recs: List[str] = []
+    for item in risk_concentration:
+        if item.get("unresolved", 0) <= 0:
+            continue
+        theme = item["theme"]
+        props = item.get("properties", 0)
+        n = item.get("unresolved", 0)
+        if props > 1:
+            recs.append(
+                f"Prioritise {theme.lower()} across {props} properties ({n} unresolved items in scope)."
+            )
+        else:
+            recs.append(f"Address {theme.lower()} exposure ({n} item{'s' if n != 1 else ''} in scope).")
+        if len(recs) >= RECOMMENDATION_MAX:
+            break
+    if expiring > 0 and len(recs) < RECOMMENDATION_MAX:
+        recs.append(f"Schedule renewal evidence for {expiring} obligation{'s' if expiring != 1 else ''} approaching expiry.")
+    if missing_evidence > 0 and len(recs) < RECOMMENDATION_MAX:
+        recs.append(
+            f"Strengthen evidence on file for {missing_evidence} obligation{'s' if missing_evidence != 1 else ''} "
+            "where confirmation or upload is still required."
+        )
+    for r in recs:
+        assert_executive_safe_text(r)
+    return recs[:RECOMMENDATION_MAX]
+
+
+def build_property_posture_rows(
+    *,
+    properties: List[Dict[str, Any]],
+    requirements: List[Dict[str, Any]],
+    client_doc: dict,
+    readiness: Dict[str, Any],
+) -> List[Dict[str, str]]:
+    from services.requirement_client_runtime_surface import compute_client_portal_requirement_stats
+
+    pmap_reqs: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for r in requirements:
+        pid = r.get("property_id")
+        if pid:
+            pmap_reqs[str(pid)].append(r)
+
+    rows: List[Dict[str, str]] = []
+    for prop in properties[:PROPERTY_POSTURE_MAX]:
+        pid = str(prop.get("property_id") or "")
+        prop_reqs = pmap_reqs.get(pid, [])
+        stats = compute_client_portal_requirement_stats(prop_reqs) if prop_reqs else {}
+        themes: Dict[str, int] = defaultdict(int)
+        for r in prop_reqs:
+            pd = prop
+            cs = (get_computed_status(r, property_doc=pd, client_doc=client_doc) or "").upper()
+            if cs in ("OVERDUE", "EXPIRED", "MISSING", "PENDING"):
+                themes[classify_exposure_theme(r)] += 1
+        key_theme = max(themes.items(), key=lambda x: x[1])[0] if themes else "Routine monitoring"
+        if stats.get("overdue", 0):
+            concern = f"{stats.get('overdue', 0)} overdue; {key_theme.lower()}"
+        elif stats.get("expiring_soon", 0):
+            concern = f"{stats.get('expiring_soon', 0)} renewal{'s' if stats.get('expiring_soon', 0) != 1 else ''} approaching"
+        elif stats.get("missing_evidence", 0):
+            concern = f"Evidence confidence — {key_theme.lower()}"
+        else:
+            concern = "No material concern in scope"
+
+        unresolved = int(stats.get("overdue", 0) or 0) + int(stats.get("missing_evidence", 0) or 0)
+        if unresolved == 0 and str(readiness.get("audit_confidence") or "") == "High":
+            readiness_label = "Strong"
+        elif unresolved <= 2:
+            readiness_label = "Adequate with review"
+        else:
+            readiness_label = "Review recommended"
+
+        addr = ", ".join(x for x in [prop.get("address_line_1"), prop.get("postcode")] if x)[:48]
+        row = {
+            "property_id": pid,
+            "property": addr or pid[:20],
+            "status": human_property_dashboard_status(prop.get("compliance_status")),
+            "key_concern": concern[:42],
+            "readiness": readiness_label,
+            "unresolved_count": str(unresolved),
+            "expiring_count": str(stats.get("expiring_soon", 0)),
+        }
+        for v in row.values():
+            assert_executive_safe_text(v)
+        rows.append(row)
+    return rows
+
+
+def enrich_readiness_narrative(readiness: Dict[str, Any]) -> Dict[str, Any]:
+    out = dict(readiness)
+    notes: List[str] = []
+    pct = int(readiness.get("evidence_completeness_pct") or 0)
+    if pct >= 90:
+        notes.append("Evidence on file is broadly complete; gaps are limited and identifiable.")
+    elif pct >= 70:
+        notes.append("Evidence completeness is moderate — targeted strengthening may improve review confidence.")
+    else:
+        notes.append("Evidence completeness is limited — professional review may require additional documentation.")
+    exp = int(readiness.get("unresolved_evidence_exposure") or 0)
+    if exp == 0:
+        notes.append("No high-priority unresolved evidence exposure at generation boundary.")
+    else:
+        notes.append(
+            f"{exp} obligation{'s' if exp != 1 else ''} carry elevated evidence or renewal exposure."
+        )
+    out["executive_notes"] = notes
+    return out
+
+
+def build_compliance_summary_executive_model(
+    *,
+    requirements: List[Dict[str, Any]],
+    properties: List[Dict[str, Any]],
+    client_doc: Dict[str, Any],
+    matrix_rows: List[Dict[str, str]],
+    readiness: Dict[str, Any],
+    counts: Dict[str, int],
+    total_props: int,
+    green: int,
+    amber: int,
+    red: int,
+) -> Dict[str, Any]:
+    client = client_doc or {}
+    enriched_readiness = enrich_readiness_narrative(readiness)
+    risk_concentration = build_portfolio_risk_concentration(requirements, properties, client)
+    overdue = int(counts.get("overdue") or 0)
+    missing = int(counts.get("missing_evidence") or 0)
+    expiring = int(counts.get("expiring_soon") or 0)
+    compliant = int(counts.get("compliant") or 0)
+    total_reqs = int(counts.get("total_requirements") or 0)
+    completion_pct = round((compliant / total_reqs * 100) if total_reqs else 0)
+    interpretation = build_executive_interpretation(
+        counts=counts,
+        readiness=enriched_readiness,
+        risk_concentration=risk_concentration,
+        overdue=overdue,
+        missing_evidence=missing,
+        expiring=expiring,
+        completion_pct=completion_pct,
+        total_reqs=total_reqs,
+    )
+    recommendations = build_grouped_executive_recommendations(
+        risk_concentration, expiring=expiring, missing_evidence=missing
+    )
+    property_rows = build_property_posture_rows(
+        properties=properties,
+        requirements=requirements,
+        client_doc=client,
+        readiness=enriched_readiness,
+    )
+    condensed, matrix_omitted = select_condensed_matrix_rows(matrix_rows)
+
+    return {
+        "interpretation": interpretation,
+        "readiness": enriched_readiness,
+        "risk_concentration": risk_concentration,
+        "recommendations": recommendations,
+        "property_posture": property_rows,
+        "condensed_matrix": condensed,
+        "matrix_omitted": matrix_omitted,
+        "matrix_total": len(matrix_rows),
+        "portfolio_metrics": {
+            "properties": total_props,
+            "on_track": green,
+            "attention": amber,
+            "elevated": red,
+            "obligations_in_scope": total_reqs,
+            "completion_rate_pct": completion_pct,
+            "overdue": overdue,
+            "expiring": expiring,
+            "missing_evidence": missing,
+        },
+    }
+
+
+def append_compliance_summary_executive_sections(
+    elements: List[Any],
+    *,
+    model: Dict[str, Any],
+    styles: Dict[str, Any],
+    table_style: TableStyle,
+) -> None:
+    metrics = model.get("portfolio_metrics") or {}
+    interp = model.get("interpretation") or []
+    append_section_block(
+        elements,
+        title="Portfolio posture interpretation",
+        intro="Executive synthesis of compliance posture at the generation boundary — not a legal determination.",
+        styles=styles,
+        body_items=[Paragraph(f"• {_xml_escape(line)}", styles["body"]) for line in interp]
+        + [Spacer(1, 10)],
+    )
+
+    readiness = model.get("readiness") or {}
+    rd = [
+        ["Indicator", "Value", "Professional interpretation"],
+        [
+            "Evidence completeness",
+            f"{readiness.get('evidence_completeness_pct', 0)}%",
+            readiness.get("evidence_completeness_note", ""),
+        ],
+        [
+            "Audit readiness posture",
+            readiness.get("audit_readiness", "—"),
+            f"Confidence: {readiness.get('audit_confidence', '—')}",
+        ],
+        [
+            "Priority exposure",
+            str(readiness.get("unresolved_evidence_exposure", 0)),
+            "Elevated-priority obligations at generation time.",
+        ],
+    ]
+    rt = Table(rd, colWidths=[48 * mm, 28 * mm, 84 * mm], repeatRows=1)
+    rt.setStyle(table_style)
+    notes = readiness.get("executive_notes") or []
+    body: List[Any] = [rt, Spacer(1, 6)]
+    for n in notes:
+        body.append(Paragraph(_xml_escape(n), styles["small"]))
+    body.append(Spacer(1, 10))
+    append_section_block(
+        elements,
+        title="Audit readiness and evidence confidence",
+        intro="Readiness reflects evidence sufficiency — missing items are not automatically treated as non-compliance.",
+        styles=styles,
+        body_items=body,
+    )
+
+    concentration = model.get("risk_concentration") or []
+    if concentration:
+        append_section_block(
+            elements,
+            title="Where portfolio exposure is concentrated",
+            intro="Operational themes with the greatest concentration of obligations or unresolved exposure.",
+            styles=styles,
+            body_items=[
+                Paragraph(f"• {_xml_escape(c.get('summary', ''))}", styles["body"]) for c in concentration
+            ]
+            + [Spacer(1, 10)],
+        )
+
+    props = model.get("property_posture") or []
+    if props:
+        pdata = [["Property", "Status", "Key concern", "Readiness"]]
+        for p in props:
+            pdata.append([p["property"], p["status"], p["key_concern"], p["readiness"]])
+        pt = Table(pdata, colWidths=[95, 52, 95, 58], repeatRows=1)
+        pt.setStyle(table_style)
+        append_section_block(
+            elements,
+            title="Property posture overview",
+            intro="Compact operational posture per property — not a full obligation matrix.",
+            styles=styles,
+            body_items=[pt, Spacer(1, 10)],
+        )
+
+    recs = model.get("recommendations") or []
+    if recs:
+        append_section_block(
+            elements,
+            title="Recommended priorities",
+            intro="Portfolio-level guidance for professional review — grouped by operational theme.",
+            styles=styles,
+            body_items=[Paragraph(f"• {_xml_escape(r)}", styles["body"]) for r in recs] + [Spacer(1, 10)],
+        )
+
+    condensed = model.get("condensed_matrix") or []
+    omitted = int(model.get("matrix_omitted") or 0)
+    if condensed:
+        mdata = [["Obligation", "Status", "Evidence", "Expiry", "Risk", "Action"]]
+        for r in condensed:
+            mdata.append(
+                [
+                    (r.get("obligation") or "—")[:36],
+                    (r.get("status") or "—")[:18],
+                    (r.get("evidence_present") or "—")[:10],
+                    (r.get("expiry") or "—")[:16],
+                    (r.get("risk_level") or "—")[:10],
+                    (r.get("action_required") or "—")[:10],
+                ]
+            )
+        mt = Table(mdata, colWidths=[72, 48, 32, 44, 32, 32], repeatRows=1)
+        mt.setStyle(table_style)
+        intro = (
+            f"Summary of highest-value obligations ({len(condensed)} shown). "
+            "Full obligation detail remains available in the portal."
+        )
+        if omitted:
+            intro += f" {omitted} additional obligations omitted from this summary."
+        items: List[Any] = [
+            mt,
+            Paragraph(
+                "Recorded items are not automatically equivalent to independent verification.",
+                styles["small"],
+            ),
+            Spacer(1, 10),
+        ]
+        append_section_block(
+            elements,
+            title="Evidence summary",
+            intro=intro,
+            styles=styles,
+            body_items=items,
+        )
+
+
+CSV_PROPERTY_FIELDS = [
+    "property",
+    "posture",
+    "primary_risk_area",
+    "readiness",
+    "unresolved_count",
+    "expiring_count",
+    "evidence_confidence",
+    "next_action",
+]
+
+
+def build_compliance_summary_executive_csv_rows(
+    *,
+    properties: List[Dict[str, Any]],
+    requirements: List[Dict[str, Any]],
+    client_doc: Dict[str, Any],
+    readiness: Dict[str, Any],
+) -> List[Dict[str, str]]:
+    posture_rows = build_property_posture_rows(
+        properties=properties,
+        requirements=requirements,
+        client_doc=client_doc,
+        readiness=readiness,
+    )
+    pmap_reqs: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for r in requirements:
+        pid = r.get("property_id")
+        if pid:
+            pmap_reqs[str(pid)].append(r)
+
+    out: List[Dict[str, str]] = []
+    for pr in posture_rows:
+        pid = str(pr.get("property_id") or "")
+        prop_reqs = pmap_reqs.get(pid, [])
+        themes = [classify_exposure_theme(r) for r in prop_reqs]
+        primary = max(set(themes), key=themes.count) if themes else "General compliance"
+        conf = (
+            "Strong"
+            if pr["readiness"] == "Strong"
+            else "Review suggested"
+            if "Review" in pr["readiness"]
+            else "Adequate"
+        )
+        action = (
+            pr["key_concern"]
+            if pr["key_concern"] != "No material concern in scope"
+            else "Continue routine monitoring"
+        )
+        row = {
+            "property": pr["property"],
+            "posture": pr["status"],
+            "primary_risk_area": primary,
+            "readiness": pr["readiness"],
+            "unresolved_count": pr["unresolved_count"],
+            "expiring_count": pr["expiring_count"],
+            "evidence_confidence": conf,
+            "next_action": action[:64],
+        }
+        for v in row.values():
+            assert_executive_safe_text(v)
+        out.append(row)
+    return out
+
+
+def collect_all_executive_text(model: Dict[str, Any]) -> List[str]:
+    texts: List[str] = list(model.get("interpretation") or [])
+    texts.extend(model.get("recommendations") or [])
+    for c in model.get("risk_concentration") or []:
+        texts.append(c.get("summary") or "")
+    for p in model.get("property_posture") or []:
+        texts.extend(p.values())
+    for m in model.get("condensed_matrix") or []:
+        texts.extend(m.values())
+    rd = model.get("readiness") or {}
+    texts.extend(rd.get("executive_notes") or [])
+    return [t for t in texts if t]
