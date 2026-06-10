@@ -1,5 +1,5 @@
 """
-Structured scheduled compliance report email body (daily / weekly / requirements).
+Structured scheduled report email body (Compliance Summary Report / Requirements Report).
 
 Replaces raw CSV / ``=== SUMMARY ===`` dumps in customer inboxes. Full tabular exports
 belong in the portal or CSV attachments — not the email body.
@@ -17,14 +17,65 @@ from email_templates.unified.blocks import (
 )
 from presentation.label_service import compliance_requirement_status_label, requirement_label
 
+# Canonical scheduled-report class labels (aligned with portal report taxonomy).
+SCHEDULED_REPORT_CLASS_LABELS = {
+    "compliance_summary": "Compliance Summary Report",
+    "requirements": "Requirements Report",
+}
 
-def _freq_title(frequency: str) -> str:
-    f = (frequency or "weekly").strip().lower()
-    if f == "daily":
-        return "Your daily compliance summary"
-    if f == "monthly":
-        return "Your monthly compliance overview"
-    return "Your weekly compliance overview"
+
+def _normalize_report_type_key(report_type: str) -> str:
+    raw = (report_type or "").strip().lower().replace("-", "_").replace(" ", "_")
+    while "__" in raw:
+        raw = raw.replace("__", "_")
+    if raw in (
+        "compliance_summary",
+        "compliance_summary_report",
+        "compliance_status_summary",
+    ):
+        return "compliance_summary"
+    if raw in ("requirements", "requirements_report"):
+        return "requirements"
+    return raw
+
+
+def scheduled_report_class_label(report_type: str) -> str:
+    """Human report-class name for scheduled email subject/body (outward-facing)."""
+    key = _normalize_report_type_key(report_type)
+    if key in SCHEDULED_REPORT_CLASS_LABELS:
+        return SCHEDULED_REPORT_CLASS_LABELS[key]
+    cleaned = (report_type or "").strip()
+    return cleaned if cleaned else "Scheduled report"
+
+
+def scheduled_email_subject(*, frequency: str, report_type: str, date_label: str) -> str:
+    """Operational subject line — report class + cadence, not generic compliance summary."""
+    label = scheduled_report_class_label(report_type)
+    freq = (frequency or "weekly").strip().lower()
+    if freq == "daily":
+        prefix = "Daily"
+    elif freq == "monthly":
+        prefix = "Monthly"
+    else:
+        prefix = "Weekly"
+    return f"{prefix} {label} — {date_label}"
+
+
+def scheduled_report_why_received(report_type: str) -> str:
+    label = scheduled_report_class_label(report_type)
+    return f"you have scheduled {label} delivery enabled for your account."
+
+
+def _email_header_title(frequency: str, report_type: str) -> str:
+    label = scheduled_report_class_label(report_type)
+    freq = (frequency or "weekly").strip().lower()
+    if freq == "daily":
+        cadence = "daily"
+    elif freq == "monthly":
+        cadence = "monthly"
+    else:
+        cadence = "weekly"
+    return f"Scheduled {cadence} · {label}"
 
 
 def _human_due(s: Any) -> str:
@@ -118,8 +169,9 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
     Caller wraps with ``build_customer_email_layout`` / ``_customer_email_html``.
     """
     frequency = str(model.get("frequency") or "weekly")
-    header_title = _freq_title(frequency)
-    report_type = str(model.get("report_type") or "Compliance report")
+    report_type_raw = str(model.get("report_type") or "compliance_summary")
+    report_type = scheduled_report_class_label(report_type_raw)
+    header_title = _email_header_title(frequency, report_type_raw)
     period_label = str(model.get("generated_date") or "").strip() or "today"
 
     portal = str(model.get("portal_link") or "#").strip()
@@ -131,7 +183,7 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
 
     parts.append(
         intro_paragraph_html(
-            f"This is your scheduled {report_type.lower()} for the period ending {period_label}. "
+            f"This is your scheduled {report_type} for the period ending {period_label}. "
             "It highlights what needs attention next — not a full data export."
         )
     )
@@ -190,7 +242,7 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
             )
 
     elif rows:
-        parts.append(section_title_html("Requirements overview"))
+        parts.append(section_title_html("Requirements Report snapshot"))
         counts, overdue_top, expiring_top = _aggregate_requirement_rows(rows)
         kv = [
             ("Requirements in this report", str(len(rows))),
@@ -247,8 +299,9 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
 
 def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
     frequency = str(model.get("frequency") or "weekly")
-    title = _freq_title(frequency)
-    report_type = str(model.get("report_type") or "Compliance report")
+    report_type_raw = str(model.get("report_type") or "compliance_summary")
+    report_type = scheduled_report_class_label(report_type_raw)
+    title = _email_header_title(frequency, report_type_raw)
     period_label = str(model.get("generated_date") or "").strip() or "today"
     portal = str(model.get("portal_link") or "#").strip()
     lines = [
@@ -291,7 +344,7 @@ def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
         counts, overdue_top, expiring_top = _aggregate_requirement_rows(rows)
         lines.extend(
             [
-                "REQUIREMENTS",
+                "REQUIREMENTS REPORT SNAPSHOT",
                 f"- Total rows: {len(rows)}",
                 f"- Overdue: {counts.get('OVERDUE', 0)}",
                 f"- Due soon: {counts.get('EXPIRING_SOON', 0)}",
@@ -306,7 +359,7 @@ def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
         [
             f"Open portal: {portal}",
             "",
-            "Why you received this: scheduled compliance reports are enabled for your account.",
+            f"Why you received this: {scheduled_report_why_received(report_type_raw)}",
             "",
         ]
     )

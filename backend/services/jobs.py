@@ -2091,8 +2091,15 @@ class ScheduledReportJob:
                     if not recipients:
                         recipients = [client.get("email")] if client.get("email") else []
                     frequency = schedule.get("frequency", "weekly")
-                    
-                    subject = f"Your {frequency.title()} Compliance Report - {now.strftime('%d %b %Y')}"
+
+                    from email_templates.unified.scheduled_report_digest import scheduled_email_subject
+
+                    date_label = now.strftime("%d %b %Y")
+                    subject = scheduled_email_subject(
+                        frequency=frequency,
+                        report_type=report_type,
+                        date_label=date_label,
+                    )
                     
                     # Send to each recipient via orchestrator
                     date_key = now.strftime("%Y-%m-%d")
@@ -2118,7 +2125,7 @@ class ScheduledReportJob:
                                     "recipient": recipient,
                                     "client_name": client.get("full_name", "there"),
                                     "customer_reference": (client.get("customer_reference") or "").strip(),
-                                    "report_type": report_type.replace("_", " ").title(),
+                                    "report_type": report_type,
                                     "frequency": frequency,
                                     "generated_date": now.strftime("%d %B %Y"),
                                     "report_rows": rows,

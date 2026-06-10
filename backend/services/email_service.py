@@ -13,6 +13,7 @@ from email_templates.email_layout import build_customer_email_layout, merge_bran
 from email_templates.unified.scheduled_report_digest import (
     build_scheduled_report_digest_html,
     build_scheduled_report_digest_text,
+    scheduled_report_why_received,
 )
 from utils.branding import CUSTOMER_SUPPORT_FOOTER_PLAIN, SUPPORT_EMAIL
 from presentation.label_service import (
@@ -1053,7 +1054,9 @@ class EmailService:
                 ref_badge=ref_badge,
                 cta_label="Open your portal",
                 cta_url=portal,
-                why_received="you have scheduled compliance reports enabled for your account.",
+                why_received=scheduled_report_why_received(
+                    str(model.get("report_type") or "")
+                ),
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
                 customer_reference=customer_ref or None,
