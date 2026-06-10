@@ -397,13 +397,13 @@ FEATURE_MATRIX = {
         "zip_upload": True,
         "reports_pdf": True,
         "scheduled_reports": True,
+        "reports_csv": True,
         # SMS reminders: Portfolio+ (pricing page)
         "sms_reminders": True,
         # Professional only -> False for Portfolio
         "ai_extraction_advanced": False,
         "extraction_review_ui": False,
         "ai_review_interface": False,
-        "reports_csv": False,
         "tenant_portal": False,
         "tenant_portal_access": False,
         "webhooks": False,
@@ -576,6 +576,7 @@ MINIMUM_PLAN_FOR_FEATURE = {
     "document_upload_bulk_zip": PlanCode.PLAN_2_PORTFOLIO,
     "zip_upload": PlanCode.PLAN_2_PORTFOLIO,
     "reports_pdf": PlanCode.PLAN_2_PORTFOLIO,
+    "reports_csv": PlanCode.PLAN_2_PORTFOLIO,
     "scheduled_reports": PlanCode.PLAN_2_PORTFOLIO,
     # PLAN_2_PORTFOLIO and above (pricing: Portfolio + Pro include SMS reminders)
     "sms_reminders": PlanCode.PLAN_2_PORTFOLIO,
@@ -583,7 +584,6 @@ MINIMUM_PLAN_FOR_FEATURE = {
     "ai_extraction_advanced": PlanCode.PLAN_3_PRO,
     "extraction_review_ui": PlanCode.PLAN_3_PRO,
     "ai_review_interface": PlanCode.PLAN_3_PRO,
-    "reports_csv": PlanCode.PLAN_3_PRO,
     "tenant_portal": PlanCode.PLAN_3_PRO,
     "tenant_portal_access": PlanCode.PLAN_3_PRO,
     "webhooks": PlanCode.PLAN_3_PRO,

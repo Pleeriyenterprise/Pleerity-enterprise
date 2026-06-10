@@ -32,6 +32,7 @@ from services.report_layout_governance import (
     GovernancePdfContext,
     append_governance_matrix_for_properties,
     append_unresolved_obligations_section,
+    governance_footer_bottom_margin,
     make_page_callbacks,
 )
 from services.reporting_semantics_v1 import (
@@ -252,7 +253,7 @@ class ProfessionalReportGenerator:
             rightMargin=50,
             leftMargin=50,
             topMargin=50,
-            bottomMargin=62,
+            bottomMargin=governance_footer_bottom_margin(),
         )
         
         elements = []
@@ -423,18 +424,6 @@ class ProfessionalReportGenerator:
             table_style=ent_table_style,
         )
 
-        # Footer
-        elements.append(Spacer(1, 40))
-        if branding.get("report_footer_text"):
-            elements.append(Paragraph(branding["report_footer_text"], styles["footer"]))
-            elements.append(Spacer(1, 10))
-        
-        for line in branding.get("pdf_attribution_lines") or []:
-            elements.append(Paragraph(line, styles["footer"]))
-        if branding.get("pdf_footer_contact_line"):
-            elements.append(Paragraph(branding["pdf_footer_contact_line"], styles["footer"]))
-        
-        # Build PDF
         doc.build(elements, onFirstPage=on_first, onLaterPages=on_later)
         buffer.seek(0)
         return buffer

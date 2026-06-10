@@ -184,7 +184,7 @@ const FEATURE_MATRIX = {
     extraction_review_ui: false,
     zip_upload: true,
     reports_pdf: true,
-    reports_csv: false,
+    reports_csv: true,
     scheduled_reports: true,
     sms_reminders: true,
     tenant_portal: false,

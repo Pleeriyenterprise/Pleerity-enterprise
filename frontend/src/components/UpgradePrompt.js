@@ -309,7 +309,7 @@ const FEATURE_MIN_PLAN = {
   ai_extraction_advanced: 'PLAN_3_PRO',
   extraction_review_ui: 'PLAN_3_PRO',
   ai_review_interface: 'PLAN_3_PRO',
-  reports_csv: 'PLAN_3_PRO',
+  reports_csv: 'PLAN_2_PORTFOLIO',
   sms_reminders: 'PLAN_2_PORTFOLIO',
   tenant_portal: 'PLAN_3_PRO',
   tenant_portal_access: 'PLAN_3_PRO',

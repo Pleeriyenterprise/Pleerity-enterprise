@@ -279,7 +279,7 @@ class TestCheckFeatureAccessSoloPortfolioPro:
         assert portfolio.get("scheduled_reports") is True
         assert portfolio.get("webhooks") is False
         assert portfolio.get("audit_log_export") is False
-        assert portfolio.get("reports_csv") is False
+        assert portfolio.get("reports_csv") is True
         assert portfolio.get("sms_reminders") is True
         assert portfolio.get("tenant_portal") is False
         assert portfolio.get("ai_extraction_advanced") is False
@@ -291,13 +291,13 @@ class TestCheckFeatureAccessSoloPortfolioPro:
         assert pro.get("tenant_portal") is True
         assert pro.get("ai_extraction_advanced") is True
 
-    def test_reports_csv_pro_only(self):
-        """reports_csv: Solo and Portfolio denied, Pro only (pricing page)."""
+    def test_reports_csv_portfolio_and_pro(self):
+        """reports_csv: Portfolio and Professional; Solo denied."""
         allowed_solo, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_1_SOLO, "reports_csv")
         allowed_portfolio, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_2_PORTFOLIO, "reports_csv")
         allowed_pro, _, _ = plan_registry.check_feature_access(PlanCode.PLAN_3_PRO, "reports_csv")
         assert allowed_solo is False
-        assert allowed_portfolio is False
+        assert allowed_portfolio is True
         assert allowed_pro is True
 
     def test_tenant_portal_pro_only(self):
