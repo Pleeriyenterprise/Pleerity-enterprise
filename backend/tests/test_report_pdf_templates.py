@@ -3,12 +3,19 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from services.report_layout_governance import GovernancePdfContext
+from services.report_layout_governance import (
+    GovernancePdfContext,
+    formal_report_table_width,
+    proportional_col_widths,
+)
 from services.report_pdf_templates import (
     FROZEN_SNAPSHOT_WORDING,
+    append_readiness_indicators_section,
     build_formal_report_pdf,
     build_matrix_rows,
     compute_readiness_indicators,
+    create_enterprise_styles,
+    create_enterprise_table_style,
     FormalReportSpec,
     group_by_action_priority,
 )
@@ -110,3 +117,68 @@ def test_formal_report_pdf_contains_cover_matrix_and_snapshot_wording():
     assert "frozen deterministic snapshot" in text.lower() or "deterministic snapshot" in text.lower()
     assert "Executive summary" in text or "Executive" in text
     assert "Intended use" in text or "intended" in text.lower()
+    assert "REGULATORY_SUBMISSION" not in text
+    assert "Regulatory submission" in text or "Regulatory / evidential" in text
+    assert "generation timestamp boundary." in text.lower()
+
+
+def test_evidence_matrix_seven_column_portrait_width():
+    width = formal_report_table_width()
+    cols = proportional_col_widths(width, [0.28, 0.11, 0.13, 0.09, 0.13, 0.10, 0.16])
+    assert len(cols) == 7
+    assert abs(sum(cols) - width) < 0.5
+
+
+def test_readiness_table_uses_paragraph_cells_no_overlap_fields():
+    styles = create_enterprise_styles({})
+    table_style = create_enterprise_table_style(styles)
+    elements = []
+    append_readiness_indicators_section(
+        elements,
+        indicators=compute_readiness_indicators(
+            requirements=[_sample_req()],
+            properties=[{"property_id": "p1"}],
+            client_doc={},
+        ),
+        styles=styles,
+        table_style=table_style,
+        table_width=formal_report_table_width(),
+    )
+    from reportlab.platypus import Table
+
+    table = next(item for item in elements if isinstance(item, Table))
+    assert len(table._cellvalues[0]) == 3
+    assert all(hasattr(cell, "text") for row in table._cellvalues for cell in row)
+
+
+def test_formal_pdf_audit_trail_humanises_event_codes():
+    spec = FormalReportSpec(
+        report_title="Audit Evidence Pack",
+        report_classification="Audit Evidence Pack",
+        report_kind="audit_evidence_pack",
+        branding={"primary_color": "#0B1D3A"},
+        gov_ctx=_gov_ctx(),
+        generated_at_iso="2026-06-09T12:00:00+00:00",
+        include_matrix=False,
+        include_executive_summary=False,
+        include_readiness_indicators=False,
+        include_action_priorities=False,
+        include_exception_summaries=False,
+        include_audit_trail=True,
+        include_intended_use=False,
+        include_scope_limitations=False,
+    )
+    pdf = build_formal_report_pdf(
+        spec,
+        audit_events=[
+            {
+                "timestamp": "2026-05-01T10:00:00+00:00",
+                "action": "COMPLIANCE_RECALC_SLA_BREACH",
+                "actor_role": "system",
+                "metadata": {"summary": "SLA breach during recalculation"},
+            }
+        ],
+    )
+    text = pdf.decode("latin-1", errors="ignore")
+    assert "COMPLIANCE_RECALC_SLA_BREACH" not in text
+    assert "Compliance recalculation exceeded SLA threshold" in text or "SLA breach" in text

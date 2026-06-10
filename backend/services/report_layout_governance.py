@@ -36,6 +36,83 @@ UNRESOLVED_SECTION_MAX_ROWS = 45
 
 PDF_LEGAL_FOOTER = "This report does not constitute legal advice."
 
+# Reserved canvas footer band — body flowables must end above this margin.
+PDF_FOOTER_BAND_MM = 28
+PDF_FOOTER_SIDE_MARGIN_MM = 15
+PLEERITY_OPERATOR_FOOTER = "Pleerity Enterprise Ltd"
+PLEERITY_WEBSITE_FOOTER = "pleerityenterprise.co.uk"
+PLEERITY_SUPPORT_FOOTER = "info@pleerityenterprise.co.uk"
+
+
+def governance_footer_bottom_margin() -> float:
+    """Bottom margin matching the reserved per-page canvas footer band."""
+    return PDF_FOOTER_BAND_MM * mm
+
+
+def formal_report_table_width(
+    *,
+    left_margin_mm: float = 16,
+    right_margin_mm: float = 16,
+) -> float:
+    """Usable table width for formal portrait reports (A4, symmetric margins)."""
+    return A4[0] - (left_margin_mm + right_margin_mm) * mm
+
+
+def proportional_col_widths(total_width: float, fractions: List[float]) -> List[float]:
+    """Allocate column widths as fractions of usable table width."""
+    denom = sum(fractions) or 1.0
+    return [total_width * (f / denom) for f in fractions]
+
+
+def evidence_readiness_table_width() -> float:
+    """Usable width for Evidence Readiness PDFs (50pt side margins in pdf_report_builder)."""
+    return A4[0] - 100
+
+
+def _fit_footer_side_by_side(
+    left: str,
+    right: str,
+    *,
+    width: float,
+    side: float,
+    left_font: str,
+    left_size: float,
+    right_font: str,
+    right_size: float,
+    gap: float = 14,
+) -> Tuple[str, str]:
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    right_w = stringWidth(right, right_font, right_size)
+    max_left = max(40, width - (2 * side) - right_w - gap)
+    if stringWidth(left, left_font, left_size) <= max_left:
+        return left, right
+    trimmed = left
+    while trimmed and stringWidth(trimmed + "…", left_font, left_size) > max_left:
+        trimmed = trimmed[:-1]
+    return (trimmed + "…") if trimmed else left[: max(1, len(left) // 2)] + "…", right
+
+
+def _wrap_footer_text(text: str, *, font_name: str, font_size: float, max_width: float) -> List[str]:
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+
+    words = (text or "").split()
+    if not words:
+        return [""]
+    lines: List[str] = []
+    current = ""
+    for word in words:
+        trial = f"{current} {word}".strip()
+        if stringWidth(trial, font_name, font_size) <= max_width:
+            current = trial
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines
+
 # Table header row contrast (accessibility-enhanced, print-safe monochrome)
 TABLE_HEADER_BG = colors.Color(0.12, 0.15, 0.22)
 TABLE_HEADER_FG = colors.white
@@ -374,45 +451,96 @@ def make_page_callbacks(
     ctx: GovernancePdfContext,
     *,
     footer_mode: str = "standard",
+    operator_line: str = "",
 ) -> Tuple[Callable, Callable]:
-    """ReportLab onFirstPage / onLaterPages with page numbers and governance footer."""
+    """ReportLab onFirstPage / onLaterPages — fixed footer band, no body duplication."""
 
     def _draw(canvas, _doc):
         canvas.saveState()
-        width, height = A4
-        footer_y = 12 * mm
-        canvas.setFont("Helvetica", 7)
-        canvas.setFillColor(colors.grey)
+        width, _height = A4
+        side = PDF_FOOTER_SIDE_MARGIN_MM * mm
+        band_top = PDF_FOOTER_BAND_MM * mm
+        usable = width - 2 * side
         page_num = canvas.getPageNumber()
-        left = f"Grade: {ctx.export_grade} | {PDF_LEGAL_FOOTER[:48]}…"
+        grade_label = human_export_footer_grade(ctx.export_grade, ctx.export_grade_label)
+
+        canvas.setStrokeColor(colors.Color(0.82, 0.82, 0.82))
+        canvas.line(side, band_top, width - side, band_top)
+
+        canvas.setFillColor(colors.grey)
+        left_parts = [grade_label]
         if ctx.jurisdiction_summary:
-            left = f"{left} | {ctx.jurisdiction_summary[:40]}"
-        canvas.drawString(15 * mm, footer_y + 4 * mm, left[:95])
-        canvas.drawRightString(
-            width - 15 * mm,
-            footer_y + 4 * mm,
-            f"Page {page_num} | Generated {utc_display(ctx.generated_at)[:16]}",
+            left_parts.append(ctx.jurisdiction_summary.strip())
+        left = " | ".join(left_parts)
+        right = f"Page {page_num} | Generated {utc_display(ctx.generated_at)}"
+        left, right = _fit_footer_side_by_side(
+            left,
+            right,
+            width=width,
+            side=side,
+            left_font="Helvetica-Bold",
+            left_size=7,
+            right_font="Helvetica",
+            right_size=7,
         )
+        canvas.setFont("Helvetica-Bold", 7)
+        canvas.drawString(side, band_top - 5 * mm, left)
+        canvas.setFont("Helvetica", 7)
+        canvas.drawRightString(width - side, band_top - 5 * mm, right)
+
         if footer_mode == "compact":
             from services.report_evidence_readiness_operational import (
                 COMPACT_FOOTER_LIVE,
                 COMPACT_FOOTER_SNAPSHOT,
             )
 
-            footer_mid = (
+            notice = (
                 COMPACT_FOOTER_SNAPSHOT
                 if ctx.is_immutable_artifact
                 else COMPACT_FOOTER_LIVE
             )
-        else:
+        elif ctx.is_immutable_artifact:
             from services.report_pdf_templates import FROZEN_SNAPSHOT_WORDING
 
-            footer_mid = (
-                FROZEN_SNAPSHOT_WORDING[:120]
-                if ctx.is_immutable_artifact
-                else LIVE_REGENERATED_DISCLOSURE[:120]
+            notice = FROZEN_SNAPSHOT_WORDING
+        elif ctx.is_live_regenerated:
+            notice = LIVE_REGENERATED_DISCLOSURE
+        else:
+            notice = (
+                "Point-in-time export. Data reflects portal records at generation; "
+                "may differ after later changes."
             )
-        canvas.drawCentredString(width / 2, footer_y, footer_mid[:95])
+
+        notice_lines = _wrap_footer_text(
+            notice,
+            font_name="Helvetica",
+            font_size=6,
+            max_width=usable * 0.92,
+        )
+        y_notice = band_top - 11 * mm
+        canvas.setFont("Helvetica", 6)
+        for line in notice_lines[:2]:
+            canvas.drawCentredString(width / 2, y_notice, line)
+            y_notice -= 3 * mm
+
+        op = (operator_line or "").strip()
+        if not op:
+            op = (
+                f"{ctx.company_name or PLEERITY_OPERATOR_FOOTER} · "
+                f"{PLEERITY_WEBSITE_FOOTER} | {PLEERITY_SUPPORT_FOOTER}"
+            )
+        legal_line = f"{PDF_LEGAL_FOOTER} | {op}"
+        legal_lines = _wrap_footer_text(
+            legal_line,
+            font_name="Helvetica",
+            font_size=6,
+            max_width=usable * 0.96,
+        )
+        y_legal = 2.5 * mm
+        for line in legal_lines[:2]:
+            canvas.drawCentredString(width / 2, y_legal, line)
+            y_legal += 3 * mm
+
         canvas.restoreState()
 
     return _draw, _draw
@@ -464,22 +592,69 @@ def _append_obligation_table_section(
         elements.append(Paragraph(empty_message, styles["body"]))
         elements.append(Spacer(1, 16))
         return
-    table_data = [["Requirement", "Property", "Status", "Assurance", "Evidence", "Review", "Expiry"]]
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.platypus import Paragraph
+
+    base = getSampleStyleSheet()
+    cell_style = ParagraphStyle(
+        "GovObligationCell",
+        parent=styles.get("body") or styles.get("small") or base["Normal"],
+        fontSize=8,
+        leading=10,
+        wordWrap="normal",
+    )
+    header_style = ParagraphStyle(
+        "GovObligationHeader",
+        parent=cell_style,
+        fontName="Helvetica-Bold",
+    )
+
+    def _cell(text: Any, *, bold: bool = False) -> Paragraph:
+        raw = _xml_escape(str(text if text is not None else "\u2014"))
+        style = header_style if bold else cell_style
+        return Paragraph(f"<b>{raw}</b>" if bold else raw, style)
+
+    table_width = evidence_readiness_table_width()
+    col_widths = proportional_col_widths(
+        table_width,
+        [0.20, 0.12, 0.18, 0.11, 0.10, 0.11, 0.18],
+    )
+    table_data = [
+        [
+            _cell("Requirement", bold=True),
+            _cell("Property", bold=True),
+            _cell("Status", bold=True),
+            _cell("Assurance", bold=True),
+            _cell("Evidence", bold=True),
+            _cell("Review", bold=True),
+            _cell("Expiry", bold=True),
+        ]
+    ]
     for row in rows:
         table_data.append(
             [
-                row["requirement"],
-                row["property"],
-                row.get("status_label") or row["reason"][:40],
-                row["assurance"],
-                row["evidence"],
-                row["review"],
-                row["expiry_risk"],
+                _cell(row["requirement"]),
+                _cell(row["property"]),
+                _cell(row.get("status_label") or row["reason"]),
+                _cell(row["assurance"]),
+                _cell(row["evidence"]),
+                _cell(row["review"]),
+                _cell(row["expiry_risk"]),
             ]
         )
     if total > len(rows):
-        table_data.append([f"… {total - len(rows)} more", "—", "See portal", "—", "—", "—", "—"])
-    t = Table(table_data, colWidths=[90, 68, 82, 45, 40, 52, 48], repeatRows=1)
+        table_data.append(
+            [
+                _cell(f"\u2026 {total - len(rows)} more"),
+                _cell("\u2014"),
+                _cell("See portal"),
+                _cell("\u2014"),
+                _cell("\u2014"),
+                _cell("\u2014"),
+                _cell("\u2014"),
+            ]
+        )
+    t = Table(table_data, colWidths=col_widths, repeatRows=1, splitByRow=1)
     t.setStyle(table_style)
     elements.append(t)
     if total > len(rows):

@@ -31,7 +31,10 @@ from services.report_branding_layout import append_report_cover_block
 from services.report_layout_governance import (
     GovernancePdfContext,
     export_disclosure_paragraphs,
+    formal_report_table_width,
+    governance_footer_bottom_margin,
     make_page_callbacks,
+    proportional_col_widths,
     utc_display,
 )
 from utils.expiry_utils import get_computed_status, get_effective_expiry_date
@@ -151,9 +154,54 @@ def create_enterprise_styles(branding: Optional[Dict[str, Any]] = None) -> Dict[
             leading=11,
             textColor=colors.grey,
         ),
+        "table_cell": ParagraphStyle(
+            "EntTableCell",
+            parent=base["BodyText"],
+            fontSize=8,
+            leading=10,
+            alignment=TA_LEFT,
+            wordWrap="normal",
+            splitLongWords=False,
+        ),
         "table_header_bg": c_primary,
         "table_accent": c_accent,
     }
+
+
+def _table_cell_para(text: Any, styles: Dict[str, Any], *, bold: bool = False) -> Paragraph:
+    cell_style = styles.get("table_cell") or styles["body"]
+    raw = _xml_escape(str(text if text is not None else "\u2014"))
+    if bold:
+        return Paragraph(f"<b>{raw}</b>", cell_style)
+    return Paragraph(raw, cell_style)
+
+
+def _obligation_cell_para(
+    obligation: str,
+    category: str,
+    styles: Dict[str, Any],
+) -> Paragraph:
+    cell_style = styles.get("table_cell") or styles["body"]
+    obl = _xml_escape(obligation or "\u2014")
+    cat = (category or "").strip()
+    if cat and cat not in ("\u2014", obligation):
+        return Paragraph(
+            f"{obl}<br/><font size=\"7\" color=\"#64748b\">{_xml_escape(cat)}</font>",
+            cell_style,
+        )
+    return Paragraph(obl, cell_style)
+
+
+def _stacked_cell_para(primary: str, secondary: str, styles: Dict[str, Any]) -> Paragraph:
+    cell_style = styles.get("table_cell") or styles["body"]
+    main = _xml_escape(primary or "\u2014")
+    sub = (secondary or "").strip()
+    if sub and sub not in ("\u2014", primary):
+        return Paragraph(
+            f"{main}<br/><font size=\"7\" color=\"#64748b\">{_xml_escape(sub)}</font>",
+            cell_style,
+        )
+    return Paragraph(main, cell_style)
 
 
 def create_enterprise_table_style(styles: Dict[str, Any]) -> TableStyle:
@@ -294,9 +342,9 @@ def build_matrix_rows(
         rid = str(r.get("requirement_id") or "")
         rows.append(
             {
-                "obligation": (r.get("description") or r.get("requirement_type") or "—")[:42],
-                "category": (r.get("requirement_type") or r.get("requirement_code") or "—")[:28],
-                "status": str(cs or r.get("status") or "—")[:16],
+                "obligation": (r.get("description") or r.get("requirement_type") or "\u2014"),
+                "category": (r.get("requirement_type") or r.get("requirement_code") or "\u2014")[:32],
+                "status": str(cs or r.get("status") or "\u2014"),
                 "evidence_present": _evidence_present(r),
                 "evidence_ref": _evidence_file_ref(r, docs_by_req)[:36],
                 "delivery_proof": _delivery_proof_label(rid, delivery_by_req),
@@ -443,14 +491,8 @@ def append_section_block(
 
 
 def append_frozen_snapshot_notice(elements: List[Any], *, generated_at_iso: str, styles: Dict[str, Any]) -> None:
-    elements.append(Paragraph(f"<b>{_xml_escape(FROZEN_SNAPSHOT_WORDING)}</b>", styles["body"]))
-    elements.append(
-        Paragraph(
-            f"<b>Generation timestamp boundary (UTC):</b> {_xml_escape(utc_display(generated_at_iso))}",
-            styles["small"],
-        )
-    )
-    elements.append(Spacer(1, 8))
+    """No-op — frozen snapshot wording is rendered in the canvas footer band."""
+    del elements, generated_at_iso, styles
 
 
 def append_intended_use_section(elements: List[Any], *, report_kind: str, styles: Dict[str, Any]) -> None:
@@ -473,35 +515,47 @@ def append_readiness_indicators_section(
     indicators: Dict[str, Any],
     styles: Dict[str, Any],
     table_style: TableStyle,
+    table_width: Optional[float] = None,
 ) -> None:
+    width = table_width or formal_report_table_width()
+    col_widths = proportional_col_widths(width, [0.30, 0.18, 0.52])
+    delivery_val = (
+        f"{indicators['delivery_proof_completeness_pct']}%"
+        if indicators.get("delivery_proof_completeness_pct") is not None
+        else "N/A"
+    )
+    confidence = indicators.get("audit_confidence", "—")
     data = [
-        ["Indicator", "Value", "Interpretation"],
         [
-            "Evidence completeness",
-            f"{indicators.get('evidence_completeness_pct', 0)}%",
-            indicators.get("evidence_completeness_note", ""),
+            _table_cell_para("Indicator", styles, bold=True),
+            _table_cell_para("Value", styles, bold=True),
+            _table_cell_para("Interpretation", styles, bold=True),
         ],
         [
-            "Delivery proof completeness",
-            (
-                f"{indicators['delivery_proof_completeness_pct']}%"
-                if indicators.get("delivery_proof_completeness_pct") is not None
-                else "N/A"
+            _table_cell_para("Evidence completeness", styles),
+            _table_cell_para(f"{indicators.get('evidence_completeness_pct', 0)}%", styles),
+            _table_cell_para(indicators.get("evidence_completeness_note", ""), styles),
+        ],
+        [
+            _table_cell_para("Delivery proof completeness", styles),
+            _table_cell_para(delivery_val, styles),
+            _table_cell_para(indicators.get("delivery_proof_note", ""), styles),
+        ],
+        [
+            _table_cell_para("Audit readiness", styles),
+            _table_cell_para(indicators.get("audit_readiness", "—"), styles),
+            _table_cell_para(f"Confidence level: {confidence}", styles),
+        ],
+        [
+            _table_cell_para("Unresolved evidence exposure", styles),
+            _table_cell_para(str(indicators.get("unresolved_evidence_exposure", 0)), styles),
+            _table_cell_para(
+                "Obligations requiring critical or high-priority action.",
+                styles,
             ),
-            indicators.get("delivery_proof_note", ""),
-        ],
-        [
-            "Audit readiness",
-            indicators.get("audit_readiness", "—"),
-            f"Confidence: {indicators.get('audit_confidence', '—')}",
-        ],
-        [
-            "Unresolved evidence exposure",
-            str(indicators.get("unresolved_evidence_exposure", 0)),
-            "Obligations requiring critical or high-priority action.",
         ],
     ]
-    t = Table(data, colWidths=[48 * mm, 28 * mm, 84 * mm], repeatRows=1)
+    t = Table(data, colWidths=col_widths, repeatRows=1)
     t.setStyle(table_style)
     append_section_block(
         elements,
@@ -552,39 +606,52 @@ def append_central_evidence_matrix(
     styles: Dict[str, Any],
     table_style: TableStyle,
     max_rows: int = 40,
+    table_width: Optional[float] = None,
 ) -> None:
     shown = matrix_rows[:max_rows]
+    width = table_width or formal_report_table_width()
+    col_widths = proportional_col_widths(
+        width,
+        [0.28, 0.11, 0.13, 0.09, 0.13, 0.10, 0.16],
+    )
     header = [
-        "Obligation",
-        "Category",
-        "Status",
-        "Evidence",
-        "File ref",
-        "Delivery",
-        "Expiry",
-        "Days",
-        "Risk",
-        "Action",
-        "Updated",
+        _table_cell_para("Obligation", styles, bold=True),
+        _table_cell_para("Status", styles, bold=True),
+        _table_cell_para("Evidence", styles, bold=True),
+        _table_cell_para("Delivery", styles, bold=True),
+        _table_cell_para("Expiry / Risk", styles, bold=True),
+        _table_cell_para("Action", styles, bold=True),
+        _table_cell_para("Updated", styles, bold=True),
     ]
-    data = [header]
+    data: List[List[Any]] = [header]
     for row in shown:
+        expiry = row.get("expiry", "—")
+        risk = row.get("risk_level", "—")
+        days = row.get("days_to_expiry", "—")
+        expiry_risk = expiry
+        if risk and risk != "—":
+            expiry_risk = f"{expiry} / {risk}"
+        if days and days != "—":
+            expiry_risk = f"{expiry_risk} ({days}d)"
         data.append(
             [
-                row.get("obligation", "—"),
-                row.get("category", "—"),
-                row.get("status", "—"),
-                row.get("evidence_present", "—"),
-                row.get("evidence_ref", "—"),
-                row.get("delivery_proof", "—"),
-                row.get("expiry", "—"),
-                row.get("days_to_expiry", "—"),
-                row.get("risk_level", "—"),
-                row.get("action_required", "—"),
-                row.get("last_updated", "—")[:14],
+                _obligation_cell_para(
+                    row.get("obligation", "—"),
+                    row.get("category", "—"),
+                    styles,
+                ),
+                _table_cell_para(_human_status_label(row.get("status", "\u2014")), styles),
+                _stacked_cell_para(
+                    row.get("evidence_present", "—"),
+                    row.get("evidence_ref", "—"),
+                    styles,
+                ),
+                _table_cell_para(row.get("delivery_proof", "—"), styles),
+                _table_cell_para(expiry_risk, styles),
+                _table_cell_para(row.get("action_required", "—"), styles),
+                _table_cell_para(row.get("last_updated", "—"), styles),
             ]
         )
-    col_widths = [52, 36, 32, 22, 38, 24, 28, 20, 22, 22, 30]
     t = Table(data, colWidths=col_widths, repeatRows=1, splitByRow=1)
     t.setStyle(table_style)
     omitted = max(0, len(matrix_rows) - len(shown))
@@ -642,6 +709,7 @@ def append_exception_summaries_section(
     exceptions: Dict[str, List[str]],
     styles: Dict[str, Any],
     table_style: TableStyle,
+    table_width: Optional[float] = None,
 ) -> None:
     labels = {
         "missing_evidence": "Missing evidence",
@@ -651,12 +719,26 @@ def append_exception_summaries_section(
         "missing_delivery_proof": "Missing delivery proof",
         "unresolved_obligations": "Unresolved obligations",
     }
-    data = [["Exception type", "Count", "Examples"]]
+    width = table_width or formal_report_table_width()
+    col_widths = proportional_col_widths(width, [0.34, 0.12, 0.54])
+    data: List[List[Any]] = [
+        [
+            _table_cell_para("Exception type", styles, bold=True),
+            _table_cell_para("Count", styles, bold=True),
+            _table_cell_para("Examples", styles, bold=True),
+        ]
+    ]
     for key, title in labels.items():
         items = exceptions.get(key) or []
         sample = "; ".join(items[:3]) if items else "None in scope"
-        data.append([title, str(len(items)), sample[:80]])
-    t = Table(data, colWidths=[48 * mm, 18 * mm, 94 * mm], repeatRows=1)
+        data.append(
+            [
+                _table_cell_para(title, styles),
+                _table_cell_para(str(len(items)), styles),
+                _table_cell_para(sample, styles),
+            ]
+        )
+    t = Table(data, colWidths=col_widths, repeatRows=1)
     t.setStyle(table_style)
     append_section_block(
         elements,
@@ -667,6 +749,55 @@ def append_exception_summaries_section(
     )
 
 
+def _human_actor_role(role: Any) -> str:
+    raw = str(role or "system").strip()
+    upper = raw.upper()
+    if upper in ("ROLE_CLIENT", "CLIENT"):
+        return "Client"
+    if upper in ("SYSTEM", "ROLE_SYSTEM"):
+        return "System"
+    if upper.startswith("ROLE_"):
+        return raw[5:].replace("_", " ").title()
+    return raw.replace("_", " ").title() if raw else "System"
+
+
+def _human_status_label(status: Any) -> str:
+    from services.report_human_language_v1 import human_compliance_status_label
+
+    raw = str(status or "").strip()
+    if not raw:
+        return "\u2014"
+    return human_compliance_status_label(raw) or raw
+
+
+def _compact_audit_timestamp(value: Any) -> str:
+    s = str(value or "\u2014").strip().replace("Z", "+00:00")
+    if "T" in s:
+        s = s.replace("T", " ", 1)
+    s = s.replace("+00:00", " UTC")
+    return s
+
+
+def _humanize_audit_event(action: Any) -> str:
+    from services.report_evidence_readiness_operational import humanize_audit_event_action
+
+    return humanize_audit_event_action(action)
+
+
+def _audit_trail_summary_cell(ev: Dict[str, Any], styles: Dict[str, Any]) -> Paragraph:
+    md = ev.get("metadata") if isinstance(ev.get("metadata"), dict) else {}
+    action = ev.get("action") or ev.get("event_type")
+    summary = str(md.get("summary") or _humanize_audit_event(action) or "—")
+    subject = str(ev.get("resource_id") or md.get("requirement_id") or "").strip()
+    ref = str(md.get("document_id") or md.get("evidence_record_id") or "").strip()
+    parts = [summary]
+    if subject and subject not in summary:
+        parts.append(f"Subject: {subject}")
+    if ref:
+        parts.append(f"Ref: {ref}")
+    return _table_cell_para(" · ".join(parts), styles)
+
+
 def append_audit_trail_narrative(
     elements: List[Any],
     *,
@@ -674,22 +805,33 @@ def append_audit_trail_narrative(
     styles: Dict[str, Any],
     table_style: TableStyle,
     max_rows: int = 60,
+    table_width: Optional[float] = None,
 ) -> None:
     shown = events[:max_rows]
-    data = [["Timestamp (UTC)", "Event", "Actor", "Subject", "Summary", "Reference"]]
+    width = table_width or formal_report_table_width()
+    col_widths = proportional_col_widths(width, [0.18, 0.22, 0.14, 0.46])
+    data: List[List[Any]] = [
+        [
+            _table_cell_para("Timestamp (UTC)", styles, bold=True),
+            _table_cell_para("Event", styles, bold=True),
+            _table_cell_para("Actor", styles, bold=True),
+            _table_cell_para("Summary", styles, bold=True),
+        ]
+    ]
     for ev in shown:
-        md = ev.get("metadata") if isinstance(ev.get("metadata"), dict) else {}
+        action = ev.get("action") or ev.get("event_type")
         data.append(
             [
-                str(ev.get("timestamp") or "—")[:19],
-                str(ev.get("action") or ev.get("event_type") or "—")[:22],
-                str(ev.get("actor_role") or ev.get("actor") or "system")[:14],
-                str(ev.get("resource_id") or md.get("requirement_id") or "—")[:18],
-                str(md.get("summary") or ev.get("action") or "—")[:36],
-                str(md.get("document_id") or md.get("evidence_record_id") or "—")[:16],
+                _table_cell_para(_compact_audit_timestamp(ev.get("timestamp")), styles),
+                _table_cell_para(_humanize_audit_event(action), styles),
+                _table_cell_para(
+                    _human_actor_role(ev.get("actor_role") or ev.get("actor")),
+                    styles,
+                ),
+                _audit_trail_summary_cell(ev, styles),
             ]
         )
-    t = Table(data, colWidths=[30, 34, 24, 30, 52, 24], repeatRows=1, splitByRow=1)
+    t = Table(data, colWidths=col_widths, repeatRows=1, splitByRow=1)
     t.setStyle(table_style)
     omitted = max(0, len(events) - len(shown))
     intro = "Chronological audit trail from system records at generation time."
@@ -710,14 +852,16 @@ def append_scope_limitations_section(
     lines: List[str],
     styles: Dict[str, Any],
 ) -> None:
-    body = [Paragraph(f"• {_xml_escape(ln)}", styles["body"]) for ln in lines]
-    append_section_block(
-        elements,
-        title="Scope and limitations",
-        intro="Records included, excluded, and verification boundaries for this export.",
-        styles=styles,
-        body_items=body + [Spacer(1, 10)],
-    )
+    bullets = [Paragraph(f"• {_xml_escape(ln)}", styles["body"]) for ln in lines]
+    header = [
+        Paragraph(_xml_escape("Scope and limitations"), styles["heading"]),
+        Paragraph(
+            "Records included, excluded, and verification boundaries for this export.",
+            styles["small"],
+        ),
+        Spacer(1, 6),
+    ]
+    elements.append(KeepTogether(header + bullets + [Spacer(1, 10)]))
 
 
 def build_formal_report_pdf(
@@ -742,10 +886,15 @@ def build_formal_report_pdf(
         leftMargin=16 * mm,
         rightMargin=16 * mm,
         topMargin=18 * mm,
-        bottomMargin=20 * mm,
+        bottomMargin=governance_footer_bottom_margin(),
         pageCompression=0,
     )
-    on_first, on_later = make_page_callbacks(spec.gov_ctx)
+    table_width = doc.width
+    operator_line = (
+        f"{spec.branding.get('pdf_footer_generated_by') or f'Generated by {PLEERITY_OPERATOR}'} · "
+        f"{spec.branding.get('pdf_footer_contact_line') or PLEERITY_WEBSITE}"
+    )
+    on_first, on_later = make_page_callbacks(spec.gov_ctx, operator_line=operator_line)
     elements: List[Any] = []
 
     cover_extra = list(spec.extra_cover_lines)
@@ -775,7 +924,6 @@ def build_formal_report_pdf(
         extra_metadata_lines=cover_extra,
     )
     elements.extend(export_disclosure_paragraphs(spec.gov_ctx, styles))
-    append_frozen_snapshot_notice(elements, generated_at_iso=spec.generated_at_iso, styles=styles)
     if spec.jurisdiction:
         elements.append(Paragraph(f"<b>Jurisdiction:</b> {_xml_escape(spec.jurisdiction)}", styles["body"]))
     elements.append(Spacer(1, 8))
@@ -794,30 +942,47 @@ def build_formal_report_pdf(
         )
 
     if spec.include_readiness_indicators and readiness:
-        append_readiness_indicators_section(elements, indicators=readiness, styles=styles, table_style=table_style)
+        append_readiness_indicators_section(
+            elements,
+            indicators=readiness,
+            styles=styles,
+            table_style=table_style,
+            table_width=table_width,
+        )
 
     if spec.include_matrix and matrix_rows:
-        append_central_evidence_matrix(elements, matrix_rows=matrix_rows, styles=styles, table_style=table_style)
+        append_central_evidence_matrix(
+            elements,
+            matrix_rows=matrix_rows,
+            styles=styles,
+            table_style=table_style,
+            table_width=table_width,
+        )
 
     if spec.include_action_priorities and action_groups:
         append_action_priority_section(elements, groups=action_groups, styles=styles)
 
     if spec.include_exception_summaries and exceptions:
-        append_exception_summaries_section(elements, exceptions=exceptions, styles=styles, table_style=table_style)
+        append_exception_summaries_section(
+            elements,
+            exceptions=exceptions,
+            styles=styles,
+            table_style=table_style,
+            table_width=table_width,
+        )
 
     if spec.include_audit_trail and audit_events:
-        append_audit_trail_narrative(elements, events=audit_events, styles=styles, table_style=table_style)
+        append_audit_trail_narrative(
+            elements,
+            events=audit_events,
+            styles=styles,
+            table_style=table_style,
+            table_width=table_width,
+        )
 
     if spec.include_scope_limitations and scope_lines:
         append_scope_limitations_section(elements, lines=scope_lines, styles=styles)
 
-    elements.append(
-        Paragraph(
-            f"{_xml_escape(spec.branding.get('pdf_footer_generated_by') or f'Generated by {PLEERITY_OPERATOR}')} • "
-            f"{_xml_escape(spec.branding.get('pdf_footer_contact_line') or PLEERITY_WEBSITE)}",
-            styles["small"],
-        )
-    )
     doc.build(elements, onFirstPage=on_first, onLaterPages=on_later)
     return buf.getvalue()
 

@@ -20,7 +20,11 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, 
 
 from services.monthly_digest_operational_intelligence import build_digest_intelligence
 from services.report_branding_layout import ACCESSIBILITY_ENHANCED_NOTICE, append_report_cover_block
-from services.report_layout_governance import GovernancePdfContext, make_page_callbacks
+from services.report_layout_governance import (
+    GovernancePdfContext,
+    governance_footer_bottom_margin,
+    make_page_callbacks,
+)
 from services.reporting_semantics_v1 import (
     EXPORT_DETERMINISM_POINT_IN_TIME,
     EXPORT_GRADE_DEFINITIONS,
@@ -109,7 +113,7 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         rightMargin=1.8 * cm,
         leftMargin=1.8 * cm,
         topMargin=1.8 * cm,
-        bottomMargin=2.2 * cm,
+        bottomMargin=governance_footer_bottom_margin(),
         title="Monthly Operations Intelligence Digest",
     )
     styles = getSampleStyleSheet()

@@ -32,6 +32,7 @@ from services.report_layout_governance import (
     GovernancePdfContext,
     append_unresolved_obligations_section,
     export_disclosure_paragraphs,
+    governance_footer_bottom_margin,
     make_page_callbacks,
     matrix_continuation_stats,
     matrix_continuation_disclosure_paragraph,
@@ -408,7 +409,7 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=governance_footer_bottom_margin(),
     )
     elements = []
     append_report_cover_block(
@@ -611,7 +612,7 @@ def build_score_explanation_report(
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=governance_footer_bottom_margin(),
     )
     elements = []
 
@@ -895,7 +896,7 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=governance_footer_bottom_margin(),
     )
     elements = []
 
@@ -1046,7 +1047,7 @@ def build_requirements_report_pdf(client_id: str, report_data: dict) -> bytes:
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
+        buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=governance_footer_bottom_margin(),
     )
     elements = []
     elements.append(Spacer(1, 60))

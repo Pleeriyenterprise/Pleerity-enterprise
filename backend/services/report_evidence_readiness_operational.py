@@ -12,17 +12,23 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
 from xml.sax.saxutils import escape as _xml_escape
 
 from services.report_human_language_v1 import human_compliance_status_label
+from services.report_layout_governance import proportional_col_widths
 from services.report_pdf_templates import (
     ACTION_PRIORITIES,
-    FROZEN_SNAPSHOT_WORDING,
     build_matrix_rows,
     compute_readiness_indicators,
+    _obligation_cell_para,
+    _table_cell_para,
 )
+
+# pdf_report_builder uses 50pt side margins.
+OPERATIONAL_REPORT_TABLE_WIDTH = A4[0] - 100
 
 # --- Audit event humanisation (presentation only; raw codes retained in metadata) ---
 
@@ -242,6 +248,18 @@ def _human_status(status_raw: str) -> str:
     return human_compliance_status_label(status_raw) or status_raw or "—"
 
 
+def _human_actor_role(role: Any) -> str:
+    raw = str(role or "system").strip()
+    upper = raw.upper()
+    if upper in ("ROLE_CLIENT", "CLIENT"):
+        return "Client"
+    if upper in ("SYSTEM", "ROLE_SYSTEM"):
+        return "System"
+    if upper.startswith("ROLE_"):
+        return raw[5:].replace("_", " ").title()
+    return raw.replace("_", " ").title() if raw else "System"
+
+
 def build_operational_matrix_rows(
     *,
     requirements: List[Dict[str, Any]],
@@ -324,34 +342,47 @@ def append_operational_readiness_section(
     table_style: TableStyle,
 ) -> None:
     enriched = enrich_readiness_interpretation(indicators)
+    ent_styles = styles if styles.get("table_cell") else {**styles, "table_cell": styles.get("body")}
+    col_widths = proportional_col_widths(OPERATIONAL_REPORT_TABLE_WIDTH, [0.30, 0.18, 0.52])
+    delivery_val = (
+        f"{enriched['delivery_proof_completeness_pct']}%"
+        if enriched.get("delivery_proof_completeness_pct") is not None
+        else "N/A"
+    )
     data = [
-        ["Indicator", "Value", "Operational interpretation"],
         [
-            "Evidence completeness",
-            f"{enriched.get('evidence_completeness_pct', 0)}%",
-            enriched.get("evidence_completeness_note", ""),
+            _table_cell_para("Indicator", ent_styles, bold=True),
+            _table_cell_para("Value", ent_styles, bold=True),
+            _table_cell_para("Operational interpretation", ent_styles, bold=True),
         ],
         [
-            "Delivery proof coverage",
-            (
-                f"{enriched['delivery_proof_completeness_pct']}%"
-                if enriched.get("delivery_proof_completeness_pct") is not None
-                else "N/A"
+            _table_cell_para("Evidence completeness", ent_styles),
+            _table_cell_para(f"{enriched.get('evidence_completeness_pct', 0)}%", ent_styles),
+            _table_cell_para(enriched.get("evidence_completeness_note", ""), ent_styles),
+        ],
+        [
+            _table_cell_para("Delivery proof coverage", ent_styles),
+            _table_cell_para(delivery_val, ent_styles),
+            _table_cell_para(enriched.get("delivery_proof_note", ""), ent_styles),
+        ],
+        [
+            _table_cell_para("Audit readiness posture", ent_styles),
+            _table_cell_para(enriched.get("audit_readiness", "—"), ent_styles),
+            _table_cell_para(
+                f"Confidence level: {enriched.get('audit_confidence', '—')}",
+                ent_styles,
             ),
-            enriched.get("delivery_proof_note", ""),
         ],
         [
-            "Audit readiness posture",
-            enriched.get("audit_readiness", "—"),
-            f"Confidence: {enriched.get('audit_confidence', '—')}",
-        ],
-        [
-            "Priority exposure",
-            str(enriched.get("unresolved_evidence_exposure", 0)),
-            "Obligations flagged critical or high for remediation sequencing.",
+            _table_cell_para("Priority exposure", ent_styles),
+            _table_cell_para(str(enriched.get("unresolved_evidence_exposure", 0)), ent_styles),
+            _table_cell_para(
+                "Obligations flagged critical or high for remediation sequencing.",
+                ent_styles,
+            ),
         ],
     ]
-    t = Table(data, colWidths=[42 * mm, 24 * mm, 94 * mm], repeatRows=1)
+    t = Table(data, colWidths=col_widths, repeatRows=1)
     t.setStyle(table_style)
     body: List[Any] = [t, Spacer(1, 6)]
     for line in enriched.get("interpretation_lines") or []:
@@ -431,22 +462,35 @@ def append_operational_evidence_matrix(
     max_rows: int = 35,
 ) -> None:
     shown = core_rows[:max_rows]
-    wrap = styles.get("body") or styles["small"]
-    header = ["Obligation", "Status", "Evidence", "Expiry", "Risk", "Action required"]
+    ent_styles = styles if styles.get("table_cell") else {**styles, "table_cell": styles.get("body")}
+    col_widths = proportional_col_widths(
+        OPERATIONAL_REPORT_TABLE_WIDTH,
+        [0.28, 0.18, 0.10, 0.14, 0.10, 0.20],
+    )
+    header = [
+        _table_cell_para("Obligation", ent_styles, bold=True),
+        _table_cell_para("Status", ent_styles, bold=True),
+        _table_cell_para("Evidence", ent_styles, bold=True),
+        _table_cell_para("Expiry", ent_styles, bold=True),
+        _table_cell_para("Risk", ent_styles, bold=True),
+        _table_cell_para("Action required", ent_styles, bold=True),
+    ]
     data: List[List[Any]] = [header]
     for row in shown:
-        obl = Paragraph(_xml_escape(row.get("obligation") or "—"), wrap)
         data.append(
             [
-                obl,
-                row.get("status") or "—",
-                row.get("evidence") or "—",
-                row.get("expiry") or "—",
-                row.get("risk") or "—",
-                row.get("action_required") or "—",
+                _obligation_cell_para(
+                    row.get("obligation") or "—",
+                    row.get("category") or "",
+                    ent_styles,
+                ),
+                _table_cell_para(row.get("status") or "—", ent_styles),
+                _table_cell_para(row.get("evidence") or "—", ent_styles),
+                _table_cell_para(row.get("expiry") or "—", ent_styles),
+                _table_cell_para(row.get("risk") or "—", ent_styles),
+                _table_cell_para(row.get("action_required") or "—", ent_styles),
             ]
         )
-    col_widths = [62 * mm, 24 * mm, 18 * mm, 24 * mm, 18 * mm, 24 * mm]
     t = Table(data, colWidths=col_widths, repeatRows=1, splitByRow=1)
     t.setStyle(table_style)
     for i, row in enumerate(shown, start=1):
@@ -469,19 +513,28 @@ def append_operational_evidence_matrix(
 
     if appendix_rows and shown:
         app_shown = appendix_rows[: len(shown)]
-        app_header = ["Obligation", "Category", "File ref", "Delivery", "Updated"]
+        app_header = [
+            _table_cell_para("Obligation", ent_styles, bold=True),
+            _table_cell_para("Category", ent_styles, bold=True),
+            _table_cell_para("File ref", ent_styles, bold=True),
+            _table_cell_para("Delivery", ent_styles, bold=True),
+            _table_cell_para("Updated", ent_styles, bold=True),
+        ]
         app_data: List[List[Any]] = [app_header]
         for row in app_shown:
             app_data.append(
                 [
-                    Paragraph(_xml_escape(row.get("obligation") or "—"), wrap),
-                    row.get("category") or "—",
-                    row.get("file_ref") or "—",
-                    row.get("delivery") or "—",
-                    row.get("updated") or "—",
+                    _table_cell_para(row.get("obligation") or "—", ent_styles),
+                    _table_cell_para(row.get("category") or "—", ent_styles),
+                    _table_cell_para(row.get("file_ref") or "—", ent_styles),
+                    _table_cell_para(row.get("delivery") or "—", ent_styles),
+                    _table_cell_para(row.get("updated") or "—", ent_styles),
                 ]
             )
-        app_col = [52 * mm, 28 * mm, 38 * mm, 22 * mm, 28 * mm]
+        app_col = proportional_col_widths(
+            OPERATIONAL_REPORT_TABLE_WIDTH,
+            [0.30, 0.16, 0.22, 0.14, 0.18],
+        )
         app_t = Table(app_data, colWidths=app_col, repeatRows=1, splitByRow=1)
         app_t.setStyle(table_style)
         elements.append(
@@ -559,22 +612,39 @@ def append_operational_audit_trail(
         if not items:
             continue
         elements.append(Paragraph(f"<b>{_xml_escape(family)}</b>", styles.get("subheading") or styles["heading"]))
-        data = [["When (UTC)", "Activity", "Actor", "Summary"]]
+        ent_styles = styles if styles.get("table_cell") else {**styles, "table_cell": styles.get("body")}
+        col_widths = proportional_col_widths(
+            OPERATIONAL_REPORT_TABLE_WIDTH,
+            [0.18, 0.22, 0.14, 0.46],
+        )
+        data = [
+            [
+                _table_cell_para("When (UTC)", ent_styles, bold=True),
+                _table_cell_para("Activity", ent_styles, bold=True),
+                _table_cell_para("Actor", ent_styles, bold=True),
+                _table_cell_para("Summary", ent_styles, bold=True),
+            ]
+        ]
         for ev in items:
-            ts = str(ev.get("timestamp") or "—")[:19]
             label = ev.get("human_label") or "—"
             similar = ev.get("similar_count")
             if similar and similar > 1:
                 label = f"{label} (+{similar - 1} similar)"
             data.append(
                 [
-                    ts,
-                    label[:48],
-                    str(ev.get("actor_role") or "—")[:16],
-                    str(ev.get("summary") or "—")[:56],
+                    _table_cell_para(
+                        str(ev.get("timestamp") or "\u2014")
+                        .replace("T", " ", 1)
+                        .replace("+00:00", " UTC")
+                        .replace("Z", " UTC"),
+                        ent_styles,
+                    ),
+                    _table_cell_para(label, ent_styles),
+                    _table_cell_para(_human_actor_role(ev.get("actor_role")), ent_styles),
+                    _table_cell_para(str(ev.get("summary") or "—"), ent_styles),
                 ]
             )
-        ft = Table(data, colWidths=[32 * mm, 52 * mm, 24 * mm, 62 * mm], repeatRows=1, splitByRow=1)
+        ft = Table(data, colWidths=col_widths, repeatRows=1, splitByRow=1)
         ft.setStyle(table_style)
         elements.append(ft)
         elements.append(Spacer(1, 8))
@@ -586,19 +656,12 @@ def append_operational_governance_once(
     generated_at_iso: str,
     styles: Dict[str, Any],
 ) -> None:
-    """Single in-body governance block — avoids repeating full frozen wording on every page."""
-    from services.report_layout_governance import utc_display
-
+    """Brief cover triage note — determinism footer is canvas-only."""
+    del generated_at_iso
     elements.append(
         Paragraph(
-            f"<b>{_xml_escape(FROZEN_SNAPSHOT_WORDING)}</b>",
-            styles["body"],
-        )
-    )
-    elements.append(
-        Paragraph(
-            f"Generation boundary (UTC): {_xml_escape(utc_display(generated_at_iso))}. "
-            "This operational readiness export supports triage and remediation — not tribunal evidence archive.",
+            "Operational audit-readiness export for triage and remediation sequencing. "
+            "Generation boundary and determinism notices appear in the page footer.",
             styles["small"],
         )
     )
