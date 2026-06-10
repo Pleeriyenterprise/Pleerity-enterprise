@@ -17,7 +17,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
 from xml.sax.saxutils import escape as _xml_escape
 
-from services.report_human_language_v1 import human_compliance_status_label
+from services.report_human_language_v1 import human_compliance_status_label, sanitize_customer_export_text
 from services.report_layout_governance import proportional_col_widths
 from services.report_pdf_templates import (
     ACTION_PRIORITIES,
@@ -525,7 +525,10 @@ def append_operational_evidence_matrix(
             app_data.append(
                 [
                     _table_cell_para(row.get("obligation") or "—", ent_styles),
-                    _table_cell_para(row.get("category") or "—", ent_styles),
+                    _table_cell_para(
+                        sanitize_customer_export_text(str(row.get("category") or "—")),
+                        ent_styles,
+                    ),
                     _table_cell_para(row.get("file_ref") or "—", ent_styles),
                     _table_cell_para(row.get("delivery") or "—", ent_styles),
                     _table_cell_para(row.get("updated") or "—", ent_styles),

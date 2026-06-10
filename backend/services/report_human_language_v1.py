@@ -328,6 +328,16 @@ def human_async_disclosure_lines(
     return lines
 
 
+def sanitize_customer_export_text(text: str) -> str:
+    """Best-effort customer-safe export string; never raises."""
+    t = (text or "").strip()
+    if not t:
+        return "—"
+    if contains_internal_language_leak(t) or _SNAKE_CASE_LEAK_RE.search(t):
+        return human_label({}, t)
+    return t
+
+
 def contains_internal_language_leak(text: str) -> bool:
     """True when text likely exposes implementation vocabulary to customers."""
     t = str(text or "")

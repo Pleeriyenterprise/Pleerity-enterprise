@@ -7,6 +7,7 @@ Preserves deterministic snapshot semantics and restrained enterprise styling.
 from __future__ import annotations
 
 import io
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -163,16 +164,36 @@ def create_enterprise_styles(branding: Optional[Dict[str, Any]] = None) -> Dict[
             wordWrap="normal",
             splitLongWords=False,
         ),
+        "table_header_cell": ParagraphStyle(
+            "EntTableHeaderCell",
+            parent=base["BodyText"],
+            fontSize=8,
+            leading=10,
+            alignment=TA_LEFT,
+            textColor=colors.white,
+            fontName="Helvetica-Bold",
+        ),
         "table_header_bg": c_primary,
         "table_accent": c_accent,
     }
 
 
 def _table_cell_para(text: Any, styles: Dict[str, Any], *, bold: bool = False) -> Paragraph:
-    cell_style = styles.get("table_cell") or styles["body"]
     raw = _xml_escape(str(text if text is not None else "\u2014"))
     if bold:
-        return Paragraph(f"<b>{raw}</b>", cell_style)
+        header_style = styles.get("table_header_cell")
+        if header_style is None:
+            parent = styles.get("table_cell") or styles.get("body") or styles.get("small")
+            header_style = ParagraphStyle(
+                "EntTableHeaderCellDynamic",
+                parent=parent,
+                fontSize=getattr(parent, "fontSize", 8),
+                leading=getattr(parent, "leading", 10),
+                textColor=colors.white,
+                fontName="Helvetica-Bold",
+            )
+        return Paragraph(raw, header_style)
+    cell_style = styles.get("table_cell") or styles.get("body") or styles.get("small")
     return Paragraph(raw, cell_style)
 
 
@@ -181,15 +202,10 @@ def _obligation_cell_para(
     category: str,
     styles: Dict[str, Any],
 ) -> Paragraph:
+    """Obligation label only — internal category codes are not shown to customers."""
+    del category
     cell_style = styles.get("table_cell") or styles["body"]
-    obl = _xml_escape(obligation or "\u2014")
-    cat = (category or "").strip()
-    if cat and cat not in ("\u2014", obligation):
-        return Paragraph(
-            f"{obl}<br/><font size=\"7\" color=\"#64748b\">{_xml_escape(cat)}</font>",
-            cell_style,
-        )
-    return Paragraph(obl, cell_style)
+    return Paragraph(_xml_escape(obligation or "\u2014"), cell_style)
 
 
 def _stacked_cell_para(primary: str, secondary: str, styles: Dict[str, Any]) -> Paragraph:
@@ -784,6 +800,17 @@ def _humanize_audit_event(action: Any) -> str:
     return humanize_audit_event_action(action)
 
 
+def _is_internal_reference_token(value: str) -> bool:
+    v = (value or "").strip()
+    if not v:
+        return True
+    if len(v) >= 32 and "-" in v:
+        return True
+    if v.startswith(("rs_", "req_", "doc_", "prop_")):
+        return True
+    return bool(re.fullmatch(r"[a-z0-9_]{3,}", v))
+
+
 def _audit_trail_summary_cell(ev: Dict[str, Any], styles: Dict[str, Any]) -> Paragraph:
     md = ev.get("metadata") if isinstance(ev.get("metadata"), dict) else {}
     action = ev.get("action") or ev.get("event_type")
@@ -791,10 +818,10 @@ def _audit_trail_summary_cell(ev: Dict[str, Any], styles: Dict[str, Any]) -> Par
     subject = str(ev.get("resource_id") or md.get("requirement_id") or "").strip()
     ref = str(md.get("document_id") or md.get("evidence_record_id") or "").strip()
     parts = [summary]
-    if subject and subject not in summary:
+    if subject and subject not in summary and not _is_internal_reference_token(subject):
         parts.append(f"Subject: {subject}")
-    if ref:
-        parts.append(f"Ref: {ref}")
+    elif ref and not _is_internal_reference_token(ref):
+        parts.append(f"Reference: {ref[:24]}")
     return _table_cell_para(" · ".join(parts), styles)
 
 

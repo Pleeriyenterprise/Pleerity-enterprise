@@ -19,7 +19,12 @@ from services.report_human_language_v1 import (
     human_compliance_status_label,
     human_operational_renewal_date,
 )
-from services.report_pdf_templates import append_section_block
+from services.report_layout_governance import formal_report_table_width, proportional_col_widths
+from services.report_pdf_templates import (
+    _human_status_label,
+    _table_cell_para,
+    append_section_block,
+)
 from utils.expiry_utils import get_computed_status
 
 COMPLIANCE_SUMMARY_REPORT_TITLE = "Compliance Summary Report"
@@ -419,25 +424,31 @@ def append_compliance_summary_executive_sections(
     )
 
     readiness = model.get("readiness") or {}
+    table_width = formal_report_table_width()
+    rd_widths = proportional_col_widths(table_width, [0.30, 0.18, 0.52])
     rd = [
-        ["Indicator", "Value", "Professional interpretation"],
         [
-            "Evidence completeness",
-            f"{readiness.get('evidence_completeness_pct', 0)}%",
-            readiness.get("evidence_completeness_note", ""),
+            _table_cell_para("Indicator", styles, bold=True),
+            _table_cell_para("Value", styles, bold=True),
+            _table_cell_para("Professional interpretation", styles, bold=True),
         ],
         [
-            "Audit readiness posture",
-            readiness.get("audit_readiness", "—"),
-            f"Confidence: {readiness.get('audit_confidence', '—')}",
+            _table_cell_para("Evidence completeness", styles),
+            _table_cell_para(f"{readiness.get('evidence_completeness_pct', 0)}%", styles),
+            _table_cell_para(readiness.get("evidence_completeness_note", ""), styles),
         ],
         [
-            "Priority exposure",
-            str(readiness.get("unresolved_evidence_exposure", 0)),
-            "Elevated-priority obligations at generation time.",
+            _table_cell_para("Audit readiness posture", styles),
+            _table_cell_para(readiness.get("audit_readiness", "—"), styles),
+            _table_cell_para(f"Confidence level: {readiness.get('audit_confidence', '—')}", styles),
+        ],
+        [
+            _table_cell_para("Priority exposure", styles),
+            _table_cell_para(str(readiness.get("unresolved_evidence_exposure", 0)), styles),
+            _table_cell_para("Elevated-priority obligations at generation time.", styles),
         ],
     ]
-    rt = Table(rd, colWidths=[48 * mm, 28 * mm, 84 * mm], repeatRows=1)
+    rt = Table(rd, colWidths=rd_widths, repeatRows=1)
     rt.setStyle(table_style)
     notes = readiness.get("executive_notes") or []
     body: List[Any] = [rt, Spacer(1, 6)]
@@ -467,10 +478,25 @@ def append_compliance_summary_executive_sections(
 
     props = model.get("property_posture") or []
     if props:
-        pdata = [["Property", "Status", "Key concern", "Readiness"]]
+        pt_widths = proportional_col_widths(table_width, [0.28, 0.16, 0.34, 0.22])
+        pdata = [
+            [
+                _table_cell_para("Property", styles, bold=True),
+                _table_cell_para("Status", styles, bold=True),
+                _table_cell_para("Key concern", styles, bold=True),
+                _table_cell_para("Readiness", styles, bold=True),
+            ]
+        ]
         for p in props:
-            pdata.append([p["property"], p["status"], p["key_concern"], p["readiness"]])
-        pt = Table(pdata, colWidths=[95, 52, 95, 58], repeatRows=1)
+            pdata.append(
+                [
+                    _table_cell_para(p["property"], styles),
+                    _table_cell_para(p["status"], styles),
+                    _table_cell_para(p["key_concern"], styles),
+                    _table_cell_para(p["readiness"], styles),
+                ]
+            )
+        pt = Table(pdata, colWidths=pt_widths, repeatRows=1, splitByRow=1)
         pt.setStyle(table_style)
         append_section_block(
             elements,
@@ -493,19 +519,33 @@ def append_compliance_summary_executive_sections(
     condensed = model.get("condensed_matrix") or []
     omitted = int(model.get("matrix_omitted") or 0)
     if condensed:
-        mdata = [["Obligation", "Status", "Evidence", "Expiry", "Risk", "Action"]]
-        for r in condensed:
+        mt_widths = proportional_col_widths(
+            table_width,
+            [0.30, 0.14, 0.12, 0.16, 0.12, 0.16],
+        )
+        mdata = [
+            [
+                _table_cell_para("Obligation", styles, bold=True),
+                _table_cell_para("Status", styles, bold=True),
+                _table_cell_para("Evidence", styles, bold=True),
+                _table_cell_para("Expiry", styles, bold=True),
+                _table_cell_para("Risk", styles, bold=True),
+                _table_cell_para("Action", styles, bold=True),
+            ]
+        ]
+        for raw in condensed:
+            r = humanize_matrix_row(raw)
             mdata.append(
                 [
-                    (r.get("obligation") or "—")[:36],
-                    (r.get("status") or "—")[:18],
-                    (r.get("evidence_present") or "—")[:10],
-                    (r.get("expiry") or "—")[:16],
-                    (r.get("risk_level") or "—")[:10],
-                    (r.get("action_required") or "—")[:10],
+                    _table_cell_para(r.get("obligation") or "—", styles),
+                    _table_cell_para(_human_status_label(r.get("status")), styles),
+                    _table_cell_para(r.get("evidence_present") or "—", styles),
+                    _table_cell_para(r.get("expiry") or "—", styles),
+                    _table_cell_para(r.get("risk_level") or "—", styles),
+                    _table_cell_para(r.get("action_required") or "—", styles),
                 ]
             )
-        mt = Table(mdata, colWidths=[72, 48, 32, 44, 32, 32], repeatRows=1)
+        mt = Table(mdata, colWidths=mt_widths, repeatRows=1, splitByRow=1)
         mt.setStyle(table_style)
         intro = (
             f"Summary of highest-value obligations ({len(condensed)} shown). "
@@ -589,8 +629,11 @@ def build_compliance_summary_executive_csv_rows(
             "evidence_confidence": conf,
             "next_action": action[:64],
         }
-        for v in row.values():
-            assert_executive_safe_text(v)
+        from services.report_human_language_v1 import sanitize_customer_export_text
+
+        for key, val in list(row.items()):
+            if isinstance(val, str):
+                row[key] = sanitize_customer_export_text(val)
         out.append(row)
     return out
 

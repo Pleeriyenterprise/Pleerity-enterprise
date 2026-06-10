@@ -254,9 +254,21 @@ def _build_enriched_row(
         "property_id": row.get("property_id"),
         "requirement_id": row.get("requirement_id"),
     }
-    for v in detail.values():
-        if isinstance(v, str):
-            assert_client_safe_text(v)
+    from services.report_human_language_v1 import sanitize_customer_export_text
+
+    for key in (
+        "obligation",
+        "property",
+        "status",
+        "evidence_posture",
+        "renewal",
+        "recommended_action",
+        "urgency",
+        "cluster",
+    ):
+        val = detail.get(key)
+        if isinstance(val, str):
+            detail[key] = sanitize_customer_export_text(val)
     return detail
 
 

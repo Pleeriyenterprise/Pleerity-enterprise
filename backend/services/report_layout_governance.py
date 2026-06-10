@@ -607,6 +607,7 @@ def _append_obligation_table_section(
         "GovObligationHeader",
         parent=cell_style,
         fontName="Helvetica-Bold",
+        textColor=colors.white,
     )
 
     def _cell(text: Any, *, bold: bool = False) -> Paragraph:

@@ -327,6 +327,17 @@ def _governance_ctx(
     )
 
 
+def _property_display_label(property_id: Optional[str], properties: List[dict]) -> str:
+    pid = str(property_id or "")
+    for prop in properties:
+        if str(prop.get("property_id") or "") == pid:
+            parts = [prop.get("address_line_1"), prop.get("postcode")]
+            addr = ", ".join(x for x in parts if x)
+            if addr:
+                return addr[:48]
+    return pid[:24] if pid else "—"
+
+
 def _top_risk_drivers(
     requirements: List[dict],
     properties: List[dict],
@@ -339,9 +350,9 @@ def _top_risk_drivers(
         s = _row_computed_status(r, properties, client_doc)
         if s in ("OVERDUE", "EXPIRED", "EXPIRING_SOON"):
             out.append({
-                "requirement_type": r.get("requirement_type") or r.get("description") or "—",
+                "obligation": (r.get("description") or r.get("requirement_type") or "—"),
                 "status": _status_label(s),
-                "property_id": r.get("property_id"),
+                "property": _property_display_label(r.get("property_id"), properties),
             })
     return out[:limit]
 
@@ -479,11 +490,27 @@ def build_portfolio_report(client_id: str, report_data: dict) -> bytes:
 
     # Top risk drivers (if any)
     if top_risks:
+        from services.report_layout_governance import evidence_readiness_table_width, proportional_col_widths
+        from services.report_pdf_templates import _table_cell_para
+
         elements.append(Paragraph("Top risk drivers", styles["heading"]))
-        risk_rows = [["Requirement type", "Status", "Property"]]
+        risk_widths = proportional_col_widths(evidence_readiness_table_width(), [0.46, 0.22, 0.32])
+        risk_rows = [
+            [
+                _table_cell_para("Obligation", styles, bold=True),
+                _table_cell_para("Status", styles, bold=True),
+                _table_cell_para("Property", styles, bold=True),
+            ]
+        ]
         for r in top_risks:
-            risk_rows.append([(r["requirement_type"] or "—")[:40], r["status"], (r.get("property_id") or "—")[:20]])
-        rt = Table(risk_rows, colWidths=[220, 120, 100])
+            risk_rows.append(
+                [
+                    _table_cell_para(r.get("obligation") or "—", styles),
+                    _table_cell_para(r.get("status") or "—", styles),
+                    _table_cell_para(r.get("property") or "—", styles),
+                ]
+            )
+        rt = Table(risk_rows, colWidths=risk_widths, repeatRows=1, splitByRow=1)
         rt.setStyle(table_style)
         elements.append(rt)
         elements.append(Spacer(1, 20))
@@ -977,11 +1004,25 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
     elements.append(Spacer(1, 20))
 
     if top_risks:
+        from services.report_layout_governance import evidence_readiness_table_width, proportional_col_widths
+        from services.report_pdf_templates import _table_cell_para
+
         elements.append(Paragraph("Top risk drivers", styles["heading"]))
-        risk_rows = [["Requirement type", "Status"]]
+        risk_widths = proportional_col_widths(evidence_readiness_table_width(), [0.62, 0.38])
+        risk_rows = [
+            [
+                _table_cell_para("Obligation", styles, bold=True),
+                _table_cell_para("Status", styles, bold=True),
+            ]
+        ]
         for r in top_risks:
-            risk_rows.append([(r["requirement_type"] or "—")[:50], r["status"]])
-        rt = Table(risk_rows, colWidths=[300, 150])
+            risk_rows.append(
+                [
+                    _table_cell_para(r.get("obligation") or "—", styles),
+                    _table_cell_para(r.get("status") or "—", styles),
+                ]
+            )
+        rt = Table(risk_rows, colWidths=risk_widths, repeatRows=1, splitByRow=1)
         rt.setStyle(table_style)
         elements.append(rt)
         elements.append(Spacer(1, 20))

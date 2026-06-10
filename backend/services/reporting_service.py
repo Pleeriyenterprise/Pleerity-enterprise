@@ -206,6 +206,7 @@ class ReportingService:
         report_data["portal_requirements"] = portal_reqs
         report_data["properties_portal"] = properties
         report_data["client_doc"] = client or {}
+        report_data["client_row"] = client or {}
         
         if format == "csv":
             return self._generate_compliance_csv(report_data)
@@ -282,6 +283,7 @@ class ReportingService:
             "requirements": [],
             "portal_requirements": portal_reqs,
             "properties_portal": props_full,
+            "client_doc": client_row or {},
             "reporting_semantics": build_reporting_semantics_payload(
                 compute_reporting_semantic_counts(portal_reqs)
             ),
@@ -525,7 +527,7 @@ class ReportingService:
         csv_rows, triage_counts, enriched = build_requirements_operational_csv_rows(
             requirements=portal_reqs,
             properties=properties,
-            client_doc={},
+            client_doc=data.get("client_doc") or {},
             now=now,
         )
         email_rows = build_requirements_scheduled_email_rows(enriched)

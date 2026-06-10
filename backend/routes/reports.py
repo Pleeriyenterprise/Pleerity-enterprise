@@ -30,6 +30,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
 
+def _csv_streaming_response(result: Dict[str, Any]) -> StreamingResponse:
+    """UTF-8 CSV with BOM for Excel; bytes payload for reliable browser download."""
+    content = result.get("content") or ""
+    payload = content.encode("utf-8-sig") if isinstance(content, str) else content
+    return StreamingResponse(
+        io.BytesIO(payload),
+        media_type=result.get("content_type") or "text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={result.get('filename', 'report.csv')}"},
+    )
+
+
 async def _enforce_report_export_rate(
     *,
     rate_key: str,
@@ -585,14 +596,7 @@ async def get_compliance_summary_report(
         )
         
         if format == "csv":
-            # Return as downloadable file
-            return StreamingResponse(
-                io.StringIO(result["content"]),
-                media_type=result["content_type"],
-                headers={
-                    "Content-Disposition": f"attachment; filename={result['filename']}"
-                }
-            )
+            return _csv_streaming_response(result)
         else:
             # Return JSON for client-side PDF generation
             return result
@@ -603,7 +607,7 @@ async def get_compliance_summary_report(
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Compliance summary report error: {e}")
+        logger.exception("Compliance summary report error: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report"
@@ -666,18 +670,12 @@ async def get_requirements_report(
         )
         
         if format == "csv":
-            return StreamingResponse(
-                io.StringIO(result["content"]),
-                media_type=result["content_type"],
-                headers={
-                    "Content-Disposition": f"attachment; filename={result['filename']}"
-                }
-            )
+            return _csv_streaming_response(result)
         else:
             return result
     
     except Exception as e:
-        logger.error(f"Requirements report error: {e}")
+        logger.exception("Requirements report error: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate report"
