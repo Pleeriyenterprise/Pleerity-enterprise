@@ -31,6 +31,8 @@ from services.report_human_language_v1 import (
     human_requirements_recommended_action,
     human_requirements_urgency_label,
 )
+from services.report_layout_governance import evidence_readiness_table_width, proportional_col_widths
+from services.report_pdf_templates import _table_cell_para
 from utils.expiry_utils import get_computed_status, get_effective_expiry_date
 
 REQUIREMENTS_REPORT_TITLE = "Requirements Report"
@@ -590,18 +592,30 @@ def _section_table(
     styles: Dict[str, Any],
     table_style: TableStyle,
 ) -> Table:
-    data = [["Obligation", "Property", "Posture", "Renewal", "Action"]]
+    table_width = evidence_readiness_table_width()
+    col_widths = proportional_col_widths(
+        table_width, [0.24, 0.20, 0.18, 0.16, 0.22]
+    )
+    data = [
+        [
+            _table_cell_para("Obligation", styles, bold=True),
+            _table_cell_para("Property", styles, bold=True),
+            _table_cell_para("Posture", styles, bold=True),
+            _table_cell_para("Renewal", styles, bold=True),
+            _table_cell_para("Action", styles, bold=True),
+        ]
+    ]
     for r in detail_rows:
         data.append(
             [
-                (r.get("obligation") or "—")[:36],
-                (r.get("property") or "—")[:28],
-                (r.get("evidence_posture") or "—")[:22],
-                (r.get("renewal") or "—")[:18],
-                (r.get("recommended_action") or "—")[:32],
+                _table_cell_para(r.get("obligation") or "—", styles),
+                _table_cell_para(r.get("property") or "—", styles),
+                _table_cell_para(r.get("evidence_posture") or "—", styles),
+                _table_cell_para(r.get("renewal") or "—", styles),
+                _table_cell_para(r.get("recommended_action") or "—", styles),
             ]
         )
-    t = Table(data, colWidths=[95, 72, 68, 58, 92], repeatRows=1)
+    t = Table(data, colWidths=col_widths, repeatRows=1, splitByRow=1)
     t.setStyle(table_style)
     return t
 
@@ -680,20 +694,34 @@ def append_requirements_operational_sections(
             )
         )
         elements.append(Spacer(1, 8))
-        prop_data = [["Property", "Priority", "Immediate", "Renewals", "Review", "Recorded", "Total"]]
+        table_width = evidence_readiness_table_width()
+        prop_widths = proportional_col_widths(
+            table_width, [0.28, 0.10, 0.10, 0.10, 0.10, 0.14, 0.08]
+        )
+        prop_data = [
+            [
+                _table_cell_para("Property", styles, bold=True),
+                _table_cell_para("Priority", styles, bold=True),
+                _table_cell_para("Immediate", styles, bold=True),
+                _table_cell_para("Renewals", styles, bold=True),
+                _table_cell_para("Review", styles, bold=True),
+                _table_cell_para("Recorded", styles, bold=True),
+                _table_cell_para("Total", styles, bold=True),
+            ]
+        ]
         for ps in props:
             prop_data.append(
                 [
-                    (ps.get("property") or "—")[:32],
-                    ps.get("priority") or "—",
-                    str(ps.get("immediate") or 0),
-                    str(ps.get("renewals") or 0),
-                    str(ps.get("evidence_review") or 0),
-                    str(ps.get("recorded_unverified") or 0),
-                    str(ps.get("total") or 0),
+                    _table_cell_para(ps.get("property") or "—", styles),
+                    _table_cell_para(ps.get("priority") or "—", styles),
+                    _table_cell_para(str(ps.get("immediate") or 0), styles),
+                    _table_cell_para(str(ps.get("renewals") or 0), styles),
+                    _table_cell_para(str(ps.get("evidence_review") or 0), styles),
+                    _table_cell_para(str(ps.get("recorded_unverified") or 0), styles),
+                    _table_cell_para(str(ps.get("total") or 0), styles),
                 ]
             )
-        pt = Table(prop_data, colWidths=[100, 58, 48, 52, 48, 52, 42], repeatRows=1)
+        pt = Table(prop_data, colWidths=prop_widths, repeatRows=1, splitByRow=1)
         pt.setStyle(table_style)
         elements.append(pt)
         elements.append(Spacer(1, 14))
@@ -708,17 +736,28 @@ def append_requirements_operational_sections(
             )
         )
         elements.append(Spacer(1, 6))
-        app_data = [["Property", "Obligation", "Posture", "Renewal", "Action"]]
+        app_widths = proportional_col_widths(
+            table_width, [0.20, 0.26, 0.18, 0.16, 0.20]
+        )
+        app_data = [
+            [
+                _table_cell_para("Property", styles, bold=True),
+                _table_cell_para("Obligation", styles, bold=True),
+                _table_cell_para("Posture", styles, bold=True),
+                _table_cell_para("Renewal", styles, bold=True),
+                _table_cell_para("Action", styles, bold=True),
+            ]
+        ]
         for r in appendix[: APPENDIX_MAX_ROWS_PER_PROPERTY * 3]:
             app_data.append(
                 [
-                    (r.get("property") or "—")[:28],
-                    (r.get("obligation") or "—")[:32],
-                    (r.get("posture") or "—")[:20],
-                    (r.get("renewal") or "—")[:16],
-                    (r.get("action") or "—")[:28],
+                    _table_cell_para(r.get("property") or "—", styles),
+                    _table_cell_para(r.get("obligation") or "—", styles),
+                    _table_cell_para(r.get("posture") or "—", styles),
+                    _table_cell_para(r.get("renewal") or "—", styles),
+                    _table_cell_para(r.get("action") or "—", styles),
                 ]
             )
-        at = Table(app_data, colWidths=[72, 95, 68, 58, 92], repeatRows=1)
+        at = Table(app_data, colWidths=app_widths, repeatRows=1, splitByRow=1)
         at.setStyle(table_style)
         elements.append(at)

@@ -24,6 +24,7 @@ from services.report_layout_governance import (
     GovernancePdfContext,
     governance_footer_bottom_margin,
     make_page_callbacks,
+    proportional_col_widths,
 )
 from services.reporting_semantics_v1 import (
     EXPORT_DETERMINISM_POINT_IN_TIME,
@@ -49,6 +50,13 @@ def _hex_color(raw: Optional[str], fallback: str = "#0B1D3A") -> colors.Color:
         except Exception:
             pass
     return colors.HexColor(fallback if fallback.startswith("#") else "#" + fallback)
+
+
+def _digest_table_cell(text: str, style: ParagraphStyle, *, bold: bool = False) -> Paragraph:
+    raw = html.escape(str(text if text is not None else "—"))
+    if bold:
+        return Paragraph(f"<b>{raw}</b>", style)
+    return Paragraph(raw, style)
 
 
 def _table_style() -> TableStyle:
@@ -143,6 +151,7 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         spaceAfter=10,
         leading=14,
     )
+    table_cell_style = styles["Normal"]
 
     branding_dict: Dict[str, Any] = {}
     if hasattr(brand, "to_report_dict") and callable(getattr(brand, "to_report_dict")):
@@ -308,18 +317,27 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         if not movement:
             body.append(Paragraph("No properties in scope.", styles["Normal"]))
         else:
-            mov_rows = [["Property", "Prior score", "Current", "Direction", "Key change"]]
+            mov_widths = proportional_col_widths(doc.width, [0.28, 0.12, 0.12, 0.14, 0.34])
+            mov_rows = [
+                [
+                    _digest_table_cell("Property", table_cell_style, bold=True),
+                    _digest_table_cell("Prior score", table_cell_style, bold=True),
+                    _digest_table_cell("Current", table_cell_style, bold=True),
+                    _digest_table_cell("Direction", table_cell_style, bold=True),
+                    _digest_table_cell("Key change", table_cell_style, bold=True),
+                ]
+            ]
             for row in movement:
                 mov_rows.append(
                     [
-                        html.escape(row.get("property") or "—")[:40],
-                        html.escape(row.get("previous_score") or "—"),
-                        html.escape(row.get("current_score") or "—"),
-                        html.escape(row.get("direction") or "—"),
-                        html.escape(row.get("key_change") or "—")[:50],
+                        _digest_table_cell(row.get("property") or "—", table_cell_style),
+                        _digest_table_cell(row.get("previous_score") or "—", table_cell_style),
+                        _digest_table_cell(row.get("current_score") or "—", table_cell_style),
+                        _digest_table_cell(row.get("direction") or "—", table_cell_style),
+                        _digest_table_cell(row.get("key_change") or "—", table_cell_style),
                     ]
                 )
-            mt = Table(mov_rows, repeatRows=1, colWidths=[3.2 * cm, 2 * cm, 2 * cm, 2.2 * cm, 5.6 * cm])
+            mt = Table(mov_rows, repeatRows=1, colWidths=mov_widths, splitByRow=1)
             mt.setStyle(_table_style())
             body.append(mt)
         body.append(Spacer(1, 0.3 * cm))
@@ -341,17 +359,25 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
                 small,
             )
         )
-        app_rows = [["Property", "Obligation", "Status", "Evidence"]]
+        app_widths = proportional_col_widths(doc.width, [0.24, 0.36, 0.20, 0.20])
+        app_rows = [
+            [
+                _digest_table_cell("Property", table_cell_style, bold=True),
+                _digest_table_cell("Obligation", table_cell_style, bold=True),
+                _digest_table_cell("Status", table_cell_style, bold=True),
+                _digest_table_cell("Evidence", table_cell_style, bold=True),
+            ]
+        ]
         for row in appendix:
             app_rows.append(
                 [
-                    html.escape(row.get("property") or "—")[:36],
-                    html.escape(row.get("obligation") or "—")[:40],
-                    html.escape(row.get("status") or "—")[:18],
-                    html.escape(row.get("evidence") or "—")[:16],
+                    _digest_table_cell(row.get("property") or "—", table_cell_style),
+                    _digest_table_cell(row.get("obligation") or "—", table_cell_style),
+                    _digest_table_cell(row.get("status") or "—", table_cell_style),
+                    _digest_table_cell(row.get("evidence") or "—", table_cell_style),
                 ]
             )
-        at = Table(app_rows, repeatRows=1, colWidths=[3.5 * cm, 5 * cm, 2.8 * cm, 2.7 * cm])
+        at = Table(app_rows, repeatRows=1, colWidths=app_widths, splitByRow=1)
         at.setStyle(_table_style())
         body.append(at)
 

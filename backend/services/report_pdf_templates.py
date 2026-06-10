@@ -31,7 +31,6 @@ from xml.sax.saxutils import escape as _xml_escape
 from services.report_branding_layout import append_report_cover_block
 from services.report_layout_governance import (
     GovernancePdfContext,
-    export_disclosure_paragraphs,
     formal_report_table_width,
     governance_footer_bottom_margin,
     make_page_callbacks,
@@ -950,7 +949,6 @@ def build_formal_report_pdf(
         scope_line=spec.scope_line or f"<b>Classification:</b> {_xml_escape(spec.report_classification)}",
         extra_metadata_lines=cover_extra,
     )
-    elements.extend(export_disclosure_paragraphs(spec.gov_ctx, styles))
     if spec.jurisdiction:
         elements.append(Paragraph(f"<b>Jurisdiction:</b> {_xml_escape(spec.jurisdiction)}", styles["body"]))
     elements.append(Spacer(1, 8))
