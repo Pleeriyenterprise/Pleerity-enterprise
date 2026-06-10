@@ -30,7 +30,6 @@ from services.scoring_semantics_v1 import (
 from services.report_branding_layout import append_report_cover_block
 from services.report_layout_governance import (
     GovernancePdfContext,
-    append_governance_matrix_for_properties,
     append_unresolved_obligations_section,
     export_disclosure_paragraphs,
     make_page_callbacks,
@@ -38,6 +37,11 @@ from services.report_layout_governance import (
     matrix_continuation_disclosure_paragraph,
     governance_chip_line,
     MATRIX_MAX_ROWS_PER_PROPERTY,
+)
+from services.report_requirements_operational import (
+    REQUIREMENTS_REPORT_TITLE,
+    append_requirements_operational_sections,
+    build_requirements_operational_model,
 )
 from services.reporting_semantics_v1 import (
     EXPORT_DETERMINISM_IMMUTABLE_ARTIFACT,
@@ -1008,7 +1012,7 @@ def build_property_report(client_id: str, property_id: str, report_data: dict) -
 
 
 def build_requirements_report_pdf(client_id: str, report_data: dict) -> bytes:
-    """Server-side requirements PDF with governance columns and unresolved section."""
+    """Server-side Requirements Report — operational triage presentation."""
     client = report_data.get("client") or {}
     company_name = client.get("company_name") or client.get("full_name") or "Client"
     crn = client.get("customer_reference") or client_id
@@ -1033,13 +1037,20 @@ def build_requirements_report_pdf(client_id: str, report_data: dict) -> bytes:
     )
     on_first, on_later = make_page_callbacks(gov_ctx)
 
+    operational_model = build_requirements_operational_model(
+        requirements=requirements,
+        properties=properties,
+        client_doc=client,
+        now=now,
+    )
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer, pagesize=A4, rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=62,
     )
     elements = []
     elements.append(Spacer(1, 60))
-    elements.append(Paragraph("Requirements Report", styles["title"]))
+    elements.append(Paragraph(REQUIREMENTS_REPORT_TITLE, styles["title"]))
     elements.append(Paragraph(
         f"{company_name}<br/>CRN: {crn}<br/>Generated: {now.strftime('%d %B %Y at %H:%M UTC')}<br/>"
         f"Export grade: {_xml_escape(gov_ctx.export_grade_label)}",
@@ -1047,65 +1058,20 @@ def build_requirements_report_pdf(client_id: str, report_data: dict) -> bytes:
     ))
     elements.extend(export_disclosure_paragraphs(gov_ctx, styles))
     elements.append(Spacer(1, 16))
-    elements.append(Paragraph(f"<b>Requirements in scope:</b> {len(requirements)}", styles["body"]))
+    elements.append(
+        Paragraph(
+            f"<b>Obligations in scope:</b> {operational_model.get('total_requirements', len(requirements))}",
+            styles["body"],
+        )
+    )
     elements.append(Spacer(1, 12))
 
-    append_unresolved_obligations_section(
+    append_requirements_operational_sections(
         elements,
-        requirements=requirements,
-        properties=properties,
-        client_doc=client,
+        model=operational_model,
         styles=styles,
         table_style=table_style,
-        heading_style=styles["heading"],
     )
-
-    if properties:
-        append_governance_matrix_for_properties(
-            elements,
-            properties=properties,
-            requirements=requirements,
-            client_doc=client,
-            styles=styles,
-            table_style=table_style,
-            heading_style=styles["heading"],
-            body_style=styles["body"],
-            now=now,
-            status_label_fn=_status_label,
-        )
-    else:
-        elements.append(Paragraph("Requirement detail", styles["heading"]))
-        elements.append(matrix_continuation_disclosure_paragraph(
-            matrix_continuation_stats([], requirements), styles
-        ))
-        rows = [["Requirement", "Status", "Governance", "Due", "Days"]]
-        for r in requirements[:MATRIX_MAX_ROWS_PER_PROPERTY]:
-            due = get_effective_expiry_date(r)
-            due_str = "—"
-            if due and hasattr(due, "date"):
-                due_str = due.date().isoformat()
-            elif isinstance(r.get("due_date"), str):
-                due_str = str(r.get("due_date"))[:10]
-            cs = get_computed_status(r, property_doc=None, client_doc=client)
-            rows.append([
-                (r.get("description") or r.get("requirement_type") or "—")[:35],
-                _status_label(cs),
-                governance_chip_line(r)[:42],
-                due_str,
-                "—",
-            ])
-        if len(rows) > 1:
-            tb = Table(rows, colWidths=[150, 90, 130, 65, 45], repeatRows=1)
-            tb.setStyle(table_style)
-            elements.append(tb)
-        omitted = max(0, len(requirements) - MATRIX_MAX_ROWS_PER_PROPERTY)
-        if omitted:
-            elements.append(
-                Paragraph(
-                    f"<b>Continuation:</b> {omitted} additional obligations omitted from summary matrix.",
-                    styles["small"],
-                )
-            )
 
     elements.append(Spacer(1, 20))
     elements.append(HRFlowable(width="100%", thickness=1, color=colors.gray, spaceAfter=12))

@@ -210,7 +210,18 @@ def test_portfolio_pdf_regenerated_timestamp(monkeypatch):
 def test_requirements_report_pdf_bytes(monkeypatch):
     monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
     data = _minimal_report_data()
-    data["requirements"] = [{"property_id": "p1", "description": "Gas", "client_lifecycle_state": "VERIFIED"}]
+    data["requirements"] = [
+        {
+            "property_id": "p1",
+            "description": "Gas safety inspection",
+            "client_lifecycle_state": "VERIFIED",
+            "requirement_satisfied": True,
+            "assurance_tier": "VERIFIED_DOCUMENT",
+            "status": "COMPLIANT",
+        }
+    ]
     pdf = build_requirements_report_pdf("client-1", data)
     assert pdf[:4] == b"%PDF"
     assert b"Requirements Report" in pdf
+    low = pdf.decode("latin-1", errors="ignore").lower()
+    assert "triage at a glance" in low

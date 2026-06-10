@@ -276,6 +276,8 @@ class ReportingService:
             "report_type": "Requirements Report",
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "requirements": [],
+            "portal_requirements": portal_reqs,
+            "properties_portal": props_full,
             "reporting_semantics": build_reporting_semantics_payload(
                 compute_reporting_semantic_counts(portal_reqs)
             ),
@@ -471,59 +473,58 @@ class ReportingService:
         }
     
     def _generate_requirements_csv(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate CSV for requirements report."""
+        """Generate operational triage CSV for requirements report."""
+        from services.report_requirements_operational import (
+            CSV_FIELDNAMES,
+            build_requirements_operational_csv_rows,
+            build_requirements_scheduled_email_rows,
+        )
+
         output = io.StringIO()
-        
         output.write(f"Report: {data['report_type']}\n")
         output.write(f"Generated: {data['generated_at']}\n")
         sem = (data.get("reporting_semantics") or {}).get("counts") or {}
-        output.write(f"Total Requirements (rows): {len(data['requirements'])}\n")
-        output.write(f"Score-tracked obligations: {sem.get(METRIC_SCORE_TRACKED, '')}\n")
-        output.write(f"Tracked requirements (registry): {sem.get(METRIC_TRACKED, '')}\n")
-        from services.audience_governance_v1 import audience_export_preamble_paragraph
+        portal_reqs = data.get("portal_requirements") or data.get("requirements") or []
+        properties = data.get("properties_portal") or []
+        gen_at = data.get("generated_at")
+        try:
+            now = datetime.fromisoformat(str(gen_at).replace("Z", "+00:00"))
+        except Exception:
+            now = datetime.now(timezone.utc)
 
-        preamble = audience_export_preamble_paragraph("REGULATOR_EVIDENTIAL")
-        if preamble:
-            output.write(f"# audience_disclosure: {preamble}\n")
+        csv_rows, triage_counts, enriched = build_requirements_operational_csv_rows(
+            requirements=portal_reqs,
+            properties=properties,
+            client_doc={},
+            now=now,
+        )
+        email_rows = build_requirements_scheduled_email_rows(enriched)
+
+        output.write("csv_format_version,requirements_operational_v1\n")
+        output.write(f"Total obligations (rows): {len(csv_rows)}\n")
+        output.write("=== TRIAGE SUMMARY ===\n")
+        for label, count in triage_counts.items():
+            from services.report_requirements_operational import TRIAGE_SECTION_TITLES
+
+            human = TRIAGE_SECTION_TITLES.get(label, label)
+            output.write(f"{human},{count}\n")
         output.write("\n")
         for row in csv_semantics_preamble_rows(sem, generated_at=data.get("generated_at", "")):
             output.write(",".join(str(c) for c in row) + "\n")
         output.write("\n")
-        
-        writer = csv.DictWriter(output, fieldnames=[
-            'property_address', 'effective_jurisdiction_label', 'jurisdiction_source',
-            'requirement_type', 'description', 'status', 'evidence_state',
-            'due_date', 'frequency_days', 'documents_count',
-            'latest_document', 'latest_doc_status',
-            'operational_status', 'evidential_assurance', 'audience_status',
-            'review_state', 'action_required',
-        ])
+        output.write("=== OBLIGATIONS (OPERATIONAL VIEW) ===\n")
+
+        writer = csv.DictWriter(output, fieldnames=CSV_FIELDNAMES)
         writer.writeheader()
-
-        from services.audience_governance_v1 import (
-            AUDIENCE_REGULATOR_EVIDENTIAL,
-            interpret_requirement_for_audience,
-        )
-
-        for req in data['requirements']:
-            row = {k: v for k, v in req.items() if k != 'requirement_id'}
-            try:
-                interp = interpret_requirement_for_audience(req, AUDIENCE_REGULATOR_EVIDENTIAL)
-                row['operational_status'] = interp.get('operational_status', '')
-                row['evidential_assurance'] = interp.get('evidential_assurance', '')
-                row['audience_status'] = interp.get('audience_status_label', '')
-                row['review_state'] = interp.get('review_state', '')
-                row['action_required'] = interp.get('action_required', '')
-            except Exception:
-                pass
+        for row in csv_rows:
             writer.writerow(row)
-        
-        rows = [{k: v for k, v in req.items() if k != 'requirement_id'} for req in data['requirements']]
+
         return {
             "content": output.getvalue(),
             "filename": f"requirements_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             "content_type": "text/csv",
-            "rows": rows,
+            "rows": email_rows,
+            "csv_rows": csv_rows,
         }
     
     def _generate_audit_csv(self, data: Dict[str, Any]) -> Dict[str, Any]:

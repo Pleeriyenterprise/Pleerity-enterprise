@@ -59,12 +59,40 @@ def _human_due(s: Any) -> str:
 
 
 def _row_label(row: Dict[str, Any]) -> str:
-    code = (row.get("requirement_code") or row.get("requirement_type") or "").strip()
-    base = requirement_label(code) if code else str(row.get("description") or "Requirement").strip()
+    obligation = str(row.get("obligation") or "").strip()
+    if obligation:
+        base = obligation
+    else:
+        code = (row.get("requirement_code") or row.get("requirement_type") or "").strip()
+        base = requirement_label(code) if code else str(row.get("description") or "Requirement").strip()
     addr = str(row.get("property_address") or "").strip()
     if addr:
         return f"{base} — {addr}"
     return base
+
+
+def _row_due_date(row: Dict[str, Any]) -> Any:
+    return row.get("due_date") or row.get("renewal_date")
+
+
+def _row_status_bucket(row: Dict[str, Any]) -> str:
+    """Legacy enum bucket for scheduled digest aggregation."""
+    st = str(row.get("status") or "").upper()
+    if st in ("OVERDUE", "EXPIRED", "EXPIRING_SOON", "PENDING", "COMPLIANT", "MISSING"):
+        if st == "EXPIRED":
+            return "OVERDUE"
+        if st == "MISSING":
+            return "PENDING"
+        return st
+    triage = str(row.get("triage_category") or "").lower()
+    urgency = str(row.get("urgency") or "").lower()
+    if "immediate" in triage or urgency == "urgent":
+        return "OVERDUE"
+    if "renewal" in triage or "upcoming" in triage:
+        return "EXPIRING_SOON"
+    if "fully compliant" in triage or "monitoring" in triage:
+        return "COMPLIANT"
+    return "PENDING"
 
 
 def _aggregate_requirement_rows(rows: List[Dict[str, Any]]) -> Tuple[Dict[str, int], List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -72,14 +100,14 @@ def _aggregate_requirement_rows(rows: List[Dict[str, Any]]) -> Tuple[Dict[str, i
     overdue: List[Dict[str, Any]] = []
     expiring: List[Dict[str, Any]] = []
     for r in rows:
-        st = str(r.get("status") or "").upper()
+        st = _row_status_bucket(r)
         counts[st] = counts.get(st, 0) + 1
         if st == "OVERDUE":
             overdue.append(r)
         elif st == "EXPIRING_SOON":
             expiring.append(r)
-    overdue.sort(key=lambda x: str(x.get("due_date") or ""))
-    expiring.sort(key=lambda x: str(x.get("due_date") or ""))
+    overdue.sort(key=lambda x: str(_row_due_date(x) or ""))
+    expiring.sort(key=lambda x: str(_row_due_date(x) or ""))
     return counts, overdue[:5], expiring[:4]
 
 
@@ -175,15 +203,19 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
         action_lines = []
         for r in overdue_top:
             lbl = _row_label(r)
-            due = _human_due(r.get("due_date"))
-            st = compliance_requirement_status_label(str(r.get("status") or ""))
+            due = _human_due(_row_due_date(r))
+            st = str(r.get("operational_status") or "").strip() or compliance_requirement_status_label(
+                str(r.get("status") or "")
+            )
             action_lines.append(f"{lbl} — {st}, due {due}.")
         for r in expiring_top:
             if len(action_lines) >= 6:
                 break
             lbl = _row_label(r)
-            due = _human_due(r.get("due_date"))
-            st = compliance_requirement_status_label(str(r.get("status") or ""))
+            due = _human_due(_row_due_date(r))
+            st = str(r.get("operational_status") or "").strip() or compliance_requirement_status_label(
+                str(r.get("status") or "")
+            )
             action_lines.append(f"{lbl} — {st}, due {due}.")
         if action_lines:
             parts.append(section_title_html("Suggested next actions"))
@@ -268,7 +300,7 @@ def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
             ]
         )
         for r in overdue_top + expiring_top:
-            lines.append(f"* {_row_label(r)} — due {_human_due(r.get('due_date'))}")
+            lines.append(f"* {_row_label(r)} — due {_human_due(_row_due_date(r))}")
         lines.append("")
     lines.extend(
         [

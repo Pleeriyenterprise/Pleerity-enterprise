@@ -10,6 +10,8 @@ from services.report_human_language_v1 import (
     human_assurance_tier_label,
     human_governance_chip_line,
     human_lifecycle_label,
+    human_operational_renewal_date,
+    human_requirements_evidence_posture,
     human_score_status_label,
     human_async_disclosure_lines,
     mapping_matrix_export,
@@ -25,6 +27,21 @@ def test_lifecycle_mapping_no_raw_enum_in_label():
     row = {"client_lifecycle_state": "SATISFIED_UNVERIFIED"}
     assert human_lifecycle_label(row) == "Recorded on file"
     assert "SATISFIED_UNVERIFIED" not in human_lifecycle_label(row)
+
+
+def test_operational_renewal_date_unknown():
+    assert human_operational_renewal_date({"due_date": "UNKNOWN_DATE"}) == (
+        "No verified renewal date recorded"
+    )
+
+
+def test_requirements_evidence_posture_human():
+    row = {"client_lifecycle_state": "SATISFIED_UNVERIFIED", "assurance_tier": "SELF_RECORDED"}
+    posture = human_requirements_evidence_posture(
+        row, {"audience_status_label": "Recorded on file"}
+    )
+    assert "not independently verified" in posture.lower()
+    assert "SELF_RECORDED" not in posture
 
 
 def test_assurance_tier_mapping():

@@ -178,6 +178,91 @@ def human_evidence_presence_label(row: Dict[str, Any]) -> str:
     return human_label({"UPLOADED_UNVERIFIED": "On file"}, es) if es else "—"
 
 
+def human_operational_renewal_date(row: Dict[str, Any]) -> str:
+    """Customer-facing renewal/expiry — never expose UNKNOWN_DATE."""
+    from utils.expiry_utils import get_effective_expiry_date
+
+    eff = get_effective_expiry_date(row)
+    if eff is not None and hasattr(eff, "date"):
+        return eff.date().isoformat()
+    raw = row.get("due_date") or row.get("confirmed_expiry_date") or row.get("extracted_expiry_date")
+    if raw is None or str(raw).strip() == "":
+        return "No verified renewal date recorded"
+    s = str(raw).strip().upper()
+    if s in ("N/A", "UNKNOWN", "UNKNOWN_DATE", "NONE", "—"):
+        return "No verified renewal date recorded"
+    try:
+        from datetime import datetime
+
+        d = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        return d.date().isoformat()
+    except Exception:
+        cleaned = str(raw)[:10]
+        if cleaned.upper() in ("UNKNOWN_D", "UNKNOWN"):
+            return "No verified renewal date recorded"
+        return cleaned
+
+
+def human_requirements_evidence_posture(row: Dict[str, Any], interp: Optional[Dict[str, Any]] = None) -> str:
+    """Operational evidence posture for Requirements Report."""
+    interp = interp or {}
+    label = str(interp.get("audience_status_label") or "").strip()
+    if label == "Recorded on file":
+        return "Recorded on file (not independently verified)"
+    if label == "Action required":
+        return "Review recommended"
+    if label:
+        return label
+    es = human_evidence_presence_label(row)
+    if es == "On file":
+        return "Evidence on file"
+    if es == "None":
+        return "No evidence on file"
+    return es if es != "—" else "Status unclear"
+
+
+def human_requirements_recommended_action(
+    row: Dict[str, Any],
+    interp: Dict[str, Any],
+    *,
+    bucket: str,
+) -> str:
+    """Concise remediation guidance — no legal advice."""
+    action = str(interp.get("landlord_next_action") or "").strip()
+    if action and action != "Review requirement details in the portal":
+        if "action required" not in action.lower():
+            return action[:80]
+    cs = str(row.get("status") or "").upper()
+    if bucket == "immediate_attention":
+        if cs in ("OVERDUE", "EXPIRED"):
+            return "Renew or replace evidence promptly"
+        return "Upload or confirm required evidence"
+    if bucket == "upcoming_renewals":
+        return "Schedule renewal before expiry"
+    if bucket == "evidence_review_required":
+        return "Await platform review — no upload unless rejected"
+    if bucket == "recorded_not_verified":
+        return "Optional: strengthen with verified evidence"
+    if bucket == "fully_compliant":
+        return "No immediate action"
+    return "Continue routine monitoring"
+
+
+def human_requirements_urgency_label(bucket: str, computed_status: Optional[str]) -> str:
+    if bucket == "immediate_attention":
+        cs = (computed_status or "").upper()
+        if cs in ("OVERDUE", "EXPIRED"):
+            return "Urgent"
+        return "High"
+    if bucket == "upcoming_renewals":
+        return "Medium"
+    if bucket == "evidence_review_required":
+        return "Medium"
+    if bucket == "recorded_not_verified":
+        return "Low"
+    return "Routine"
+
+
 def human_review_state_label(row: Dict[str, Any]) -> str:
     life = str(row.get("client_lifecycle_state") or "").strip().upper()
     if life == "PENDING_REVIEW":
