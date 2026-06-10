@@ -106,6 +106,13 @@ def test_ai_verdict_patterns_cover_legacy_assistant_blocks():
     assert any(p.search(sample) for p in ai_verdict_patterns())
 
 
+def test_assistant_rewrite_does_not_raise_on_verdict_match():
+    from services.assistant_chat_service import _rewrite_compliance_verdict_language
+
+    out = _rewrite_compliance_verdict_language("You are compliant with all requirements.")
+    assert "you are compliant" not in out.lower()
+
+
 def test_scan_registered_surfaces_no_prohibited_in_core_maps():
     report = scan_registered_customer_surfaces()
     assert report["version"] == "v0.1"

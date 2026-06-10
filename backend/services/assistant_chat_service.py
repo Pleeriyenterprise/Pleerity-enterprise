@@ -57,11 +57,9 @@ def _rewrite_compliance_verdict_language(text: str) -> str:
     out = text
     for pat in VERDICT_BLOCK_PATTERNS:
         if pat.search(out):
-            out = re.sub(
-                pat,
+            out = pat.sub(
                 "The portal shows the following; this is not a legal judgment. For legal advice please consult a qualified adviser.",
                 out,
-                flags=re.I,
             )
     for hit in find_prohibited_phrases(out):
         phrase = hit.get("phrase") or ""
