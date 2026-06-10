@@ -178,6 +178,15 @@ class ReportingService:
                 "compliance_score_display": "N/A",
             }
         report_data = attach_semantics_contract(report_data)
+        report_data["reporting_semantics"] = build_reporting_semantics_payload(
+            compute_reporting_semantic_counts(portal_reqs)
+        )
+        ch = report_data["summary"].get("compliance_score_headline") or {}
+        report_data["summary"]["async_reporting_disclosure"] = async_reporting_disclosure(
+            score_status=ch.get("score_status"),
+            score_status_message=ch.get("score_status_message"),
+            last_calculated_at=ch.get("last_calculated_at"),
+        )
 
         if include_details:
             # Add property details
@@ -413,6 +422,11 @@ class ReportingService:
     
     def _generate_compliance_csv(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate CSV for compliance summary."""
+        from services.report_human_language_v1 import (
+            human_score_authority_label,
+            human_score_status_label,
+        )
+
         output = io.StringIO()
         
         # Write header info
@@ -422,12 +436,18 @@ class ReportingService:
         ch = (data.get("summary") or {}).get("compliance_score_headline") or {}
         output.write("=== PORTFOLIO COMPLIANCE SCORE (AUTHORITATIVE HEADLINE) ===\n")
         output.write(f"Displayed score,{ch.get('compliance_score_display') or 'N/A'}\n")
-        output.write(f"score_authority,{ch.get('score_authority') or ''}\n")
-        output.write(f"score_status,{ch.get('score_status') or ''}\n")
+        output.write(
+            f"Score authority (human-readable),{human_score_authority_label(ch.get('score_authority'))}\n"
+        )
+        output.write(
+            f"Score status (human-readable),{human_score_status_label(ch.get('score_status'))}\n"
+        )
         output.write(f"last_calculated_at,{ch.get('last_calculated_at') or ''}\n")
         output.write(f"score_status_message,{ch.get('score_status_message') or ''}\n")
         output.write(
-            "export_snapshot_note,CSV generated at Generated time above; headline uses persisted scores as of last_calculated_at (not live portal).\n"
+            "export_snapshot_note,CSV generated at Generated time above; headline uses persisted scores as of "
+            "last_calculated_at (not live portal). Headline score is not a legal compliance determination and "
+            "may differ from obligation completion rates below.\n"
         )
         sem = (data.get("reporting_semantics") or {}).get("counts") or {}
         async_disc = (data.get("summary") or {}).get("async_reporting_disclosure") or {}
@@ -442,12 +462,14 @@ class ReportingService:
         summary = data['summary']
         output.write(f"Total Properties,{summary['total_properties']}\n")
         output.write(f"Compliance Rate,{summary['compliance_rate']}%\n")
-        output.write(f"Green (Compliant),{summary['compliance_breakdown']['green']}\n")
-        output.write(f"Amber (Attention),{summary['compliance_breakdown']['amber']}\n")
-        output.write(f"Red (Action Required),{summary['compliance_breakdown']['red']}\n\n")
+        output.write(f"Green (Favourable posture),{summary['compliance_breakdown']['green']}\n")
+        output.write(f"Amber (Attention advised),{summary['compliance_breakdown']['amber']}\n")
+        output.write(f"Red (Elevated attention),{summary['compliance_breakdown']['red']}\n\n")
         
         output.write(f"Total Requirements,{summary['total_requirements']}\n")
-        output.write(f"Compliant,{summary['requirements_breakdown']['compliant']}\n")
+        output.write(
+            f"Operationally compliant (export scope),{summary['requirements_breakdown']['compliant']}\n"
+        )
         output.write(f"Pending,{summary['requirements_breakdown']['pending']}\n")
         output.write(f"Overdue,{summary['requirements_breakdown']['overdue']}\n")
         output.write(f"Expiring Soon,{summary['requirements_breakdown']['expiring_soon']}\n\n")

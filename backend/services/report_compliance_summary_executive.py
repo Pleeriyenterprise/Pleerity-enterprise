@@ -61,11 +61,60 @@ _EXPOSURE_THEMES: Tuple[Tuple[str, Tuple[str, ...]], ...] = (
 )
 
 _STATUS_HUMAN = {
-    "GREEN": "On track",
+    "GREEN": "Favourable posture",
     "AMBER": "Attention advised",
     "RED": "Elevated attention",
-    "UNKNOWN": "Status unclear",
+    "UNKNOWN": "Status under review",
 }
+
+
+def portfolio_material_exposure(
+    *,
+    overdue: int,
+    missing_evidence: int,
+    counts: Dict[str, int],
+    readiness: Dict[str, Any],
+    risk_concentration: List[Dict[str, Any]],
+) -> bool:
+    """True when export-scope metrics show overdue, missing evidence, or elevated exposure."""
+    pending = int(counts.get("pending") or 0)
+    if int(overdue or 0) + int(missing_evidence or 0) + pending > 0:
+        return True
+    if int(readiness.get("unresolved_evidence_exposure") or 0) > 0:
+        return True
+    if any(int(c.get("unresolved") or 0) > 0 for c in risk_concentration):
+        return True
+    return False
+
+
+def human_property_dashboard_status(
+    raw: Optional[str],
+    *,
+    stats: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Dashboard posture label — scoped to property stats, not a legal compliance determination."""
+    stats = stats or {}
+    overdue = int(stats.get("overdue") or 0)
+    missing = int(stats.get("missing_evidence") or 0)
+    expiring = int(stats.get("expiring_soon") or 0)
+    if overdue > 0:
+        return "Elevated attention" if overdue >= 2 else "Attention advised"
+    if missing > 0:
+        return "Attention advised"
+    if expiring > 0:
+        return "Attention advised"
+    key = str(raw or "UNKNOWN").strip().upper()
+    return _STATUS_HUMAN.get(key, "Status under review")
+
+
+def _property_readiness_label(*, overdue: int, missing: int) -> str:
+    """Property-scoped readiness — not derived from portfolio-level confidence."""
+    unresolved = overdue + missing
+    if unresolved == 0:
+        return "Strong"
+    if unresolved <= 2:
+        return "Adequate with review"
+    return "Review recommended"
 
 
 def assert_executive_safe_text(text: str) -> None:
@@ -88,11 +137,6 @@ def classify_exposure_theme(row: Dict[str, Any]) -> str:
         if any(kw in blob for kw in keywords):
             return label
     return "General compliance"
-
-
-def human_property_dashboard_status(raw: Optional[str]) -> str:
-    key = str(raw or "UNKNOWN").strip().upper()
-    return _STATUS_HUMAN.get(key, "Status under review")
 
 
 def humanize_matrix_row(row: Dict[str, str]) -> Dict[str, str]:
@@ -168,7 +212,10 @@ def build_portfolio_risk_concentration(
                 f"across {props} propert{'ies' if props != 1 else 'y'}."
             )
         elif n:
-            line = f"{theme}: {n} obligation{'s' if n != 1 else ''} in scope — no material unresolved exposure."
+            line = (
+                f"{theme}: {n} obligation{'s' if n != 1 else ''} in scope — "
+                "no overdue or missing-evidence items in this theme at generation boundary."
+            )
         else:
             continue
         assert_executive_safe_text(line)
@@ -188,10 +235,18 @@ def build_executive_interpretation(
     total_reqs: int,
 ) -> List[str]:
     lines: List[str] = []
+    material = portfolio_material_exposure(
+        overdue=overdue,
+        missing_evidence=missing_evidence,
+        counts=counts,
+        readiness=readiness,
+        risk_concentration=risk_concentration,
+    )
     if total_reqs > 0:
         lines.append(
-            f"Within export scope, {completion_pct}% of {total_reqs} obligations show compliant status "
-            "at the generation boundary — distinct from the CVP headline score above."
+            f"Within export scope, {completion_pct}% of {total_reqs} obligations show operationally "
+            "compliant status at the generation boundary — distinct from the CVP headline score above and "
+            "not a legal compliance determination."
         )
     top = [r for r in risk_concentration if r.get("unresolved", 0) > 0]
     if top:
@@ -200,7 +255,12 @@ def build_executive_interpretation(
             f"Most unresolved exposure is concentrated in {themes}."
         )
     conf = str(readiness.get("audit_confidence") or "")
-    if conf == "High":
+    if conf == "High" and material:
+        lines.append(
+            "Portfolio audit readiness is broadly sound, though export-scope exposure still warrants "
+            "professional review of detail sections."
+        )
+    elif conf == "High":
         lines.append(
             "Portfolio audit readiness remains substantially strong at the generation boundary."
         )
@@ -219,7 +279,15 @@ def build_executive_interpretation(
     elif expiring > 0 and overdue == 0:
         lines.append("Near-term attention is primarily renewal scheduling rather than overdue failure.")
     if not lines:
-        lines.append("No material compliance posture concerns were detected within export scope at generation time.")
+        if material:
+            lines.append(
+                "Operational exposure remains within export scope — review detail sections for overdue items, "
+                "evidence gaps, and renewal scheduling before relying on headline posture alone."
+            )
+        else:
+            lines.append(
+                "No material compliance posture concerns were detected within export scope at generation time."
+            )
     for ln in lines:
         assert_executive_safe_text(ln)
     return lines[:4]
@@ -292,21 +360,18 @@ def build_property_posture_rows(
         elif stats.get("missing_evidence", 0):
             concern = f"Evidence confidence — {key_theme.lower()}"
         else:
-            concern = "No material concern in scope"
+            concern = "Routine monitoring in scope"
 
-        unresolved = int(stats.get("overdue", 0) or 0) + int(stats.get("missing_evidence", 0) or 0)
-        if unresolved == 0 and str(readiness.get("audit_confidence") or "") == "High":
-            readiness_label = "Strong"
-        elif unresolved <= 2:
-            readiness_label = "Adequate with review"
-        else:
-            readiness_label = "Review recommended"
+        overdue_n = int(stats.get("overdue", 0) or 0)
+        missing_n = int(stats.get("missing_evidence", 0) or 0)
+        unresolved = overdue_n + missing_n
+        readiness_label = _property_readiness_label(overdue=overdue_n, missing=missing_n)
 
         addr = ", ".join(x for x in [prop.get("address_line_1"), prop.get("postcode")] if x)[:48]
         row = {
             "property_id": pid,
             "property": addr or pid[:20],
-            "status": human_property_dashboard_status(prop.get("compliance_status")),
+            "status": human_property_dashboard_status(prop.get("compliance_status"), stats=stats),
             "key_concern": concern[:42],
             "readiness": readiness_label,
             "unresolved_count": str(unresolved),
@@ -330,7 +395,9 @@ def enrich_readiness_narrative(readiness: Dict[str, Any]) -> Dict[str, Any]:
         notes.append("Evidence completeness is limited — professional review may require additional documentation.")
     exp = int(readiness.get("unresolved_evidence_exposure") or 0)
     if exp == 0:
-        notes.append("No high-priority unresolved evidence exposure at generation boundary.")
+        notes.append(
+            "No elevated-priority evidence exposure identified in readiness scoring at generation boundary."
+        )
     else:
         notes.append(
             f"{exp} obligation{'s' if exp != 1 else ''} carry elevated evidence or renewal exposure."
@@ -616,7 +683,7 @@ def build_compliance_summary_executive_csv_rows(
         )
         action = (
             pr["key_concern"]
-            if pr["key_concern"] != "No material concern in scope"
+            if pr["key_concern"] != "Routine monitoring in scope"
             else "Continue routine monitoring"
         )
         row = {

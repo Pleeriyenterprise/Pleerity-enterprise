@@ -195,6 +195,8 @@ def test_executive_csv_format_and_hygiene():
     out = svc._generate_compliance_csv(data)
     text = out["content"]
     assert f"csv_format_version,{CSV_FORMAT_VERSION}" in text
+    assert "Score status (human-readable),Current" in text
+    assert "Green (Favourable posture)" in text
     assert "=== PORTFOLIO POSTURE (EXECUTIVE VIEW) ===" in text
     assert "posture,primary_risk_area,readiness" in text.replace("\n", "")
     assert "=== PROPERTIES ===" not in text

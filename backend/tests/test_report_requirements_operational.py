@@ -217,7 +217,7 @@ def test_scheduled_email_rows_legacy_keys_from_operational():
     assert email_rows[0]["status"] == "OVERDUE"
     assert email_rows[0]["description"]
     assert email_rows[0]["due_date"]
-    assert email_rows[1]["status"] == "COMPLIANT"
+    assert email_rows[1]["status"] == "RECORDED_UNVERIFIED"
 
 
 def test_reporting_service_csv_operational_columns():

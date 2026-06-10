@@ -344,11 +344,16 @@ class ProfessionalReportGenerator:
                 headline_score_display_for_export,
             )
 
+            from services.report_human_language_v1 import (
+                human_score_authority_label,
+                human_score_status_label,
+            )
+
             cs = await calculate_compliance_score(client_id)
             disp = headline_score_display_for_export(cs.get("score"), cs.get("score_status"))
             scale_note = " (0–100 headline)" if str(disp).isdigit() else ""
-            st = cs.get("score_status") or "—"
-            auth = cs.get("score_authority") or "—"
+            st = human_score_status_label(cs.get("score_status"))
+            auth = human_score_authority_label(cs.get("score_authority"))
             lc_candidate = cs.get("last_calculated_at") or cs.get("portfolio_last_calculated_at")
             lc_display = _professional_compliance_summary_score_batch_time_display(lc_candidate)
             ssm = (cs.get("score_status_message") or "").strip()
@@ -368,7 +373,7 @@ class ProfessionalReportGenerator:
             <b>Portfolio compliance score (CVP headline)</b>{scale_note}: <b>{_professional_compliance_summary_escape_xml(str(disp))}</b><br/>
             <b>Score status:</b> {_professional_compliance_summary_escape_xml(str(st))} &nbsp;|&nbsp; <b>Authority:</b> {_professional_compliance_summary_escape_xml(str(auth))}<br/>
             <b>Last score calculation (persisted batch):</b> {_professional_compliance_summary_escape_xml(lc_display)}{headline_note_html}<br/>
-            <i>Scoring contract: {SCORING_SEMANTICS_VERSION}.</i> Headline uses persisted property scores only.{cov_note}
+            <i>Scoring contract: {SCORING_SEMANTICS_VERSION}.</i> Headline uses persisted property scores only; it is not a legal compliance determination and may differ from obligation completion rates in this report.{cov_note}
             """
             elements.append(Paragraph("Portfolio compliance score", styles["heading"]))
             elements.append(Paragraph(cvp_block, styles["body"]))

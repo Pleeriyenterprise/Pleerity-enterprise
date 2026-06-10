@@ -129,7 +129,15 @@ def _row_due_date(row: Dict[str, Any]) -> Any:
 def _row_status_bucket(row: Dict[str, Any]) -> str:
     """Legacy enum bucket for scheduled digest aggregation."""
     st = str(row.get("status") or "").upper()
-    if st in ("OVERDUE", "EXPIRED", "EXPIRING_SOON", "PENDING", "COMPLIANT", "MISSING"):
+    if st in (
+        "OVERDUE",
+        "EXPIRED",
+        "EXPIRING_SOON",
+        "PENDING",
+        "COMPLIANT",
+        "MISSING",
+        "RECORDED_UNVERIFIED",
+    ):
         if st == "EXPIRED":
             return "OVERDUE"
         if st == "MISSING":
@@ -137,11 +145,13 @@ def _row_status_bucket(row: Dict[str, Any]) -> str:
         return st
     triage = str(row.get("triage_category") or "").lower()
     urgency = str(row.get("urgency") or "").lower()
+    if "recorded but not" in triage or "recorded (unverified)" in triage:
+        return "RECORDED_UNVERIFIED"
     if "immediate" in triage or urgency == "urgent":
         return "OVERDUE"
     if "renewal" in triage or "upcoming" in triage:
         return "EXPIRING_SOON"
-    if "fully compliant" in triage or "monitoring" in triage:
+    if "fully compliant" in triage or "monitoring only" in triage:
         return "COMPLIANT"
     return "PENDING"
 
@@ -213,8 +223,25 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
         ]
         ch = summary.get("compliance_score_headline") or {}
         if isinstance(ch, dict) and (ch.get("compliance_score_display") or ch.get("score_status")):
+            from services.report_human_language_v1 import (
+                human_score_authority_label,
+                human_score_status_label,
+            )
+
             kv.append(("Portfolio CVP score (headline)", str(ch.get("compliance_score_display") or "N/A")))
-            kv.append(("CVP score status", str(ch.get("score_status") or "—")))
+            kv.append(
+                (
+                    "CVP score status",
+                    human_score_status_label(str(ch.get("score_status") or "")),
+                )
+            )
+            if ch.get("score_authority"):
+                kv.append(
+                    (
+                        "CVP score authority",
+                        human_score_authority_label(str(ch.get("score_authority") or "")),
+                    )
+                )
             kv.append(("CVP last calculated", str(ch.get("last_calculated_at") or "—")))
         parts.append(key_value_table_html(kv))
         red_props = [p for p in properties if str(p.get("compliance_status", "")).upper() == "RED"]
@@ -248,8 +275,9 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
             ("Requirements in this report", str(len(rows))),
             ("Overdue", str(counts.get("OVERDUE", 0))),
             ("Due soon", str(counts.get("EXPIRING_SOON", 0))),
-            ("Pending", str(counts.get("PENDING", 0))),
-            ("Compliant", str(counts.get("COMPLIANT", 0))),
+            ("Pending / missing evidence", str(counts.get("PENDING", 0))),
+            ("Recorded (not independently verified)", str(counts.get("RECORDED_UNVERIFIED", 0))),
+            ("Verified or accepted", str(counts.get("COMPLIANT", 0))),
         ]
         parts.append(key_value_table_html(kv))
         action_lines = []

@@ -475,7 +475,7 @@ def _scheduled_email_status_enum(row: Dict[str, Any]) -> str:
     if bucket == TRIAGE_IMMEDIATE or "overdue" in low or "expired" in low:
         return "OVERDUE"
     if bucket == TRIAGE_RECORDED:
-        return "COMPLIANT"
+        return "RECORDED_UNVERIFIED"
     if bucket == TRIAGE_RENEWALS:
         return "EXPIRING_SOON"
     if bucket in (TRIAGE_COMPLIANT, TRIAGE_MONITORING) or "compliant" in low:
