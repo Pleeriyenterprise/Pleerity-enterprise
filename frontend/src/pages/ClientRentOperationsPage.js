@@ -192,7 +192,16 @@ function ClientRentOperationsPageInner() {
     refresh();
   };
 
-  const showEmptySetup = !loading && tab !== 'expenses' && ledgers.length === 0;
+  const hasRentTracking =
+    summary &&
+    ((summary.rent_collected_this_month_minor || 0) > 0 ||
+      (summary.upcoming_due_count || 0) > 0 ||
+      (summary.overdue_count || 0) > 0 ||
+      (summary.partially_paid_count || 0) > 0 ||
+      (summary.due_today_count || 0) > 0 ||
+      (summary.tenancies_with_arrears_count || 0) > 0);
+
+  const showEmptySetup = !loading && tab !== 'expenses' && ledgers.length === 0 && !hasRentTracking;
 
   return (
     <div className={portalPageRoot} data-testid="rent-operations-page">

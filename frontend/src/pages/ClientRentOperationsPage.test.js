@@ -72,4 +72,14 @@ describe('ClientRentOperationsPage', () => {
     expect(screen.getByTestId('rent-tab-attention')).toBeInTheDocument();
     expect(screen.getByTestId('rent-tab-expenses')).toBeInTheDocument();
   });
+
+  it('shows attention empty state when rent activity exists but no attention ledgers', async () => {
+    render(
+      <MemoryRouter>
+        <ClientRentOperationsPage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId('rent-attention-empty')).toBeInTheDocument();
+    expect(screen.queryByTestId('rent-empty-state')).not.toBeInTheDocument();
+  });
 });

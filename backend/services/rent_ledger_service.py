@@ -99,6 +99,19 @@ def derive_is_overdue(
     return due_date < as_of
 
 
+def _attention_period_query(base: Dict[str, Any]) -> Dict[str, Any]:
+    """Ledger periods shown on the Attention tab and counted as tenancy arrears."""
+    return {
+        **base,
+        "$or": [
+            {"is_overdue": True},
+            {"status": RentLedgerStatus.DUE_TODAY.value},
+            {"status": RentLedgerStatus.DISPUTED.value},
+            {"status": RentLedgerStatus.PARTIALLY_PAID.value},
+        ],
+    }
+
+
 async def _validate_property(db, client_id: str, property_id: str) -> Dict[str, Any]:
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": client_id},
@@ -569,12 +582,7 @@ async def list_ledgers(
     if overdue_only:
         q["is_overdue"] = True
     elif attention_only:
-        q["$or"] = [
-            {"is_overdue": True},
-            {"status": RentLedgerStatus.DUE_TODAY.value},
-            {"status": RentLedgerStatus.DISPUTED.value},
-            {"status": RentLedgerStatus.PARTIALLY_PAID.value, "is_overdue": True},
-        ]
+        q = _attention_period_query(q)
 
     total = await db[COLLECTION_PERIODS].count_documents(q)
     rows = await (
@@ -707,7 +715,7 @@ async def get_rent_summary(client_id: str, property_id: Optional[str] = None) ->
     )
 
     arrears_pipeline = [
-        {"$match": {**base, "outstanding_balance_minor": {"$gt": 0}}},
+        {"$match": _attention_period_query(dict(base))},
         {
             "$group": {
                 "_id": {

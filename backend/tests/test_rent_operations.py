@@ -315,6 +315,67 @@ async def test_list_ledgers_overdue_only():
 
 
 @pytest.mark.asyncio
+async def test_list_ledgers_attention_only_matches_arrears_criteria():
+    from models.rent_operations import RentLedgerStatus
+    from services import rent_ledger_service
+
+    mock_db = MagicMock()
+    periods = MagicMock()
+    periods.count_documents = AsyncMock(return_value=0)
+    cursor = MagicMock()
+    cursor.sort = MagicMock(return_value=cursor)
+    cursor.skip = MagicMock(return_value=cursor)
+    cursor.limit = MagicMock(return_value=cursor)
+    cursor.to_list = AsyncMock(return_value=[])
+    periods.find = MagicMock(return_value=cursor)
+    mock_db.__getitem__ = MagicMock(side_effect=lambda k: periods if k == "rent_ledger_periods" else MagicMock())
+
+    with patch("services.rent_ledger_service.database.get_db", return_value=mock_db):
+        await rent_ledger_service.list_ledgers("c1", attention_only=True)
+    query = periods.count_documents.call_args[0][0]
+    assert query["$or"] == [
+        {"is_overdue": True},
+        {"status": RentLedgerStatus.DUE_TODAY.value},
+        {"status": RentLedgerStatus.DISPUTED.value},
+        {"status": RentLedgerStatus.PARTIALLY_PAID.value},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_rent_summary_arrears_uses_attention_criteria():
+    from models.rent_operations import RentLedgerStatus
+    from services import rent_ledger_service
+
+    mock_db = MagicMock()
+    periods = MagicMock()
+    periods.count_documents = AsyncMock(return_value=0)
+
+    def _agg_cursor(_pipeline):
+        cursor = MagicMock()
+        cursor.to_list = AsyncMock(return_value=[])
+        return cursor
+
+    periods.aggregate = MagicMock(side_effect=_agg_cursor)
+    mock_db.__getitem__ = MagicMock(side_effect=lambda k: periods if k == "rent_ledger_periods" else MagicMock())
+
+    with patch("services.rent_ledger_service.database.get_db", return_value=mock_db), patch(
+        "services.rent_ledger_service.sum_rent_collected_by_payment_date",
+        new_callable=AsyncMock,
+        return_value=0,
+    ):
+        await rent_ledger_service.get_rent_summary("c1")
+
+    arrears_match = periods.aggregate.call_args_list[0][0][0][0]["$match"]
+    assert arrears_match["$or"] == [
+        {"is_overdue": True},
+        {"status": RentLedgerStatus.DUE_TODAY.value},
+        {"status": RentLedgerStatus.DISPUTED.value},
+        {"status": RentLedgerStatus.PARTIALLY_PAID.value},
+    ]
+    assert "outstanding_balance_minor" not in arrears_match
+
+
+@pytest.mark.asyncio
 async def test_period_generation_duplicate_key_is_idempotent():
     from pymongo.errors import DuplicateKeyError
     from services import rent_ledger_service
