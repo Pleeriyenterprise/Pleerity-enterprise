@@ -627,9 +627,19 @@ def build_trend_indicators(model: Dict[str, Any]) -> Dict[str, str]:
 
 def build_digest_intelligence(model: Dict[str, Any]) -> Dict[str, Any]:
     """Full presentation model for Monthly Operations Intelligence Digest PDF."""
+    from services.report_interpretation_v1 import (
+        digest_directional_caveat_lines,
+        how_to_read_paragraphs,
+        report_relationship_note,
+    )
+
     stability = build_portfolio_stability(model)
+    has_prior = bool((model.get("deltas") or {}).get("has_prior_snapshot"))
     return {
         "report_class": DIGEST_REPORT_TITLE,
+        "how_to_read": how_to_read_paragraphs("monthly_digest"),
+        "directional_caveats": digest_directional_caveat_lines(has_prior_snapshot=has_prior),
+        "report_relationship_note": report_relationship_note("monthly_digest"),
         "portfolio_stability": stability,
         "executive_interpretation": build_executive_interpretation(model),
         "what_changed": build_what_changed_lines(model),

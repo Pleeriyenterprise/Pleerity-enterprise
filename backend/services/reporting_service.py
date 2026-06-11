@@ -455,20 +455,24 @@ class ReportingService:
             output.write(f"async_score_note,{msg}\n")
         for row in csv_semantics_preamble_rows(sem, generated_at=data.get("generated_at", "")):
             output.write(",".join(str(c) for c in row) + "\n")
+        from services.report_interpretation_v1 import how_to_read_csv_lines
+
+        for line in how_to_read_csv_lines("compliance_summary"):
+            output.write(line + "\n")
         output.write("\n")
 
         # Summary section
         output.write("=== SUMMARY ===\n")
         summary = data['summary']
         output.write(f"Total Properties,{summary['total_properties']}\n")
-        output.write(f"Compliance Rate,{summary['compliance_rate']}%\n")
+        output.write(f"Obligation satisfaction rate,{summary['compliance_rate']}%\n")
         output.write(f"Green (Favourable posture),{summary['compliance_breakdown']['green']}\n")
         output.write(f"Amber (Attention advised),{summary['compliance_breakdown']['amber']}\n")
         output.write(f"Red (Elevated attention),{summary['compliance_breakdown']['red']}\n\n")
         
         output.write(f"Total Requirements,{summary['total_requirements']}\n")
         output.write(
-            f"Operationally compliant (export scope),{summary['requirements_breakdown']['compliant']}\n"
+            f"Requirements satisfied in this report,{summary['requirements_breakdown']['compliant']}\n"
         )
         output.write(f"Pending,{summary['requirements_breakdown']['pending']}\n")
         output.write(f"Overdue,{summary['requirements_breakdown']['overdue']}\n")

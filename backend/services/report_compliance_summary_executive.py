@@ -217,7 +217,7 @@ def build_portfolio_risk_concentration(
         elif n:
             line = (
                 f"{theme}: {n} obligation{'s' if n != 1 else ''} in scope — "
-                "no overdue or missing-evidence items in this theme at generation boundary."
+                "no overdue or missing-evidence items in this theme at the report date."
             )
         else:
             continue
@@ -247,8 +247,8 @@ def build_executive_interpretation(
     )
     if total_reqs > 0:
         lines.append(
-            f"Within export scope, {completion_pct}% of {total_reqs} obligations show operationally "
-            "compliant status at the generation boundary — distinct from the CVP headline score above and "
+            f"In this report, {completion_pct}% of {total_reqs} obligations show operationally "
+            "compliant status at the report date — distinct from the CVP headline score above and "
             "not a legal compliance determination."
         )
     top = [r for r in risk_concentration if r.get("unresolved", 0) > 0]
@@ -260,12 +260,12 @@ def build_executive_interpretation(
     conf = str(readiness.get("audit_confidence") or "")
     if conf == "High" and material:
         lines.append(
-            "Portfolio audit readiness is broadly sound, though export-scope exposure still warrants "
+            "Portfolio audit readiness is broadly sound, though exposure in this report still warrants "
             "professional review of detail sections."
         )
     elif conf == "High":
         lines.append(
-            "Portfolio audit readiness remains substantially strong at the generation boundary."
+            "Portfolio audit readiness remains substantially strong at the report date."
         )
     elif conf == "Medium":
         lines.append(
@@ -284,12 +284,12 @@ def build_executive_interpretation(
     if not lines:
         if material:
             lines.append(
-                "Operational exposure remains within export scope — review detail sections for overdue items, "
+                "Operational exposure remains in this report — review detail sections for overdue items, "
                 "evidence gaps, and renewal scheduling before relying on headline posture alone."
             )
         else:
             lines.append(
-                "No material compliance posture concerns were detected within export scope at generation time."
+                "No material compliance posture concerns were detected in this report at the report date."
             )
     for ln in lines:
         assert_executive_safe_text(ln)
@@ -399,7 +399,7 @@ def enrich_readiness_narrative(readiness: Dict[str, Any]) -> Dict[str, Any]:
     exp = int(readiness.get("unresolved_evidence_exposure") or 0)
     if exp == 0:
         notes.append(
-            "No elevated-priority evidence exposure identified in readiness scoring at generation boundary."
+            "No elevated-priority evidence exposure identified in readiness scoring at the report date."
         )
     else:
         notes.append(
@@ -482,12 +482,16 @@ def append_compliance_summary_executive_sections(
     styles: Dict[str, Any],
     table_style: TableStyle,
 ) -> None:
+    from services.report_interpretation_v1 import append_how_to_read_pdf_section, audit_readiness_scope_note
+
+    append_how_to_read_pdf_section(elements, report_class="compliance_summary", styles=styles)
+
     metrics = model.get("portfolio_metrics") or {}
     interp = model.get("interpretation") or []
     append_section_block(
         elements,
         title="Portfolio posture interpretation",
-        intro="Executive synthesis of compliance posture at the generation boundary — not a legal determination.",
+        intro="Executive synthesis of compliance posture at the report date — not a legal determination.",
         styles=styles,
         body_items=[Paragraph(f"• {_xml_escape(line)}", styles["body"]) for line in interp]
         + [Spacer(1, 10)],
@@ -510,12 +514,16 @@ def append_compliance_summary_executive_sections(
         [
             _table_cell_para("Audit readiness posture", styles),
             _table_cell_para(readiness.get("audit_readiness", "—"), styles),
-            _table_cell_para(f"Confidence level: {readiness.get('audit_confidence', '—')}", styles),
+            _table_cell_para(
+                f"{audit_readiness_scope_note(readiness.get('audit_readiness'))} "
+                f"Confidence level: {readiness.get('audit_confidence', '—')}".strip(),
+                styles,
+            ),
         ],
         [
             _table_cell_para("Priority exposure", styles),
             _table_cell_para(str(readiness.get("unresolved_evidence_exposure", 0)), styles),
-            _table_cell_para("Elevated-priority obligations at generation time.", styles),
+            _table_cell_para("Elevated-priority obligations at the report date.", styles),
         ],
     ]
     rt = Table(rd, colWidths=rd_widths, repeatRows=1)

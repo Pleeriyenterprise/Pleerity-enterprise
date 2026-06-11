@@ -64,7 +64,7 @@ TRIAGE_SECTION_TITLES: Dict[str, str] = {
     TRIAGE_RENEWALS: "Upcoming renewals",
     TRIAGE_EVIDENCE_REVIEW: "Evidence review required",
     TRIAGE_RECORDED: "Recorded but not independently verified",
-    TRIAGE_COMPLIANT: "Fully compliant obligations",
+    TRIAGE_COMPLIANT: "Verified or accepted obligations",
     TRIAGE_MONITORING: "Monitoring only",
 }
 
@@ -84,7 +84,7 @@ TRIAGE_SECTION_INTROS: Dict[str, str] = {
         "Review may still be recommended before relying on these records externally."
     ),
     TRIAGE_COMPLIANT: (
-        "Verified or accepted obligations at generation time. No immediate action unless renewal applies."
+        "Accepted in Compliance Vault Pro at report time. No immediate action unless a renewal applies."
     ),
     TRIAGE_MONITORING: (
         "Satisfied obligations with no immediate action. Continue routine monitoring."
@@ -293,7 +293,7 @@ def build_cluster_summaries(
         TRIAGE_RENEWALS: "have renewals approaching",
         TRIAGE_EVIDENCE_REVIEW: "await evidence review",
         TRIAGE_RECORDED: "are recorded but not independently verified",
-        TRIAGE_COMPLIANT: "are fully compliant",
+        TRIAGE_COMPLIANT: "are verified or accepted at report time",
         TRIAGE_MONITORING: "are stable for routine monitoring",
     }.get(bucket, "need review")
 
@@ -630,6 +630,10 @@ def append_requirements_operational_sections(
     table_style: TableStyle,
 ) -> None:
     """Render operational triage PDF body from presentation model."""
+    from services.report_interpretation_v1 import append_how_to_read_pdf_section
+
+    append_how_to_read_pdf_section(elements, report_class="requirements", styles=styles)
+
     counts = model.get("triage_counts") or {}
     elements.append(Paragraph("<b>Triage at a glance</b>", styles["heading"]))
     glance = (
@@ -637,7 +641,7 @@ def append_requirements_operational_sections(
         f"Renewals: <b>{counts.get(TRIAGE_RENEWALS, 0)}</b> &nbsp;|&nbsp; "
         f"Evidence review: <b>{counts.get(TRIAGE_EVIDENCE_REVIEW, 0)}</b> &nbsp;|&nbsp; "
         f"Recorded (unverified): <b>{counts.get(TRIAGE_RECORDED, 0)}</b> &nbsp;|&nbsp; "
-        f"Compliant: <b>{counts.get(TRIAGE_COMPLIANT, 0)}</b> &nbsp;|&nbsp; "
+        f"Verified or accepted: <b>{counts.get(TRIAGE_COMPLIANT, 0)}</b> &nbsp;|&nbsp; "
         f"Monitoring: <b>{counts.get(TRIAGE_MONITORING, 0)}</b>"
     )
     elements.append(Paragraph(glance, styles["body"]))
@@ -678,7 +682,7 @@ def append_requirements_operational_sections(
                 )
             body_block.append(Spacer(1, 12))
         elif total == 0:
-            body_block.append(Paragraph("None in export scope.", styles["body"]))
+            body_block.append(Paragraph("None in this report.", styles["body"]))
             body_block.append(Spacer(1, 12))
         else:
             body_block.append(Spacer(1, 12))

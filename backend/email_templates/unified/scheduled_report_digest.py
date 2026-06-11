@@ -197,12 +197,17 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
             "It highlights what needs attention next — not a full data export."
         )
     )
+    from services.report_interpretation_v1 import (
+        scheduled_all_clear_panel_html,
+        scheduled_exposure_panel_html,
+        scheduled_how_to_read_html_panel,
+        scheduled_summary_has_material_exposure,
+    )
+
     parts.append(
         info_panel_html(
             "How to read this",
-            "<p style=\"margin:0;\">Green, amber, and red here are <strong>dashboard operational indicators</strong> from tracked "
-            "requirements and evidence recorded in Compliance Vault Pro — not a legal determination. "
-            "Figures can change when data updates or scoring recalculates. Your portal is authoritative for current obligation state.</p>",
+            scheduled_how_to_read_html_panel(report_type_raw),
         )
     )
 
@@ -212,14 +217,14 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
         rb = summary.get("requirements_breakdown") or {}
         kv: List[Tuple[str, str]] = [
             ("Properties on file", str(summary.get("total_properties", 0))),
-            ("Properties — on track (green)", str(cb.get("green", 0))),
+            ("Properties — green (favourable)", str(cb.get("green", 0))),
             ("Properties — needs attention (amber)", str(cb.get("amber", 0))),
             ("Properties — urgent (red)", str(cb.get("red", 0))),
-            ("Requirements — compliant", str(rb.get("compliant", 0))),
+            ("Requirements — satisfied in this report", str(rb.get("compliant", 0))),
             ("Requirements — overdue", str(rb.get("overdue", 0))),
             ("Requirements — due soon", str(rb.get("expiring_soon", 0))),
             ("Requirements — pending / missing evidence", str(rb.get("pending", 0))),
-            ("Requirements met (recorded rate)", f"{summary.get('compliance_rate', 0)}%"),
+            ("Obligation satisfaction rate", f"{summary.get('compliance_rate', 0)}%"),
         ]
         ch = summary.get("compliance_score_headline") or {}
         if isinstance(ch, dict) and (ch.get("compliance_score_display") or ch.get("score_status")):
@@ -259,12 +264,18 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
         if priority_lines:
             parts.append(section_title_html("Top priorities"))
             parts.append(bullet_list_html(priority_lines))
+        elif scheduled_summary_has_material_exposure(summary, properties):
+            parts.append(
+                info_panel_html(
+                    "Operational follow-up in scope",
+                    scheduled_exposure_panel_html(),
+                )
+            )
         else:
             parts.append(
                 info_panel_html(
-                    "All clear in this scheduled summary",
-                    "<p style=\"margin:0;\">No properties are flagged red or amber in this run’s snapshot. "
-                    "Keep evidence up to date in the portal so operational indicators stay current.</p>",
+                    "No red or amber property indicators",
+                    scheduled_all_clear_panel_html(),
                 )
             )
 
@@ -341,10 +352,16 @@ def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
         f"This email summarises what needs attention. It is not a full export.",
         "",
         "HOW TO READ THIS:",
-        "- Green / amber / red are dashboard operational indicators from tracked requirements — not a legal determination.",
-        "- The portal is authoritative for current obligation state and when scores last recalculated.",
-        "",
     ]
+    from services.report_interpretation_v1 import how_to_read_email_html_bullets
+
+    rt_key = (
+        "scheduled_compliance_summary"
+        if _normalize_report_type_key(report_type_raw) == "compliance_summary"
+        else "scheduled_requirements"
+    )
+    lines.extend(f"- {b}" for b in how_to_read_email_html_bullets(rt_key))
+    lines.append("")
     summary = model.get("report_summary")
     if summary and isinstance(summary, dict):
         cb = summary.get("compliance_breakdown") or {}
@@ -354,11 +371,11 @@ def build_scheduled_report_digest_text(model: Dict[str, Any]) -> str:
                 "PORTFOLIO SNAPSHOT",
                 f"- Properties: {summary.get('total_properties', 0)}",
                 f"- Green / Amber / Red: {cb.get('green', 0)} / {cb.get('amber', 0)} / {cb.get('red', 0)}",
-                f"- Requirements compliant: {rb.get('compliant', 0)}",
+                f"- Requirements satisfied in this report: {rb.get('compliant', 0)}",
                 f"- Overdue: {rb.get('overdue', 0)}",
                 f"- Due soon: {rb.get('expiring_soon', 0)}",
                 f"- Pending: {rb.get('pending', 0)}",
-                f"- Requirements met (recorded rate): {summary.get('compliance_rate', 0)}%",
+                f"- Obligation satisfaction rate: {summary.get('compliance_rate', 0)}%",
             ]
         )
         ch = summary.get("compliance_score_headline") or {}

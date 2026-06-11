@@ -124,7 +124,7 @@ def test_portfolio_pdf_operational_sections(monkeypatch):
     assert "operational activity chronology" in text
     assert "audit readiness indicators" in text
     assert "point-in-time export" in text or "frozen snapshot export" in text
-    assert "generation boundary" in text
+    assert "report date" in text or "snapshot and export notices" in text
 
 
 def test_property_pdf_long_obligation_remediation(monkeypatch):

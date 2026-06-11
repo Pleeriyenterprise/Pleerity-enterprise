@@ -196,6 +196,10 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
     body.append(Paragraph(html.escape(_DIGEST_FROZEN_NOTE), small))
     body.append(Spacer(1, 0.2 * cm))
 
+    from services.report_interpretation_v1 import append_how_to_read_pdf_section
+
+    append_how_to_read_pdf_section(body, report_class="monthly_digest", styles=digest_styles)
+
     if model.get("digest_truncated") and model.get("digest_truncation_display_lines"):
         warn_style = ParagraphStyle(
             name="DigestTruncWarn",

@@ -529,6 +529,19 @@ class EmailService:
                 f"{context_paras}</div>"
             )
 
+        from services.report_interpretation_v1 import how_to_read_email_html_bullets
+
+        how_to_read_lines = list(intel.get("how_to_read") or how_to_read_email_html_bullets("monthly_digest"))
+        how_to_read_html = ""
+        if how_to_read_lines:
+            how_to_read_html = (
+                '<div style="margin:14px 0;padding:12px 14px;background:#f8fafc;border-left:3px solid #0ea5e9;">'
+                '<p style="margin:0 0 8px 0;font-size:13px;color:#0f172a;font-weight:600;">How to read this digest</p>'
+                '<ul style="margin:0;padding-left:18px;font-size:13px;color:#475569;line-height:1.5;">'
+                + "".join(f"<li>{html_module.escape(ln)}</li>" for ln in how_to_read_lines[:2])
+                + "</ul></div>"
+            )
+
         gen_raw = str(m.get("generated_at_display") or m.get("data_as_of") or "").strip()
         snapshot_framing = (m.get("digest_snapshot_framing_line") or "").strip()
         if not snapshot_framing and gen_raw:
@@ -667,7 +680,7 @@ class EmailService:
             pdf_note = (
                 f'<p style="margin:18px 0;font-size:14px;color:#475569;line-height:1.5;">'
                 "Attached: <strong>Monthly Operations Intelligence Digest PDF</strong> "
-                "for governance and operational review."
+                "for your records and operational review."
                 "</p>"
             )
 
@@ -704,6 +717,7 @@ class EmailService:
 <p style="margin:8px 0 0 0;color:#64748b;font-size:13px;">Properties in scope: <strong>{props}</strong> · Generated: {gen}</p>
 {snapshot_html}
 {context_html}
+{how_to_read_html}
 {overview_html}
 {snapshot_metrics}
 {delta_block}

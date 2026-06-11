@@ -27,7 +27,7 @@ def test_executive_posture_uses_favourable_not_on_track():
 
 def test_requirements_triage_preserves_recorded_section():
     assert "Recorded but not independently verified" in TRIAGE_SECTION_TITLES.values()
-    assert "Fully compliant obligations" in TRIAGE_SECTION_TITLES.values()
+    assert "Verified or accepted obligations" in TRIAGE_SECTION_TITLES.values()
 
 
 def test_score_labels_humanised_not_raw_enums():

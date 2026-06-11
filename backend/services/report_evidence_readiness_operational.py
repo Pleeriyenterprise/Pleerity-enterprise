@@ -166,7 +166,7 @@ def enrich_readiness_interpretation(indicators: Dict[str, Any]) -> Dict[str, Any
         (
             f"{remaining} obligation(s) may still require upload, onboarding, or verification before audit review."
             if remaining
-            else "All in-scope obligations currently have evidence on file at the generation boundary."
+            else "All in-scope obligations currently have evidence on file at the report date."
         ),
     ]
     readiness = out.get("audit_readiness") or ""
@@ -226,7 +226,7 @@ def build_recommended_remediation_actions(
             elif delivery == "No" and action in ("Yes", "Review"):
                 p1.append(f"Add delivery proof or tenant confirmation for {name}.")
             else:
-                p1.append(f"Review {name} — priority attention at generation boundary.")
+                p1.append(f"Review {name} — priority attention at the report date.")
         elif pri == "Medium" or status in ("EXPIRING_SOON", "PENDING", "MISSING"):
             if status in ("EXPIRING_SOON", "OVERDUE", "EXPIRED"):
                 p2.append(f"Review {name} before renewal breach{ _expiry_phrase(row)}.")
@@ -391,7 +391,7 @@ def append_operational_readiness_section(
     header = [
         Paragraph("<b>Audit readiness indicators</b>", styles["heading"]),
         Paragraph(
-            "Operational view of evidence sufficiency and preparation status at the generation boundary.",
+            "Evidence completeness and audit preparation as of the report date.",
             styles["small"],
         ),
         Spacer(1, 6),
@@ -581,7 +581,7 @@ def append_operational_action_priorities(
         body.append(band)
         body.append(Spacer(1, 6))
     if not body:
-        body.append(Paragraph("No priority groupings in export scope.", styles["body"]))
+        body.append(Paragraph("No priority groupings in this report.", styles["body"]))
     header = [
         Paragraph("<b>Action priority summary</b>", styles["heading"]),
         Paragraph("Grouped obligations by urgency for internal review sequencing.", styles["small"]),
@@ -664,7 +664,7 @@ def append_operational_governance_once(
     elements.append(
         Paragraph(
             "Operational audit-readiness export for triage and remediation sequencing. "
-            "Generation boundary and determinism notices appear in the page footer.",
+            "Snapshot and export notices appear in the page footer.",
             styles["small"],
         )
     )
@@ -699,6 +699,10 @@ def append_evidence_readiness_operational_sections(
 
     append_operational_governance_once(elements, generated_at_iso=now.isoformat(), styles=styles)
     append_intended_use_section(elements, report_kind="evidence_readiness", styles=styles)
+
+    from services.report_interpretation_v1 import append_how_to_read_pdf_section
+
+    append_how_to_read_pdf_section(elements, report_class="evidence_readiness", styles=styles)
 
     readiness = compute_readiness_indicators(
         requirements=requirements,
