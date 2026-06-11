@@ -1,0 +1,57 @@
+{
+  "rows": [
+    {
+      "job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+      "status": "OPEN",
+      "api_has_cancel": true,
+      "cancel_button_visible": true,
+      "cancel_is_hero_primary": false,
+      "scrolled_to_bottom": true,
+      "pass": true
+    },
+    {
+      "job_id": "5d6daaa8-ee2b-490f-b682-8e1528be4c9d",
+      "status": "OPEN",
+      "api_has_cancel": true,
+      "cancel_button_visible": true,
+      "cancel_is_hero_primary": false,
+      "scrolled_to_bottom": true,
+      "pass": true
+    },
+    {
+      "job_id": "ab23ce8f-2718-4220-a8f2-db9dd16f6e69",
+      "status": "OPEN",
+      "api_has_cancel": true,
+      "cancel_button_visible": true,
+      "cancel_is_hero_primary": false,
+      "scrolled_to_bottom": true,
+      "pass": true
+    },
+    {
+      "job_id": "83394cc8-9f4b-45ab-8a8a-d55c550e3f15",
+      "status": "OPEN",
+      "api_has_cancel": true,
+      "cancel_button_visible": true,
+      "cancel_is_hero_primary": false,
+      "scrolled_to_bottom": true,
+      "pass": true
+    },
+    {
+      "job_id": "33a533d4-bd5d-41cc-befe-21b686d66c32",
+      "status": "OPEN",
+      "api_has_cancel": true,
+      "cancel_button_visible": true,
+      "cancel_is_hero_primary": false,
+      "scrolled_to_bottom": true,
+      "pass": true
+    }
+  ],
+  "terminal_job_check": {
+    "job_id": "974306f4-dcf0-4206-b3d8-e355fe561f08",
+    "status": "VERIFIED",
+    "api_has_cancel": false,
+    "note": "VERIFIED jobs emit close_job only — no cancel in next_actions (from job_scan_runtime.json)"
+  },
+  "pass": true,
+  "note": "Cancel in Job options section requires scroll to bottom; not shown as hero primary"
+}

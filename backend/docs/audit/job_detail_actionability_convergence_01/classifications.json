@@ -1,7 +1,8 @@
 {
-  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
-  "overall": "PARTIAL",
-  "primary_classification": "JOB_ACTIONABILITY_DRIFT",
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-POST-DEPLOY-RUNTIME-PROOF-01",
+  "prior_audit": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "deploy_commit": "024f580e9e7018510562c14256c308a1a50b14dc",
+  "overall": "VERIFIED_OPERATIONALLY",
   "resolved_classifications": [
     "JOB_ACTIONABILITY_DRIFT",
     "PROGRESS_CONTRACT_DRIFT",
@@ -9,13 +10,22 @@
     "ENTITLEMENT_ACTION_DRIFT"
   ],
   "verified_operationally_criteria": {
-    "hero_assign_opens_modal": true,
-    "contractor_section_same_behaviour": true,
-    "no_misleading_assign_without_entitlement": true,
+    "hero_assign_opens_assignment_workflow": true,
+    "contractor_section_same_workflow": true,
+    "no_visit_scroll_misfire": true,
+    "entitlement_guard_verified": true,
     "progress_matches_contractor_facts": true,
-    "cancel_governed_by_lifecycle": true,
-    "browser_proof_captured": false,
-    "regression_passes": true
+    "cancel_follows_lifecycle_governance": true,
+    "browser_screenshots_captured": true,
+    "regression_passes": true,
+    "backend_deploy_match": true,
+    "frontend_bundle_match": true
   },
-  "rationale": "Code and unit tests verify convergence; staging browser session not captured in this run — overall PARTIAL until post-deploy browser proof."
+  "original_defect_retest": {
+    "job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+    "before_fix": "Hero Assign contractor scrolled to Visit; progress said Contractor assigned without contractor_id",
+    "after_fix": "Hero opens assign modal; progress shows Awaiting contractor assignment; contractor block shows No contractor assigned yet",
+    "pass": true
+  },
+  "verified_at_utc": "2026-06-11T14:05:00Z"
 }

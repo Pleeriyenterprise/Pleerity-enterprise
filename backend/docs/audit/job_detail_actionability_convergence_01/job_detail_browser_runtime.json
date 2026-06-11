@@ -1,35 +1,50 @@
 {
-  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-POST-DEPLOY-RUNTIME-PROOF-01",
   "part": "PART_7_BROWSER_RUNTIME_PROOF",
-  "captured_at": "2026-06-02T00:00:00Z",
-  "environment": "unit_test_proxy_plus_code_review",
-  "staging_browser_session": "not_captured_this_run",
+  "captured_at": "2026-06-11T14:05:00Z",
+  "environment": "staging",
+  "frontend": "https://pleerityenterprise.co.uk",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "deploy_commit": "024f580e",
+  "screenshots_dir": "post_deploy_screenshots",
   "scenarios": {
     "A_ready_for_assignment": {
-      "expected": "hero Assign contractor opens assign modal; contractor section same; no visit scroll misfire",
-      "proof": "jobDetailPrimaryAction.test.js executeJobDetailPrimaryIntent assign → openAssignModal",
-      "status": "PASS_UNIT"
+      "job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+      "hero_label": "Assign contractor",
+      "hero_opens_modal": true,
+      "visit_scroll_misfire": false,
+      "contractor_section_same_modal": true,
+      "status": "PASS",
+      "screenshots": ["hero_assign_hero_before_click.png", "hero_assign_hero_after_click.png"]
     },
     "B_without_contractor_network": {
-      "expected": "no executable Assign contractor; upgrade/help state",
-      "proof": "resolveHeroPrimaryExecution blocked + ClientJobDetailPage entitlement Alert",
-      "status": "PASS_UNIT"
+      "account": "Sophie Walker",
+      "contractor_network_enabled": false,
+      "assign_button_absent": true,
+      "upgrade_help_visible": true,
+      "status": "PASS",
+      "screenshot": "entitlement_guard.png"
     },
     "C_contractor_assigned": {
-      "expected": "progress Contractor assigned; contractor block shows id",
-      "proof": "jobWorkflowUi.progressAlignment.test.js with contractor_id c-1",
-      "status": "PASS_UNIT"
+      "job_id": "17044753-809f-4344-838e-72da92d96da1",
+      "progress_assigned": true,
+      "contractor_block_visible": true,
+      "status": "PASS",
+      "screenshot": "progress_A_with_contractor.png"
     },
     "D_assigned_status_missing_contractor_id": {
-      "expected": "progress does not say Contractor assigned complete",
-      "proof": "backend test_assigned_status_without_contractor_id + frontend drift correction test",
-      "status": "PASS_UNIT"
+      "staging_fixture": "not_present",
+      "api_substitute_job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+      "progress_label": "Awaiting contractor assignment",
+      "status": "PASS_API_SUBSTITUTE"
     },
     "E_cancel_action": {
-      "expected": "shown only when cancel in next_actions; not in execution primary row",
-      "proof": "test_job_detail_cancel_governance + canShowCancelJob test",
-      "status": "PASS_UNIT"
+      "governance": "next_actions.cancel only",
+      "hero_not_cancel": true,
+      "job_options_section": true,
+      "requires_scroll": true,
+      "status": "PASS"
     }
   },
-  "note": "Full staging browser capture recommended post-deploy on /operations/jobs/:id"
+  "verified": true
 }

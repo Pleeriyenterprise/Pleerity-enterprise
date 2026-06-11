@@ -1,0 +1,233 @@
+{
+  "scenario_a_with_contractor": {
+    "scenario": "A_with_contractor",
+    "job_id": "17044753-809f-4344-838e-72da92d96da1",
+    "pass": true,
+    "checks": {
+      "progress_assigned": true,
+      "contractor_block": true
+    }
+  },
+  "scenario_b_assigned_no_contractor": {
+    "skipped": true,
+    "reason": "no_job_or_playwright"
+  },
+  "scenario_b_api_substitute": {
+    "job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+    "status": "OPEN",
+    "contractor_id": null,
+    "assigned_step_label": "Awaiting contractor assignment",
+    "assigned_step_state": "current",
+    "pass": true,
+    "note": "No ASSIGNED+null contractor_id on staging; OPEN unassigned jobs show correct API label"
+  },
+  "api_scan": {
+    "drift_candidates": [],
+    "with_contractor": [
+      {
+        "job_id": "17044753-809f-4344-838e-72da92d96da1",
+        "status": "SCHEDULED",
+        "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+        "next_action_ids": [
+          "start",
+          "mark_no_access",
+          "request_visit_reschedule",
+          "propose_schedule",
+          "cancel_booking",
+          "cancel"
+        ],
+        "primary_action_key": "start",
+        "primary_action_label": "Mark in progress",
+        "assigned_step": {
+          "key": "assigned",
+          "label": "Contractor assigned",
+          "state": "complete",
+          "visible_to_roles": [
+            "admin",
+            "contractor",
+            "landlord"
+          ],
+          "explanation": "A contractor is linked to this job."
+        },
+        "progress_labels": [
+          "Contractor assigned",
+          "Visit booked",
+          "Work started",
+          "Work completed",
+          "Proof reviewed",
+          "Closed"
+        ],
+        "has_cancel": true
+      },
+      {
+        "job_id": "974306f4-dcf0-4206-b3d8-e355fe561f08",
+        "status": "VERIFIED",
+        "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+        "next_action_ids": [
+          "close_job"
+        ],
+        "primary_action_key": "close_job",
+        "primary_action_label": "Mark closed",
+        "assigned_step": {
+          "key": "assigned",
+          "label": "Contractor assigned",
+          "state": "complete",
+          "visible_to_roles": [
+            "admin",
+            "contractor",
+            "landlord"
+          ],
+          "explanation": "A contractor is linked to this job."
+        },
+        "progress_labels": [
+          "Contractor assigned",
+          "Visit booked",
+          "Work started",
+          "Work completed",
+          "Proof reviewed",
+          "Closed"
+        ],
+        "has_cancel": false
+      },
+      {
+        "job_id": "c51a0e1d-e9d2-420f-82b0-087593993248",
+        "status": "SCHEDULED",
+        "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+        "next_action_ids": [
+          "start",
+          "mark_no_access",
+          "request_visit_reschedule",
+          "propose_schedule",
+          "cancel_booking",
+          "cancel"
+        ],
+        "primary_action_key": "start",
+        "primary_action_label": "Mark in progress",
+        "assigned_step": {
+          "key": "assigned",
+          "label": "Contractor assigned",
+          "state": "complete",
+          "visible_to_roles": [
+            "admin",
+            "contractor",
+            "landlord"
+          ],
+          "explanation": "A contractor is linked to this job."
+        },
+        "progress_labels": [
+          "Contractor assigned",
+          "Visit booked",
+          "Work started",
+          "Work completed",
+          "Proof reviewed",
+          "Closed"
+        ],
+        "has_cancel": true
+      },
+      {
+        "job_id": "dd4e4791-cf06-4db8-b83d-baabb672c55a",
+        "status": "SCHEDULED",
+        "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+        "next_action_ids": [
+          "start",
+          "mark_no_access",
+          "request_visit_reschedule",
+          "propose_schedule",
+          "cancel_booking",
+          "cancel"
+        ],
+        "primary_action_key": "start",
+        "primary_action_label": "Mark in progress",
+        "assigned_step": {
+          "key": "assigned",
+          "label": "Contractor assigned",
+          "state": "complete",
+          "visible_to_roles": [
+            "admin",
+            "contractor",
+            "landlord"
+          ],
+          "explanation": "A contractor is linked to this job."
+        },
+        "progress_labels": [
+          "Contractor assigned",
+          "Visit booked",
+          "Work started",
+          "Work completed",
+          "Proof reviewed",
+          "Closed"
+        ],
+        "has_cancel": true
+      },
+      {
+        "job_id": "8ffbd77b-0819-4837-bd35-d2825b76a3e9",
+        "status": "SCHEDULED",
+        "contractor_id": "a1f2e3b4-c5d6-4789-a012-3456789abcde",
+        "next_action_ids": [
+          "start",
+          "mark_no_access",
+          "request_visit_reschedule",
+          "propose_schedule",
+          "cancel_booking",
+          "cancel"
+        ],
+        "primary_action_key": "start",
+        "primary_action_label": "Mark in progress",
+        "assigned_step": {
+          "key": "assigned",
+          "label": "Contractor assigned",
+          "state": "complete",
+          "visible_to_roles": [
+            "admin",
+            "contractor",
+            "landlord"
+          ],
+          "explanation": "A contractor is linked to this job."
+        },
+        "progress_labels": [
+          "Contractor assigned",
+          "Visit booked",
+          "Work started",
+          "Work completed",
+          "Proof reviewed",
+          "Closed"
+        ],
+        "has_cancel": true
+      }
+    ],
+    "ready_for_assign_sample": [
+      {
+        "job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+        "status": "OPEN",
+        "contractor_id": null,
+        "next_action_ids": [
+          "assign_contractor",
+          "cancel"
+        ],
+        "primary_action_key": "assign_contractor",
+        "primary_action_label": "Assign contractor",
+        "assigned_step": {
+          "key": "assigned",
+          "label": "Awaiting contractor assignment",
+          "state": "current",
+          "visible_to_roles": [
+            "admin",
+            "contractor",
+            "landlord"
+          ],
+          "explanation": "A contractor is linked to this job."
+        },
+        "progress_labels": [
+          "Awaiting contractor assignment",
+          "Visit booked",
+          "Work started",
+          "Work completed",
+          "Proof reviewed",
+          "Closed"
+        ],
+        "has_cancel": true
+      }
+    ]
+  },
+  "pass": true
+}

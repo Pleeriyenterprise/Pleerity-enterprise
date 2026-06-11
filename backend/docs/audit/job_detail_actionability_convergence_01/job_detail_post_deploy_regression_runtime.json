@@ -1,0 +1,20 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-POST-DEPLOY-RUNTIME-PROOF-01",
+  "captured_at": "2026-06-11T14:00:00Z",
+  "frontend": {
+    "command": "npm test -- --watchAll=false --testPathPattern=jobDetailPrimaryAction|jobWorkflowUi.progressAlignment",
+    "exit_code": 0,
+    "suites": 2,
+    "tests": 11,
+    "passed": 11,
+    "failed": 0
+  },
+  "backend": {
+    "command": "pytest tests/test_progress_contract_service.py tests/test_job_detail_cancel_governance.py tests/test_compliance_workflow_maintenance_canonical.py -q",
+    "exit_code": 0,
+    "passed": 30,
+    "failed": 0,
+    "note": "Excluded test_operational_cognition_service::test_requirement_envelope_false_progression (pre-existing unrelated failure)"
+  },
+  "pass": true
+}

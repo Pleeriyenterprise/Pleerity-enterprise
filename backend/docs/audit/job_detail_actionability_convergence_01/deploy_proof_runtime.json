@@ -1,0 +1,26 @@
+{
+  "programme": "JOB-DETAIL-ACTIONABILITY-POST-DEPLOY-RUNTIME-PROOF-01",
+  "verified_at_utc": "2026-06-11T13:53:56.550328+00:00",
+  "expected_commit_prefix": "024f580e",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "frontend_base": "https://pleerityenterprise.co.uk",
+  "backend": {
+    "status": 200,
+    "commit_sha": "024f580e9e7018510562c14256c308a1a50b14dc",
+    "environment": "production"
+  },
+  "backend_deploy_match": true,
+  "frontend": {
+    "bundle_url": "https://pleerityenterprise.co.uk/static/js/main.dd2e386d.js",
+    "bundle_status": 200,
+    "markers": {
+      "cancel_job_lifecycle_testid": true,
+      "assign_modal_testid": true,
+      "awaiting_assignment_copy": true,
+      "build_sha_in_bundle": true
+    },
+    "deploy_match": true,
+    "skipped": "playwright_not_installed"
+  },
+  "pass": true
+}

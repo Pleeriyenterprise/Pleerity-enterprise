@@ -1,0 +1,41 @@
+{
+  "nancy_entitlements": {
+    "status": 200,
+    "contractor_network_enabled": true,
+    "contractor_network": {
+      "enabled": true,
+      "name": "Contractor Network",
+      "description": "View vetted contractors and preferred trades for your account.",
+      "category": "ops",
+      "minimum_plan": null
+    }
+  },
+  "sophie_entitlements": {
+    "status": 200,
+    "contractor_network_enabled": false,
+    "contractor_network": {
+      "enabled": false,
+      "name": "Contractor Network",
+      "description": "View vetted contractors and preferred trades for your account.",
+      "category": "ops",
+      "minimum_plan": null
+    }
+  },
+  "browser": {
+    "steps": [
+      {
+        "step": "no_section_assign_button",
+        "ok": true,
+        "detail": "section_btn=False"
+      },
+      {
+        "step": "upgrade_or_help_visible",
+        "ok": true,
+        "detail": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\n1\nAsk Assistant\nSophie Walker\nLogout\nToday\nCommand center\nDashboar"
+      }
+    ],
+    "pass": true
+  },
+  "pass": true,
+  "note": "Sophie used when contractor_network disabled; else documents Nancy has feature enabled"
+}

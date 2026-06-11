@@ -1,0 +1,25 @@
+{
+  "hero_cta": {
+    "source": "compliance_workflow_service.next_job_actions",
+    "key": "assign_contractor",
+    "label": "Assign contractor"
+  },
+  "contractor_cta": {
+    "source": "next_actions (assign_contractor id gate)",
+    "executable": true
+  },
+  "progress_cta": {
+    "source": "progress_contract_v1.next_primary_action",
+    "id": "assign_contractor",
+    "label": "Assign contractor"
+  },
+  "current_update_cta": {
+    "source": "clientHeroOversightAction \u2190 next_actions confirm_visit",
+    "note": "browser-only; API uses next_actions scheduling section"
+  },
+  "continuation": {
+    "has_active_lineage": null,
+    "cta_key": null
+  },
+  "multi_authority_drift": false
+}

@@ -1,0 +1,45 @@
+{
+  "job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+  "tag": "hero_assign",
+  "steps": [
+    {
+      "step": "hero_visible",
+      "ok": true,
+      "detail": "Assign contractor"
+    },
+    {
+      "step": "hero_label_assign",
+      "ok": true,
+      "detail": "Assign contractor"
+    },
+    {
+      "step": "hero_opens_assign_modal",
+      "ok": true,
+      "detail": "modal=True"
+    },
+    {
+      "step": "hero_no_visit_scroll_misfire",
+      "ok": true,
+      "detail": "scroll_delta=0"
+    },
+    {
+      "step": "contractor_section_opens_modal",
+      "ok": true,
+      "detail": "buttons=1"
+    },
+    {
+      "step": "progress_no_false_assigned",
+      "ok": true,
+      "detail": "checked progress vs contractor block"
+    }
+  ],
+  "screenshots": {
+    "before_click": "hero_assign_hero_before_click.png",
+    "after_click": "hero_assign_hero_after_click.png"
+  },
+  "hero_assign_pass": true,
+  "contractor_section_pass": true,
+  "convergence_pass": true,
+  "body_excerpt": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nPLE-CVP-2026-000028\n4\nAsk Assistant\nNancy Brandon\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nOperations\nMore\nLast updated: 11/06/2026, 14:54:06\u00b7 Last recorded activity: 17/05/2026, 15:44:05\nAll jobs\nMaintenance job\nNorthern Ireland\nAwaiting contractor assignment\n\ne670afc5-ef2d-487b-b688-ac8d865daf63\n\nRecurring Repairs Risk: Investigate the root cause instead of repeat patch repairs.\n\nEach step updates this job\u2019s r",
+  "pass": true
+}
