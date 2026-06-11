@@ -1,0 +1,20 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "part": "PART_5_PROGRESS_CONTRACT_ALIGNMENT",
+  "captured_at": "2026-06-02T00:00:00Z",
+  "backend_fix": {
+    "module": "progress_contract_service",
+    "_assigned": "requires contractor_id (status alone no longer marks assigned complete)",
+    "_assigned_step_label": "Awaiting contractor assignment when current without contractor_id"
+  },
+  "frontend_fix": {
+    "module": "jobWorkflowUi.alignProgressTrackerWithContractorFacts",
+    "drift_detection": "assigned step complete/current without contractor_id",
+    "corrected_label": "Awaiting contractor assignment"
+  },
+  "tests": [
+    "backend/tests/test_progress_contract_service.py::test_assigned_status_without_contractor_id_not_marked_assigned",
+    "frontend/src/utils/jobWorkflowUi.progressAlignment.test.js"
+  ],
+  "verified": true
+}

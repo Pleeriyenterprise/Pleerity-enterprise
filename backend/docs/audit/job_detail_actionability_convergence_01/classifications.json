@@ -1,0 +1,21 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "overall": "PARTIAL",
+  "primary_classification": "JOB_ACTIONABILITY_DRIFT",
+  "resolved_classifications": [
+    "JOB_ACTIONABILITY_DRIFT",
+    "PROGRESS_CONTRACT_DRIFT",
+    "CANCEL_GOVERNANCE_DRIFT",
+    "ENTITLEMENT_ACTION_DRIFT"
+  ],
+  "verified_operationally_criteria": {
+    "hero_assign_opens_modal": true,
+    "contractor_section_same_behaviour": true,
+    "no_misleading_assign_without_entitlement": true,
+    "progress_matches_contractor_facts": true,
+    "cancel_governed_by_lifecycle": true,
+    "browser_proof_captured": false,
+    "regression_passes": true
+  },
+  "rationale": "Code and unit tests verify convergence; staging browser session not captured in this run — overall PARTIAL until post-deploy browser proof."
+}

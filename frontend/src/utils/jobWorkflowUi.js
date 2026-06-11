@@ -54,6 +54,45 @@ const CLIENT_PROGRESS_STEPS = [
  * @param {Record<string, unknown>|null|undefined} job
  * @returns {{ steps: string[], currentIndex: number, completedFlags: boolean[], progressContract?: object }|null}
  */
+const ASSIGNED_STEP_AWAITING_LABEL = 'Awaiting contractor assignment';
+
+/**
+ * Correct progress_contract_v1 when assigned step disagrees with contractor_id facts.
+ * @param {Record<string, unknown>|null|undefined} job
+ * @param {{ steps: string[], currentIndex: number, completedFlags: boolean[], progressContract?: object }|null} tracker
+ */
+export function alignProgressTrackerWithContractorFacts(job, tracker) {
+  if (!tracker?.progressContract) return tracker;
+  const hasContractor = !!String(job?.contractor_id || '').trim();
+  const raw = (tracker.progressContract.progress_steps || []).filter((s) => s && s.state !== 'skipped');
+  const assignedIdx = raw.findIndex((s) => s.key === 'assigned');
+  if (assignedIdx < 0) return tracker;
+
+  const assignedStep = raw[assignedIdx];
+  const assignedCompleteWithoutFacts = assignedStep.state === 'complete' && !hasContractor;
+  const assignedCurrentWithoutFacts = assignedStep.state === 'current' && !hasContractor;
+  if (!assignedCompleteWithoutFacts && !assignedCurrentWithoutFacts) return tracker;
+
+  const steps = [...tracker.steps];
+  const completedFlags = [...tracker.completedFlags];
+  let currentIndex = tracker.currentIndex;
+
+  steps[assignedIdx] = ASSIGNED_STEP_AWAITING_LABEL;
+  if (assignedCompleteWithoutFacts) {
+    completedFlags[assignedIdx] = false;
+    currentIndex = assignedIdx;
+  }
+
+  return {
+    ...tracker,
+    steps,
+    currentIndex,
+    completedFlags,
+    progressDriftCorrected: true,
+    progressDriftReason: 'assigned_step_without_contractor_id',
+  };
+}
+
 export function progressTrackerFromContract(job) {
   const pc = job?.progress_contract;
   const raw = pc?.progress_steps;
@@ -67,7 +106,8 @@ export function progressTrackerFromContract(job) {
     currentIndex = allComplete ? visible.length - 1 : visible.findIndex((s) => s.state === 'pending');
   }
   const completedFlags = visible.map((s) => s.state === 'complete');
-  return { steps, currentIndex, completedFlags, progressContract: pc };
+  const base = { steps, currentIndex, completedFlags, progressContract: pc };
+  return alignProgressTrackerWithContractorFacts(job, base);
 }
 
 /** Client oversight tracker — prefers server progress_contract_v1. */

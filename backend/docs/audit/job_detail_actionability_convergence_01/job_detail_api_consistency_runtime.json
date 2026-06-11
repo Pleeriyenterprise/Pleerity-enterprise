@@ -1,0 +1,30 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "part": "PART_6_BACKEND_API_CHECK",
+  "captured_at": "2026-06-02T00:00:00Z",
+  "serialize_client_job_fields": {
+    "operational_cognition.primary_action": "derived from next_job_actions via build_envelope_for_job",
+    "next_actions": "next_job_actions + lifecycle cancel append",
+    "contractor_id": "factual assignment source of truth",
+    "status": "persisted workflow status",
+    "progress_contract_v1": "build_progress_contract_v1 — assigned step now contractor_id-gated",
+    "operational_continuation": "unchanged",
+    "entitlements": "client portal feature flags (contractor_network)"
+  },
+  "contradictions_fixed": [
+    {
+      "before": "progress_contract assigned complete when status ASSIGNED but contractor_id empty",
+      "after": "assigned step current with Awaiting contractor assignment label"
+    },
+    {
+      "before": "cancel available in UI without cancel in next_actions",
+      "after": "cancel emitted in next_actions lifecycle section; UI gated"
+    },
+    {
+      "before": "operational_cognition primary assign but hero scrolled to Visit",
+      "after": "frontend routes by normalized primary key"
+    }
+  ],
+  "normalization_boundary": "frontend alignProgressTrackerWithContractorFacts guards stale API payloads",
+  "verified": true
+}

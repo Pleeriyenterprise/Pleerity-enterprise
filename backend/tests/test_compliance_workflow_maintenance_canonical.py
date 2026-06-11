@@ -79,7 +79,8 @@ def test_maintenance_awaiting_parts_canonical_and_actions():
     wo = _base_maintenance(status=ms.STATUS_AWAITING_PARTS)
     assert derive_canonical_job_status(wo) == "AWAITING_PARTS"
     ids = _ids(next_job_actions(wo))
-    assert ids == ["resume_after_parts", "complete"]
+    assert ids[:2] == ["resume_after_parts", "complete"]
+    assert ids[-1] == "cancel"
     ser = serialize_client_job(wo)
     assert ser["job_status"] == "AWAITING_PARTS"
     assert not (wo.get("completed_at")), "fixture should not imply completion while awaiting parts"

@@ -1,0 +1,80 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "part": "PART_1_ACTION_SOURCE_INVENTORY",
+  "captured_at": "2026-06-02T00:00:00Z",
+  "surface": "ClientJobDetailPage",
+  "ctas": [
+    {
+      "id": "hero_primary",
+      "location": "NextActionHero",
+      "displayed_label_source": "operational_cognition.primary_action.label (fallback: progress_contract.next_primary_action / prioritized next_actions)",
+      "action_key_resolution": "jobDetailPrimaryAction.resolveHeroPrimaryActionKey",
+      "click_handler": "executeJobDetailPrimaryIntent via resolveHeroPrimaryExecution",
+      "entitlements": ["contractor_network required when key is assign_contractor"],
+      "next_actions_dependency": "assign_contractor|assign must exist in next_actions for executable assign",
+      "expected_side_effect": "assign_contractor → open assign modal; visit keys → scroll to #client-job-visit; unknown → toast"
+    },
+    {
+      "id": "contractor_section_assign",
+      "location": "Contractor SectionCard",
+      "displayed_label": "Assign contractor",
+      "displayed_label_source": "static UI label",
+      "action_key": "assign_contractor",
+      "click_handler": "handleAssignContractorClick → openAssignModal",
+      "entitlements": ["contractor_network"],
+      "next_actions_dependency": "assign_contractor or assign in next_actions",
+      "expected_side_effect": "opens assign contractor modal (same as hero)"
+    },
+    {
+      "id": "current_update_oversight",
+      "location": "Current update SectionCard",
+      "displayed_label_source": "clientHeroOversightAction.label",
+      "action_key": "confirm_visit when pending",
+      "click_handler": "scroll to Visit section",
+      "entitlements": [],
+      "next_actions_dependency": "confirm_visit in next_actions",
+      "expected_side_effect": "scroll to Visit"
+    },
+    {
+      "id": "visit_scheduling",
+      "location": "Visit SectionCard",
+      "displayed_label_source": "next_actions[].label per action id",
+      "action_keys": ["request_booking", "propose_schedule", "reschedule_booking", "confirm_visit", "request_visit_reschedule", "cancel_booking", "mark_no_access", "mark_reschedule_required"],
+      "click_handler": "handleLifecycleClick",
+      "entitlements": ["maintenance_workflows via API"],
+      "next_actions_dependency": "matching id in next_actions",
+      "expected_side_effect": "API lifecycle mutation or booking guard → assign modal"
+    },
+    {
+      "id": "execution_lifecycle",
+      "location": "During / after the visit SectionCard",
+      "action_keys": ["start", "awaiting_parts", "complete", "verify", "close_job", "resume_after_parts"],
+      "click_handler": "handleLifecycleClick",
+      "next_actions_dependency": "matching id in next_actions",
+      "expected_side_effect": "API lifecycle mutation"
+    },
+    {
+      "id": "cancel_job",
+      "location": "Job options SectionCard (bottom)",
+      "displayed_label_source": "next_actions cancel.label",
+      "action_key": "cancel",
+      "click_handler": "handleLifecycleClick('cancel')",
+      "entitlements": ["maintenance_workflows via API"],
+      "next_actions_dependency": "cancel in next_actions (lifecycle section from backend)",
+      "expected_side_effect": "POST /jobs/{id}/cancel"
+    },
+    {
+      "id": "row_routing",
+      "location": "Operations lists / issue lineage / Today",
+      "displayed_label_source": "jobPreviewManageJobCtaLabel / operational_cognition",
+      "expected_route": "/operations/jobs/:jobId",
+      "note": "Detail page resolves actions on load via shared jobDetailPrimaryAction"
+    }
+  ],
+  "pre_fix_drift": [
+    "hero always scrolled to Visit regardless of primary_action key",
+    "contractor section opened modal but hero did not",
+    "cancel shown on any non-terminal status"
+  ],
+  "post_fix_state": "hero and contractor section share jobDetailPrimaryAction resolver"
+}

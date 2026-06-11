@@ -1,0 +1,35 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "part": "PART_7_BROWSER_RUNTIME_PROOF",
+  "captured_at": "2026-06-02T00:00:00Z",
+  "environment": "unit_test_proxy_plus_code_review",
+  "staging_browser_session": "not_captured_this_run",
+  "scenarios": {
+    "A_ready_for_assignment": {
+      "expected": "hero Assign contractor opens assign modal; contractor section same; no visit scroll misfire",
+      "proof": "jobDetailPrimaryAction.test.js executeJobDetailPrimaryIntent assign → openAssignModal",
+      "status": "PASS_UNIT"
+    },
+    "B_without_contractor_network": {
+      "expected": "no executable Assign contractor; upgrade/help state",
+      "proof": "resolveHeroPrimaryExecution blocked + ClientJobDetailPage entitlement Alert",
+      "status": "PASS_UNIT"
+    },
+    "C_contractor_assigned": {
+      "expected": "progress Contractor assigned; contractor block shows id",
+      "proof": "jobWorkflowUi.progressAlignment.test.js with contractor_id c-1",
+      "status": "PASS_UNIT"
+    },
+    "D_assigned_status_missing_contractor_id": {
+      "expected": "progress does not say Contractor assigned complete",
+      "proof": "backend test_assigned_status_without_contractor_id + frontend drift correction test",
+      "status": "PASS_UNIT"
+    },
+    "E_cancel_action": {
+      "expected": "shown only when cancel in next_actions; not in execution primary row",
+      "proof": "test_job_detail_cancel_governance + canShowCancelJob test",
+      "status": "PASS_UNIT"
+    }
+  },
+  "note": "Full staging browser capture recommended post-deploy on /operations/jobs/:id"
+}

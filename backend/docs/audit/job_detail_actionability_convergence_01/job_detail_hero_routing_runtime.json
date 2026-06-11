@@ -1,0 +1,25 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "part": "PART_2_HERO_CTA_ROUTING_FIX",
+  "captured_at": "2026-06-02T00:00:00Z",
+  "resolver_module": "frontend/src/utils/jobDetailPrimaryAction.js",
+  "routing_rules": {
+    "assign_contractor": "openAssignModal()",
+    "assign": "normalized to assign_contractor → openAssignModal()",
+    "visit_scheduling_keys": "scrollToVisit (#client-job-visit)",
+    "confirm_visit": "scrollToVisit",
+    "open_job|view_job|open_job_detail": "navigate(primary_action.url) or scroll fallback",
+    "unknown": "toast — no silent no-op"
+  },
+  "entitlement_guards": {
+    "contractor_network_missing": {
+      "hero_executable": false,
+      "ui": "upgrade/help Alert + toast on blocked click",
+      "backend_enforcement": "GET assignable-contractors / assign-contractor APIs unchanged"
+    }
+  },
+  "tests": [
+    "frontend/src/utils/jobDetailPrimaryAction.test.js — assign routes to modal, visit scroll, entitlement block"
+  ],
+  "verified": true
+}

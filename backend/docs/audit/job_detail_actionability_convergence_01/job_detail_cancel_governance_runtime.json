@@ -1,0 +1,23 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "part": "PART_4_CANCEL_ACTION_GOVERNANCE",
+  "captured_at": "2026-06-02T00:00:00Z",
+  "backend": {
+    "module": "compliance_workflow_service._append_lifecycle_cancel",
+    "action_id": "cancel",
+    "section": "lifecycle",
+    "emitted_when": "non-terminal job with actionable next_actions (not none-only)",
+    "pre_assignment_hint": "Stop this job before a contractor is assigned.",
+    "post_assignment_hint": "Cancel the whole job. Use cancel visit if you only need to withdraw a booking."
+  },
+  "frontend": {
+    "gate": "canShowCancelJob — next_actions contains cancel",
+    "placement": "Job options SectionCard at page bottom (not execution primary row)",
+    "style": "outline destructive-adjacent, not hero/teal primary"
+  },
+  "tests": [
+    "backend/tests/test_job_detail_cancel_governance.py",
+    "frontend/src/utils/jobDetailPrimaryAction.test.js — canShowCancelJob"
+  ],
+  "verified": true
+}

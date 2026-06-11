@@ -1,0 +1,30 @@
+{
+  "audit_id": "JOB-DETAIL-ACTIONABILITY-AND-PROGRESS-CONVERGENCE-01",
+  "part": "PART_3_UNIFY_CONTRACTOR_ASSIGNMENT_CTA",
+  "captured_at": "2026-06-02T00:00:00Z",
+  "shared_resolver": "jobDetailPrimaryAction",
+  "entry_points": [
+    {
+      "surface": "NextActionHero",
+      "gate": "canExecuteAssignContractor + resolveHeroPrimaryExecution",
+      "handler": "executeJobDetailPrimaryIntent → openAssignModal"
+    },
+    {
+      "surface": "Contractor section button",
+      "gate": "canExecuteAssignContractor",
+      "handler": "handleAssignContractorClick → openAssignModal",
+      "testid": "open-assign-contractor-modal"
+    },
+    {
+      "surface": "Booking guard dialog",
+      "handler": "openAssignModal (unchanged)"
+    }
+  ],
+  "convergence": {
+    "same_modal": true,
+    "same_entitlement_check": true,
+    "same_next_actions_check": true,
+    "loading_errors": "loadAssignableContractors shared in openAssignModal"
+  },
+  "verified": true
+}

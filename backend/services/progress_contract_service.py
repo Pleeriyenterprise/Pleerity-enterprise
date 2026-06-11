@@ -283,12 +283,25 @@ def _closed(wo: Dict[str, Any]) -> bool:
 
 
 def _assigned(wo: Dict[str, Any]) -> bool:
+    """True only when a contractor_id is linked — status alone must not imply assignment."""
     st = _norm_status(wo)
     if st == maintenance_service.STATUS_CANCELLED:
         return False
-    if bool((wo.get("contractor_id") or "").strip()):
-        return True
-    return st not in (maintenance_service.STATUS_OPEN, maintenance_service.STATUS_DRAFT)
+    return bool((wo.get("contractor_id") or "").strip())
+
+
+def _assigned_step_label(key: str, audience: Audience, wo: Dict[str, Any], *, complete: bool) -> str:
+    """Prefer factual assignment; surface drift when status suggests assignment without contractor_id."""
+    if key != "assigned":
+        return _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title())
+    has_contractor = bool((wo.get("contractor_id") or "").strip())
+    if has_contractor or complete:
+        return _STEP_LABELS["assigned"][audience]
+    if audience == "landlord":
+        return "Awaiting contractor assignment"
+    if audience == "contractor":
+        return "Assignment needed"
+    return "Assignment needed"
 
 
 def _inspection_completed(wo: Dict[str, Any]) -> bool:
@@ -421,6 +434,7 @@ def _materialize_steps(
     *,
     audience: Audience,
     current_key: str,
+    wo: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for rs in raw_steps:
@@ -433,10 +447,15 @@ def _materialize_steps(
             state = "blocked" if rs.get("blocked") else "current"
         else:
             state = "pending"
+        label = (
+            _assigned_step_label(key, audience, wo or {}, complete=bool(rs.get("complete")))
+            if wo is not None
+            else _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title())
+        )
         out.append(
             {
                 "key": key,
-                "label": _STEP_LABELS.get(key, {}).get(audience, key.replace("_", " ").title()),
+                "label": label,
                 "state": state,
                 "visible_to_roles": sorted(_ALL_ROLES),
                 "explanation": _STEP_EXPLANATIONS.get(key, ""),
@@ -576,7 +595,7 @@ def build_progress_contract_v1(
             next_actions = next_job_actions(wo)
 
     current_key, raw_steps = _resolve_step_states(wo, step_keys)
-    progress_steps = _materialize_steps(raw_steps, audience=audience, current_key=current_key)
+    progress_steps = _materialize_steps(raw_steps, audience=audience, current_key=current_key, wo=wo)
     stage_label = _current_stage_label(progress_steps, audience)
     stall = work_order_stall_context(wo)
     primary = _resolve_primary_action(next_actions, audience=audience, wo=wo)

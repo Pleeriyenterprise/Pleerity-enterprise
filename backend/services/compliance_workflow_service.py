@@ -594,6 +594,46 @@ def _apply_client_pricing_overrides(wo: Dict[str, Any], actions: List[Dict[str, 
     return extra + filtered
 
 
+def _maybe_whole_job_cancel_action(wo: Dict[str, Any], canonical: str, st: str) -> Optional[Dict[str, Any]]:
+    """Lifecycle cancel — appended when whole-job cancellation is meaningful (not terminal)."""
+    if st in (maintenance_service.STATUS_CANCELLED, maintenance_service.STATUS_CLOSED):
+        return None
+    if canonical in ("VERIFIED", "CLOSED", "CANCELLED"):
+        return None
+    if st == maintenance_service.STATUS_VERIFIED:
+        return None
+    has_contractor = bool((wo.get("contractor_id") or "").strip())
+    if not has_contractor:
+        return _action(
+            "cancel",
+            "Cancel job",
+            "Stop this job before a contractor is assigned.",
+            section="lifecycle",
+        )
+    return _action(
+        "cancel",
+        "Cancel job",
+        "Cancel the whole job. Use cancel visit if you only need to withdraw a booking.",
+        section="lifecycle",
+    )
+
+
+def _append_lifecycle_cancel(
+    actions: List[Dict[str, Any]],
+    wo: Dict[str, Any],
+    canonical: str,
+    st: str,
+) -> List[Dict[str, Any]]:
+    if not actions or all(a.get("id") == "none" for a in actions):
+        return actions
+    if any(a.get("id") == "cancel" for a in actions):
+        return actions
+    cancel = _maybe_whole_job_cancel_action(wo, canonical, st)
+    if not cancel:
+        return actions
+    return list(actions) + [cancel]
+
+
 def next_job_actions(wo: Dict[str, Any]) -> List[Dict[str, str]]:
     """Next steps for COMPLIANCE or MAINTENANCE work orders (labels aligned with client job UI)."""
     from services.completion_workflow_transition_service import suppress_invalid_post_completion_actions
@@ -606,7 +646,8 @@ def next_job_actions(wo: Dict[str, Any]) -> List[Dict[str, str]]:
     else:
         base = _compliance_next_job_actions(wo, canonical, st)
     merged = _apply_client_pricing_overrides(wo, base)
-    return suppress_invalid_post_completion_actions(merged, wo)
+    with_cancel = _append_lifecycle_cancel(merged, wo, canonical, st)
+    return suppress_invalid_post_completion_actions(with_cancel, wo)
 
 
 def contractor_completion_proof_required(wo: Dict[str, Any]) -> bool:

@@ -137,3 +137,20 @@ def test_assigned_no_quote_current_stage():
     pc = build_progress_contract_v1(wo, audience="landlord")
     assert pc["current_stage"] == "quote_submitted"
     assert pc["waiting_on"] == "contractor"
+
+
+def test_assigned_status_without_contractor_id_not_marked_assigned():
+    """Status ASSIGNED without contractor_id must not show Contractor assigned as complete."""
+    wo = _base_wo(
+        contractor_id="",
+        status="ASSIGNED",
+        schedule_status="",
+        scheduled_at="",
+        price_status="AWAITING_QUOTE",
+        compliance_proof_status="",
+    )
+    pc = build_progress_contract_v1(wo, audience="landlord")
+    steps = {s["key"]: s for s in pc["progress_steps"] if s["state"] != "skipped"}
+    assert steps["assigned"]["state"] == "current"
+    assert steps["assigned"]["label"] == "Awaiting contractor assignment"
+    assert steps["assigned"]["state"] != "complete"

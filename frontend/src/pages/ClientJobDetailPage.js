@@ -11,8 +11,7 @@
  * Exception canonical states from the server (NO_ACCESS, RESCHEDULE_REQUIRED, FOLLOW_UP_REQUIRED,
  * AWAITING_PARTS) intentionally omit start/complete/verify/link_document; see
  * tests/test_compliance_workflow_maintenance_canonical.py and _maintenance_next_job_actions.
- * Cancel is status-gated (non-terminal raw status) and is not driven by next_actions — API may still
- * reject cancel in edge cases; primary safe path is the actions list.
+ * Cancel whole-job is gated on `next_actions` containing `cancel` (lifecycle section) — not raw status alone.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -57,6 +56,14 @@ import {
   prioritizedClientJobNextAction,
 } from '../utils/jobWorkflowUi';
 import NextActionHero from '../components/operational/NextActionHero';
+import {
+  canExecuteAssignContractor,
+  canShowCancelJob,
+  executeJobDetailPrimaryIntent,
+  handleAssignContractorClick,
+  isAssignContractorEntitlementBlocked,
+  resolveHeroPrimaryExecution,
+} from '../utils/jobDetailPrimaryAction';
 import {
   assignDropdownEmptyMessage,
   groupedExclusionSamples,
@@ -330,6 +337,15 @@ function ClientJobDetailInner() {
   );
   const heroOversightAction = useMemo(
     () => (job ? clientHeroOversightAction(job.next_actions) : null),
+    [job],
+  );
+  const heroExecution = useMemo(
+    () => (job ? resolveHeroPrimaryExecution(job, hasFeature('contractor_network')) : null),
+    [job, hasFeature],
+  );
+  const showCancelJob = useMemo(() => (job ? canShowCancelJob(job) : false), [job]);
+  const cancelJobAction = useMemo(
+    () => (job?.next_actions || []).find((a) => a?.id === 'cancel') || null,
     [job],
   );
 
@@ -812,9 +828,38 @@ function ClientJobDetailInner() {
         </div>
       </header>
 
+      {isAssignContractorEntitlementBlocked(job, hasFeature('contractor_network')) ? (
+        <Alert className="mb-6 border-slate-200 bg-slate-50 text-slate-900">
+          <AlertDescription className="text-sm space-y-2">
+            <p className="font-semibold text-midnight-blue">Contractor assignment needs your plan</p>
+            <p className="text-slate-700">
+              Assigning a contractor requires the contractor network feature. Contact support to upgrade or get help with
+              the next step.
+            </p>
+            <Link to={resolveClientPortalPath('/help', '/help')} className="text-electric-teal hover:underline text-sm font-medium inline-flex items-center gap-1">
+              <LifeBuoy className="w-3.5 h-3.5" />
+              Contact support
+            </Link>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <NextActionHero
         entity={job}
-        onPrimaryClick={() => visitSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        primaryDisabled={heroExecution ? !heroExecution.executable : false}
+        onPrimaryClick={() => {
+          if (!heroExecution?.executable) {
+            if (heroExecution?.blockedMessage) toast.message(heroExecution.blockedMessage);
+            return;
+          }
+          executeJobDetailPrimaryIntent(heroExecution.intent, {
+            job,
+            openAssignModal,
+            scrollToVisit: () =>
+              visitSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+            navigate: (url) => navigate(url),
+          });
+        }}
       />
 
       {(() => {
@@ -933,8 +978,14 @@ function ClientJobDetailInner() {
         ) : (
           <p className="text-sm text-amber-800">No contractor assigned yet.</p>
         )}
-        {hasFeature('contractor_network') && na.some((a) => a.id === 'assign_contractor') ? (
-          <Button type="button" size="sm" className="mt-2 bg-midnight-blue hover:bg-midnight-blue/90" data-testid="open-assign-contractor-modal" onClick={() => openAssignModal()}>
+        {canExecuteAssignContractor(job, hasFeature('contractor_network')) ? (
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2 bg-midnight-blue hover:bg-midnight-blue/90"
+            data-testid="open-assign-contractor-modal"
+            onClick={() => handleAssignContractorClick(job, hasFeature('contractor_network'), openAssignModal)}
+          >
             Assign contractor
           </Button>
         ) : null}
@@ -1154,20 +1205,6 @@ function ClientJobDetailInner() {
             </Button>
           ) : null}
         </div>
-        {(job.status || '').toUpperCase() !== 'CANCELLED' &&
-        (job.status || '').toUpperCase() !== 'VERIFIED' &&
-        (job.status || '').toUpperCase() !== 'CLOSED' ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="destructive"
-            className="mt-2"
-            disabled={!!actionBusy}
-            onClick={() => handleLifecycleClick('cancel')}
-          >
-            {actionBusy === 'cancel' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cancel job'}
-          </Button>
-        ) : null}
         {(na.some((a) => a.id === 'set_operational_exception') || na.some((a) => a.id === 'clear_operational_exception')) && (
           <div className="border border-gray-100 rounded-lg p-3 space-y-2 mt-3">
             <p className="text-xs font-medium text-gray-700">Operational hold (no access / reschedule / follow-up)</p>
@@ -1457,6 +1494,30 @@ function ClientJobDetailInner() {
           Open Help
         </Link>
       </SectionCard>
+
+      {showCancelJob ? (
+        <SectionCard title="Job options" icon={ClipboardList}>
+          <p className="text-xs text-gray-600 mb-2">
+            {cancelJobAction?.hint ||
+              'Stop the whole job. This is separate from cancelling a visit booking.'}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="border-red-200 text-red-800 hover:bg-red-50"
+            disabled={!!actionBusy}
+            data-testid="cancel-job-lifecycle"
+            onClick={() => handleLifecycleClick('cancel')}
+          >
+            {actionBusy === 'cancel' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              cancelJobAction?.label || 'Cancel job'
+            )}
+          </Button>
+        </SectionCard>
+      ) : null}
 
       <Dialog
         open={quoteRevisionOpen}
