@@ -138,3 +138,81 @@ def set_cached_operational_intelligence_section(
     ttl_seconds: int = 120,
 ) -> None:
     set_cached_unified_tasks(key, payload, ttl_seconds=ttl_seconds)
+
+
+def _summary_counts_from_cached_payload(cached: Dict[str, Any]) -> Optional[Tuple[int, int]]:
+    summ = (cached.get("payload") or {}).get("summary") or {}
+    urgent = summ.get("urgent_count")
+    upcoming = summ.get("upcoming_count")
+    if urgent is None or upcoming is None:
+        return None
+    return int(urgent), int(upcoming)
+
+
+def peek_cached_unified_tasks_summary_counts(
+    client_id: str,
+    *,
+    property_id_filter: Optional[str] = None,
+    portal_user_id: Optional[str] = None,
+    preferred_raw_limits: Tuple[int, ...] = (60, 120),
+    surface_profile: str = "full",
+) -> Optional[Dict[str, Any]]:
+    """
+    Return urgent/upcoming counts from a TTL-valid unified tasks cache entry without rebuilding.
+    """
+    prof = str(surface_profile or "full").strip().lower()
+    for raw_limit in preferred_raw_limits:
+        key = unified_tasks_cache_key(client_id, property_id_filter, portal_user_id, raw_limit, prof)
+        cached = get_cached_unified_tasks(key)
+        if not cached:
+            continue
+        counts = _summary_counts_from_cached_payload(cached)
+        if counts is None:
+            continue
+        urgent, upcoming = counts
+        return {
+            "urgent_count": urgent,
+            "upcoming_count": upcoming,
+            "cache_key": key,
+        }
+
+    prefix = f"unified:{client_id}:"
+    suffix = f":{prof}"
+    for key in list(_store.keys()):
+        if not key.startswith(prefix) or not key.endswith(suffix):
+            continue
+        cached = get_cached_unified_tasks(key)
+        if not cached:
+            continue
+        counts = _summary_counts_from_cached_payload(cached)
+        if counts is None:
+            continue
+        urgent, upcoming = counts
+        return {
+            "urgent_count": urgent,
+            "upcoming_count": upcoming,
+            "cache_key": key,
+        }
+    return None
+
+
+def peek_cached_command_center_summary_counts(
+    client_id: str,
+    *,
+    property_id_filter: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Return urgent/upcoming from cached CC primary tasks_digest_summary when both are present."""
+    key = command_center_primary_cache_key(client_id, property_id_filter)
+    cached = get_cached_command_center_primary(key)
+    if not cached:
+        return None
+    tds = (cached.get("payload") or {}).get("tasks_digest_summary") or {}
+    urgent = tds.get("urgent_count")
+    upcoming = tds.get("upcoming_count")
+    if urgent is None or upcoming is None:
+        return None
+    return {
+        "urgent_count": int(urgent),
+        "upcoming_count": int(upcoming),
+        "cache_key": key,
+    }

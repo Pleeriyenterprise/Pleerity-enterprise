@@ -183,15 +183,15 @@ async def get_value_insights(client_id: str) -> Dict[str, Any]:
 
     urgent_open = 0
     upcoming_open = 0
+    task_count_resolution: Dict[str, Any] = {}
     try:
-        from services.unified_tasks_service import get_unified_tasks_digest
+        from services.unified_tasks_service import resolve_value_insights_task_counts
 
-        ut = await get_unified_tasks_digest(client_id, activity_limit=3)
-        summ = ut.get("summary") or {}
-        urgent_open = int(summ.get("urgent_count") or 0)
-        upcoming_open = int(summ.get("upcoming_count") or 0)
+        task_count_resolution = await resolve_value_insights_task_counts(client_id, activity_limit=3)
+        urgent_open = int(task_count_resolution.get("urgent_count") or 0)
+        upcoming_open = int(task_count_resolution.get("upcoming_count") or 0)
     except Exception as e:
-        logger.warning("value_insights unified digest failed client=%s: %s", client_id, e)
+        logger.warning("value_insights task counts failed client=%s: %s", client_id, e)
 
     unlocks: List[str] = []
     upgrade_plan = None
@@ -269,5 +269,6 @@ async def get_value_insights(client_id: str) -> Dict[str, Any]:
         },
         "upgrade_nudge_reasons": upgrade_nudge_reasons,
         "plan_comparison": plan_comparison,
+        "task_count_resolution": task_count_resolution,
         "generated_at": now.isoformat(),
     }

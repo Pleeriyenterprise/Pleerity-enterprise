@@ -1,0 +1,26 @@
+{
+  "programme": "VALUE-INSIGHTS-DIGEST-COUNT-OPTIMISATION-01",
+  "run_tag": "20260611T203206Z",
+  "cold_cache": {
+    "urgent_count": 136,
+    "upcoming_count": 10,
+    "source_used": "fallback_full_unified_tasks",
+    "fallback_reason": "no_cached_digest_or_command_center_summary",
+    "duration_ms": 24250.69,
+    "cache_key": null,
+    "wall_ms": 24250.71
+  },
+  "warm_cache": {
+    "urgent_count": 136,
+    "upcoming_count": 10,
+    "source_used": "cached_digest",
+    "fallback_reason": null,
+    "duration_ms": 0.03,
+    "cache_key": "unified:6fd5ac4c-3fd4-4112-ade7-156977deb49f:::60:full",
+    "wall_ms": 0.05
+  },
+  "expected": {
+    "cold": "fallback_full_unified_tasks when operational cache empty",
+    "warm": "cached_digest when unified tasks cache populated"
+  }
+}

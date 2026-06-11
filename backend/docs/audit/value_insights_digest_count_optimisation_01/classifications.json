@@ -1,0 +1,36 @@
+{
+  "programme": "VALUE-INSIGHTS-DIGEST-COUNT-OPTIMISATION-01",
+  "run_tag": "20260611T203206Z",
+  "classification": "VERIFIED_OPERATIONALLY",
+  "checks": {
+    "counts_match_baseline_digest": true,
+    "warm_resolve_used_cached_digest": true,
+    "vi_resolve_used_cached_digest": true,
+    "pytest_pass": true
+  },
+  "http": {
+    "attempted": true,
+    "value_insights_cold": {
+      "status": 200,
+      "duration_ms": 58005.65,
+      "task_count_resolution": {},
+      "at_risk": {
+        "overdue_requirements": 0,
+        "expiring_soon_requirements": 0,
+        "command_centre_urgent_open": 136,
+        "command_centre_upcoming_open": 10
+      }
+    },
+    "value_insights_warm": {
+      "status": 200,
+      "duration_ms": 25420.53,
+      "task_count_resolution": {},
+      "at_risk": {
+        "overdue_requirements": 0,
+        "expiring_soon_requirements": 0,
+        "command_centre_urgent_open": 136,
+        "command_centre_upcoming_open": 10
+      }
+    }
+  }
+}

@@ -1494,6 +1494,90 @@ async def get_unified_tasks_for_client(
     return out
 
 
+async def resolve_value_insights_task_counts(
+    client_id: str,
+    property_id_filter: Optional[str] = None,
+    *,
+    portal_user_id: Optional[str] = None,
+    activity_limit: int = 3,
+) -> Dict[str, Any]:
+    """
+    Resolve urgent/upcoming counts for value insights without a full unified rebuild when cache allows.
+
+    Falls back to ``get_unified_tasks_digest`` only when no authoritative cached summary exists.
+    """
+    import time
+
+    from services.operational_surface_cache import (
+        peek_cached_command_center_summary_counts,
+        peek_cached_unified_tasks_summary_counts,
+    )
+
+    t0 = time.perf_counter()
+
+    def _finish(
+        *,
+        urgent_count: int,
+        upcoming_count: int,
+        source_used: str,
+        fallback_reason: Optional[str],
+        cache_key: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return {
+            "urgent_count": urgent_count,
+            "upcoming_count": upcoming_count,
+            "source_used": source_used,
+            "fallback_reason": fallback_reason,
+            "duration_ms": round((time.perf_counter() - t0) * 1000.0, 2),
+            "cache_key": cache_key,
+        }
+
+    cached = peek_cached_unified_tasks_summary_counts(
+        client_id,
+        property_id_filter=property_id_filter,
+        portal_user_id=portal_user_id,
+    )
+    if cached:
+        return _finish(
+            urgent_count=cached["urgent_count"],
+            upcoming_count=cached["upcoming_count"],
+            source_used="cached_digest",
+            fallback_reason=None,
+            cache_key=cached.get("cache_key"),
+        )
+
+    cc_cached = peek_cached_command_center_summary_counts(
+        client_id,
+        property_id_filter=property_id_filter,
+    )
+    if cc_cached:
+        return _finish(
+            urgent_count=cc_cached["urgent_count"],
+            upcoming_count=cc_cached["upcoming_count"],
+            source_used="command_center_summary",
+            fallback_reason=None,
+            cache_key=cc_cached.get("cache_key"),
+        )
+
+    ut = await get_unified_tasks_digest(
+        client_id,
+        property_id_filter=property_id_filter,
+        activity_limit=activity_limit,
+        portal_user_id=portal_user_id,
+    )
+    summ = ut.get("summary") or {}
+    freshness = ut.get("freshness") or {}
+    reason = "no_cached_digest_or_command_center_summary"
+    if freshness.get("cache_hit"):
+        reason = "digest_cache_hit_after_peek_miss"
+    return _finish(
+        urgent_count=int(summ.get("urgent_count") or 0),
+        upcoming_count=int(summ.get("upcoming_count") or 0),
+        source_used="fallback_full_unified_tasks",
+        fallback_reason=reason,
+    )
+
+
 async def get_unified_tasks_digest(
     client_id: str,
     property_id_filter: Optional[str] = None,

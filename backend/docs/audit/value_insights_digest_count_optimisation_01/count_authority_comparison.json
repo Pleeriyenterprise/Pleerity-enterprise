@@ -1,0 +1,39 @@
+{
+  "programme": "VALUE-INSIGHTS-DIGEST-COUNT-OPTIMISATION-01",
+  "run_tag": "20260611T203206Z",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "baseline_full_digest": {
+    "urgent_count": 136,
+    "upcoming_count": 10,
+    "duration_ms": 19176.34
+  },
+  "optimised_value_insights": {
+    "command_centre_urgent_open": 136,
+    "command_centre_upcoming_open": 10
+  },
+  "task_count_resolution": {
+    "urgent_count": 136,
+    "upcoming_count": 10,
+    "source_used": "cached_digest",
+    "fallback_reason": null,
+    "duration_ms": 0.01,
+    "cache_key": "unified:6fd5ac4c-3fd4-4112-ade7-156977deb49f:::60:full"
+  },
+  "counts_match_baseline_digest": true,
+  "authority_references": {
+    "today_summary": {
+      "urgent_count": 120,
+      "upcoming_count": 10
+    },
+    "command_center_primary": {
+      "urgent_count": 332,
+      "upcoming_count": null,
+      "pressure_urgent_count": 332
+    }
+  },
+  "notes": [
+    "Value insights authority is unified_tasks digest (full profile, raw_limit=60).",
+    "Today surface_profile may differ from full profile counts by design.",
+    "CC primary upcoming_count is often null until secondary projection runs."
+  ]
+}

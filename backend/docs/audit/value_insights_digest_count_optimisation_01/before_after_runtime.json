@@ -1,0 +1,18 @@
+{
+  "programme": "VALUE-INSIGHTS-DIGEST-COUNT-OPTIMISATION-01",
+  "run_tag": "20260611T203206Z",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "before": {
+    "source": "value_insights_and_today_cold_path_profiling_01",
+    "vi_unified_tasks_digest_ms": 18182.71,
+    "http_value_insights_cold_ms": 57701.8
+  },
+  "after_local": {
+    "baseline_full_digest_ms": 19176.34,
+    "cold_resolve_ms": 24250.71,
+    "warm_resolve_ms": 0.05,
+    "warm_resolve_source": "cached_digest",
+    "value_insights_digest_stage_ms": 0.01,
+    "digest_stage_reduction_ms": 18182.66
+  }
+}
