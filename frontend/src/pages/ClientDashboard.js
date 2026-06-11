@@ -246,8 +246,6 @@ const ClientDashboard = () => {
   const [error, setError] = useState('');
   const [notificationPrefs, setNotificationPrefs] = useState(null);
   const [complianceScore, setComplianceScore] = useState(null);
-  const [scoreTrend, setScoreTrend] = useState(null);
-  const [scoreTimeline, setScoreTimeline] = useState(null);
   const [scoreTrendData, setScoreTrendData] = useState(null); // { points, current, delta_30, best_90, worst_90 } from score-trend API
   const [scoreTrendView, setScoreTrendView] = useState('portfolio'); // 'portfolio' | 'property'
   const [selectedTrendPropertyId, setSelectedTrendPropertyId] = useState(null);
@@ -272,8 +270,6 @@ const ClientDashboard = () => {
   const [valueInsights, setValueInsights] = useState(null);
   // Operations data for dashboard KPIs and action queue
   const [workOrdersList, setWorkOrdersList] = useState([]);
-  const [predictiveInsightsData, setPredictiveInsightsData] = useState(null);
-  const [riskSignalsData, setRiskSignalsData] = useState(null);
   const [openIssuesCountKpi, setOpenIssuesCountKpi] = useState(null);
   const [openIssuesKpiLoading, setOpenIssuesKpiLoading] = useState(false);
   const [maintenanceSpendMonth, setMaintenanceSpendMonth] = useState(null);
@@ -334,7 +330,9 @@ const ClientDashboard = () => {
     )
       .then((hit) => {
         const payload = hit?.data;
-        setPortalRequirementsForInbox(Array.isArray(payload?.requirements) ? payload.requirements : []);
+        const reqs = Array.isArray(payload?.requirements) ? payload.requirements : [];
+        setPortalRequirementsForInbox(reqs);
+        setRequirementsList(reqs);
       })
       .catch(() => setPortalRequirementsForInbox([]));
   }, [isClientUser]);
@@ -426,11 +424,8 @@ const ClientDashboard = () => {
     fetchDashboard();
     fetchNotificationPrefs();
     fetchComplianceScore();
-    fetchScoreTrend();
-    fetchScoreTimeline();
     fetchScoreChanges();
     fetchPortfolioSummary();
-    fetchRequirements();
     clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
     clientAPI.getValueInsights().then((r) => setValueInsights(r.data)).catch(() => setValueInsights(null));
     // Intentionally depend only on role/client_id; fetch functions are stable
@@ -441,17 +436,9 @@ const ClientDashboard = () => {
   useEffect(() => {
     if (!isClientUser) return;
     if (hasFeature('maintenance_workflows')) {
-      clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 500 })
+      clientAPI.getMaintenanceWorkOrders({ skip: 0, limit: 200 })
         .then((res) => setWorkOrdersList(res.data?.work_orders || []))
         .catch(() => setWorkOrdersList([]));
-    }
-    if (hasFeature('predictive_maintenance')) {
-      clientAPI.getPredictiveInsights({ limit: 100 })
-        .then((res) => setPredictiveInsightsData(res.data))
-        .catch(() => setPredictiveInsightsData(null));
-      clientAPI.getRiskSignals({ limit: 500 })
-        .then((res) => setRiskSignalsData(res.data))
-        .catch(() => setRiskSignalsData(null));
     }
   }, [isClientUser, hasFeature]);
 
@@ -516,8 +503,8 @@ const ClientDashboard = () => {
       return;
     }
     const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
-    const ccKey = `${OPERATIONAL_CACHE_KEYS.commandCenter}:${commandCenterScopePropertyId || 'all'}`;
-    fetchOperational(ccKey, () => clientAPI.getCommandCenter(params).then((r) => r.data))
+    const ccKey = `${OPERATIONAL_CACHE_KEYS.commandCenterPrimary}:${commandCenterScopePropertyId || 'all'}`;
+    fetchOperational(ccKey, () => clientAPI.getCommandCenterPrimary(params).then((r) => r.data))
       .then((hit) => {
         const bundle = hit.data || {};
         setCommandCenter(bundle);
@@ -583,19 +570,14 @@ const ClientDashboard = () => {
     if (!isClientUser) return undefined;
     const onOutcome = () => {
       fetchComplianceScore();
-      fetchScoreTimeline();
       fetchScoreTrendCard();
       fetchScoreChanges();
       fetchPortfolioSummary();
-      if (hasFeature('predictive_maintenance')) {
-        clientAPI.getRiskSignals({ limit: 1 })
-          .then((res) => setRiskSignalsData(res.data))
-          .catch(() => {});
-      }
+      loadPortalRequirements();
       const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
       fetchTodayInbox({ reset: false });
       clientAPI
-        .getCommandCenter(params)
+        .getCommandCenterPrimary(params)
         .then((res) => {
           const b = res.data || {};
           setCommandCenter(b);
@@ -605,6 +587,10 @@ const ClientDashboard = () => {
             freshness: b.freshness || {},
           });
         })
+        .catch(() => {});
+      clientAPI
+        .getProtectionSnapshot(params)
+        .then((res) => setProtectionSnapshot(res.data || null))
         .catch(() => {});
     };
     window.addEventListener('compliance-outcome', onOutcome);
@@ -634,16 +620,16 @@ const ClientDashboard = () => {
     if (!isClientUser) return;
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        fetchScoreTimeline();
         fetchScoreTrendCard();
         fetchScoreChanges();
         fetchComplianceScore();
+        loadPortalRequirements();
         clientAPI.getOnboardingChecklist().then((r) => setOnboardingChecklist(r.data)).catch(() => {});
         clientAPI.getValueInsights().then((r) => setValueInsights(r.data)).catch(() => setValueInsights(null));
         const params = commandCenterScopePropertyId ? { property_id: commandCenterScopePropertyId } : {};
         fetchTodayInbox({ reset: false });
         clientAPI
-          .getCommandCenter(params)
+          .getCommandCenterPrimary(params)
           .then((res) => {
             const b = res.data || {};
             setCommandCenter(b);
@@ -733,24 +719,6 @@ const ClientDashboard = () => {
     }
   };
 
-  const fetchScoreTrend = async () => {
-    try {
-      const response = await api.get('/client/compliance-score/trend?days=30');
-      setScoreTrend(response.data);
-    } catch (err) {
-      console.log('Could not load score trend');
-    }
-  };
-
-  const fetchScoreTimeline = async () => {
-    try {
-      const response = await api.get('/client/score/timeline?days=90&interval=week');
-      setScoreTimeline(response.data);
-    } catch (err) {
-      console.log('Could not load score timeline');
-    }
-  };
-
   const fetchScoreTrendCard = async (view = null, propertyId = null) => {
     const viewToUse = view ?? scoreTrendView;
     const propId = propertyId ?? selectedTrendPropertyId;
@@ -779,19 +747,12 @@ const ClientDashboard = () => {
 
   const fetchPortfolioSummary = async () => {
     try {
-      const response = await clientAPI.getComplianceSummary();
-      setPortfolioSummary(response.data);
+      const hit = await fetchOperational(OPERATIONAL_CACHE_KEYS.complianceSummary, () =>
+        clientAPI.getComplianceSummary().then((r) => r.data),
+      );
+      setPortfolioSummary(hit.data);
     } catch (err) {
       if (err.response?.status !== 404) console.warn('Portfolio compliance-summary not available:', err);
-    }
-  };
-
-  const fetchRequirements = async () => {
-    try {
-      const response = await clientAPI.getRequirements();
-      setRequirementsList(response.data?.requirements || []);
-    } catch (err) {
-      if (err.response?.status !== 404) console.warn('Requirements not available for next actions:', err);
     }
   };
 
@@ -1056,20 +1017,6 @@ const ClientDashboard = () => {
     return portfolioSummary?.kpis?.missing ?? 0;
   }, [complianceScore, portfolioSummary]);
 
-  // Net change last 30 days from timeline (single trend source: score_events)
-  const netChange30 = useMemo(() => {
-    const points = scoreTimeline?.points;
-    if (!points || points.length < 2) return null;
-    const now = new Date();
-    const cutoff = new Date(now);
-    cutoff.setDate(cutoff.getDate() - 30);
-    const lastScore = points[points.length - 1].score;
-    const firstInWindow = points.find((p) => new Date(p.date) >= cutoff);
-    const baseScore = firstInWindow ? firstInWindow.score : points[0].score;
-    const delta = lastScore - baseScore;
-    return delta;
-  }, [scoreTimeline?.points]);
-
   // Inline risk band explanation under grade (single source: portfolio risk_level or score)
   const riskBandExplanation = useMemo(() => {
     const level = portfolioSummary?.risk_level || portfolioSummary?.portfolio_risk_level;
@@ -1126,15 +1073,13 @@ const ClientDashboard = () => {
     const cancelled = workOrdersList.filter((wo) => wo.status === 'CANCELLED').length;
     return { open, assigned, inProgress, completed, cancelled };
   }, [workOrdersList]);
-  /** Prefer protection snapshot (count_documents) so KPI matches Security card; else API list summary (up to 500 rows). */
+  /** Prefer protection snapshot (count_documents) so KPI matches Security card. */
   const riskSignalsCount = useMemo(() => {
     if (protectionSnapshot?.risk?.predictive_enabled && protectionSnapshot.risk?.active_risk_signals_count != null) {
       return Number(protectionSnapshot.risk.active_risk_signals_count);
     }
-    if (riskSignalsData?.summary?.total != null) return Number(riskSignalsData.summary.total);
-    if (!predictiveInsightsData?.properties?.length) return 0;
-    return predictiveInsightsData.properties.reduce((sum, p) => sum + (p.insights?.length || 0), 0);
-  }, [protectionSnapshot, riskSignalsData, predictiveInsightsData]);
+    return 0;
+  }, [protectionSnapshot]);
 
   const trackedPropertyCount = useMemo(() => {
     const n = portfolioSummary?.properties?.length;

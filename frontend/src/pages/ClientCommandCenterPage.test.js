@@ -7,10 +7,12 @@ import { MemoryRouter } from 'react-router-dom';
 import ClientCommandCenterPage from './ClientCommandCenterPage';
 import { clientAPI } from '../api/client';
 import { COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE } from '../utils/scoreFreshnessUi';
+import { clearOperationalCache } from '../utils/clientOperationalFetch';
 
 jest.mock('../api/client', () => ({
   clientAPI: {
-    getCommandCenter: jest.fn(),
+    getCommandCenterPrimary: jest.fn(),
+    getCommandCenterSecondary: jest.fn(),
     getComplianceSummary: jest.fn(),
     getRequirements: jest.fn(),
   },
@@ -45,8 +47,9 @@ jest.mock('../context/GuidedEvidenceModalContext', () => ({
 describe('ClientCommandCenterPage requirement intel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearOperationalCache();
     mockOpenGuidedEvidence.mockClear();
-    clientAPI.getCommandCenter.mockResolvedValue({
+    clientAPI.getCommandCenterPrimary.mockResolvedValue({
       data: {
         urgent_actions: [
           {
@@ -63,13 +66,19 @@ describe('ClientCommandCenterPage requirement intel', () => {
             metadata: { action_type: 'missing_document' },
           },
         ],
-        upcoming_risks: [],
         compliance_status_summary: {
           score: 70,
           grade: 'C',
           message: 'Action needed',
           color: 'amber',
         },
+      },
+    });
+    clientAPI.getCommandCenterSecondary.mockResolvedValue({
+      data: {
+        upcoming_risks: [],
+        recent_activity: [],
+        compliance_status_summary: {},
       },
     });
     clientAPI.getComplianceSummary.mockResolvedValue({
@@ -145,7 +154,7 @@ describe('ClientCommandCenterPage requirement intel', () => {
       },
     };
     // All fetches need the same payload (Strict Mode / duplicate effect may call twice).
-    clientAPI.getCommandCenter.mockResolvedValue(guidedBundle);
+    clientAPI.getCommandCenterPrimary.mockResolvedValue(guidedBundle);
     render(
       <MemoryRouter>
         <ClientCommandCenterPage />
@@ -168,12 +177,16 @@ describe('ClientCommandCenterPage requirement intel', () => {
 describe('ClientCommandCenterPage compliance snapshot degraded UX', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearOperationalCache();
     mockOpenGuidedEvidence.mockClear();
-    clientAPI.getCommandCenter.mockResolvedValue({
+    clientAPI.getCommandCenterPrimary.mockResolvedValue({
       data: {
         urgent_actions: [],
         upcoming_risks: [],
       },
+    });
+    clientAPI.getCommandCenterSecondary.mockResolvedValue({
+      data: { upcoming_risks: [], recent_activity: [], compliance_status_summary: {} },
     });
     clientAPI.getComplianceSummary.mockResolvedValue({ data: { properties: [] } });
     clientAPI.getRequirements.mockResolvedValue({ data: { requirements: [] } });
@@ -193,7 +206,7 @@ describe('ClientCommandCenterPage compliance snapshot degraded UX', () => {
   });
 
   it('shows score_status_message under degraded copy when summary omits score and status', async () => {
-    clientAPI.getCommandCenter.mockResolvedValue({
+    clientAPI.getCommandCenterPrimary.mockResolvedValue({
       data: {
         urgent_actions: [],
         upcoming_risks: [],

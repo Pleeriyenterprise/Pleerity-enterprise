@@ -1,0 +1,349 @@
+{
+  "programme": "DASHBOARD-TODAY-COMMANDCENTER-PERFORMANCE-PHASE1",
+  "run_tag": "20260611T182100Z",
+  "verified_at_utc": "2026-06-11T18:24:39.932493+00:00",
+  "api_base": "https://pleerity-enterprise.onrender.com/api",
+  "account": "nancy@yopmail.com",
+  "before_source": "docs\\audit\\dashboard_today_commandcenter_load_performance_audit_01\\api_timing_runtime.json",
+  "after_pass": {
+    "today": {
+      "page": "today",
+      "request_count": 4,
+      "ok_count": 4,
+      "critical_path_ms": 39909.2,
+      "sum_request_ms": 85347.2,
+      "max_single_ms": 39909.2,
+      "total_payload_bytes": 796732,
+      "requests": [
+        {
+          "label": "today:/today/items",
+          "path": "/today/items",
+          "params": {},
+          "status": 200,
+          "duration_ms": 39909.2,
+          "payload_bytes": 129907,
+          "cache_hit": null
+        },
+        {
+          "label": "today:/client/command-center",
+          "path": "/client/command-center",
+          "params": {
+            "projection": "primary"
+          },
+          "status": 200,
+          "duration_ms": 23805.5,
+          "payload_bytes": 14817,
+          "cache_hit": null
+        },
+        {
+          "label": "today:compliance-summary",
+          "path": "/portfolio/compliance-summary",
+          "params": {},
+          "status": 200,
+          "duration_ms": 17960.9,
+          "payload_bytes": 18807,
+          "cache_hit": null
+        },
+        {
+          "label": "today:/client/requirements",
+          "path": "/client/requirements",
+          "params": {
+            "projection": "full"
+          },
+          "status": 200,
+          "duration_ms": 3671.6,
+          "payload_bytes": 633201,
+          "cache_hit": null
+        }
+      ]
+    },
+    "command_center": {
+      "page": "command_center",
+      "request_count": 5,
+      "ok_count": 5,
+      "critical_path_ms": 1602.7,
+      "sum_request_ms": 58901.4,
+      "max_single_ms": 32914.6,
+      "total_payload_bytes": 1608833,
+      "requests": [
+        {
+          "label": "cc:command-center-secondary",
+          "path": "/client/command-center",
+          "params": {
+            "projection": "secondary",
+            "include_secondary": "true"
+          },
+          "status": 200,
+          "duration_ms": 32914.6,
+          "payload_bytes": 18385,
+          "cache_hit": null
+        },
+        {
+          "label": "cc:compliance-summary",
+          "path": "/portfolio/compliance-summary",
+          "params": {},
+          "status": 200,
+          "duration_ms": 17515.8,
+          "payload_bytes": 18807,
+          "cache_hit": null
+        },
+        {
+          "label": "cc:requirements-full",
+          "path": "/client/requirements",
+          "params": {
+            "projection": "full"
+          },
+          "status": 200,
+          "duration_ms": 3818.5,
+          "payload_bytes": 633201,
+          "cache_hit": null
+        },
+        {
+          "label": "cc:work-orders",
+          "path": "/client/maintenance/work-orders",
+          "params": {
+            "skip": 0,
+            "limit": 200
+          },
+          "status": 200,
+          "duration_ms": 3049.8,
+          "payload_bytes": 923570,
+          "cache_hit": null
+        },
+        {
+          "label": "cc:command-center-primary",
+          "path": "/client/command-center",
+          "params": {
+            "projection": "primary"
+          },
+          "status": 200,
+          "duration_ms": 1602.7,
+          "payload_bytes": 14870,
+          "cache_hit": null
+        }
+      ]
+    },
+    "dashboard": {
+      "page": "dashboard",
+      "request_count": 17,
+      "ok_count": 17,
+      "critical_path_ms": 56012.1,
+      "sum_request_ms": 214719.6,
+      "max_single_ms": 56012.1,
+      "total_payload_bytes": 1902502,
+      "requests": [
+        {
+          "label": "dash:/client/value-insights",
+          "path": "/client/value-insights",
+          "params": {},
+          "status": 200,
+          "duration_ms": 56012.1,
+          "payload_bytes": 962,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/today/items",
+          "path": "/today/items",
+          "params": {},
+          "status": 200,
+          "duration_ms": 39953.5,
+          "payload_bytes": 129907,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/protection-snapshot",
+          "path": "/client/protection-snapshot",
+          "params": {},
+          "status": 200,
+          "duration_ms": 25104.1,
+          "payload_bytes": 460,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/compliance-score",
+          "path": "/client/compliance-score",
+          "params": {},
+          "status": 200,
+          "duration_ms": 24432.0,
+          "payload_bytes": 95026,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/command-center",
+          "path": "/client/command-center",
+          "params": {
+            "projection": "primary"
+          },
+          "status": 200,
+          "duration_ms": 23508.3,
+          "payload_bytes": 14817,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/portfolio/compliance-summary",
+          "path": "/portfolio/compliance-summary",
+          "params": {},
+          "status": 200,
+          "duration_ms": 18011.9,
+          "payload_bytes": 18807,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:dashboard-gate",
+          "path": "/client/dashboard",
+          "params": {
+            "include_score_headline": "false"
+          },
+          "status": 200,
+          "duration_ms": 5131.6,
+          "payload_bytes": 66818,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/requirements",
+          "path": "/client/requirements",
+          "params": {
+            "projection": "full"
+          },
+          "status": 200,
+          "duration_ms": 4647.4,
+          "payload_bytes": 633201,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/activity-since",
+          "path": "/client/activity-since",
+          "params": {},
+          "status": 200,
+          "duration_ms": 2577.9,
+          "payload_bytes": 1121,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/onboarding/checklist",
+          "path": "/client/onboarding/checklist",
+          "params": {},
+          "status": 200,
+          "duration_ms": 2424.8,
+          "payload_bytes": 2001,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/dashboard/roi-summary",
+          "path": "/client/dashboard/roi-summary",
+          "params": {},
+          "status": 200,
+          "duration_ms": 2405.4,
+          "payload_bytes": 432,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/maintenance/work-orders",
+          "path": "/client/maintenance/work-orders",
+          "params": {
+            "skip": 0,
+            "limit": 200
+          },
+          "status": 200,
+          "duration_ms": 2247.1,
+          "payload_bytes": 923570,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/score-trend/portfolio",
+          "path": "/client/score-trend/portfolio",
+          "params": {
+            "days": 90
+          },
+          "status": 200,
+          "duration_ms": 2055.1,
+          "payload_bytes": 8976,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/finance/maintenance-spend-this-month",
+          "path": "/client/finance/maintenance-spend-this-month",
+          "params": {},
+          "status": 200,
+          "duration_ms": 1774.5,
+          "payload_bytes": 314,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/maintenance/issues/open-count",
+          "path": "/client/maintenance/issues/open-count",
+          "params": {},
+          "status": 200,
+          "duration_ms": 1744.2,
+          "payload_bytes": 25,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/client/score/changes",
+          "path": "/client/score/changes",
+          "params": {
+            "limit": 20
+          },
+          "status": 200,
+          "duration_ms": 1695.7,
+          "payload_bytes": 5258,
+          "cache_hit": null
+        },
+        {
+          "label": "dash:/profile/notifications",
+          "path": "/profile/notifications",
+          "params": {},
+          "status": 200,
+          "duration_ms": 994.0,
+          "payload_bytes": 807,
+          "cache_hit": null
+        }
+      ]
+    }
+  },
+  "comparison": {
+    "today": {
+      "requests_before": 5,
+      "requests_after": 4,
+      "payload_bytes_before": 847624,
+      "payload_bytes_after": 796732,
+      "critical_path_ms_before": 40199.3,
+      "critical_path_ms_after": 39909.2,
+      "critical_path_delta_ms": -290.1,
+      "perceived_first_content_ms_before": 40199.3,
+      "perceived_first_content_ms_after": 39909.2
+    },
+    "command_center": {
+      "requests_before": 4,
+      "requests_after": 5,
+      "payload_bytes_before": 1622480,
+      "payload_bytes_after": 1608833,
+      "critical_path_ms_before": 33941.8,
+      "critical_path_ms_after": 1602.7,
+      "critical_path_delta_ms": -32339.1,
+      "perceived_first_content_ms_before": 33941.8,
+      "perceived_first_content_ms_after": 1602.7
+    },
+    "dashboard": {
+      "requests_before": 25,
+      "requests_after": 17,
+      "payload_bytes_before": 1511851,
+      "payload_bytes_after": 1902502,
+      "critical_path_ms_before": 55785.9,
+      "critical_path_ms_after": 56012.1,
+      "critical_path_delta_ms": 226.2,
+      "perceived_first_content_ms_before": 55785.9,
+      "perceived_first_content_ms_after": 56012.1
+    }
+  },
+  "phase1_changes": [
+    "projection=primary on command-center mount paths",
+    "single compliance-summary on Today (property dropdown + jurisdiction)",
+    "single requirements/full on Dashboard (no list projection duplicate)",
+    "layout CRN uses operational dashboard cache (no duplicate fetch when warm)",
+    "removed dead score trend/timeline fetches",
+    "risk KPI from protection-snapshot only (no risk-signals/predictive-insights lists)",
+    "work-orders limit 200 (was 500, failed 422 on staging)"
+  ],
+  "snapshot_deferred": true
+}

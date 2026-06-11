@@ -147,12 +147,14 @@ export default function ClientCommandCenterPage() {
 
     const maintenanceEnabled = hasFeature('maintenance_workflows');
 
-    fetchOperational(OPERATIONAL_CACHE_KEYS.commandCenter, () =>
-      clientAPI.getCommandCenter({}).then((r) => r.data),
+    fetchOperational(OPERATIONAL_CACHE_KEYS.commandCenterPrimary, () =>
+      clientAPI.getCommandCenterPrimary({}).then((r) => r.data),
     )
-      .then((cc) => {
+      .then((hit) => {
         if (cancelled) return;
+        const cc = hit?.data;
         setBundle(cc && typeof cc === 'object' ? cc : null);
+        if (cc?.freshness) setPrimaryFreshness(cc.freshness);
         if (!cc) {
           setError('Command center data could not be loaded.');
         } else {
@@ -160,6 +162,26 @@ export default function ClientCommandCenterPage() {
         }
         setLoading(false);
         setSecondaryLoading(true);
+        setSecondaryRisksLoading(true);
+        clientAPI
+          .getCommandCenterSecondary({})
+          .then((res) => {
+            if (cancelled) return;
+            const sec = res.data;
+            setBundle((prev) => ({
+              ...(prev || {}),
+              upcoming_risks: sec?.upcoming_risks ?? prev?.upcoming_risks ?? [],
+              recent_activity: sec?.recent_activity ?? prev?.recent_activity ?? [],
+              compliance_status_summary: {
+                ...(prev?.compliance_status_summary || {}),
+                ...(sec?.compliance_status_summary || {}),
+              },
+              secondary_sections_deferred: false,
+            }));
+          })
+          .finally(() => {
+            if (!cancelled) setSecondaryRisksLoading(false);
+          });
         const secondary = [
           fetchOperational(OPERATIONAL_CACHE_KEYS.complianceSummary, () =>
             clientAPI.getComplianceSummary().then((r) => r.data),

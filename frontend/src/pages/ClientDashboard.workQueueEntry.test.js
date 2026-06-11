@@ -27,7 +27,7 @@ jest.mock('../api/client', () => {
     clientAPI: {
       getDashboard: jest.fn(),
       getComplianceSummary: jest.fn(),
-      getCommandCenter: jest.fn(),
+      getCommandCenterPrimary: jest.fn(),
       getProtectionSnapshot: jest.fn(),
       getActivitySince: jest.fn(),
       getActiveSystemBanners: jest.fn(),
@@ -100,7 +100,7 @@ function setupMocks() {
       risk_level: 'Low Risk',
     },
   });
-  clientAPI.getCommandCenter.mockResolvedValue({
+  clientAPI.getCommandCenterPrimary.mockResolvedValue({
     data: {
       tasks_digest_summary: {},
       recent_activity: [],

@@ -37,6 +37,11 @@ import {
   PortalMobileNavLink,
   PortalMobileNavSection,
 } from './portal/PortalNavPrimitives';
+import {
+  fetchOperational,
+  peekOperationalCache,
+  OPERATIONAL_CACHE_KEYS,
+} from '../utils/clientOperationalFetch';
 
 export { PORTAL_TABS };
 
@@ -154,10 +159,20 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       return;
     }
     if (user?.role === 'ROLE_TENANT') return;
-    clientAPI.getDashboard().then((r) => {
-      const ref = r.data?.client?.customer_reference;
-      if (ref) setCrnState(ref);
-    }).catch(() => {});
+    const cached = peekOperationalCache(OPERATIONAL_CACHE_KEYS.dashboard);
+    const cachedRef = cached?.client?.customer_reference;
+    if (cachedRef) {
+      setCrnState(cachedRef);
+      return;
+    }
+    fetchOperational(OPERATIONAL_CACHE_KEYS.dashboard, () =>
+      clientAPI.getDashboard().then((r) => r.data),
+    )
+      .then((hit) => {
+        const ref = hit.data?.client?.customer_reference;
+        if (ref) setCrnState(ref);
+      })
+      .catch(() => {});
   }, [crnProp, user?.role]);
 
   const fetchProfile = () => {

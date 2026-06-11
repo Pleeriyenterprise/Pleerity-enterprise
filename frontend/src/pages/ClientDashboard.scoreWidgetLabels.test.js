@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import ClientDashboard from './ClientDashboard';
 import { clientAPI } from '../api/client';
 import api from '../api/client';
+import { clearOperationalCache } from '../utils/clientOperationalFetch';
 
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
@@ -23,7 +24,7 @@ jest.mock('../api/client', () => {
     clientAPI: {
       getDashboard: jest.fn(),
       getComplianceSummary: jest.fn(),
-      getCommandCenter: jest.fn(),
+      getCommandCenterPrimary: jest.fn(),
       getProtectionSnapshot: jest.fn(),
       getActivitySince: jest.fn(),
       getActiveSystemBanners: jest.fn(),
@@ -72,7 +73,7 @@ function setupMocks({ complianceScore, requirements }) {
   clientAPI.getComplianceSummary.mockResolvedValue({
     data: { properties: dashboardBody.properties, portfolio_score: 55, score_status: 'ok', risk_level: 'High risk' },
   });
-  clientAPI.getCommandCenter.mockResolvedValue({ data: {} });
+  clientAPI.getCommandCenterPrimary.mockResolvedValue({ data: {} });
   clientAPI.getProtectionSnapshot.mockResolvedValue({ data: {} });
   clientAPI.getActivitySince.mockResolvedValue({ data: {} });
   clientAPI.getActiveSystemBanners.mockResolvedValue({ data: { items: [] } });
@@ -92,7 +93,10 @@ function setupMocks({ complianceScore, requirements }) {
 }
 
 describe('ClientDashboard score widget labels', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    clearOperationalCache();
+  });
 
   it('shows score-tracked obligations and next renewal labels', async () => {
     setupMocks({

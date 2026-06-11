@@ -942,14 +942,6 @@ export default function ClientTasksPage() {
 
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
 
-  useEffect(() => {
-    if (!isClientUser) return;
-    clientAPI
-      .getComplianceSummary()
-      .then((res) => setPropertyOptions(res.data?.properties || []))
-      .catch(() => setPropertyOptions([]));
-  }, [isClientUser]);
-
   const emitTodayAnalytics = useCallback((event, properties = {}) => {
     clientAPI
       .postAnalyticsEvent({ event, path: '/today', properties: { ...properties, page: 'today' } })
@@ -974,8 +966,8 @@ export default function ClientTasksPage() {
       fetchOperational(reqKey, () =>
         clientAPI.getRequirements({ projection: 'full' }).then((r) => r.data),
       ),
-      fetchOperational(`${OPERATIONAL_CACHE_KEYS.commandCenter}:all`, () =>
-        clientAPI.getCommandCenter(params).then((r) => r.data).catch(() => null),
+      fetchOperational(`${OPERATIONAL_CACHE_KEYS.commandCenterPrimary}:${propertyFilter || 'all'}`, () =>
+        clientAPI.getCommandCenterPrimary(params).then((r) => r.data).catch(() => null),
       ),
     ])
       .then(([todayHit, reqHit, ccHit]) => {
@@ -1007,6 +999,7 @@ export default function ClientTasksPage() {
     )
       .then((hit) => {
         const data = hit?.data;
+        setPropertyOptions(Array.isArray(data?.properties) ? data.properties : []);
         const notice = data?.jurisdiction_compliance_notice;
         setJurisdictionComplianceNotice(notice && typeof notice === 'object' ? notice : null);
         setCommandCenterFallbackAcknowledged(
@@ -1015,7 +1008,9 @@ export default function ClientTasksPage() {
             : null,
         );
       })
-      .catch(() => {});
+      .catch(() => {
+        setPropertyOptions([]);
+      });
   }, [isClientUser, propertyFilter, emitTodayAnalytics]);
 
   useEffect(() => {

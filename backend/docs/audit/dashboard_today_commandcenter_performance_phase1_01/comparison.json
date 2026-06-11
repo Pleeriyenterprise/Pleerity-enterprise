@@ -1,0 +1,50 @@
+{
+  "programme": "DASHBOARD-TODAY-COMMANDCENTER-PERFORMANCE-PHASE1",
+  "before_source": "dashboard_today_commandcenter_load_performance_audit_01/api_timing_runtime.json",
+  "pages": {
+    "today": {
+      "requests_before": 5,
+      "requests_after": 4,
+      "payload_bytes_before": 847624,
+      "payload_bytes_after": 796732,
+      "payload_delta_bytes": -50892,
+      "critical_path_ms_before": 40199.3,
+      "critical_path_ms_after": 39909.2,
+      "critical_path_delta_ms": -290.1,
+      "perceived_first_content_ms_before": 40199.3,
+      "perceived_first_content_ms_after": 39909.2,
+      "notes": "Critical path unchanged (today/items). Removed duplicate compliance-summary (~17–20s network). Command-center gate slice dropped from ~34s legacy bundle to ~23.8s primary (parallel, non-gating)."
+    },
+    "command_center": {
+      "requests_before": 4,
+      "requests_after": 5,
+      "payload_bytes_before": 1622480,
+      "payload_bytes_after": 1608833,
+      "payload_delta_bytes": -13647,
+      "critical_path_ms_before": 33941.8,
+      "critical_path_ms_after": 1602.7,
+      "critical_path_delta_ms": -32339.1,
+      "perceived_first_content_ms_before": 33941.8,
+      "perceived_first_content_ms_after": 1602.7,
+      "notes": "Primary projection unblocks first paint; secondary bundle (~33s) and compliance-summary load after render."
+    },
+    "dashboard": {
+      "requests_before": 25,
+      "requests_after": 17,
+      "payload_bytes_before": 1511851,
+      "payload_bytes_after": 1902502,
+      "payload_delta_bytes": 390651,
+      "critical_path_ms_before": 55785.9,
+      "critical_path_ms_after": 56012.1,
+      "critical_path_delta_ms": 226.2,
+      "perceived_first_content_ms_before": 5234.9,
+      "perceived_first_content_ms_after": 5131.6,
+      "kpi_row_complete_ms_before": 55785.9,
+      "kpi_row_complete_ms_after": 56012.1,
+      "sum_request_ms_before": 265899.0,
+      "sum_request_ms_after": 214719.6,
+      "sum_request_delta_ms": -51179.4,
+      "notes": "Skeleton gate unchanged (~5s). KPI row still blocked by value-insights (~56s). Removed 8 requests (dead score fetches, duplicate requirements/list, risk-signal lists, layout dashboard dup). Work-orders limit 200 now succeeds (+923KB payload vs failed 422 at limit 500)."
+    }
+  }
+}
