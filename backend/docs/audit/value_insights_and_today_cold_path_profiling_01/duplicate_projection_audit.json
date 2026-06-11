@@ -1,0 +1,44 @@
+{
+  "programme": "VALUE-INSIGHTS-AND-TODAY-COLD-PATH-PROFILING-01",
+  "findings": [
+    {
+      "duplication": "value_insights \u2192 get_unified_tasks_digest rebuilds full unified_tasks (raw_limit=60) for two integer counts",
+      "already_available_from": [
+        "command_center.tasks_digest_summary",
+        "protection-snapshot",
+        "operational_surface_cache unified:*"
+      ],
+      "classification": "DUPLICATE_WORK_DRIFT"
+    },
+    {
+      "duplication": "value_insights \u2192 calculate_compliance_score loads ALL requirements + enrich + ALL documents for stats used only for overdue/expiring counts",
+      "already_available_from": [
+        "GET /client/compliance-score stats",
+        "GET /portfolio/compliance-summary kpis",
+        "persisted property scores"
+      ],
+      "classification": "DUPLICATE_WORK_DRIFT"
+    },
+    {
+      "duplication": "today/items and value_insights both invoke fetch_client_priority_actions / unified_tasks rebuild independently on same navigation",
+      "already_available_from": [
+        "operational_surface_cache 45s TTL \u2014 but per-worker, no cross-request sharing on Render"
+      ],
+      "classification": "DUPLICATE_WORK_DRIFT"
+    },
+    {
+      "duplication": "calculate_compliance_score and priority_stream both run enrich_requirements_for_client on overlapping requirement sets",
+      "already_available_from": [
+        "requirements operational projection cache (frontend only)"
+      ],
+      "classification": "PROJECTION_COST_DRIFT"
+    },
+    {
+      "duplication": "dashboard mount parallel burst includes today/items + value-insights + compliance-score \u2014 triple requirement/task projection",
+      "already_available_from": [
+        "Phase 1 reduced frontend dupes; backend still rebuilds per endpoint"
+      ],
+      "classification": "DUPLICATE_WORK_DRIFT"
+    }
+  ]
+}

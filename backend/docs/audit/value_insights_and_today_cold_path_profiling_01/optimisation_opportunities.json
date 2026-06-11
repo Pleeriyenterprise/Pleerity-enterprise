@@ -1,0 +1,90 @@
+{
+  "programme": "VALUE-INSIGHTS-AND-TODAY-COLD-PATH-PROFILING-01",
+  "ranking_note": "Top three ranked by expected runtime reduction × implementation risk (LOW/MEDIUM before HIGH architecture plays).",
+  "estimated_cold_path_reduction_if_top_three": {
+    "value_insights_seconds": "25-32",
+    "today_items_seconds": "10-15",
+    "note": "Gains are partially non-overlapping; HTTP totals include Render worker + network overhead beyond local decomposition."
+  },
+  "top_three_recommended": [
+    {
+      "rank": 1,
+      "opportunity": "Derive value_insights urgent/upcoming from cached unified_tasks digest or cc summary — skip get_unified_tasks_for_client rebuild",
+      "estimated_gain_seconds": 18.2,
+      "risk": "LOW",
+      "category": "cache"
+    },
+    {
+      "rank": 2,
+      "opportunity": "Value insights stats from persisted compliance-score headline / compliance-summary only — skip full calculate_compliance_score",
+      "estimated_gain_seconds": 12.7,
+      "risk": "MEDIUM",
+      "category": "projection"
+    },
+    {
+      "rank": 3,
+      "opportunity": "Defer or slim ut.freshness_block + today.recovery_enrichment for today surface_profile",
+      "estimated_gain_seconds": 14.7,
+      "risk": "MEDIUM",
+      "category": "projection"
+    }
+  ],
+  "architecture_followons": [
+    {
+      "opportunity": "Portal snapshot bundling value_insights counts + today digest (audit C1)",
+      "estimated_gain_seconds": 45,
+      "risk": "HIGH",
+      "category": "architecture"
+    },
+    {
+      "opportunity": "Shared Redis operational cache across Render workers",
+      "estimated_gain_seconds": 35,
+      "risk": "HIGH",
+      "category": "cache"
+    }
+  ],
+  "opportunities": [
+    {
+      "opportunity": "Derive value_insights urgent/upcoming from cached unified_tasks digest or cc summary — skip get_unified_tasks_for_client rebuild",
+      "estimated_gain_seconds": 18.2,
+      "risk": "LOW",
+      "category": "cache"
+    },
+    {
+      "opportunity": "Defer or slim ut.freshness_block + today.recovery_enrichment for today surface_profile",
+      "estimated_gain_seconds": 14.7,
+      "risk": "MEDIUM",
+      "category": "projection"
+    },
+    {
+      "opportunity": "Value insights stats from persisted compliance-score headline / compliance-summary only — skip full calculate_compliance_score",
+      "estimated_gain_seconds": 12.7,
+      "risk": "MEDIUM",
+      "category": "projection"
+    },
+    {
+      "opportunity": "Share single enrich_requirements_for_client batch between compliance_score and priority_stream per request",
+      "estimated_gain_seconds": 1.5,
+      "risk": "MEDIUM",
+      "category": "aggregation"
+    },
+    {
+      "opportunity": "Narrow priority_stream requirements cursor (projection fields, lower limit) for today surface_profile",
+      "estimated_gain_seconds": 1.1,
+      "risk": "MEDIUM",
+      "category": "query"
+    },
+    {
+      "opportunity": "Shared Redis operational cache across Render workers",
+      "estimated_gain_seconds": 35,
+      "risk": "HIGH",
+      "category": "cache"
+    },
+    {
+      "opportunity": "Portal snapshot bundling value_insights counts + today digest (audit C1)",
+      "estimated_gain_seconds": 45,
+      "risk": "HIGH",
+      "category": "architecture"
+    }
+  ]
+}

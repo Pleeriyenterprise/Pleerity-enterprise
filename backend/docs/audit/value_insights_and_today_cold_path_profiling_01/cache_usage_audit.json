@@ -1,0 +1,65 @@
+{
+  "programme": "VALUE-INSIGHTS-AND-TODAY-COLD-PATH-PROFILING-01",
+  "layers": [
+    {
+      "name": "operational_surface_cache",
+      "scope": "in-process per worker",
+      "ttl_seconds": 45,
+      "keys": [
+        "unified:{client}:...",
+        "compliance_score:{client}",
+        "cc_primary:{client}"
+      ],
+      "bypass": "get_unified_tasks_for_client(bypass_cache=True) \u2014 not exposed on HTTP today/items",
+      "invalidation": "invalidate_client_operational_surfaces on compliance-outcome mutations"
+    }
+  ],
+  "endpoints": {
+    "value_insights": {
+      "uses_cache": false,
+      "downstream_cache": "unified_tasks digest may hit cache on warm vi.unified_tasks_digest",
+      "http_cold_warm": {
+        "endpoint": "value_insights",
+        "path": "/client/value-insights",
+        "cold": {
+          "status": 200,
+          "duration_ms": 57701.8,
+          "payload_bytes": 962,
+          "cache_hit": null,
+          "cache_ttl_seconds": null
+        },
+        "warm": {
+          "status": 200,
+          "duration_ms": 25075.8,
+          "payload_bytes": 962,
+          "cache_hit": null,
+          "cache_ttl_seconds": null
+        }
+      }
+    },
+    "today_items": {
+      "uses_cache": true,
+      "freshness_field": "payload.freshness.cache_hit",
+      "http_cold_warm": {
+        "endpoint": "today_items",
+        "path": "/today/items",
+        "cold": {
+          "status": 200,
+          "duration_ms": 41916.4,
+          "payload_bytes": 129907,
+          "cache_hit": null,
+          "cache_ttl_seconds": null
+        },
+        "warm": {
+          "status": 200,
+          "duration_ms": 10532.6,
+          "payload_bytes": 129978,
+          "cache_hit": true,
+          "cache_ttl_seconds": 45
+        }
+      },
+      "warm_local_ms": 28099.39,
+      "cold_local_ms": 28296.56
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "programme": "VALUE-INSIGHTS-AND-TODAY-COLD-PATH-PROFILING-01",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "explain_samples": [
+    {
+      "label": "priority_stream_gap_requirements",
+      "collection": "requirements",
+      "query_shape": "{$or, client_id}",
+      "duration_ms": 134.65,
+      "documents_examined": 79,
+      "documents_returned": 78,
+      "execution_time_ms": 11,
+      "index_used": null
+    },
+    {
+      "label": "compliance_score_all_requirements",
+      "collection": "requirements",
+      "query_shape": "{client_id}",
+      "duration_ms": 285.95,
+      "documents_examined": 79,
+      "documents_returned": 79,
+      "execution_time_ms": 2,
+      "index_used": null
+    },
+    {
+      "label": "compliance_score_properties",
+      "collection": "properties",
+      "query_shape": "{client_id}",
+      "duration_ms": 164.37,
+      "documents_examined": 7,
+      "documents_returned": 7,
+      "execution_time_ms": 1,
+      "index_used": null
+    },
+    {
+      "label": "compliance_score_documents",
+      "collection": "documents",
+      "query_shape": "{client_id}",
+      "duration_ms": 103.83,
+      "documents_examined": 29,
+      "documents_returned": 29,
+      "execution_time_ms": 0,
+      "index_used": null
+    },
+    {
+      "label": "priority_stream_open_wos",
+      "collection": "work_orders",
+      "query_shape": "{client_id, status}",
+      "duration_ms": 182.99,
+      "documents_examined": 106,
+      "documents_returned": 106,
+      "execution_time_ms": 1,
+      "index_used": null
+    }
+  ],
+  "slowest_queries": [
+    {
+      "label": "compliance_score_all_requirements",
+      "collection": "requirements",
+      "query_shape": "{client_id}",
+      "duration_ms": 285.95,
+      "documents_examined": 79,
+      "documents_returned": 79,
+      "execution_time_ms": 2,
+      "index_used": null
+    },
+    {
+      "label": "priority_stream_open_wos",
+      "collection": "work_orders",
+      "query_shape": "{client_id, status}",
+      "duration_ms": 182.99,
+      "documents_examined": 106,
+      "documents_returned": 106,
+      "execution_time_ms": 1,
+      "index_used": null
+    },
+    {
+      "label": "compliance_score_properties",
+      "collection": "properties",
+      "query_shape": "{client_id}",
+      "duration_ms": 164.37,
+      "documents_examined": 7,
+      "documents_returned": 7,
+      "execution_time_ms": 1,
+      "index_used": null
+    },
+    {
+      "label": "priority_stream_gap_requirements",
+      "collection": "requirements",
+      "query_shape": "{$or, client_id}",
+      "duration_ms": 134.65,
+      "documents_examined": 79,
+      "documents_returned": 78,
+      "execution_time_ms": 11,
+      "index_used": null
+    },
+    {
+      "label": "compliance_score_documents",
+      "collection": "documents",
+      "query_shape": "{client_id}",
+      "duration_ms": 103.83,
+      "documents_examined": 29,
+      "documents_returned": 29,
+      "execution_time_ms": 0,
+      "index_used": null
+    }
+  ]
+}

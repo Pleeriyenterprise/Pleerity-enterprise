@@ -1,0 +1,30 @@
+{
+  "programme": "VALUE-INSIGHTS-AND-TODAY-COLD-PATH-PROFILING-01",
+  "overall": [
+    "PROJECTION_COST_DRIFT",
+    "UNIFIED_TASKS_COLD_PATH_COST"
+  ],
+  "value_insights": {
+    "primary": "PROJECTION_COST_DRIFT",
+    "secondary": [
+      "DUPLICATE_WORK_DRIFT",
+      "DATABASE_COST_DRIFT"
+    ],
+    "dominant_stage": "vi.unified_tasks_digest",
+    "dominant_ms": 18182.71
+  },
+  "today_items": {
+    "primary": "UNIFIED_TASKS_COLD_PATH_COST",
+    "secondary": [
+      "PROJECTION_COST_DRIFT",
+      "CACHE_MISS_DRIFT"
+    ],
+    "dominant_stage": "today.unified_tasks",
+    "dominant_ms": 22782.55,
+    "sub_dominant_stages": [
+      {"stage": "ut.freshness_block", "duration_ms": 9514.66},
+      {"stage": "today.recovery_enrichment", "duration_ms": 5151.22},
+      {"stage": "ut.priority_stream", "duration_ms": 4232.57}
+    ]
+  }
+}

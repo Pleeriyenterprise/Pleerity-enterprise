@@ -1,0 +1,226 @@
+{
+  "programme": "VALUE-INSIGHTS-AND-TODAY-COLD-PATH-PROFILING-01",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "run_tag": "20260611T194409Z",
+  "http": {
+    "endpoint": "today_items",
+    "path": "/today/items",
+    "cold": {
+      "status": 200,
+      "duration_ms": 41916.4,
+      "payload_bytes": 129907,
+      "cache_hit": null,
+      "cache_ttl_seconds": null
+    },
+    "warm": {
+      "status": 200,
+      "duration_ms": 10532.6,
+      "payload_bytes": 129978,
+      "cache_hit": true,
+      "cache_ttl_seconds": 45
+    }
+  },
+  "cold_stages": [
+    {
+      "stage": "ut.priority_stream",
+      "duration_ms": 4232.57,
+      "output_count": 231
+    },
+    {
+      "stage": "ut.property_labels",
+      "duration_ms": 66.19,
+      "output_count": 7
+    },
+    {
+      "stage": "ut.action_to_task",
+      "duration_ms": 2.91,
+      "input_count": 231,
+      "output_count": 231
+    },
+    {
+      "stage": "ut.tenant_messages",
+      "duration_ms": 127.63,
+      "output_count": 234
+    },
+    {
+      "stage": "ut.tenant_requests",
+      "duration_ms": 375.11,
+      "output_count": 238
+    },
+    {
+      "stage": "ut.canonical_requirement_guard",
+      "duration_ms": 2502.63,
+      "output_count": 213
+    },
+    {
+      "stage": "ut.stale_suppression_and_dedupe",
+      "duration_ms": 1519.71,
+      "output_count": 213
+    },
+    {
+      "stage": "ut.overrides_partition",
+      "duration_ms": 72.07,
+      "input_count": 213,
+      "output_count": 213
+    },
+    {
+      "stage": "ut.sections_sort_activity",
+      "duration_ms": 332.34,
+      "output_count": 213,
+      "urgent": 120,
+      "upcoming": 10,
+      "in_progress": 83
+    },
+    {
+      "stage": "ut.freshness_block",
+      "duration_ms": 9514.66
+    },
+    {
+      "stage": "today.unified_tasks",
+      "duration_ms": 22782.55,
+      "input_count": 50,
+      "output_count": 6,
+      "cache_hit": false,
+      "urgent_count": 120
+    },
+    {
+      "stage": "today.rent_attention",
+      "duration_ms": 178.83,
+      "output_count": 12
+    },
+    {
+      "stage": "today.projection",
+      "duration_ms": 22.65,
+      "input_count": 6,
+      "output_count": 1
+    },
+    {
+      "stage": "today.stall_enrichment",
+      "duration_ms": 161.21,
+      "input_count": 50
+    },
+    {
+      "stage": "today.recovery_enrichment",
+      "duration_ms": 5151.22
+    },
+    {
+      "stage": "today.merge_rent",
+      "duration_ms": 0.05,
+      "output_count": 24
+    },
+    {
+      "stage": "today.total",
+      "duration_ms": 28296.56
+    }
+  ],
+  "warm_stages": [
+    {
+      "stage": "today.unified_tasks",
+      "duration_ms": 22942.96,
+      "input_count": 50,
+      "output_count": 6,
+      "cache_hit": false,
+      "urgent_count": 120
+    },
+    {
+      "stage": "today.rent_attention",
+      "duration_ms": 269.63,
+      "output_count": 12
+    },
+    {
+      "stage": "today.projection",
+      "duration_ms": 30.13,
+      "input_count": 6,
+      "output_count": 1
+    },
+    {
+      "stage": "today.stall_enrichment",
+      "duration_ms": 134.66,
+      "input_count": 50
+    },
+    {
+      "stage": "today.recovery_enrichment",
+      "duration_ms": 4721.92
+    },
+    {
+      "stage": "today.merge_rent",
+      "duration_ms": 0.03,
+      "output_count": 24
+    },
+    {
+      "stage": "today.total",
+      "duration_ms": 28099.39
+    }
+  ],
+  "top_10_slowest": [
+    {
+      "stage": "today.total",
+      "duration_ms": 28296.56
+    },
+    {
+      "stage": "today.unified_tasks",
+      "duration_ms": 22782.55,
+      "input_count": 50,
+      "output_count": 6,
+      "cache_hit": false,
+      "urgent_count": 120
+    },
+    {
+      "stage": "ut.freshness_block",
+      "duration_ms": 9514.66
+    },
+    {
+      "stage": "today.recovery_enrichment",
+      "duration_ms": 5151.22
+    },
+    {
+      "stage": "ut.priority_stream",
+      "duration_ms": 4232.57,
+      "output_count": 231
+    },
+    {
+      "stage": "ut.canonical_requirement_guard",
+      "duration_ms": 2502.63,
+      "output_count": 213
+    },
+    {
+      "stage": "ut.stale_suppression_and_dedupe",
+      "duration_ms": 1519.71,
+      "output_count": 213
+    },
+    {
+      "stage": "ut.tenant_requests",
+      "duration_ms": 375.11,
+      "output_count": 238
+    },
+    {
+      "stage": "ut.sections_sort_activity",
+      "duration_ms": 332.34,
+      "output_count": 213,
+      "urgent": 120,
+      "upcoming": 10,
+      "in_progress": 83
+    },
+    {
+      "stage": "today.rent_attention",
+      "duration_ms": 178.83,
+      "output_count": 12
+    }
+  ],
+  "dominant_bottleneck": {
+    "stage": "today.unified_tasks",
+    "duration_ms": 22782.55,
+    "cache_hit": false,
+    "sub_stages": [
+      {"stage": "ut.freshness_block", "duration_ms": 9514.66},
+      {"stage": "today.recovery_enrichment", "duration_ms": 5151.22},
+      {"stage": "ut.priority_stream", "duration_ms": 4232.57}
+    ]
+  },
+  "pipeline": [
+    "requirements \u2192 gap engine \u2192 compliance bridge",
+    "maintenance issues \u2192 risk signals",
+    "client priority stream \u2192 unified tasks",
+    "stale suppression \u2192 today projection \u2192 rent/stall/recovery merge"
+  ]
+}

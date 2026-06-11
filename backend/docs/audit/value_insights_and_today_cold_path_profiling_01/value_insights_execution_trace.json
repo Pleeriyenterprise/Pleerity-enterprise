@@ -1,0 +1,127 @@
+{
+  "programme": "VALUE-INSIGHTS-AND-TODAY-COLD-PATH-PROFILING-01",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "run_tag": "20260611T194409Z",
+  "http": {
+    "endpoint": "value_insights",
+    "path": "/client/value-insights",
+    "cold": {
+      "status": 200,
+      "duration_ms": 57701.8,
+      "payload_bytes": 962,
+      "cache_hit": null,
+      "cache_ttl_seconds": null
+    },
+    "warm": {
+      "status": 200,
+      "duration_ms": 25075.8,
+      "payload_bytes": 962,
+      "cache_hit": null,
+      "cache_ttl_seconds": null
+    }
+  },
+  "stages": [
+    {
+      "stage": "vi.entitlements",
+      "duration_ms": 205.93,
+      "records_processed": 1,
+      "source": "db_fallback:StripeModeMismatchError"
+    },
+    {
+      "stage": "vi.properties.count",
+      "duration_ms": 61.96,
+      "records_processed": 7,
+      "db_queries": 1
+    },
+    {
+      "stage": "vi.compliance_score.calculate",
+      "duration_ms": 12712.19,
+      "records_processed": 43,
+      "output_count": 22,
+      "score": 38,
+      "overdue": 0
+    },
+    {
+      "stage": "vi.documents.count_total",
+      "duration_ms": 61.89,
+      "records_processed": 29,
+      "db_queries": 1
+    },
+    {
+      "stage": "vi.documents.count_period",
+      "duration_ms": 73.35,
+      "records_processed": 29,
+      "db_queries": 1
+    },
+    {
+      "stage": "vi.work_orders.count_completed",
+      "duration_ms": 64.9,
+      "records_processed": 15,
+      "db_queries": 1
+    },
+    {
+      "stage": "vi.unified_tasks_digest",
+      "duration_ms": 18182.71,
+      "output_count": 146,
+      "cache_hit": false,
+      "urgent": 136,
+      "upcoming": 10
+    }
+  ],
+  "top_10_slowest": [
+    {
+      "stage": "vi.unified_tasks_digest",
+      "duration_ms": 18182.71,
+      "output_count": 146,
+      "cache_hit": false,
+      "urgent": 136,
+      "upcoming": 10
+    },
+    {
+      "stage": "vi.compliance_score.calculate",
+      "duration_ms": 12712.19,
+      "records_processed": 43,
+      "output_count": 22,
+      "score": 38,
+      "overdue": 0
+    },
+    {
+      "stage": "vi.entitlements",
+      "duration_ms": 205.93,
+      "records_processed": 1,
+      "source": "db_fallback:StripeModeMismatchError"
+    },
+    {
+      "stage": "vi.documents.count_period",
+      "duration_ms": 73.35,
+      "records_processed": 29,
+      "db_queries": 1
+    },
+    {
+      "stage": "vi.work_orders.count_completed",
+      "duration_ms": 64.9,
+      "records_processed": 15,
+      "db_queries": 1
+    },
+    {
+      "stage": "vi.properties.count",
+      "duration_ms": 61.96,
+      "records_processed": 7,
+      "db_queries": 1
+    },
+    {
+      "stage": "vi.documents.count_total",
+      "duration_ms": 61.89,
+      "records_processed": 29,
+      "db_queries": 1
+    }
+  ],
+  "dominant_bottleneck": {
+    "stage": "vi.unified_tasks_digest",
+    "duration_ms": 18182.71,
+    "output_count": 146,
+    "cache_hit": false,
+    "urgent": 136,
+    "upcoming": 10
+  }
+}
