@@ -1095,6 +1095,9 @@ export const adminAPI = {
     typeof jobOrBody === 'string'
       ? apiClient.post('/admin/jobs/run', { job: jobOrBody }, config)
       : apiClient.post('/admin/jobs/run', jobOrBody, config),
+  getJobExecutionGovernanceMatrix: () => apiClient.get('/admin/jobs/execution-governance'),
+  getJobExecutionGovernance: (jobId) => apiClient.get(`/admin/jobs/${encodeURIComponent(jobId)}/execution-governance`),
+  previewJobExecution: (body) => apiClient.post('/admin/jobs/execution-preview', body),
   // Operations & Compliance
   getOpsOverview: () => apiClient.get('/admin/ops/overview'),
   /** Admin priority actions (action queue / operational priorities). */

@@ -5066,11 +5066,17 @@ async def get_feature_matrix(request: Request):
 
 class RunJobRequest(BaseModel):
     job: str
+    scope_type: Optional[str] = None
     client_id: Optional[str] = None
+    client_ids: Optional[List[str]] = None
     property_id: Optional[str] = None
     # Monthly digest: optional filter (requires client_id). See job_scope_registry.
     property_ids: Optional[List[str]] = None
+    plan_code: Optional[str] = None
+    jurisdiction: Optional[str] = None
+    cohort_filter: Optional[str] = None
     portfolio_wide: bool = False
+    portfolio_wide_confirmed: bool = False
     reason: Optional[str] = Field(None, max_length=2000)
 
 
@@ -5089,6 +5095,17 @@ async def run_job_now(request: Request, body: RunJobRequest):
     user = await admin_route_guard(request)
     await _enforce_admin_job_run_rate(user["portal_user_id"])
     from job_runner import JOB_RUNNERS, run_instrumented
+    from services.job_execution_governance import (
+        ExecutionRequest,
+        ResolvedExecution,
+        build_job_kwargs_for_run,
+        build_start_metadata,
+        estimate_execution_impact,
+        governance_action_id,
+        infer_scope_type,
+        resolve_execution,
+        validate_execution_request,
+    )
 
     job_id = (body.job or "").strip()
     if not job_id or job_id not in JOB_RUNNERS:
@@ -5096,112 +5113,132 @@ async def run_job_now(request: Request, body: RunJobRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid job. Use one of: {', '.join(sorted(JOB_RUNNERS.keys()))}"
         )
-    from services.job_scope_registry import (
-        get_job_run_scope,
-        validate_manual_job_scope,
-        validate_property_ids_belong_to_client,
-        validate_property_belongs_to_client,
-    )
 
-    scope_err = validate_manual_job_scope(
-        job_id,
+    try:
+        scope_type = infer_scope_type(
+            scope_type=body.scope_type,
+            client_id=body.client_id,
+            property_id=body.property_id,
+            client_ids=body.client_ids,
+            plan_code=body.plan_code,
+            jurisdiction=body.jurisdiction,
+            cohort_filter=body.cohort_filter,
+            portfolio_wide=body.portfolio_wide,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    exec_req = ExecutionRequest(
+        scope_type=scope_type,
         client_id=body.client_id,
+        client_ids=body.client_ids,
         property_id=body.property_id,
         property_ids=body.property_ids,
+        plan_code=body.plan_code,
+        jurisdiction=body.jurisdiction,
+        cohort_filter=body.cohort_filter,
+        portfolio_wide=body.portfolio_wide or scope_type.value == "PORTFOLIO_WIDE",
+        portfolio_wide_confirmed=body.portfolio_wide_confirmed,
+        reason=body.reason,
     )
+    scope_err = validate_execution_request(job_id, exec_req)
     if scope_err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=scope_err)
 
-    scope = get_job_run_scope(job_id)
-    cid = (body.client_id or "").strip()
-    pid = (body.property_id or "").strip()
-    pids_meta = [str(x).strip() for x in (body.property_ids or []) if x and str(x).strip()]
-    is_global_run = not cid and not pid and not pids_meta
+    db = database.get_db()
+    resolve_err, resolved = await resolve_execution(db, job_id, exec_req)
+    if resolve_err or not resolved:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resolve_err or "Could not resolve scope")
 
-    if scope.accepts_client_id and is_global_run and not body.portfolio_wide:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Job '{job_id}' supports client scope. Provide client_id or set portfolio_wide=true "
-                "with reason and confirmation for portfolio-wide execution."
-            ),
-        )
-
-    action_id = "run_portfolio_wide_job" if is_global_run or body.portfolio_wide else "run_scoped_automation_job"
+    action_id = governance_action_id(resolved)
+    resource_key = f"{job_id}:{resolved.client_ids[0] if resolved.client_ids else 'global'}"
     support_reason = await enforce_governed_admin_action(
         request,
         user,
         action_id,
         reason=body.reason,
-        resource_key=f"{job_id}:{cid or 'global'}",
+        resource_key=resource_key,
     )
 
-    if cid:
-        client_doc = await database.get_db().clients.find_one({"client_id": cid}, {"_id": 1})
-        if not client_doc:
-            raise HTTPException(status_code=404, detail="Client not found")
-    if pids_meta and cid:
-        own_err = await validate_property_ids_belong_to_client(cid, pids_meta)
-        if own_err:
-            raise HTTPException(status_code=400, detail=own_err)
-    if pid and scope.manual_requires_property_id:
-        prop = await database.get_db().properties.find_one({"property_id": pid}, {"_id": 0, "client_id": 1})
-        if not prop:
-            raise HTTPException(status_code=404, detail="Property not found")
-        if cid and prop.get("client_id") != cid:
-            raise HTTPException(status_code=400, detail="property_id does not belong to client_id")
+    impact_preview = await estimate_execution_impact(db, job_id, exec_req)
+    start_metadata = build_start_metadata(resolved, exec_req)
+    admin_id = user.get("portal_user_id")
 
-    job_kwargs = None
-    start_metadata = None
-    if cid:
-        start_metadata = {"scope": "client", "client_id": cid}
-    elif body.portfolio_wide:
-        start_metadata = {"scope": "global", "portfolio_wide": True}
-    else:
-        start_metadata = {"scope": "global"}
-    if pid:
-        start_metadata = dict(start_metadata or {})
-        start_metadata["property_id"] = pid
-    if pids_meta:
-        start_metadata = dict(start_metadata or {})
-        start_metadata["property_ids"] = pids_meta
-
-    scope = get_job_run_scope(job_id)
-    job_kw: Dict[str, Any] = {}
-    if scope.accepts_client_id and body.client_id and body.client_id.strip():
-        job_kw["client_id"] = body.client_id.strip()
-    if scope.accepts_property_id and body.property_id and body.property_id.strip():
-        job_kw["property_id"] = body.property_id.strip()
-    if scope.accepts_property_ids_filter and pids_meta:
-        job_kw["property_ids"] = pids_meta
-    job_kwargs = job_kw if job_kw else None
     try:
-        result = await run_instrumented(
-            job_id,
-            "manual",
-            triggered_by=user.get("portal_user_id"),
-            job_kwargs=job_kwargs,
-            start_metadata=start_metadata,
-        )
+        if resolved.batch_mode and resolved.client_ids:
+            batch_results = []
+            for cid in resolved.client_ids:
+                job_kw = build_job_kwargs_for_run(
+                    job_id,
+                    ResolvedExecution(
+                        scope_type=resolved.scope_type,
+                        client_ids=[cid],
+                        property_ids=resolved.property_ids,
+                    ),
+                    triggered_by_admin_id=admin_id,
+                )
+                batch_meta = dict(start_metadata)
+                batch_meta["client_id"] = cid
+                batch_meta["client_ids"] = [cid]
+                r = await run_instrumented(
+                    job_id,
+                    "manual",
+                    triggered_by=admin_id,
+                    job_kwargs=job_kw if job_kw else None,
+                    start_metadata=batch_meta,
+                )
+                batch_results.append({"client_id": cid, "result": r})
+            result = {
+                "message": f"Job {job_id} completed for {len(batch_results)} client(s)",
+                "count": len(batch_results),
+                "batch_results": batch_results,
+                "outcome_status": "success",
+            }
+        else:
+            job_kw = build_job_kwargs_for_run(job_id, resolved, triggered_by_admin_id=admin_id)
+            result = await run_instrumented(
+                job_id,
+                "manual",
+                triggered_by=admin_id,
+                job_kwargs=job_kw if job_kw else None,
+                start_metadata=start_metadata,
+            )
         message = (result.get("message") if result else None) or f"Job {job_id} completed"
+        cid = resolved.client_ids[0] if len(resolved.client_ids) == 1 else None
         await create_audit_log(
             action=AuditAction.ADMIN_ACTION,
             actor_id=user["portal_user_id"],
-            client_id=cid or None,
+            client_id=cid,
             metadata={
                 "action": "manual_job_run",
                 "job_id": job_id,
-                "run_scope": (start_metadata or {}).get("scope"),
-                "portfolio_wide": bool(body.portfolio_wide or is_global_run),
-                "target_client_id": cid or None,
-                "target_property_id": pid or None,
-                "target_property_ids": pids_meta if pids_meta else None,
+                "scope_type": resolved.scope_type.value,
+                "run_scope": start_metadata.get("scope"),
+                "portfolio_wide": resolved.is_portfolio_wide,
+                "target_client_id": cid,
+                "target_client_ids": resolved.client_ids or None,
+                "target_property_id": resolved.property_id,
+                "target_property_ids": resolved.property_ids,
+                "plan_code": body.plan_code,
+                "jurisdiction": body.jurisdiction,
+                "cohort_filter": body.cohort_filter,
+                "estimated_impact": (impact_preview or {}).get("estimates"),
                 "admin_email": user["email"],
-                "job_kwargs": job_kwargs,
+                "execution_result_summary": {
+                    "outcome_status": (result or {}).get("outcome_status"),
+                    "count": (result or {}).get("count"),
+                },
                 **normalized_admin_action_metadata(action_id, support_reason),
             },
         )
-        return {"success": True, "job": job_id, "message": message, "result": result}
+        return {
+            "success": True,
+            "job": job_id,
+            "message": message,
+            "result": result,
+            "scope_type": resolved.scope_type.value,
+            "estimated_impact": (impact_preview or {}).get("estimates"),
+        }
     except Exception as e:
         logger.error(f"Manual job run error ({job_id}): {e}")
         raise HTTPException(

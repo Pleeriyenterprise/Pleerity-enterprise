@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
-import { runGovernedAdminMutation } from '../utils/adminGovernedMutation';
-import { getGovernanceWarning } from '../utils/adminActionGovernance';
 import { Zap, Play, RefreshCw, Clock, CheckCircle, AlertTriangle, XCircle, HelpCircle, FileText, Download } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 import {
@@ -22,6 +20,7 @@ import {
   AUTOMATION_CENTRE_MESSAGE_LOGS_JOBS as MESSAGE_LOGS_JOBS,
   getAutomationCentreDegradedReviewTitle,
 } from '../utils/automationCentreReviewHints';
+import ManualJobExecutionModal from '../components/admin/ManualJobExecutionModal';
 
 const JOB_STATE = {
   healthy: { label: 'Healthy', className: 'bg-green-100 text-green-800', Icon: CheckCircle },
@@ -77,17 +76,6 @@ function getJobState(info, jobName, heartbeatStale, nextRunIso) {
   return 'never_ran_and_overdue';
 }
 
-const CLIENT_SCOPED_JOBS = new Set([
-  'monthly_digest',
-  'daily_reminders',
-  'compliance_check_morning',
-  'compliance_check_evening',
-  'compliance_score_snapshots',
-  'risk_signals_job',
-  'rent_operations_daily_job',
-]);
-const PROPERTY_SCOPED_JOBS = new Set(['compliance_recalc_enqueue_property']);
-
 export default function AdminAutomationCentrePage() {
   const [jobRuns, setJobRuns] = useState({ items: [], total: 0 });
   const [frameworkAudit, setFrameworkAudit] = useState(null);
@@ -116,73 +104,11 @@ export default function AdminAutomationCentrePage() {
 
   useEffect(() => { load(); }, []);
 
-  const [runNowConfirm, setRunNowConfirm] = useState(null);
-  const [scopeClientId, setScopeClientId] = useState('');
-  const [scopePropertyId, setScopePropertyId] = useState('');
-  const [portfolioWide, setPortfolioWide] = useState(false);
-  const [jobReason, setJobReason] = useState('');
-  const [clients, setClients] = useState([]);
+  const [runNowJobId, setRunNowJobId] = useState(null);
   const [cardFilter, setCardFilter] = useState(null);
 
-  useEffect(() => {
-    if (!runNowConfirm) return;
-    adminAPI
-      .getClients(0, 100)
-      .then((res) => setClients(res.data?.clients || res.data || []))
-      .catch(() => setClients([]));
-  }, [runNowConfirm]);
-
   const handleRunNowClick = (jobId) => {
-    setScopeClientId('');
-    setScopePropertyId('');
-    setPortfolioWide(false);
-    setJobReason('');
-    setRunNowConfirm(jobId);
-  };
-
-  const handleRunNowConfirm = async () => {
-    if (!runNowConfirm) return;
-    const jobId = runNowConfirm;
-    const needsClient = CLIENT_SCOPED_JOBS.has(jobId);
-    const needsProperty = PROPERTY_SCOPED_JOBS.has(jobId);
-    if (needsClient && !portfolioWide && !scopeClientId.trim()) {
-      toast.error('Select a client or acknowledge portfolio-wide execution');
-      return;
-    }
-    if (needsProperty && !scopePropertyId.trim()) {
-      toast.error('Property ID is required for this job');
-      return;
-    }
-    if (!jobReason.trim() || jobReason.trim().length < 10) {
-      toast.error('Support reason of at least 10 characters is required');
-      return;
-    }
-    const actionId = portfolioWide || (!scopeClientId.trim() && !scopePropertyId.trim())
-      ? 'run_portfolio_wide_job'
-      : 'run_scoped_automation_job';
-    setRunning(jobId);
-    try {
-      const body = {
-        job: jobId,
-        reason: jobReason.trim(),
-        portfolio_wide: portfolioWide,
-        ...(scopeClientId.trim() ? { client_id: scopeClientId.trim() } : {}),
-        ...(scopePropertyId.trim() ? { property_id: scopePropertyId.trim() } : {}),
-      };
-      const res = await runGovernedAdminMutation({
-        actionId,
-        reason: jobReason.trim(),
-        resourceKey: `${jobId}:${scopeClientId || 'global'}`,
-        mutate: (headers) => adminAPI.runJobNow(body, { headers }),
-      });
-      toast.success(res.data?.message || `Job ${jobId} completed`);
-      setRunNowConfirm(null);
-      load();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || err.message || `Failed to run ${jobId}`);
-    } finally {
-      setRunning(null);
-    }
+    setRunNowJobId(jobId);
   };
 
   const failed24hByJob = (healthSummary?.failed_runs_24h_by_job || []).reduce((acc, row) => {
@@ -686,43 +612,15 @@ export default function AdminAutomationCentrePage() {
           <Link to="/admin/incidents" className="text-indigo-600 hover:underline">Incidents</Link>
         </p>
 
-        {runNowConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="run-now-confirm-title">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full m-4 p-4 space-y-3" data-testid="automation-run-modal">
-              <h2 id="run-now-confirm-title" className="text-lg font-semibold text-gray-900">Run job: {runNowConfirm}</h2>
-              <p className="text-sm text-gray-600">
-                Scoped execution is required for client-capable jobs unless you explicitly acknowledge portfolio-wide impact.
-              </p>
-              {CLIENT_SCOPED_JOBS.has(runNowConfirm) ? (
-                <>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={portfolioWide} onChange={(e) => setPortfolioWide(e.target.checked)} data-testid="automation-portfolio-wide" />
-                    Portfolio-wide execution (all customers)
-                  </label>
-                  {!portfolioWide ? (
-                    <select className="w-full border rounded px-3 py-2 text-sm" value={scopeClientId} onChange={(e) => setScopeClientId(e.target.value)} data-testid="automation-client-select">
-                      <option value="">Select client</option>
-                      {clients.map((c) => (
-                        <option key={c.client_id} value={c.client_id}>{c.company_name || c.full_name || c.email || c.client_id}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">{getGovernanceWarning('run_portfolio_wide_job')}</p>
-                  )}
-                </>
-              ) : null}
-              {PROPERTY_SCOPED_JOBS.has(runNowConfirm) ? (
-                <input className="w-full border rounded px-3 py-2 text-sm font-mono" placeholder="Property ID (required)" value={scopePropertyId} onChange={(e) => setScopePropertyId(e.target.value)} data-testid="automation-property-id" />
-              ) : null}
-              <textarea className="w-full border rounded px-3 py-2 text-sm min-h-[72px]" placeholder="Support reason (min 10 characters)" value={jobReason} onChange={(e) => setJobReason(e.target.value)} data-testid="automation-job-reason" />
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setRunNowConfirm(null)} className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">Cancel</button>
-                <button type="button" onClick={handleRunNowConfirm} disabled={running === runNowConfirm} className="px-3 py-1.5 text-sm bg-electric-teal text-white rounded hover:opacity-90">
-                  {running === runNowConfirm ? 'Running…' : 'Run now'}
-                </button>
-              </div>
-            </div>
-          </div>
+        {runNowJobId && (
+          <ManualJobExecutionModal
+            jobId={runNowJobId}
+            onClose={() => setRunNowJobId(null)}
+            onSuccess={() => {
+              setRunNowJobId(null);
+              load();
+            }}
+          />
         )}
 
         {messageLogsRun && (

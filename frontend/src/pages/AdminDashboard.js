@@ -20,6 +20,7 @@ import {
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentScoreChangeReason } from '../utils/timelinePresent';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import ManualJobExecutionModal from '../components/admin/ManualJobExecutionModal';
 import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
 import AdminClientSupportSearch from '../components/admin/AdminClientSupportSearch';
 import { ScrollableUnderlineNav, scrollableNavButtonClass } from '../components/ui/scrollable-nav';
@@ -1373,7 +1374,7 @@ const JobsMonitoring = () => {
   const [healthSummary, setHealthSummary] = useState(null);
   const [jobsStatusError, setJobsStatusError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [triggering, setTriggering] = useState(null);
+  const [pendingJobId, setPendingJobId] = useState(null);
 
   const fetchJobsStatus = async () => {
     setJobsStatusError(null);
@@ -1424,19 +1425,9 @@ const JobsMonitoring = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const triggerJob = async (jobId) => {
+  const openJobExecution = (jobId) => {
     if (!jobId) return;
-    setTriggering(jobId);
-    try {
-      const response = await api.post('/admin/jobs/run', { job: jobId });
-      const message = response.data?.message || `${jobId} completed`;
-      toast.success(message);
-      fetchJobsStatus();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || `Failed to run ${jobId}`);
-    } finally {
-      setTriggering(null);
-    }
+    setPendingJobId(jobId);
   };
 
   if (loading) {
@@ -1515,17 +1506,13 @@ const JobsMonitoring = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => triggerJob(jobId)}
-                  disabled={triggering !== null || !jobId}
+                  onClick={() => openJobExecution(jobId)}
+                  disabled={!jobId}
                   className="flex items-center gap-2 px-4 py-2 border border-gray-400 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                   data-testid={`trigger-${jobId}-btn`}
-                  title="Use only for recovery or testing"
+                  title="Governed execution — choose scope before running"
                 >
-                  {triggering === jobId ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Play className="w-4 h-4" />
-                  )}
+                  <Play className="w-4 h-4" />
                   Run Now
                 </button>
               </div>
@@ -1545,46 +1532,31 @@ const JobsMonitoring = () => {
         <h3 className="text-lg font-semibold text-midnight-blue mb-4">Manual Job Triggers</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => triggerJob('daily_reminders')}
-            disabled={triggering !== null}
-            className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-electric-teal hover:bg-teal-50 transition-colors disabled:opacity-50"
+            onClick={() => openJobExecution('daily_reminders')}
+            className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-electric-teal hover:bg-teal-50 transition-colors"
             data-testid="manual-trigger-daily"
           >
-            {triggering === 'daily_reminders' ? (
-              <RefreshCw className="w-6 h-6 animate-spin text-electric-teal" />
-            ) : (
-              <Mail className="w-6 h-6 text-electric-teal" />
-            )}
+            <Mail className="w-6 h-6 text-electric-teal" />
             <span className="font-medium text-midnight-blue">Daily Reminders</span>
             <span className="text-xs text-gray-500">Send expiry reminders</span>
           </button>
 
           <button
-            onClick={() => triggerJob('monthly_digest')}
-            disabled={triggering !== null}
-            className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-electric-teal hover:bg-teal-50 transition-colors disabled:opacity-50"
+            onClick={() => openJobExecution('monthly_digest')}
+            className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-electric-teal hover:bg-teal-50 transition-colors"
             data-testid="manual-trigger-monthly"
           >
-            {triggering === 'monthly_digest' ? (
-              <RefreshCw className="w-6 h-6 animate-spin text-electric-teal" />
-            ) : (
-              <Calendar className="w-6 h-6 text-electric-teal" />
-            )}
+            <Calendar className="w-6 h-6 text-electric-teal" />
             <span className="font-medium text-midnight-blue">Monthly Digest</span>
             <span className="text-xs text-gray-500">Send compliance summary</span>
           </button>
 
           <button
-            onClick={() => triggerJob('compliance_check_morning')}
-            disabled={triggering !== null}
-            className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-amber-500 hover:bg-amber-50 transition-colors disabled:opacity-50"
+            onClick={() => openJobExecution('compliance_check_morning')}
+            className="flex flex-col items-center gap-2 p-4 border border-gray-200 rounded-lg hover:border-amber-500 hover:bg-amber-50 transition-colors"
             data-testid="manual-trigger-compliance"
           >
-            {triggering === 'compliance_check_morning' ? (
-              <RefreshCw className="w-6 h-6 animate-spin text-amber-600" />
-            ) : (
-              <AlertTriangle className="w-6 h-6 text-amber-600" />
-            )}
+            <AlertTriangle className="w-6 h-6 text-amber-600" />
             <span className="font-medium text-midnight-blue">Compliance Check</span>
             <span className="text-xs text-gray-500">Check status changes & alert</span>
           </button>
@@ -1633,6 +1605,17 @@ const JobsMonitoring = () => {
           </div>
         </div>
       </div>
+
+      {pendingJobId && (
+        <ManualJobExecutionModal
+          jobId={pendingJobId}
+          onClose={() => setPendingJobId(null)}
+          onSuccess={() => {
+            setPendingJobId(null);
+            fetchJobsStatus();
+          }}
+        />
+      )}
     </div>
   );
 };

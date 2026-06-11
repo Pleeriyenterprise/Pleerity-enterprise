@@ -1,0 +1,55 @@
+{
+  "programme": "JOB-EXECUTION-SCOPE-GOVERNANCE-AND-ADMIN-UX-01",
+  "classification": "MANUAL_JOB_GOVERNANCE_CONVERGED",
+  "scope_types": [
+    "CLIENT",
+    "PROPERTY",
+    "CLIENT_GROUP",
+    "PLAN",
+    "JURISDICTION",
+    "FILTERED_COHORT",
+    "PORTFOLIO_WIDE"
+  ],
+  "job_scope_matrix": {
+    "monthly_digest": ["CLIENT", "CLIENT_GROUP", "PLAN", "PORTFOLIO_WIDE"],
+    "daily_reminders": ["CLIENT", "PROPERTY", "FILTERED_COHORT", "PORTFOLIO_WIDE"],
+    "compliance_check_morning": ["CLIENT", "PROPERTY", "JURISDICTION", "PORTFOLIO_WIDE"],
+    "compliance_check_evening": ["CLIENT", "PROPERTY", "JURISDICTION", "PORTFOLIO_WIDE"],
+    "compliance_score_snapshots": ["CLIENT", "PLAN", "PORTFOLIO_WIDE"],
+    "risk_signals_job": ["CLIENT", "PROPERTY"],
+    "rent_operations_daily_job": ["CLIENT", "PORTFOLIO_WIDE"],
+    "compliance_recalc_enqueue_property": ["PROPERTY"],
+    "notification_retry_worker": ["CLIENT", "PORTFOLIO_WIDE"]
+  },
+  "portfolio_wide_requirements": [
+    "reason min 10 chars",
+    "portfolio_wide_confirmed=true",
+    "confirmation token via run_portfolio_wide_job action"
+  ],
+  "api_endpoints": {
+    "governance_matrix": "GET /api/admin/jobs/execution-governance",
+    "per_job_governance": "GET /api/admin/jobs/{job_id}/execution-governance",
+    "impact_preview": "POST /api/admin/jobs/execution-preview",
+    "execute": "POST /api/admin/jobs/run"
+  },
+  "ui_surfaces": [
+    "AdminAutomationCentrePage — ManualJobExecutionModal",
+    "AdminDashboard JobsMonitoring — ManualJobExecutionModal"
+  ],
+  "audit_fields": [
+    "operator",
+    "scope_type",
+    "target_client_ids",
+    "target_property_id",
+    "plan_code",
+    "jurisdiction",
+    "cohort_filter",
+    "estimated_impact",
+    "execution_result_summary",
+    "timestamp"
+  ],
+  "remediated_gaps": [
+    "EXECUTION_SCOPE_UX_DRIFT",
+    "BLAST_RADIUS_GAP"
+  ]
+}
