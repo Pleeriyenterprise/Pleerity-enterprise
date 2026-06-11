@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ClientRentOperationsPage from './ClientRentOperationsPage';
 import { clientAPI } from '../api/client';
@@ -46,6 +46,7 @@ describe('ClientRentOperationsPage', () => {
         overdue_count: 1,
         partially_paid_count: 0,
         tenancies_with_arrears_count: 1,
+        attention_period_count: 3,
         average_payment_delay_days: 3,
         currency: 'GBP',
       },
@@ -71,6 +72,17 @@ describe('ClientRentOperationsPage', () => {
     expect(await screen.findByTestId('rent-summary-cards')).toBeInTheDocument();
     expect(screen.getByTestId('rent-tab-attention')).toBeInTheDocument();
     expect(screen.getByTestId('rent-tab-expenses')).toBeInTheDocument();
+  });
+
+  it('clicking upcoming KPI switches to ledger tab with UPCOMING filter', async () => {
+    render(
+      <MemoryRouter>
+        <ClientRentOperationsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByTestId('rent-summary-cards');
+    fireEvent.click(screen.getByTestId('rent-kpi-upcoming'));
+    expect(mockSetSearchParams).toHaveBeenCalledWith({ tab: 'ledger' });
   });
 
   it('shows attention empty state when rent activity exists but no attention ledgers', async () => {

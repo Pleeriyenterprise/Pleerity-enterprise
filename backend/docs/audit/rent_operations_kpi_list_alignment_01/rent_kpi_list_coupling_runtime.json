@@ -1,0 +1,27 @@
+{
+  "programme": "RENT-OPERATIONS-KPI-LIST-ALIGNMENT-01",
+  "run_tag": "20260611T153353Z",
+  "verified_at_utc": "2026-06-11T15:34:10.946288+00:00",
+  "rules": {
+    "upcoming_kpi": "ledger tab + UPCOMING filter",
+    "partial_kpi": "ledger tab + PARTIALLY_PAID filter",
+    "overdue_kpi": "attention tab + overdue_only",
+    "arrears_kpi": "attention tab + attention_only",
+    "collected_kpi": "metric only \u2014 no ledger PAID filter",
+    "delay_kpi": "metric only \u2014 no tab switch",
+    "tab_switch_clears_incompatible_kpi": true,
+    "ledger_dropdown_clears_incompatible_kpi": true,
+    "showing_n_of_m_when_total_gt_visible": true
+  },
+  "staging_evidence": {
+    "upcoming_kpi_matches_api_total": true,
+    "rows_capped_at_limit": true,
+    "ui_fix": "Showing N of M when total > 200",
+    "arrears_period_vs_tenancy": {
+      "attention_period_count": 73,
+      "tenancies_with_arrears_count": 22
+    }
+  },
+  "classification": "KPI_LIST_DRIFT",
+  "pass": true
+}

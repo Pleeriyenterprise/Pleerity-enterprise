@@ -363,8 +363,9 @@ async def test_get_rent_summary_arrears_uses_attention_criteria():
         new_callable=AsyncMock,
         return_value=0,
     ):
-        await rent_ledger_service.get_rent_summary("c1")
+        summary = await rent_ledger_service.get_rent_summary("c1")
 
+    assert summary["attention_period_count"] == 0
     arrears_match = periods.aggregate.call_args_list[0][0][0][0]["$match"]
     assert arrears_match["$or"] == [
         {"is_overdue": True},

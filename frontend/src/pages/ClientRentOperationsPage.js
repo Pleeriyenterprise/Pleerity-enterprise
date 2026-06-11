@@ -21,6 +21,8 @@ import { MarkReminderSentModal } from '../components/rent/MarkReminderSentModal'
 import { ExpenseFormModal } from '../components/rent/ExpenseFormModal';
 import { PropertyExpensesPanel } from '../components/rent/PropertyExpensesPanel';
 import { formatMinorUnits } from '../utils/rentMoney';
+import { rentKpiCompatibleWithTab, rentKpiTargetTab, rentListCountHint } from '../utils/rentKpiCopy';
+import { buildRentLedgerParams } from '../utils/rentKpiCoupling';
 
 const TABS = [
   { id: 'attention', label: 'Attention' },
@@ -34,6 +36,7 @@ function ClientRentOperationsPageInner() {
 
   const [summary, setSummary] = useState(null);
   const [ledgers, setLedgers] = useState([]);
+  const [ledgerTotal, setLedgerTotal] = useState(0);
   const [expenses, setExpenses] = useState([]);
   const [expenseSummary, setExpenseSummary] = useState(null);
   const [properties, setProperties] = useState([]);
@@ -60,13 +63,22 @@ function ClientRentOperationsPageInner() {
   }, [filterProperty]);
 
   const loadLedgers = useCallback(() => {
-    const params = { limit: 200 };
-    if (filterProperty) params.property_id = filterProperty;
-    if (filterStatus && tab === 'ledger') params.status = filterStatus;
-    if (activeKpi?.filter?.overdue_only) params.overdue_only = true;
-    else if (tab === 'attention' || activeKpi?.filter?.attention_only) params.attention_only = true;
-    else if (activeKpi?.filter?.status) params.status = activeKpi.filter.status;
-    return clientAPI.getRentLedgers(params).then((res) => setLedgers(res.data?.ledgers || [])).catch(() => setLedgers([]));
+    const params = buildRentLedgerParams({
+      tab,
+      filterProperty,
+      filterStatus,
+      activeKpi,
+    });
+    return clientAPI
+      .getRentLedgers(params)
+      .then((res) => {
+        setLedgers(res.data?.ledgers || []);
+        setLedgerTotal(Number(res.data?.total) || 0);
+      })
+      .catch(() => {
+        setLedgers([]);
+        setLedgerTotal(0);
+      });
   }, [filterProperty, filterStatus, tab, activeKpi]);
 
   const loadExpenses = useCallback(() => {
@@ -110,6 +122,15 @@ function ClientRentOperationsPageInner() {
     refresh();
   }, [refresh, tab]);
 
+  useEffect(() => {
+    if (activeKpi && !rentKpiCompatibleWithTab(activeKpi, tab)) {
+      setActiveKpi(null);
+      setFilterStatus('');
+    }
+  }, [tab, activeKpi]);
+
+  const listCountHint = rentListCountHint(ledgers.length, ledgerTotal);
+
   const openLedgerDetail = (row) => {
     setDetailLoading(true);
     setDetailData(row);
@@ -123,8 +144,15 @@ function ClientRentOperationsPageInner() {
   const handleKpiFilter = (card) => {
     setActiveKpi(card);
     setFilterStatus(card.filter?.status || '');
-    if (card.filter?.attention_only) setSearchParams({ tab: 'attention' });
-    else if (card.key !== 'collected') setSearchParams({ tab: 'ledger' });
+    const targetTab = rentKpiTargetTab(card);
+    if (targetTab) setSearchParams({ tab: targetTab });
+  };
+
+  const handleFilterStatusChange = (value) => {
+    setFilterStatus(value);
+    if (activeKpi?.filter?.status && activeKpi.filter.status !== value) {
+      setActiveKpi(null);
+    }
   };
 
   const handleRecordPayment = (body) => {
@@ -247,7 +275,7 @@ function ClientRentOperationsPageInner() {
             <select
               className="border rounded-md px-3 py-2 text-sm"
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => handleFilterStatusChange(e.target.value)}
             >
               <option value="">All statuses</option>
               {['UPCOMING', 'DUE_TODAY', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'SEVERELY_OVERDUE'].map((s) => (
@@ -309,6 +337,9 @@ function ClientRentOperationsPageInner() {
         ) : tab === 'attention' ? (
           <RentAttentionList
             ledgers={ledgers}
+            attentionPeriodTotal={summary?.attention_period_count ?? ledgerTotal}
+            tenancyArrearsCount={summary?.tenancies_with_arrears_count}
+            listCountHint={listCountHint}
             onSelect={openLedgerDetail}
             onRecordPayment={(row) => {
               setPaymentLedger(row);
@@ -316,14 +347,21 @@ function ClientRentOperationsPageInner() {
             }}
           />
         ) : (
-          <RentLedgerList
-            ledgers={ledgers}
-            onSelect={openLedgerDetail}
-            onRecordPayment={(row) => {
-              setPaymentLedger(row);
-              setPaymentOpen(true);
-            }}
-          />
+          <>
+            <RentLedgerList
+              ledgers={ledgers}
+              onSelect={openLedgerDetail}
+              onRecordPayment={(row) => {
+                setPaymentLedger(row);
+                setPaymentOpen(true);
+              }}
+            />
+            {listCountHint ? (
+              <p className="text-xs text-gray-500 mt-2" data-testid="rent-list-count-hint">
+                {listCountHint}
+              </p>
+            ) : null}
+          </>
         )}
       </main>
 

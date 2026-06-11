@@ -6,7 +6,14 @@ import { formatMinorUnits } from '../../utils/rentMoney';
 import { cn } from '@/lib/utils';
 import ListCognitionChip from '../operational/ListCognitionChip';
 
-export function RentAttentionList({ ledgers, onSelect, onRecordPayment }) {
+export function RentAttentionList({
+  ledgers,
+  onSelect,
+  onRecordPayment,
+  attentionPeriodTotal,
+  tenancyArrearsCount,
+  listCountHint,
+}) {
   if (!ledgers.length) {
     return (
       <Card data-testid="rent-attention-empty">
@@ -15,9 +22,28 @@ export function RentAttentionList({ ledgers, onSelect, onRecordPayment }) {
     );
   }
 
+  const periodTotal = attentionPeriodTotal ?? ledgers.length;
+  const tenancyCount = tenancyArrearsCount;
+
   return (
     <div className="space-y-2" data-testid="rent-attention-list">
-      <h2 className="text-sm font-semibold text-gray-700">Needs attention ({ledgers.length})</h2>
+      <div>
+        <h2 className="text-sm font-semibold text-gray-700">
+          Needs attention ({ledgers.length}
+          {periodTotal > ledgers.length ? ` of ${periodTotal}` : ''})
+        </h2>
+        {tenancyCount != null && tenancyCount > 0 ? (
+          <p className="text-xs text-gray-500 mt-0.5" data-testid="rent-attention-tenancy-hint">
+            {periodTotal} period{periodTotal === 1 ? '' : 's'} across {tenancyCount}{' '}
+            {tenancyCount === 1 ? 'tenancy' : 'tenancies'}
+          </p>
+        ) : null}
+        {listCountHint ? (
+          <p className="text-xs text-gray-500 mt-0.5" data-testid="rent-list-count-hint">
+            {listCountHint}
+          </p>
+        ) : null}
+      </div>
       {ledgers.map((row) => {
         const urgent = row.is_overdue || ['OVERDUE', 'SEVERELY_OVERDUE', 'DUE_TODAY'].includes(row.status);
         return (

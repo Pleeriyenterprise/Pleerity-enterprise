@@ -1,0 +1,285 @@
+{
+  "required": false,
+  "applied": true,
+  "changes": [
+    {
+      "field": "attention_period_count",
+      "reason": "Expose period count alongside tenancy arrears KPI for Attention list header",
+      "applied": true
+    }
+  ],
+  "skipped": [
+    {
+      "item": "upcoming_due_count query",
+      "reason": "KPI matches API total; list cap is frontend LIST_LIMIT=200"
+    },
+    {
+      "item": "collected_this_month authority",
+      "reason": "Payment-date authority verified; no change"
+    }
+  ],
+  "trace_snapshot": {
+    "upcoming": {
+      "upcoming_due_count_kpi": 253,
+      "ledgers_upcoming_total": 253,
+      "ledgers_upcoming_rows_returned": 200,
+      "kpi_matches_api_total": true,
+      "rows_capped_at_limit": true,
+      "classification": "KPI_LIST_DRIFT",
+      "sample_upcoming_ids": [
+        "rlp_df6a3147cbfd",
+        "rlp_ee0a7138d4a6",
+        "rlp_0de9fcc64ac0",
+        "rlp_38612371c851",
+        "rlp_a33477fbdfc4"
+      ]
+    },
+    "arrears": {
+      "tenancies_with_arrears_count_kpi": 22,
+      "attention_total": 73,
+      "attention_rows_returned": 73,
+      "distinct_groups_from_attention_rows": 22,
+      "group_breakdown": {
+        "property:d35a58ae-3c81-491c-9694-1d021dd3b8ad": {
+          "tenant_names": [
+            "F6-probe-tenant",
+            "F6Probe"
+          ],
+          "period_count": 6,
+          "statuses": [
+            "OVERDUE",
+            "PARTIALLY_PAID",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_9da7880a9bd4": {
+          "tenant_names": [
+            "F7 Ops Wales Tenant"
+          ],
+          "period_count": 3,
+          "statuses": [
+            "OVERDUE",
+            "PARTIALLY_PAID",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_9ec2e1723d7b": {
+          "tenant_names": [
+            "OPS-E2E-01-20260604T122710Z Tenant",
+            "mat"
+          ],
+          "period_count": 16,
+          "statuses": [
+            "OVERDUE",
+            "PARTIALLY_PAID",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_0fdc972b404f": {
+          "tenant_names": [
+            "RENT-OUTCOME-20260528T171209Z Tenant",
+            "RTA-VERIFY-20260525T193309Z Tenant"
+          ],
+          "period_count": 4,
+          "statuses": [
+            "OVERDUE",
+            "PARTIALLY_PAID",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a6f0874-19b4-4344-b2af-f423585a5b94_8e3e7aa9": {
+          "tenant_names": [
+            "RENT-OUTCOME-20260528T171209Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_53c19720a360": {
+          "tenant_names": [
+            "RENT-OUTCOME-20260528T171209Z Tenant",
+            "RENT-OUTCOME-20260528T171857Z Tenant"
+          ],
+          "period_count": 4,
+          "statuses": [
+            "OVERDUE",
+            "PARTIALLY_PAID",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a6f0874-19b4-4344-b2af-f423585a5b94_a3a7d396": {
+          "tenant_names": [
+            "RENT-OUTCOME-20260528T171857Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_5f7168c905a0": {
+          "tenant_names": [
+            "RENT-OUTCOME-20260528T171857Z Tenant",
+            "RENT-OUTCOME-20260528T172559Z Tenant"
+          ],
+          "period_count": 4,
+          "statuses": [
+            "OVERDUE",
+            "PARTIALLY_PAID",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a6f0874-19b4-4344-b2af-f423585a5b94_02734f52": {
+          "tenant_names": [
+            "RENT-OUTCOME-20260528T172559Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_c78b73c78aff": {
+          "tenant_names": [
+            "RENT-OUTCOME-20260528T172559Z Tenant",
+            "RTA-PDV-20260609T075652Z",
+            "RTA-PDV-20260609T080152Z",
+            "RTA-PDV-20260609T081204Z"
+          ],
+          "period_count": 5,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a6f0874-19b4-4344-b2af-f423585a5b94_0bb5c8db": {
+          "tenant_names": [
+            "ext"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a6f0874-19b4-4344-b2af-f423585a5b94_100daaf9": {
+          "tenant_names": [
+            "RTA-VERIFY-20260525T193309Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_b2752e35cc21": {
+          "tenant_names": [
+            "RTA-VERIFY-20260525T194726Z Tenant",
+            "mat"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "PARTIALLY_PAID"
+          ]
+        },
+        "tenancy:ext_0a6f0874-19b4-4344-b2af-f423585a5b94_063491af": {
+          "tenant_names": [
+            "RTA-VERIFY-20260525T190551Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_ed6a85d8fc00": {
+          "tenant_names": [
+            "RTA-VERIFY-20260525T190551Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68_f73b233f": {
+          "tenant_names": [
+            "RTA-VERIFY-20260525T194726Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_3b29241d0837": {
+          "tenant_names": [
+            "RTA-VERIFY-20260525T194726Z Tenant",
+            "RTA-VERIFY-20260525T200844Z Tenant"
+          ],
+          "period_count": 3,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68_ddae085c": {
+          "tenant_names": [
+            "RTA-VERIFY-20260525T200844Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_3c45ad4ccd52": {
+          "tenant_names": [
+            "RTA-VERIFY-20260525T200844Z Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68_ebf44d1d": {
+          "tenant_names": [
+            "RTA-CLOSEOUT-20260525T203758Z Council"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:ext_0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68_1800d8e3": {
+          "tenant_names": [
+            "Council HB"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        },
+        "tenancy:pty_c82deaa95d7b": {
+          "tenant_names": [
+            "RTA Tenant"
+          ],
+          "period_count": 2,
+          "statuses": [
+            "OVERDUE",
+            "SEVERELY_OVERDUE"
+          ]
+        }
+      },
+      "kpi_matches_distinct_groups": true,
+      "classification": "VERIFIED",
+      "semantic_note": "5 attention rows can collapse to fewer tenancies/properties"
+    }
+  },
+  "classification": "VERIFIED"
+}

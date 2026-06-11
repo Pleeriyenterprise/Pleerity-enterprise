@@ -1,21 +1,13 @@
 import React from 'react';
 import { formatMinorUnits } from '../../utils/rentMoney';
-
-const CARDS = [
-  { key: 'collected', label: 'Collected this month', field: 'rent_collected_this_month_minor', format: 'money', filter: { status: 'PAID' } },
-  { key: 'upcoming', label: 'Upcoming due', field: 'upcoming_due_count', format: 'count', filter: { status: 'UPCOMING' } },
-  { key: 'overdue', label: 'Overdue', field: 'overdue_count', format: 'count', filter: { attention_only: true, overdue_only: true } },
-  { key: 'partial', label: 'Partially paid', field: 'partially_paid_count', format: 'count', filter: { status: 'PARTIALLY_PAID' } },
-  { key: 'arrears', label: 'Properties in arrears', field: 'tenancies_with_arrears_count', format: 'count', filter: { attention_only: true } },
-  { key: 'delay', label: 'Avg payment delay', field: 'average_payment_delay_days', format: 'days', filter: {} },
-];
+import { RENT_KPI_CARDS } from '../../utils/rentKpiCopy';
 
 export function RentSummaryCards({ summary, activeFilter, onFilter }) {
   if (!summary) return null;
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" data-testid="rent-summary-cards">
-      {CARDS.map((card) => {
+      {RENT_KPI_CARDS.map((card) => {
         const raw = summary[card.field];
         const display =
           card.format === 'money'
@@ -26,10 +18,18 @@ export function RentSummaryCards({ summary, activeFilter, onFilter }) {
                 : '—'
               : String(raw ?? 0);
         const isActive = activeFilter?.key === card.key;
+        const isEmpty =
+          (card.format === 'money' && !(raw > 0)) ||
+          (card.format === 'days' && !(raw > 0));
+        const title = [card.helper, isEmpty && card.emptyHelper ? card.emptyHelper : null]
+          .filter(Boolean)
+          .join(' ');
+
         return (
           <button
             key={card.key}
             type="button"
+            title={title}
             onClick={() => onFilter(card)}
             className={`rounded-lg border p-3 text-left transition-colors ${
               isActive ? 'border-electric-teal bg-teal-50/50' : 'border-gray-200 bg-white hover:border-gray-300'
@@ -44,6 +44,11 @@ export function RentSummaryCards({ summary, activeFilter, onFilter }) {
             >
               {display}
             </p>
+            {isEmpty && card.emptyHelper ? (
+              <p className="text-[10px] text-gray-500 mt-1 leading-snug">{card.emptyHelper}</p>
+            ) : card.helper ? (
+              <p className="text-[10px] text-gray-500 mt-1 leading-snug line-clamp-2">{card.helper}</p>
+            ) : null}
           </button>
         );
       })}

@@ -730,6 +730,9 @@ async def get_rent_summary(client_id: str, property_id: Optional[str] = None) ->
     ]
     arrears = await db[COLLECTION_PERIODS].aggregate(arrears_pipeline).to_list(1)
     arrears_count = int((arrears[0]["tenancies"] if arrears else 0) or 0)
+    attention_period_count = await db[COLLECTION_PERIODS].count_documents(
+        _attention_period_query(dict(base))
+    )
 
     delay_pipeline = [
         {
@@ -761,6 +764,7 @@ async def get_rent_summary(client_id: str, property_id: Optional[str] = None) ->
         "partial_overdue_count": partial_overdue_count,
         "due_today_count": due_today_count,
         "tenancies_with_arrears_count": arrears_count,
+        "attention_period_count": attention_period_count,
         "average_payment_delay_days": avg_delay,
         "total_outstanding_minor": overdue_balance_minor,
     }

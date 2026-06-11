@@ -1,0 +1,28 @@
+{
+  "programme": "RENT-OPERATIONS-KPI-LIST-ALIGNMENT-01",
+  "run_tag": "20260611T153353Z",
+  "verified_at_utc": "2026-06-11T15:34:10.954366+00:00",
+  "labels": {
+    "upcoming": {
+      "label": "Upcoming periods",
+      "helper": "Rent periods due in the future."
+    },
+    "arrears": {
+      "label": "Tenancies in arrears",
+      "helper": "Distinct tenancies or properties with overdue or partial balances."
+    },
+    "collected": {
+      "label": "Collected this month",
+      "helper": "Payments recorded with a payment date in the current month.",
+      "empty": "No rent payments recorded this month."
+    },
+    "delay": {
+      "label": "Avg late payment",
+      "helper": "Average days late among paid periods only.",
+      "empty": "No late paid periods yet."
+    }
+  },
+  "source": "frontend/src/utils/rentKpiCopy.js",
+  "classification": "VERIFIED",
+  "pass": true
+}
