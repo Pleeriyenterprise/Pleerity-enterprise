@@ -1,0 +1,67 @@
+{
+  "programme": "MONTHLY-DIGEST-PDF-PAGINATION-FIX-01",
+  "run_tag": "20260611T162511Z",
+  "root_cause": "Unconditional PageBreak after variable-length priority actions",
+  "before_reference": {
+    "page_count": 5,
+    "ghost_page": 3,
+    "portfolio_risk_page": 4,
+    "note": "From audit reproduction with same high-volume fixture"
+  },
+  "after": {
+    "page_count": 4,
+    "pages": [
+      {
+        "page": 1,
+        "body_lines": 23,
+        "ghostish": false,
+        "markers": {
+          "how_to_read": true,
+          "executive_snapshot": false,
+          "priority_actions": false,
+          "portfolio_risk": false,
+          "method": false
+        }
+      },
+      {
+        "page": 2,
+        "body_lines": 53,
+        "ghostish": false,
+        "markers": {
+          "how_to_read": false,
+          "executive_snapshot": true,
+          "priority_actions": true,
+          "portfolio_risk": false,
+          "method": false
+        }
+      },
+      {
+        "page": 3,
+        "body_lines": 59,
+        "ghostish": false,
+        "markers": {
+          "how_to_read": false,
+          "executive_snapshot": false,
+          "priority_actions": false,
+          "portfolio_risk": true,
+          "method": false
+        }
+      },
+      {
+        "page": 4,
+        "body_lines": 15,
+        "ghostish": false,
+        "markers": {
+          "how_to_read": false,
+          "executive_snapshot": false,
+          "priority_actions": false,
+          "portfolio_risk": false,
+          "method": true
+        }
+      }
+    ]
+  },
+  "ghost_pages_after": [],
+  "classification": "VERIFIED_OPERATIONALLY",
+  "regression_test": "test_pdf_no_ghost_page_after_priority_actions"
+}

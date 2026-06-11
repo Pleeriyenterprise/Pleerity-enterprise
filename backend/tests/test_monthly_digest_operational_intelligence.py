@@ -387,3 +387,119 @@ def test_pdf_large_portfolio_pagination_stable(monkeypatch):
     full = "\n".join((p.extract_text() or "") for p in reader.pages).lower()
     assert "requirement breakdown" not in full
     assert "workflow_class" not in full
+
+
+_DIGEST_FOOTER_MARKERS = (
+    "executive summary",
+    "point-in-time export",
+    "legal advice",
+    "pleerityenterprise.co.uk",
+    "accessibility-enhanced pdf",
+    "generated 11 june",
+    "generated 01 april",
+)
+
+
+def _digest_page_body_lines(page_text: str) -> list[str]:
+    lines = []
+    for raw in (page_text or "").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        low = line.lower()
+        if low.startswith("page "):
+            continue
+        if any(marker in low for marker in _DIGEST_FOOTER_MARKERS):
+            continue
+        lines.append(line)
+    return lines
+
+
+def _high_volume_digest_model() -> dict:
+    recs = [
+        {
+            "priority": "high",
+            "action": f"Upload missing EICR evidence for property {i}",
+            "impact": "+3",
+            "display_label": f"Castle Close {i}",
+        }
+        for i in range(6)
+    ] + [
+        {
+            "priority": "medium",
+            "action": f"Plan EPC renewal and confirm booking window {i}",
+            "impact": "+1",
+            "display_label": f"62 Mobil Layout {i}",
+        }
+        for i in range(6)
+    ]
+    return _pdf_model(
+        reporting_month_label="May 2026",
+        digest_hiua_line="Operational follow-up summary for applicability.",
+        digest_hiua_report_framing_notice="Framing notice for operational follow-up applicability.",
+        digest_jurisdiction_framing="Wales portfolio obligations and licensing context.",
+        digest_jurisdiction_fallback_disclaimer="Default jurisdiction applied where property jurisdiction unknown.",
+        digest_score_scope_note="Score reflects selected property subset when applicable.",
+        digest_snapshot_framing_line="Snapshot as of 01 May 2026 09:00 UTC.",
+        score_status_message="Recalculation pending; headline uses last completed batch.",
+        score_block={"drivers": [], "recommendations": recs},
+    )
+
+
+def test_pdf_no_ghost_page_after_priority_actions(monkeypatch):
+    """Priority spillover must flow into portfolio risk — no footer-only middle page."""
+    monkeypatch.setattr("reportlab.rl_config.pageCompression", 0)
+    brand = MagicMock()
+    brand.company_name = "Phaedrus Argiros Ltd"
+    brand.tagline = "Compliance made simple"
+    brand.primary_color = "#0B1D3A"
+    brand.logo_path = None
+    brand.include_pleerity_attribution = True
+    brand.powered_by_text = "Powered by Pleerity"
+
+    from pypdf import PdfReader
+    import io
+
+    pdf = build_monthly_digest_pdf_bytes(_high_volume_digest_model(), brand=brand)
+    reader = PdfReader(io.BytesIO(pdf))
+    pages = reader.pages
+    assert len(pages) <= 4, f"expected compact pagination, got {len(pages)} pages"
+
+    analyses = []
+    for idx, page in enumerate(pages):
+        text = page.extract_text() or ""
+        body = _digest_page_body_lines(text)
+        analyses.append(
+            {
+                "page": idx + 1,
+                "body_lines": len(body),
+                "has_how_to_read": "how to read this report" in text.lower(),
+                "has_executive_snapshot": "executive snapshot" in text.lower(),
+                "has_priority_actions": "priority actions" in text.lower(),
+                "has_portfolio_risk": "portfolio risk highlights" in text.lower(),
+                "has_method": "method and limitations" in text.lower(),
+            }
+        )
+
+    ghost_pages = [
+        row["page"]
+        for row in analyses
+        if row["body_lines"] < 3
+        and not row["has_method"]
+        and row["page"] not in (1, len(pages))
+    ]
+    assert not ghost_pages, f"footer-only middle page(s): {ghost_pages}; detail={analyses}"
+
+    risk_page = next(row["page"] for row in analyses if row["has_portfolio_risk"])
+    priority_pages = [row["page"] for row in analyses if row["has_priority_actions"]]
+    assert priority_pages, "priority actions section missing"
+    assert risk_page <= max(priority_pages) + 1, (
+        f"portfolio risk forced too far after priorities: risk p{risk_page}, priorities {priority_pages}"
+    )
+
+    full = "\n".join((p.extract_text() or "") for p in pages).lower()
+    assert "how to read this report" in full
+    assert "executive snapshot" in full
+    assert "priority actions" in full
+    assert "portfolio risk highlights" in full
+    assert "method and limitations" in full

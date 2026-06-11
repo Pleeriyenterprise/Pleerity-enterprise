@@ -16,7 +16,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import CondPageBreak, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from services.monthly_digest_operational_intelligence import build_digest_intelligence
 from services.report_branding_layout import ACCESSIBILITY_ENHANCED_NOTICE, append_report_cover_block
@@ -302,7 +302,8 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         _priority_section(body, "Monitoring only", priorities.get("monitoring") or [], styles, h3)
         body.append(Spacer(1, 0.2 * cm))
 
-    body.append(PageBreak())
+    # Natural flow into portfolio risk — avoid hard PageBreak after variable-length priorities.
+    body.append(Spacer(1, 0.35 * cm))
 
     # E — Portfolio risk highlights
     body.append(Paragraph("Portfolio risk highlights", h2))
@@ -385,7 +386,8 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
         at.setStyle(_table_style())
         body.append(at)
 
-    body.append(PageBreak())
+    # Start Method on a fresh page only when the closing block would otherwise orphan.
+    body.append(CondPageBreak(4.5 * cm))
 
     body.append(Paragraph("Method and limitations", h2))
     body.append(
