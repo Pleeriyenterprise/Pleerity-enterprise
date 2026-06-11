@@ -16,8 +16,8 @@ services:
     name: pleerity-api
     runtime: python
     rootDir: backend
-    # PyPI can time out on Render's default 15s pip read window (e.g. httpcore).
-    buildCommand: python -m pip install --upgrade pip && python -m pip install --default-timeout=120 --retries 10 -r requirements.txt
+    # Use scripts/render_build.sh — PyPI read timeouts are common on Render (tzdata, httpcore).
+    buildCommand: bash scripts/render_build.sh
     startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     disk:
@@ -25,6 +25,10 @@ services:
       mountPath: /var/data
       sizeGB: 10
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: PIP_DEFAULT_TIMEOUT
+        value: "180"
       - key: DATA_DIR
         value: /var/data
       - key: DOCUMENT_STORAGE_PATH
