@@ -1,0 +1,17 @@
+# Deployment governance: secrets, staging URLs in app code, production blueprint drift
+name: Deployment governance
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  deployment-governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run deployment governance gate
+        run: python backend/scripts/deployment_governance_ci_gate.py

@@ -185,18 +185,24 @@ async def lifespan(app: FastAPI):
     _env = (os.environ.get("ENV") or os.environ.get("ENVIRONMENT") or "").strip().lower()
     if _env in ("production", "prod"):
         try:
-            from auth import require_non_default_jwt_secret
-            require_non_default_jwt_secret()
-        except RuntimeError as e:
-            logger.critical("Startup aborted: %s", e)
-            raise
-        try:
             from utils.app_urls import validate_url_configuration
 
             validate_url_configuration()
         except RuntimeError as e:
             logger.critical("Startup aborted (URL configuration): %s", e)
             raise
+
+    if os.environ.get("PYTEST_RUNNING") != "1":
+        try:
+            from utils.deployment_environment_guard import (
+                DeploymentEnvironmentError,
+                validate_deployment_environment,
+            )
+
+            validate_deployment_environment()
+        except DeploymentEnvironmentError as e:
+            logger.critical("Startup aborted (deployment guard): %s", e)
+            raise RuntimeError(str(e)) from e
 
     # Defer DB/seeds/scheduler until after lifespan yield so Uvicorn can bind $PORT (Render port scan).
     # RENDER is set on native Render; RENDER_SERVICE_ID is also set and catches blueprints/dashboard drift.

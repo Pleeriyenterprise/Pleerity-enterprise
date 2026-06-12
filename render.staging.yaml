@@ -1,0 +1,57 @@
+# Render Blueprint — STAGING backend (Pleerity Enterprise).
+#
+# Dashboard setup:
+#   - Service name: pleerity-api-staging
+#   - Branch: develop (or staging)
+#   - Auto-deploy: ON
+#
+# Secrets (Render dashboard — never commit):
+#   MONGO_URL, JWT_SECRET, STRIPE_SECRET_KEY_TEST, STRIPE_WEBHOOK_SECRET_TEST,
+#   POSTMARK_SERVER_TOKEN, OTP_PEPPER, etc.
+#
+# See docs/DEPLOYMENT_WORKFLOW.md
+
+services:
+  - type: web
+    name: pleerity-api-staging
+    runtime: python
+    rootDir: backend
+    branch: develop
+    buildCommand: bash scripts/render_build.sh
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    disk:
+      name: pleerity-data-staging
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: DEPLOYMENT_TIER
+        value: staging
+      - key: ENVIRONMENT
+        value: staging
+      - key: DB_NAME
+        value: pleerity_staging
+      - key: STRIPE_MODE
+        value: test
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: PIP_DEFAULT_TIMEOUT
+        value: "180"
+      - key: DATA_DIR
+        value: /var/data
+      - key: DOCUMENT_STORAGE_PATH
+        value: /var/data/data/documents
+      - key: INTAKE_UPLOAD_DIR
+        value: /var/data/uploads/intake
+      - key: INTAKE_QUARANTINE_DIR
+        value: /var/data/uploads/intake_quarantine
+      # Staging URL examples — set in dashboard to match your staging DNS:
+      # APP_BASE_URL=https://staging.pleerityenterprise.co.uk
+      # API_BASE_URL=https://pleerity-enterprise.onrender.com
+      # Rent reminders: staging-safe allowlist (do not enable RENT_REMINDERS_PRODUCTION_MODE)
+      - key: RENT_REMINDERS_LIVE_SEND
+        value: "true"
+      - key: RENT_REMINDERS_LIVE_SEND_CLIENT_ALLOWLIST
+        value: "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
+      - key: RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS
+        value: "yopmail.com"

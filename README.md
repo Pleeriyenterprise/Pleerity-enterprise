@@ -12,7 +12,8 @@ A comprehensive SaaS platform for UK landlords, letting agents, and property com
 **Service Type:** Full-stack SaaS web application  
 **Target Audience:** UK landlords, letting agents, property managers  
 **Tech Stack:** React + FastAPI + MongoDB  
-**Deployment:** Render (backend), Vercel (frontend), MongoDB Atlas
+**Deployment:** Render (backend), Vercel (frontend), MongoDB Atlas  
+**Workflow:** See [docs/DEPLOYMENT_WORKFLOW.md](docs/DEPLOYMENT_WORKFLOW.md) for staging → production promotion.
 
 ### Brand Identity
 - **Primary Color:** Midnight Blue (#0B1D3A)

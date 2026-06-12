@@ -1,12 +1,12 @@
 # Backend tests: plan registry gating and related tests
-# Runs on push and pull_request to main
+# Runs on push and pull_request to main and develop (staging)
 name: Backend tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   backend-tests:
@@ -36,6 +36,9 @@ jobs:
 
       - name: Install backend dependencies
         run: pip install -r backend/requirements.txt
+
+      - name: Deployment governance gate
+        run: python backend/scripts/deployment_governance_ci_gate.py
 
       - name: Run backend tests
         env:

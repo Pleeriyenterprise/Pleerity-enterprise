@@ -1,0 +1,57 @@
+# Render Blueprint — PRODUCTION backend (Pleerity Enterprise).
+#
+# Dashboard setup:
+#   - Service name: pleerity-api-production
+#   - Branch: main ONLY
+#   - Auto-deploy: OFF (manual deploy after staging approval) — recommended
+#
+# Do NOT provision until staging-to-production split is approved.
+# See docs/DEPLOYMENT_WORKFLOW.md
+#
+# Secrets (Render dashboard — separate from staging):
+#   MONGO_URL → pleerity_production database
+#   JWT_SECRET (unique, not shared with staging)
+#   STRIPE_SECRET_KEY_LIVE, STRIPE_WEBHOOK_SECRET_LIVE
+#   POSTMARK_SERVER_TOKEN (production server)
+#   OTP_PEPPER (unique)
+
+services:
+  - type: web
+    name: pleerity-api-production
+    runtime: python
+    rootDir: backend
+    branch: main
+    buildCommand: bash scripts/render_build.sh
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    disk:
+      name: pleerity-data-production
+      mountPath: /var/data
+      sizeGB: 10
+    envVars:
+      - key: DEPLOYMENT_TIER
+        value: production
+      - key: ENVIRONMENT
+        value: production
+      - key: DB_NAME
+        value: pleerity_production
+      - key: STRIPE_MODE
+        value: live
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: PIP_DEFAULT_TIMEOUT
+        value: "180"
+      - key: DATA_DIR
+        value: /var/data
+      - key: DOCUMENT_STORAGE_PATH
+        value: /var/data/data/documents
+      - key: INTAKE_UPLOAD_DIR
+        value: /var/data/uploads/intake
+      - key: INTAKE_QUARANTINE_DIR
+        value: /var/data/uploads/intake_quarantine
+      # Production URL examples — set in dashboard:
+      # APP_BASE_URL=https://pleerityenterprise.co.uk
+      # API_BASE_URL=https://api.pleerityenterprise.co.uk
+      # Enable only when pilot launch is approved:
+      # - key: RENT_REMINDERS_PRODUCTION_MODE
+      #   value: "true"

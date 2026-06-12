@@ -1,3 +1,10 @@
+# Render Blueprint — LEGACY single-service reference (Pleerity Enterprise).
+#
+# For staging/production separation use:
+#   render.staging.yaml    → branch develop, DB pleerity_staging, STRIPE_MODE=test
+#   render.production.yaml → branch main, DB pleerity_production, STRIPE_MODE=live
+# See docs/DEPLOYMENT_WORKFLOW.md
+#
 # Render Blueprint — FastAPI backend (Pleerity Enterprise).
 #
 # New stack: Dashboard → New → Blueprint → select this repo (render.yaml is detected).
