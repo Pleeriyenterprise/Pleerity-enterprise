@@ -1218,23 +1218,16 @@ app = FastAPI(
 # CORS configuration
 # Required production origins (custom domains + Vercel + local dev). When CORS_ORIGINS is set,
 # these are merged in so all are allowed; when CORS_ORIGINS is '*' or unset, use this list for safety.
-_CORS_REQUIRED_ORIGINS = [
-    "https://pleerityenterprise.co.uk",
-    "https://www.pleerityenterprise.co.uk",
-    "https://pleerity-enterprise.vercel.app",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-_cors_env = (os.environ.get("CORS_ORIGINS") or "").strip()
-if _cors_env and _cors_env != "*":
-    _origins_from_env = [o.strip() for o in _cors_env.split(",") if o.strip()]
-    _cors_origins = list(dict.fromkeys(_origins_from_env + _CORS_REQUIRED_ORIGINS))
-else:
-    _cors_origins = _CORS_REQUIRED_ORIGINS
+# Vercel preview hosts (e.g. pleerity-enterprise-9jig.vercel.app) are allowed via origin regex — see utils/cors_origins.py.
+from utils.cors_origins import resolve_cors_origin_regex, resolve_cors_origins
+
+_cors_origins = resolve_cors_origins()
+_cors_origin_regex = resolve_cors_origin_regex()
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
     allow_origins=_cors_origins,
+    allow_origin_regex=_cors_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )
