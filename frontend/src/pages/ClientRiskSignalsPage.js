@@ -68,6 +68,8 @@ import {
 } from '../utils/riskPresentation';
 import { assetIdParts } from '../utils/assetDisplay';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
+import { ContractorNetworkLockedModal } from '../components/client/ContractorNetworkLockedModal';
+import { isIssueAssignContractorLocked } from '../utils/contractorNetworkEntitlement';
 import { resolveRiskSignalPrimaryKey, normalizeOperationalPrimaryKey } from '../utils/primaryActionResolver';
 import NextActionHero from '../components/operational/NextActionHero';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
@@ -134,6 +136,7 @@ function ClientRiskSignalsPageInner() {
   const [arrangeReqPick, setArrangeReqPick] = useState('');
   const [arrangeLoading, setArrangeLoading] = useState(false);
   const [planJobGate, setPlanJobGate] = useState(null);
+  const [contractorNetworkLockedOpen, setContractorNetworkLockedOpen] = useState(false);
   const [filters, setFilters] = useState({
     risk_level: '',
     risk_type: '',
@@ -365,8 +368,14 @@ function ClientRiskSignalsPageInner() {
     if (!s?.signal_id) return;
     const hasMaint = hasFeature('maintenance_workflows');
     const hasComp = hasFeature('compliance_engine');
-    const { key, url, continuation } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
+    const primary = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
+    const { key, url, continuation } = primary;
     const normalizedKey = normalizeOperationalPrimaryKey(key);
+
+    if (isIssueAssignContractorLocked(primary, hasFeature('contractor_network'))) {
+      setContractorNetworkLockedOpen(true);
+      return;
+    }
 
     if (
       url &&
@@ -1278,6 +1287,7 @@ function ClientRiskSignalsPageInner() {
       </Dialog>
 
       <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
+      <ContractorNetworkLockedModal open={contractorNetworkLockedOpen} onOpenChange={setContractorNetworkLockedOpen} />
     </div>
   );
 }

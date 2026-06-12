@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ArrowRight, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Lock, ShieldAlert } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -19,6 +19,7 @@ export function NextActionHero({
   onPrimaryClick,
   primaryBusy = false,
   primaryDisabled = false,
+  primaryLocked = false,
   className = '',
 }) {
   const cognition = getOperationalCognition(entity);
@@ -97,16 +98,30 @@ export function NextActionHero({
         ) : null}
 
         {onPrimaryClick ? (
-          <Button
-            type="button"
-            className="bg-electric-teal hover:bg-electric-teal/90"
-            onClick={onPrimaryClick}
-            disabled={primaryBusy || primaryDisabled}
-            data-testid="next-action-hero-primary"
-          >
-            {primaryBusy ? 'Working…' : primary.label}
-            <ArrowRight className="w-4 h-4 ml-2" aria-hidden />
-          </Button>
+          primaryLocked ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="border-slate-300 bg-white text-midnight-blue hover:bg-slate-50"
+              onClick={onPrimaryClick}
+              disabled={primaryBusy}
+              data-testid="next-action-hero-primary-locked"
+            >
+              {primaryBusy ? 'Working…' : primary.label}
+              <Lock className="w-4 h-4 ml-2 shrink-0" aria-hidden />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className="bg-electric-teal hover:bg-electric-teal/90"
+              onClick={onPrimaryClick}
+              disabled={primaryBusy || primaryDisabled}
+              data-testid="next-action-hero-primary"
+            >
+              {primaryBusy ? 'Working…' : primary.label}
+              <ArrowRight className="w-4 h-4 ml-2" aria-hidden />
+            </Button>
+          )
         ) : null}
       </CardContent>
     </Card>

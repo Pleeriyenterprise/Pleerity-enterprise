@@ -95,12 +95,21 @@ export function resolveHeroPrimaryExecution(job, hasContractorNetwork) {
     return { intent, executable: false, blockedMessage: null };
   }
   if (intent.kind === 'assign_contractor') {
+    if (!hasContractorNetwork) {
+      return {
+        intent,
+        executable: false,
+        lockedUpsell: true,
+        blockedMessage:
+          'Contractor assignment is included on the Professional plan. Open this action to view upgrade and support options.',
+      };
+    }
     if (!canExecuteAssignContractor(job, hasContractorNetwork)) {
       return {
         intent,
         executable: false,
-        blockedMessage:
-          'Contractor assignment requires the contractor network feature on your plan. Contact support to upgrade or get help.',
+        lockedUpsell: false,
+        blockedMessage: 'Contractor assignment is not available for this job right now.',
       };
     }
     if (!jobHasNextAction(job, 'assign_contractor') && !jobHasNextAction(job, 'assign')) {
@@ -174,10 +183,12 @@ export function executeJobDetailPrimaryIntent(intent, handlers = {}) {
  * @param {{ focusAdd?: boolean }} [opts]
  */
 export function handleAssignContractorClick(job, hasContractorNetwork, openAssignModal, opts = {}) {
+  if (!hasContractorNetwork) {
+    opts.onLocked?.();
+    return;
+  }
   if (!canExecuteAssignContractor(job, hasContractorNetwork)) {
-    toast.message(
-      'Contractor assignment requires the contractor network feature. Contact support for upgrade options.',
-    );
+    toast.message('Contractor assignment is not available for this job right now.');
     return;
   }
   openAssignModal(opts);

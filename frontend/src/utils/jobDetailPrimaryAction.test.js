@@ -2,6 +2,7 @@ import {
   canExecuteAssignContractor,
   canShowCancelJob,
   executeJobDetailPrimaryIntent,
+  handleAssignContractorClick,
   isAssignContractorEntitlementBlocked,
   jobDetailPrimaryIntentFromKey,
   resolveHeroPrimaryActionKey,
@@ -39,7 +40,8 @@ describe('jobDetailPrimaryAction', () => {
   it('blocks assign execution without contractor_network entitlement', () => {
     const exec = resolveHeroPrimaryExecution(assignJob, false);
     expect(exec.executable).toBe(false);
-    expect(exec.blockedMessage).toMatch(/contractor network/i);
+    expect(exec.lockedUpsell).toBe(true);
+    expect(exec.blockedMessage).toMatch(/Professional/i);
     expect(isAssignContractorEntitlementBlocked(assignJob, false)).toBe(true);
   });
 
@@ -59,6 +61,14 @@ describe('jobDetailPrimaryAction', () => {
     const scrollToVisit = jest.fn();
     executeJobDetailPrimaryIntent({ kind: 'scroll_visit', key: 'confirm_visit' }, { scrollToVisit });
     expect(scrollToVisit).toHaveBeenCalled();
+  });
+
+  it('handleAssignContractorClick invokes onLocked without contractor_network', () => {
+    const openAssignModal = jest.fn();
+    const onLocked = jest.fn();
+    handleAssignContractorClick(assignJob, false, openAssignModal, { onLocked });
+    expect(onLocked).toHaveBeenCalled();
+    expect(openAssignModal).not.toHaveBeenCalled();
   });
 
   it('governs cancel on next_actions cancel id', () => {

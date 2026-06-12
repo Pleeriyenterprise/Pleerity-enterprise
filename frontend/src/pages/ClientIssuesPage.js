@@ -7,7 +7,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { AlertCircle, Plus, Loader2, FileText, X, Wrench, Building2 } from 'lucide-react';
+import { AlertCircle, Plus, Loader2, FileText, X, Wrench, Building2, Lock } from 'lucide-react';
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import { ContractorNetworkLockedModal } from '../components/client/ContractorNetworkLockedModal';
+import { isIssueAssignContractorLocked } from '../utils/contractorNetworkEntitlement';
 import { toast } from '@/utils/portalNotifications';
 import { reinforcementToastOptions } from '../utils/confidenceUxCopy';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
@@ -23,6 +26,8 @@ import { resolveIssuePrimaryAction, normalizeOperationalPrimaryKey } from '../ut
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
+  const { hasFeature } = useEntitlements();
+  const [contractorNetworkLockedOpen, setContractorNetworkLockedOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [issues, setIssues] = useState([]);
   const [issuesTotal, setIssuesTotal] = useState(0);
@@ -259,6 +264,10 @@ function ClientIssuesPageInner() {
     if (!issue?.issue_id) return;
     const primary = resolveIssuePrimaryAction(issue);
     if (!primary) return;
+    if (isIssueAssignContractorLocked(primary, hasFeature('contractor_network'))) {
+      setContractorNetworkLockedOpen(true);
+      return;
+    }
     setIssuePrimaryBusy(true);
     try {
       const key = normalizeOperationalPrimaryKey(primary.key);
@@ -478,13 +487,25 @@ function ClientIssuesPageInner() {
                     </div>
                     <div className="flex flex-col gap-2 pt-1">
                       {primary && iss.status !== 'closed' && (
-                        <Button
-                          className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90"
-                          onClick={() => runIssuePrimaryAction(iss)}
-                          disabled={creatingWoFromIssue === iss.issue_id || issuePrimaryBusy}
-                        >
-                          {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-4 h-4 animate-spin" /> : primary.label}
-                        </Button>
+                        isIssueAssignContractorLocked(primary, hasFeature('contractor_network')) ? (
+                          <Button
+                            variant="outline"
+                            className="w-full min-h-11 justify-center border-slate-300"
+                            data-testid="issue-primary-assign-locked"
+                            onClick={() => setContractorNetworkLockedOpen(true)}
+                          >
+                            {primary.label}
+                            <Lock className="w-4 h-4 ml-2 shrink-0" aria-hidden />
+                          </Button>
+                        ) : (
+                          <Button
+                            className="w-full min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90"
+                            onClick={() => runIssuePrimaryAction(iss)}
+                            disabled={creatingWoFromIssue === iss.issue_id || issuePrimaryBusy}
+                          >
+                            {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-4 h-4 animate-spin" /> : primary.label}
+                          </Button>
+                        )
                       )}
                       <Button className="w-full min-h-11 justify-center" variant="outline" onClick={() => setIssueDetailDrawer(iss.issue_id)}>
                         View details
@@ -536,9 +557,22 @@ function ClientIssuesPageInner() {
                       <td className="p-2 text-gray-600">{iss.triage?.sla_hours != null ? `${iss.triage.sla_hours}h` : '—'}</td>
                       <td className="p-2 text-right">
                         {primary && iss.status !== 'closed' && (
-                          <Button size="sm" className="min-h-9 bg-electric-teal hover:bg-electric-teal/90 text-white mr-1" onClick={() => runIssuePrimaryAction(iss)} disabled={creatingWoFromIssue === iss.issue_id || issuePrimaryBusy}>
-                            {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-3 h-3 animate-spin" /> : primary.label}
-                          </Button>
+                          isIssueAssignContractorLocked(primary, hasFeature('contractor_network')) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="min-h-9 border-slate-300 mr-1"
+                              data-testid="issue-primary-assign-locked"
+                              onClick={() => setContractorNetworkLockedOpen(true)}
+                            >
+                              {primary.label}
+                              <Lock className="w-3 h-3 ml-1 shrink-0" aria-hidden />
+                            </Button>
+                          ) : (
+                            <Button size="sm" className="min-h-9 bg-electric-teal hover:bg-electric-teal/90 text-white mr-1" onClick={() => runIssuePrimaryAction(iss)} disabled={creatingWoFromIssue === iss.issue_id || issuePrimaryBusy}>
+                              {creatingWoFromIssue === iss.issue_id ? <Loader2 className="w-3 h-3 animate-spin" /> : primary.label}
+                            </Button>
+                          )
                         )}
                         <Button size="sm" variant="ghost" className="min-h-9" onClick={() => setIssueDetailDrawer(iss.issue_id)}>View</Button>
                       </td>
@@ -592,6 +626,10 @@ function ClientIssuesPageInner() {
                 <>
                   <NextActionHero
                     entity={issueDetailData}
+                    primaryLocked={isIssueAssignContractorLocked(
+                      resolveIssuePrimaryAction(issueDetailData),
+                      hasFeature('contractor_network'),
+                    )}
                     onPrimaryClick={() => runIssuePrimaryAction(issueDetailData)}
                     primaryBusy={issuePrimaryBusy || creatingWoFromIssue === issueDetailData.issue_id}
                   />
@@ -706,6 +744,7 @@ function ClientIssuesPageInner() {
         </div>
       )}
 
+      <ContractorNetworkLockedModal open={contractorNetworkLockedOpen} onOpenChange={setContractorNetworkLockedOpen} />
       <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
     </div>
   );

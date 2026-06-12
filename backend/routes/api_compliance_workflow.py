@@ -652,6 +652,12 @@ async def job_assign_contractor(
     body: AssignContractorBody,
     user: Dict[str, Any] = Depends(_require_maintenance_workflows),
 ):
+    flags = await get_effective_flags(user["client_id"])
+    if not flags.get(CONTRACTOR_NETWORK):
+        raise HTTPException(
+            status_code=403,
+            detail="Contractor network is not enabled for your account.",
+        )
     wo = await load_client_work_order(work_order_id=job_id.strip(), client_id=user["client_id"])
     if not wo:
         raise HTTPException(status_code=404, detail="Job not found")

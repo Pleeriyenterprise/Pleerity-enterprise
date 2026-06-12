@@ -10,6 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { AlertCircle, Loader2, ArrowLeft, History } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { useEntitlements } from '../contexts/EntitlementsContext';
+import { ContractorNetworkLockedModal } from '../components/client/ContractorNetworkLockedModal';
+import { isIssueAssignContractorLocked } from '../utils/contractorNetworkEntitlement';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PlanRestrictedJobModal, openPlanRestrictedJobGate } from '../components/client/PlanRestrictedActionModal';
 import { resolveIssuePrimaryAction } from '../utils/primaryActionResolver';
@@ -28,6 +31,8 @@ function ClientIssueDetailPageInner() {
   const [closeNote, setCloseNote] = useState('');
   const [closing, setClosing] = useState(false);
   const [planJobGate, setPlanJobGate] = useState(null);
+  const [contractorNetworkLockedOpen, setContractorNetworkLockedOpen] = useState(false);
+  const { hasFeature } = useEntitlements();
   const createWoInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -140,6 +145,10 @@ function ClientIssueDetailPageInner() {
   const continuationReason = issue?.operational_continuation?.user_safe_reason;
 
   const handleIssuePrimary = () => {
+    if (isIssueAssignContractorLocked(issuePrimary, hasFeature('contractor_network'))) {
+      setContractorNetworkLockedOpen(true);
+      return;
+    }
     if (issuePrimary?.continuation && issuePrimary.url) {
       navigate(issuePrimary.url.startsWith('/') ? issuePrimary.url : `/${issuePrimary.url}`);
       return;
@@ -165,6 +174,7 @@ function ClientIssueDetailPageInner() {
 
       <NextActionHero
         entity={issue}
+        primaryLocked={isIssueAssignContractorLocked(issuePrimary, hasFeature('contractor_network'))}
         onPrimaryClick={issue.status !== 'closed' && issue.status !== 'cancelled' && issuePrimary ? handleIssuePrimary : undefined}
         primaryBusy={creating}
         primaryDisabled={!issuePrimary}
@@ -274,6 +284,7 @@ function ClientIssueDetailPageInner() {
         </div>
       )}
 
+      <ContractorNetworkLockedModal open={contractorNetworkLockedOpen} onOpenChange={setContractorNetworkLockedOpen} />
       <PlanRestrictedJobModal gate={planJobGate} onDismiss={() => setPlanJobGate(null)} />
     </div>
   );

@@ -44,9 +44,11 @@ import {
   History,
   LifeBuoy,
   ListChecks,
+  Lock,
   Receipt,
   MessageSquareText,
 } from 'lucide-react';
+import { ContractorNetworkLockedModal } from '../components/client/ContractorNetworkLockedModal';
 import { toast } from '@/utils/portalNotifications';
 import { operationalExceptionLabel } from '../domain/presentDomain';
 import {
@@ -78,6 +80,7 @@ import {
   NETWORK_MATURITY_BANNER,
   networkCoverageLevel,
 } from '../utils/assignContractorEarlyNetwork';
+import { resolveAssignModalFocusTarget } from '../utils/assignContractorModalFocus';
 
 function formatWhen(iso) {
   if (!iso) return '—';
@@ -326,6 +329,12 @@ function ClientJobDetailInner() {
     { code: 'other', label: 'Other' },
   ];
   const visitSectionRef = useRef(null);
+  const assignModalBodyRef = useRef(null);
+  const assignContractorSelectRef = useRef(null);
+  const earlyNetworkCtaRef = useRef(null);
+  const addContractorNameRef = useRef(null);
+  const [contractorNetworkLockedOpen, setContractorNetworkLockedOpen] = useState(false);
+  const openContractorNetworkLocked = useCallback(() => setContractorNetworkLockedOpen(true), []);
 
   const clientProgress = useMemo(
     () => (job ? clientJobProgressFromJob(job) : { steps: [], currentIndex: -1, completedFlags: [] }),
@@ -371,6 +380,29 @@ function ClientJobDetailInner() {
   useEffect(() => {
     setAllowCreateDespiteDuplicates(false);
   }, [newContractor.company_name, newContractor.email, newContractor.phone]);
+
+  const serverEligibleCountForFocus = assignableFilterDiagnostics?.eligible ?? assignableContractors.length;
+
+  useEffect(() => {
+    if (!assignModalOpen || assignableLoading) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      assignModalBodyRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      const target = resolveAssignModalFocusTarget({
+        showAddContractorForm,
+        eligibleCount: serverEligibleCountForFocus,
+      });
+      if (target === 'add_name') {
+        addContractorNameRef.current?.focus();
+        return;
+      }
+      if (target === 'select') {
+        assignContractorSelectRef.current?.focus();
+        return;
+      }
+      earlyNetworkCtaRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [assignModalOpen, assignableLoading, showAddContractorForm, serverEligibleCountForFocus]);
 
   const loadAssignableContractors = useCallback(async () => {
     if (!jobId || !hasFeature('contractor_network')) return;
@@ -831,10 +863,10 @@ function ClientJobDetailInner() {
       {isAssignContractorEntitlementBlocked(job, hasFeature('contractor_network')) ? (
         <Alert className="mb-6 border-slate-200 bg-slate-50 text-slate-900">
           <AlertDescription className="text-sm space-y-2">
-            <p className="font-semibold text-midnight-blue">Contractor assignment needs your plan</p>
+            <p className="font-semibold text-midnight-blue">Contractor assignment is included on Professional</p>
             <p className="text-slate-700">
-              Assigning a contractor requires the contractor network feature. Contact support to upgrade or get help with
-              the next step.
+              Your plan includes maintenance jobs, but assigning contractors from the portal requires the contractor network
+              on the Professional plan. Use the locked action above to view upgrade options or contact support.
             </p>
             <Link to={resolveClientPortalPath('/help', '/help')} className="text-electric-teal hover:underline text-sm font-medium inline-flex items-center gap-1">
               <LifeBuoy className="w-3.5 h-3.5" />
@@ -846,8 +878,13 @@ function ClientJobDetailInner() {
 
       <NextActionHero
         entity={job}
-        primaryDisabled={heroExecution ? !heroExecution.executable : false}
+        primaryLocked={Boolean(heroExecution?.lockedUpsell)}
+        primaryDisabled={heroExecution ? !heroExecution.executable && !heroExecution.lockedUpsell : false}
         onPrimaryClick={() => {
+          if (heroExecution?.lockedUpsell) {
+            openContractorNetworkLocked();
+            return;
+          }
           if (!heroExecution?.executable) {
             if (heroExecution?.blockedMessage) toast.message(heroExecution.blockedMessage);
             return;
@@ -978,13 +1015,29 @@ function ClientJobDetailInner() {
         ) : (
           <p className="text-sm text-amber-800">No contractor assigned yet.</p>
         )}
-        {canExecuteAssignContractor(job, hasFeature('contractor_network')) ? (
+        {isAssignContractorEntitlementBlocked(job, hasFeature('contractor_network')) ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-2 border-slate-300"
+            data-testid="open-assign-contractor-locked"
+            onClick={openContractorNetworkLocked}
+          >
+            Assign contractor
+            <Lock className="w-3.5 h-3.5 ml-2 shrink-0" aria-hidden />
+          </Button>
+        ) : canExecuteAssignContractor(job, hasFeature('contractor_network')) ? (
           <Button
             type="button"
             size="sm"
             className="mt-2 bg-midnight-blue hover:bg-midnight-blue/90"
             data-testid="open-assign-contractor-modal"
-            onClick={() => handleAssignContractorClick(job, hasFeature('contractor_network'), openAssignModal)}
+            onClick={() =>
+              handleAssignContractorClick(job, hasFeature('contractor_network'), openAssignModal, {
+                onLocked: openContractorNetworkLocked,
+              })
+            }
           >
             Assign contractor
           </Button>
@@ -1675,6 +1728,10 @@ function ClientJobDetailInner() {
               className="w-full sm:w-auto"
               onClick={() => {
                 setBookingGuardOpen(false);
+                if (!hasFeature('contractor_network')) {
+                  openContractorNetworkLocked();
+                  return;
+                }
                 openAssignModal();
               }}
             >
@@ -1685,6 +1742,10 @@ function ClientJobDetailInner() {
               className="w-full sm:w-auto bg-midnight-blue hover:bg-midnight-blue/90"
               onClick={() => {
                 setBookingGuardOpen(false);
+                if (!hasFeature('contractor_network')) {
+                  openContractorNetworkLocked();
+                  return;
+                }
                 openAssignModal({ focusAdd: true });
               }}
             >
@@ -1718,6 +1779,7 @@ function ClientJobDetailInner() {
             </DialogDescription>
           </DialogHeader>
           <div
+            ref={assignModalBodyRef}
             className="space-y-3 text-sm"
             data-testid="assign-contractor-modal"
             data-early-network-mode={earlyNetworkMode ? 'true' : 'false'}
@@ -1749,6 +1811,7 @@ function ClientJobDetailInner() {
               >
                 <p className="text-sm text-gray-800">{earlyNetworkSupport}</p>
                 <Button
+                  ref={earlyNetworkCtaRef}
                   type="button"
                   className="w-full bg-midnight-blue hover:bg-midnight-blue/90"
                   onClick={() => setShowAddContractorForm(true)}
@@ -1958,9 +2021,11 @@ function ClientJobDetailInner() {
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Select contractor</label>
                   <select
+                    ref={assignContractorSelectRef}
                     className="w-full border rounded-lg px-3 py-2 text-sm"
                     value={assignContractorId}
                     onChange={(e) => setAssignContractorId(e.target.value)}
+                    data-testid="assign-contractor-select"
                   >
                     <option value="">Choose…</option>
                     {filteredAssignableContractors.map((c) => (
@@ -2010,11 +2075,13 @@ function ClientJobDetailInner() {
                 </p>
                 <label className="block text-xs font-medium text-gray-700">Name *</label>
                 <input
+                  ref={addContractorNameRef}
                   className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                   placeholder="Business or contact name"
                   value={newContractor.company_name}
                   onChange={(e) => setNewContractor((f) => ({ ...f, company_name: e.target.value }))}
                   autoComplete="organization"
+                  data-testid="assign-contractor-add-name"
                 />
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Trade / service type *</label>
@@ -2165,6 +2232,8 @@ function ClientJobDetailInner() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ContractorNetworkLockedModal open={contractorNetworkLockedOpen} onOpenChange={setContractorNetworkLockedOpen} />
     </div>
   );
 }

@@ -319,7 +319,7 @@ const FEATURE_MIN_PLAN = {
   audit_exports: 'PLAN_3_PRO',
   white_label: 'PLAN_3_PRO',
   maintenance_workflows: 'PLAN_2_PORTFOLIO',
-  contractor_network: 'PLAN_2_PORTFOLIO',
+  contractor_network: 'PLAN_3_PRO',
   predictive_maintenance: 'PLAN_2_PORTFOLIO',
   invoicing: 'PLAN_3_PRO',
   rent_operations: 'PLAN_2_PORTFOLIO',
@@ -346,7 +346,10 @@ const FEATURE_DISPLAY = {
   audit_log_export: { name: 'Audit export', description: 'Export audit logs.' },
   audit_exports: { name: 'Audit export', description: 'Export audit logs.' },
   maintenance_workflows: { name: 'Maintenance & jobs', description: 'Create and manage jobs and maintenance issues per property.' },
-  contractor_network: { name: 'Contractor network', description: 'View and manage contractors assigned to properties.' },
+  contractor_network: {
+    name: 'Contractor network',
+    description: 'Assign contractors to jobs, manage your directory, and coordinate work from the portal (Professional plan).',
+  },
   predictive_maintenance: {
     name: 'Risk signals & assets',
     description: 'Predictive risk signals from your property data, plus asset tracking.',

@@ -53,6 +53,42 @@ def test_post_contractors_requires_phone_or_email(client_wf):
     assert res.status_code == 400
 
 
+def test_post_assign_contractor_requires_network_flag(client_wf):
+    wo = {"work_order_id": JOB_ID, "client_id": CLIENT_ID}
+    with patch.object(acw, "get_effective_flags", new_callable=AsyncMock, return_value={acw.CONTRACTOR_NETWORK: False}):
+        with patch.object(acw, "load_client_work_order", new_callable=AsyncMock, return_value=wo):
+            res = client_wf.post(
+                f"/api/jobs/{JOB_ID}/assign-contractor",
+                json={"contractor_id": "ctr-blocked-1"},
+            )
+    assert res.status_code == 403
+    assert "contractor network" in (res.json().get("detail") or "").lower()
+
+
+def test_post_assign_contractor_allowed_with_network_flag(client_wf):
+    wo = {"work_order_id": JOB_ID, "client_id": CLIENT_ID}
+    updated = {**wo, "contractor_id": "ctr-ok-1"}
+    with patch.object(
+        acw,
+        "get_effective_flags",
+        new_callable=AsyncMock,
+        return_value={acw.CONTRACTOR_NETWORK: True, acw.MAINTENANCE_WORKFLOWS: True},
+    ):
+        with patch.object(acw, "load_client_work_order", new_callable=AsyncMock, return_value=wo):
+            with patch.object(acw, "_resolve_portal_job_assignment_profile", new_callable=AsyncMock, return_value={}):
+                with patch.object(
+                    acw.maintenance_service,
+                    "update_work_order",
+                    new_callable=AsyncMock,
+                    return_value=updated,
+                ):
+                    res = client_wf.post(
+                        f"/api/jobs/{JOB_ID}/assign-contractor",
+                        json={"contractor_id": "ctr-ok-1"},
+                    )
+    assert res.status_code == 200
+
+
 def test_post_contractors_creates_landlord_row(client_wf):
     created = {"contractor_id": "ctr-new-1", "company_name": "Acme Ltd", "source_type": "landlord_added"}
     create_mock = AsyncMock(return_value=created)
