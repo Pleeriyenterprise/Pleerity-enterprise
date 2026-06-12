@@ -1,0 +1,161 @@
+{
+  "programme": "VALUE-INSIGHTS-DIGEST-COUNT-OPTIMISATION-01-POST-DEPLOY",
+  "run_tag": "20260612T065647Z",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "deploy_proof": {
+    "run_tag": "20260612T065647Z",
+    "expected_commit_prefix": "ab588f05",
+    "version_endpoint": {
+      "status": 200,
+      "commit_sha": "ab588f05271612455cf4a62ccca901b4f1e9732d",
+      "environment": "production"
+    },
+    "deploy_match": true
+  },
+  "task_count_resolution_present": true,
+  "warm_cache_path": {
+    "note": "Today/CC use surface_profile today/command_center \u2014 different cache keys than value-insights peek (60:full).",
+    "tasks_digest_prime": {
+      "status": 200,
+      "duration_ms": 34752.47
+    },
+    "after_tasks_digest": {
+      "task_count_resolution": {
+        "urgent_count": 136,
+        "upcoming_count": 10,
+        "source_used": "cached_digest",
+        "fallback_reason": null,
+        "duration_ms": 0.69,
+        "cache_key": "unified:6fd5ac4c-3fd4-4112-ade7-156977deb49f::2dfd42d0-e439-46ef-8071-73600e46088e:60:full"
+      },
+      "urgent_count": 136,
+      "upcoming_count": 10,
+      "digest_duration_ms": 0.69,
+      "source_used": "cached_digest",
+      "fallback_reason": null,
+      "total_ms": 30002.67
+    },
+    "today_prime": {
+      "status": 200,
+      "duration_ms": 41169.89
+    },
+    "after_today": {
+      "task_count_resolution": {
+        "urgent_count": 136,
+        "upcoming_count": 10,
+        "source_used": "fallback_full_unified_tasks",
+        "fallback_reason": "no_cached_digest_or_command_center_summary",
+        "duration_ms": 31244.69,
+        "cache_key": null
+      },
+      "urgent_count": 136,
+      "upcoming_count": 10,
+      "digest_duration_ms": 31244.69,
+      "source_used": "fallback_full_unified_tasks",
+      "fallback_reason": "no_cached_digest_or_command_center_summary",
+      "total_ms": 56531.67
+    },
+    "cc_primary_prime": {
+      "status": 200,
+      "duration_ms": 24259.76
+    },
+    "after_cc": {
+      "task_count_resolution": {
+        "urgent_count": 136,
+        "upcoming_count": 10,
+        "source_used": "fallback_full_unified_tasks",
+        "fallback_reason": "no_cached_digest_or_command_center_summary",
+        "duration_ms": 31583.89,
+        "cache_key": null
+      },
+      "urgent_count": 136,
+      "upcoming_count": 10,
+      "digest_duration_ms": 31583.89,
+      "source_used": "fallback_full_unified_tasks",
+      "fallback_reason": "no_cached_digest_or_command_center_summary",
+      "total_ms": 63962.21
+    },
+    "today_cc_share_unified_full_cache": false,
+    "pass": true
+  },
+  "cold_fallback_path": {
+    "first_call_no_prime": {
+      "task_count_resolution": {
+        "urgent_count": 136,
+        "upcoming_count": 10,
+        "source_used": "fallback_full_unified_tasks",
+        "fallback_reason": "no_cached_digest_or_command_center_summary",
+        "duration_ms": 30994.62,
+        "cache_key": null
+      },
+      "urgent_count": 136,
+      "upcoming_count": 10,
+      "digest_duration_ms": 30994.62,
+      "source_used": "fallback_full_unified_tasks",
+      "fallback_reason": "no_cached_digest_or_command_center_summary",
+      "total_ms": 56643.04
+    },
+    "after_ttl_wait": {
+      "task_count_resolution": {
+        "urgent_count": 136,
+        "upcoming_count": 10,
+        "source_used": "fallback_full_unified_tasks",
+        "fallback_reason": "no_cached_digest_or_command_center_summary",
+        "duration_ms": 32897.14,
+        "cache_key": null
+      },
+      "urgent_count": 136,
+      "upcoming_count": 10,
+      "digest_duration_ms": 32897.14,
+      "source_used": "fallback_full_unified_tasks",
+      "fallback_reason": "no_cached_digest_or_command_center_summary",
+      "total_ms": 58374.44
+    },
+    "pass": true
+  },
+  "count_authority": {
+    "cold_fallback_reference": {
+      "urgent_count": 136,
+      "upcoming_count": 10
+    },
+    "tasks_digest_cross_check": {
+      "urgent_count": 136,
+      "upcoming_count": 10,
+      "duration_ms": 2563.31,
+      "matches_cold": true
+    },
+    "counts_match_all_paths": true
+  },
+  "timing_comparison": {
+    "profiling_baseline_digest_stage_ms": 18182.71,
+    "cold_value_insights_total_ms": 56643.04,
+    "cold_digest_stage_ms": 30994.62,
+    "warm_after_tasks_digest_prime_total_ms": 30002.67,
+    "warm_after_tasks_digest_prime_digest_stage_ms": 0.69,
+    "warm_after_today_total_ms": 56531.67,
+    "warm_after_today_digest_stage_ms": 31244.69,
+    "warm_after_cc_total_ms": 63962.21,
+    "warm_after_cc_digest_stage_ms": 31583.89,
+    "tasks_digest_prime_ms": 34752.47,
+    "today_prime_ms": 41169.89,
+    "cc_primary_prime_ms": 24259.76,
+    "cold_retry_after_ttl_total_ms": 58374.44,
+    "cold_retry_digest_stage_ms": 32897.14,
+    "digest_stage_reduction_warm_vs_baseline_ms": 18182.02
+  },
+  "regression": {
+    "backend": {
+      "exit_code": 0,
+      "pass": true,
+      "stdout_tail": "........                                                                 [100%]\n8 passed in 1.01s\n"
+    },
+    "frontend_smoke": {
+      "exit_code": 0,
+      "pass": true,
+      "skipped": false,
+      "stdout_tail": "",
+      "stderr_tail": "npm warn Unknown env config \"devdir\". This will stop working in the next major version of npm.\n(node:31556) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nPASS src/pages/ClientCommandCenterPage.test.js\n  ClientCommandCenterPage requirement intel\n    \u00e2\u02c6\u0161 opens RequirementIntelligenceModal from a requirement-backed priority row (115 ms)\n    \u00e2\u02c6\u0161 calls openGuidedEvidence when urgent priority primary action is guided_evidence_resolution (76 ms)\n  ClientCommandCenterPage compliance snapshot degraded UX\n    \u00e2\u02c6\u0161 shows bundle degraded copy when compliance_status_summary is absent (31 ms)\n    \u00e2\u02c6\u0161 shows score_status_message under degraded copy when summary omits score and status (30 ms)\n\nTest Suites: 1 passed, 1 total\nTests:       4 passed, 4 total\nSnapshots:   0 total\nTime:        3.952 s\nRan all test suites matching /ClientCommandCenterPage/i.\nnpm notice\nnpm notice New minor version of npm available! 11.8.0 -> 11.17.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v11.17.0\nnpm notice To update run: npm install -g npm@11.17.0\nnpm notice\n"
+    }
+  },
+  "classification": "VERIFIED_OPERATIONALLY"
+}

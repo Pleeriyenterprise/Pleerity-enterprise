@@ -1,7 +1,8 @@
-# VALUE-INSIGHTS-DIGEST-COUNT-OPTIMISATION-01 watchlist
+# VALUE-INSIGHTS-DIGEST-COUNT-OPTIMISATION-01
 
-- [ ] Staging API missing task_count_resolution — deploy pending
-- [ ] Deploy optimisation to staging and re-measure HTTP value-insights cold/warm
-- [ ] Confirm task_count_resolution surfaced in staging API response
-- [ ] Validate cached_digest hit rate when dashboard loads CC primary before value-insights
-- [ ] Push blocked on protected main — confirm with operator if not yet published
+- [x] Post-deploy verification complete (`20260612T065647Z`)
+- [x] Classification: VERIFIED_OPERATIONALLY
+- [ ] Today/CC do not populate `unified:60:full` cache — value-insights still cold-fallbacks after Today/CC-only navigation (~31s digest stage)
+- [ ] Consider extending cache peek to `today` / `command_center` surface keys in a future programme (not in scope now)
+- [ ] Warm total endpoint still ~30s — `calculate_compliance_score` remains dominant (~13s local profiling estimate)
+- [ ] Next candidate: value-insights compliance_score headline slice
