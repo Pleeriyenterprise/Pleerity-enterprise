@@ -1,0 +1,41 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-ACTION-UX-CLOSEOUT-01",
+  "run_tag": "20260612T125429Z",
+  "professional_desktop": {
+    "ops_issues_nav": false,
+    "ops_contractors_nav": false,
+    "job_detail_loaded": true,
+    "job_locked_cta_visible": false,
+    "section_assign_btn": true,
+    "modal_opened": true,
+    "modal_focus_target": "BUTTON",
+    "modal_focus_ok": true,
+    "issues_entitlement_gate": false,
+    "issues_page_loaded": true,
+    "issues_assign_locked_cta": false,
+    "issues_assign_executable": false,
+    "contractors_entitlement_gate": false
+  },
+  "professional_mobile_390": {
+    "ops_issues_nav": false,
+    "ops_contractors_nav": false,
+    "job_detail_loaded": true,
+    "job_locked_cta_visible": false,
+    "section_assign_btn": true,
+    "modal_opened": true,
+    "modal_focus_target": "BUTTON",
+    "modal_focus_ok": true,
+    "issues_entitlement_gate": false,
+    "issues_page_loaded": true,
+    "issues_assign_locked_cta": false,
+    "issues_assign_executable": false,
+    "contractors_entitlement_gate": false
+  },
+  "checks": {
+    "desktop_modal_opens": true,
+    "desktop_focus_ok": true,
+    "mobile_modal_opens": true,
+    "mobile_focus_ok": true
+  },
+  "pass": true
+}

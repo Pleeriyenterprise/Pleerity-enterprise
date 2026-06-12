@@ -1,0 +1,85 @@
+{
+  "personas": {
+    "professional": {
+      "has_contractor_network": true,
+      "desktop": {
+        "ops_issues_nav": false,
+        "ops_contractors_nav": false,
+        "job_detail_loaded": true,
+        "job_locked_cta_visible": false,
+        "section_assign_btn": true,
+        "modal_opened": true,
+        "modal_focus_target": "BUTTON",
+        "modal_focus_ok": true,
+        "issues_entitlement_gate": false,
+        "issues_page_loaded": true,
+        "issues_assign_locked_cta": false,
+        "issues_assign_executable": false,
+        "contractors_entitlement_gate": false
+      },
+      "mobile_390": {
+        "ops_issues_nav": false,
+        "ops_contractors_nav": false,
+        "job_detail_loaded": true,
+        "job_locked_cta_visible": false,
+        "section_assign_btn": true,
+        "modal_opened": true,
+        "modal_focus_target": "BUTTON",
+        "modal_focus_ok": true,
+        "issues_entitlement_gate": false,
+        "issues_page_loaded": true,
+        "issues_assign_locked_cta": false,
+        "issues_assign_executable": false,
+        "contractors_entitlement_gate": false
+      }
+    },
+    "portfolio": {
+      "has_contractor_network": false,
+      "desktop": {
+        "ops_issues_nav": false,
+        "ops_contractors_nav": false,
+        "job_detail_skipped": true,
+        "issues_entitlement_gate": false,
+        "issues_page_loaded": true,
+        "issues_assign_locked_cta": false,
+        "issues_assign_executable": false,
+        "contractors_entitlement_gate": true
+      },
+      "mobile_390": {
+        "ops_issues_nav": false,
+        "ops_contractors_nav": false,
+        "job_detail_skipped": true,
+        "issues_entitlement_gate": false,
+        "issues_page_loaded": true,
+        "issues_assign_locked_cta": false,
+        "issues_assign_executable": false,
+        "contractors_entitlement_gate": true
+      }
+    },
+    "solo": {
+      "has_contractor_network": false,
+      "desktop": {
+        "ops_issues_nav": false,
+        "ops_contractors_nav": false,
+        "job_detail_skipped": true,
+        "issues_entitlement_gate": true,
+        "issues_page_loaded": true,
+        "issues_assign_locked_cta": false,
+        "issues_assign_executable": false,
+        "contractors_entitlement_gate": true
+      },
+      "mobile_390": {
+        "ops_issues_nav": false,
+        "ops_contractors_nav": false,
+        "job_detail_skipped": true,
+        "issues_entitlement_gate": true,
+        "issues_page_loaded": true,
+        "issues_assign_locked_cta": false,
+        "issues_assign_executable": false,
+        "contractors_entitlement_gate": true
+      }
+    }
+  },
+  "run_tag": "20260612T122422Z",
+  "programme": "OPERATIONS-ENTITLEMENT-ACTION-UX-CLOSEOUT-01"
+}

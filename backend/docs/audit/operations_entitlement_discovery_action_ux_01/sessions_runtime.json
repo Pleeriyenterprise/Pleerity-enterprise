@@ -5,7 +5,9 @@
     "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
     "error": null,
     "user": {
-      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "role": "ROLE_CLIENT",
+      "email": "audit@fixture.local"
     },
     "entitlements": {
       "status": 200,
@@ -50,33 +52,7 @@
         }
       }
     },
-    "assign_job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
-    "api_guards": {
-      "assignable_contractors": {
-        "status": 200,
-        "detail": "ok"
-      },
-      "assign_contractor_post": {
-        "status": 400,
-        "detail": "Contractor not found",
-        "note": "POST assign-contractor only checks maintenance_workflows in route handler (no CONTRACTOR_NETWORK guard)"
-      },
-      "maintenance_list": {
-        "status": 200
-      },
-      "risk_signals": {
-        "status": 200,
-        "detail": "ok"
-      },
-      "rent_operations": {
-        "status": 404,
-        "detail": "Not Found"
-      },
-      "contractor_directory": {
-        "status": 200,
-        "detail": "ok"
-      }
-    }
+    "assign_job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63"
   },
   "portfolio": {
     "plan_code": "PLAN_2_PORTFOLIO",
@@ -84,7 +60,9 @@
     "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
     "error": null,
     "user": {
-      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23"
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "role": "ROLE_CLIENT",
+      "email": "audit@fixture.local"
     },
     "entitlements": {
       "status": 200,
@@ -129,24 +107,7 @@
         }
       }
     },
-    "assign_job_id": null,
-    "api_guards": {
-      "maintenance_list": {
-        "status": 200
-      },
-      "risk_signals": {
-        "status": 200,
-        "detail": "ok"
-      },
-      "rent_operations": {
-        "status": 404,
-        "detail": "Not Found"
-      },
-      "contractor_directory": {
-        "status": 403,
-        "detail": "Contractor network is not enabled for your account. Contact your administrator."
-      }
-    }
+    "assign_job_id": null
   },
   "solo": {
     "plan_code": "PLAN_1_SOLO",
@@ -154,7 +115,9 @@
     "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
     "error": null,
     "user": {
-      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557"
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+      "role": "ROLE_CLIENT",
+      "email": "audit@fixture.local"
     },
     "entitlements": {
       "status": 200,
@@ -199,23 +162,6 @@
         }
       }
     },
-    "assign_job_id": null,
-    "api_guards": {
-      "maintenance_list": {
-        "status": 403
-      },
-      "risk_signals": {
-        "status": 403,
-        "detail": "Predictive maintenance is not enabled for your account"
-      },
-      "rent_operations": {
-        "status": 404,
-        "detail": "Not Found"
-      },
-      "contractor_directory": {
-        "status": 403,
-        "detail": "Contractor network is not enabled for your account. Contact your administrator."
-      }
-    }
+    "assign_job_id": null
   }
 }

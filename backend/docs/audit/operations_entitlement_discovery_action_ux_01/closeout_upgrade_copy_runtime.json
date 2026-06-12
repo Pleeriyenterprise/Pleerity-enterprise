@@ -1,0 +1,23 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-ACTION-UX-CLOSEOUT-01",
+  "run_tag": "20260612T125429Z",
+  "bundle": {
+    "frontend_url": "https://pleerityenterprise.co.uk",
+    "html_status": 200,
+    "main_bundle_hash": "c59a457b",
+    "markers": {
+      "issue_primary_assign_locked_testid": true,
+      "open_assign_contractor_locked_testid": true,
+      "next_action_hero_primary_locked_testid": true,
+      "contractor_network_locked_modal": true,
+      "upgrade_prompt_plan_3_pro": true,
+      "assign_modal_focus_util": true,
+      "assign_contractor_select_testid": true,
+      "assign_contractor_add_name_testid": true
+    },
+    "deployed_closeout_ui": true
+  },
+  "expected_min_plan": "PLAN_3_PRO",
+  "expected_plan_name": "Professional",
+  "pass": true
+}

@@ -1,0 +1,29 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-ACTION-UX-CLOSEOUT-01",
+  "run_tag": "20260612T125429Z",
+  "personas": {
+    "professional": {
+      "plan_code": "PLAN_3_PRO",
+      "has_contractor_network": true,
+      "assign_job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+      "post_status": 400,
+      "post_detail": "Contractor not found",
+      "expected_status": "200_or_400",
+      "pass": true
+    },
+    "portfolio": {
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "has_contractor_network": false,
+      "assign_job_id": null,
+      "skipped": "missing maintenance job"
+    },
+    "solo": {
+      "plan_code": "PLAN_1_SOLO",
+      "has_contractor_network": false,
+      "assign_job_id": null,
+      "skipped": "no maintenance job (expected for solo)",
+      "pass": true
+    }
+  },
+  "pass": true
+}

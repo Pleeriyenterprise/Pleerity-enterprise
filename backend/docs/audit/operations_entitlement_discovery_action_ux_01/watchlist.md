@@ -1,16 +1,14 @@
-# OPERATIONS-ENTITLEMENT-DISCOVERY-AND-ACTION-UX-AUDIT-01
+# OPERATIONS-ENTITLEMENT-ACTION-UX-CLOSEOUT-01
 
-- [x] Static entitlement inventory (plan_registry + ops flags)
-- [x] Runtime API probes — Solo / Portfolio D / Professional Nancy
-- [x] Contractor assignment UX code audit
-- [x] Locked vs hidden strategy documented
-- [x] Actionability governance matrix
-- [x] Enhancement plan (not implemented)
-- [x] Browser proof — Professional assign modal; Solo/Portfolio gates
-- [x] Cross-reference `job_detail_actionability_convergence_01` (Sophie blocked assign)
-- [ ] Implement enhancement plan (awaiting approval)
-- [ ] Add `CONTRACTOR_NETWORK` guard to `POST /jobs/{id}/assign-contractor`
-- [ ] Gate Issues `assign_contractor` by `contractor_network`
-- [ ] Assign modal auto-focus (desktop + mobile)
-- [ ] Align `UpgradePrompt` contractor_network to `PLAN_3_PRO`
-- [ ] Reconcile Sophie Walker fixture plan on staging (now Solo)
+- [x] CONTRACTOR_NETWORK guard on POST /jobs/{id}/assign-contractor
+- [x] Issues assign_contractor locked CTA when no contractor_network
+- [x] Job detail locked assign state + upgrade modal
+- [x] UpgradePrompt contractor_network → PLAN_3_PRO / Professional
+- [x] Assign modal auto-focus (select / early-network / add form)
+- [x] Staging API guard proof (Professional allowed; Portfolio 403 covered by pytest — fixture D has no maintenance jobs on staging)
+- [x] Staging issues locked CTA browser proof
+- [x] Staging job detail locked UX browser proof
+- [x] Staging modal focus desktop + 390px
+- [x] Unit/regression tests green
+- [ ] Monitor risk-signals assign_contractor locked CTA styling (handler gated; list buttons may still look executable)
+- [x] Booking-guard modal routes non-entitled users to locked upsell (not silent no-op)

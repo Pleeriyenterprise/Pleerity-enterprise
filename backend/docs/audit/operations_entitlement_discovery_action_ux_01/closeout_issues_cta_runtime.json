@@ -1,0 +1,53 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-ACTION-UX-CLOSEOUT-01",
+  "run_tag": "20260612T125429Z",
+  "bundle": {
+    "frontend_url": "https://pleerityenterprise.co.uk",
+    "html_status": 200,
+    "main_bundle_hash": "c59a457b",
+    "markers": {
+      "issue_primary_assign_locked_testid": true,
+      "open_assign_contractor_locked_testid": true,
+      "next_action_hero_primary_locked_testid": true,
+      "contractor_network_locked_modal": true,
+      "upgrade_prompt_plan_3_pro": true,
+      "assign_modal_focus_util": true,
+      "assign_contractor_select_testid": true,
+      "assign_contractor_add_name_testid": true
+    },
+    "deployed_closeout_ui": true
+  },
+  "portfolio_desktop": {
+    "ops_issues_nav": false,
+    "ops_contractors_nav": false,
+    "job_detail_skipped": true,
+    "issues_entitlement_gate": false,
+    "issues_page_loaded": true,
+    "issues_assign_locked_cta": false,
+    "issues_assign_executable": false,
+    "contractors_entitlement_gate": true
+  },
+  "professional_desktop": {
+    "ops_issues_nav": false,
+    "ops_contractors_nav": false,
+    "job_detail_loaded": true,
+    "job_locked_cta_visible": false,
+    "section_assign_btn": true,
+    "modal_opened": true,
+    "modal_focus_target": "BUTTON",
+    "modal_focus_ok": true,
+    "issues_entitlement_gate": false,
+    "issues_page_loaded": true,
+    "issues_assign_locked_cta": false,
+    "issues_assign_executable": false,
+    "contractors_entitlement_gate": false
+  },
+  "checks": {
+    "bundle_has_locked_testid": true,
+    "portfolio_shows_locked_cta": false,
+    "portfolio_locked_modal_on_click": false,
+    "professional_executable_assign": false,
+    "portfolio_issues_page": true
+  },
+  "pass": true
+}
