@@ -59,22 +59,24 @@ def resolve_deployment_tier() -> str:
     """
     Return 'production', 'staging', or 'unknown'.
 
-    Explicit DEPLOYMENT_TIER wins. Otherwise infer from ENVIRONMENT and DB_NAME.
+    Explicit DEPLOYMENT_TIER wins. When unset, DB_NAME is authoritative over ENVIRONMENT
+    so the legacy combined stack (ENVIRONMENT=production + pleerity_staging) stays staging
+    until DEPLOYMENT_TIER=production is set explicitly on a production service.
     """
     explicit = (os.getenv("DEPLOYMENT_TIER") or "").strip().lower()
     if explicit in ("production", "staging"):
         return explicit
 
-    env = _env_name()
-    if env in ("production", "prod"):
-        return "production"
-    if env in ("staging", "preview"):
-        return "staging"
-
     db = (os.getenv("DB_NAME") or "").strip().lower()
     if db == PRODUCTION_DB_NAME:
         return "production"
     if "staging" in db or db == STAGING_DB_NAME:
+        return "staging"
+
+    env = _env_name()
+    if env in ("production", "prod"):
+        return "production"
+    if env in ("staging", "preview"):
         return "staging"
 
     return "unknown"

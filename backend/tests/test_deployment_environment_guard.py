@@ -25,6 +25,24 @@ def test_resolve_tier_from_db_name():
         assert resolve_deployment_tier() == "production"
 
 
+def test_legacy_combined_stack_staging_db_overrides_env_production():
+    """Legacy Render: ENVIRONMENT=production + pleerity_staging until URL/tier migration."""
+    env = {
+        "DEPLOYMENT_TIER": "",
+        "ENVIRONMENT": "production",
+        "DB_NAME": "pleerity_staging",
+        "STRIPE_MODE": "test",
+        "APP_BASE_URL": "https://pleerityenterprise.co.uk",
+        "API_BASE_URL": "https://api.pleerityenterprise.co.uk",
+        "JWT_SECRET": "secure-staging-secret",
+        "PYTEST_RUNNING": "",
+        "SKIP_DEPLOYMENT_GUARD": "",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        assert resolve_deployment_tier() == "staging"
+        assert validate_deployment_environment() == "staging"
+
+
 def test_production_refuses_staging_db():
     env = {
         "DEPLOYMENT_TIER": "production",
