@@ -151,9 +151,13 @@ def _collect_staging_violations(*, tier_explicit: bool) -> Tuple[List[str], List
 
     stripe_mode = (os.getenv("STRIPE_MODE") or "").strip().lower()
     if stripe_mode == "live":
-        fatal.append(
+        msg = (
             "Staging must not use STRIPE_MODE=live. Use STRIPE_MODE=test and test Stripe keys on staging."
         )
+        if tier_explicit:
+            fatal.append(msg)
+        else:
+            warnings.append(msg + " Set DEPLOYMENT_TIER=staging once STRIPE_MODE=test is configured.")
 
     app_url = get_app_base_url(for_email_links=True)
     app_host = _host_from_url(app_url)

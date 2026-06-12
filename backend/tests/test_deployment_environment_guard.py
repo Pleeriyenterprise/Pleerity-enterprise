@@ -26,12 +26,12 @@ def test_resolve_tier_from_db_name():
 
 
 def test_legacy_combined_stack_staging_db_overrides_env_production():
-    """Legacy Render: ENVIRONMENT=production + pleerity_staging until URL/tier migration."""
+    """Legacy Render: production URLs + live Stripe + pleerity_staging until tier migration."""
     env = {
         "DEPLOYMENT_TIER": "",
         "ENVIRONMENT": "production",
         "DB_NAME": "pleerity_staging",
-        "STRIPE_MODE": "test",
+        "STRIPE_MODE": "live",
         "APP_BASE_URL": "https://pleerityenterprise.co.uk",
         "API_BASE_URL": "https://api.pleerityenterprise.co.uk",
         "JWT_SECRET": "secure-staging-secret",
