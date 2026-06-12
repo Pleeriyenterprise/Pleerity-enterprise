@@ -38,7 +38,11 @@ import {
 } from '../utils/jobWorkflowUi';
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI } from '../api/client';
-import { PortalSectionSkeleton, PortalStaleRefreshBanner } from '../components/client/ClientPortalPatterns';
+import { PortalStaleRefreshBanner } from '../components/client/ClientPortalPatterns';
+import PortalLoadingState from '../components/loading/PortalLoadingState';
+import { todayLoadingStages } from '../components/loading/portalLoadingStageModels';
+import { usePortalLoadingTelemetry } from '../components/loading/usePortalLoadingTelemetry';
+import ErrorBanner from '../components/ErrorBanner';
 import {
   fetchOperational,
   OPERATIONAL_CACHE_KEYS,
@@ -942,6 +946,15 @@ export default function ClientTasksPage() {
 
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
 
+  usePortalLoadingTelemetry({
+    page: 'today',
+    path: '/today',
+    isLoading: Boolean(isClientUser && loading && !payload),
+    ready: Boolean(isClientUser && !loading && !error && payload != null),
+    failed: Boolean(isClientUser && !loading && !!error),
+    properties: propertyFilter ? { property_id: propertyFilter } : {},
+  });
+
   const emitTodayAnalytics = useCallback((event, properties = {}) => {
     clientAPI
       .postAnalyticsEvent({ event, path: '/today', properties: { ...properties, page: 'today' } })
@@ -1631,14 +1644,16 @@ export default function ClientTasksPage() {
         )}
       </div>
 
-      {error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      <ErrorBanner message={error} onRetry={load} retryLabel="Retry" />
 
       {loading && !payload ? (
-        <PortalSectionSkeleton rows={6} />
+        <PortalLoadingState
+          title="Loading your operational inbox…"
+          subtitle="We are assembling priorities from your requirements, compliance posture, and open work."
+          stages={todayLoadingStages()}
+          skeletonRows={4}
+          testId="today-page-loading"
+        />
       ) : null}
 
       <Dialog open={Boolean(dismissModalTask)} onOpenChange={(open) => !open && setDismissModalTask(null)}>

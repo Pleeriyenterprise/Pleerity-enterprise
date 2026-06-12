@@ -15,6 +15,7 @@ jest.mock('../api/client', () => ({
     getCommandCenterSecondary: jest.fn(),
     getComplianceSummary: jest.fn(),
     getRequirements: jest.fn(),
+    postAnalyticsEvent: jest.fn(() => Promise.resolve({ data: { ok: true } })),
   },
   parseApiError: (_e, d) => d || 'Error',
 }));

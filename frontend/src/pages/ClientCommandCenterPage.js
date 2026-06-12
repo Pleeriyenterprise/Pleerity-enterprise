@@ -24,10 +24,13 @@ import {
 } from '../utils/jobWorkflowUi';
 import {
   PortalPageShell,
-  PortalSectionSkeleton,
   PortalStaleRefreshBanner,
   portalPageRoot,
 } from '../components/client/ClientPortalPatterns';
+import PortalLoadingState from '../components/loading/PortalLoadingState';
+import PortalCardLoading from '../components/loading/PortalCardLoading';
+import { commandCenterLoadingStages } from '../components/loading/portalLoadingStageModels';
+import { usePortalLoadingTelemetry } from '../components/loading/usePortalLoadingTelemetry';
 import {
   clearOperationalCache,
   fetchOperational,
@@ -119,6 +122,14 @@ export default function ClientCommandCenterPage() {
   const [workOrdersRaw, setWorkOrdersRaw] = useState(null);
   const [portalRequirementsForInbox, setPortalRequirementsForInbox] = useState([]);
   const [requirementIntelModal, setRequirementIntelModal] = useState(null);
+
+  usePortalLoadingTelemetry({
+    page: 'command_center',
+    path: '/command-center',
+    isLoading: Boolean(isClientUser && loading && !bundle),
+    ready: Boolean(isClientUser && !loading && bundle != null && !error),
+    failed: Boolean(isClientUser && !loading && !!error),
+  });
 
   const loadPortalRequirements = useCallback(() => {
     if (!isClientUser) return;
@@ -575,7 +586,14 @@ export default function ClientCommandCenterPage() {
         refreshing={refreshing}
         testId="command-center-loading"
       >
-        <PortalSectionSkeleton rows={4} />
+        <PortalLoadingState
+          variant="page"
+          title="Analysing portfolio health…"
+          subtitle="Your command center snapshot is being prepared from live portfolio data."
+          stages={commandCenterLoadingStages()}
+          skeletonRows={3}
+          testId="command-center-primary-loading"
+        />
       </PortalPageShell>
     );
   }
@@ -593,19 +611,25 @@ export default function ClientCommandCenterPage() {
         </p>
       ) : null}
       {secondaryRisksLoading ? (
-        <p className="text-xs text-gray-500 mb-2" data-testid="command-center-secondary-risks-loading">
-          Loading risk signals and activity…
-        </p>
+        <PortalCardLoading
+          label="Loading risk signals and recent activity…"
+          className="mb-2 text-xs"
+          testId="command-center-secondary-risks-loading"
+        />
       ) : null}
       {secondaryLoading && !portfolioSummary ? (
-        <p className="text-xs text-gray-500 mb-3" data-testid="command-center-secondary-loading">
-          Loading portfolio summary…
-        </p>
+        <PortalCardLoading
+          label="Loading portfolio summary…"
+          className="mb-3 text-xs"
+          testId="command-center-secondary-loading"
+        />
       ) : null}
       {secondaryJobsLoading ? (
-        <p className="text-xs text-gray-500 mb-2" data-testid="command-center-secondary-jobs-loading">
-          Loading jobs…
-        </p>
+        <PortalCardLoading
+          label="Loading jobs…"
+          className="mb-2 text-xs"
+          testId="command-center-secondary-jobs-loading"
+        />
       ) : null}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>

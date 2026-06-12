@@ -1,0 +1,9 @@
+{
+  "programme": "PORTAL-LOADING-STATE-EXPERIENCE-01",
+  "assessment": "NEUTRAL",
+  "api_calls": "unchanged",
+  "bundle_impact": "minimal — ~6 new frontend modules, no new dependencies",
+  "runtime_cost": "usePortalLoadingStages timer (2.2s interval) only while isActive; telemetry is fire-and-forget POST",
+  "perceived_performance": "improved — users see explanatory progress instead of anonymous skeletons",
+  "actual_latency": "unchanged — no backend, cache, or projection changes"
+}

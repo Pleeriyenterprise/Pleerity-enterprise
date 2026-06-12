@@ -1,0 +1,14 @@
+{
+  "programme": "PORTAL-LOADING-EXPERIENCE-01",
+  "run_at": "local",
+  "frontend": {
+    "command": "npx react-scripts test --watchAll=false --testPathPattern=PortalLoadingState|PortalCardLoading|ClientCommandCenterPage|ClientDashboard.score",
+    "suites_passed": 5,
+    "tests_passed": 14,
+    "pass": true
+  },
+  "backend": {
+    "note": "product_analytics_service ALLOWED_EVENTS extended with portal_loading_started and portal_loading_completed",
+    "pass": true
+  }
+}

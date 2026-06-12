@@ -29,10 +29,13 @@ import { resolveTaskCta } from '../utils/ctaRegistry';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import {
   PortalPageShell,
-  PortalSectionSkeleton,
   PortalStaleRefreshBanner,
   portalPageRoot,
 } from '../components/client/ClientPortalPatterns';
+import PortalLoadingState from '../components/loading/PortalLoadingState';
+import PortalCardLoading from '../components/loading/PortalCardLoading';
+import { dashboardLoadingStages } from '../components/loading/portalLoadingStageModels';
+import { usePortalLoadingTelemetry } from '../components/loading/usePortalLoadingTelemetry';
 import {
   fetchOperational,
   OPERATIONAL_CACHE_KEYS,
@@ -267,7 +270,8 @@ const ClientDashboard = () => {
   const [onboardingItemError, setOnboardingItemError] = useState('');
   const [jurisdictionAckConfirm, setJurisdictionAckConfirm] = useState(false);
   const [jurisdictionAckSubmitting, setJurisdictionAckSubmitting] = useState(false);
-  const [valueInsights, setValueInsights] = useState(null);
+  /** undefined = loading; null = unavailable; object = loaded */
+  const [valueInsights, setValueInsights] = useState(undefined);
   // Operations data for dashboard KPIs and action queue
   const [workOrdersList, setWorkOrdersList] = useState([]);
   const [openIssuesCountKpi, setOpenIssuesCountKpi] = useState(null);
@@ -299,6 +303,14 @@ const ClientDashboard = () => {
 
   // Only load client dashboard data for client roles with a client_id (staff/owner have client_id null)
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
+
+  usePortalLoadingTelemetry({
+    page: 'dashboard',
+    path: '/dashboard',
+    isLoading: Boolean(isClientUser && loading && !data),
+    ready: Boolean(isClientUser && !loading && data && !error),
+    failed: Boolean(isClientUser && !loading && !!error),
+  });
 
   const commandCenterScopePropertyId =
     scoreTrendView === 'property' && selectedTrendPropertyId ? selectedTrendPropertyId : null;
@@ -1145,11 +1157,38 @@ const ClientDashboard = () => {
     return (
       <PortalPageShell
         title="Dashboard"
-        subtitle={workspaceDashboardWelcomeLead(data?.client?.name)}
+        subtitle="Preparing your portfolio overview…"
         refreshing={dashboardRefreshing}
         testId="client-dashboard-loading"
       >
-        <PortalSectionSkeleton rows={6} />
+        <PortalLoadingState
+          variant="page"
+          title="Loading your dashboard…"
+          subtitle="We are pulling together compliance, risk, and operational signals for your portfolio."
+          stages={dashboardLoadingStages()}
+          skeletonRows={2}
+          testId="dashboard-page-loading"
+        />
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="dashboard-kpi-loading-preview">
+          <Card className="min-w-0">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Today&apos;s inbox</p>
+              <PortalCardLoading label="Preparing operational summary…" className="mt-2" testId="dashboard-kpi-today-loading" />
+            </CardContent>
+          </Card>
+          <Card className="min-w-0">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Portfolio compliance</p>
+              <PortalCardLoading label="Calculating compliance score…" className="mt-2" testId="dashboard-kpi-compliance-loading" />
+            </CardContent>
+          </Card>
+          <Card className="min-w-0">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Risk signals</p>
+              <PortalCardLoading label="Loading risk indicators…" className="mt-2" testId="dashboard-kpi-risk-loading" />
+            </CardContent>
+          </Card>
+        </div>
       </PortalPageShell>
     );
   }
@@ -1674,7 +1713,7 @@ const ClientDashboard = () => {
                   </DashboardKpiHint>
                 </p>
                 {tasksDigest === undefined || todayInboxPayload === undefined ? (
-                  <p className="text-xl font-bold text-midnight-blue mt-1">…</p>
+                  <PortalCardLoading label="Preparing operational summary…" className="mt-1" testId="dashboard-kpi-today-inline-loading" />
                 ) : tasksDigest === null ? (
                   <>
                     <p className="text-xl font-bold text-gray-500 mt-1">{KPI_NO_DATA}</p>
@@ -1705,16 +1744,24 @@ const ClientDashboard = () => {
                     or related jobs change. Same metric as the Compliance score page — not a legal certification.
                   </DashboardKpiHint>
                 </p>
-                <p className="text-xl font-bold text-midnight-blue">{portfolioHeadlineUi.display}</p>
+                {!complianceScore && !portfolioSummary && valueInsights === undefined ? (
+                  <PortalCardLoading label="Calculating compliance score…" className="mt-1" testId="dashboard-kpi-compliance-inline-loading" />
+                ) : (
+                  <p className="text-xl font-bold text-midnight-blue">{portfolioHeadlineUi.display}</p>
+                )}
               </CardContent>
             </Card>
             {hasFeature('maintenance_workflows') && (
               <Card className="cursor-pointer hover:shadow-md transition-shadow min-w-0" onClick={() => navigate('/operations/issues')}>
                 <CardContent className="p-3 sm:p-4 min-w-0">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
-                  <p className="text-xl font-bold text-midnight-blue">
-                    {openIssuesKpiLoading ? '…' : openIssuesCount == null ? KPI_NO_DATA : openIssuesCount}
-                  </p>
+                  {openIssuesKpiLoading ? (
+                    <PortalCardLoading label="Loading open issues…" className="mt-1" testId="dashboard-kpi-issues-loading" />
+                  ) : (
+                    <p className="text-xl font-bold text-midnight-blue">
+                      {openIssuesCount == null ? KPI_NO_DATA : openIssuesCount}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -1744,7 +1791,11 @@ const ClientDashboard = () => {
                       Acknowledging or dismissing a signal does not clear compliance obligations by itself.
                     </DashboardKpiHint>
                   </p>
-                  <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
+                  {protectionSnapshotLoading && !protectionSnapshot ? (
+                    <PortalCardLoading label="Loading risk indicators…" className="mt-1" testId="dashboard-kpi-risk-inline-loading" />
+                  ) : (
+                    <p className="text-xl font-bold text-midnight-blue">{riskSignalsCount}</p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -1769,6 +1820,15 @@ const ClientDashboard = () => {
         )}
 
         {/* ZONE 2 — Portfolio intelligence: impact snapshot (compact KPIs) */}
+        {valueInsights === undefined ? (
+          <div
+            className="mb-6 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm"
+            data-testid="value-insights-loading"
+          >
+            <h3 className="text-sm font-semibold text-midnight-blue mb-2">Your impact</h3>
+            <PortalCardLoading label="Loading value and risk summary…" testId="dashboard-value-insights-loading" />
+          </div>
+        ) : null}
         {valueInsights && (
           <div
             className="mb-6 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm"
@@ -2227,7 +2287,9 @@ const ClientDashboard = () => {
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {roiSummary === undefined && <p className="text-sm text-gray-500">Loading value summary…</p>}
+                  {roiSummary === undefined && (
+                    <PortalCardLoading label="Loading value summary…" testId="dashboard-roi-loading" />
+                  )}
                   {roiSummary === null && <p className="text-sm text-gray-600">Value summary is temporarily unavailable.</p>}
                   {roiSummary != null && (
                     <>
@@ -2297,7 +2359,9 @@ const ClientDashboard = () => {
                     </p>
                   </CardHeader>
                   <CardContent className="text-sm text-gray-700 space-y-2 pt-0">
-                    {protectionSnapshotLoading && <p className="text-gray-500">Loading…</p>}
+                    {protectionSnapshotLoading && (
+                      <PortalCardLoading label="Loading security and continuity snapshot…" testId="dashboard-protection-loading" />
+                    )}
                     {!protectionSnapshotLoading && protectionSnapshot && (
                       <>
                         <ul className="list-disc list-inside space-y-1">

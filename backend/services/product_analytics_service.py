@@ -60,6 +60,9 @@ ALLOWED_EVENTS = frozenset(
         "today_secondary_nav_clicked",
         "today_risk_follow_up_started",
         "today_compliance_job_started",
+        # Portal loading UX telemetry
+        "portal_loading_started",
+        "portal_loading_completed",
     }
 )
 
