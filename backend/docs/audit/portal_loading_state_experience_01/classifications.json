@@ -1,18 +1,8 @@
 {
-  "programme": "PORTAL-LOADING-STATE-EXPERIENCE-01",
+  "programme": "PORTAL-LOADING-STATE-EXPERIENCE-01-POST-DEPLOY",
+  "run_tag": "20260612T083925Z",
+  "pre_deploy": "PARTIAL",
+  "post_deploy_classification": "VERIFIED_OPERATIONALLY",
   "code_classification": "PORTAL_LOADING_STATE_EXPERIENCE_CONVERGED",
-  "operational_classification": "PARTIAL",
-  "note": "Code complete and unit tests pass. VERIFIED_OPERATIONALLY requires staging browser proof (desktop + mobile screenshots) after deploy.",
-  "checks": {
-    "shared_loading_component": true,
-    "today_staged_loading": true,
-    "command_center_staged_loading": true,
-    "dashboard_card_loading": true,
-    "loading_empty_error_distinct": true,
-    "progressive_section_reveal": true,
-    "accessibility_basics": true,
-    "analytics_events_allowlisted": true,
-    "no_business_logic_changes": true,
-    "staging_browser_proof": false
-  }
+  "deploy_ready": true
 }

@@ -1,14 +1,8 @@
 {
-  "programme": "PORTAL-LOADING-EXPERIENCE-01",
-  "run_at": "local",
-  "frontend": {
-    "command": "npx react-scripts test --watchAll=false --testPathPattern=PortalLoadingState|PortalCardLoading|ClientCommandCenterPage|ClientDashboard.score",
-    "suites_passed": 5,
-    "tests_passed": 14,
-    "pass": true
-  },
-  "backend": {
-    "note": "product_analytics_service ALLOWED_EVENTS extended with portal_loading_started and portal_loading_completed",
-    "pass": true
-  }
+  "programme": "PORTAL-LOADING-STATE-EXPERIENCE-01-POST-DEPLOY",
+  "run_tag": "20260612T083925Z",
+  "exit_code": 0,
+  "pass": true,
+  "stdout_tail": "",
+  "stderr_tail": " same host).');\n         |               ^\n      19 |     }\n      20 |   }\n      21 | }\n\n      at Object.<anonymous> (src/api/client.js:18:15)\n      at src/pages/ClientDashboard.scoreWidgetLabels.test.js:19:23\n      at Object.<anonymous> (src/pages/ClientDashboard.js:3:1)\n      at Object.<anonymous> (src/pages/ClientDashboard.scoreWidgetLabels.test.js:4:1)\n\nPASS src/pages/ClientDashboard.scoreFreshness.test.js\n  \u25cf Console\n\n    console.debug\n      [CVP] REACT_APP_BACKEND_URL: (not set - using relative /api)\n\n      at Object.<anonymous> (src/api/client.js:16:13)\n\n    console.warn\n      [CVP] REACT_APP_BACKEND_URL is not set; API calls use relative /api (ensure proxy or same host).\n\n      16 |     console.debug('[CVP] REACT_APP_BACKEND_URL:', window.__CVP_BACKEND_URL);\n      17 |     if (!API_URL) {\n    > 18 |       console.warn('[CVP] REACT_APP_BACKEND_URL is not set; API calls use relative /api (ensure proxy or same host).');\n         |               ^\n      19 |     }\n      20 |   }\n      21 | }\n\n      at Object.<anonymous> (src/api/client.js:18:15)\n      at src/pages/ClientDashboard.scoreFreshness.test.js:20:23\n      at Object.<anonymous> (src/pages/ClientDashboard.js:3:1)\n      at Object.<anonymous> (src/pages/ClientDashboard.scoreFreshness.test.js:4:1)\n\n\nTest Suites: 5 passed, 5 total\nTests:       14 passed, 14 total\nSnapshots:   0 total\nTime:        3.397 s\nRan all test suites matching /PortalLoadingState|PortalCardLoading|ClientCommandCenterPage|ClientDashboard.score/i.\n"
 }

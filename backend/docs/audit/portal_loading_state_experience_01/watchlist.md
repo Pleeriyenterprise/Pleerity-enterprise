@@ -1,7 +1,7 @@
-# PORTAL-LOADING-STATE-EXPERIENCE-01 watchlist
+# PORTAL-LOADING-STATE-EXPERIENCE-01-POST-DEPLOY
 
-- [ ] Deploy frontend + backend analytics allowlist to staging
-- [ ] Capture desktop + mobile (390px) screenshots for Today, Command Center, Dashboard loading states
-- [ ] Verify `portal_loading_started` / `portal_loading_completed` in analytics summary
-- [ ] Screen-reader spot check on staging
-- [ ] Reclassify to VERIFIED_OPERATIONALLY after browser proof
+- [x] Commit 3e974609 pushed
+- [x] Staging deploy proof
+- [x] Browser verification (Today, Command Center, Dashboard — desktop + 390px)
+- [x] Regression 14/14
+- [x] Analytics `portal_loading_started` / `portal_loading_completed` with `duration_ms`

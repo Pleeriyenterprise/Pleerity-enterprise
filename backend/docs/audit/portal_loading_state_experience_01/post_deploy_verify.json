@@ -1,0 +1,202 @@
+{
+  "programme": "PORTAL-LOADING-STATE-EXPERIENCE-01-POST-DEPLOY",
+  "run_tag": "20260612T083925Z",
+  "commit": "3e974609",
+  "deploy_proof": {
+    "run_tag": "20260612T083925Z",
+    "min_commit": "3e974609",
+    "api_version": {
+      "commit_sha": "3e974609442cbbdcdc2b2658861137f2680ff240",
+      "environment": "production"
+    },
+    "api_deploy_match": true,
+    "frontend_chunks_checked": [
+      "/static/js/main.f195af99.js"
+    ],
+    "frontend_marker_hits": {
+      "portal_loading_started": [
+        "/static/js/main.f195af99.js"
+      ],
+      "today-page-loading": [
+        "/static/js/main.f195af99.js"
+      ],
+      "command-center-primary-loading": [
+        "/static/js/main.f195af99.js"
+      ]
+    },
+    "frontend_deploy_match": true,
+    "deploy_ready": true
+  },
+  "browser_verification": {
+    "pages": {
+      "today": {
+        "desktop": {
+          "pass": true,
+          "role_status": true,
+          "aria_live": true,
+          "loading_copy": "Loading your operational inbox\u2026\n\nWe are assembling priorities from your requirements, compliance posture, and open work.\n\nCompleted:\nChecking requirements\nCompleted:\nReviewing compliance\nIn progress:\nBuilding action list\n\nLarge portfolios may take a little longer while we prioritise your data.\n\nBuilding action list\u2026",
+          "staged_copy_ok": true,
+          "ready_after_load": true
+        },
+        "mobile_390": {
+          "pass": true,
+          "role_status": true,
+          "aria_live": true,
+          "loading_copy": "Loading your operational inbox\u2026\n\nWe are assembling priorities from your requirements, compliance posture, and open work.\n\nCompleted:\nChecking requirements\nCompleted:\nReviewing compliance\nIn progress:\nBuilding action list\n\nLarge portfolios may take a little longer while we prioritise your data.\n\nBuilding action list\u2026",
+          "staged_copy_ok": true,
+          "ready_after_load": true
+        }
+      },
+      "command_center": {
+        "desktop": {
+          "pass": true,
+          "role_status": true,
+          "aria_live": true,
+          "loading_copy": "Analysing portfolio health\u2026\n\nYour command center snapshot is being prepared from live portfolio data.\n\nCompleted:\nLoading portfolio summary\nCompleted:\nRanking next actions\nIn progress:\nPreparing recommendations\n\nLarge portfolios may take a little longer while we prioritise your data.\n\nPreparing recommendations\u2026",
+          "staged_copy_ok": true,
+          "ready_after_load": true
+        },
+        "mobile_390": {
+          "pass": true,
+          "role_status": true,
+          "aria_live": true,
+          "loading_copy": "Analysing portfolio health\u2026\n\nYour command center snapshot is being prepared from live portfolio data.\n\nCompleted:\nLoading portfolio summary\nCompleted:\nRanking next actions\nIn progress:\nPreparing recommendations\n\nLarge portfolios may take a little longer while we prioritise your data.\n\nPreparing recommendations\u2026",
+          "staged_copy_ok": true,
+          "ready_after_load": true
+        }
+      },
+      "dashboard": {
+        "desktop": {
+          "pass": true,
+          "role_status": true,
+          "aria_live": true,
+          "loading_copy": "Loading your dashboard\u2026\n\nWe are pulling together compliance, risk, and operational signals for your portfolio.\n\nCompleted:\nLoading workspace\nCompleted:\nPreparing compliance overview\nIn progress:\nGathering operational signals\n\nLarge portfolios may take a little longer while we prioritise your data.\n\nGathering operational signals\u2026",
+          "staged_copy_ok": true,
+          "kpi_preview_cards": true,
+          "kpi_card_loaders": 3,
+          "kpi_loading_copy_ok": true,
+          "horizontal_overflow": false,
+          "card_loading_status": true,
+          "ready_after_load": true
+        },
+        "mobile_390": {
+          "pass": true,
+          "role_status": true,
+          "aria_live": true,
+          "loading_copy": "Loading your dashboard\u2026\n\nWe are pulling together compliance, risk, and operational signals for your portfolio.\n\nCompleted:\nLoading workspace\nCompleted:\nPreparing compliance overview\nIn progress:\nGathering operational signals\n\nLarge portfolios may take a little longer while we prioritise your data.\n\nGathering operational signals\u2026",
+          "staged_copy_ok": true,
+          "kpi_preview_cards": true,
+          "kpi_card_loaders": 3,
+          "kpi_loading_copy_ok": true,
+          "horizontal_overflow": false,
+          "card_loading_status": true,
+          "ready_after_load": true
+        }
+      }
+    },
+    "analytics": {
+      "events_captured": 14,
+      "portal_loading_started": 6,
+      "portal_loading_completed": 4,
+      "duration_ms_recorded": true,
+      "sample_events": [
+        {
+          "event": "portal_loading_started",
+          "path": "/today",
+          "properties": {
+            "page": "today"
+          }
+        },
+        {
+          "event": "TODAY_PAGE_REQUESTED",
+          "path": "/today",
+          "properties": {
+            "page": "today"
+          }
+        },
+        {
+          "event": "portal_loading_started",
+          "path": "/command-center",
+          "properties": {
+            "page": "command_center"
+          }
+        },
+        {
+          "event": "portal_loading_completed",
+          "path": "/command-center",
+          "properties": {
+            "page": "command_center",
+            "portal_loading_duration_ms": 15653,
+            "outcome": "ready"
+          }
+        },
+        {
+          "event": "portal_loading_started",
+          "path": "/dashboard",
+          "properties": {
+            "page": "dashboard"
+          }
+        },
+        {
+          "event": "activity_since_viewed",
+          "path": "/dashboard"
+        },
+        {
+          "event": "portal_loading_completed",
+          "path": "/dashboard",
+          "properties": {
+            "page": "dashboard",
+            "portal_loading_duration_ms": 29122,
+            "outcome": "ready"
+          }
+        },
+        {
+          "event": "portal_loading_started",
+          "path": "/today",
+          "properties": {
+            "page": "today"
+          }
+        },
+        {
+          "event": "TODAY_PAGE_REQUESTED",
+          "path": "/today",
+          "properties": {
+            "page": "today"
+          }
+        },
+        {
+          "event": "portal_loading_started",
+          "path": "/command-center",
+          "properties": {
+            "page": "command_center"
+          }
+        },
+        {
+          "event": "portal_loading_completed",
+          "path": "/command-center",
+          "properties": {
+            "page": "command_center",
+            "portal_loading_duration_ms": 36381,
+            "outcome": "ready"
+          }
+        },
+        {
+          "event": "portal_loading_started",
+          "path": "/dashboard",
+          "properties": {
+            "page": "dashboard"
+          }
+        }
+      ]
+    },
+    "accessibility": {}
+  },
+  "regression": {
+    "exit_code": 0,
+    "pass": true,
+    "stdout_tail": "",
+    "stderr_tail": " same host).');\n         |               ^\n      19 |     }\n      20 |   }\n      21 | }\n\n      at Object.<anonymous> (src/api/client.js:18:15)\n      at src/pages/ClientDashboard.scoreWidgetLabels.test.js:19:23\n      at Object.<anonymous> (src/pages/ClientDashboard.js:3:1)\n      at Object.<anonymous> (src/pages/ClientDashboard.scoreWidgetLabels.test.js:4:1)\n\nPASS src/pages/ClientDashboard.scoreFreshness.test.js\n  \u25cf Console\n\n    console.debug\n      [CVP] REACT_APP_BACKEND_URL: (not set - using relative /api)\n\n      at Object.<anonymous> (src/api/client.js:16:13)\n\n    console.warn\n      [CVP] REACT_APP_BACKEND_URL is not set; API calls use relative /api (ensure proxy or same host).\n\n      16 |     console.debug('[CVP] REACT_APP_BACKEND_URL:', window.__CVP_BACKEND_URL);\n      17 |     if (!API_URL) {\n    > 18 |       console.warn('[CVP] REACT_APP_BACKEND_URL is not set; API calls use relative /api (ensure proxy or same host).');\n         |               ^\n      19 |     }\n      20 |   }\n      21 | }\n\n      at Object.<anonymous> (src/api/client.js:18:15)\n      at src/pages/ClientDashboard.scoreFreshness.test.js:20:23\n      at Object.<anonymous> (src/pages/ClientDashboard.js:3:1)\n      at Object.<anonymous> (src/pages/ClientDashboard.scoreFreshness.test.js:4:1)\n\n\nTest Suites: 5 passed, 5 total\nTests:       14 passed, 14 total\nSnapshots:   0 total\nTime:        3.397 s\nRan all test suites matching /PortalLoadingState|PortalCardLoading|ClientCommandCenterPage|ClientDashboard.score/i.\n"
+  },
+  "classification": "VERIFIED_OPERATIONALLY",
+  "code_classification": "PORTAL_LOADING_STATE_EXPERIENCE_CONVERGED"
+}
