@@ -1,0 +1,221 @@
+{
+  "professional": {
+    "plan_code": "PLAN_3_PRO",
+    "label": "Professional Nancy",
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "error": null,
+    "user": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
+    },
+    "entitlements": {
+      "status": 200,
+      "plan": "PLAN_3_PRO",
+      "plan_name": "Professional",
+      "features": {
+        "maintenance_workflows": {
+          "enabled": true,
+          "minimum_plan": null
+        },
+        "predictive_maintenance": {
+          "enabled": true,
+          "minimum_plan": null
+        },
+        "contractor_network": {
+          "enabled": true,
+          "minimum_plan": null
+        },
+        "rent_operations": {
+          "enabled": true,
+          "minimum_plan": null
+        },
+        "invoicing": {
+          "enabled": true,
+          "minimum_plan": null
+        },
+        "tenant_portal": {
+          "enabled": true,
+          "minimum_plan": "PLAN_3_PRO"
+        },
+        "reports_pdf": {
+          "enabled": true,
+          "minimum_plan": "PLAN_2_PORTFOLIO"
+        },
+        "reports_csv": {
+          "enabled": true,
+          "minimum_plan": "PLAN_2_PORTFOLIO"
+        },
+        "audit_log_export": {
+          "enabled": true,
+          "minimum_plan": "PLAN_3_PRO"
+        }
+      }
+    },
+    "assign_job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+    "api_guards": {
+      "assignable_contractors": {
+        "status": 200,
+        "detail": "ok"
+      },
+      "assign_contractor_post": {
+        "status": 400,
+        "detail": "Contractor not found",
+        "note": "POST assign-contractor only checks maintenance_workflows in route handler (no CONTRACTOR_NETWORK guard)"
+      },
+      "maintenance_list": {
+        "status": 200
+      },
+      "risk_signals": {
+        "status": 200,
+        "detail": "ok"
+      },
+      "rent_operations": {
+        "status": 404,
+        "detail": "Not Found"
+      },
+      "contractor_directory": {
+        "status": 200,
+        "detail": "ok"
+      }
+    }
+  },
+  "portfolio": {
+    "plan_code": "PLAN_2_PORTFOLIO",
+    "label": "Portfolio fixture D",
+    "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+    "error": null,
+    "user": {
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23"
+    },
+    "entitlements": {
+      "status": 200,
+      "plan": "PLAN_2_PORTFOLIO",
+      "plan_name": "Portfolio Landlord",
+      "features": {
+        "maintenance_workflows": {
+          "enabled": true,
+          "minimum_plan": null
+        },
+        "predictive_maintenance": {
+          "enabled": true,
+          "minimum_plan": null
+        },
+        "contractor_network": {
+          "enabled": false,
+          "minimum_plan": null
+        },
+        "rent_operations": {
+          "enabled": true,
+          "minimum_plan": null
+        },
+        "invoicing": {
+          "enabled": false,
+          "minimum_plan": null
+        },
+        "tenant_portal": {
+          "enabled": false,
+          "minimum_plan": "PLAN_3_PRO"
+        },
+        "reports_pdf": {
+          "enabled": true,
+          "minimum_plan": "PLAN_2_PORTFOLIO"
+        },
+        "reports_csv": {
+          "enabled": true,
+          "minimum_plan": "PLAN_2_PORTFOLIO"
+        },
+        "audit_log_export": {
+          "enabled": false,
+          "minimum_plan": "PLAN_3_PRO"
+        }
+      }
+    },
+    "assign_job_id": null,
+    "api_guards": {
+      "maintenance_list": {
+        "status": 200
+      },
+      "risk_signals": {
+        "status": 200,
+        "detail": "ok"
+      },
+      "rent_operations": {
+        "status": 404,
+        "detail": "Not Found"
+      },
+      "contractor_directory": {
+        "status": 403,
+        "detail": "Contractor network is not enabled for your account. Contact your administrator."
+      }
+    }
+  },
+  "solo": {
+    "plan_code": "PLAN_1_SOLO",
+    "label": "Solo fixture B",
+    "client_id": "616258a5-51a6-4def-aa00-baa1598b2557",
+    "error": null,
+    "user": {
+      "client_id": "616258a5-51a6-4def-aa00-baa1598b2557"
+    },
+    "entitlements": {
+      "status": 200,
+      "plan": "PLAN_1_SOLO",
+      "plan_name": "Solo Landlord",
+      "features": {
+        "maintenance_workflows": {
+          "enabled": false,
+          "minimum_plan": null
+        },
+        "predictive_maintenance": {
+          "enabled": false,
+          "minimum_plan": null
+        },
+        "contractor_network": {
+          "enabled": false,
+          "minimum_plan": null
+        },
+        "rent_operations": {
+          "enabled": false,
+          "minimum_plan": null
+        },
+        "invoicing": {
+          "enabled": false,
+          "minimum_plan": null
+        },
+        "tenant_portal": {
+          "enabled": false,
+          "minimum_plan": "PLAN_3_PRO"
+        },
+        "reports_pdf": {
+          "enabled": false,
+          "minimum_plan": "PLAN_2_PORTFOLIO"
+        },
+        "reports_csv": {
+          "enabled": false,
+          "minimum_plan": "PLAN_2_PORTFOLIO"
+        },
+        "audit_log_export": {
+          "enabled": false,
+          "minimum_plan": "PLAN_3_PRO"
+        }
+      }
+    },
+    "assign_job_id": null,
+    "api_guards": {
+      "maintenance_list": {
+        "status": 403
+      },
+      "risk_signals": {
+        "status": 403,
+        "detail": "Predictive maintenance is not enabled for your account"
+      },
+      "rent_operations": {
+        "status": 404,
+        "detail": "Not Found"
+      },
+      "contractor_directory": {
+        "status": 403,
+        "detail": "Contractor network is not enabled for your account. Contact your administrator."
+      }
+    }
+  }
+}

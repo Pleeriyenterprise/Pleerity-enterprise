@@ -1,0 +1,124 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-DISCOVERY-AND-ACTION-UX-AUDIT-01",
+  "run_tag": "20260612T112307Z",
+  "code_paths": {
+    "job_detail": "frontend/src/pages/ClientJobDetailPage.js",
+    "primary_action": "frontend/src/utils/jobDetailPrimaryAction.js",
+    "issues": "frontend/src/pages/ClientIssuesPage.js + primaryActionResolver.js",
+    "modal": "assign-contractor-modal data-testid"
+  },
+  "scenarios": {
+    "professional": {
+      "plan": "PLAN_3_PRO",
+      "has_maintenance_workflows": true,
+      "has_contractor_network": true,
+      "assign_job_id": "e670afc5-ef2d-487b-b688-ac8d865daf63",
+      "api_guards": {
+        "assignable_contractors": {
+          "status": 200,
+          "detail": "ok"
+        },
+        "assign_contractor_post": {
+          "status": 400,
+          "detail": "Contractor not found",
+          "note": "POST assign-contractor only checks maintenance_workflows in route handler (no CONTRACTOR_NETWORK guard)"
+        },
+        "maintenance_list": {
+          "status": 200
+        },
+        "risk_signals": {
+          "status": 200,
+          "detail": "ok"
+        },
+        "rent_operations": {
+          "status": 404,
+          "detail": "Not Found"
+        },
+        "contractor_directory": {
+          "status": 200,
+          "detail": "ok"
+        }
+      },
+      "expected_scenario": "A_entitled",
+      "frontend_expectations": {
+        "hero_assign_executable": true,
+        "upgrade_alert_on_job_detail": false,
+        "section_assign_button": true,
+        "modal_opens_on_assign": true,
+        "auto_focus_search_select": "not implemented \u2014 no useEffect focus in ClientJobDetailPage openAssignModal",
+        "early_network_primary_cta": "Add contractor for this area when eligible_count=0"
+      }
+    },
+    "portfolio": {
+      "plan": "PLAN_2_PORTFOLIO",
+      "has_maintenance_workflows": true,
+      "has_contractor_network": false,
+      "assign_job_id": null,
+      "api_guards": {
+        "maintenance_list": {
+          "status": 200
+        },
+        "risk_signals": {
+          "status": 200,
+          "detail": "ok"
+        },
+        "rent_operations": {
+          "status": 404,
+          "detail": "Not Found"
+        },
+        "contractor_directory": {
+          "status": 403,
+          "detail": "Contractor network is not enabled for your account. Contact your administrator."
+        }
+      },
+      "expected_scenario": "C_non_entitled",
+      "frontend_expectations": {
+        "hero_assign_executable": false,
+        "upgrade_alert_on_job_detail": true,
+        "section_assign_button": false,
+        "modal_opens_on_assign": false,
+        "auto_focus_search_select": "not implemented \u2014 no useEffect focus in ClientJobDetailPage openAssignModal",
+        "early_network_primary_cta": "Add contractor for this area when eligible_count=0"
+      }
+    },
+    "solo": {
+      "plan": "PLAN_1_SOLO",
+      "has_maintenance_workflows": false,
+      "has_contractor_network": false,
+      "assign_job_id": null,
+      "api_guards": {
+        "maintenance_list": {
+          "status": 403
+        },
+        "risk_signals": {
+          "status": 403,
+          "detail": "Predictive maintenance is not enabled for your account"
+        },
+        "rent_operations": {
+          "status": 404,
+          "detail": "Not Found"
+        },
+        "contractor_directory": {
+          "status": 403,
+          "detail": "Contractor network is not enabled for your account. Contact your administrator."
+        }
+      },
+      "expected_scenario": "no_maintenance",
+      "frontend_expectations": {
+        "hero_assign_executable": false,
+        "upgrade_alert_on_job_detail": false,
+        "section_assign_button": false,
+        "modal_opens_on_assign": false,
+        "auto_focus_search_select": "not implemented \u2014 no useEffect focus in ClientJobDetailPage openAssignModal",
+        "early_network_primary_cta": "Add contractor for this area when eligible_count=0"
+      }
+    }
+  },
+  "findings": [
+    "Portfolio (maintenance, no contractor_network): upgrade Alert + disabled hero; section assign hidden; modal no-op",
+    "Issues list: Assign contractor CTA navigates without contractor_network check",
+    "POST /jobs/{id}/assign-contractor lacks CONTRACTOR_NETWORK guard (backend drift)",
+    "No auto-focus on modal open for search/select or add-contractor form",
+    "UpgradePrompt FEATURE_MIN_PLAN maps contractor_network to PLAN_2_PORTFOLIO but ops default is PLAN_3_PRO"
+  ]
+}

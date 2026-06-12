@@ -1,0 +1,258 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-DISCOVERY-AND-ACTION-UX-AUDIT-01",
+  "run_tag": "20260612T112307Z",
+  "sources": [
+    "backend/services/plan_registry.py FEATURE_MATRIX",
+    "backend/services/ops_compliance_feature_flags.py DEFAULTS_BY_PLAN",
+    "frontend/src/config/portalNavigationConfig.js",
+    "frontend/src/utils/jobDetailPrimaryAction.js",
+    "backend/routes/api_compliance_workflow.py"
+  ],
+  "plans": {
+    "solo": {
+      "plan_code": "PLAN_1_SOLO",
+      "operations_module_defaults": {
+        "maintenance_workflows": false,
+        "predictive_maintenance": false,
+        "contractor_network": false,
+        "rent_operations": false,
+        "invoicing": false,
+        "compliance_engine": true
+      },
+      "commercial_features": {
+        "reports_pdf": false,
+        "reports_csv": false,
+        "scheduled_reports": false,
+        "tenant_portal": false,
+        "audit_log_export": false,
+        "zip_upload": false
+      },
+      "visible_operations_nav": [],
+      "hidden_operations_nav": [
+        {
+          "path": "/operations/issues",
+          "label": "Issues",
+          "feature": "maintenance_workflows"
+        },
+        {
+          "path": "/operations/work-orders",
+          "label": "Jobs",
+          "feature": "maintenance_workflows"
+        },
+        {
+          "path": "/operations/contractors",
+          "label": "Contractors",
+          "feature": "contractor_network"
+        },
+        {
+          "path": "/operations/risk-signals",
+          "label": "Risk signals",
+          "feature": "predictive_maintenance"
+        },
+        {
+          "path": "/operations/rent",
+          "label": "Rent Operations",
+          "feature": "rent_operations"
+        },
+        {
+          "path": "/operations/approvals",
+          "label": "Approvals",
+          "feature": "invoicing"
+        }
+      ],
+      "operations_nav_strategy": "HIDDEN_UNTIL_UPGRADE (filtered from nav; no locked nav items)",
+      "accessible_routes_when_entitled": [],
+      "route_gates": {
+        "maintenance_pages": "EntitlementProtectedRoute maintenance_workflows",
+        "contractor_directory": "EntitlementProtectedRoute contractor_network",
+        "risk_signals": "EntitlementProtectedRoute predictive_maintenance",
+        "rent": "EntitlementProtectedRoute rent_operations",
+        "tenant_portal": "EntitlementProtectedRoute tenant_portal"
+      },
+      "backend_allowed_ops_actions": {
+        "maintenance_jobs": false,
+        "contractor_assignment_api": false,
+        "risk_signals_api": false,
+        "rent_operations_api": false,
+        "pdf_csv_exports": false,
+        "tenant_portal_api": false
+      },
+      "upgrade_messaging_surfaces": {
+        "route_gate": "UpgradeRequired full-page card",
+        "job_detail_assign_blocked": "Alert + disabled hero when maintenance but not contractor_network",
+        "issues_assign_cta": "No contractor_network gate \u2014 navigates to job detail",
+        "jobs_list_assign": "Hidden when !contractor_network (ClientMaintenancePage)"
+      }
+    },
+    "portfolio": {
+      "plan_code": "PLAN_2_PORTFOLIO",
+      "operations_module_defaults": {
+        "maintenance_workflows": true,
+        "predictive_maintenance": true,
+        "contractor_network": false,
+        "rent_operations": true,
+        "invoicing": false,
+        "compliance_engine": true
+      },
+      "commercial_features": {
+        "reports_pdf": true,
+        "reports_csv": true,
+        "scheduled_reports": true,
+        "tenant_portal": false,
+        "audit_log_export": false,
+        "zip_upload": true
+      },
+      "visible_operations_nav": [
+        {
+          "path": "/operations/issues",
+          "label": "Issues",
+          "feature": "maintenance_workflows"
+        },
+        {
+          "path": "/operations/work-orders",
+          "label": "Jobs",
+          "feature": "maintenance_workflows"
+        },
+        {
+          "path": "/operations/risk-signals",
+          "label": "Risk signals",
+          "feature": "predictive_maintenance"
+        },
+        {
+          "path": "/operations/rent",
+          "label": "Rent Operations",
+          "feature": "rent_operations"
+        }
+      ],
+      "hidden_operations_nav": [
+        {
+          "path": "/operations/contractors",
+          "label": "Contractors",
+          "feature": "contractor_network"
+        },
+        {
+          "path": "/operations/approvals",
+          "label": "Approvals",
+          "feature": "invoicing"
+        }
+      ],
+      "operations_nav_strategy": "HIDDEN_UNTIL_UPGRADE (filtered from nav; no locked nav items)",
+      "accessible_routes_when_entitled": [
+        "/operations/issues",
+        "/operations/work-orders",
+        "/operations/risk-signals",
+        "/operations/rent"
+      ],
+      "route_gates": {
+        "maintenance_pages": "EntitlementProtectedRoute maintenance_workflows",
+        "contractor_directory": "EntitlementProtectedRoute contractor_network",
+        "risk_signals": "EntitlementProtectedRoute predictive_maintenance",
+        "rent": "EntitlementProtectedRoute rent_operations",
+        "tenant_portal": "EntitlementProtectedRoute tenant_portal"
+      },
+      "backend_allowed_ops_actions": {
+        "maintenance_jobs": true,
+        "contractor_assignment_api": false,
+        "risk_signals_api": true,
+        "rent_operations_api": true,
+        "pdf_csv_exports": true,
+        "tenant_portal_api": false
+      },
+      "upgrade_messaging_surfaces": {
+        "route_gate": "UpgradeRequired full-page card",
+        "job_detail_assign_blocked": "Alert + disabled hero when maintenance but not contractor_network",
+        "issues_assign_cta": "No contractor_network gate \u2014 navigates to job detail",
+        "jobs_list_assign": "Hidden when !contractor_network (ClientMaintenancePage)"
+      }
+    },
+    "professional": {
+      "plan_code": "PLAN_3_PRO",
+      "operations_module_defaults": {
+        "maintenance_workflows": true,
+        "predictive_maintenance": true,
+        "contractor_network": true,
+        "rent_operations": true,
+        "invoicing": false,
+        "compliance_engine": true
+      },
+      "commercial_features": {
+        "reports_pdf": true,
+        "reports_csv": true,
+        "scheduled_reports": true,
+        "tenant_portal": true,
+        "audit_log_export": true,
+        "zip_upload": true
+      },
+      "visible_operations_nav": [
+        {
+          "path": "/operations/issues",
+          "label": "Issues",
+          "feature": "maintenance_workflows"
+        },
+        {
+          "path": "/operations/work-orders",
+          "label": "Jobs",
+          "feature": "maintenance_workflows"
+        },
+        {
+          "path": "/operations/contractors",
+          "label": "Contractors",
+          "feature": "contractor_network"
+        },
+        {
+          "path": "/operations/risk-signals",
+          "label": "Risk signals",
+          "feature": "predictive_maintenance"
+        },
+        {
+          "path": "/operations/rent",
+          "label": "Rent Operations",
+          "feature": "rent_operations"
+        }
+      ],
+      "hidden_operations_nav": [
+        {
+          "path": "/operations/approvals",
+          "label": "Approvals",
+          "feature": "invoicing"
+        }
+      ],
+      "operations_nav_strategy": "HIDDEN_UNTIL_UPGRADE (filtered from nav; no locked nav items)",
+      "accessible_routes_when_entitled": [
+        "/operations/issues",
+        "/operations/work-orders",
+        "/operations/contractors",
+        "/operations/risk-signals",
+        "/operations/rent"
+      ],
+      "route_gates": {
+        "maintenance_pages": "EntitlementProtectedRoute maintenance_workflows",
+        "contractor_directory": "EntitlementProtectedRoute contractor_network",
+        "risk_signals": "EntitlementProtectedRoute predictive_maintenance",
+        "rent": "EntitlementProtectedRoute rent_operations",
+        "tenant_portal": "EntitlementProtectedRoute tenant_portal"
+      },
+      "backend_allowed_ops_actions": {
+        "maintenance_jobs": true,
+        "contractor_assignment_api": true,
+        "risk_signals_api": true,
+        "rent_operations_api": true,
+        "pdf_csv_exports": true,
+        "tenant_portal_api": true
+      },
+      "upgrade_messaging_surfaces": {
+        "route_gate": "UpgradeRequired full-page card",
+        "job_detail_assign_blocked": "Alert + disabled hero when maintenance but not contractor_network",
+        "issues_assign_cta": "No contractor_network gate \u2014 navigates to job detail",
+        "jobs_list_assign": "Hidden when !contractor_network (ClientMaintenancePage)"
+      }
+    }
+  },
+  "cross_plan_summary": {
+    "operations_nav": "Portfolio+ sees Issues/Jobs/Risk/Rent; Pro adds Contractors",
+    "contractor_network": "Professional only (plan default); Portfolio has maintenance but not contractor network",
+    "solo": "No operations module; compliance-only ops flags",
+    "tenant_portal": "Professional only (commercial matrix)",
+    "exports": "PDF/CSV Portfolio+; audit_log_export Professional only"
+  }
+}

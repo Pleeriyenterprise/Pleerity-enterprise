@@ -1,0 +1,85 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-DISCOVERY-AND-ACTION-UX-AUDIT-01",
+  "run_tag": "20260612T112307Z",
+  "do_not_implement_in_audit": true,
+  "items": [
+    {
+      "id": "assign_modal_focus",
+      "title": "Assign contractor modal auto-scroll / auto-focus",
+      "scope": [
+        "On open with eligible contractors: focus contractor select (desktop + mobile)",
+        "On open with zero eligible: focus primary CTA 'Add contractor for this area'",
+        "focusAdd path: focus first field in add-contractor form",
+        "use requestAnimationFrame + scrollIntoView for mobile 390px"
+      ],
+      "files": [
+        "frontend/src/pages/ClientJobDetailPage.js"
+      ],
+      "risk": "low \u2014 presentation only"
+    },
+    {
+      "id": "non_entitled_assign_ux",
+      "title": "Non-entitled Assign contractor UX",
+      "recommended": "locked CTA with upgrade/support modal",
+      "alternatives": [
+        {
+          "option": "locked CTA + upgrade modal",
+          "pro": "Clear next step; preserves discoverability",
+          "con": "Extra component"
+        },
+        {
+          "option": "remove CTA + locked feature card",
+          "pro": "No misleading click",
+          "con": "Less discoverability on issues"
+        },
+        {
+          "option": "hide entirely",
+          "pro": "No noise",
+          "con": "Portfolio users miss upgrade path"
+        }
+      ],
+      "recommendation_reason": "Portfolio has maintenance jobs needing contractors \u2014 LOCKED_UPSELL_VISIBLE with one-click upgrade/help preserves workflow context without EXECUTABLE_BUT_BLOCKED navigation. Apply at issues hero, issues table, and job hero label swap.",
+      "files": [
+        "frontend/src/utils/primaryActionResolver.js",
+        "frontend/src/pages/ClientIssuesPage.js",
+        "frontend/src/utils/jobDetailPrimaryAction.js"
+      ]
+    },
+    {
+      "id": "nav_visibility",
+      "title": "Plan-based navigation/visibility",
+      "show": [
+        "maintenance pages when maintenance_workflows",
+        "contractors when contractor_network",
+        "risk when predictive_maintenance"
+      ],
+      "locked": [
+        "contractor assignment CTAs on Portfolio \u2014 upgrade chip/modal"
+      ],
+      "hidden": [
+        "Operations group for Solo",
+        "tenant portal until Professional",
+        "contractors nav until Professional"
+      ],
+      "keep": "filter hidden nav (no locked nav items) \u2014 consistent with current strategy"
+    },
+    {
+      "id": "backend_safeguards",
+      "title": "Backend must remain authoritative",
+      "required": [
+        "Add CONTRACTOR_NETWORK to POST /jobs/{id}/assign-contractor",
+        "Keep assignable-contractors 403",
+        "Keep maintenance_workflows on job routes",
+        "plan_registry.enforce_feature on exports and tenant portal",
+        "ops flags admin overrides respected"
+      ]
+    },
+    {
+      "id": "upgrade_copy_alignment",
+      "title": "Align UpgradePrompt minimum plan for contractor_network to PLAN_3_PRO",
+      "files": [
+        "frontend/src/components/UpgradePrompt.js"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-DISCOVERY-AND-ACTION-UX-AUDIT-01",
+  "run_tag": "20260612T112307Z",
+  "classification": "PARTIAL",
+  "code_classifications": [
+    "ENTITLEMENT_VISIBILITY_DRIFT",
+    "ACTIONABILITY_DRIFT",
+    "CONTRACTOR_ASSIGNMENT_UX_DRIFT",
+    "PLAN_VALUE_DRIFT",
+    "LOCKED_FEATURE_UX_DRIFT"
+  ],
+  "verified_operationally": false,
+  "reason": "Misleading issues CTAs, missing modal focus, backend assign POST guard gap, UpgradePrompt min-plan drift, Sophie fixture plan drift on staging"
+}

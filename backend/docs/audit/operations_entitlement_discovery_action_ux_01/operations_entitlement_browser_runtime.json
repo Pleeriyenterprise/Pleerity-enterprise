@@ -1,0 +1,132 @@
+{
+  "personas": {
+    "professional": {
+      "desktop": {
+        "nav_visibility_heuristic": {
+          "issues": false,
+          "jobs": false,
+          "contractors": false,
+          "risk_signals": false,
+          "rent": false
+        },
+        "job_detail_loaded": true,
+        "upgrade_alert_visible": false,
+        "hero_present": true,
+        "hero_disabled": false,
+        "hero_label": "Assign contractor",
+        "section_assign_btn": true,
+        "modal_opened": true,
+        "modal_focus_target": "BUTTON",
+        "issues_entitlement_gate": false,
+        "issues_page_loaded": false,
+        "issues_assign_cta_visible": false,
+        "contractors_entitlement_gate": false,
+        "contractors_page_loaded": false,
+        "horizontal_overflow": false
+      },
+      "mobile_390": {
+        "nav_visibility_heuristic": {
+          "issues": false,
+          "jobs": false,
+          "contractors": false,
+          "risk_signals": false,
+          "rent": false
+        },
+        "job_detail_loaded": true,
+        "upgrade_alert_visible": false,
+        "hero_present": true,
+        "hero_disabled": false,
+        "hero_label": "Assign contractor",
+        "section_assign_btn": true,
+        "modal_opened": true,
+        "modal_focus_target": "BUTTON",
+        "issues_entitlement_gate": false,
+        "issues_page_loaded": false,
+        "issues_assign_cta_visible": false,
+        "contractors_entitlement_gate": false,
+        "contractors_page_loaded": false,
+        "horizontal_overflow": false
+      }
+    },
+    "portfolio": {
+      "desktop": {
+        "nav_visibility_heuristic": {
+          "issues": false,
+          "jobs": false,
+          "contractors": false,
+          "risk_signals": false,
+          "rent": false
+        },
+        "job_detail_skipped": "no assign job found",
+        "issues_entitlement_gate": false,
+        "issues_page_loaded": false,
+        "issues_assign_cta_visible": false,
+        "contractors_entitlement_gate": true,
+        "contractors_page_loaded": false,
+        "horizontal_overflow": false
+      },
+      "mobile_390": {
+        "nav_visibility_heuristic": {
+          "issues": false,
+          "jobs": false,
+          "contractors": false,
+          "risk_signals": false,
+          "rent": false
+        },
+        "job_detail_skipped": "no assign job found",
+        "issues_entitlement_gate": false,
+        "issues_page_loaded": false,
+        "issues_assign_cta_visible": false,
+        "contractors_entitlement_gate": true,
+        "contractors_page_loaded": false,
+        "horizontal_overflow": false
+      }
+    },
+    "solo": {
+      "desktop": {
+        "nav_visibility_heuristic": {
+          "issues": false,
+          "jobs": false,
+          "contractors": false,
+          "risk_signals": false,
+          "rent": false
+        },
+        "job_detail_skipped": "no assign job found",
+        "issues_entitlement_gate": true,
+        "issues_page_loaded": false,
+        "issues_assign_cta_visible": false,
+        "contractors_entitlement_gate": true,
+        "contractors_page_loaded": false,
+        "horizontal_overflow": false
+      },
+      "mobile_390": {
+        "nav_visibility_heuristic": {
+          "issues": false,
+          "jobs": false,
+          "contractors": false,
+          "risk_signals": false,
+          "rent": false
+        },
+        "job_detail_skipped": "no assign job found",
+        "issues_entitlement_gate": true,
+        "issues_page_loaded": false,
+        "issues_assign_cta_visible": false,
+        "contractors_entitlement_gate": true,
+        "contractors_page_loaded": false,
+        "horizontal_overflow": false
+      }
+    }
+  },
+  "run_tag": "20260612T111711Z",
+  "cross_references": [
+    {
+      "audit": "job_detail_actionability_convergence_01",
+      "scenario": "Sophie Walker contractor_network disabled",
+      "result": "upgrade alert visible; section assign hidden; hero disabled"
+    }
+  ],
+  "screenshots": [
+    "screenshots/professional_desktop_job_detail.png",
+    "screenshots/professional_mobile_390_job_detail.png"
+  ]
+}

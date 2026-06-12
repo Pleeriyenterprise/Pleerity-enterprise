@@ -1,0 +1,73 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-DISCOVERY-AND-ACTION-UX-AUDIT-01",
+  "run_tag": "20260612T112307Z",
+  "features": [
+    {
+      "feature": "maintenance_workflows",
+      "solo": "HIDDEN_UNTIL_UPGRADE",
+      "portfolio": "INCLUDED_VISIBLE",
+      "professional": "INCLUDED_VISIBLE",
+      "nav": "hidden/filtered",
+      "route": "EntitlementProtectedRoute full-page upgrade",
+      "recommendation": "Solo: hide Operations group entirely (current). Portfolio+: show normally."
+    },
+    {
+      "feature": "contractor_network",
+      "solo": "HIDDEN_UNTIL_UPGRADE",
+      "portfolio": "LOCKED_UPSELL_VISIBLE",
+      "professional": "INCLUDED_VISIBLE",
+      "nav": "hidden on Portfolio",
+      "job_detail": "disabled hero + upgrade alert on Portfolio",
+      "issues_cta": "EXECUTABLE_BUT_BLOCKED",
+      "recommendation": "Portfolio: locked CTA on issues OR replace hero label; do not show clickable nav to broken flow"
+    },
+    {
+      "feature": "predictive_maintenance",
+      "solo": "HIDDEN_UNTIL_UPGRADE",
+      "portfolio": "INCLUDED_VISIBLE",
+      "professional": "INCLUDED_VISIBLE",
+      "recommendation": "Show when entitled; hide nav when not"
+    },
+    {
+      "feature": "rent_operations",
+      "solo": "HIDDEN_UNTIL_UPGRADE",
+      "portfolio": "INCLUDED_VISIBLE",
+      "professional": "INCLUDED_VISIBLE",
+      "recommendation": "Show when entitled"
+    },
+    {
+      "feature": "tenant_portal",
+      "solo": "HIDDEN_UNTIL_UPGRADE",
+      "portfolio": "HIDDEN_UNTIL_UPGRADE",
+      "professional": "INCLUDED_VISIBLE",
+      "recommendation": "Hide until Professional; route gate on /tenants"
+    },
+    {
+      "feature": "reports_pdf/csv",
+      "solo": "HIDDEN_UNTIL_UPGRADE",
+      "portfolio": "INCLUDED_VISIBLE",
+      "professional": "INCLUDED_VISIBLE",
+      "recommendation": "Reports nav when pdf OR csv enabled"
+    },
+    {
+      "feature": "audit_log_export",
+      "solo": "HIDDEN_UNTIL_UPGRADE",
+      "portfolio": "HIDDEN_UNTIL_UPGRADE",
+      "professional": "INCLUDED_VISIBLE",
+      "recommendation": "Hide export UI until entitled"
+    },
+    {
+      "feature": "assign_contractor CTA (issues)",
+      "classification": "EXECUTABLE_BUT_BLOCKED",
+      "detail": "Clickable on Portfolio; lands on job detail with disabled assign",
+      "recommendation": "LOCKED_UPSELL_VISIBLE with upgrade modal or gate at issues layer"
+    },
+    {
+      "feature": "POST assign-contractor API",
+      "classification": "BACKEND_ONLY_BLOCKED",
+      "detail": "Missing CONTRACTOR_NETWORK on canonical assign endpoint",
+      "recommendation": "Add CONTRACTOR_NETWORK guard; keep maintenance_workflows"
+    }
+  ],
+  "principle": "Solo: no half-working Operations. Professional: full system. Portfolio: maintenance without contractor marketplace."
+}

@@ -1,0 +1,129 @@
+{
+  "programme": "OPERATIONS-ENTITLEMENT-DISCOVERY-AND-ACTION-UX-AUDIT-01",
+  "run_tag": "20260612T112307Z",
+  "ctas": [
+    {
+      "label": "Assign contractor (job hero)",
+      "source": "NextActionHero / operational_cognition",
+      "entitlement": "contractor_network + next_actions assign_contractor",
+      "frontend_guard": "resolveHeroPrimaryExecution \u2192 primaryDisabled",
+      "backend_guard": "assignable-contractors 403; assign POST weak",
+      "click_result_entitled": "openAssignModal",
+      "click_result_portfolio": "disabled button + toast if forced",
+      "mobile": "same component"
+    },
+    {
+      "label": "Assign contractor (job section)",
+      "source": "ClientJobDetailPage contractor section",
+      "entitlement": "contractor_network",
+      "frontend_guard": "canExecuteAssignContractor",
+      "backend_guard": "assignable-contractors 403",
+      "click_result_portfolio": "button hidden"
+    },
+    {
+      "label": "Assign contractor (issues list/drawer)",
+      "source": "resolveIssuePrimaryAction ready_for_work_order",
+      "entitlement": "maintenance_workflows only (gap)",
+      "frontend_guard": "none for contractor_network",
+      "click_result_portfolio": "navigate to job detail",
+      "classification": "ACTIONABILITY_DRIFT"
+    },
+    {
+      "label": "Assign contractor (jobs list)",
+      "source": "ClientMaintenancePage",
+      "entitlement": "contractor_network",
+      "frontend_guard": "hasFeature('contractor_network')",
+      "click_result_portfolio": "button not rendered"
+    },
+    {
+      "label": "Start maintenance job",
+      "source": "issues / properties",
+      "entitlement": "maintenance_workflows",
+      "frontend_guard": "EntitlementProtectedRoute + plan job gate modal on 403",
+      "backend_guard": "_require_maintenance_enabled"
+    },
+    {
+      "label": "Contractor network directory",
+      "source": "/operations/contractors",
+      "entitlement": "contractor_network",
+      "frontend_guard": "EntitlementProtectedRoute",
+      "backend_guard": "CONTRACTOR_NETWORK on client contractors routes"
+    },
+    {
+      "label": "Export PDF/CSV",
+      "source": "ReportsPage",
+      "entitlement": "reports_pdf / reports_csv",
+      "frontend_guard": "hasFeature per export type",
+      "backend_guard": "plan_registry.enforce_feature"
+    },
+    {
+      "label": "Tenant portal actions",
+      "source": "/tenants routes",
+      "entitlement": "tenant_portal",
+      "frontend_guard": "EntitlementProtectedRoute",
+      "backend_guard": "plan_registry.enforce_feature tenant_portal"
+    }
+  ],
+  "runtime_sessions": {
+    "professional": {
+      "assignable_contractors": {
+        "status": 200,
+        "detail": "ok"
+      },
+      "assign_contractor_post": {
+        "status": 400,
+        "detail": "Contractor not found",
+        "note": "POST assign-contractor only checks maintenance_workflows in route handler (no CONTRACTOR_NETWORK guard)"
+      },
+      "maintenance_list": {
+        "status": 200
+      },
+      "risk_signals": {
+        "status": 200,
+        "detail": "ok"
+      },
+      "rent_operations": {
+        "status": 404,
+        "detail": "Not Found"
+      },
+      "contractor_directory": {
+        "status": 200,
+        "detail": "ok"
+      }
+    },
+    "portfolio": {
+      "maintenance_list": {
+        "status": 200
+      },
+      "risk_signals": {
+        "status": 200,
+        "detail": "ok"
+      },
+      "rent_operations": {
+        "status": 404,
+        "detail": "Not Found"
+      },
+      "contractor_directory": {
+        "status": 403,
+        "detail": "Contractor network is not enabled for your account. Contact your administrator."
+      }
+    },
+    "solo": {
+      "maintenance_list": {
+        "status": 403
+      },
+      "risk_signals": {
+        "status": 403,
+        "detail": "Predictive maintenance is not enabled for your account"
+      },
+      "rent_operations": {
+        "status": 404,
+        "detail": "Not Found"
+      },
+      "contractor_directory": {
+        "status": 403,
+        "detail": "Contractor network is not enabled for your account. Contact your administrator."
+      }
+    }
+  }
+}
