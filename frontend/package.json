@@ -66,7 +66,7 @@
   },
   "scripts": {
     "start": "craco start",
-    "prebuild": "npm run sync-domain-labels",
+    "prebuild": "npm run sync-domain-labels && node scripts/write-build-env.js",
     "build": "craco build",
     "test": "craco test",
     "sync-domain-labels": "node scripts/sync-domain-labels.js",

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,14 +8,9 @@ import { EntitlementProtectedRoute } from './utils/EntitlementProtectedRoute';
 import { Toaster } from './components/ui/sonner';
 import TawkToWidget from './components/TawkToWidget';
 import './App.css';
+import { exposeBuildMetadataOnWindow, logBuildMetadata } from './utils/buildMetadata';
 
-// Build stamp for deployment verification (set REACT_APP_BUILD_SHA in CI/CD)
-if (typeof window !== 'undefined') {
-  window.__CVP_BUILD_SHA = process.env.REACT_APP_BUILD_SHA || '(not set)';
-}
-if (process.env.REACT_APP_BUILD_SHA) {
-  console.log('[CVP] Build SHA:', process.env.REACT_APP_BUILD_SHA);
-}
+exposeBuildMetadataOnWindow();
 
 // ClearForm SPA is retained in-repo for internal/admin reuse only; public `/clearform/*` redirects (not in active use).
 
@@ -276,6 +271,10 @@ function AdminLegacyWorkOrderDetailRedirect() {
 }
 
 function App() {
+  useEffect(() => {
+    logBuildMetadata();
+  }, []);
+
   return (
     <HelmetProvider>
       <AuthProvider>
