@@ -614,9 +614,11 @@ async def build_execution_capacity_bundle_v1(
         property_id_filter,
         audit_cache=audit_cache,
     )
-    assignment, quote, recovery, kpis, entropy = await asyncio.gather(
+    assignment, quote = await asyncio.gather(
         build_assignment_conversion_v1(client_id, property_id_filter),
         build_quote_throughput_v1(client_id, property_id_filter),
+    )
+    recovery, kpis, entropy = await asyncio.gather(
         build_execution_recovery_v1(client_id, property_id_filter, network_audit=network_audit),
         build_execution_momentum_kpis_v1(
             client_id,

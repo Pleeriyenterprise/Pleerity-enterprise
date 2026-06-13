@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from services.execution_capacity_network_service import (
     build_assignment_conversion_v1,
+    build_execution_capacity_bundle_v1,
     build_quote_throughput_v1,
     build_execution_recovery_v1,
     _primary_failure_reason,
@@ -91,3 +92,62 @@ async def test_execution_recovery_execution_capacity_blockage():
 
     assert out["workflow_blockage_vs_execution_capacity"]["execution_capacity_dominant"] is True
     assert any(a.get("blockage_class") == "execution_capacity_blockage" for a in out.get("recovery_actions") or [])
+
+
+@pytest.mark.asyncio
+async def test_build_execution_capacity_bundle_v1_passes_assignment_before_kpis():
+    """Regression: assignment/quote must exist before momentum KPIs (UnboundLocalError)."""
+    audit = {"unassigned_jobs_total": 0, "coverage_distribution": {"no_coverage": 0}}
+    assignment = {"open_unassigned_count": 0, "assignment_conversion_rate": 0.5, "contractor_reliability_score": 0.8}
+    quote = {"quote_turnaround_score": 0.7}
+    recovery = {"recovery_actions": [{"headline": "Test bottleneck"}]}
+    kpis = {"execution_capacity_confidence": 0.75}
+    entropy = {"coverage_count": 1}
+
+    with (
+        patch(
+            "services.execution_capacity_network_service.build_contractor_network_audit_v1",
+            new_callable=AsyncMock,
+            return_value=audit,
+        ),
+        patch(
+            "services.execution_capacity_network_service.build_assignment_conversion_v1",
+            new_callable=AsyncMock,
+            return_value=assignment,
+        ) as mock_assignment,
+        patch(
+            "services.execution_capacity_network_service.build_quote_throughput_v1",
+            new_callable=AsyncMock,
+            return_value=quote,
+        ) as mock_quote,
+        patch(
+            "services.execution_capacity_network_service.build_execution_recovery_v1",
+            new_callable=AsyncMock,
+            return_value=recovery,
+        ),
+        patch(
+            "services.execution_capacity_network_service.build_execution_momentum_kpis_v1",
+            new_callable=AsyncMock,
+            return_value=kpis,
+        ) as mock_kpis,
+        patch(
+            "services.execution_capacity_network_service.build_execution_entropy_coverage_v1",
+            new_callable=AsyncMock,
+            return_value=entropy,
+        ),
+        patch(
+            "services.execution_capacity_network_service.fetch_execution_capacity_priority_actions",
+            new_callable=AsyncMock,
+            return_value=[],
+        ),
+    ):
+        out = await build_execution_capacity_bundle_v1("c1")
+
+    assert out["assignment_conversion_v1"] == assignment
+    assert out["execution_momentum_kpis_v1"] == kpis
+    mock_assignment.assert_awaited_once()
+    mock_quote.assert_awaited_once()
+    mock_kpis.assert_awaited_once()
+    _args, kwargs = mock_kpis.call_args
+    assert kwargs["assignment"] == assignment
+    assert kwargs["quote"] == quote
