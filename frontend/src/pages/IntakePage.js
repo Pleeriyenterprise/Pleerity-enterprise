@@ -1829,7 +1829,7 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
     setShowCouncilDropdown(false);
   };
 
-  const intakeLookupContext = {
+  const propertyPostcodeLookupContext = {
     city: property.city,
     jurisdiction: property.jurisdiction,
   };
@@ -1872,14 +1872,14 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
             onPostcodeFocus={() =>
               postcodeLookup.postcodeInput.length >= 2 && postcodeLookup.setShowPostcodeDropdown(true)
             }
-            onPostcodeBlur={() => postcodeLookup.handlePostcodeBlur(intakeLookupContext)}
+            onPostcodeBlur={() => postcodeLookup.handlePostcodeBlur(propertyPostcodeLookupContext)}
             postcodeSuggestions={postcodeLookup.postcodeSuggestions}
             showPostcodeDropdown={postcodeLookup.showPostcodeDropdown}
             loadingPostcodes={postcodeLookup.loadingPostcodes}
             lookingUpPostcode={postcodeLookup.lookingUpPostcode}
             postcodeLookupDone={postcodeLookup.postcodeLookupDone}
             postcodeError={postcodeLookup.postcodeError}
-            onSelectSuggestion={(s) => postcodeLookup.selectPostcode(s, intakeLookupContext)}
+            onSelectSuggestion={(s) => postcodeLookup.selectPostcode(s, propertyPostcodeLookupContext)}
             testId={`property-${index}-postcode`}
             lookupDoneMessage="City and council auto-filled ✓"
             hintMessage="Select from suggestions or type full postcode"
