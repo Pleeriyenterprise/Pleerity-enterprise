@@ -15,6 +15,7 @@ from services.stripe_mode_authority import (
     get_stripe_mode,
     resolve_stripe_secret_key,
     resolve_webhook_secret,
+    resolve_webhook_secret_with_source,
 )
 
 
@@ -65,6 +66,9 @@ def test_webhook_secret_selected_by_mode(monkeypatch):
     monkeypatch.setenv("STRIPE_WEBHOOK_SECRET_TEST", "whsec_test")
     monkeypatch.setenv("STRIPE_WEBHOOK_SECRET_LIVE", "whsec_live")
     assert resolve_webhook_secret() == "whsec_test"
+    secret, env_var = resolve_webhook_secret_with_source()
+    assert env_var == "STRIPE_WEBHOOK_SECRET_TEST"
+    assert secret == "whsec_test"
 
 
 def test_assert_stripe_object_mode_rejects_opposite_livemode():

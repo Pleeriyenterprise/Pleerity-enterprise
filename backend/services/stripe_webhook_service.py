@@ -122,6 +122,8 @@ from services.stripe_mode_authority import (
     configure_stripe_sdk,
     get_stripe_mode,
     resolve_webhook_secret,
+    resolve_webhook_secret_with_source,
+    webhook_secret_fingerprint,
 )
 
 try:
@@ -132,6 +134,46 @@ except Exception as _wh_stripe_init:
 
 def _get_webhook_secret() -> str:
     return resolve_webhook_secret()
+
+
+def _log_webhook_verify_context(
+    payload: bytes,
+    signature: str,
+    *,
+    failure: bool = False,
+) -> None:
+    """Safe diagnostics for signature verification — never logs full secrets."""
+    secret, env_var = resolve_webhook_secret_with_source()
+    deployment_env = (os.getenv("ENV") or os.getenv("ENVIRONMENT") or "unknown").strip().lower()
+    stripe_mode = get_stripe_mode()
+    sig_present = bool((signature or "").strip())
+    payload_len = len(payload) if payload is not None else 0
+    hint = ""
+    if failure:
+        live_wh = (os.getenv("STRIPE_WEBHOOK_SECRET_LIVE") or "").strip()
+        if stripe_mode == "test" and live_wh:
+            hint = (
+                "STRIPE_MODE=test uses STRIPE_WEBHOOK_SECRET_TEST; "
+                "live events require production API URL + STRIPE_WEBHOOK_SECRET_LIVE."
+            )
+        elif deployment_env in ("staging", "stage"):
+            hint = (
+                "Webhook hit staging deployment; live Stripe deliveries must use "
+                "https://api.pleerityenterprise.co.uk/api/webhook/stripe."
+            )
+    log_fn = logger.error if failure else logger.debug
+    log_fn(
+        "Stripe webhook verify context stripe_mode=%s secret_env_var=%s secret_present=%s "
+        "secret_fingerprint=%s stripe_signature_header=%s payload_bytes=%s deployment_env=%s%s",
+        stripe_mode,
+        env_var,
+        bool(secret),
+        webhook_secret_fingerprint(secret),
+        "present" if sig_present else "missing",
+        payload_len,
+        deployment_env,
+        f" hint={hint}" if hint else "",
+    )
 
 
 def _is_production_runtime() -> bool:
@@ -173,7 +215,8 @@ class StripeWebhookService:
             (success, message, details)
         """
         # Step 1: Verify signature (mode-specific secret from STRIPE_MODE authority)
-        webhook_secret = _get_webhook_secret()
+        webhook_secret, webhook_secret_env = resolve_webhook_secret_with_source()
+        _log_webhook_verify_context(payload, signature)
         try:
             if webhook_secret:
                 event = stripe.Webhook.construct_event(
@@ -207,7 +250,12 @@ class StripeWebhookService:
                 )
                 logger.warning("STRIPE_WEBHOOK_SECRET (or _TEST/_LIVE) not set - skipping signature verification")
         except stripe.error.SignatureVerificationError as e:
-            logger.error("Webhook signature verification failed: %s (check STRIPE_WEBHOOK_SECRET vs Stripe key mode)", e)
+            _log_webhook_verify_context(payload, signature, failure=True)
+            logger.error(
+                "Webhook signature verification failed using %s: %s",
+                webhook_secret_env,
+                e,
+            )
             try:
                 await record_security_event(
                     event_type="webhook.signature_failed",

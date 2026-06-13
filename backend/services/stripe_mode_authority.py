@@ -43,6 +43,23 @@ def _strip(val: Optional[str]) -> str:
     return (val or "").strip()
 
 
+def _normalize_env_secret(val: Optional[str]) -> str:
+    """Strip whitespace and optional surrounding quotes from env-provided secrets."""
+    s = _strip(val)
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'":
+        s = s[1:-1].strip()
+    return s
+
+
+def webhook_secret_fingerprint(secret: str) -> Optional[str]:
+    """Safe prefix/suffix for logs — never returns the full secret."""
+    if not secret:
+        return None
+    if len(secret) <= 12:
+        return f"{secret[:4]}...({len(secret)} chars)"
+    return f"{secret[:8]}...{secret[-4:]}"
+
+
 def _legacy_secret_key() -> str:
     return _strip(os.getenv("STRIPE_SECRET_KEY") or os.getenv("STRIPE_API_KEY"))
 
@@ -176,27 +193,40 @@ def resolve_stripe_secret_key(*, mode: Optional[str] = None) -> str:
     )
 
 
-def resolve_webhook_secret(*, mode: Optional[str] = None) -> str:
-    """Webhook signing secret for active mode only."""
+def resolve_webhook_secret_env_var(*, mode: Optional[str] = None) -> str:
+    """Primary mode-specific env var name for webhook signing secret (before legacy fallback)."""
     mode = mode or get_stripe_mode()
-    if mode == "live":
-        secret = _strip(os.getenv("STRIPE_WEBHOOK_SECRET_LIVE"))
-    else:
-        secret = _strip(os.getenv("STRIPE_WEBHOOK_SECRET_TEST"))
+    return f"STRIPE_WEBHOOK_SECRET_{mode.upper()}"
 
+
+def resolve_webhook_secret_with_source(*, mode: Optional[str] = None) -> Tuple[str, str]:
+    """
+    Return (secret, env_var_name) for the active Stripe mode.
+    env_var_name is the mode-specific var when set, else STRIPE_WEBHOOK_SECRET legacy, else the
+    mode-specific name with an empty secret.
+    """
+    mode = mode or get_stripe_mode()
+    mode_var = resolve_webhook_secret_env_var(mode=mode)
+    secret = _normalize_env_secret(os.getenv(mode_var))
     if secret:
-        return secret
+        return secret, mode_var
 
-    legacy = _strip(os.getenv("STRIPE_WEBHOOK_SECRET"))
+    legacy = _normalize_env_secret(os.getenv("STRIPE_WEBHOOK_SECRET"))
     if legacy:
         logger.warning(
-            "Using legacy STRIPE_WEBHOOK_SECRET for %s mode. Prefer STRIPE_WEBHOOK_SECRET_%s.",
+            "Using legacy STRIPE_WEBHOOK_SECRET for %s mode. Prefer %s.",
             mode,
-            mode.upper(),
+            mode_var,
         )
-        return legacy
+        return legacy, "STRIPE_WEBHOOK_SECRET"
 
-    return ""
+    return "", mode_var
+
+
+def resolve_webhook_secret(*, mode: Optional[str] = None) -> str:
+    """Webhook signing secret for active mode only."""
+    secret, _ = resolve_webhook_secret_with_source(mode=mode)
+    return secret
 
 
 def resolve_publishable_key(*, mode: Optional[str] = None) -> str:
@@ -340,10 +370,28 @@ def _detect_mixed_configuration(mode: str) -> Tuple[List[str], List[str]]:
             )
 
     explicit_wh = _strip(os.getenv("STRIPE_WEBHOOK_SECRET"))
-    if explicit_wh and not (_strip(os.getenv("STRIPE_WEBHOOK_SECRET_LIVE")) or _strip(os.getenv("STRIPE_WEBHOOK_SECRET_TEST"))):
+    live_wh = _normalize_env_secret(os.getenv("STRIPE_WEBHOOK_SECRET_LIVE"))
+    test_wh = _normalize_env_secret(os.getenv("STRIPE_WEBHOOK_SECRET_TEST"))
+    if explicit_wh and not (live_wh or test_wh):
         warnings.append(
             "STRIPE_WEBHOOK_SECRET is set without mode-specific secrets — prefer "
             "STRIPE_WEBHOOK_SECRET_LIVE and STRIPE_WEBHOOK_SECRET_TEST."
+        )
+
+    if mode == "test" and live_wh:
+        warnings.append(
+            "STRIPE_WEBHOOK_SECRET_LIVE is set but ignored while STRIPE_MODE=test; "
+            "live Stripe webhooks must target the production API with STRIPE_MODE=live."
+        )
+
+    if mode == "live" and test_wh and not live_wh:
+        warnings.append("STRIPE_MODE=live but STRIPE_WEBHOOK_SECRET_LIVE is missing (only TEST webhook secret set).")
+
+    deployment = _strip(os.getenv("ENV") or os.getenv("ENVIRONMENT")).lower()
+    if mode == "test" and deployment in ("staging", "stage") and live_wh:
+        warnings.append(
+            "Staging host with STRIPE_MODE=test verifies webhooks using STRIPE_WEBHOOK_SECRET_TEST only; "
+            "point live Stripe webhook deliveries at the production API URL."
         )
 
     if mode == "live" and test_sk and not live_sk and not (legacy_sk and key_prefix_mode(legacy_sk) == "live"):

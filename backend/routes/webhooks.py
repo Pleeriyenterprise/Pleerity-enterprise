@@ -105,7 +105,9 @@ async def _handle_stripe_webhook(request: Request, stripe_signature: str = None)
         if success:
             return {"status": "received", "message": message, "details": details}
         if message == "Invalid signature":
-            logger.error("Stripe webhook rejected: invalid signature (STRIPE_WEBHOOK_SECRET vs key mode mismatch?)")
+            logger.error(
+                "Stripe webhook rejected: invalid signature (verify secret_env_var matches Stripe endpoint signing secret)"
+            )
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook signature")
         if message == "Invalid payload":
             logger.error("Stripe webhook rejected: invalid payload")
