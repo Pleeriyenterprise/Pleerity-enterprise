@@ -17,6 +17,7 @@ from typing import List, Optional, Tuple
 CORS_REQUIRED_ORIGINS: Tuple[str, ...] = (
     "https://pleerityenterprise.co.uk",
     "https://www.pleerityenterprise.co.uk",
+    "https://staging.pleerityenterprise.co.uk",
     "https://pleerity-enterprise.vercel.app",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
