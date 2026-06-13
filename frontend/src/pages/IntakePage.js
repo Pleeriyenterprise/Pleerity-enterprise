@@ -1829,25 +1829,9 @@ const PropertyCard = ({ property, index, total, updateProperty, removeProperty, 
     setShowCouncilDropdown(false);
   };
 
-  // Handle postcode input change
-  const handlePostcodeChange = (value) => {
-    const upperValue = sanitizePostcodeFieldInput(value);
-    setPostcodeInput(upperValue);
-    updateProperty(index, 'postcode', upperValue);
-    setPostcodeLookupDone(false);
-    setPostcodeError('');
-    setShowPostcodeDropdown(true);
-  };
-
-  // Handle postcode blur - trigger lookup if valid
-  const handlePostcodeBlur = () => {
-    // Small delay to allow dropdown click to register
-    setTimeout(() => {
-      setShowPostcodeDropdown(false);
-      if (postcodeInput && postcodeInput.length >= 5 && !postcodeLookupDone) {
-        lookupPostcode(postcodeInput);
-      }
-    }, 200);
+  const intakeLookupContext = {
+    city: property.city,
+    jurisdiction: property.jurisdiction,
   };
 
   return (

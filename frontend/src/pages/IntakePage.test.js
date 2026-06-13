@@ -924,3 +924,81 @@ describe('IntakePage Step 1 – live email availability', () => {
     expect(screen.queryByTestId('email-availability-available')).not.toBeInTheDocument();
   });
 });
+
+describe('IntakePage Step 3 – postcode autocomplete', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    intakeAPI.autocompletePostcode.mockResolvedValue({
+      data: {
+        postcodes: [
+          {
+            postcode: 'NE1 2PA',
+            post_town: 'Newcastle upon Tyne',
+            region: 'North East',
+          },
+        ],
+      },
+    });
+    intakeAPI.lookupPostcode.mockResolvedValue({
+      data: {
+        postcode: 'NE1 2PA',
+        suggested_city: 'Newcastle upon Tyne',
+        council_name: null,
+        council_code: null,
+      },
+    });
+  });
+
+  async function advanceToStep3() {
+    await waitFor(() => {
+      expect(screen.getByTestId('step-indicator-1')).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByPlaceholderText('John Smith'), { target: { value: 'Test User' } });
+    fireEvent.change(screen.getByPlaceholderText('john@example.com'), { target: { value: 'test@example.com' } });
+    fireEvent.blur(screen.getByTestId('email-input'));
+    await waitFor(() => {
+      expect(screen.getByTestId('email-availability-available')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('client-type-individual'));
+    fireEvent.click(screen.getByTestId('step1-next'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('plan-plan-1-solo')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('plan-plan-1-solo'));
+    fireEvent.click(screen.getByTestId('step2-next'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('step3-next')).toBeInTheDocument();
+    });
+  }
+
+  it('shows postcode suggestions, selects on click, and runs address lookup', async () => {
+    render(
+      <MemoryRouter>
+        <IntakePage />
+      </MemoryRouter>,
+    );
+
+    await advanceToStep3();
+
+    const postcodeInput = screen.getByTestId('property-0-postcode');
+    fireEvent.change(postcodeInput, { target: { value: 'NE1' } });
+
+    await waitFor(() => {
+      expect(intakeAPI.autocompletePostcode).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('postcode-suggestions-dropdown')).toBeInTheDocument();
+    });
+
+    fireEvent.mouseDown(screen.getByTestId('postcode-suggestion-0'));
+
+    await waitFor(() => {
+      expect(intakeAPI.lookupPostcode).toHaveBeenCalled();
+      expect(screen.getByTestId('property-0-postcode')).toHaveValue('NE1 2PA');
+      expect(screen.getByTestId('property-0-city')).toHaveValue('Newcastle upon Tyne');
+    });
+  });
+});
