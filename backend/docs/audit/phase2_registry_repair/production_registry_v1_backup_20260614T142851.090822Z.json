@@ -1,0 +1,787 @@
+{
+  "singleton_key": "active_registry",
+  "entries": {
+    "GAS_SAFETY|DEFAULT": {
+      "entry_id": "0e3a36ab-cb61-4cc3-96fd-e77f540d6c26",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "GAS_SAFETY",
+      "identity": {
+        "name": "Gas Safety Certificate",
+        "category": "SAFETY",
+        "description": "Gas Safety Certificate",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": "NI uses ENGLAND_WALES engine bucket in code; Scotland uses SCOTLAND bucket. Frequencies match today but SLA differs for Scotland in engine.",
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "has_gas_supply",
+            "op": "true"
+          }
+        ]
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "gas_safe_find_engineer",
+          "label": "Find a Gas Safe engineer",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.gassaferegister.co.uk/find-an-engineer/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "gas_safe_check_engineer",
+          "label": "Check engineer credentials",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.gassaferegister.co.uk/check-an-engineer/",
+          "is_active": true,
+          "priority": 20
+        }
+      ],
+      "why_it_matters_short": "Draft placeholder: replace with a concise client-facing reason (max 280 characters).",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "Scotland/EW fork is frequency-compatible today; compare view surfaces bucket-level SLA deltas.",
+        "legal_source_summary": "Engine-backed cadence; workbook gas safety row aligned to GAS_SAFETY.",
+        "needs_review_fields": [
+          "jurisdiction.ni_treatment_vs_ew_bucket",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:gas_safety:shared:v1"
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "gas_safety",
+        "catalog_code": "gas_safety"
+      },
+      "updated_at": "2026-06-13T00:24:27.644992Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "EICR|DEFAULT": {
+      "entry_id": "bb72006b-b67f-4a99-92f2-d13302032c5d",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "EICR",
+      "identity": {
+        "name": "Electrical Installation Condition Report",
+        "category": "ELECTRICAL",
+        "description": "Electrical Installation Condition Report",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 1825,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "niceic_find_tradesperson",
+          "label": "Find certified electrician (NICEIC)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.niceic.com/find-a-tradesperson",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "napit_find_tradesperson",
+          "label": "Find certified electrician (NAPIT)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://search.napit.org.uk/",
+          "is_active": true,
+          "priority": 20
+        }
+      ],
+      "why_it_matters_short": "Draft placeholder: replace with a concise client-facing reason (max 280 characters).",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Engine frequency_by_age present for EW; Scotland registry entry currently mirrors EW baseline in code \u2014 confirm statutory intervals separately if workbook differs.",
+        "needs_review_fields": [
+          "conditions.installation_age_bands",
+          "jurisdiction.ni_enforcement_detail",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:eicr:shared:v1"
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "eicr",
+        "catalog_code": "eicr"
+      },
+      "updated_at": "2026-06-13T00:24:27.644992Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "EPC|DEFAULT": {
+      "entry_id": "9a85501e-126a-4d86-bf89-349f59460e28",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "EPC",
+      "identity": {
+        "name": "Energy Performance Certificate",
+        "category": "ENERGY",
+        "description": "Energy Performance Certificate",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 3650,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "epc_england_wales_register",
+          "label": "Check EPC (England & Wales)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "WALES"
+          ],
+          "url": "https://www.gov.uk/find-energy-certificate",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "epc_scotland_register",
+          "label": "Check EPC (Scotland)",
+          "kind": "official",
+          "jurisdictions": [
+            "SCOTLAND"
+          ],
+          "url": "https://www.scottishepcregister.org.uk/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "epc_ni_register",
+          "label": "Check EPC (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": [
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.epbni.com/",
+          "is_active": true,
+          "priority": 10
+        }
+      ],
+      "why_it_matters_short": "Draft placeholder: replace with a concise client-facing reason (max 280 characters).",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Mapped to EPC; rental vs sale nuances not encoded in this draft.",
+        "needs_review_fields": [
+          "jurisdiction.scotland_rental_epc_rules",
+          "jurisdiction.wales_epc_consultation_delta",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:epc:shared:v1"
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "epc",
+        "catalog_code": "epc"
+      },
+      "updated_at": "2026-06-13T00:24:27.644992Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "FIRE_DETECTION|DEFAULT": {
+      "entry_id": "5f8ff504-939d-4048-b0ac-816b8d7b8631",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "FIRE_DETECTION",
+      "identity": {
+        "name": "Fire Alarm Inspection",
+        "category": "FIRE",
+        "description": "Fire Alarm Inspection",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Draft placeholder: replace with a concise client-facing reason (max 280 characters).",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Consolidated smoke/CO/fire detection workbook row \u2192 FIRE_DETECTION engine code; furnishing-based conditions not specified in workbook \u2192 needs_review.",
+        "needs_review_fields": [
+          "action_behaviour.furnished_only",
+          "jurisdiction.scotland_tolerable_standard_overlap",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:fire_smoke_co:shared:v1"
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "fire_alarm",
+        "catalog_code": "fire_alarm"
+      },
+      "updated_at": "2026-06-13T00:24:27.644992Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "LEGIONELLA|DEFAULT": {
+      "entry_id": "87e08caa-30cf-4be8-b051-0ce81ca1cd02",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "LEGIONELLA",
+      "identity": {
+        "name": "Legionella Risk Assessment",
+        "category": "HEALTH",
+        "description": "Legionella Risk Assessment",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "JOB",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": true,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 730,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Draft placeholder: replace with a concise client-facing reason (max 280 characters).",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Engine marks LEGIONELLA as assessment cadence; Scotland accepted document types differ in engine \u2014 draft defers detail to engine compare.",
+        "needs_review_fields": [
+          "jurisdiction.scotland_evidence_taxonomy",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:legionella:shared:v1"
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "legionella",
+        "catalog_code": "legionella"
+      },
+      "updated_at": "2026-06-13T00:24:27.644992Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "HMO_FIRE_RISK|DEFAULT": {
+      "entry_id": "56ee8798-8ae2-4afb-98ff-ab0ef2beef7c",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "HMO_FIRE_RISK",
+      "identity": {
+        "name": "HMO fire safety evidence / fire risk assessment",
+        "category": "FIRE",
+        "description": "HMO fire safety evidence / fire risk assessment",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "fire_safety_england_guidance_hmo",
+          "label": "Fire safety responsibilities (England)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND"
+          ],
+          "url": "https://www.gov.uk/workplace-fire-safety-your-responsibilities",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_safety_scotland_guidance_hmo",
+          "label": "Fire safety guidance (Scotland)",
+          "kind": "official",
+          "jurisdictions": [
+            "SCOTLAND"
+          ],
+          "url": "https://www.gov.scot/policies/fire-and-rescue/fire-safety/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_risk_assessor_directory_hmo",
+          "label": "Find fire risk assessor",
+          "kind": "directory",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.google.com/search?q=HMO+fire+risk+assessment+near+me",
+          "is_active": true,
+          "priority": 20
+        }
+      ],
+      "why_it_matters_short": "Draft placeholder: replace with a concise client-facing reason (max 280 characters).",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "HMO-linked fire evidence; NI not listed \u2014 do not assume NI HMO parity without workbook/legal confirmation.",
+        "needs_review_fields": [
+          "jurisdiction.northern_ireland_applicability",
+          "conditions.hmo_gate",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:hmo_fire_pack:ew_s_ni_uncertain:v1"
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "hmo_fire_risk",
+        "catalog_code": "hmo_fire_risk"
+      },
+      "updated_at": "2026-06-13T00:24:27.646038Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "OCCUPATION_CONTRACT|WALES": {
+      "entry_id": "1fbcc2bd-ed32-4d8a-9735-f2a4edd30a1d",
+      "status": "published",
+      "scope_key": "WALES",
+      "canonical_code": "OCCUPATION_CONTRACT",
+      "identity": {
+        "name": "Occupation contract (Wales)",
+        "category": "TENANCY",
+        "description": "Occupation contract / tenancy documentation (Wales)",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "WALES"
+        ],
+        "scoring_jurisdiction_note": "Wales-only; do not merge with England AST obligations in this draft row.",
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "wales_renting_homes_guidance",
+          "label": "Occupation contract guidance (Wales)",
+          "kind": "official",
+          "jurisdictions": [
+            "WALES"
+          ],
+          "url": "https://www.gov.wales/renting-homes",
+          "is_active": true,
+          "priority": 10
+        }
+      ],
+      "why_it_matters_short": "Draft placeholder: replace with a concise client-facing reason (max 280 characters).",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Engine OCCUPATION_CONTRACT description references Wales; workbook row scoped to Wales only.",
+        "needs_review_fields": [
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:wales:occupation_contract:v1"
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "occupation_contract",
+        "catalog_code": "occupation_contract"
+      },
+      "updated_at": "2026-06-13T00:24:27.646038Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "LANDLORD_REGISTRATION|SCOTLAND": {
+      "entry_id": "cfccf240-fcc6-4023-9438-405b92b1b7ba",
+      "status": "published",
+      "scope_key": "SCOTLAND",
+      "canonical_code": "LANDLORD_REGISTRATION",
+      "identity": {
+        "name": "Landlord registration (Scotland)",
+        "category": "REGULATORY",
+        "description": "Landlord registration (Scotland)",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "SCOTLAND"
+        ],
+        "scoring_jurisdiction_note": "Scotland-only; not merged with England landlord licensing (different regimes).",
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 1095,
+        "reminder_lead_days": 45,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "landlord_registration_scotland",
+          "label": "Register as landlord (Scotland)",
+          "kind": "official",
+          "jurisdictions": [
+            "SCOTLAND"
+          ],
+          "url": "https://www.landlordregistrationscotland.gov.uk/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "landlord_registration_ni",
+          "label": "Register as landlord (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": [
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.nidirect.gov.uk/articles/landlord-registration-scheme",
+          "is_active": true,
+          "priority": 10
+        }
+      ],
+      "why_it_matters_short": "Draft placeholder: replace with a concise client-facing reason (max 280 characters).",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Mapped to LANDLORD_REGISTRATION; England/Wales landlord licensing not represented as this code.",
+        "needs_review_fields": [
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:scotland:landlord_registration:v1"
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "landlord_registration",
+        "catalog_code": "landlord_registration"
+      },
+      "updated_at": "2026-06-13T00:24:27.646038Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    }
+  },
+  "last_activation_kind": "baseline_seed_v1",
+  "last_published_by": {
+    "portal_user_id": "production_baseline_seed",
+    "email": "system@production-baseline-seed"
+  },
+  "last_queue_id": null,
+  "reverted_from_published_line_version": null,
+  "updated_at": "2026-06-13T00:24:28.893185+00:00",
+  "version": 1
+}

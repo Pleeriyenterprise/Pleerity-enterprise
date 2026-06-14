@@ -1,0 +1,100 @@
+{
+  "started_at": "2026-06-14T14:28:49.958953Z",
+  "steps": [
+    {
+      "backup_v1": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\phase2_registry_repair\\production_registry_v1_backup_20260614T142851.090822Z.json",
+      "version": 1
+    },
+    {
+      "repair_apply_exit_code": 0,
+      "repair_stdout": "{\n  \"dry_run\": false,\n  \"previous_version\": 1,\n  \"previous_entry_count\": 8,\n  \"merged_entry_count\": 19,\n  \"changelog\": [\n    {\n      \"registry_key\": \"GAS_SAFETY|DEFAULT\",\n      \"action\": \"updated\",\n      \"canonical_code\": \"GAS_SAFETY\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"EICR|DEFAULT\",\n      \"action\": \"updated\",\n      \"canonical_code\": \"EICR\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"EPC|DEFAULT\",\n      \"action\": \"updated\",\n      \"canonical_code\": \"EPC\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"LEGIONELLA|DEFAULT\",\n      \"action\": \"updated\",\n      \"canonical_code\": \"LEGIONELLA\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"SMOKE_HEAT_ALARMS|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"SMOKE_HEAT_ALARMS\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"HMO_FIRE_RISK|DEFAULT\",\n      \"action\": \"updated\",\n      \"canonical_code\": \"HMO_FIRE_RISK\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"PAT_TESTING|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"PAT_TESTING\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"RIGHT_TO_RENT|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"RIGHT_TO_RENT\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"HOW_TO_RENT|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"HOW_TO_RENT\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"TENANCY_AGREEMENT|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"TENANCY_AGREEMENT\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"TENANCY_DEPOSIT_PROTECTION|ENGLAND\",\n      \"action\": \"added\",\n      \"canonical_code\": \"TENANCY_DEPOSIT_PROTECTION\",\n      \"scope_key\": \"ENGLAND\"\n    },\n    {\n      \"registry_key\": \"TENANCY_DEPOSIT_PROTECTION|WALES\",\n      \"action\": \"added\",\n      \"canonical_code\": \"TENANCY_DEPOSIT_PROTECTION\",\n      \"scope_key\": \"WALES\"\n    },\n    {\n      \"registry_key\": \"TENANCY_DEPOSIT_PROTECTION|SCOTLAND\",\n      \"action\": \"added\",\n      \"canonical_code\": \"TENANCY_DEPOSIT_PROTECTION\",\n      \"scope_key\": \"SCOTLAND\"\n    },\n    {\n      \"registry_key\": \"TENANCY_DEPOSIT_PROTECTION|NORTHERN_IRELAND\",\n      \"action\": \"added\",\n      \"canonical_code\": \"TENANCY_DEPOSIT_PROTECTION\",\n      \"scope_key\": \"NORTHERN_IRELAND\"\n    },\n    {\n      \"registry_key\": \"HMO_LICENSING|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"HMO_LICENSING\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"FIRE_RISK_ASSESSMENT|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"FIRE_RISK_ASSESSMENT\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"OCCUPATION_CONTRACT|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"OCCUPATION_CONTRACT\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"LANDLORD_REGISTRATION|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"LANDLORD_REGISTRATION\",\n      \"scope_key\": \"DEFAULT\"\n    },\n    {\n      \"registry_key\": \"LANDLORD_REGISTRATION_NI|DEFAULT\",\n      \"action\": \"added\",\n      \"canonical_code\": \"LANDLORD_REGISTRATION_NI\",\n      \"scope_key\": \"DEFAULT\"\n    }\n  ],\n  \"validation_error_keys\": [],\n  \"validation_errors\": {}\n}\n{\n  \"applied\": true,\n  \"published_version\": 2\n}",
+      "repair_stderr": ""
+    }
+  ],
+  "registry": {
+    "version": 2,
+    "entry_count": 19,
+    "placeholder_count": 0,
+    "last_activation_kind": "coverage_repair",
+    "updated_at": "2026-06-14T14:29:57.651713Z",
+    "history_row_present": true,
+    "history_activation_kind": "coverage_repair"
+  },
+  "pilot": {
+    "client_id": "a169ee0c-3fd4-42d4-a2a6-8144bc833716",
+    "cliftonwood": {
+      "property_id": "817a44d1-309f-44ab-98e1-46b5fa51d895",
+      "name": "Cliftonwood Cottage",
+      "status_valid_kpi": 0,
+      "compliant_kpi": 6,
+      "valid_filter_count": 0,
+      "valid_filter_ids": [],
+      "placeholder_matrix_codes": [],
+      "editorial_samples": [
+        {
+          "code": "gas_safety",
+          "why_short": "Annual gas safety checks reduce carbon monoxide risk and are a legal baseline for let homes."
+        },
+        {
+          "code": "eicr",
+          "why_short": "EICR evidence shows the fixed electrical installation has been inspected within required intervals."
+        },
+        {
+          "code": "epc",
+          "why_short": "Valid EPC evidence supports lawful marketing and helps tenants compare running costs."
+        }
+      ],
+      "parity_ok": true
+    },
+    "barbican": {
+      "property_id": "503e3aab-f443-4e7a-80e7-5347277b56f1",
+      "name": "Barbican Harbour Flat",
+      "status_valid_kpi": 3,
+      "compliant_kpi": 4,
+      "valid_filter_count": 3,
+      "valid_filter_ids": [
+        "22aa887f-7ebd-4714-b23b-46095ca753b3",
+        "bafcdef8-434d-43fe-9587-f6ce3c9efed4",
+        "28f3969c-9972-4c8f-9eee-1a2d547d9fbc"
+      ],
+      "placeholder_matrix_codes": [],
+      "editorial_samples": [
+        {
+          "code": "eicr",
+          "why_short": "EICR evidence shows the fixed electrical installation has been inspected within required intervals."
+        },
+        {
+          "code": "epc",
+          "why_short": "Valid EPC evidence supports lawful marketing and helps tenants compare running costs."
+        },
+        {
+          "code": "legionella",
+          "why_short": "Water system risk reviews reduce legionella exposure for residents and visiting contractors."
+        }
+      ],
+      "parity_ok": true
+    }
+  },
+  "portfolio_summary": {
+    "ok": true,
+    "kpis_keys": [
+      "compliant",
+      "expiring_30",
+      "missing",
+      "overdue",
+      "status_valid"
+    ],
+    "has_status_valid": true
+  },
+  "finished_at": "2026-06-14T14:30:03.814500Z",
+  "go_gates": {
+    "registry_version_2": true,
+    "registry_placeholder_zero": true,
+    "registry_entries_19": true,
+    "registry_activation_coverage_repair": true,
+    "cliftonwood_valid_parity": true,
+    "cliftonwood_no_placeholders": true,
+    "barbican_valid_parity": true,
+    "barbican_no_placeholders": true
+  }
+}
