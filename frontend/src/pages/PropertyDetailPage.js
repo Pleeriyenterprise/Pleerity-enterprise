@@ -2674,6 +2674,7 @@ export default function PropertyDetailPage() {
                             size="sm"
                             variant="outline"
                             className="text-electric-teal border-electric-teal min-h-9"
+                            data-testid={`property-compliance-mobile-primary-${rowReqId(r)}`}
                             disabled={taRow.primary_action_handler === 'guided_evidence_error'}
                             title={
                               taRow.primary_action_handler === 'guided_evidence_error' ? GUIDED_CTA_UNAVAILABLE_TITLE : undefined
@@ -2699,28 +2700,15 @@ export default function PropertyDetailPage() {
                               {taRow.secondary_action.label}
                             </Button>
                           ) : null}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="min-h-9"
-                            onClick={() =>
-                              setComplianceExpandedReqId(
-                                complianceExpandedReqId === (rowReqId(r) || r.requirement_code)
-                                  ? null
-                                  : rowReqId(r) || r.requirement_code,
-                              )
-                            }
-                          >
-                            Details
-                          </Button>
                         </div>
                         <div className="flex flex-wrap gap-x-2 gap-y-0.5 items-center">
                           {rowReqId(r) ? (
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-auto min-h-0 py-0.5 px-1 text-xs font-normal text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline"
+                              className="h-auto min-h-11 py-2 px-1 text-xs font-normal text-gray-600 hover:text-midnight-blue underline-offset-2 hover:underline sm:min-h-0 sm:py-0.5"
                               onClick={() => openComplianceRequirementIntel(r)}
+                              data-testid={`property-compliance-mobile-requirement-intel-${rowReqId(r)}`}
                             >
                               Requirement details
                             </Button>
