@@ -1368,7 +1368,7 @@ export default function PropertyDetailPage() {
     const missingFromRequirements = requirements.filter(isRequirementMissingDocument).length;
     return {
       totalApplicable: total,
-      valid: kpis.compliant ?? requirements.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase())).length,
+      valid: kpis.status_valid ?? requirements.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase())).length,
       expiringSoon: kpis.expiring_30 ?? requirements.filter((r) => (r.status || '').toUpperCase() === 'EXPIRING_SOON').length,
       overdue: kpis.overdue ?? requirements.filter((r) => ['OVERDUE', 'EXPIRED'].includes((r.status || '').toUpperCase())).length,
       missingDocuments: requirements.length ? missingFromRequirements : (kpis.missing ?? 0),

@@ -468,7 +468,7 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
         from services.requirement_satisfaction_service import row_counts_as_missing_evidence
 
         requirements, _fb_pres = await enrich_requirements_for_client(db, client_id, requirements)
-        kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
+        kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0}
         matrix = []
         for r_raw in requirements:
             r = project_requirement_row_client_runtime(r_raw)
@@ -476,6 +476,8 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
             days = _days_to_expiry(due_raw)
             cs = (r.get("status") or "PENDING")
             s = str(cs).upper()
+            if s in ("COMPLIANT", "VALID"):
+                kpis["status_valid"] += 1
             if s in ("OVERDUE", "EXPIRED"):
                 kpis["overdue"] += 1
             elif s == "EXPIRING_SOON" and (days or 0) <= 30:

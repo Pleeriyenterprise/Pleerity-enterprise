@@ -238,7 +238,7 @@ async def get_property_compliance_detail(
     high_missing = 0
     high_expiring = 0
     high_total = 0
-    kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
+    kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0}
 
     for row in enriched:
         code = str(row.get("canonical_code") or row.get("requirement_code") or row.get("requirement_type") or "").strip().lower()
@@ -264,6 +264,8 @@ async def get_property_compliance_detail(
             or row.get("document_id")
             or row.get("evidence_doc_id")
         )
+        if status in ("COMPLIANT", "VALID"):
+            kpis["status_valid"] += 1
         if status in ("OVERDUE", "EXPIRED"):
             kpis["overdue"] += 1
             if is_high:
@@ -398,13 +400,13 @@ async def get_portfolio_compliance_from_catalog(
             "portfolio_risk_level": None,
             "risk_level": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
-            "kpis": {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0},
+            "kpis": {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0},
             "properties": [],
         }
     total_weighted = 0.0
     total_weights = 0.0
     portfolio_risk_level = "Low Risk"
-    kpis_agg = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0}
+    kpis_agg = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0}
     property_list = []
     for prop in properties:
         detail = await get_property_compliance_detail(client_id, prop["property_id"])
