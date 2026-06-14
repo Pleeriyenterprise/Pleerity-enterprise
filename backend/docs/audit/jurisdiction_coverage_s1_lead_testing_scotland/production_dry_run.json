@@ -1,0 +1,35 @@
+{
+  "dry_run": true,
+  "previous_version": 3,
+  "previous_entry_count": 20,
+  "merged_entry_count": 21,
+  "projected_version": 4,
+  "action": "added",
+  "keys_added": [
+    "LEAD_TESTING|SCOTLAND"
+  ],
+  "keys_removed": [],
+  "keys_changed_excluding_add": [],
+  "validation_errors": {},
+  "merged_key_preview": {
+    "canonical_code": "LEAD_TESTING",
+    "scope_key": "SCOTLAND",
+    "why_it_matters_short": "Exposure to lead hazards can create serious health risks, particularly for children and vulnerable occupants living in o",
+    "primary_action_mode": "upload_document",
+    "conditions": {
+      "logic": "ALL",
+      "rules": [
+        {
+          "field": "building_age_years",
+          "op": "gt",
+          "value": 50
+        },
+        {
+          "field": "tenancy_active",
+          "op": "==",
+          "value": true
+        }
+      ]
+    }
+  }
+}

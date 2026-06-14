@@ -1,0 +1,114 @@
+{
+  "exported_at": "2026-06-14T16:47:54.911479Z",
+  "staging_published_version": 24,
+  "registry_key": "LEAD_TESTING|SCOTLAND",
+  "entry": {
+    "entry_id": "528640ac-2ba4-4fa2-9e2b-17f57992298c",
+    "status": "draft",
+    "scope_key": "SCOTLAND",
+    "canonical_code": "LEAD_TESTING",
+    "identity": {
+      "name": "Lead Testing",
+      "category": "REGULATORY",
+      "description": "A lead hazard assessment helps identify potential exposure risks from lead-based materials, contaminated water systems, or hazardous environmental conditions within residential properties.",
+      "legal_reference": "Housing health, environmental safety, and hazard management obligations relating to potential lead exposure risks in residential properties.",
+      "display_order": 0,
+      "tags": []
+    },
+    "classification": {
+      "requirement_type": "DOCUMENT",
+      "criticality": "HIGH",
+      "requires_document": true,
+      "requires_job": false,
+      "client_surface_visible": true,
+      "default_tracking_mode": null
+    },
+    "jurisdiction": {
+      "display_jurisdictions": [
+        "SCOTLAND"
+      ],
+      "scoring_jurisdiction_note": null,
+      "effective_from": null,
+      "effective_to": null,
+      "is_active": true,
+      "deprecated": false
+    },
+    "conditions": {
+      "logic": "ALL",
+      "rules": [
+        {
+          "field": "building_age_years",
+          "op": "gt",
+          "value": 50
+        },
+        {
+          "field": "tenancy_active",
+          "op": "==",
+          "value": true
+        }
+      ]
+    },
+    "frequency": {
+      "frequency_days": 1825,
+      "reminder_lead_days": 90,
+      "label": null,
+      "event_based": false,
+      "needs_review": []
+    },
+    "action_behaviour": {
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload lead hazard assessment report",
+      "completion_notes": null
+    },
+    "action_links": [
+      {
+        "key": "nhs_lead_poisoning_guidance",
+        "label": "NHS guidance on lead exposure risks",
+        "url": "https://www.nhs.uk/conditions/lead-poisoning/",
+        "kind": "official",
+        "jurisdictions": [
+          "SCOTLAND"
+        ],
+        "priority": 10,
+        "is_active": true
+      },
+      {
+        "key": "scotland_housing_health_guidance",
+        "label": "Scottish housing safety guidance",
+        "url": "https://www.mygov.scot/home-condition-risks",
+        "kind": "official",
+        "jurisdictions": [
+          "SCOTLAND"
+        ],
+        "priority": 20,
+        "is_active": true
+      }
+    ],
+    "why_it_matters_short": "Exposure to lead hazards can create serious health risks, particularly for children and vulnerable occupants living in older residential properties.",
+    "why_it_matters_long": "Lead hazards may exist in older properties through materials such as historic lead-based paint, contaminated dust, or older plumbing systems. Assessments and testing can help identify potential exposure risks and support appropriate remediation or safety measures where necessary.",
+    "why_it_matters_by_jurisdiction": {
+      "SCOTLAND": {
+        "short": "Lead hazard assessments may help identify health risks in older Scottish residential properties.",
+        "long": "Older residential properties in Scotland may contain lead-related hazards that could affect occupant health and require assessment or remediation measures."
+      }
+    },
+    "why_it_matters_by_context": {},
+    "governance": {
+      "change_reason": "Published Scotland-specific lead hazard assessment requirement with age-based applicability logic for higher-risk residential properties.",
+      "internal_notes": "Requirement intentionally scoped to higher-risk older properties where lead exposure hazards may be more likely.",
+      "legal_source_summary": "Lead exposure hazards in residential properties may require investigation or remediation where occupant health risks are identified.",
+      "needs_review_fields": [],
+      "import_source": null,
+      "import_row_ref": null
+    },
+    "baseline_alignment": {
+      "engine_storage_type": "lead_testing",
+      "catalog_code": "lead_testing"
+    },
+    "updated_at": "2026-04-24T12:16:35.014960Z",
+    "updated_by": {
+      "portal_user_id": "622aee43-592a-4eb2-b368-be963aaba8f9",
+      "email": "info@pleerityenterprise.co.uk"
+    }
+  }
+}

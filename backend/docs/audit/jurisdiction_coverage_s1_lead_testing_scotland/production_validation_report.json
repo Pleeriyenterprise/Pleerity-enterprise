@@ -1,0 +1,95 @@
+{
+  "registry": {
+    "version": 4,
+    "entry_count": 21,
+    "key_present": true,
+    "placeholder_count": 0,
+    "last_activation_kind": "jurisdiction_coverage_s1",
+    "why_it_matters_short": "Exposure to lead hazards can create serious health risks, particularly for children and vulnerable occupants living in older residential properties."
+  },
+  "rollback": {
+    "v3_backup_file": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\jurisdiction_coverage_s1_lead_testing_scotland\\production_registry_v3_backup_20260614T164755.027031Z.json",
+    "history_line_version_to_revert": 3,
+    "revert_command": "revert_active_published_to_line_version(prod_db, target_published_line_version=3, actor={...})",
+    "expected_post_rollback": {
+      "version": 5,
+      "entry_count": 20,
+      "LEAD_TESTING|SCOTLAND": "absent"
+    }
+  },
+  "synthetic_planner": {
+    "scotland_age_70_tenancy": {
+      "case": "scotland_age_70_tenancy",
+      "planner_emits": true,
+      "plan_includes_lead_testing": true,
+      "scoring_applies_if": true,
+      "scoring_weight": 8.0,
+      "scoring_applicable_points": 8.0,
+      "editorial_why_short": "Lead hazard assessments may help identify health risks in older Scottish residential properties.",
+      "has_placeholder": false
+    },
+    "scotland_age_40_tenancy": {
+      "case": "scotland_age_40_tenancy",
+      "planner_emits": false,
+      "plan_includes_lead_testing": false,
+      "scoring_applies_if": false,
+      "scoring_weight": 8.0,
+      "scoring_applicable_points": 0.0,
+      "editorial_why_short": "Lead hazard assessments may help identify health risks in older Scottish residential properties.",
+      "has_placeholder": false
+    },
+    "england_age_70_tenancy": {
+      "case": "england_age_70_tenancy",
+      "planner_emits": false,
+      "plan_includes_lead_testing": false,
+      "scoring_applies_if": false,
+      "scoring_weight": null,
+      "scoring_applicable_points": null,
+      "editorial_why_short": "",
+      "has_placeholder": false
+    }
+  },
+  "england_control": {
+    "found": true,
+    "planner_includes_lead_testing": false,
+    "compliance_detail_ok": true,
+    "matrix_codes": [
+      "gas_safety",
+      "eicr",
+      "epc",
+      "legionella",
+      "tenancy_agreement",
+      "how_to_rent",
+      "smoke_heat_alarms",
+      "deposit_pi",
+      "right_to_rent"
+    ]
+  },
+  "production_scotland_reference": {
+    "client_id": "6e900516-3692-425e-bace-db868f9b2bd3",
+    "property_id": "4b900ab9-4246-4764-9876-21d6053d91b5",
+    "building_age_years": null,
+    "read_only": true,
+    "note": "No property fields modified; planner/scoring checked against current doc only.",
+    "case": "production_scotland_existing",
+    "planner_emits": false,
+    "plan_includes_lead_testing": false,
+    "scoring_applies_if": false,
+    "scoring_weight": 8.0,
+    "scoring_applicable_points": 0.0,
+    "editorial_why_short": "Lead hazard assessments may help identify health risks in older Scottish residential properties.",
+    "has_placeholder": false
+  },
+  "gates": {
+    "version_is_4": true,
+    "entry_count_21": true,
+    "key_present": true,
+    "placeholder_zero": true,
+    "scotland_age_70_emits": true,
+    "scotland_age_40_no_emit": true,
+    "england_no_emit": true,
+    "scoring_weight_8_when_applicable": true,
+    "scoring_not_applicable_when_age_low": true,
+    "england_control_no_lead_testing": true
+  }
+}
