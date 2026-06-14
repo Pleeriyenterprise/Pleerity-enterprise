@@ -15,6 +15,49 @@ jest.mock('../../api/client', () => ({
   },
 }));
 
+function mockMatchMedia(matchesMobile) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: jest.fn().mockImplementation((query) => ({
+      matches: query.includes('639') ? matchesMobile : false,
+      media: query,
+      onchange: null,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+}
+
+function domOrderBefore(a, b) {
+  const position = a.compareDocumentPosition(b);
+  return (position & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+}
+
+const viewSubmissionWorkflowPayload = {
+  requirement: {
+    requirement_id: 'req-sub',
+    property_id: 'prop-sub',
+    display_label: 'Right to rent',
+    requirement_type: 'right_to_rent',
+    workflow_status: 'PENDING_REVIEW',
+    compliance_state: 'PENDING',
+    client_lifecycle_state: 'PENDING_REVIEW',
+    take_action: {
+      primary: {
+        label: 'View submission',
+        route: null,
+        handler: 'guided_evidence',
+      },
+      supporting_external_links: [],
+    },
+  },
+  active_compliance_job: null,
+};
+
 jest.mock('./RequirementModalAssuranceSection', () => ({
   __esModule: true,
   default: () => <section data-testid="requirement-modal-assurance-section" />,
@@ -101,6 +144,190 @@ describe('RequirementIntelligenceModal', () => {
     expect(screen.getByTestId('requirement-intel-update-submission')).toHaveTextContent('Update submission');
     expect(screen.queryByTestId('requirement-intel-view-submission')).not.toBeInTheDocument();
     expect(screen.getByTestId('requirement-intel-link-add_supporting_evidence')).toHaveTextContent('Add supporting evidence');
+  });
+
+  it('places submission details before informational guidance sections on mobile', async () => {
+    mockMatchMedia(true);
+    clientAPI.listComplianceEvidence.mockResolvedValue({
+      data: {
+        evidence_records: [{ evidence_record_id: 'cer_1', evidence_mode: 'STRUCTURED_DECLARATION' }],
+      },
+    });
+    clientAPI.getRequirementWorkflow.mockResolvedValue({ data: viewSubmissionWorkflowPayload });
+
+    render(
+      wrap(
+        <RequirementIntelligenceModal
+          open
+          requirementId="req-sub"
+          seedRequirement={{
+            property_id: 'prop-sub',
+            requirement_id: 'req-sub',
+            primary_evidence_record_id: 'cer_1',
+          }}
+          initialFocusSubmission
+          onClose={noop}
+          onNavigate={noop}
+          onMarkNotApplicable={noop}
+        />,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('requirement-submission-inspect-panel')).toBeInTheDocument();
+    });
+
+    const submissionPanel = screen.getByTestId('requirement-submission-inspect-panel');
+    const whySection = screen.queryByTestId('requirement-intel-section-why');
+    if (whySection) {
+      expect(domOrderBefore(submissionPanel, whySection)).toBe(true);
+    }
+    expect(screen.queryByTestId('requirement-intel-section-what')).not.toBeInTheDocument();
+  });
+
+  it('shows NA governance disclosure collapsed by default on mobile with actions above it', async () => {
+    mockMatchMedia(true);
+    clientAPI.listComplianceEvidence.mockResolvedValue({
+      data: {
+        evidence_records: [{ evidence_record_id: 'cer_1', evidence_mode: 'STRUCTURED_DECLARATION' }],
+      },
+    });
+    clientAPI.getRequirementWorkflow.mockResolvedValue({ data: viewSubmissionWorkflowPayload });
+
+    render(
+      wrap(
+        <RequirementIntelligenceModal
+          open
+          requirementId="req-sub"
+          seedRequirement={{
+            property_id: 'prop-sub',
+            requirement_id: 'req-sub',
+            primary_evidence_record_id: 'cer_1',
+          }}
+          initialFocusSubmission
+          onClose={noop}
+          onNavigate={noop}
+          onMarkNotApplicable={noop}
+        />,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('requirement-intel-update-submission')).toBeInTheDocument();
+    });
+
+    const updateButton = screen.getByTestId('requirement-intel-update-submission');
+    const disclosure = screen.getByTestId('na-governed-disclosure-trigger');
+    expect(domOrderBefore(updateButton, disclosure)).toBe(true);
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('governed-not-applicable-compact-copy')).not.toBeInTheDocument();
+  });
+
+  it('shows NA governance disclosure expanded by default on desktop', async () => {
+    mockMatchMedia(false);
+    clientAPI.listComplianceEvidence.mockResolvedValue({
+      data: {
+        evidence_records: [{ evidence_record_id: 'cer_1', evidence_mode: 'STRUCTURED_DECLARATION' }],
+      },
+    });
+    clientAPI.getRequirementWorkflow.mockResolvedValue({ data: viewSubmissionWorkflowPayload });
+
+    render(
+      wrap(
+        <RequirementIntelligenceModal
+          open
+          requirementId="req-sub"
+          seedRequirement={{
+            property_id: 'prop-sub',
+            requirement_id: 'req-sub',
+            primary_evidence_record_id: 'cer_1',
+          }}
+          initialFocusSubmission
+          onClose={noop}
+          onNavigate={noop}
+          onMarkNotApplicable={noop}
+        />,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('na-governed-disclosure-trigger')).toHaveAttribute('aria-expanded', 'true');
+    });
+    expect(screen.getByTestId('governed-not-applicable-compact-copy')).toBeVisible();
+  });
+
+  it('toggles NA governance disclosure and keeps full compliance copy available', async () => {
+    mockMatchMedia(true);
+    clientAPI.listComplianceEvidence.mockResolvedValue({
+      data: {
+        evidence_records: [{ evidence_record_id: 'cer_1', evidence_mode: 'STRUCTURED_DECLARATION' }],
+      },
+    });
+    clientAPI.getRequirementWorkflow.mockResolvedValue({ data: viewSubmissionWorkflowPayload });
+
+    render(
+      wrap(
+        <RequirementIntelligenceModal
+          open
+          requirementId="req-sub"
+          seedRequirement={{
+            property_id: 'prop-sub',
+            requirement_id: 'req-sub',
+            primary_evidence_record_id: 'cer_1',
+          }}
+          initialFocusSubmission
+          onClose={noop}
+          onNavigate={noop}
+          onMarkNotApplicable={noop}
+        />,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('na-governed-disclosure-trigger')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('na-governed-disclosure-trigger'));
+    expect(screen.getByTestId('governed-not-applicable-compact-copy')).toBeVisible();
+    expect(screen.getByTestId('governed-not-applicable-compact-copy')).toHaveTextContent(
+      /The requirement stays on record/i,
+    );
+  });
+
+  it('keeps primary footer actions visible without opening disclosure on mobile viewport', async () => {
+    mockMatchMedia(true);
+    clientAPI.listComplianceEvidence.mockResolvedValue({
+      data: {
+        evidence_records: [{ evidence_record_id: 'cer_1', evidence_mode: 'STRUCTURED_DECLARATION' }],
+      },
+    });
+    clientAPI.getRequirementWorkflow.mockResolvedValue({ data: viewSubmissionWorkflowPayload });
+
+    render(
+      wrap(
+        <RequirementIntelligenceModal
+          open
+          requirementId="req-sub"
+          seedRequirement={{
+            property_id: 'prop-sub',
+            requirement_id: 'req-sub',
+            primary_evidence_record_id: 'cer_1',
+          }}
+          initialFocusSubmission
+          onClose={noop}
+          onNavigate={noop}
+          onMarkNotApplicable={noop}
+        />,
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('requirement-intel-primary-actions')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('requirement-intel-update-submission')).toBeVisible();
+    expect(screen.getByTestId('requirement-intel-link-add_supporting_evidence')).toBeVisible();
+    expect(screen.getByTestId('requirement-intel-link-view_documents')).toBeVisible();
   });
 
   it('renders published why_it_matters, published links, canonical primary CTA, and human workflow labels', async () => {

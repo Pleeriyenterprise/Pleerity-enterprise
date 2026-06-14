@@ -45,7 +45,7 @@ export default function RequirementModalContextHero({
         {onPrimaryClick && primaryLabel ? (
           <Button
             type="button"
-            className="bg-electric-teal hover:bg-electric-teal/90"
+            className="hidden sm:inline-flex bg-electric-teal hover:bg-electric-teal/90"
             onClick={onPrimaryClick}
             disabled={primaryDisabled}
             data-testid="requirement-modal-context-hero-primary"

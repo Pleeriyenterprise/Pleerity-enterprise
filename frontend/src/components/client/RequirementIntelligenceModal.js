@@ -29,7 +29,7 @@ import {
 } from '../../utils/documentEvidenceAuthority';
 import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
 import { projectResolvedRequirementSemantics } from '../../utils/resolvedRequirementViewModel';
-import { NotApplicableGovernedNotice } from '../../utils/notApplicableGovernedCopy';
+import { NotApplicableGovernedDisclosure } from '../../utils/notApplicableGovernedCopy';
 import {
   guidedMixedEvidenceInitialMode,
   shouldPreferGuidedEvidenceOverIntelView,
@@ -447,12 +447,18 @@ export default function RequirementIntelligenceModal({
     showAssuranceContext && merged && hasSubmission && resolveAssuranceTier(merged) === ASSURANCE_SELF_RECORDED,
   );
 
+  const showContextualWhatYouNeed =
+    modalContext !== MODAL_CONTEXT.VIEW_SUBMISSION && modalContext !== MODAL_CONTEXT.VIEW_VERIFIED_EVIDENCE;
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-testid="view-requirement-modal">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-2 sm:p-4"
+      data-testid="view-requirement-modal"
+    >
       <div
-        className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[min(92dvh,92vh)] flex flex-col overflow-hidden"
+        className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[min(90dvh,90vh)] sm:max-h-[min(92dvh,92vh)] flex flex-col overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="requirement-intel-title"
@@ -461,7 +467,7 @@ export default function RequirementIntelligenceModal({
         data-cer-loading={cerLoading ? 'true' : 'false'}
         data-cer-ready={!cerLoading && hasSubmission ? 'true' : 'false'}
       >
-        <div className="px-6 pt-5 pb-3 border-b border-gray-100 shrink-0">
+        <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 border-b border-gray-100 shrink-0">
           <h2 id="requirement-intel-title" className="text-lg font-semibold text-midnight-blue">
             Requirement details
           </h2>
@@ -469,7 +475,7 @@ export default function RequirementIntelligenceModal({
           {propertyLine ? <p className="text-sm text-gray-600 mt-0.5">{propertyLine}</p> : null}
         </div>
 
-        <div className="px-6 py-4 overflow-y-auto flex-1 space-y-5 text-sm">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 overflow-y-auto flex-1 min-h-0 space-y-4 sm:space-y-5 text-sm">
           {loading ? (
             <div className="flex items-center gap-2 text-gray-500 py-10" data-testid="requirement-intel-loading">
               <Loader2 className="w-5 h-5 animate-spin shrink-0" aria-hidden />
@@ -541,6 +547,51 @@ export default function RequirementIntelligenceModal({
                 </dl>
               </section>
 
+              {pid && rid && hasSubmission && !isConditionStandardWorkflowHint(merged?.workflow_class, merged) ? (
+                <RequirementSubmissionInspectPanel
+                  ref={submissionPanelRef}
+                  propertyId={pid}
+                  requirementId={rid}
+                  operatorPresentation={showAssurancePanel}
+                  panelTitle="Submission on file"
+                />
+              ) : null}
+
+              <ConditionStandardOperationalInspectPanel requirement={merged} />
+
+              {showAssurancePanel ? (
+                <RequirementModalAssuranceSection merged={merged} latestCer={latestCer} />
+              ) : null}
+
+              {activeJobSummary.navigateJobId ? (
+                <section
+                  className="rounded-lg border border-amber-200 bg-amber-50/40 p-3"
+                  data-testid="requirement-intel-active-job"
+                >
+                  <p className="text-xs font-semibold text-midnight-blue uppercase tracking-wide">{activeJobSummary.title}</p>
+                  {activeJobSummary.lines.length > 0 ? (
+                    <ul className="mt-2 text-sm text-gray-800 list-disc list-inside space-y-1">
+                      {activeJobSummary.lines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="mt-2 w-full sm:w-auto min-h-10"
+                    data-testid="requirement-intel-open-job"
+                    onClick={() => {
+                      onClose();
+                      onNavigate(`/operations/jobs/${encodeURIComponent(activeJobSummary.navigateJobId)}`);
+                    }}
+                  >
+                    View compliance job
+                  </Button>
+                </section>
+              ) : null}
+
               {why && (why.short || why.long) ? (
                 <section data-testid="requirement-intel-section-why">
                   <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">Why this matters</h3>
@@ -567,16 +618,14 @@ export default function RequirementIntelligenceModal({
                 </section>
               ) : null}
 
-              <section data-testid="requirement-intel-section-what">
-                <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">What you need to do</h3>
-                <p className="text-gray-800">
-                  {modalContext === MODAL_CONTEXT.VIEW_SUBMISSION
-                    ? 'Your submission is on file. Update it, add supporting evidence, or review the details below.'
-                    : modalContext === MODAL_CONTEXT.VIEW_VERIFIED_EVIDENCE
-                      ? 'This evidence is verified for this requirement. You can view documents or add supporting material if needed.'
-                      : 'Use the primary action below. It matches the current obligation for this property.'}
-                </p>
-              </section>
+              {showContextualWhatYouNeed ? (
+                <section data-testid="requirement-intel-section-what">
+                  <h3 className="text-xs font-semibold text-midnight-blue uppercase tracking-wide mb-2">What you need to do</h3>
+                  <p className="text-gray-800">
+                    Use the primary action below. It matches the current obligation for this property.
+                  </p>
+                </section>
+              ) : null}
 
               {acceptedEvidenceModes && acceptedEvidenceModes.length > 0 ? (
                 <section data-testid="requirement-intel-section-accepted-evidence">
@@ -624,67 +673,14 @@ export default function RequirementIntelligenceModal({
                   <p className="text-gray-700 mt-2 text-sm leading-relaxed">{tenantSafeTriggerExplanation(merged)}</p>
                 ) : null}
               </section>
-
-              <ConditionStandardOperationalInspectPanel requirement={merged} />
-
-              {showAssurancePanel ? (
-                <RequirementModalAssuranceSection merged={merged} latestCer={latestCer} />
-              ) : null}
-
-              {pid && rid && hasSubmission && !isConditionStandardWorkflowHint(merged?.workflow_class, merged) ? (
-                <RequirementSubmissionInspectPanel
-                  ref={submissionPanelRef}
-                  propertyId={pid}
-                  requirementId={rid}
-                  operatorPresentation={showAssurancePanel}
-                  panelTitle="Submission on file"
-                />
-              ) : null}
-
-              {activeJobSummary.navigateJobId ? (
-                <section
-                  className="rounded-lg border border-amber-200 bg-amber-50/40 p-3"
-                  data-testid="requirement-intel-active-job"
-                >
-                  <p className="text-xs font-semibold text-midnight-blue uppercase tracking-wide">{activeJobSummary.title}</p>
-                  {activeJobSummary.lines.length > 0 ? (
-                    <ul className="mt-2 text-sm text-gray-800 list-disc list-inside space-y-1">
-                      {activeJobSummary.lines.map((line) => (
-                        <li key={line}>{line}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="mt-2 w-full sm:w-auto min-h-10"
-                    data-testid="requirement-intel-open-job"
-                    onClick={() => {
-                      onClose();
-                      onNavigate(`/operations/jobs/${encodeURIComponent(activeJobSummary.navigateJobId)}`);
-                    }}
-                  >
-                    View compliance job
-                  </Button>
-                </section>
-              ) : null}
             </>
           ) : null}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/80 shrink-0 space-y-3">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-100 bg-gray-50/80 shrink-0 space-y-3">
           {!loading && !error && merged ? (
             <>
-              {onMarkNotApplicable ? (
-                <div
-                  className="rounded-md border border-gray-200 bg-white p-3 mb-1"
-                  data-testid="requirement-intel-na-governance"
-                >
-                  <NotApplicableGovernedNotice variant="compact" />
-                </div>
-              ) : null}
-              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end sm:items-center">
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-end sm:items-center" data-testid="requirement-intel-primary-actions">
                 {footerActions
                   .filter((a) => a.variant === 'primary' || a.variant === 'secondary')
                   .map((action) => (
@@ -755,6 +751,11 @@ export default function RequirementIntelligenceModal({
                   </button>
                 ) : null}
               </div>
+              {onMarkNotApplicable ? (
+                <div data-testid="requirement-intel-na-governance">
+                  <NotApplicableGovernedDisclosure />
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="flex justify-end">
