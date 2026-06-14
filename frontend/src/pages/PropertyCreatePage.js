@@ -10,7 +10,7 @@ import { ArrowLeft, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../api/client';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
-import { JURISDICTION_OPTIONS } from '../utils/jurisdictionComplianceCopy';
+import { JURISDICTION_OPTIONS, BUILDING_AGE_SCOTLAND_HELPER, showBuildingAgeField } from '../utils/jurisdictionComplianceCopy';
 import { useUkPostcodeLookup } from '../hooks/useUkPostcodeLookup';
 import { normalizeUkPostcode } from '../utils/ukPostcode';
 
@@ -33,6 +33,7 @@ const PropertyCreatePage = () => {
     jurisdiction: '',
     property_type: 'residential',
     number_of_units: 1,
+    building_age_years: '',
   });
 
   const postcodeLookup = useUkPostcodeLookup({
@@ -83,6 +84,19 @@ const PropertyCreatePage = () => {
       else payload.nickname = payload.nickname.trim();
       if (!payload.jurisdiction?.trim()) delete payload.jurisdiction;
       else payload.jurisdiction = payload.jurisdiction.trim();
+      const ageRaw = String(formData.building_age_years ?? '').trim();
+      if (ageRaw === '') {
+        delete payload.building_age_years;
+      } else {
+        const age = parseInt(ageRaw, 10);
+        if (Number.isNaN(age) || age < 0 || age > 500) {
+          setError('Building age must be a whole number between 0 and 500.');
+          setLoading(false);
+          submitInFlight.current = false;
+          return;
+        }
+        payload.building_age_years = age;
+      }
       payload.postcode = normalizeUkPostcode(payload.postcode);
       await api.post('/properties/create', payload);
 
@@ -122,6 +136,7 @@ const PropertyCreatePage = () => {
   }
 
   const lookupContext = { city: formData.city, jurisdiction: formData.jurisdiction };
+  const effectiveJurisdictionForAge = (formData.jurisdiction || defaultJurisdiction || '').trim();
 
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')}>
@@ -274,6 +289,22 @@ const PropertyCreatePage = () => {
                     : ''}
                 </p>
               </div>
+
+              {showBuildingAgeField(effectiveJurisdictionForAge) ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Building age (years, optional)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="500"
+                    value={formData.building_age_years}
+                    onChange={(e) => setFormData({ ...formData, building_age_years: e.target.value })}
+                    placeholder="e.g. 75"
+                    data-testid="building-age-years-input"
+                  />
+                  <p className="text-xs text-gray-500">{BUILDING_AGE_SCOTLAND_HELPER}</p>
+                </div>
+              ) : null}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Property Type *</label>

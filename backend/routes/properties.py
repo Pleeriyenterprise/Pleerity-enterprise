@@ -21,6 +21,19 @@ from services.requirement_client_runtime_surface import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/properties", tags=["properties"])
 
+def _validate_building_age_years(value: Optional[int]) -> int:
+    """Optional building age in whole years; used for Scotland lead-testing and EICR frequency planning."""
+    if value is None:
+        raise ValueError("missing")
+    try:
+        age = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("invalid") from exc
+    if age < 0 or age > 500:
+        raise ValueError("range")
+    return age
+
+
 class CreatePropertyRequest(BaseModel):
     nickname: Optional[str] = None  # Optional; when set, used to identify the property; otherwise address is used
     address_line_1: str
@@ -31,6 +44,12 @@ class CreatePropertyRequest(BaseModel):
     number_of_units: int = 1
     # Optional override; when omitted, new properties use the client's saved default_jurisdiction (canonicalised).
     jurisdiction: Optional[str] = Field(None, description="Scotland | England | Wales | Northern Ireland")
+    building_age_years: Optional[int] = Field(
+        None,
+        ge=0,
+        le=500,
+        description="Optional building age in years (Scotland lead-testing gate when > 50)",
+    )
 
 @router.post("/create")
 async def create_property(request: Request, data: CreatePropertyRequest):
@@ -98,6 +117,16 @@ async def create_property(request: Request, data: CreatePropertyRequest):
             prop_jurisdiction = canonicalize_uk_portfolio_label(client.get("default_jurisdiction"))
 
         # Create property
+        building_age_years = None
+        if data.building_age_years is not None:
+            try:
+                building_age_years = _validate_building_age_years(data.building_age_years)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="building_age_years must be an integer between 0 and 500",
+                )
+
         property_obj = Property(
             client_id=user["client_id"],
             nickname=(data.nickname or "").strip() or None,
@@ -109,6 +138,7 @@ async def create_property(request: Request, data: CreatePropertyRequest):
             number_of_units=data.number_of_units,
             compliance_status=ComplianceStatus.RED,
             jurisdiction=prop_jurisdiction,
+            building_age_years=building_age_years,
         )
         
         prop_doc = property_obj.model_dump()
@@ -189,7 +219,20 @@ async def create_property(request: Request, data: CreatePropertyRequest):
         )
 
 # Fields that affect compliance score applicability (v1); changing any triggers recalc.
-APPLICABILITY_FIELDS = frozenset({"is_hmo", "bedrooms", "occupancy", "licence_required", "has_gas_supply", "has_gas", "tenancy_active", "furnished", "property_type"})
+APPLICABILITY_FIELDS = frozenset(
+    {
+        "is_hmo",
+        "bedrooms",
+        "occupancy",
+        "licence_required",
+        "has_gas_supply",
+        "has_gas",
+        "tenancy_active",
+        "furnished",
+        "property_type",
+        "building_age_years",
+    }
+)
 
 _MAX_REQUIREMENTS_GAP_SYNC_AFTER_MATERIALIZATION = 500
 
@@ -252,6 +295,12 @@ class PatchPropertyRequest(BaseModel):
     tenancy_active: Optional[bool] = None
     furnished: Optional[bool] = None
     is_active: Optional[bool] = None  # False = archived (read-only) when over property limit
+    building_age_years: Optional[int] = Field(
+        None,
+        ge=0,
+        le=500,
+        description="Optional building age in years; clear with null",
+    )
     # Set to Scotland | England | Wales | Northern Ireland, or "" / null to clear the property record (fall back to account default).
     jurisdiction: Optional[str] = None
 
@@ -269,7 +318,8 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
         {"_id": 0, "property_id": 1, "client_id": 1, "property_type": 1, "is_hmo": 1, "bedrooms": 1, "occupancy": 1,
-         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1, "tenancy_active": 1, "furnished": 1, "is_active": 1},
+         "licence_required": 1, "has_gas_supply": 1, "has_gas": 1, "tenancy_active": 1, "furnished": 1,
+         "building_age_years": 1, "is_active": 1, "jurisdiction": 1},
     )
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -278,6 +328,20 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     jurisdiction_changed = False
     payload = data.model_dump(exclude_none=True)
     from services.compliance_rules_registry import canonicalize_uk_portfolio_label
+
+    if "building_age_years" in data.model_fields_set:
+        payload.pop("building_age_years", None)
+        raw_age = data.building_age_years
+        if raw_age is None:
+            update["building_age_years"] = None
+        else:
+            try:
+                update["building_age_years"] = _validate_building_age_years(raw_age)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="building_age_years must be an integer between 0 and 500",
+                )
 
     if "jurisdiction" in data.model_fields_set:
         payload.pop("jurisdiction", None)

@@ -68,6 +68,7 @@ _EXTENDED_LEGAL_CORE_WEIGHTS = {
 }
 _SCOTLAND_ONLY_WEIGHTS = {
     "LANDLORD_REGISTRATION": {"weight": 8.0, "risk_level_if_failed": "MEDIUM"},
+    "LEAD_TESTING": {"weight": 8.0, "risk_level_if_failed": "MEDIUM"},
 }
 JURISDICTION_PROFILES: Dict[str, Dict[str, Any]] = {
     "ENGLAND_WALES": {
@@ -107,6 +108,8 @@ REQ_ALIASES = {
     "LANDLORD_REGISTRATION_SCOTLAND": "LANDLORD_REGISTRATION",
     "WALES_OCCUPATION_CONTRACT": "OCCUPATION_CONTRACT",
     "RENT_SMART_WALES": "RENT_SMART_WALES",
+    "LEAD_TESTING": "LEAD_TESTING",
+    "LEAD_TESTING_SCOTLAND": "LEAD_TESTING",
     "LANDLORD_REGISTRATION_NI": "LANDLORD_REGISTRATION_NI",
     "PORTABLE_APPLIANCE_TEST": "PORTABLE_APPLIANCE",
     # Domestic alarm family (registry canonical smoke_heat_alarms); scoring bucket unchanged (FIRE_DETECTION).
@@ -127,6 +130,7 @@ REQ_TO_DOC_TYPE = {
     "LEGIONELLA": "legionella",
     "HMO_FIRE_RISK": "fire_safety",
     "LANDLORD_REGISTRATION": "licence",
+    "LEAD_TESTING": "lead_testing",
     "OCCUPATION_CONTRACT": "tenancy_agreement",
 }
 
@@ -409,6 +413,21 @@ def _applies_if(code: str, property_doc: Dict[str, Any], client_doc: Optional[Di
             return False
         r = resolve_portfolio_jurisdiction(property_doc, client_doc)
         return r.effective_label == "Wales"
+    if code == "LEAD_TESTING":
+        from services.compliance_rules_registry import resolve_portfolio_jurisdiction
+
+        if _is_commercial_property(property_doc):
+            return False
+        if not _str_truthy(property_doc.get("tenancy_active")):
+            return False
+        r = resolve_portfolio_jurisdiction(property_doc, client_doc)
+        if r.effective_label != "Scotland":
+            return False
+        try:
+            building_age_years = int(property_doc.get("building_age_years"))
+        except (TypeError, ValueError):
+            return False
+        return building_age_years > 50
     if code == "LANDLORD_REGISTRATION_NI":
         from services.compliance_rules_registry import resolve_portfolio_jurisdiction
 

@@ -1,0 +1,237 @@
+{
+  "wave": "JURISDICTION-COVERAGE-S1-REMEDIATION",
+  "started_at": "2026-06-14T16:07:14.897682Z",
+  "staging_property": {
+    "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+    "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+    "jurisdiction": "Scotland",
+    "tenancy_active": true,
+    "original_building_age_years": null
+  },
+  "steps": [
+    {
+      "step": "age_70_materialise",
+      "building_age_years": 70,
+      "materialisation": {
+        "ok": true,
+        "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+        "planned_types": [
+          "eicr",
+          "emergency_lighting",
+          "epc",
+          "fire_alarm",
+          "fire_extinguisher",
+          "gas_safety",
+          "hmo_fire_risk",
+          "hmo_fire_risk_evidence",
+          "hmo_license",
+          "how_to_rent",
+          "lead_testing",
+          "legionella",
+          "scotland_landlord_registration",
+          "tenancy_agreement"
+        ],
+        "upsert_passes": 14,
+        "reopened_from_not_required": 0,
+        "reconciled_obsolete": 0
+      },
+      "lead_row": {
+        "present": true,
+        "requirement_id": "36c63d9c-70ba-4c4e-baa8-a75dcbe77cbc",
+        "status": "PENDING",
+        "applicability": "UNKNOWN",
+        "client_surface_visible": true
+      },
+      "matrix_includes_lead_testing": true,
+      "matrix_codes": [
+        "epc",
+        "gas_safety",
+        "tenancy_agreement",
+        "legionella",
+        "eicr",
+        "scotland_landlord_registration",
+        "hmo_license",
+        "repairing_standard",
+        "lead_testing",
+        "smoke_heat_alarms",
+        "hmo_fire_risk_evidence"
+      ],
+      "editorial_why_short": "Lead hazard assessments may help identify health risks in older Scottish residential properties.",
+      "recalc_score": null,
+      "scoring_lead_testing": {
+        "requirement_code": "LEAD_TESTING",
+        "display_label": "Lead Testing",
+        "jurisdiction": "SCOTLAND",
+        "applies_if": true,
+        "weight": 8.0,
+        "status": "MISSING",
+        "expiry_date": "2026-09-12",
+        "verified_at": null,
+        "risk_level_if_failed": "MEDIUM",
+        "earned_points": 0.0,
+        "applicable_points": 8.0,
+        "reasons": [
+          "NO_DOCUMENT_FOUND",
+          "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+        ],
+        "date_source": "SYSTEM_ESTIMATED",
+        "evidence_state": "MISSING",
+        "confidence_state": "ESTIMATED",
+        "requirement_satisfied": false,
+        "missing_required_document": false
+      }
+    },
+    {
+      "step": "age_30_reconcile",
+      "building_age_years": 30,
+      "materialisation": {
+        "ok": true,
+        "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+        "planned_types": [
+          "eicr",
+          "emergency_lighting",
+          "epc",
+          "fire_alarm",
+          "fire_extinguisher",
+          "gas_safety",
+          "hmo_fire_risk",
+          "hmo_fire_risk_evidence",
+          "hmo_license",
+          "how_to_rent",
+          "legionella",
+          "scotland_landlord_registration",
+          "tenancy_agreement"
+        ],
+        "upsert_passes": 13,
+        "reopened_from_not_required": 0,
+        "reconciled_obsolete": 1
+      },
+      "lead_row": {
+        "present": true,
+        "requirement_id": "36c63d9c-70ba-4c4e-baa8-a75dcbe77cbc",
+        "status": "NOT_REQUIRED",
+        "applicability": "NOT_REQUIRED",
+        "client_surface_visible": false
+      },
+      "matrix_includes_lead_testing": false,
+      "matrix_codes": [
+        "epc",
+        "gas_safety",
+        "tenancy_agreement",
+        "legionella",
+        "eicr",
+        "scotland_landlord_registration",
+        "hmo_license",
+        "repairing_standard",
+        "smoke_heat_alarms",
+        "hmo_fire_risk_evidence"
+      ],
+      "editorial_why_short": "Lead hazard assessments may help identify health risks in older Scottish residential properties.",
+      "recalc_score": null,
+      "scoring_lead_testing": {
+        "requirement_code": "LEAD_TESTING",
+        "display_label": "Lead Testing",
+        "jurisdiction": "SCOTLAND",
+        "applies_if": false,
+        "weight": 8.0,
+        "status": "NOT_APPLICABLE",
+        "expiry_date": null,
+        "verified_at": null,
+        "risk_level_if_failed": "MEDIUM",
+        "earned_points": 0.0,
+        "applicable_points": 0.0,
+        "reasons": [],
+        "date_source": null,
+        "evidence_state": null,
+        "confidence_state": null
+      }
+    },
+    {
+      "step": "age_70_reopen",
+      "building_age_years": 70,
+      "materialisation": {
+        "ok": true,
+        "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+        "planned_types": [
+          "eicr",
+          "emergency_lighting",
+          "epc",
+          "fire_alarm",
+          "fire_extinguisher",
+          "gas_safety",
+          "hmo_fire_risk",
+          "hmo_fire_risk_evidence",
+          "hmo_license",
+          "how_to_rent",
+          "lead_testing",
+          "legionella",
+          "scotland_landlord_registration",
+          "tenancy_agreement"
+        ],
+        "upsert_passes": 14,
+        "reopened_from_not_required": 1,
+        "reconciled_obsolete": 0
+      },
+      "lead_row": {
+        "present": true,
+        "requirement_id": "36c63d9c-70ba-4c4e-baa8-a75dcbe77cbc",
+        "status": "PENDING",
+        "applicability": "UNKNOWN",
+        "client_surface_visible": true
+      },
+      "matrix_includes_lead_testing": true,
+      "matrix_codes": [
+        "epc",
+        "gas_safety",
+        "tenancy_agreement",
+        "legionella",
+        "eicr",
+        "scotland_landlord_registration",
+        "hmo_license",
+        "repairing_standard",
+        "lead_testing",
+        "smoke_heat_alarms",
+        "hmo_fire_risk_evidence"
+      ],
+      "editorial_why_short": "Lead hazard assessments may help identify health risks in older Scottish residential properties.",
+      "recalc_score": null,
+      "scoring_lead_testing": {
+        "requirement_code": "LEAD_TESTING",
+        "display_label": "Lead Testing",
+        "jurisdiction": "SCOTLAND",
+        "applies_if": true,
+        "weight": 8.0,
+        "status": "MISSING",
+        "expiry_date": "2026-09-12",
+        "verified_at": null,
+        "risk_level_if_failed": "MEDIUM",
+        "earned_points": 0.0,
+        "applicable_points": 8.0,
+        "reasons": [
+          "NO_DOCUMENT_FOUND",
+          "SCORE_WEIGHT_SYSTEM_ESTIMATED_DATE"
+        ],
+        "date_source": "SYSTEM_ESTIMATED",
+        "evidence_state": "MISSING",
+        "confidence_state": "ESTIMATED",
+        "requirement_satisfied": false,
+        "missing_required_document": false
+      }
+    }
+  ],
+  "cer_submission": {
+    "validation_error": null,
+    "created": true,
+    "evidence_record_id": "cer_bc57644e06484093b99bd2dd31488a5e",
+    "requirement_status_after": "PENDING"
+  },
+  "gates": {
+    "age_70_materialised": true,
+    "matrix_visible_at_70": true,
+    "scoring_applies_at_70": true,
+    "age_30_reconciled": true,
+    "age_70_reopened": true
+  },
+  "restored_building_age_years": null,
+  "completed_at": "2026-06-14T16:07:37.843397Z"
+}

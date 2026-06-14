@@ -6,6 +6,7 @@ import { useEntitlements } from '../contexts/EntitlementsContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
+import { Input } from '../components/ui/input';
 import {
   Select,
   SelectContent,
@@ -139,6 +140,8 @@ import {
   JURISDICTION_FALLBACK_ALERT_TITLE,
   JURISDICTION_FALLBACK_CTA,
   JURISDICTION_OPTIONS,
+  BUILDING_AGE_SCOTLAND_HELPER,
+  showBuildingAgeField,
   jurisdictionAccountDefaultNoticeBody,
   jurisdictionSourceLabel,
 } from '../utils/jurisdictionComplianceCopy';
@@ -432,6 +435,8 @@ export default function PropertyDetailPage() {
   const [jurisdictionSaving, setJurisdictionSaving] = useState(false);
   /** True while user chose "Change jurisdiction" on an already property_explicit record; false when not explicit or after save/cancel. */
   const [jurisdictionEditing, setJurisdictionEditing] = useState(false);
+  const [buildingAgeDraft, setBuildingAgeDraft] = useState('');
+  const [buildingAgeSaving, setBuildingAgeSaving] = useState(false);
 
   useEffect(() => {
     const raw = (location.hash || window.location.hash || '').replace(/^#/, '');
@@ -687,8 +692,21 @@ export default function PropertyDetailPage() {
   }, [propertyId, property, jurisdictionEditing]);
 
   useEffect(() => {
+    if (property?.property_id !== propertyId) return;
+    const cur = property.building_age_years;
+    setBuildingAgeDraft(cur === null || cur === undefined ? '' : String(cur));
+  }, [propertyId, property]);
+
+  useEffect(() => {
     setJurisdictionEditing(false);
   }, [propertyId]);
+
+  const buildingAgeDirty = useMemo(() => {
+    if (!property) return false;
+    const cur = property.building_age_years;
+    const curStr = cur === null || cur === undefined ? '' : String(cur);
+    return (buildingAgeDraft ?? '') !== curStr;
+  }, [property, buildingAgeDraft]);
 
   const jurisdictionDirty = useMemo(() => {
     if (!property) return false;
@@ -878,6 +896,36 @@ export default function PropertyDetailPage() {
       setJurisdictionSaving(false);
     }
   }, [propertyId, property, jurisdictionDraft, fetchData, loadComplianceExplainability]);
+
+  const saveBuildingAge = useCallback(async () => {
+    if (!propertyId || !property) return;
+    const ageRaw = String(buildingAgeDraft ?? '').trim();
+    let payload;
+    if (ageRaw === '') {
+      payload = { building_age_years: null };
+    } else {
+      const age = parseInt(ageRaw, 10);
+      if (Number.isNaN(age) || age < 0 || age > 500) {
+        toast.error('Building age must be a whole number between 0 and 500.');
+        return;
+      }
+      payload = { building_age_years: age };
+    }
+    setBuildingAgeSaving(true);
+    try {
+      await clientAPI.patchProperty(propertyId, payload);
+      toast.success('Building age saved', {
+        description: 'Compliance requirements were recalculated for this property.',
+      });
+      await fetchData();
+      loadComplianceExplainability();
+    } catch (e) {
+      const d = e.response?.data?.detail;
+      toast.error(typeof d === 'string' ? d : 'Could not update building age.');
+    } finally {
+      setBuildingAgeSaving(false);
+    }
+  }, [propertyId, property, buildingAgeDraft, fetchData, loadComplianceExplainability]);
 
   const startJurisdictionEdit = useCallback(() => {
     setJurisdictionDraft(property?.jurisdiction ?? '');
@@ -1487,6 +1535,10 @@ export default function PropertyDetailPage() {
 
   const isJurisdictionConfigured = effectiveComplianceBasis === 'property_explicit';
   const showJurisdictionEditor = !isJurisdictionConfigured || jurisdictionEditing;
+  const showBuildingAgeEditor =
+    showBuildingAgeField(property?.jurisdiction) ||
+    showBuildingAgeField(effectiveJurisdictionLabel) ||
+    showBuildingAgeField(complianceDetail?.effective_jurisdiction_label);
 
   return (
     <div className={portalPageRoot} data-testid="property-detail-page">
@@ -1638,6 +1690,45 @@ export default function PropertyDetailPage() {
               </div>
             </CardContent>
           )}
+        </Card>
+      ) : null}
+
+      {property && showBuildingAgeEditor ? (
+        <Card className="mb-4 border border-gray-200 bg-white" data-testid="property-building-age-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-midnight-blue">Building age</CardTitle>
+            <CardDescription className="text-sm text-gray-600">{BUILDING_AGE_SCOTLAND_HELPER}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end pt-0">
+            <div className="space-y-2 flex-1 min-w-[220px] max-w-md">
+              <Label htmlFor="property-building-age-input" className="text-sm text-midnight-blue">
+                Age in years (optional)
+              </Label>
+              <Input
+                id="property-building-age-input"
+                type="number"
+                min="0"
+                max="500"
+                value={buildingAgeDraft}
+                onChange={(e) => setBuildingAgeDraft(e.target.value)}
+                disabled={buildingAgeSaving}
+                placeholder="e.g. 75"
+                data-testid="property-building-age-input"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="bg-electric-teal hover:bg-electric-teal/90"
+              disabled={!buildingAgeDirty || buildingAgeSaving}
+              onClick={saveBuildingAge}
+              data-testid="property-building-age-save"
+            >
+              {buildingAgeSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Save building age
+            </Button>
+          </CardContent>
         </Card>
       ) : null}
 

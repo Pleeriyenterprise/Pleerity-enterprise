@@ -111,3 +111,11 @@ export function impactRuleExamplesForProfile(profileKey) {
     'Legionella where water systems apply',
   ];
 }
+
+/** Optional building age field — shown for Scottish properties (lead-testing gate when > 50 years). */
+export const BUILDING_AGE_SCOTLAND_HELPER =
+  'Optional. For Scottish properties, building age helps determine whether a lead hazard assessment applies (typically when the building is more than 50 years old and a tenancy is active).';
+
+export function showBuildingAgeField(jurisdiction) {
+  return (jurisdiction || '').trim() === 'Scotland';
+}

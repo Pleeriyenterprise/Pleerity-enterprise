@@ -71,6 +71,18 @@ describe('PropertyCreatePage address lookup', () => {
     });
   });
 
+  it('shows building age field when jurisdiction is Scotland', async () => {
+    renderPage();
+
+    fireEvent.change(screen.getByTestId('create-property-jurisdiction-select'), {
+      target: { value: 'Scotland' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('building-age-years-input')).toBeInTheDocument();
+    });
+  });
+
   it('allows manual address entry without postcode lookup', async () => {
     renderPage();
 
