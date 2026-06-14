@@ -1,0 +1,1611 @@
+{
+  "singleton_key": "active_registry",
+  "entries": {
+    "GAS_SAFETY|DEFAULT": {
+      "entry_id": "0e3a36ab-cb61-4cc3-96fd-e77f540d6c26",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "GAS_SAFETY",
+      "identity": {
+        "name": "Gas safety certificate",
+        "category": "GAS",
+        "description": "Gas Safety Certificate",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": "NI uses ENGLAND_WALES engine bucket in code; Scotland uses SCOTLAND bucket. Frequencies match today but SLA differs for Scotland in engine.",
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "gas_safe_find_engineer",
+          "label": "Find a Gas Safe engineer",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.gassaferegister.co.uk/find-an-engineer/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "gas_safe_check_engineer",
+          "label": "Check engineer credentials",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.gassaferegister.co.uk/check-an-engineer/",
+          "is_active": true,
+          "priority": 20
+        }
+      ],
+      "why_it_matters_short": "Annual gas safety checks reduce carbon monoxide risk and are a legal baseline for let homes.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "Scotland/EW fork is frequency-compatible today; compare view surfaces bucket-level SLA deltas.",
+        "legal_source_summary": "Engine-backed cadence; workbook gas safety row aligned to GAS_SAFETY.",
+        "needs_review_fields": [
+          "jurisdiction.ni_treatment_vs_ew_bucket",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:gas_safety:shared:v1",
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "gas_safety",
+        "catalog_code": "gas_safety"
+      },
+      "updated_at": "2026-06-14T14:29:57.632939Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "EICR|DEFAULT": {
+      "entry_id": "bb72006b-b67f-4a99-92f2-d13302032c5d",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "EICR",
+      "identity": {
+        "name": "Electrical Installation Condition Report (EICR)",
+        "category": "ELECTRICAL",
+        "description": "Electrical Installation Condition Report",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 1825,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "niceic_find_tradesperson",
+          "label": "Find certified electrician (NICEIC)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.niceic.com/find-a-tradesperson",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "napit_find_tradesperson",
+          "label": "Find certified electrician (NAPIT)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://search.napit.org.uk/",
+          "is_active": true,
+          "priority": 20
+        }
+      ],
+      "why_it_matters_short": "EICR evidence shows the fixed electrical installation has been inspected within required intervals.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Engine frequency_by_age present for EW; Scotland registry entry currently mirrors EW baseline in code \u2014 confirm statutory intervals separately if workbook differs.",
+        "needs_review_fields": [
+          "conditions.installation_age_bands",
+          "jurisdiction.ni_enforcement_detail",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:eicr:shared:v1",
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "eicr",
+        "catalog_code": "eicr"
+      },
+      "updated_at": "2026-06-14T14:29:57.632939Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "EPC|DEFAULT": {
+      "entry_id": "9a85501e-126a-4d86-bf89-349f59460e28",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "EPC",
+      "identity": {
+        "name": "Energy Performance Certificate (EPC)",
+        "category": "ENERGY",
+        "description": "Energy Performance Certificate",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 3650,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "epc_england_wales_register",
+          "label": "Check EPC (England & Wales)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND",
+            "WALES"
+          ],
+          "url": "https://www.gov.uk/find-energy-certificate",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "epc_scotland_register",
+          "label": "Check EPC (Scotland)",
+          "kind": "official",
+          "jurisdictions": [
+            "SCOTLAND"
+          ],
+          "url": "https://www.scottishepcregister.org.uk/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "epc_ni_register",
+          "label": "Check EPC (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": [
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.epbni.com/",
+          "is_active": true,
+          "priority": 10
+        }
+      ],
+      "why_it_matters_short": "Valid EPC evidence supports lawful marketing and helps tenants compare running costs.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Mapped to EPC; rental vs sale nuances not encoded in this draft.",
+        "needs_review_fields": [
+          "jurisdiction.scotland_rental_epc_rules",
+          "jurisdiction.wales_epc_consultation_delta",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:epc:shared:v1",
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "epc",
+        "catalog_code": "epc"
+      },
+      "updated_at": "2026-06-14T14:29:57.632939Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "LEGIONELLA|DEFAULT": {
+      "entry_id": "87e08caa-30cf-4be8-b051-0ce81ca1cd02",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "LEGIONELLA",
+      "identity": {
+        "name": "Legionella risk assessment",
+        "category": "HEALTH",
+        "description": "Legionella Risk Assessment",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "JOB",
+        "criticality": "HIGH",
+        "requires_document": false,
+        "requires_job": true,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 730,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "arrange_job",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Water system risk reviews reduce legionella exposure for residents and visiting contractors.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "Engine marks LEGIONELLA as assessment cadence; Scotland accepted document types differ in engine \u2014 draft defers detail to engine compare.",
+        "needs_review_fields": [
+          "jurisdiction.scotland_evidence_taxonomy",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:legionella:shared:v1",
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "legionella",
+        "catalog_code": "legionella"
+      },
+      "updated_at": "2026-06-14T14:29:57.632939Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "HMO_FIRE_RISK|DEFAULT": {
+      "entry_id": "56ee8798-8ae2-4afb-98ff-ab0ef2beef7c",
+      "status": "published",
+      "scope_key": "DEFAULT",
+      "canonical_code": "HMO_FIRE_RISK",
+      "identity": {
+        "name": "HMO fire safety management evidence (log book, tests, compartmentation)",
+        "category": "FIRE",
+        "description": "HMO fire safety evidence / fire risk assessment",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "is_hmo",
+            "op": "true"
+          }
+        ]
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "fire_safety_england_guidance_hmo",
+          "label": "Fire safety responsibilities (England)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND"
+          ],
+          "url": "https://www.gov.uk/workplace-fire-safety-your-responsibilities",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_safety_scotland_guidance_hmo",
+          "label": "Fire safety guidance (Scotland)",
+          "kind": "official",
+          "jurisdictions": [
+            "SCOTLAND"
+          ],
+          "url": "https://www.gov.scot/policies/fire-and-rescue/fire-safety/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_risk_assessor_directory_hmo",
+          "label": "Find fire risk assessor",
+          "kind": "directory",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.google.com/search?q=HMO+fire+risk+assessment+near+me",
+          "is_active": true,
+          "priority": 20
+        }
+      ],
+      "why_it_matters_short": "HMOs must retain ongoing fire safety management records beyond a single FRA snapshot.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "HMO-linked fire evidence; NI not listed \u2014 do not assume NI HMO parity without workbook/legal confirmation.",
+        "needs_review_fields": [
+          "jurisdiction.northern_ireland_applicability",
+          "conditions.hmo_gate",
+          "why_it_matters_short"
+        ],
+        "import_source": "2026-04-09-workbook-baseline-v1",
+        "import_row_ref": "workbook:hmo_fire_pack:ew_s_ni_uncertain:v1",
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "hmo_fire_risk",
+        "catalog_code": "hmo_fire_risk"
+      },
+      "updated_at": "2026-06-14T14:29:57.648594Z",
+      "updated_by": {
+        "portal_user_id": "production_baseline_seed",
+        "email": "system@production-baseline-seed"
+      }
+    },
+    "SMOKE_HEAT_ALARMS|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "SMOKE_HEAT_ALARMS",
+      "identity": {
+        "name": "Smoke, Heat & CO Alarm Compliance",
+        "category": "FIRE",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": "Upload smoke, heat or CO alarm evidence",
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Confirms the property has appropriate alarm systems and evidence that they are installed, maintained, or checked as required.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "smoke_heat_alarms",
+        "catalog_code": "smoke_heat_alarms"
+      },
+      "updated_at": "2026-06-14T14:29:57.648106Z"
+    },
+    "PAT_TESTING|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "PAT_TESTING",
+      "identity": {
+        "name": "Portable appliance testing (PAT)",
+        "category": "ELECTRICAL",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "PAT records show portable electrical appliances provided with the let have been formally tested.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "pat_testing",
+        "catalog_code": "pat_testing"
+      },
+      "updated_at": "2026-06-14T14:29:57.648594Z"
+    },
+    "RIGHT_TO_RENT|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "RIGHT_TO_RENT",
+      "identity": {
+        "name": "Right to rent compliance",
+        "category": "REGULATORY",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "England landlords must retain evidence that adult occupiers had a lawful right to rent before move-in.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "right_to_rent",
+        "catalog_code": "right_to_rent"
+      },
+      "updated_at": "2026-06-14T14:29:57.648594Z"
+    },
+    "HOW_TO_RENT|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "HOW_TO_RENT",
+      "identity": {
+        "name": "How to rent guide (England)",
+        "category": "TENANCY",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Serving the current How to Rent booklet is part of England tenancy paperwork compliance at start.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "how_to_rent",
+        "catalog_code": "how_to_rent"
+      },
+      "updated_at": "2026-06-14T14:29:57.649605Z"
+    },
+    "TENANCY_AGREEMENT|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "TENANCY_AGREEMENT",
+      "identity": {
+        "name": "Tenancy agreement",
+        "category": "TENANCY",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "The written tenancy records the parties, rent, and terms that govern occupation of the let property.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "tenancy_agreement",
+        "catalog_code": "tenancy_agreement"
+      },
+      "updated_at": "2026-06-14T14:29:57.649605Z"
+    },
+    "TENANCY_DEPOSIT_PROTECTION|ENGLAND": {
+      "scope_key": "ENGLAND",
+      "canonical_code": "TENANCY_DEPOSIT_PROTECTION",
+      "identity": {
+        "name": "Tenancy deposit protection (England)",
+        "category": "TENANCY",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "deposit_taken",
+            "op": "true"
+          },
+          {
+            "field": "tenancy_active",
+            "op": "true"
+          }
+        ]
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": "Upload tenancy deposit protection evidence",
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "England landlords must protect eligible deposits in an authorised scheme and provide prescribed information to the tenant where a tenancy deposit is taken.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "tenancy_deposit_protection",
+        "catalog_code": "tenancy_deposit_protection"
+      },
+      "updated_at": "2026-06-14T14:29:57.649605Z"
+    },
+    "TENANCY_DEPOSIT_PROTECTION|WALES": {
+      "scope_key": "WALES",
+      "canonical_code": "TENANCY_DEPOSIT_PROTECTION",
+      "identity": {
+        "name": "Tenancy deposit protection (Wales)",
+        "category": "TENANCY",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "WALES"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "deposit_taken",
+            "op": "true"
+          },
+          {
+            "field": "tenancy_active",
+            "op": "true"
+          }
+        ]
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": "Upload tenancy deposit protection evidence",
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Wales landlords must protect eligible deposits in an authorised scheme and provide prescribed information to the contract-holder where a tenancy deposit is taken.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "tenancy_deposit_protection",
+        "catalog_code": "tenancy_deposit_protection"
+      },
+      "updated_at": "2026-06-14T14:29:57.649605Z"
+    },
+    "TENANCY_DEPOSIT_PROTECTION|SCOTLAND": {
+      "scope_key": "SCOTLAND",
+      "canonical_code": "TENANCY_DEPOSIT_PROTECTION",
+      "identity": {
+        "name": "Tenancy deposit protection (Scotland)",
+        "category": "TENANCY",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "SCOTLAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "deposit_taken",
+            "op": "true"
+          },
+          {
+            "field": "tenancy_active",
+            "op": "true"
+          }
+        ]
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": "Upload tenancy deposit protection evidence",
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Scotland landlords must protect eligible deposits in an approved scheme and provide prescribed information to the tenant where a tenancy deposit is taken.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "tenancy_deposit_protection",
+        "catalog_code": "tenancy_deposit_protection"
+      },
+      "updated_at": "2026-06-14T14:29:57.649605Z"
+    },
+    "TENANCY_DEPOSIT_PROTECTION|NORTHERN_IRELAND": {
+      "scope_key": "NORTHERN_IRELAND",
+      "canonical_code": "TENANCY_DEPOSIT_PROTECTION",
+      "identity": {
+        "name": "Tenancy deposit protection (Northern Ireland)",
+        "category": "TENANCY",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "deposit_taken",
+            "op": "true"
+          },
+          {
+            "field": "tenancy_active",
+            "op": "true"
+          }
+        ]
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": "Upload tenancy deposit protection evidence",
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Northern Ireland landlords must protect eligible deposits in an approved scheme and provide prescribed information to the tenant where a tenancy deposit is taken.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "tenancy_deposit_protection",
+        "catalog_code": "tenancy_deposit_protection"
+      },
+      "updated_at": "2026-06-14T14:29:57.649605Z"
+    },
+    "HMO_LICENSING|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "HMO_LICENSING",
+      "identity": {
+        "name": "HMO / selective / additional licensing (local authority)",
+        "category": "LICENSING",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "is_hmo",
+            "op": "true"
+          }
+        ]
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [],
+      "why_it_matters_short": "Where licensing applies, keep the licence and conditions of use evidence aligned to the local scheme.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "hmo_licensing",
+        "catalog_code": "hmo_licensing"
+      },
+      "updated_at": "2026-06-14T14:29:57.651713Z"
+    },
+    "FIRE_RISK_ASSESSMENT|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "FIRE_RISK_ASSESSMENT",
+      "identity": {
+        "name": "Fire risk assessment (FRA) \u2014 suitable & sufficient",
+        "category": "FIRE",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "ENGLAND",
+          "WALES",
+          "SCOTLAND",
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": [
+          {
+            "field": "is_hmo",
+            "op": "true"
+          }
+        ]
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "fire_safety_england_guidance",
+          "label": "Fire safety responsibilities (England)",
+          "kind": "official",
+          "jurisdictions": [
+            "ENGLAND"
+          ],
+          "url": "https://www.gov.uk/workplace-fire-safety-your-responsibilities",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_safety_scotland_guidance",
+          "label": "Fire safety guidance (Scotland)",
+          "kind": "official",
+          "jurisdictions": [
+            "SCOTLAND"
+          ],
+          "url": "https://www.gov.scot/policies/fire-and-rescue/fire-safety/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "fire_risk_assessor_directory",
+          "label": "Find fire risk assessor",
+          "kind": "directory",
+          "jurisdictions": [
+            "ENGLAND",
+            "SCOTLAND",
+            "WALES",
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.google.com/search?q=fire+risk+assessment+company+near+me",
+          "is_active": true,
+          "priority": 20
+        }
+      ],
+      "why_it_matters_short": "The FRA identifies fire hazards and measures; it is distinct from day-to-day alarm servicing records.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "fire_risk_assessment",
+        "catalog_code": "fire_risk_assessment"
+      },
+      "updated_at": "2026-06-14T14:29:57.651713Z"
+    },
+    "OCCUPATION_CONTRACT|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "OCCUPATION_CONTRACT",
+      "identity": {
+        "name": "Written occupation contract (Wales)",
+        "category": "TENANCY",
+        "description": "Occupation contract / tenancy documentation (Wales)",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "WALES"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "wales_renting_homes_guidance",
+          "label": "Occupation contract guidance (Wales)",
+          "kind": "official",
+          "jurisdictions": [
+            "WALES"
+          ],
+          "url": "https://www.gov.wales/renting-homes",
+          "is_active": true,
+          "priority": 10
+        }
+      ],
+      "why_it_matters_short": "Renting Homes (Wales) expects written occupation contracts with prescribed terms for regulated lets.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "occupation_contract",
+        "catalog_code": "occupation_contract"
+      },
+      "updated_at": "2026-06-14T14:29:57.651713Z"
+    },
+    "LANDLORD_REGISTRATION|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "LANDLORD_REGISTRATION",
+      "identity": {
+        "name": "Scottish landlord registration",
+        "category": "REGULATORY",
+        "description": "Landlord registration (Scotland)",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "SCOTLAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 1095,
+        "reminder_lead_days": 45,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "landlord_registration_scotland",
+          "label": "Register as landlord (Scotland)",
+          "kind": "official",
+          "jurisdictions": [
+            "SCOTLAND"
+          ],
+          "url": "https://www.landlordregistrationscotland.gov.uk/",
+          "is_active": true,
+          "priority": 10
+        },
+        {
+          "key": "landlord_registration_ni",
+          "label": "Register as landlord (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": [
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.nidirect.gov.uk/articles/landlord-registration-scheme",
+          "is_active": true,
+          "priority": 10
+        }
+      ],
+      "why_it_matters_short": "Scottish landlords must register and renew with the Scottish Landlord Register to let lawfully.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "landlord_registration",
+        "catalog_code": "landlord_registration"
+      },
+      "updated_at": "2026-06-14T14:29:57.651713Z"
+    },
+    "LANDLORD_REGISTRATION_NI|DEFAULT": {
+      "scope_key": "DEFAULT",
+      "canonical_code": "LANDLORD_REGISTRATION_NI",
+      "identity": {
+        "name": "Northern Ireland landlord registration",
+        "category": "REGULATORY",
+        "description": "",
+        "legal_reference": "",
+        "display_order": 0,
+        "tags": []
+      },
+      "classification": {
+        "requirement_type": "DOCUMENT",
+        "criticality": "HIGH",
+        "requires_document": true,
+        "requires_job": false,
+        "client_surface_visible": true,
+        "default_tracking_mode": null
+      },
+      "jurisdiction": {
+        "display_jurisdictions": [
+          "NORTHERN_IRELAND"
+        ],
+        "scoring_jurisdiction_note": null,
+        "effective_from": null,
+        "effective_to": null,
+        "is_active": true,
+        "deprecated": false
+      },
+      "conditions": {
+        "logic": "ALL",
+        "rules": []
+      },
+      "frequency": {
+        "frequency_days": 365,
+        "reminder_lead_days": 30,
+        "label": null,
+        "event_based": false,
+        "needs_review": []
+      },
+      "action_behaviour": {
+        "primary_action_mode": "upload_document",
+        "cta_label_override": null,
+        "completion_notes": null
+      },
+      "action_links": [
+        {
+          "key": "ni_landlord_registration",
+          "label": "Register as landlord (Northern Ireland)",
+          "kind": "official",
+          "jurisdictions": [
+            "NORTHERN_IRELAND"
+          ],
+          "url": "https://www.nidirect.gov.uk/articles/landlord-registration-scheme",
+          "is_active": true,
+          "priority": 10
+        }
+      ],
+      "why_it_matters_short": "NI landlords must register with the Department for Communities where the scheme applies to the let.",
+      "why_it_matters_long": "",
+      "why_it_matters_by_jurisdiction": {},
+      "why_it_matters_by_context": {},
+      "governance": {
+        "change_reason": "",
+        "internal_notes": "",
+        "legal_source_summary": "",
+        "needs_review_fields": [],
+        "import_source": null,
+        "import_row_ref": null,
+        "archived": false,
+        "materialization_excluded": false
+      },
+      "baseline_alignment": {
+        "engine_storage_type": "landlord_registration_ni",
+        "catalog_code": "landlord_registration_ni"
+      },
+      "updated_at": "2026-06-14T14:29:57.651713Z"
+    }
+  },
+  "last_activation_kind": "coverage_repair",
+  "last_published_by": {
+    "portal_user_id": "repair_published_registry_coverage",
+    "email": "system@local"
+  },
+  "last_queue_id": null,
+  "reverted_from_published_line_version": null,
+  "updated_at": "2026-06-14T14:29:57.651713Z",
+  "version": 2
+}

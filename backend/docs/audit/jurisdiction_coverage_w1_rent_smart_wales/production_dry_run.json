@@ -1,0 +1,14 @@
+{
+  "dry_run": true,
+  "previous_version": 2,
+  "previous_entry_count": 19,
+  "merged_entry_count": 20,
+  "action": "added",
+  "validation_errors": {},
+  "merged_key_preview": {
+    "canonical_code": "RENT_SMART_WALES_REGISTRATION",
+    "scope_key": "WALES",
+    "why_it_matters_short": "Rent Smart Wales registration helps demonstrate compliance with Welsh private rented sector registration and licensing o",
+    "primary_action_mode": "upload_document"
+  }
+}

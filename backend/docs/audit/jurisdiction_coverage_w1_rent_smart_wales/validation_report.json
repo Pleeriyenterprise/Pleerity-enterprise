@@ -1,0 +1,57 @@
+{
+  "registry": {
+    "version": 3,
+    "entry_count": 20,
+    "key_present": true,
+    "placeholder_count": 0,
+    "last_activation_kind": "jurisdiction_coverage_w1",
+    "why_it_matters_short": "Rent Smart Wales registration helps demonstrate compliance with Welsh private rented sector registration and licensing obligations."
+  },
+  "wales_property": {
+    "label": "wales_ops_reference",
+    "found": false
+  },
+  "england_property": {
+    "label": "england_pilot_control",
+    "found": true,
+    "jurisdiction": "England",
+    "tenancy_active": true,
+    "planner_includes_rent_smart_wales": false,
+    "applicable_keys": [
+      "EICR_CERT",
+      "EPC_CERT",
+      "GAS_SAFETY_CERT",
+      "TENANCY_AGREEMENT",
+      "HOW_TO_RENT",
+      "DEPOSIT_PRESCRIBED_INFO",
+      "RIGHT_TO_RENT"
+    ],
+    "materialised_row_count": 0,
+    "compliance_detail_ok": true,
+    "matrix_codes": [
+      "gas_safety",
+      "eicr",
+      "epc",
+      "legionella",
+      "tenancy_agreement",
+      "how_to_rent",
+      "smoke_heat_alarms",
+      "deposit_pi",
+      "right_to_rent"
+    ],
+    "kpis": {
+      "overdue": 0,
+      "expiring_30": 0,
+      "missing": 3,
+      "compliant": 6,
+      "status_valid": 0
+    }
+  },
+  "gates": {
+    "version_is_3": true,
+    "key_present": true,
+    "placeholder_zero": true,
+    "england_no_rent_smart_planner": true,
+    "england_compliance_detail_ok": true
+  }
+}

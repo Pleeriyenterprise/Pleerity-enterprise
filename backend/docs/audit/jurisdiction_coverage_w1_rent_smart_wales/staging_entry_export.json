@@ -1,0 +1,109 @@
+{
+  "exported_at": "2026-06-14T15:15:18.966260Z",
+  "staging_published_version": 24,
+  "registry_key": "RENT_SMART_WALES_REGISTRATION|WALES",
+  "entry": {
+    "entry_id": "b1e6e13b-96bd-49e7-ae56-fd9d4b0a5d90",
+    "status": "draft",
+    "scope_key": "WALES",
+    "canonical_code": "RENT_SMART_WALES_REGISTRATION",
+    "identity": {
+      "name": "Rent Smart Wales Registration",
+      "category": "REGULATORY",
+      "description": "Rent Smart Wales registration helps identify landlords and property management arrangements operating within the Welsh private rented sector.",
+      "legal_reference": "Welsh landlord registration and licensing obligations applicable to qualifying private rented sector activities in Wales.",
+      "display_order": 0,
+      "tags": []
+    },
+    "classification": {
+      "requirement_type": "DOCUMENT",
+      "criticality": "HIGH",
+      "requires_document": true,
+      "requires_job": false,
+      "client_surface_visible": true,
+      "default_tracking_mode": null
+    },
+    "jurisdiction": {
+      "display_jurisdictions": [
+        "WALES"
+      ],
+      "scoring_jurisdiction_note": null,
+      "effective_from": null,
+      "effective_to": null,
+      "is_active": true,
+      "deprecated": false
+    },
+    "conditions": {
+      "logic": "ALL",
+      "rules": [
+        {
+          "field": "tenancy_active",
+          "op": "==",
+          "value": true
+        }
+      ]
+    },
+    "frequency": {
+      "frequency_days": 1825,
+      "reminder_lead_days": 120,
+      "label": null,
+      "event_based": false,
+      "needs_review": []
+    },
+    "action_behaviour": {
+      "primary_action_mode": "upload_document",
+      "cta_label_override": "Upload Rent Smart Wales registration evidence",
+      "completion_notes": null
+    },
+    "action_links": [
+      {
+        "key": "rent_smart_wales_registration",
+        "label": "Rent Smart Wales registration guidance",
+        "url": "https://rentsmart.gov.wales/en/landlord/",
+        "kind": "official",
+        "jurisdictions": [
+          "WALES"
+        ],
+        "priority": 10,
+        "is_active": true
+      },
+      {
+        "key": "rent_smart_wales_licensing",
+        "label": "Rent Smart Wales licensing information",
+        "url": "https://rentsmart.gov.wales/en/agent-and-landlord/",
+        "kind": "official",
+        "jurisdictions": [
+          "WALES"
+        ],
+        "priority": 20,
+        "is_active": true
+      }
+    ],
+    "why_it_matters_short": "Rent Smart Wales registration helps demonstrate compliance with Welsh private rented sector registration and licensing obligations.",
+    "why_it_matters_long": "Landlords operating private rented properties in Wales may need to register with Rent Smart Wales. Additional licensing obligations may also apply where landlords or agents carry out property management activities. Maintaining valid registration and licensing records helps support regulatory compliance and lawful property management operations.",
+    "why_it_matters_by_jurisdiction": {
+      "WALES": {
+        "short": "Welsh landlords may need to register with Rent Smart Wales.",
+        "long": "Rent Smart Wales registration and licensing schemes help regulate landlord and property management activity within the Welsh private rented sector."
+      }
+    },
+    "why_it_matters_by_context": {},
+    "governance": {
+      "change_reason": "Published Wales-specific Rent Smart Wales registration requirement with tenancy-linked applicability and jurisdiction-scoped regulatory guidance.",
+      "internal_notes": "Requirement intentionally scoped to Welsh landlord registration obligations. Licensing obligations may require separate operational handling.",
+      "legal_source_summary": "Welsh private rented sector regulation may require landlord registration and, in some cases, licensing through Rent Smart Wales.",
+      "needs_review_fields": [],
+      "import_source": null,
+      "import_row_ref": null
+    },
+    "baseline_alignment": {
+      "engine_storage_type": "rent_smart_wales_registration",
+      "catalog_code": "rent_smart_wales_registration"
+    },
+    "updated_at": "2026-04-24T14:38:28.177519Z",
+    "updated_by": {
+      "portal_user_id": "622aee43-592a-4eb2-b368-be963aaba8f9",
+      "email": "info@pleerityenterprise.co.uk"
+    }
+  }
+}
