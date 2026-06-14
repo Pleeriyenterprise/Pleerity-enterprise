@@ -36,6 +36,56 @@ TRUTH_DISTINCTIONS = {
     "acknowledged_not_resolved": "Acknowledgement does not mean the operational issue is resolved.",
 }
 
+EA_VERIFIED_STATES = frozenset({"VERIFIED_CURRENT", "EA_VERIFIED_CURRENT"})
+EXPIRY_SEMANTICS_STATE_REASON = "document_upload_missing_required_expiry_semantics"
+
+
+def _ea_blob(req: Dict[str, Any]) -> Dict[str, Any]:
+    ea = req.get("evidence_authority")
+    return ea if isinstance(ea, dict) else {}
+
+
+def _ea_state_upper(req: Dict[str, Any]) -> str:
+    return str(_ea_blob(req).get("state") or "").upper()
+
+
+def _requirement_authority_verified(req: Dict[str, Any]) -> bool:
+    if _ea_state_upper(req) in EA_VERIFIED_STATES:
+        return True
+    if str(req.get("truth_presentation_stage") or "").strip().lower() == "verified":
+        return True
+    if str(req.get("client_lifecycle_state") or "").upper() == "VERIFIED":
+        return True
+    return False
+
+
+def _expiry_semantics_pending_only(req: Dict[str, Any]) -> bool:
+    ea = _ea_blob(req)
+    if str(ea.get("state_reason") or "") != EXPIRY_SEMANTICS_STATE_REASON:
+        return False
+    if req.get("queue_backed_review") is True:
+        return False
+    if str(req.get("review_owner") or "") in ("platform_admin", "platform_admin_escalation"):
+        return False
+    return _ea_state_upper(req) in ("UPLOADED_UNCONFIRMED", "EA_UPLOADED_UNCONFIRMED", "UPLOADED")
+
+
+def _verified_view_primary_action(req: Dict[str, Any]) -> Dict[str, Any]:
+    ea = _ea_blob(req)
+    doc_id = ea.get("effective_verified_document_id") or req.get("document_id") or req.get("evidence_doc_id")
+    pid = str(req.get("property_id") or "").strip()
+    rid = str(req.get("requirement_id") or "").strip()
+    url = None
+    if pid and rid:
+        url = f"/documents?property_id={pid}&requirement_id={rid}"
+    return {
+        "key": "view_verified_evidence",
+        "label": "View evidence",
+        "url": url,
+        "hint": "Evidence is verified for this obligation.",
+        "source": "operational_cognition_service.verified_authority",
+    }
+
 
 def _primary_from_next_actions(next_actions: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if not next_actions:
@@ -126,15 +176,26 @@ def _truth_flags_for_job(job_status: str, raw_status: str, contractor_id: Option
 
 
 def _truth_flags_for_requirement(req: Dict[str, Any]) -> Dict[str, bool]:
+    if _requirement_authority_verified(req):
+        return {
+            "uploaded_not_verified": False,
+            "submitted_not_compliant": False,
+            "assigned_not_fixed": False,
+            "completed_not_compliant": False,
+            "acknowledged_not_resolved": False,
+        }
     lifecycle = (req.get("client_lifecycle_state") or "").upper()
-    ea = req.get("evidence_authority") if isinstance(req.get("evidence_authority"), dict) else {}
+    ea = _ea_blob(req)
     ea_state = (ea.get("state") or "").upper()
     comp = req.get("evidence_completeness") if isinstance(req.get("evidence_completeness"), dict) else {}
     missing = int(comp.get("required_missing_count") or 0)
+    expiry_only = _expiry_semantics_pending_only(req)
     return {
-        "uploaded_not_verified": lifecycle in ("PENDING_REVIEW", "SATISFIED_UNVERIFIED", "ACTION_REQUIRED")
-        or ea_state in ("EA_UPLOADED_UNCONFIRMED", "UPLOADED"),
-        "submitted_not_compliant": missing > 0 or lifecycle == "ACTION_REQUIRED",
+        "uploaded_not_verified": not expiry_only and (
+            lifecycle in ("PENDING_REVIEW", "SATISFIED_UNVERIFIED", "ACTION_REQUIRED")
+            or ea_state in ("EA_UPLOADED_UNCONFIRMED", "UPLOADED")
+        ),
+        "submitted_not_compliant": missing > 0 or (lifecycle == "ACTION_REQUIRED" and not expiry_only),
         "assigned_not_fixed": False,
         "completed_not_compliant": False,
         "acknowledged_not_resolved": False,
@@ -420,6 +481,14 @@ def _has_persisted_submission(req: Dict[str, Any]) -> bool:
 
 
 def _workflow_stage(req: Dict[str, Any]) -> str:
+    lifecycle = (req.get("client_lifecycle_state") or "").upper()
+    ea = _ea_blob(req)
+    ea_state = (ea.get("state") or "").upper()
+    if lifecycle == "VERIFIED" or ea_state in EA_VERIFIED_STATES:
+        return "verified"
+    if str(req.get("truth_presentation_stage") or "").strip().lower() == "verified":
+        return "verified"
+
     truth_stage = str(req.get("truth_presentation_stage") or "").strip()
     if truth_stage:
         stage_map = {
@@ -432,6 +501,7 @@ def _workflow_stage(req: Dict[str, Any]) -> str:
             "assessment_recorded": "recorded_on_file",
             "evidence_recorded": "recorded_on_file",
             "supporting_upload_only": "supporting_uploaded",
+            "expiry_confirmation_required": "expiry_confirmation_required",
             "action_required": "no_evidence",
             "collect_evidence": "no_evidence",
         }
@@ -439,14 +509,9 @@ def _workflow_stage(req: Dict[str, Any]) -> str:
         if mapped:
             return mapped
 
-    lifecycle = (req.get("client_lifecycle_state") or "").upper()
-    ea = req.get("evidence_authority") if isinstance(req.get("evidence_authority"), dict) else {}
-    ea_state = (ea.get("state") or "").upper()
     comp = req.get("evidence_completeness") if isinstance(req.get("evidence_completeness"), dict) else {}
     missing = int(comp.get("required_missing_count") or 0)
 
-    if lifecycle == "VERIFIED" or ea_state in ("VERIFIED_CURRENT", "EA_VERIFIED_CURRENT"):
-        return "verified"
     if ea_state in ("REJECTED", "EA_REJECTED"):
         return "rejected"
     if ea_state in ("MISMATCH_FLAGGED", "EA_MISMATCH_FLAGGED"):
@@ -787,6 +852,35 @@ def build_envelope_for_requirement(req: Dict[str, Any]) -> Dict[str, Any]:
     if guidance.get("uploaded_not_submitted"):
         truth = {**truth, "uploaded_not_verified": True}
 
+    if _requirement_authority_verified(req):
+        truth = {
+            "uploaded_not_verified": False,
+            "submitted_not_compliant": False,
+            "assigned_not_fixed": False,
+            "completed_not_compliant": False,
+            "acknowledged_not_resolved": False,
+        }
+        primary = _verified_view_primary_action(req)
+        blockers = [b for b in blockers if b.get("code") not in ("EVIDENCE_REJECTED", "AWAITING_REVIEW")]
+        user_safe_summary = "No further evidence required"
+    elif _expiry_semantics_pending_only(req):
+        truth = {
+            **truth,
+            "uploaded_not_verified": False,
+            "submitted_not_compliant": False,
+        }
+        expiry_label = str(req.get("truth_presentation_label") or "Add expiry information").strip()
+        expiry_hint = str(req.get("truth_presentation_subline") or "").strip()
+        primary = {
+            "key": "add_expiry_information",
+            "label": expiry_label if expiry_label.lower() != "supporting evidence uploaded" else "Add expiry information",
+            "hint": expiry_hint or "Add expiry date information for this certificate.",
+            "source": "operational_cognition_service.expiry_semantics",
+        }
+        user_safe_summary = primary.get("label")
+    else:
+        user_safe_summary = guidance.get("recommended_next_step") or (primary.get("label") if primary else lifecycle)
+
     envelope = {
         "cognition_version": COGNITION_VERSION,
         "entity_type": "requirement",
@@ -812,7 +906,7 @@ def build_envelope_for_requirement(req: Dict[str, Any]) -> Dict[str, Any]:
         "stale_state": {"active": stale, "label": "Stale review" if stale else None},
         "operational_truth_flags": truth,
         "recommended_priority": "urgent" if (req.get("lifecycle_tier") or "").lower() == "overdue" else "normal",
-        "user_safe_summary": guidance.get("recommended_next_step") or (primary.get("label") if primary else lifecycle),
+        "user_safe_summary": user_safe_summary,
         "requirement_guidance_v1": guidance,
     }
     envelope["list_guidance"] = build_list_guidance(envelope)

@@ -143,17 +143,34 @@ describe('requirementLifecyclePresentation', () => {
       expect(out.primary_action_label).toBe('Review pending');
     });
 
-    it('resolvePlatformReviewPendingCtaPresentation returns Awaiting platform review for linked doc', () => {
+    it('resolvePlatformReviewPendingCtaPresentation returns Awaiting platform review for linked doc with queue', () => {
       const row = rowWithLifecycle('PENDING_REVIEW', {
         document_id: 'doc-1',
         requirement_attention_reason: 'platform_verification_pending',
         missing_required_document: false,
+        queue_backed_review: true,
+        review_owner: 'platform_admin',
       });
       const out = resolvePlatformReviewPendingCtaPresentation(row, {
         primary_action_label: 'Upload valid gas safety certificate',
         primary_route: '/documents',
       });
       expect(out?.primary_action_label).toBe('Awaiting platform review');
+    });
+
+    it('resolvePlatformReviewPendingCtaPresentation skips orphan platform_verification without queue', () => {
+      const row = rowWithLifecycle('ACTION_REQUIRED', {
+        document_id: 'doc-1',
+        requirement_attention_reason: 'platform_verification_pending',
+        truth_presentation_stage: 'platform_verification_pending',
+        missing_required_document: false,
+        queue_backed_review: false,
+      });
+      const out = resolvePlatformReviewPendingCtaPresentation(row, {
+        primary_action_label: 'Upload valid EPC document',
+        primary_route: '/documents',
+      });
+      expect(out).toBeNull();
     });
   });
 

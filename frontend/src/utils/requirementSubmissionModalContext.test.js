@@ -42,6 +42,21 @@ describe('requirementSubmissionModalContext', () => {
       expect(out.context).toBe(MODAL_CONTEXT.VIEW_VERIFIED_EVIDENCE);
     });
 
+    it('returns view_verified_evidence when evidence authority is VERIFIED_CURRENT', () => {
+      const merged = row('ACTION_REQUIRED', {
+        evidence_authority: { state: 'VERIFIED_CURRENT' },
+        truth_presentation_stage: 'verified',
+        primary_evidence_record_id: 'cer_1',
+      });
+      const out = resolveRequirementSubmissionModalContext({
+        merged,
+        hasSubmission: true,
+        initialFocusSubmission: true,
+        resolved: { primary_action_label: 'Add compliance evidence' },
+      });
+      expect(out.context).toBe(MODAL_CONTEXT.VIEW_VERIFIED_EVIDENCE);
+    });
+
     it('returns satisfy_requirement when no submission and action required', () => {
       const merged = row('ACTION_REQUIRED');
       const out = resolveRequirementSubmissionModalContext({

@@ -27,6 +27,9 @@ export function resolvePlatformReviewPendingCtaPresentation(requirement, cta) {
   const truthStage = String(requirement.truth_presentation_stage || '').toLowerCase();
   const reviewOwner = String(requirement.review_owner || '');
   const resolution = String(requirement.requirement_resolution_status || '').toUpperCase();
+  const queueBacked = requirement.queue_backed_review === true;
+
+  if (truthStage === 'expiry_confirmation_required') return null;
 
   const isPlatformReview =
     attentionReason === 'platform_verification_pending' ||
@@ -38,6 +41,13 @@ export function resolvePlatformReviewPendingCtaPresentation(requirement, cta) {
     resolution === 'AWAITING_REVIEW';
 
   if (!isPlatformReview) return null;
+  if (
+    (truthStage === 'platform_verification_pending' || attentionReason === 'platform_verification_pending') &&
+    !queueBacked &&
+    reviewOwner !== 'platform_admin_escalation'
+  ) {
+    return null;
+  }
 
   const hasLinkedDoc = requirementHasLinkedDocument(requirement);
   const missingDoc = requirement.missing_required_document;
@@ -75,12 +85,28 @@ export function primaryLabelSuggestsInitialObligation(label) {
  */
 export function applyLifecycleAwareCtaPresentation(requirement, cta) {
   if (!cta || typeof cta !== 'object') return cta || {};
+  const ea = requirement?.evidence_authority && typeof requirement.evidence_authority === 'object' ? requirement.evidence_authority : null;
+  const eaState = String(ea?.state || '').toUpperCase();
+  const truthStage = String(requirement?.truth_presentation_stage || '').trim().toLowerCase();
+  if (
+    eaState === 'VERIFIED_CURRENT' ||
+    eaState === 'EA_VERIFIED_CURRENT' ||
+    truthStage === 'verified'
+  ) {
+    const baseLabel = String(cta.primary_action_label || '');
+    if (primaryLabelSuggestsInitialObligation(baseLabel)) {
+      return { ...cta, primary_action_label: 'View evidence' };
+    }
+  }
+  if (truthStage === 'expiry_confirmation_required') {
+    const label = String(requirement?.truth_presentation_label || '').trim() || 'Add expiry information';
+    return { ...cta, primary_action_label: label };
+  }
   const rtrCta = resolveRightToRentMixedEvidenceCtaPresentation(requirement, cta);
   if (rtrCta) return rtrCta;
   const platformReviewCta = resolvePlatformReviewPendingCtaPresentation(requirement, cta);
   if (platformReviewCta) return platformReviewCta;
   const { state } = resolveClientRequirementLifecycleForPresentation(requirement);
-  const truthStage = String(requirement?.truth_presentation_stage || '').trim();
   if (state === 'ACTION_REQUIRED' || state === 'NOT_APPLICABLE') {
     return cta;
   }

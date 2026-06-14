@@ -83,7 +83,8 @@ def test_requirement_envelope_false_progression():
     assert env["escalation_state"]["active"] is True
     guidance = env.get("requirement_guidance_v1") or {}
     assert guidance.get("guidance_version") == GUIDANCE_VERSION
-    assert guidance.get("submitted_not_verified") is True
+    assert guidance.get("submitted_not_verified") is False
+    assert env["operational_truth_flags"]["uploaded_not_verified"] is True
     assert isinstance(guidance.get("progression_steps"), list)
 
 

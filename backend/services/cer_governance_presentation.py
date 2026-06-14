@@ -295,6 +295,14 @@ def derive_truth_presentation(
         stage = "verified"
         label = "Verified"
         subline = "Requirement satisfied."
+    elif (
+        ea_state in ("UPLOADED_UNCONFIRMED", "EA_UPLOADED_UNCONFIRMED")
+        and str(ea.get("state_reason") or "") == "document_upload_missing_required_expiry_semantics"
+    ):
+        stage = "expiry_confirmation_required"
+        label = "Expiry date needed"
+        subline = "Add expiry date information so this certificate can count as fully valid."
+        stale_owner = "landlord"
     elif platform_pending and family == GF_PLATFORM_VER:
         review_owner = "platform_admin"
         stale_owner = "platform_admin"
@@ -391,6 +399,12 @@ def cognition_next_step_for_requirement(requirement: Dict[str, Any]) -> Tuple[st
 
     if stage == "verified":
         return "No further evidence required", "Evidence is verified for this obligation.", []
+    if stage == "expiry_confirmation_required":
+        return (
+            "Add expiry information",
+            subline or "Add expiry date information so this certificate can count as fully valid.",
+            ["Add expiry date on the document or requirement"],
+        )
     if stage == "platform_verification_pending":
         return (
             "Platform verification in progress",

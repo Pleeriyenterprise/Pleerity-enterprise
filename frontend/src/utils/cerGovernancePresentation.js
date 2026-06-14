@@ -29,6 +29,7 @@ export function mapTruthStageToLifecycleState(stage, queueBacked) {
     return 'SATISFIED_UNVERIFIED';
   }
   if (s === 'supporting_upload_only') return 'ACTION_REQUIRED';
+  if (s === 'expiry_confirmation_required') return 'ACTION_REQUIRED';
   return 'ACTION_REQUIRED';
 }
 

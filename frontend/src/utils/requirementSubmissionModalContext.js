@@ -23,10 +23,23 @@ export const MODAL_CONTEXT = {
 /** @typedef {'update_submission'|'add_supporting_evidence'|'view_documents'|'view_evidence'|'satisfy'|'close'} ModalFooterActionKey */
 
 /**
+ * @param {Record<string, unknown>|null|undefined} row
+ */
+function hasVerifiedEvidenceAuthority(row) {
+  if (!row || typeof row !== 'object') return false;
+  const ea = row.evidence_authority && typeof row.evidence_authority === 'object' ? row.evidence_authority : null;
+  const eaState = String(ea?.state || '').toUpperCase();
+  if (eaState === 'VERIFIED_CURRENT' || eaState === 'EA_VERIFIED_CURRENT') return true;
+  if (String(row.truth_presentation_stage || '').trim().toLowerCase() === 'verified') return true;
+  return false;
+}
+
+/**
  * @param {Record<string, unknown>|null|undefined} merged
  * @param {Record<string, unknown>|null|undefined} resolved
  */
 function isViewVerifiedEvidenceIntent(merged, resolved) {
+  if (hasVerifiedEvidenceAuthority(merged)) return true;
   const lifecycle = resolveClientRequirementLifecycleForPresentation(merged);
   if (lifecycle?.state === 'VERIFIED') return true;
   const label = String(resolved?.primary_action_label || '').trim();

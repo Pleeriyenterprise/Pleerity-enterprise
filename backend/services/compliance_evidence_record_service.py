@@ -1272,10 +1272,11 @@ def non_document_record_satisfies_policy(
     if mode == EVIDENCE_MODE_DOCUMENT_UPLOAD:
         return False
     if vs == VERIFICATION_PENDING:
-        from services.cer_governance_presentation import GF_SELF, resolve_governance_meta
+        from services.cer_governance_presentation import GF_PLATFORM_OPT, GF_SELF, resolve_governance_meta
 
         meta = resolve_governance_meta(requirement)
-        if str(meta.get("governance_family") or "") != GF_SELF:
+        family = str(meta.get("governance_family") or "")
+        if family not in (GF_SELF, GF_PLATFORM_OPT):
             return False
         if mode != EVIDENCE_MODE_STRUCTURED_DECLARATION:
             return False
@@ -1613,15 +1614,29 @@ async def upsert_document_upload_evidence_for_linked_document(
     if not requirement:
         return None
     pid = str(property_id or requirement.get("property_id") or "").strip()
+    now = datetime.now(timezone.utc).isoformat()
+    doc_row = await db.documents.find_one(
+        {"document_id": doc_id, "client_id": cid},
+        {"_id": 0, "status": 1, "evidence_review_state": 1, "verified_at": 1},
+    )
+    verification_status = VERIFICATION_PENDING
+    verified_at: Optional[str] = None
+    verified_by: Optional[str] = None
+    if doc_row:
+        doc_st = str(doc_row.get("status") or "").upper()
+        review_st = str(doc_row.get("evidence_review_state") or "").upper()
+        if doc_st == "VERIFIED" or review_st in ("VERIFIED", "ACCEPTED_UNVERIFIED"):
+            verification_status = VERIFICATION_VERIFIED
+            verified_at = str(doc_row.get("verified_at") or now)
+            verified_by = str(actor_user_id or "").strip() or None
     payload: Dict[str, Any] = {"document_id": doc_id, "source": "linked_document_upload"}
     if filename:
         payload["filename"] = str(filename)
     confidence = assign_confidence_for_new_record(
         evidence_mode=EVIDENCE_MODE_DOCUMENT_UPLOAD,
-        verification_status=VERIFICATION_PENDING,
+        verification_status=verification_status,
         payload=payload,
     )
-    now = datetime.now(timezone.utc).isoformat()
     eid = f"cer_{uuid.uuid4().hex}"
     rec = {
         "evidence_record_id": eid,
@@ -1631,9 +1646,9 @@ async def upsert_document_upload_evidence_for_linked_document(
         "evidence_mode": EVIDENCE_MODE_DOCUMENT_UPLOAD,
         "created_at": now,
         "created_by_user_id": str(actor_user_id or ""),
-        "verification_status": VERIFICATION_PENDING,
-        "verified_by_user_id": None,
-        "verified_at": None,
+        "verification_status": verification_status,
+        "verified_by_user_id": verified_by,
+        "verified_at": verified_at,
         "evidence_confidence_level": confidence,
         "evidence_payload": payload,
         "linked_document_ids": [doc_id],
