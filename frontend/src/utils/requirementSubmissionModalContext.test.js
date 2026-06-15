@@ -84,7 +84,7 @@ describe('requirementSubmissionModalContext', () => {
   });
 
   describe('resolveModalHeroPresentation', () => {
-    it('shows submission recorded hero for view_submission', () => {
+    it('shows submission recorded hero for view_submission without duplicate hero CTA', () => {
       const hero = resolveModalHeroPresentation({
         context: MODAL_CONTEXT.VIEW_SUBMISSION,
         lifecycle: { state: 'SATISFIED_UNVERIFIED' },
@@ -94,6 +94,7 @@ describe('requirementSubmissionModalContext', () => {
       expect(hero.useServerHero).toBe(false);
       expect(hero.headline).toBe('Submission recorded');
       expect(hero.primaryLabel).toBe('Update submission');
+      expect(hero.showHeroPrimary).toBe(false);
       expect(hero.subline).toContain('on file');
     });
 

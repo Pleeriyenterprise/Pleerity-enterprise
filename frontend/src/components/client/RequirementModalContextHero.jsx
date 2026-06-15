@@ -14,6 +14,7 @@ export default function RequirementModalContextHero({
   warningMessage,
   onPrimaryClick,
   primaryDisabled = false,
+  showHeroPrimary = true,
 }) {
   if (!headline) return null;
 
@@ -42,7 +43,7 @@ export default function RequirementModalContextHero({
           </div>
         ) : null}
 
-        {onPrimaryClick && primaryLabel ? (
+        {onPrimaryClick && primaryLabel && showHeroPrimary !== false ? (
           <Button
             type="button"
             className="hidden sm:inline-flex bg-electric-teal hover:bg-electric-teal/90"

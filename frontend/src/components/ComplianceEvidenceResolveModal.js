@@ -156,6 +156,20 @@ export default function ComplianceEvidenceResolveModal({
     if (ctx.checklist_answers_prefill && typeof ctx.checklist_answers_prefill === 'object') {
       setInspAnswers(ctx.checklist_answers_prefill);
     }
+    if (ctx.inspection_date) setInspDate(dateInputValueFromStored(ctx.inspection_date));
+    if (ctx.responsible_person) setInspPerson(String(ctx.responsible_person));
+    if (ctx.optional_notes) setInspNotes(String(ctx.optional_notes));
+    const contractor = ctx.contractor_confirmation_prefill;
+    if (contractor && typeof contractor === 'object') {
+      if (contractor.contractor_name) setCName(String(contractor.contractor_name));
+      if (contractor.company_name) setCCompany(String(contractor.company_name));
+      if (contractor.contractor_email) setCEmail(String(contractor.contractor_email));
+      if (contractor.contractor_phone) setCPhone(String(contractor.contractor_phone));
+      if (contractor.trade_type) setCTradeType(String(contractor.trade_type));
+      if (contractor.accreditation_number) setCAccreditation(String(contractor.accreditation_number));
+      if (contractor.completion_date) setCDate(dateInputValueFromStored(contractor.completion_date));
+      if (contractor.work_summary) setCSummary(String(contractor.work_summary));
+    }
   }, [open, loading, info]);
 
   const guidance = useMemo(

@@ -8,9 +8,9 @@ import { isViewExistingSubmissionCta } from './complianceEvidenceSubmissionView'
 import { applyLifecycleAwareCtaPresentation } from './requirementLifecyclePresentation';
 import {
   guidedMixedEvidenceInitialMode,
-  shouldPreferGuidedEvidenceOverIntelView,
 } from './rightToRentTrustPresentation';
 import { resolveSettledEvidenceNavigationTarget } from './documentEvidenceAuthority';
+import { resolveAuthoritativeEvidenceViewPath } from './authoritativeEvidenceView';
 
 export const GUIDED_CTA_UNAVAILABLE_TITLE =
   'This obligation is configured for guided resolution but required property or requirement context is missing. Use supporting links or contact support if this persists.';
@@ -90,8 +90,7 @@ export function executeRequirementPrimaryCta(ctx) {
   if (ta.primary_action_handler === 'guided_evidence') {
     if (isViewExistingSubmissionCta(ta) && openRequirementIntel && requirement) {
       if (
-        (shouldPreferGuidedEvidenceOverIntelView(requirement, ta) ||
-          registrationResolvePrefersGuided(requirement, guidedInitialOverride)) &&
+        registrationResolvePrefersGuided(requirement, guidedInitialOverride) &&
         openGuidedEvidence &&
         effectivePid &&
         rid
@@ -131,8 +130,13 @@ export function executeRequirementPrimaryCta(ctx) {
     return { handled: true, ta };
   }
   if (ta.primary_route && navigate) {
+    const authPath = resolveAuthoritativeEvidenceViewPath(
+      requirement,
+      null,
+      effectivePid || pagePropertyId,
+    );
     const settledTarget = resolveSettledEvidenceNavigationTarget(requirement, ta, effectivePid || pagePropertyId);
-    navigate(settledTarget || ta.primary_route);
+    navigate(authPath || settledTarget || ta.primary_route);
     return { handled: true, ta };
   }
   return { handled: false, ta };

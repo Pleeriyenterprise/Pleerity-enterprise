@@ -71,6 +71,12 @@ def test_requirement_envelope_false_progression():
     req = {
         "client_lifecycle_state": "PENDING_REVIEW",
         "lifecycle_tier": "overdue",
+        "document_id": "doc_pending",
+        "evidence_authority": {
+            "state": "UPLOADED_UNCONFIRMED",
+            "state_reason": "document_upload_pending_verification",
+            "effective_verified_document_id": "doc_pending",
+        },
         "evidence_completeness": {"required_missing_count": 2},
         "take_action": {
             "primary": {"intent": "upload", "label": "Upload evidence", "route": "/documents?x=1"},

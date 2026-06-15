@@ -70,14 +70,60 @@ def _expiry_semantics_pending_only(req: Dict[str, Any]) -> bool:
     return _ea_state_upper(req) in ("UPLOADED_UNCONFIRMED", "EA_UPLOADED_UNCONFIRMED", "UPLOADED")
 
 
+def _has_upload_or_linked_document(req: Dict[str, Any]) -> bool:
+    """True when an uploaded or linked document is part of the evidence picture."""
+    ea = _ea_blob(req)
+    if str(ea.get("effective_verified_document_id") or req.get("document_id") or req.get("evidence_doc_id") or "").strip():
+        return True
+    reason = str(ea.get("state_reason") or "").lower()
+    if any(tok in reason for tok in ("document_upload", "document_linked", "linked_document")):
+        return True
+    ea_state = str(ea.get("state") or "").upper()
+    if ea_state in ("UPLOADED", "EA_UPLOADED_UNCONFIRMED", "PENDING_ADMIN_REVIEW", "EA_PENDING_ADMIN_REVIEW"):
+        if any(tok in reason for tok in ("guided_declaration", "non_document", "declaration_not")):
+            return False
+        return True
+    return False
+
+
+def _upload_verification_attention_required(req: Dict[str, Any]) -> bool:
+    """Upload-oriented verification warning — not for structured-only declarations."""
+    if _requirement_authority_verified(req):
+        return False
+    if not _has_upload_or_linked_document(req):
+        return False
+    lifecycle = (req.get("client_lifecycle_state") or "").upper()
+    ea = _ea_blob(req)
+    ea_state = (ea.get("state") or "").upper()
+    if lifecycle == "PENDING_REVIEW" and _has_upload_or_linked_document(req):
+        return True
+    if ea_state in ("EA_UPLOADED_UNCONFIRMED", "UPLOADED"):
+        reason = str(ea.get("state_reason") or "").lower()
+        if any(tok in reason for tok in ("guided_declaration", "non_document", "declaration_not")):
+            return False
+        return True
+    return False
+
+
+def _intel_submission_view_url(req: Dict[str, Any]) -> Optional[str]:
+    pid = str(req.get("property_id") or "").strip()
+    rid = str(req.get("requirement_id") or "").strip()
+    if not pid or not rid:
+        return None
+    return f"/properties/{pid}?tab=evidence&requirement_id={rid}&open=intel&focus=submission"
+
+
 def _verified_view_primary_action(req: Dict[str, Any]) -> Dict[str, Any]:
     ea = _ea_blob(req)
     doc_id = ea.get("effective_verified_document_id") or req.get("document_id") or req.get("evidence_doc_id")
     pid = str(req.get("property_id") or "").strip()
     rid = str(req.get("requirement_id") or "").strip()
+    cer_id = str(ea.get("primary_evidence_record_id") or req.get("primary_evidence_record_id") or "").strip()
     url = None
-    if pid and rid:
+    if doc_id and pid and rid:
         url = f"/documents?property_id={pid}&requirement_id={rid}"
+    elif pid and rid and (cer_id or not doc_id):
+        url = _intel_submission_view_url(req)
     return {
         "key": "view_verified_evidence",
         "label": "View evidence",
@@ -191,10 +237,7 @@ def _truth_flags_for_requirement(req: Dict[str, Any]) -> Dict[str, bool]:
     missing = int(comp.get("required_missing_count") or 0)
     expiry_only = _expiry_semantics_pending_only(req)
     return {
-        "uploaded_not_verified": not expiry_only and (
-            lifecycle in ("PENDING_REVIEW", "SATISFIED_UNVERIFIED", "ACTION_REQUIRED")
-            or ea_state in ("EA_UPLOADED_UNCONFIRMED", "UPLOADED")
-        ),
+        "uploaded_not_verified": not expiry_only and _upload_verification_attention_required(req),
         "submitted_not_compliant": missing > 0 or (lifecycle == "ACTION_REQUIRED" and not expiry_only),
         "assigned_not_fixed": False,
         "completed_not_compliant": False,

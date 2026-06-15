@@ -260,6 +260,16 @@ def build_reopen_prefill_from_record(record: Dict[str, Any]) -> Dict[str, Any]:
     """Extract structured pre-fill payload from an existing CER for modal reopen."""
     if not isinstance(record, dict):
         return {}
+
+    def _structured_field_entry(val: Any) -> Dict[str, Any]:
+        if isinstance(val, dict):
+            return {
+                "answer": val.get("answer"),
+                "notes": val.get("notes"),
+                "observation": val.get("observation"),
+            }
+        return {"answer": val, "notes": None, "observation": None}
+
     mode = str(record.get("evidence_mode") or "").strip().upper()
     payload = record.get("evidence_payload") if isinstance(record.get("evidence_payload"), dict) else {}
     out: Dict[str, Any] = {
@@ -271,13 +281,7 @@ def build_reopen_prefill_from_record(record: Dict[str, Any]) -> Dict[str, Any]:
         fields = payload.get("structured_fields") if isinstance(payload.get("structured_fields"), dict) else {}
         prefill: Dict[str, Any] = {}
         for key, val in fields.items():
-            if not isinstance(val, dict):
-                continue
-            prefill[key] = {
-                "answer": val.get("answer"),
-                "notes": val.get("notes"),
-                "observation": val.get("observation"),
-            }
+            prefill[key] = _structured_field_entry(val)
         out["structured_fields_prefill"] = prefill
     elif mode == "INSPECTION_CHECKLIST":
         answers = payload.get("checklist_answers") if isinstance(payload.get("checklist_answers"), dict) else {}
@@ -285,7 +289,30 @@ def build_reopen_prefill_from_record(record: Dict[str, Any]) -> Dict[str, Any]:
         for key, val in answers.items():
             if isinstance(val, dict):
                 prefill[key] = dict(val)
+            else:
+                prefill[key] = {"answer": val}
         out["checklist_answers_prefill"] = prefill
+        if payload.get("inspection_date"):
+            out["inspection_date"] = payload.get("inspection_date")
+        if payload.get("responsible_person"):
+            out["responsible_person"] = payload.get("responsible_person")
+        if payload.get("optional_notes"):
+            out["optional_notes"] = payload.get("optional_notes")
+    elif mode == "CONTRACTOR_CONFIRMATION":
+        out["contractor_confirmation_prefill"] = {
+            key: payload.get(key)
+            for key in (
+                "contractor_name",
+                "company_name",
+                "completion_date",
+                "work_summary",
+                "contractor_email",
+                "contractor_phone",
+                "trade_type",
+                "accreditation_number",
+            )
+            if payload.get(key) is not None
+        }
     return out
 
 

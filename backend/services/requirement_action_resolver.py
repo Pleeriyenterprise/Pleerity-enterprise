@@ -369,6 +369,13 @@ def job_primary_label(requirement: Dict[str, Any]) -> str:
     return "Record external assessment evidence"
 
 
+def _pat_document_upload_primary(requirement: Dict[str, Any]) -> bool:
+    """PAT is document-primary even when engine class is JOB (external assessment label, upload route)."""
+    code = _norm_code(requirement)
+    canon = normalize_requirement_code(code) or code
+    return canon == "portable_appliance_test" or "pat" in code or "portable_appliance" in code
+
+
 def _engine(requirement: Dict[str, Any]) -> Dict[str, Any]:
     if requirement.get("engine_fulfillment_mode") is not None or requirement.get("compliance_requirement_class"):
         return resolve_engine_payload_from_requirement_row(requirement)
@@ -510,6 +517,27 @@ def resolve_take_action_envelope(
     needs_doc = eng.get("requires_document_evidence", True) is not False
 
     if is_job:
+        if _pat_document_upload_primary(requirement) and pid and rid:
+            doc_route = f"/documents?property_id={pid}&requirement_id={rid}"
+            supporting = _supporting_external_links(requirement, property_jurisdiction=property_jurisdiction)
+            why_fields = _registry_why_it_matters(requirement)
+            ta_pat: Dict[str, Any] = {
+                "primary": {
+                    "label": job_primary_label(requirement),
+                    "route": doc_route,
+                    "kind": "navigate",
+                    "handler": "navigate",
+                    "intent": INTENT_UPLOAD_EVIDENCE,
+                },
+                "secondary": None,
+                "supporting_external_links": supporting,
+            }
+            _attach_take_action_contract_metadata(ta_pat, requirement)
+            return {
+                "action_type": ACTION_DOCUMENT,
+                **why_fields,
+                "take_action": ta_pat,
+            }
         if _legionella_job_guided_structured_access(requirement, is_job=True, pid=pid, rid=rid):
             return _legionella_job_guided_take_action(
                 requirement,

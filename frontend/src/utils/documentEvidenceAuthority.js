@@ -6,6 +6,10 @@ import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle'
 import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
 import { labelsDuplicateSemantics } from './cerGovernancePresentation';
 import { normalizeRouteId, resolvePropertyPath } from './clientPortalNavigation';
+import {
+  requirementAuthoritativeEvidenceIsRecordPrimary,
+  resolveAuthoritativeEvidenceViewPath,
+} from './authoritativeEvidenceView';
 
 export function propertyIdsMatch(a, b) {
   const left = normalizeRouteId(a);
@@ -117,8 +121,12 @@ export function isViewSettledEvidenceCta(requirement, ta) {
  */
 export function resolveSettledEvidenceNavigationTarget(requirement, ta, pagePropertyId = null) {
   if (!requirement || !ta) return null;
-  if (String(ta.primary_action_handler || '') === 'guided_evidence') return null;
   if (!isViewSettledEvidenceCta(requirement, ta)) return null;
+
+  const authPath = resolveAuthoritativeEvidenceViewPath(requirement, null, pagePropertyId);
+  if (authPath) return authPath;
+
+  if (String(ta.primary_action_handler || '') === 'guided_evidence') return null;
 
   const pid = normalizeRouteId(pagePropertyId || requirement.property_id);
   const rid = normalizeRouteId(requirement.requirement_id || requirement.id);
@@ -127,6 +135,13 @@ export function resolveSettledEvidenceNavigationTarget(requirement, ta, pageProp
   const { state } = resolveClientRequirementLifecycleForPresentation(requirement);
   if (state === 'ACTION_REQUIRED' && String(ta.primary_intent || '') === 'upload_evidence') {
     return null;
+  }
+
+  if (requirementAuthoritativeEvidenceIsRecordPrimary(requirement)) {
+    return resolvePropertyEvidenceRegistryPath(pid, rid, {
+      openIntel: true,
+      focusSubmission: true,
+    });
   }
 
   return resolvePropertyEvidenceRegistryPath(pid, rid, {

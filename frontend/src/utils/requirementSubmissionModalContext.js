@@ -115,7 +115,7 @@ export function resolveRequirementSubmissionModalContext(input = {}) {
  *   merged?: Record<string, unknown>|null,
  *   statusEvidenceLine?: string|null,
  * }} input
- * @returns {{ headline: string, subline: string, primaryLabel: string, warningMessage?: string|null, useServerHero: boolean }}
+ * @returns {{ headline: string, subline: string, primaryLabel: string, warningMessage?: string|null, useServerHero: boolean, showHeroPrimary?: boolean }}
  */
 export function resolveModalHeroPresentation(input) {
   const { context, lifecycle, merged, statusEvidenceLine } = input;
@@ -131,6 +131,7 @@ export function resolveModalHeroPresentation(input) {
       primaryLabel: 'View evidence',
       warningMessage: null,
       useServerHero: false,
+      showHeroPrimary: false,
     };
   }
 
@@ -142,6 +143,7 @@ export function resolveModalHeroPresentation(input) {
         primaryLabel: 'Update submission',
         warningMessage,
         useServerHero: false,
+        showHeroPrimary: false,
       };
     }
     const assurance = resolveAssuranceTier(merged);
@@ -154,6 +156,7 @@ export function resolveModalHeroPresentation(input) {
       primaryLabel: 'Update submission',
       warningMessage: assurance === ASSURANCE_SELF_RECORDED ? warningMessage : warningMessage,
       useServerHero: false,
+      showHeroPrimary: false,
     };
   }
 
@@ -163,6 +166,7 @@ export function resolveModalHeroPresentation(input) {
     primaryLabel: '',
     warningMessage: null,
     useServerHero: true,
+    showHeroPrimary: true,
   };
 }
 

@@ -32,7 +32,6 @@ import { projectResolvedRequirementSemantics } from '../../utils/resolvedRequire
 import { NotApplicableGovernedDisclosure } from '../../utils/notApplicableGovernedCopy';
 import {
   guidedMixedEvidenceInitialMode,
-  shouldPreferGuidedEvidenceOverIntelView,
 } from '../../utils/rightToRentTrustPresentation';
 import NextActionHero from '../operational/NextActionHero';
 import RequirementModalContextHero from './RequirementModalContextHero';
@@ -43,7 +42,10 @@ import {
   resolveRequirementSubmissionModalContext,
   shouldSuppressViewSubmissionLink,
 } from '../../utils/requirementSubmissionModalContext';
-import { applyLifecycleAwareCtaPresentation } from '../../utils/requirementLifecyclePresentation';
+import {
+  resolveAuthoritativeEvidenceViewPath,
+  shouldViewEvidenceInModalInspectPanel,
+} from '../../utils/authoritativeEvidenceView';
 
 function formatIntelDate(value) {
   if (value == null || value === '') return null;
@@ -271,6 +273,19 @@ export default function RequirementIntelligenceModal({
       }),
     [modalContext, resolved, showEditDatesAndApplicability, pid, rid],
   );
+
+  const viewAuthoritativeEvidence = useCallback(() => {
+    if (shouldViewEvidenceInModalInspectPanel(merged, latestCer)) {
+      scrollToSubmissionPanel();
+      return;
+    }
+    const path = resolveAuthoritativeEvidenceViewPath(merged, latestCer, pid);
+    if (path) {
+      onNavigate(path);
+      return;
+    }
+    scrollToSubmissionPanel();
+  }, [merged, latestCer, pid, onNavigate, scrollToSubmissionPanel]);
   const suppressViewSubmissionLink = shouldSuppressViewSubmissionLink(modalContext, initialFocusSubmission);
 
   const displayTitle = useMemo(() => {
@@ -365,16 +380,12 @@ export default function RequirementIntelligenceModal({
       return;
     }
     if (modalContext === MODAL_CONTEXT.VIEW_VERIFIED_EVIDENCE) {
-      onNavigate(settledEvidencePath || docsView);
+      viewAuthoritativeEvidence();
       return;
     }
     if (!resolved) return;
     if (isViewExistingSubmissionCta(resolved) && hasSubmission) {
-      if (shouldPreferGuidedEvidenceOverIntelView(merged, resolved) && pid && rid) {
-        openGuidedForUpdate();
-        return;
-      }
-      scrollToSubmissionPanel();
+      viewAuthoritativeEvidence();
       return;
     }
     if (resolved.primary_action_handler === 'external' && resolved.primary_route) {
@@ -421,7 +432,7 @@ export default function RequirementIntelligenceModal({
       return;
     }
     if (key === 'view_evidence') {
-      onNavigate(settledEvidencePath || docsView);
+      viewAuthoritativeEvidence();
       return;
     }
     if (key === 'edit_dates') {
@@ -499,6 +510,7 @@ export default function RequirementIntelligenceModal({
                   primaryLabel={heroPresentation.primaryLabel}
                   warningMessage={heroPresentation.warningMessage}
                   onPrimaryClick={primaryHandler}
+                  showHeroPrimary={heroPresentation.showHeroPrimary}
                 />
               )}
               <section data-testid="requirement-intel-section-status">

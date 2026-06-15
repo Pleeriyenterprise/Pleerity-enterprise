@@ -26,27 +26,41 @@ function humanizeFieldKey(key) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** @param {unknown} val */
+function isEmptyDisplayValue(val) {
+  return val == null || val === '' || val === undefined;
+}
+
 /**
+ * Client-facing display formatter — never exposes raw JSON or internal nulls.
  * @param {unknown} val
+ * @param {{ missingLabel?: string }} [options]
  */
-function formatFieldValue(val) {
-  if (val == null || val === '') return '—';
+export function formatFieldValueForDisplay(val, options = {}) {
+  const missingLabel = options.missingLabel || 'Not provided';
+  if (isEmptyDisplayValue(val)) return missingLabel;
   if (typeof val === 'boolean') return val ? 'Yes' : 'No';
   if (typeof val === 'object') {
-    if (Array.isArray(val)) return val.map((x) => formatFieldValue(x)).join(', ');
+    if (Array.isArray(val)) {
+      const parts = val.map((x) => formatFieldValueForDisplay(x, options)).filter((x) => x !== missingLabel);
+      return parts.length ? parts.join(', ') : missingLabel;
+    }
     const answer = val.answer ?? val.value;
-    if (answer != null && answer !== '') {
-      const note = val.notes || val.observation;
-      const base = formatFieldValue(answer);
-      return note ? `${base} (${note})` : base;
+    const notes = val.notes ?? val.observation;
+    if (!isEmptyDisplayValue(answer)) {
+      const base = formatFieldValueForDisplay(answer, options);
+      const noteText = !isEmptyDisplayValue(notes) ? String(notes).trim() : '';
+      return noteText ? `${base} (${noteText})` : base;
     }
-    try {
-      return JSON.stringify(val);
-    } catch {
-      return String(val);
-    }
+    if (!isEmptyDisplayValue(notes)) return String(notes).trim();
+    return missingLabel;
   }
   return String(val);
+}
+
+/** @param {unknown} val */
+function formatFieldValue(val) {
+  return formatFieldValueForDisplay(val, { missingLabel: '—' });
 }
 
 /**
@@ -83,7 +97,9 @@ export function buildComplianceEvidenceRecordDisplay(record, options = {}) {
     const fields = payload.structured_fields;
     if (fields && typeof fields === 'object') {
       for (const [key, val] of Object.entries(fields)) {
-        rows.push({ label: humanizeFieldKey(key), value: formatFieldValue(val) });
+        const display = formatFieldValueForDisplay(val);
+        if (display === 'Not provided') continue;
+        rows.push({ label: humanizeFieldKey(key), value: display });
       }
     }
     if (rows.length) sections.push({ title: 'Structured declaration', rows });
@@ -112,7 +128,9 @@ export function buildComplianceEvidenceRecordDisplay(record, options = {}) {
     const answers = payload.checklist_answers;
     if (answers && typeof answers === 'object') {
       for (const [key, val] of Object.entries(answers)) {
-        rows.push({ label: humanizeFieldKey(key), value: formatFieldValue(val) });
+        const display = formatFieldValueForDisplay(val);
+        if (display === 'Not provided') continue;
+        rows.push({ label: humanizeFieldKey(key), value: display });
       }
     }
     if (rows.length) sections.push({ title: 'Inspection checklist', rows });

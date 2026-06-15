@@ -85,12 +85,14 @@ def test_reopen_prefill_structured():
             "structured_fields": {
                 "actions_required": {"answer": True, "notes": None},
                 "assessment_date": {"answer": "2025-01-01"},
+                "legacy_scalar": "2024-06-01",
             },
         },
     }
     pre = build_reopen_prefill_from_record(rec)
     assert pre["evidence_mode"] == "STRUCTURED_DECLARATION"
     assert pre["structured_fields_prefill"]["actions_required"]["answer"] is True
+    assert pre["structured_fields_prefill"]["legacy_scalar"]["answer"] == "2024-06-01"
 
 
 def test_reopen_context_prior_submission_when_assessment_recorded():
