@@ -1,0 +1,180 @@
+{
+  "programme": "POST-SUBMISSION-EVIDENCE-UX-FIX-P0-STAGING-VALIDATION",
+  "generated_at": "2026-06-15T18:24:02.144607+00:00",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "expected_sha": "4e4a4fe312ef4cc9ec1385f9d9ac592a51be37b7",
+  "version": {
+    "commit_sha": "4e4a4fe312ef4cc9ec1385f9d9ac592a51be37b7",
+    "environment": "staging"
+  },
+  "sha_match": true,
+  "data_repair_performed": false,
+  "production_touched": false,
+  "registry_changed": false,
+  "matrix": {
+    "legionella": {
+      "property": "nancy_primary",
+      "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+      "canonical_code": "legionella",
+      "lifecycle": "VERIFIED",
+      "truth_stage": "verified",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "view_verified_evidence",
+        "label": "View evidence",
+        "url": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?tab=evidence&requirement_id=537da91b-d80c-49b2-bc92-f32514b00a2a&open=intel&focus=submission",
+        "hint": "Evidence is verified for this obligation.",
+        "source": "operational_cognition_service.verified_authority"
+      },
+      "take_action_primary": "Record Legionella risk assessment",
+      "reopen_field_count": 6,
+      "modal_context": "view_verified_evidence",
+      "modal_warnings": [],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      }
+    },
+    "smoke_heat_co": {
+      "status": "not_on_property",
+      "property": "nancy_primary"
+    },
+    "gas_safety": {
+      "property": "nancy_primary",
+      "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+      "canonical_code": "gas_safety",
+      "lifecycle": "VERIFIED",
+      "truth_stage": "verified",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "view_verified_evidence",
+        "label": "View evidence",
+        "url": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=c5abaeba-348f-4843-b734-1644bdfb791f",
+        "hint": "Evidence is verified for this obligation.",
+        "source": "operational_cognition_service.verified_authority"
+      },
+      "take_action_primary": "Upload valid gas safety certificate",
+      "reopen_field_count": 0,
+      "modal_context": "view_verified_evidence",
+      "modal_warnings": [],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      }
+    },
+    "eicr": {
+      "property": "nancy_primary",
+      "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+      "canonical_code": "eicr",
+      "lifecycle": "ACTION_REQUIRED",
+      "truth_stage": "expiry_confirmation_required",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "add_expiry_information",
+        "label": "Expiry date needed",
+        "hint": "Add expiry date information so this certificate can count as fully valid.",
+        "source": "operational_cognition_service.expiry_semantics"
+      },
+      "take_action_primary": "Upload valid EICR certificate",
+      "reopen_field_count": 0,
+      "modal_context": "satisfy_requirement",
+      "modal_warnings": [],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      }
+    },
+    "epc": {
+      "property": "nancy_primary",
+      "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+      "canonical_code": "epc",
+      "lifecycle": "ACTION_REQUIRED",
+      "truth_stage": "escalation_review",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "upload_evidence",
+        "label": "Upload valid EPC document",
+        "url": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=62589167-4e34-4aef-ad75-4967383e71bc",
+        "hint": "",
+        "source": "requirement_action_resolver.take_action"
+      },
+      "take_action_primary": "Upload valid EPC document",
+      "reopen_field_count": 0,
+      "modal_context": "satisfy_requirement",
+      "modal_warnings": [
+        "Submitted is not compliant until review confirms."
+      ],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      }
+    },
+    "pat": {
+      "status": "not_on_property",
+      "property": "nancy_primary"
+    },
+    "tenancy": {
+      "status": "not_on_property",
+      "property": "nancy_primary"
+    },
+    "hmo": {
+      "property": "nancy_primary",
+      "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "canonical_code": "hmo_fire_risk_evidence",
+      "lifecycle": "ACTION_REQUIRED",
+      "truth_stage": "verified",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "view_verified_evidence",
+        "label": "View evidence",
+        "url": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+        "hint": "Evidence is verified for this obligation.",
+        "source": "operational_cognition_service.verified_authority"
+      },
+      "take_action_primary": "Add compliance evidence",
+      "reopen_field_count": 0,
+      "modal_context": "satisfy_requirement",
+      "modal_warnings": [],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      }
+    },
+    "rent_smart_wales": {
+      "status": "not_on_property",
+      "property": "nancy_primary"
+    },
+    "lead_testing": {
+      "status": "not_on_property",
+      "property": "nancy_primary"
+    }
+  },
+  "failures": [],
+  "go_no_go": "GO",
+  "failure_count": 0
+}

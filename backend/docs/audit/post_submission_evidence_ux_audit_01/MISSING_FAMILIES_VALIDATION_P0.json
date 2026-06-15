@@ -1,0 +1,266 @@
+{
+  "programme": "POST-SUBMISSION-EVIDENCE-UX-FIX-P0-MISSING-FAMILIES",
+  "generated_at": "2026-06-15T18:25:50.133524+00:00",
+  "fixture_marker": "P0-CLOSEOUT-MISSING-FAMILIES-20260615",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "production_touched": false,
+  "data_repair_performed": false,
+  "synthetic_fixture_notes": {
+    "smoke_heat_co": "Uses fire_alarm proxy when smoke_heat_alarms has zero staging materialisations.",
+    "lead_testing": "Temporarily sets Glasgow Shawlands building_age_years=70, syncs, validates, restores original age."
+  },
+  "cleanup_plan": {
+    "lead_testing": "Script restores building_age_years on 0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68 in finally; re-run requirements/sync.",
+    "smoke_proxy": "Read-only; no mutation."
+  },
+  "scan_log": [
+    {
+      "client": "nancy",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "auth": "client_login",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "property_name": "9786b4ea-3523-4665-9849-db93745d457d",
+      "hits": [
+        "pat"
+      ]
+    },
+    {
+      "client": "scotland_fixture",
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "auth": "impersonation",
+      "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "property_name": "Kelso Place",
+      "hits": [
+        "tenancy"
+      ]
+    },
+    {
+      "client": "wales_fixture",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "auth": "impersonation",
+      "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+      "property_name": "Brighton Lanes Studio",
+      "hits": [
+        "pat",
+        "tenancy"
+      ]
+    },
+    {
+      "client": "wales_fixture",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "auth": "impersonation",
+      "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "property_name": "Wimbledon Family Home",
+      "hits": [
+        "pat",
+        "tenancy",
+        "rent_smart_wales"
+      ]
+    },
+    {
+      "client": "wales_fixture",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "auth": "impersonation",
+      "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+      "property_name": "Spinningfields Luxury Apt",
+      "hits": [
+        "pat",
+        "tenancy"
+      ]
+    },
+    {
+      "client": "wales_fixture",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "auth": "impersonation",
+      "property_id": "2e9c2f5f-d746-4199-b361-0f383ca2e478",
+      "property_name": "Jesmond Student House",
+      "hits": [
+        "pat",
+        "tenancy"
+      ]
+    },
+    {
+      "client": "portfolio_eng",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "auth": "impersonation",
+      "property_id": "37b67192-fd12-4104-8407-bde058535198",
+      "property_name": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602-prop-2",
+      "hits": [
+        "pat"
+      ]
+    },
+    {
+      "client": "portfolio_eng",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "auth": "impersonation",
+      "property_id": "c7b0a913-60d6-4e36-a6e0-29ede6cb1fb2",
+      "property_name": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602-prop-3",
+      "hits": [
+        "pat"
+      ]
+    },
+    {
+      "client": "portfolio_eng",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "auth": "impersonation",
+      "property_id": "349369b7-5086-4fac-9d6c-a223f773b56c",
+      "property_name": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602-prop-4",
+      "hits": [
+        "pat"
+      ]
+    },
+    {
+      "client": "portfolio_eng",
+      "client_id": "80f83edd-ba12-41ed-929a-bbaf8c696a23",
+      "auth": "impersonation",
+      "property_id": "323230f6-2990-48d8-9ba5-e75629f82e24",
+      "property_name": "PLAN-OUTCOME-GOVERNED-FIXTURE-20260602-prop-5",
+      "hits": [
+        "pat"
+      ]
+    }
+  ],
+  "matrix": {
+    "pat": {
+      "client": "nancy",
+      "property_id": "9786b4ea-3523-4665-9849-db93745d457d",
+      "property_name": "9786b4ea-3523-4665-9849-db93745d457d",
+      "requirement_id": "9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+      "canonical_code": "portable_appliance_test",
+      "lifecycle": "ACTION_REQUIRED",
+      "truth_stage": "action_required",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "upload_evidence",
+        "label": "Upload valid evidence document",
+        "hint": "This requirement is satisfied by an authoritative document upload on the Documents page.",
+        "url": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+        "source": "requirement_guidance_v1"
+      },
+      "take_action_route": "/documents?property_id=9786b4ea-3523-4665-9849-db93745d457d&requirement_id=9bb01a6e-e39c-4d2f-ae69-42059ed0b74e",
+      "take_action_intent": "upload_evidence",
+      "take_action_label": "Upload document",
+      "reopen_field_count": 0,
+      "modal_context": "satisfy_requirement",
+      "modal_warnings": [
+        "Submitted is not compliant until review confirms."
+      ],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      }
+    },
+    "tenancy": {
+      "client": "scotland_fixture",
+      "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "property_name": "Kelso Place",
+      "requirement_id": "58dd9efc-9050-4905-812e-23944394fa83",
+      "canonical_code": "tenancy_agreement",
+      "lifecycle": "ACTION_REQUIRED",
+      "truth_stage": "action_required",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "STRUCTURED_DECLARATION",
+        "label": "Complete compliance declaration",
+        "hint": "Declaration-only or weaker paths may require additional review before satisfying compliance.",
+        "url": null,
+        "source": "requirement_guidance_v1"
+      },
+      "take_action_route": null,
+      "take_action_intent": "guided_evidence_resolution",
+      "take_action_label": "Record tenancy agreement",
+      "reopen_field_count": 0,
+      "modal_context": "satisfy_requirement",
+      "modal_warnings": [
+        "Submitted is not compliant until review confirms."
+      ],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      }
+    },
+    "rent_smart_wales": {
+      "client": "wales_fixture",
+      "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "property_name": "Wimbledon Family Home",
+      "requirement_id": "1e9b7901-3c05-410f-a7c3-926453bcb185",
+      "canonical_code": "rent_smart_wales",
+      "lifecycle": "ACTION_REQUIRED",
+      "truth_stage": "action_required",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "STRUCTURED_DECLARATION",
+        "label": "Complete compliance declaration",
+        "hint": "Declaration-only or weaker paths may require additional review before satisfying compliance.",
+        "url": null,
+        "source": "requirement_guidance_v1"
+      },
+      "take_action_route": null,
+      "take_action_intent": "guided_evidence_resolution",
+      "take_action_label": "Record registration details",
+      "reopen_field_count": 0,
+      "modal_context": "satisfy_requirement",
+      "modal_warnings": [
+        "Submitted is not compliant until review confirms."
+      ],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      }
+    },
+    "smoke_heat_co": {
+      "client": "nancy",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "property_name": "Glasgow Shawlands",
+      "requirement_id": "d1a70f19-94d1-4eca-8a4c-dab8bfc2c05b",
+      "canonical_code": "fire_alarm",
+      "lifecycle": "VERIFIED",
+      "truth_stage": "verified",
+      "uploaded_not_verified": false,
+      "cognition_primary": {
+        "key": "view_verified_evidence",
+        "label": "View evidence",
+        "url": "/properties/0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68?tab=evidence&requirement_id=d1a70f19-94d1-4eca-8a4c-dab8bfc2c05b&open=intel&focus=submission",
+        "hint": "Evidence is verified for this obligation.",
+        "source": "operational_cognition_service.verified_authority"
+      },
+      "take_action_route": null,
+      "take_action_intent": "guided_evidence_resolution",
+      "take_action_label": "Add compliance evidence",
+      "reopen_field_count": 2,
+      "modal_context": "view_verified_evidence",
+      "modal_warnings": [],
+      "checks": {
+        "false_upload_warning": true,
+        "verified_view_not_documents_only": true,
+        "reopen_prefill_when_cer": true,
+        "single_update_cta_hero_suppressed": true,
+        "pat_routes_documents": true,
+        "no_false_upload_warning_in_modal": true,
+        "all_pass": true
+      },
+      "note": "Staging registry has 0 smoke_heat_alarms rows; fire_alarm is the documented domestic-alarm proxy."
+    },
+    "lead_testing": {
+      "status": "property_not_found",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+    }
+  },
+  "failures": [],
+  "go_no_go": "GO"
+}
