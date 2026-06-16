@@ -73,7 +73,9 @@ def test_queue_backed_banner_allows_review_wording():
     row = {**base, **attach_cer_governance_presentation(base)}
     banner = resolve_existing_submission_banner_copy(row)
     assert banner
-    assert "platform verification" in banner.lower() or "awaiting review" in banner.lower()
+    assert "verifying your uploaded certificate" in banner.lower()
+    assert "awaiting review" not in banner.lower()
+    assert "platform verification pending" not in banner.lower()
 
 
 def test_reopen_prefill_structured():

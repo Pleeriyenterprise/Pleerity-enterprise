@@ -1,0 +1,175 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTOR-IMPLEMENTATION-PLAN-01",
+  "date": "2026-06-02",
+  "status": "PLANNING_ONLY",
+  "new_files": [
+    {
+      "path": "backend/services/customer_status_projector_v2.py",
+      "purpose": "Authoritative customer status projector at enrich time"
+    },
+    {
+      "path": "backend/services/customer_status_projector_config.py",
+      "purpose": "Flag mode resolution (disabled|shadow|active) — env + optional registry"
+    },
+    {
+      "path": "backend/services/customer_status_projector_shadow.py",
+      "purpose": "Legacy vs projector comparison, divergence logging, metrics hooks"
+    },
+    {
+      "path": "backend/tests/test_customer_status_projector_v2.py",
+      "purpose": "Unit tests — gates, class invariants, overlay precedence"
+    },
+    {
+      "path": "backend/tests/test_customer_status_projector_vocabulary.py",
+      "purpose": "Parity — projector output ⊆ vocabulary"
+    },
+    {
+      "path": "backend/tests/test_customer_status_projector_shadow.py",
+      "purpose": "Shadow comparison and divergence event tests"
+    },
+    {
+      "path": "backend/tests/test_requirement_truth_customer_status.py",
+      "purpose": "Enrich integration — flag modes, field emission, ordering"
+    },
+    {
+      "path": "backend/tests/test_consistency_audit_regression.py",
+      "purpose": "D1–D12 regression fixtures"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/README.md",
+      "purpose": "Fixture pack index"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_legionella_recorded.json",
+      "purpose": "Class A recorded — no review language"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_smoke_heat_recorded.json",
+      "purpose": "Class A D12 assurance/list alignment"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_hmo_fire_followup.json",
+      "purpose": "Class A follow-up overlay"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_gas_safety_under_review.json",
+      "purpose": "Class B queue-proven under_review"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_epc_uploaded.json",
+      "purpose": "Class B pre-queue uploaded"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_eicr_expiry.json",
+      "purpose": "Class B expiry_date_needed overlay"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_pat_verified.json",
+      "purpose": "Class B verified terminal"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_tenancy_agreement_satisfied.json",
+      "purpose": "Class A satisfied — D1 fix"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_how_to_rent_recorded.json",
+      "purpose": "Class A recorded"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_rent_smart_wales_recorded.json",
+      "purpose": "Class A recorded"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_landlord_registration_recorded.json",
+      "purpose": "Class A — no phantom under_review"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/family_lead_testing_followup.json",
+      "purpose": "Class A follow-up overlay"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/drift_d1_satisfied_review_pending.json",
+      "purpose": "Legacy drift pair — shadow comparator"
+    },
+    {
+      "path": "backend/tests/fixtures/customer_status_projector/drift_d4_escalation.json",
+      "purpose": "Escalation vs review conflation"
+    }
+  ],
+  "modified_files": [
+    {
+      "path": "backend/services/requirement_truth.py",
+      "change": "Projector integration; remediate 804–806; reorder take_action after projector",
+      "remediation_id": "REM-01, REM-05"
+    },
+    {
+      "path": "backend/services/cer_governance_presentation.py",
+      "change": "Gate derive_truth_presentation label emission when flag=active",
+      "remediation_id": "REM-02"
+    },
+    {
+      "path": "backend/services/operational_cognition_service.py",
+      "change": "recommended_next_step reads customer_status_*",
+      "remediation_id": "REM-03"
+    },
+    {
+      "path": "backend/services/cer_actionability_presentation.py",
+      "change": "Banner copy from customer_status_subline; no review banners without queue gate",
+      "remediation_id": "REM-04"
+    },
+    {
+      "path": "backend/services/requirement_action_resolver.py",
+      "change": "CTA policy keyed on customer_status_key/class when present",
+      "remediation_id": "REM-05"
+    },
+    {
+      "path": "backend/services/audience_governance_v1.py",
+      "change": "landlord interpretation status_label read-through customer_status_* (S2 partial)",
+      "remediation_id": "REM-06 optional"
+    },
+    {
+      "path": "backend/routes/client.py",
+      "change": "Expose server_feature_flags.customer_status_projector_v2_mode (read-only debug)"
+    },
+    {
+      "path": "backend/routes/admin.py",
+      "change": "Admin explain payload includes projector debug fields"
+    },
+    {
+      "path": "backend/tests/test_cer_governance_presentation.py",
+      "change": "Shadow/active mode fixtures"
+    },
+    {
+      "path": "backend/tests/test_operational_cognition_service.py",
+      "change": "Cognition consumer tests"
+    },
+    {
+      "path": "backend/tests/test_cer_actionability_presentation.py",
+      "change": "Banner queue-gate tests"
+    },
+    {
+      "path": "backend/tests/test_evidence_authority_convergence_fix_01.py",
+      "change": "Extend with projector assertions"
+    },
+    {
+      "path": "backend/tests/test_requirement_attention_eligibility_service.py",
+      "change": "Class A review_pending suppression"
+    }
+  ],
+  "explicitly_unchanged": [
+    "frontend/**",
+    "backend/services/report_human_language_v1.py",
+    "backend/services/report_layout_governance.py",
+    "backend/services/monthly_digest_operational_intelligence.py",
+    "backend/email_templates/**",
+    "Mongo schemas / migrations",
+    "docs/governance/** (runtime imports only — no edits unless vocabulary version bump)"
+  ],
+  "estimated_touch_count": {
+    "new_modules": 3,
+    "modified_backend_services": 6,
+    "new_test_files": 5,
+    "fixture_files": 15,
+    "modified_tests": 5
+  }
+}

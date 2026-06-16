@@ -183,6 +183,46 @@ def _attach_take_action_contract_metadata(take_action: Dict[str, Any], requireme
         "supporting_links": _supporting_links_provenance(requirement),
         "source_type": "requirement",
     }
+    _align_take_action_with_customer_status(requirement, take_action)
+
+
+_CUSTOMER_STATUS_CTA_PRIMARY: Dict[str, str] = {
+    "action_required": "Add compliance evidence",
+    "recorded": "View submission",
+    "satisfied": "View submission",
+    "under_review": "View submission",
+    "verified": "View verified evidence",
+    "rejected": "Upload certificate",
+    "followup_required": "Update submission",
+    "additional_action_required": "Update submission",
+    "expiry_date_needed": "Add expiry date",
+    "escalation_required": "View submission",
+    "uploaded": "View submission",
+}
+
+
+def _align_take_action_with_customer_status(
+    requirement: Dict[str, Any],
+    take_action: Dict[str, Any],
+) -> None:
+    """REM-05: align primary CTA label with customer_status_key when projector is active."""
+    try:
+        from services.customer_status_projector_config import is_customer_status_projector_active
+
+        if not is_customer_status_projector_active():
+            return
+        key = str(requirement.get("customer_status_key") or "").strip()
+        if not key:
+            return
+        label = _CUSTOMER_STATUS_CTA_PRIMARY.get(key)
+        if not label:
+            return
+        pri = take_action.get("primary")
+        if not isinstance(pri, dict):
+            return
+        pri["label"] = label
+    except Exception:
+        pass
 
 
 def _ordered_unique_evidence_modes(modes: List[str]) -> List[str]:

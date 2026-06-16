@@ -1,0 +1,186 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTION-COVERAGE-AUDIT-01",
+  "date": "2026-06-02",
+  "families": [
+    {
+      "family": "Legionella",
+      "code": "legionella",
+      "path": "A",
+      "verification_class": "C",
+      "states": [
+        { "evidence_state": "no_evidence", "ea": "EA_MISSING", "label": "Action required", "class": "A", "overlay": null },
+        { "evidence_state": "submitted_transient", "label": "Submitted", "class": "A", "overlay": null, "transient": true },
+        { "evidence_state": "declaration_recorded", "ea": "EA_RECORDED_CURRENT", "label": "Recorded on file", "subline": "Self-recorded declaration — auditable and timestamped; no independent reviewer required.", "class": "A", "overlay": null, "modal_headline": "Assessment recorded" },
+        { "evidence_state": "follow_up_open", "followup_unresolved": true, "label": "Follow-up required", "subline": "Complete remaining assessment or remediation steps to close this obligation.", "class": "A", "overlay": "followup_required" },
+        { "evidence_state": "satisfied", "satisfaction_state": "SATISFIED", "label": "Satisfied", "subline": "Obligation met based on recorded evidence.", "class": "A", "overlay": null },
+        { "evidence_state": "mismatch", "ea": "EA_MISMATCH_FLAGGED", "label": "Escalation required", "class": "A", "overlay": "escalation_required" },
+        { "evidence_state": "escalation_resolved", "label": "Issue resolved", "class": "A", "overlay": "escalation_resolved" },
+        { "evidence_state": "supporting_upload_only", "label": "Action required", "subline": "Supporting files alone do not complete this obligation.", "class": "A", "overlay": null },
+        { "evidence_state": "phantom_pending_review", "lifecycle": "PENDING_REVIEW", "queue": false, "label": "Recorded on file", "class": "A", "overlay": null, "forbidden": "under_review" }
+      ],
+      "impossible": ["uploaded", "under_review", "verified", "rejected", "additional_action_required"]
+    },
+    {
+      "family": "Smoke, Heat & CO",
+      "code": "smoke_heat_alarms",
+      "path": "A",
+      "verification_class": "A",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "A", "overlay": null },
+        { "evidence_state": "partial_components", "components_incomplete": true, "label": "Additional action required", "class": "A", "overlay": "additional_action_required" },
+        { "evidence_state": "declaration_recorded", "label": "Recorded on file", "class": "A", "overlay": null },
+        { "evidence_state": "satisfied", "label": "Satisfied", "class": "A", "overlay": null },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "A", "overlay": "escalation_required" },
+        { "evidence_state": "mixed_evidence", "label": "Additional action required", "class": "A", "overlay": "additional_action_required" }
+      ],
+      "impossible": ["uploaded", "under_review", "verified", "rejected", "followup_required"]
+    },
+    {
+      "family": "HMO Fire Risk",
+      "code": "hmo_fire_risk",
+      "path": "A",
+      "verification_class": "C",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "A", "overlay": null },
+        { "evidence_state": "partial_components", "label": "Additional action required", "class": "A", "overlay": "additional_action_required" },
+        { "evidence_state": "follow_up_open", "label": "Follow-up required", "class": "A", "overlay": "followup_required" },
+        { "evidence_state": "both_followup_and_partial", "label": "Follow-up required", "class": "A", "overlay": "followup_required", "precedence_note": "followup_required beats additional_action_required" },
+        { "evidence_state": "recorded", "label": "Recorded on file", "class": "A", "overlay": null },
+        { "evidence_state": "satisfied", "label": "Satisfied", "class": "A", "overlay": null },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "A", "overlay": "escalation_required" }
+      ],
+      "impossible": ["uploaded", "under_review", "verified", "rejected"]
+    },
+    {
+      "family": "Gas Safety",
+      "code": "gas_safety",
+      "path": "B",
+      "verification_class": "B",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "B", "overlay": null },
+        { "evidence_state": "document_uploaded_pre_queue", "label": "Uploaded", "class": "B", "overlay": null },
+        { "evidence_state": "linked_document_in_queue", "label": "Under review", "subline": "Our team is verifying your uploaded certificate", "class": "B", "overlay": null },
+        { "evidence_state": "linked_document_verified", "label": "Verified", "class": "B", "overlay": null },
+        { "evidence_state": "rejected", "label": "Rejected", "class": "B", "overlay": null },
+        { "evidence_state": "expiry_missing", "label": "Expiry date needed", "class": "B", "overlay": "expiry_date_needed" },
+        { "evidence_state": "mismatch_escalation", "label": "Escalation required", "class": "B", "overlay": "escalation_required" },
+        { "evidence_state": "phantom_platform_pending", "ea": "EA_PENDING_ADMIN_REVIEW", "queue": false, "label": "Uploaded", "class": "B", "overlay": null, "forbidden": "under_review" }
+      ],
+      "impossible": ["submitted", "recorded", "satisfied"],
+      "terminal_badge": "Verified"
+    },
+    {
+      "family": "EPC",
+      "code": "epc",
+      "path": "B",
+      "verification_class": "B",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "B", "overlay": null },
+        { "evidence_state": "document_uploaded_pre_queue", "label": "Uploaded", "class": "B", "overlay": null },
+        { "evidence_state": "linked_document_in_queue", "label": "Under review", "class": "B", "overlay": null },
+        { "evidence_state": "linked_document_verified", "label": "Verified", "class": "B", "overlay": null },
+        { "evidence_state": "rejected", "label": "Rejected", "class": "B", "overlay": null },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "B", "overlay": "escalation_required" }
+      ],
+      "impossible": ["submitted", "recorded", "satisfied"]
+    },
+    {
+      "family": "EICR",
+      "code": "eicr",
+      "path": "B",
+      "verification_class": "B",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "B", "overlay": null },
+        { "evidence_state": "document_uploaded_pre_queue", "label": "Uploaded", "class": "B", "overlay": null },
+        { "evidence_state": "linked_document_in_queue", "label": "Under review", "class": "B", "overlay": null },
+        { "evidence_state": "linked_document_verified", "label": "Verified", "class": "B", "overlay": null },
+        { "evidence_state": "rejected", "label": "Rejected", "class": "B", "overlay": null },
+        { "evidence_state": "expiry_missing", "label": "Expiry date needed", "class": "B", "overlay": "expiry_date_needed" },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "B", "overlay": "escalation_required" }
+      ],
+      "impossible": ["submitted", "recorded", "satisfied"]
+    },
+    {
+      "family": "PAT",
+      "code": "portable_appliance_test",
+      "path": "B",
+      "verification_class": "B",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "B", "overlay": null },
+        { "evidence_state": "document_uploaded_pre_queue", "label": "Uploaded", "class": "B", "overlay": null },
+        { "evidence_state": "linked_document_in_queue", "label": "Under review", "class": "B", "overlay": null },
+        { "evidence_state": "linked_document_verified", "label": "Verified", "class": "B", "overlay": null },
+        { "evidence_state": "rejected", "label": "Rejected", "class": "B", "overlay": null },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "B", "overlay": "escalation_required" }
+      ],
+      "impossible": ["submitted", "recorded", "satisfied"]
+    },
+    {
+      "family": "Tenancy Agreement",
+      "code": "tenancy_agreement",
+      "path": "A",
+      "verification_class": "A",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "A", "overlay": null },
+        { "evidence_state": "declaration_recorded", "label": "Recorded on file", "class": "A", "overlay": null, "modal_headline": "Submission recorded" },
+        { "evidence_state": "satisfied", "label": "Satisfied", "class": "A", "overlay": null },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "A", "overlay": "escalation_required" }
+      ],
+      "impossible": ["uploaded", "under_review", "verified", "rejected", "followup_required", "additional_action_required"]
+    },
+    {
+      "family": "How to Rent",
+      "code": "how_to_rent",
+      "path": "A",
+      "verification_class": "A",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "A", "overlay": null },
+        { "evidence_state": "document_only_delivery_proof", "label": "Recorded on file", "class": "A", "overlay": null },
+        { "evidence_state": "satisfied", "label": "Satisfied", "class": "A", "overlay": null },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "A", "overlay": "escalation_required" }
+      ],
+      "impossible": ["uploaded", "under_review", "verified", "rejected"]
+    },
+    {
+      "family": "Rent Smart Wales",
+      "code": "rent_smart_wales",
+      "path": "A",
+      "verification_class": "A",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "A", "overlay": null },
+        { "evidence_state": "registration_recorded", "label": "Recorded on file", "class": "A", "overlay": null, "modal_headline": "Registration recorded" },
+        { "evidence_state": "satisfied", "label": "Satisfied", "class": "A", "overlay": null },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "A", "overlay": "escalation_required" }
+      ],
+      "impossible": ["uploaded", "under_review", "verified", "rejected"]
+    },
+    {
+      "family": "Landlord Registration",
+      "code": "landlord_registration",
+      "path": "A",
+      "verification_class": "A",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "A", "overlay": null },
+        { "evidence_state": "org_attestation_recorded", "label": "Recorded on file", "class": "A", "overlay": null, "note": "Class D org attestation must not surface as Under review" },
+        { "evidence_state": "phantom_pending_review", "lifecycle": "PENDING_REVIEW", "queue": false, "label": "Recorded on file", "class": "A", "overlay": null },
+        { "evidence_state": "satisfied", "label": "Satisfied", "class": "A", "overlay": null },
+        { "evidence_state": "escalation", "label": "Escalation required", "class": "A", "overlay": "escalation_required" }
+      ],
+      "impossible": ["uploaded", "under_review", "verified", "rejected"]
+    },
+    {
+      "family": "Lead Testing",
+      "code": "lead_testing",
+      "path": "A",
+      "verification_class": "C",
+      "states": [
+        { "evidence_state": "no_evidence", "label": "Action required", "class": "A", "overlay": null },
+        { "evidence_state": "assessment_recorded", "label": "Recorded on file", "class": "A", "overlay": null, "modal_headline": "Assessment recorded" },
+        { "evidence_state": "follow_up_open", "label": "Follow-up required", "class": "A", "overlay": "followup_required" },
+        { "evidence_state": "satisfied", "label": "Satisfied", "class": "A", "overlay": null },
+        { "evidence_state": "mismatch", "label": "Escalation required", "class": "A", "overlay": "escalation_required" }
+      ],
+      "impossible": ["uploaded", "under_review", "verified", "rejected", "additional_action_required"]
+    }
+  ]
+}

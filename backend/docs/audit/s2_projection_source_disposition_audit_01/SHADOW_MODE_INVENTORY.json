@@ -1,0 +1,175 @@
+{
+  "programme": "S2-PROJECTION-SOURCE-DISPOSITION-AUDIT-01",
+  "date": "2026-06-02",
+  "definition": "Sources usable for divergence comparison, observability, or audit logging without driving customer-facing semantics post-cutover.",
+  "shadow_mode_authority": "s2_customer_status_projector_planning_01/SHADOW_MODE_STRATEGY.md",
+  "sources": [
+    {
+      "id": "PS-01",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR",
+      "divergence_dimensions": ["client_lifecycle_label vs customer_status_label"],
+      "drives_customer_semantics_in_shadow": true,
+      "drives_customer_semantics_post_active": false,
+      "notes": "Label field retired as authority; enum remains input."
+    },
+    {
+      "id": "PS-02",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_ONLY",
+      "divergence_dimensions": ["truth_presentation_label", "truth_presentation_subline", "truth_presentation_stage", "retired_phrase", "review_without_gate"],
+      "drives_customer_semantics_in_shadow": true,
+      "drives_customer_semantics_post_active": false,
+      "notes": "Primary shadow comparator. derive_assurance_tier/governance_family remain A not shadow."
+    },
+    {
+      "id": "PS-03",
+      "shadow_only_capable": false,
+      "classification": "ORCHESTRATOR",
+      "notes": "Hosts compare_legacy_vs_projector hook; does not itself emit status."
+    },
+    {
+      "id": "PS-04",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_OBSERVABILITY",
+      "divergence_dimensions": ["satisfaction_reconciliation_label_delta"],
+      "drives_customer_semantics_in_shadow": false,
+      "drives_customer_semantics_post_active": false
+    },
+    {
+      "id": "PS-05",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR",
+      "divergence_dimensions": ["banner_subline vs customer_status_subline", "stage_mutation_detected"],
+      "drives_customer_semantics_in_shadow": true,
+      "drives_customer_semantics_post_active": false,
+      "notes": "Must become B-only post-active."
+    },
+    {
+      "id": "PS-06",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR",
+      "divergence_dimensions": ["recommended_next_step vs customer_status_label"],
+      "drives_customer_semantics_in_shadow": true,
+      "drives_customer_semantics_post_active": false,
+      "notes": "S2 migrates to B before active."
+    },
+    {
+      "id": "PS-07",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_OBSERVABILITY",
+      "divergence_dimensions": ["attention_review_pending vs class_forbidden"],
+      "drives_customer_semantics_in_shadow": false,
+      "drives_customer_semantics_post_active": false
+    },
+    {
+      "id": "PS-08",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR",
+      "divergence_dimensions": ["audience_interpretation.status_label vs customer_status_label"],
+      "drives_customer_semantics_in_shadow": true,
+      "drives_customer_semantics_post_active": false
+    },
+    {
+      "id": "PS-09",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_OBSERVABILITY",
+      "divergence_dimensions": ["retired_stage_resurrection"],
+      "drives_customer_semantics_in_shadow": false,
+      "drives_customer_semantics_post_active": false
+    },
+    {
+      "id": "PS-10",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_OBSERVABILITY",
+      "divergence_dimensions": ["gate_mismatch", "queue_backed_review"],
+      "drives_customer_semantics_in_shadow": false,
+      "drives_customer_semantics_post_active": false
+    },
+    {
+      "id": "PS-11",
+      "shadow_only_capable": false,
+      "classification": "INPUT_TRUTH",
+      "notes": "Authority writer — not shadow comparator."
+    },
+    {
+      "id": "PS-12",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR",
+      "divergence_dimensions": ["assurance_title vs customer_status_class"],
+      "drives_customer_semantics_in_shadow": true,
+      "drives_customer_semantics_post_active": false
+    },
+    {
+      "id": "PS-13",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR_DEFERRED",
+      "divergence_dimensions": ["export_label vs enrich_snapshot customer_status_label"],
+      "drives_customer_semantics_in_shadow": false,
+      "drives_customer_semantics_post_active": true,
+      "notes": "Still drives reports until S4 — staging-only shadow comparison."
+    },
+    {
+      "id": "PS-14",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR_DEFERRED",
+      "drives_customer_semantics_post_active": true,
+      "notes": "S4 retirement."
+    },
+    {
+      "id": "PS-15",
+      "shadow_only_capable": false,
+      "classification": "DEFERRED_S4",
+      "notes": "Aggregate buckets — not per-requirement shadow."
+    },
+    {
+      "id": "PS-16",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR_FE",
+      "divergence_dimensions": ["FE badge vs API customer_status_label"],
+      "drives_customer_semantics_in_shadow": true,
+      "drives_customer_semantics_post_active": true,
+      "notes": "FE override persists until S3 — staging manual/automated visual diff."
+    },
+    {
+      "id": "PS-17",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR_FE",
+      "drives_customer_semantics_post_active": true,
+      "notes": "S3 retirement."
+    },
+    {
+      "id": "PS-18",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR_FE",
+      "drives_customer_semantics_post_active": true
+    },
+    {
+      "id": "PS-19",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR_FE",
+      "drives_customer_semantics_post_active": true
+    },
+    {
+      "id": "PS-20",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR_FE",
+      "drives_customer_semantics_post_active": true
+    },
+    {
+      "id": "PS-21",
+      "shadow_only_capable": true,
+      "classification": "SHADOW_COMPARATOR",
+      "divergence_dimensions": ["take_action.primary.label vs customer_status_subline"],
+      "drives_customer_semantics_in_shadow": false,
+      "drives_customer_semantics_post_active": false,
+      "notes": "CTA not status badge but coupled — shadow for contradiction detection."
+    }
+  ],
+  "shadow_only_classified": ["PS-02 (derive_truth_presentation label path)"],
+  "shadow_comparator_classified": ["PS-01", "PS-05", "PS-06", "PS-08", "PS-12", "PS-16", "PS-17", "PS-18", "PS-19", "PS-20", "PS-21"],
+  "shadow_observability_only": ["PS-04", "PS-07", "PS-09", "PS-10"],
+  "cannot_be_shadow_only": ["PS-03", "PS-11", "PS-15"],
+  "logging_event": "customer_status_projector_divergence",
+  "required_shadow_fixtures": "12 governance families per CONSISTENCY_AUDIT D1–D12"
+}

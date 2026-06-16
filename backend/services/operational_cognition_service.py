@@ -716,7 +716,28 @@ def build_requirement_guidance_v1(
     likely_intent = "satisfy_obligation"
     authority_path = strongest or "document_upload"
 
-    if stage == "verified":
+    try:
+        from services.customer_status_projector_v2 import cognition_copy_from_customer_status
+
+        projector_copy = cognition_copy_from_customer_status(req)
+    except Exception:
+        projector_copy = None
+
+    if projector_copy:
+        recommended_next_step, recommended_reason = projector_copy
+        recommended_mode = None
+        key = str(req.get("customer_status_key") or "")
+        if key in ("verified",):
+            likely_intent = "monitor_renewal"
+        elif key in ("under_review", "rejected"):
+            likely_intent = "await_review"
+        elif key in ("recorded", "satisfied", "followup_required", "additional_action_required"):
+            likely_intent = "operational_closure"
+        elif key == "escalation_required":
+            likely_intent = "await_review"
+        else:
+            likely_intent = "satisfy_obligation"
+    elif stage == "verified":
         recommended_next_step = "No further evidence required"
         recommended_reason = "Evidence is verified — obligation is satisfied unless other blockers exist."
         recommended_mode = None

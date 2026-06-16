@@ -1,0 +1,236 @@
+{
+  "programme": "S2-PROJECTION-SOURCE-DISPOSITION-AUDIT-01",
+  "date": "2026-06-02",
+  "definition": "Paths where customer_status_projector_v2 output could be overridden, masked, or contradicted after flag=active.",
+  "override_categories": {
+    "frontend_fallback": "Local re-derivation when API fields missing or parallel mapping",
+    "modal_projection": "Modal-specific hero/assurance copy independent of list badge",
+    "cta_projection": "CTA labels derived from lifecycle/stage not take_action/customer_status",
+    "report_projection": "Independent export/report vocabulary maps",
+    "email_projection": "Digest and scheduled report template copy"
+  },
+  "inventory": [
+    {
+      "category": "frontend_fallback",
+      "file": "frontend/src/utils/resolvedRequirementViewModel.js",
+      "function": "projectResolvedRequirementSemantics",
+      "override_mechanism": "Re-derives badge/tier when customer_status_* absent; prefers truth_presentation_label/client_lifecycle_label",
+      "inventory_ps_id": "PS-16",
+      "phase_to_remediate": "S3",
+      "s2_risk": "HIGH — S2 active changes API but FE still shows legacy fallback"
+    },
+    {
+      "category": "frontend_fallback",
+      "file": "frontend/src/utils/evidenceStatus.js",
+      "function": "evidenceStatusForStatus, tierBadgeForRequirement",
+      "override_mechanism": "Local chip map including 'Platform verification pending'",
+      "inventory_ps_id": "PS-19",
+      "phase_to_remediate": "S3",
+      "s2_risk": "HIGH"
+    },
+    {
+      "category": "frontend_fallback",
+      "file": "frontend/src/utils/cerGovernancePresentation.js",
+      "function": "resolveTruthPresentationLabel, applyClientSideGovernanceFallbacks",
+      "override_mechanism": "Client-side truth_presentation_label fallback and stage mutations",
+      "inventory_ps_id": "PS-02 (FE mirror)",
+      "phase_to_remediate": "S3",
+      "s2_risk": "HIGH"
+    },
+    {
+      "category": "frontend_fallback",
+      "file": "frontend/src/utils/clientPersistedSubmissionPresentation.js",
+      "function": "resolvePersistedSubmissionPresentation",
+      "override_mechanism": "Defaults to 'Platform verification pending' when truth_presentation_label matches patterns",
+      "inventory_ps_id": "PS-02 (FE mirror)",
+      "phase_to_remediate": "S3",
+      "s2_risk": "MEDIUM"
+    },
+    {
+      "category": "frontend_fallback",
+      "file": "frontend/src/utils/presentationLanguage.js",
+      "function": "OPERATIONAL_LABEL_BY_KEY",
+      "override_mechanism": "Parallel token vocabulary for filters",
+      "inventory_ps_id": "PS-20",
+      "phase_to_remediate": "S3",
+      "s2_risk": "MEDIUM"
+    },
+    {
+      "category": "frontend_fallback",
+      "file": "frontend/src/utils/clientRequirementLifecycle.js",
+      "function": "lifecycle label helpers",
+      "override_mechanism": "FE lifecycle label display parallel to API client_lifecycle_label",
+      "inventory_ps_id": "PS-01 (FE mirror)",
+      "phase_to_remediate": "S3",
+      "s2_risk": "MEDIUM"
+    },
+    {
+      "category": "modal_projection",
+      "file": "frontend/src/utils/requirementSubmissionModalContext.js",
+      "function": "buildModalContextHero",
+      "override_mechanism": "Hard-coded 'Awaiting platform review' hero headline",
+      "inventory_ps_id": "PS-17",
+      "phase_to_remediate": "S3",
+      "s2_risk": "HIGH"
+    },
+    {
+      "category": "modal_projection",
+      "file": "frontend/src/utils/assurancePresentation.js",
+      "function": "assurance block title resolver",
+      "override_mechanism": "'Awaiting platform review' assurance title independent of list badge",
+      "inventory_ps_id": "PS-12 (FE)",
+      "phase_to_remediate": "S3",
+      "s2_risk": "MEDIUM"
+    },
+    {
+      "category": "modal_projection",
+      "file": "frontend/src/components/client/RequirementModalAssuranceSection.jsx",
+      "function": "render",
+      "override_mechanism": "Displays truth_presentation_label directly in assurance dd",
+      "inventory_ps_id": "PS-02",
+      "phase_to_remediate": "S3",
+      "s2_risk": "MEDIUM"
+    },
+    {
+      "category": "cta_projection",
+      "file": "frontend/src/utils/requirementLifecyclePresentation.js",
+      "function": "applyLifecycleAwareCtaPresentation, resolvePlatformReviewPendingCtaPresentation",
+      "override_mechanism": "CTA labels from lifecycle/stage not take_action",
+      "inventory_ps_id": "PS-18",
+      "phase_to_remediate": "S3",
+      "s2_risk": "HIGH"
+    },
+    {
+      "category": "cta_projection",
+      "file": "backend/services/cer_actionability_presentation.py",
+      "function": "apply_actionability_cta_override",
+      "override_mechanism": "Mutates truth_presentation_stage; banner 'awaiting review' sublines",
+      "inventory_ps_id": "PS-05",
+      "phase_to_remediate": "S2",
+      "s2_risk": "HIGH — backend override in S2 scope"
+    },
+    {
+      "category": "cta_projection",
+      "file": "backend/services/requirement_action_resolver.py",
+      "function": "resolve_take_action_envelope",
+      "override_mechanism": "CTA labels from legacy stage matrix pre-projector",
+      "inventory_ps_id": "PS-21",
+      "phase_to_remediate": "S2",
+      "s2_risk": "MEDIUM"
+    },
+    {
+      "category": "backend_orchestration",
+      "file": "backend/services/requirement_truth.py",
+      "function": "enrich_requirement_dict",
+      "lines": "804-806",
+      "override_mechanism": "Overwrites client_lifecycle_label from truth_presentation_label after governance",
+      "inventory_ps_id": "PS-03",
+      "phase_to_remediate": "S2",
+      "s2_risk": "CRITICAL"
+    },
+    {
+      "category": "backend_orchestration",
+      "file": "backend/services/cer_governance_presentation.py",
+      "function": "derive_truth_presentation",
+      "override_mechanism": "Primary legacy status authority on enrich path",
+      "inventory_ps_id": "PS-02",
+      "phase_to_remediate": "S2 shadow → S2 active disable",
+      "s2_risk": "CRITICAL"
+    },
+    {
+      "category": "backend_orchestration",
+      "file": "backend/services/operational_cognition_service.py",
+      "function": "recommended_next_step",
+      "override_mechanism": "Independent review copy from truth_presentation_stage",
+      "inventory_ps_id": "PS-06",
+      "phase_to_remediate": "S2",
+      "s2_risk": "HIGH"
+    },
+    {
+      "category": "backend_orchestration",
+      "file": "backend/services/audience_governance_v1.py",
+      "function": "interpret_requirement_for_audience",
+      "override_mechanism": "Independent status_label on enrich payload",
+      "inventory_ps_id": "PS-08",
+      "phase_to_remediate": "S2 partial",
+      "s2_risk": "HIGH"
+    },
+    {
+      "category": "report_projection",
+      "file": "backend/services/report_human_language_v1.py",
+      "function": "COMPLIANCE_STATUS_LABELS, humanize_pending_review",
+      "override_mechanism": "Independent 'Awaiting review' export labels",
+      "inventory_ps_id": "PS-13",
+      "phase_to_remediate": "S4",
+      "s2_risk": "LOW (out of S2 cutover)"
+    },
+    {
+      "category": "report_projection",
+      "file": "backend/services/report_layout_governance.py",
+      "function": "section_title_for_status",
+      "override_mechanism": "PDF section headers with review language",
+      "inventory_ps_id": "PS-14",
+      "phase_to_remediate": "S4",
+      "s2_risk": "LOW"
+    },
+    {
+      "category": "report_projection",
+      "file": "frontend/src/utils/reportHumanLanguage.js",
+      "function": "status label maps",
+      "override_mechanism": "FE report preview parallel vocabulary",
+      "inventory_ps_id": "PS-13 (FE)",
+      "phase_to_remediate": "S4",
+      "s2_risk": "LOW"
+    },
+    {
+      "category": "email_projection",
+      "file": "backend/services/monthly_digest_operational_intelligence.py",
+      "function": "build_digest_posture_buckets",
+      "override_mechanism": "Digest bucket review labels",
+      "inventory_ps_id": "PS-15",
+      "phase_to_remediate": "S4",
+      "s2_risk": "LOW"
+    },
+    {
+      "category": "email_projection",
+      "file": "backend/email_templates/unified/scheduled_report_digest.py",
+      "function": "template copy",
+      "override_mechanism": "Scheduled report email status phrasing",
+      "inventory_ps_id": "C-10",
+      "phase_to_remediate": "S4",
+      "s2_risk": "LOW"
+    },
+    {
+      "category": "admin_parallel",
+      "file": "backend/services/progress_contract_service.py",
+      "function": "admin label map",
+      "override_mechanism": "admin: 'Review pending' in progress contract",
+      "inventory_ps_id": "extra",
+      "phase_to_remediate": "S5",
+      "s2_risk": "LOW — admin not S2 customer cutover"
+    },
+    {
+      "category": "page_direct_read",
+      "file": "frontend/src/pages/PropertyDetailPage.js",
+      "function": "matrix row mapping",
+      "override_mechanism": "truthLabel: row.truth_presentation_label",
+      "inventory_ps_id": "PS-16 consumer",
+      "phase_to_remediate": "S3",
+      "s2_risk": "HIGH"
+    }
+  ],
+  "s2_must_fix_before_active": [
+    "backend/services/requirement_truth.py:804-806",
+    "backend/services/cer_governance_presentation.py derive_truth_presentation customer label path",
+    "backend/services/operational_cognition_service.py recommended_next_step",
+    "backend/services/cer_actionability_presentation.py stage mutation + review banners",
+    "backend/services/requirement_action_resolver.py ordering vs projector"
+  ],
+  "accepted_until_s3": [
+    "All frontend_fallback and modal_projection entries",
+    "PropertyDetailPage direct truth_presentation_label read"
+  ],
+  "accepted_until_s4": [
+    "All report_projection and email_projection entries"
+  ]
+}

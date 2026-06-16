@@ -1,0 +1,156 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTOR-PLANNING-01",
+  "authority": "CUSTOMER_STATUS_VOCABULARY.json + SEMANTIC_CONTRACT.md",
+  "vocabulary_version": "1.0.0",
+  "overlay_precedence": [
+    "escalation_required",
+    "rejected",
+    "under_review",
+    "expiry_date_needed",
+    "followup_required",
+    "additional_action_required",
+    "base_path_state"
+  ],
+  "class_a": {
+    "path_id": "A_self_certification",
+    "base_states": [
+      {
+        "customer_status_key": "action_required",
+        "customer_status_label": "Action required",
+        "gates": ["NOT has_persisted_submission"],
+        "forbidden_on_class": []
+      },
+      {
+        "customer_status_key": "submitted",
+        "customer_status_label": "Submitted",
+        "gates": ["transient_post_submit"],
+        "transient": true,
+        "surfaces": ["toast_only"],
+        "forbidden_on_class": []
+      },
+      {
+        "customer_status_key": "recorded",
+        "customer_status_label": "Recorded on file",
+        "gates": ["has_persisted_submission", "NOT escalation_active", "class_A"],
+        "forbidden_on_class": ["under_review", "uploaded", "verified", "rejected"]
+      },
+      {
+        "customer_status_key": "satisfied",
+        "customer_status_label": "Satisfied",
+        "gates": ["governance_guards_pass", "class_A"],
+        "forbidden_on_class": ["under_review", "uploaded", "verified"]
+      }
+    ],
+    "overlays": [
+      {
+        "customer_status_key": "followup_required",
+        "customer_status_label": "Follow-up required",
+        "gates": ["external_assessment_followup_open"]
+      },
+      {
+        "customer_status_key": "additional_action_required",
+        "customer_status_label": "Additional action required",
+        "gates": ["components_incomplete"]
+      },
+      {
+        "customer_status_key": "expiry_date_needed",
+        "customer_status_label": "Expiry date needed",
+        "gates": ["expiry_confirmation_required"]
+      },
+      {
+        "customer_status_key": "escalation_required",
+        "customer_status_label": "Escalation required",
+        "gates": ["exception_active", "admin_resolution_path"]
+      },
+      {
+        "customer_status_key": "escalation_resolved",
+        "customer_status_label": "Issue resolved",
+        "gates": ["escalation_cleared"]
+      }
+    ]
+  },
+  "class_b": {
+    "path_id": "B_document_verification",
+    "review_queue": "document_pending_verification",
+    "base_states": [
+      {
+        "customer_status_key": "action_required",
+        "customer_status_label": "Action required",
+        "gates": ["NOT has_acceptable_certificate"]
+      },
+      {
+        "customer_status_key": "uploaded",
+        "customer_status_label": "Uploaded",
+        "gates": ["document_uploaded", "NOT queue_confirmed_yet"]
+      },
+      {
+        "customer_status_key": "under_review",
+        "customer_status_label": "Under review",
+        "gates": ["class_B", "document.status=UPLOADED", "in_pending_verification_queue"],
+        "subline_default": "Our team is verifying your uploaded certificate"
+      },
+      {
+        "customer_status_key": "verified",
+        "customer_status_label": "Verified",
+        "gates": ["EA_VERIFIED_CURRENT or admin_verify_complete"]
+      },
+      {
+        "customer_status_key": "rejected",
+        "customer_status_label": "Rejected",
+        "gates": ["admin_reject"]
+      }
+    ],
+    "overlays": [
+      {
+        "customer_status_key": "expiry_date_needed",
+        "customer_status_label": "Expiry date needed",
+        "gates": ["expiry_confirmation_required"]
+      },
+      {
+        "customer_status_key": "escalation_required",
+        "customer_status_label": "Escalation required",
+        "gates": ["exception_active"]
+      },
+      {
+        "customer_status_key": "escalation_resolved",
+        "customer_status_label": "Issue resolved",
+        "gates": ["escalation_cleared"]
+      }
+    ],
+    "forbidden_primary": ["submitted", "recorded", "satisfied"]
+  },
+  "class_c": {
+    "path_id": "C_escalation_exception",
+    "note": "Overlay on A/B — not parallel review system",
+    "states": [
+      {
+        "customer_status_key": "escalation_required",
+        "customer_status_label": "Escalation required",
+        "supersedes": ["under_review"]
+      },
+      {
+        "customer_status_key": "escalation_resolved",
+        "customer_status_label": "Issue resolved"
+      }
+    ]
+  },
+  "legacy_stage_mapping": {
+    "declaration_recorded": "recorded",
+    "assessment_recorded": "recorded",
+    "platform_verification_pending": "under_review",
+    "escalation_review": "escalation_required",
+    "followup_required": "followup_required",
+    "operational_incomplete": "additional_action_required",
+    "expiry_confirmation_required": "expiry_date_needed",
+    "verified": "verified",
+    "collect_evidence": "action_required",
+    "action_required": "action_required"
+  },
+  "consistency_audit_resolution": {
+    "D1": { "from": "Satisfied + Review pending", "to": "satisfied + subline without review" },
+    "D3": { "from": "Platform verification pending / Awaiting platform review", "to": "under_review or recorded by class" },
+    "D4": { "from": "Escalated for platform review", "to": "escalation_required" },
+    "D5": { "from": "Awaiting review tier without queue", "to": "suppress tier; recorded" },
+    "D9": { "from": "awaiting review not verified", "to": "recorded not independently verified (A) or under_review (B)" }
+  }
+}

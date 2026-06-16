@@ -236,16 +236,40 @@ def resolve_existing_submission_banner_copy(requirement: Dict[str, Any]) -> Opti
     if not has_sub:
         return None
 
+    try:
+        from services.customer_status_projector_config import is_customer_status_projector_active
+
+        if is_customer_status_projector_active():
+            subline = str(requirement.get("customer_status_subline") or "").strip()
+            key = str(requirement.get("customer_status_key") or "").strip()
+            if key == "under_review" and subline:
+                return f"Submission on file — {subline}"
+            if key == "escalation_required" and subline:
+                return f"Submission on file — {subline}"
+            if key == "followup_required":
+                return (
+                    "Assessment on file — additional follow-up information is still required. "
+                    "You can update your submission below."
+                )
+            if key == "additional_action_required":
+                return (
+                    "Submission on file — additional information is still required. "
+                    "You can update your submission below."
+                )
+            if subline:
+                return f"Submission on file. {subline}"
+            return "Submission on file. You can update your submission below."
+    except Exception:
+        pass
+
     queue_backed = requirement.get("queue_backed_review") is True
     review_owner = str(requirement.get("review_owner") or "").strip()
     stage = _truth_stage(requirement)
 
-    if queue_backed and review_owner:
-        if review_owner == "platform_admin":
-            return "Submission on file — platform verification in progress."
-        if review_owner == "platform_admin_escalation":
-            return "Submission on file — escalated for platform review."
-        return "Submission on file — awaiting review."
+    if queue_backed and review_owner == "platform_admin":
+        return "Submission on file — our team is verifying your uploaded certificate."
+    if queue_backed and review_owner == "platform_admin_escalation":
+        return "Submission on file — flagged for Pleerity investigation."
 
     if stage == "followup_required":
         return "Assessment on file — additional follow-up information is still required. You can update your submission below."

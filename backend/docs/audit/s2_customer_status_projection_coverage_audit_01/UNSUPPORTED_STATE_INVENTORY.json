@@ -1,0 +1,122 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTION-COVERAGE-AUDIT-01",
+  "date": "2026-06-02",
+  "definition": "Platform states that cannot be represented by approved primary vocabulary without projection rule or vocabulary change",
+  "unsupported": [],
+  "resolved_by_projection_logic": [
+    {
+      "id": "UNS-RES-01",
+      "legacy_state": "supporting_upload_only",
+      "legacy_label": "Supporting evidence uploaded",
+      "approved_projection": {
+        "customer_status_key": "action_required",
+        "customer_status_label": "Action required",
+        "customer_status_subline": "Supporting files alone do not complete this obligation.",
+        "customer_status_class": "A|B"
+      },
+      "recommendation": "Projection logic change — not vocabulary change",
+      "rationale": "Supporting upload is not a terminal obligation state; vocabulary correctly has no standalone badge"
+    },
+    {
+      "id": "UNS-RES-02",
+      "legacy_state": "evidence_recorded",
+      "legacy_label": "Evidence recorded",
+      "approved_projection": {
+        "customer_status_key": "recorded",
+        "customer_status_label": "Recorded on file"
+      },
+      "recommendation": "Projection logic — map legacy stage evidence_recorded → recorded",
+      "rationale": "Replacement mapping in CUSTOMER_STATUS_VOCABULARY.json"
+    },
+    {
+      "id": "UNS-RES-03",
+      "legacy_state": "assessment_recorded | declaration_recorded",
+      "legacy_label": "Assessment recorded | Declaration recorded",
+      "approved_projection": {
+        "customer_status_key": "recorded",
+        "customer_status_label": "Recorded on file",
+        "modal_headline": "Assessment recorded | Submission recorded (supporting_phrases)"
+      },
+      "recommendation": "Projection logic for badge; supporting_phrases for modal headline",
+      "rationale": "I7 allows more specific modal headline; list badge is Recorded on file"
+    },
+    {
+      "id": "UNS-RES-04",
+      "legacy_label": "Follow-up evidence required",
+      "approved_projection": {
+        "customer_status_key": "followup_required",
+        "customer_status_label": "Follow-up required"
+      },
+      "recommendation": "Projection logic — normalize legacy wording to vocabulary label",
+      "rationale": "Same semantics; retired phrasing"
+    },
+    {
+      "id": "UNS-RES-05",
+      "legacy_label": "Additional action still required",
+      "approved_projection": {
+        "customer_status_key": "additional_action_required",
+        "customer_status_label": "Additional action required"
+      },
+      "recommendation": "Projection logic — exact vocabulary label",
+      "rationale": "Minor legacy wording drift"
+    },
+    {
+      "id": "UNS-RES-06",
+      "legacy_label": "Valid",
+      "approved_projection": {
+        "customer_status_key": "verified",
+        "customer_status_label": "Verified"
+      },
+      "recommendation": "Projection logic",
+      "consistency_audit": "D6"
+    },
+    {
+      "id": "UNS-RES-07",
+      "internal_stage": "reviewer_feedback",
+      "approved_projection": {
+        "customer_status_key": "under_review",
+        "customer_status_label": "Under review",
+        "customer_status_subline": "Reviewer requested changes — update and resubmit if needed."
+      },
+      "recommendation": "Projection logic — class B queue-proven only; no new vocabulary term",
+      "rationale": "Reviewer feedback is a sub-state of under_review, not a separate badge"
+    },
+    {
+      "id": "UNS-RES-08",
+      "surface": "documents_registry",
+      "phrase": "Awaiting verification",
+      "approved_projection": {
+        "note": "Document-row scoped — not requirement projector output"
+      },
+      "recommendation": "No vocabulary change; retain_with_constraints in CUSTOMER_STATUS_VOCABULARY.json",
+      "consistency_audit": "D7"
+    }
+  ],
+  "out_of_scope_not_unsupported": [
+    {
+      "id": "OOS-01",
+      "state": "NOT_REQUIRED applicability",
+      "note": "Row excluded from obligation badge surfaces — no customer_status projection required"
+    },
+    {
+      "id": "OOS-02",
+      "state": "Compliance score widget copy",
+      "note": "D10 — score vs obligation may differ; not a requirement row projection gap"
+    },
+    {
+      "id": "OOS-03",
+      "state": "Report export aggregates",
+      "note": "D8 — S4 scope; vocabulary supports class-split buckets"
+    }
+  ],
+  "vocabulary_change_recommended": false,
+  "projection_logic_change_required": true,
+  "projection_logic_items": [
+    "UNS-RES-01 supporting_upload_only → action_required",
+    "UNS-RES-02 evidence_recorded → recorded",
+    "UNS-RES-03 assessment/declaration recorded → recorded badge + headline table",
+    "UNS-RES-06 Valid → verified",
+    "UNS-RES-07 reviewer_feedback → under_review when queue-proven",
+    "Gate enforcement for AMB-06, AMB-07"
+  ]
+}

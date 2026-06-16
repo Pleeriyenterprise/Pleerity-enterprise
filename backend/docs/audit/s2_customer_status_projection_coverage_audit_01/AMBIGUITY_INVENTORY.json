@@ -1,0 +1,138 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTION-COVERAGE-AUDIT-01",
+  "date": "2026-06-02",
+  "ambiguities": [
+    {
+      "id": "AMB-01",
+      "type": "overlay_competition",
+      "signals": ["escalation_active", "queue_backed_review", "under_review eligible"],
+      "competing_labels": ["Escalation required", "Under review"],
+      "resolution": "overlay_precedence[0] escalation_required supersedes under_review",
+      "deterministic": true,
+      "severity": "LOW",
+      "implementation_note": "Projector must evaluate escalation before under_review gate"
+    },
+    {
+      "id": "AMB-02",
+      "type": "overlay_competition",
+      "signals": ["rejected", "under_review"],
+      "competing_labels": ["Rejected", "Under review"],
+      "resolution": "rejected (precedence 2) before under_review (3)",
+      "deterministic": true,
+      "severity": "LOW"
+    },
+    {
+      "id": "AMB-03",
+      "type": "overlay_competition",
+      "signals": ["expiry_date_needed", "under_review"],
+      "competing_labels": ["Expiry date needed", "Under review"],
+      "resolution": "expiry_date_needed (4) before under_review (3) — wait, order is rejected(2), under_review(3), expiry(4). So under_review wins over expiry.",
+      "resolution_corrected": "under_review (precedence 3) before expiry_date_needed (4)",
+      "deterministic": true,
+      "severity": "MEDIUM",
+      "families": ["gas_safety", "eicr"],
+      "note": "Certificate in queue with missing expiry: customer sees Under review; expiry resolved after verify or via subline"
+    },
+    {
+      "id": "AMB-04",
+      "type": "overlay_competition",
+      "signals": ["followup_unresolved", "components_incomplete"],
+      "competing_labels": ["Follow-up required", "Additional action required"],
+      "resolution": "followup_required (5) before additional_action_required (6)",
+      "deterministic": true,
+      "severity": "LOW",
+      "families": ["hmo_fire_risk"]
+    },
+    {
+      "id": "AMB-05",
+      "type": "overlay_competition",
+      "signals": ["followup_unresolved", "satisfaction_state=SATISFIED"],
+      "competing_labels": ["Follow-up required", "Satisfied"],
+      "resolution": "followup_required overlay blocks satisfied base until follow-up closed",
+      "deterministic": true,
+      "severity": "MEDIUM",
+      "families": ["legionella", "lead_testing"]
+    },
+    {
+      "id": "AMB-06",
+      "type": "two_labels_without_precedence_doc",
+      "signals": ["PENDING_REVIEW lifecycle", "class A", "no queue"],
+      "competing_labels": ["Under review (legacy)", "Recorded on file (approved)"],
+      "resolution": "Class A + NOT emit_under_review → recorded; forbid under_review primary",
+      "deterministic": true,
+      "severity": "HIGH",
+      "consistency_audit": "D5",
+      "legacy_source": "derive_truth_presentation platform_pending branch without queue check on class A"
+    },
+    {
+      "id": "AMB-07",
+      "type": "two_labels_without_precedence_doc",
+      "signals": ["EA_PENDING_ADMIN_REVIEW", "class B", "not in_queue"],
+      "competing_labels": ["Under review (legacy)", "Uploaded (approved)"],
+      "resolution": "emit_under_review gate requires queue membership → uploaded",
+      "deterministic": true,
+      "severity": "HIGH",
+      "consistency_audit": "D5 variant"
+    },
+    {
+      "id": "AMB-08",
+      "type": "consumer_interpretation",
+      "signals": ["same requirement", "documents page vs requirement row"],
+      "competing_labels": ["Awaiting verification (doc)", "Under review (req)"],
+      "resolution": "I7 + retain_with_constraints — doc-scoped copy allowed; requirement uses Under review",
+      "deterministic": true,
+      "severity": "LOW",
+      "consistency_audit": "D7",
+      "surface": "Documents page — not projector ambiguity"
+    },
+    {
+      "id": "AMB-09",
+      "type": "consumer_interpretation",
+      "signals": ["modal_headline", "list_badge"],
+      "competing_labels": ["Assessment recorded", "Recorded on file"],
+      "resolution": "CTA_POLICY_MATRIX + I7 — headline may be more specific; badge is Recorded on file",
+      "deterministic": true,
+      "severity": "LOW",
+      "not_ambiguity_for_projector": true,
+      "families": ["legionella", "lead_testing"]
+    },
+    {
+      "id": "AMB-10",
+      "type": "two_classes",
+      "signals": ["verification_class C on class A path family"],
+      "competing_classes": ["A", "C"],
+      "resolution": "customer_status_class=A; escalation is C_overlay not parallel path",
+      "deterministic": true,
+      "severity": "LOW",
+      "families": ["legionella", "lead_testing", "hmo_fire_risk"]
+    },
+    {
+      "id": "AMB-11",
+      "type": "internal_vs_customer",
+      "signals": ["satisfaction internal for class B", "customer terminal"],
+      "competing_labels": ["Satisfied (internal)", "Verified (customer)"],
+      "resolution": "Class B customer badge always Verified at terminal; satisfied never emitted",
+      "deterministic": true,
+      "severity": "LOW",
+      "families": ["gas_safety", "epc", "eicr", "pat"]
+    },
+    {
+      "id": "AMB-12",
+      "type": "legacy_label_competition",
+      "signals": ["legacy Evidence recorded", "SATISFIED_UNVERIFIED lifecycle"],
+      "competing_labels": ["Evidence recorded", "Recorded on file | Satisfied"],
+      "resolution": "Map to recorded or satisfied per guards; Evidence recorded not a primary badge",
+      "deterministic": true,
+      "severity": "MEDIUM",
+      "recommendation": "Projection logic maps lifecycle SATISFIED_UNVERIFIED + guards → satisfied else recorded"
+    }
+  ],
+  "non_ambiguous_after_gates": true,
+  "requires_projector_discipline": [
+    "AMB-03",
+    "AMB-05",
+    "AMB-06",
+    "AMB-07",
+    "AMB-12"
+  ]
+}

@@ -5,6 +5,7 @@ from database import database
 from middleware import client_route_guard
 from services.compliance_score import calculate_compliance_score
 from services.evidence_review_config import is_feature_evidence_review_v2
+from services.customer_status_projector_config import get_customer_status_projector_mode
 from services.scoring_semantics_v1 import SCORE_AUTHORITY_UNAVAILABLE, SCORE_STATUS_UNAVAILABLE
 from services.compliance_scoring_service import get_authoritative_property_compliance_for_client
 from typing import Optional, List, Dict, Any
@@ -626,6 +627,7 @@ async def get_dashboard(
             "compliance_score_headline": compliance_score_headline,
             "server_feature_flags": {
                 "evidence_review_v2_enabled": is_feature_evidence_review_v2(),
+                "customer_status_projector_v2_mode": get_customer_status_projector_mode(),
             },
         }
     

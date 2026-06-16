@@ -1,0 +1,37 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTION-COVERAGE-AUDIT-01",
+  "date": "2026-06-02",
+  "methodology": "Platform taxonomy (20 states) × 12 families (71 family-state rows) × D1–D12 (12 cases)",
+  "scores": {
+    "platform_taxonomy_states": 20,
+    "obligation_scoped_states": 19,
+    "not_applicable_states": 1,
+    "platform_states_covered": 19,
+    "platform_states_unsupported": 0,
+    "platform_states_ambiguous_unresolved": 0,
+    "platform_states_ambiguous_resolved_by_precedence": 12,
+    "family_state_rows_audited": 71,
+    "family_state_rows_covered": 71,
+    "family_state_rows_ambiguous": 3,
+    "family_state_rows_unsupported": 0,
+    "d12_cases_total": 12,
+    "d12_cases_deterministic": 12,
+    "d12_cases_vocabulary_gap": 0
+  },
+  "percentages": {
+    "platform_coverage": "100%",
+    "family_state_coverage": "100%",
+    "d12_coverage": "100%",
+    "determinism_after_gates": "100%"
+  },
+  "ambiguous_but_deterministic": [
+    "AMB-03 under_review vs expiry on class B",
+    "AMB-05 followup vs satisfied",
+    "AMB-06 class A phantom pending review"
+  ],
+  "legacy_mappings_requiring_projection_logic": 8,
+  "vocabulary_extensions_required": 0,
+  "fallback_language_required": false,
+  "legacy_truth_presentation_required": false,
+  "verdict": "COMPLETE"
+}

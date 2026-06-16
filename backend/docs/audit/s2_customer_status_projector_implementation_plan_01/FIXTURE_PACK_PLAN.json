@@ -1,0 +1,302 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTOR-IMPLEMENTATION-PLAN-01",
+  "authority": "p1_status_semantics_signoff_01/FAMILY_LIFECYCLE_MATRIX.json",
+  "fixture_location": "backend/tests/fixtures/customer_status_projector/",
+  "fixture_schema": {
+    "requirement_row": "Minimal enrich input dict",
+    "linked_primary_document": "Optional document dict",
+    "legacy_expectation": "truth_presentation_label from current derive (shadow tests)",
+    "projector_expectation": "customer_status_* fields",
+    "consistency_audit_case": "D1-D12 or null"
+  },
+  "families": [
+    {
+      "family": "Legionella",
+      "requirement_code": "legionella",
+      "fixture_file": "family_legionella_recorded.json",
+      "path": "A",
+      "scenario": "Post-submit recorded — no queue, no review language",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "has_persisted_submission": true,
+        "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+        "client_lifecycle_state": "SATISFIED_UNVERIFIED",
+        "queue_backed_review": false,
+        "followup_unresolved": false
+      },
+      "expected": {
+        "customer_status_key": "recorded",
+        "customer_status_label": "Recorded on file",
+        "customer_status_subline": "Self-recorded declaration — auditable and timestamped; no independent reviewer required.",
+        "customer_status_class": "A",
+        "customer_status_overlay": null
+      },
+      "legacy_drift": {
+        "typical_legacy_label": "Assessment recorded",
+        "divergence_type": "expected_normalization"
+      },
+      "consistency_audit_case": "D3"
+    },
+    {
+      "family": "Legionella (follow-up)",
+      "requirement_code": "legionella",
+      "fixture_file": "family_legionella_followup.json",
+      "path": "A",
+      "scenario": "Assessment on file with open follow-up",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "has_persisted_submission": true,
+        "followup_unresolved": true,
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "followup_required",
+        "customer_status_label": "Follow-up required",
+        "customer_status_subline": "Complete remaining assessment or remediation steps to close this obligation.",
+        "customer_status_class": "A",
+        "customer_status_overlay": "followup_required"
+      }
+    },
+    {
+      "family": "Smoke, Heat & CO",
+      "requirement_code": "smoke_heat_alarms",
+      "fixture_file": "family_smoke_heat_recorded.json",
+      "path": "A",
+      "scenario": "D12 — list recorded; assurance must not say Awaiting platform review",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "governance_family": "SELF_CERTIFIED",
+        "has_persisted_submission": true,
+        "components_incomplete": false,
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "recorded",
+        "customer_status_label": "Recorded on file",
+        "customer_status_subline": "Self-recorded declaration — auditable and timestamped; no independent reviewer required.",
+        "customer_status_class": "A",
+        "customer_status_overlay": null
+      },
+      "consistency_audit_case": "D12"
+    },
+    {
+      "family": "HMO Fire Risk",
+      "requirement_code": "hmo_fire_risk",
+      "fixture_file": "family_hmo_fire_followup.json",
+      "path": "A",
+      "scenario": "Recorded with components/follow-up overlay",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "has_persisted_submission": true,
+        "followup_unresolved": true,
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "followup_required",
+        "customer_status_label": "Follow-up required",
+        "customer_status_class": "A",
+        "customer_status_overlay": "followup_required"
+      }
+    },
+    {
+      "family": "Gas Safety",
+      "requirement_code": "gas_safety",
+      "fixture_file": "family_gas_safety_under_review.json",
+      "path": "B",
+      "scenario": "UPLOADED + queue proven → Under review",
+      "evidence_state": {
+        "evidence_authority.state": "EA_PENDING_ADMIN_REVIEW",
+        "governance_family": "PLATFORM_VERIFIED",
+        "linked_primary_document.status": "UPLOADED",
+        "queue_backed_review": true,
+        "review_owner": "platform_admin"
+      },
+      "expected": {
+        "customer_status_key": "under_review",
+        "customer_status_label": "Under review",
+        "customer_status_subline": "Our team is verifying your uploaded certificate",
+        "customer_status_class": "B",
+        "customer_status_overlay": null
+      },
+      "legacy_drift": {
+        "typical_legacy_label": "Platform verification pending",
+        "divergence_type": "expected_normalization"
+      },
+      "consistency_audit_case": "D3"
+    },
+    {
+      "family": "EPC",
+      "requirement_code": "epc",
+      "fixture_file": "family_epc_uploaded.json",
+      "path": "B",
+      "scenario": "Uploaded pre-queue — not under_review",
+      "evidence_state": {
+        "evidence_authority.state": "EA_UPLOADED_UNCONFIRMED",
+        "linked_primary_document.status": "UPLOADED",
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "uploaded",
+        "customer_status_label": "Uploaded",
+        "customer_status_class": "B",
+        "customer_status_overlay": null
+      }
+    },
+    {
+      "family": "EICR",
+      "requirement_code": "eicr",
+      "fixture_file": "family_eicr_expiry.json",
+      "path": "B",
+      "scenario": "Expiry overlay blocks verified",
+      "evidence_state": {
+        "evidence_authority.state": "EA_UPLOADED_UNCONFIRMED",
+        "evidence_authority.state_reason": "document_upload_missing_required_expiry_semantics",
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "expiry_date_needed",
+        "customer_status_label": "Expiry date needed",
+        "customer_status_subline": "Add expiry date information so this certificate can count as fully valid.",
+        "customer_status_class": "B",
+        "customer_status_overlay": "expiry_date_needed"
+      }
+    },
+    {
+      "family": "PAT",
+      "requirement_code": "portable_appliance_test",
+      "fixture_file": "family_pat_verified.json",
+      "path": "B",
+      "scenario": "Verified terminal",
+      "evidence_state": {
+        "evidence_authority.state": "EA_VERIFIED_CURRENT",
+        "client_lifecycle_state": "VERIFIED",
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "verified",
+        "customer_status_label": "Verified",
+        "customer_status_subline": "Requirement satisfied.",
+        "customer_status_class": "B",
+        "customer_status_overlay": null
+      },
+      "consistency_audit_case": "D6"
+    },
+    {
+      "family": "Tenancy Agreement",
+      "requirement_code": "tenancy_agreement",
+      "fixture_file": "family_tenancy_agreement_satisfied.json",
+      "path": "A",
+      "scenario": "D1 fix — Satisfied without review subline",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "governance_family": "SELF_CERTIFIED",
+        "satisfaction_state": "SATISFIED",
+        "has_persisted_submission": true,
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "satisfied",
+        "customer_status_label": "Satisfied",
+        "customer_status_subline": "Obligation met based on recorded evidence.",
+        "customer_status_class": "A",
+        "customer_status_overlay": null
+      },
+      "consistency_audit_case": "D1"
+    },
+    {
+      "family": "How to Rent",
+      "requirement_code": "how_to_rent",
+      "fixture_file": "family_how_to_rent_recorded.json",
+      "path": "A",
+      "scenario": "Recorded on file post delivery proof",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "governance_family": "SELF_CERTIFIED",
+        "has_persisted_submission": true,
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "recorded",
+        "customer_status_label": "Recorded on file",
+        "customer_status_class": "A"
+      }
+    },
+    {
+      "family": "Rent Smart Wales",
+      "requirement_code": "rent_smart_wales",
+      "fixture_file": "family_rent_smart_wales_recorded.json",
+      "path": "A",
+      "scenario": "Registration recorded",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "has_persisted_submission": true,
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "recorded",
+        "customer_status_label": "Recorded on file",
+        "customer_status_class": "A"
+      }
+    },
+    {
+      "family": "Landlord Registration",
+      "requirement_code": "landlord_registration",
+      "fixture_file": "family_landlord_registration_recorded.json",
+      "path": "A",
+      "scenario": "No phantom under_review for org attestation",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "governance_family": "SELF_CERTIFIED",
+        "has_persisted_submission": true,
+        "queue_backed_review": false,
+        "client_lifecycle_state": "PENDING_REVIEW"
+      },
+      "expected": {
+        "customer_status_key": "recorded",
+        "customer_status_label": "Recorded on file",
+        "customer_status_class": "A",
+        "note": "PENDING_REVIEW lifecycle must not force under_review on class A"
+      },
+      "consistency_audit_case": "D5"
+    },
+    {
+      "family": "Lead Testing",
+      "requirement_code": "lead_testing",
+      "fixture_file": "family_lead_testing_followup.json",
+      "path": "A",
+      "scenario": "External assessment with follow-up open",
+      "evidence_state": {
+        "evidence_authority.state": "EA_RECORDED_CURRENT",
+        "governance_family": "PLATFORM_OVERSIGHT_OPTIONAL",
+        "followup_unresolved": true,
+        "queue_backed_review": false
+      },
+      "expected": {
+        "customer_status_key": "followup_required",
+        "customer_status_label": "Follow-up required",
+        "customer_status_class": "A",
+        "customer_status_overlay": "followup_required"
+      }
+    }
+  ],
+  "drift_fixtures": [
+    {
+      "file": "drift_d1_satisfied_review_pending.json",
+      "consistency_audit_case": "D1",
+      "legacy": { "truth_presentation_label": "Satisfied", "truth_presentation_subline": "Review pending" },
+      "projector": { "customer_status_key": "satisfied", "customer_status_subline": "Obligation met based on recorded evidence." }
+    },
+    {
+      "file": "drift_d4_escalation.json",
+      "consistency_audit_case": "D4",
+      "legacy": { "truth_presentation_label": "Escalated for platform review" },
+      "projector": { "customer_status_key": "escalation_required", "customer_status_label": "Escalation required" }
+    }
+  ],
+  "implementation_notes": [
+    "Each fixture includes minimal requirement dict loadable by test helpers",
+    "Shadow tests: run legacy attach → projector → assert divergence_type",
+    "Active tests: assert customer_status_* only; legacy mirror optional",
+    "Sublines may be refined against CUSTOMER_STATUS_VOCABULARY.json subline table during implementation"
+  ]
+}

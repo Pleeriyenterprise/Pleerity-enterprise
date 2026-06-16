@@ -545,6 +545,24 @@ def evidence_badge_label(evidence_state: str) -> str:
     return "Not uploaded"
 
 
+def _attach_take_action_envelope_to_row(out: Dict[str, Any]) -> None:
+    """Resolve and attach client take_action envelope (after projector when deferred)."""
+    env_client = enrich_take_action_envelope_for_client(
+        resolve_take_action_envelope(
+            out,
+            property_id=out.get("property_id"),
+            property_jurisdiction=out.get("jurisdiction"),
+        ),
+        out,
+    )
+    take = env_client.get("take_action")
+    out["take_action"] = take
+    out["action_links"] = list((take or {}).get("supporting_external_links") or [])
+    for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
+        if env_client.get(k) is not None:
+            out[k] = env_client[k]
+
+
 def enrich_requirement_dict(
     requirement: Dict[str, Any],
     live_evidence_state: str,
@@ -628,20 +646,10 @@ def enrich_requirement_dict(
     out.update(eng)
 
     out["action_type"] = infer_action_type(out)
-    env_client = enrich_take_action_envelope_for_client(
-        resolve_take_action_envelope(
-            out,
-            property_id=out.get("property_id"),
-            property_jurisdiction=out.get("jurisdiction"),
-        ),
-        out,
-    )
-    take = env_client.get("take_action")
-    out["take_action"] = take
-    out["action_links"] = list((take or {}).get("supporting_external_links") or [])
-    for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
-        if env_client.get(k) is not None:
-            out[k] = env_client[k]
+    _audience_lower_early = (audience or "client").strip().lower()
+    _defer_take_action = _audience_lower_early != "admin"
+    if not _defer_take_action:
+        _attach_take_action_envelope_to_row(out)
 
     if (audience or "client").strip().lower() != "admin":
         _ced = str(effective_evidence_resolution(out).get("client_evidence_disclosure") or "").strip()
@@ -799,11 +807,24 @@ def enrich_requirement_dict(
             out["document_id"] = str(out.get("evidence_doc_id")).strip()
 
         from services.cer_governance_presentation import attach_cer_governance_presentation
+        from services.customer_status_projector_config import (
+            get_customer_status_projector_mode,
+            is_customer_status_projector_active,
+        )
 
-        out.update(attach_cer_governance_presentation(out))
-        truth_label = str(out.get("truth_presentation_label") or "").strip()
-        if truth_label:
-            out["client_lifecycle_label"] = truth_label
+        _projector_mode = get_customer_status_projector_mode()
+        _emit_legacy_labels = not is_customer_status_projector_active()
+
+        out.update(
+            attach_cer_governance_presentation(
+                out,
+                emit_legacy_customer_labels=_emit_legacy_labels,
+            )
+        )
+        if _emit_legacy_labels:
+            truth_label = str(out.get("truth_presentation_label") or "").strip()
+            if truth_label:
+                out["client_lifecycle_label"] = truth_label
 
         from services.requirement_satisfaction_service import (
             attach_satisfaction_fields,
@@ -812,6 +833,14 @@ def enrich_requirement_dict(
 
         out.update(reconcile_client_lifecycle_with_satisfaction(out))
         out.update(attach_satisfaction_fields(out))
+
+        from services.customer_status_projector_v2 import apply_customer_status_projection
+
+        apply_customer_status_projection(
+            out,
+            linked_primary_document=linked_primary_document,
+            mode=_projector_mode,
+        )
 
         try:
             from services.audience_governance_v1 import (
@@ -824,6 +853,10 @@ def enrich_requirement_dict(
             )
         except Exception:
             pass
+
+        if _defer_take_action:
+            _attach_take_action_envelope_to_row(out)
+            out["requirement_display"] = build_requirement_display(out, audience=audience)
 
         from services.cer_actionability_presentation import apply_actionability_cta_override
 

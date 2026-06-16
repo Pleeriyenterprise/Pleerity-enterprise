@@ -1,0 +1,439 @@
+{
+  "version": "1.0.0",
+  "effective_date": "2026-06-02",
+  "programme": "PR-1A-COMBINED-VOCABULARY-GOVERNANCE-IMPLEMENTATION-01",
+  "status": "ACTIVE",
+  "authority_level": "TIER_1",
+  "authority": {
+    "human": "docs/governance/REVIEW_POLICY_VOCABULARY.md",
+    "machine": "docs/governance/CUSTOMER_STATUS_VOCABULARY.json",
+    "sign_off_sources": [
+      "backend/docs/audit/p1_review_policy_signoff_01/",
+      "backend/docs/audit/p1_status_semantics_signoff_01/",
+      "backend/docs/audit/p1_verification_policy_audit_01/"
+    ]
+  },
+  "ownership": {
+    "primary": "Platform Architecture",
+    "product_sign_off": "Product",
+    "implementation_maintainers": [
+      "enrich / requirement_truth",
+      "presentation / client surfaces"
+    ],
+    "change_control": "Product + Platform Architecture sign-off for normative term changes"
+  },
+  "review_policy": {
+    "model": "Model A — single human review workflow + exception escalation",
+    "routine_human_review": "document_pending_verification queue only (Class B certificates)",
+    "escalation": "exception-only — not a parallel review system",
+    "structured_cer": "record and satisfy — not routinely platform-reviewed"
+  },
+  "verification_policy": {
+    "class_a": { "id": "record_only", "human_review": false, "queue": null },
+    "class_b": {
+      "id": "verify_by_default",
+      "human_review": true,
+      "queue": "document_pending_verification"
+    },
+    "class_c": {
+      "id": "escalation_only",
+      "human_review": "investigation not routine verification",
+      "queue": "exception_resolution"
+    },
+    "class_d": {
+      "id": "optional_attestation",
+      "human_review": false,
+      "queue": null,
+      "note": "Org optional; not platform routine verify"
+    }
+  },
+  "primary_statuses": [
+    {
+      "key": "action_required",
+      "label": "Action required",
+      "definition": "No acceptable evidence on file",
+      "classes": ["A", "B", "C"]
+    },
+    {
+      "key": "submitted",
+      "label": "Submitted",
+      "definition": "Submission just received — transient feedback only",
+      "classes": ["A"],
+      "transient": true
+    },
+    {
+      "key": "uploaded",
+      "label": "Uploaded",
+      "definition": "Certificate file received; before queue confirmation",
+      "classes": ["B"]
+    },
+    {
+      "key": "under_review",
+      "label": "Under review",
+      "definition": "Admin verifying certificate in pending-verification queue",
+      "classes": ["B"],
+      "gate": "emit_under_review"
+    },
+    {
+      "key": "recorded",
+      "label": "Recorded on file",
+      "definition": "Self-certified or structured evidence stored; no reviewer expected",
+      "classes": ["A"],
+      "gate": "emit_recorded"
+    },
+    {
+      "key": "satisfied",
+      "label": "Satisfied",
+      "definition": "Obligation met under governance rules",
+      "classes": ["A", "C"]
+    },
+    {
+      "key": "verified",
+      "label": "Verified",
+      "definition": "Admin accepted certificate",
+      "classes": ["B"]
+    },
+    {
+      "key": "rejected",
+      "label": "Rejected",
+      "definition": "Admin rejected certificate; re-upload needed",
+      "classes": ["B"]
+    },
+    {
+      "key": "followup_required",
+      "label": "Follow-up required",
+      "definition": "Landlord owes more assessment or remediation",
+      "classes": ["A"],
+      "overlay": true
+    },
+    {
+      "key": "additional_action_required",
+      "label": "Additional action required",
+      "definition": "Multi-evidence components missing",
+      "classes": ["A"],
+      "overlay": true
+    },
+    {
+      "key": "expiry_date_needed",
+      "label": "Expiry date needed",
+      "definition": "Certificate on file; expiry not confirmed",
+      "classes": ["A", "B"],
+      "overlay": true
+    },
+    {
+      "key": "escalation_required",
+      "label": "Escalation required",
+      "definition": "Flagged issue under Pleerity investigation",
+      "classes": ["A", "B", "C"],
+      "overlay": true,
+      "gate": "emit_escalation_required"
+    },
+    {
+      "key": "escalation_resolved",
+      "label": "Issue resolved",
+      "definition": "Escalation cleared after admin resolution",
+      "classes": ["A", "B", "C"],
+      "overlay": true
+    }
+  ],
+  "lifecycle": {
+    "class_a": {
+      "path_id": "A_self_certification",
+      "states": ["action_required", "submitted", "recorded", "satisfied"],
+      "optional_overlays": [
+        "followup_required",
+        "additional_action_required",
+        "expiry_date_needed",
+        "escalation_required",
+        "escalation_resolved"
+      ],
+      "forbidden_primary_badges": ["uploaded", "under_review", "verified", "rejected", "submitted_on_lists"]
+    },
+    "class_b": {
+      "path_id": "B_document_verification",
+      "states": ["action_required", "uploaded", "under_review", "verified", "rejected"],
+      "optional_overlays": ["expiry_date_needed", "escalation_required", "escalation_resolved"],
+      "forbidden_primary_badges": ["submitted", "recorded", "satisfied"],
+      "review_queue": "document_pending_verification"
+    },
+    "class_c": {
+      "path_id": "C_escalation_exception",
+      "states": ["escalation_required", "escalation_resolved"],
+      "overlays": ["A", "B"],
+      "is_parallel_review_system": false
+    }
+  },
+  "canonical_obligation_status_ladder": [
+    "action_required",
+    "submitted",
+    "uploaded",
+    "under_review",
+    "recorded",
+    "satisfied",
+    "verified",
+    "rejected",
+    "followup_required",
+    "additional_action_required",
+    "expiry_date_needed",
+    "escalation_required",
+    "escalation_resolved"
+  ],
+  "overlay_precedence": [
+    "escalation_required",
+    "rejected",
+    "under_review",
+    "expiry_date_needed",
+    "followup_required",
+    "additional_action_required",
+    "base_path_state"
+  ],
+  "supporting_phrases": [
+    { "phrase": "Submission on file", "use": "Subline when persisted CER exists" },
+    { "phrase": "Evidence on file", "use": "Tier supplement for satisfied-unverified" },
+    { "phrase": "Certificate under review", "use": "Modal headline (class B)" },
+    { "phrase": "Submission recorded", "use": "Modal headline (class A)" },
+    { "phrase": "Assessment recorded", "use": "Modal headline (legionella, lead)" },
+    { "phrase": "Registration recorded", "use": "Modal headline (Rent Smart Wales)" },
+    {
+      "phrase": "Self-recorded declaration — auditable and timestamped",
+      "use": "Modal subline (class A)"
+    },
+    {
+      "phrase": "Our team is verifying your uploaded certificate",
+      "use": "Modal subline (class B)"
+    }
+  ],
+  "cta_vocabulary": [
+    { "cta": "View submission", "when": "Recorded / under review / escalation — inspect existing" },
+    { "cta": "View evidence", "when": "Generic evidence view" },
+    { "cta": "View verified evidence", "when": "Class B verified" },
+    { "cta": "Update submission", "when": "Amend recorded evidence" },
+    { "cta": "Add supporting evidence", "when": "Attach non-primary files" },
+    { "cta": "Upload certificate", "when": "Class B action required or rejected" },
+    { "cta": "Record declaration", "when": "Class A guided declaration gap" },
+    { "cta": "Add expiry date", "when": "Expiry date needed" },
+    { "cta": "Contact support", "when": "Escalation required (secondary)" }
+  ],
+  "retired_phrases": [
+    "Review pending",
+    "Pending review",
+    "Platform review required",
+    "Awaiting platform review",
+    "Escalated for platform review",
+    "Platform verification pending",
+    "Awaiting review",
+    "Evidence review pending",
+    "Evidence submitted and awaiting review",
+    "Verification required",
+    "Awaiting approval",
+    "Submission is awaiting review — not yet verified",
+    "Awaiting review — submission not yet verified",
+    "Submission on file — awaiting review",
+    "Your submission is waiting for review",
+    "no upload needed while review is in progress",
+    "PLATFORM_REVIEWED assurance title: Awaiting platform review",
+    "pending_review document visibility bucket label",
+    "PENDING_REVIEW in reportHumanLanguage"
+  ],
+  "retired_phrase_details": [
+    {
+      "phrase": "Review pending",
+      "replacement": "Recorded on file | Under review | Escalation required (class-dependent)",
+      "reason": "Implies human review when often none exists"
+    },
+    {
+      "phrase": "Pending review",
+      "replacement": "Under review (class B) | Recorded on file (class A)",
+      "reason": "Ambiguous; used in documents registry and digests"
+    },
+    {
+      "phrase": "Platform review required",
+      "replacement": "Under review OR Escalation required",
+      "reason": "Not a defined operational state; no queue proof"
+    },
+    {
+      "phrase": "Awaiting platform review",
+      "replacement": "Recorded on file | Under review (class B only)",
+      "reason": "Used for class A submissions without queue"
+    },
+    {
+      "phrase": "Escalated for platform review",
+      "replacement": "Escalation required",
+      "reason": "Conflates escalation with routine review"
+    },
+    {
+      "phrase": "Platform verification pending",
+      "replacement": "Under review",
+      "reason": "Jargon; duplicates under review"
+    },
+    {
+      "phrase": "Awaiting review",
+      "replacement": "Under review | Recorded on file | Escalation required",
+      "reason": "Generic; used in badges, reports, lifecycle"
+    },
+    {
+      "phrase": "Evidence review pending",
+      "replacement": "Under review (class B only)",
+      "reason": "Implies review without queue"
+    },
+    {
+      "phrase": "Evidence submitted and awaiting review",
+      "replacement": "Under review (class B) | Recorded on file (class A)",
+      "reason": "Used in requirementIntelligenceLabels"
+    },
+    {
+      "phrase": "Verification required",
+      "replacement": "Action required | Under review | Expiry date needed",
+      "reason": "Ambiguous — landlord vs platform"
+    },
+    {
+      "phrase": "Awaiting approval",
+      "replacement": "Under review (class B only)",
+      "reason": "No approval workflow exists for customers"
+    }
+  ],
+  "retain_with_constraints": [
+    {
+      "phrase": "Awaiting verification",
+      "constraint": "Documents page / property evidence summary ONLY — means UPLOADED doc in admin queue",
+      "not_for": "structured CER families",
+      "maps_to": "Document queue equivalent of Under review"
+    },
+    {
+      "phrase": "Submission on file",
+      "constraint": "Supporting copy only; pair with canonical status badge",
+      "maps_to": "Not a standalone status"
+    },
+    {
+      "phrase": "Evidence on file",
+      "constraint": "Tier badge for SATISFIED_UNVERIFIED; not a substitute for review language",
+      "maps_to": "Tier badge only"
+    }
+  ],
+  "replacement_mappings": [
+    {
+      "from": "Review pending",
+      "to": "Recorded on file",
+      "when": "class_A AND has_submission AND NOT escalation_required"
+    },
+    {
+      "from": "Review pending",
+      "to": "Under review",
+      "when": "class_B AND document_in_pending_verification_queue"
+    },
+    {
+      "from": "Review pending",
+      "to": "Escalation required",
+      "when": "exception_active AND admin_path_exists"
+    },
+    {
+      "from": "Awaiting platform review",
+      "to": "Under review",
+      "when": "class_B queue-proven"
+    },
+    {
+      "from": "Awaiting platform review",
+      "to": "Recorded on file",
+      "when": "class_A post-submit"
+    },
+    {
+      "from": "Platform verification pending",
+      "to": "Under review",
+      "when": "class_B"
+    },
+    {
+      "from": "Escalated for platform review",
+      "to": "Escalation required",
+      "when": "always"
+    },
+    {
+      "from": "Awaiting review",
+      "to": "Under review",
+      "when": "class_B queue-proven"
+    },
+    {
+      "from": "Awaiting review",
+      "to": "Recorded on file",
+      "when": "class_A"
+    },
+    {
+      "from": "Evidence review pending",
+      "to": "Under review",
+      "when": "class_B only"
+    },
+    {
+      "from": "Pending review",
+      "to": "Under review",
+      "when": "documents_registry AND UPLOADED"
+    },
+    {
+      "from": "Pending review",
+      "to": "Recorded on file",
+      "when": "structured submission without doc queue"
+    },
+    {
+      "from": "Declaration recorded",
+      "to": "Recorded on file",
+      "when": "customer_list_badge",
+      "note": "Keep Declaration recorded in modal detail for guided_declaration workflow hint"
+    },
+    {
+      "from": "Assessment recorded",
+      "to": "Recorded on file",
+      "when": "customer_list_badge",
+      "note": "Keep Assessment recorded in modal subline for external assessment"
+    },
+    {
+      "from": "Valid",
+      "to": "Verified",
+      "when": "PLATFORM_VERIFIED satisfied",
+      "note": "Align chip with policy term Verified"
+    }
+  ],
+  "presentation_stage_mapping": {
+    "declaration_recorded": "recorded",
+    "assessment_recorded": "recorded",
+    "platform_verification_pending": "under_review",
+    "escalation_review": "escalation_required",
+    "followup_required": "followup_required",
+    "operational_incomplete": "additional_action_required",
+    "expiry_confirmation_required": "expiry_date_needed",
+    "verified": "verified",
+    "collect_evidence": "action_required",
+    "action_required": "action_required"
+  },
+  "gates": {
+    "emit_under_review": "obligation_class=B AND document.status=UPLOADED AND in_pending_verification_queue",
+    "emit_recorded": "obligation_class=A AND has_persisted_submission AND NOT escalation_required",
+    "emit_escalation_required": "exception_trigger_active AND admin_resolution_path_exists",
+    "forbid_review_language": "NOT emit_under_review AND NOT emit_escalation_required"
+  },
+  "semantic_invariants": [
+    "I1_single_primary_badge",
+    "I2_class_disjoint_vocabulary",
+    "I3_recorded_not_satisfied_not_verified",
+    "I4_submitted_not_uploaded",
+    "I5_under_review_not_escalation_required",
+    "I6_review_language_gate",
+    "I7_surface_consistency"
+  ],
+  "implementation_sequence": {
+    "current_phase": "S1",
+    "phases": ["S1", "S2", "S3", "S4", "S5"],
+    "rule": "No S2 before S1 completion",
+    "s1_scope": "Vocabulary authority + governance promotion only — no runtime wiring",
+    "authority_after_s2": "cer_governance_presentation.py emits customer_status_label"
+  },
+  "surface_authority": {
+    "authoritative_pair": ["customer_status_label", "customer_status_subline"],
+    "projector": "enrich_requirements_for_client (S2+)",
+    "surfaces": [
+      "Requirements list",
+      "Requirement modal",
+      "Property matrix",
+      "Today tasks",
+      "Command Centre",
+      "Documents registry (document-scoped copy may use Awaiting verification)"
+    ]
+  }
+}

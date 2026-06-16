@@ -1,0 +1,248 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTOR-PLANNING-01",
+  "authority": [
+    "docs/governance/REVIEW_POLICY_VOCABULARY.md",
+    "docs/governance/CUSTOMER_STATUS_VOCABULARY.json",
+    "docs/governance/RETIRED_OBLIGATION_PHRASE_REGISTRY.json"
+  ],
+  "enrich_boundary": "requirement_truth.enrich_requirement_dict (audience=client)",
+  "projection_sources": [
+    {
+      "id": "PS-01",
+      "module": "services/client_requirement_lifecycle.py",
+      "functions": ["derive_client_lifecycle_fields"],
+      "emits": ["client_lifecycle_state", "client_lifecycle_label", "client_lifecycle_reason_codes"],
+      "current_responsibility": "Maps evidence authority + document review V2 + semantic state to PENDING_REVIEW / SATISFIED_UNVERIFIED / VERIFIED lifecycle enum",
+      "consumers": ["cer_governance_presentation.derive_truth_presentation", "KPI attention heuristics", "frontend clientRequirementLifecycle.js"],
+      "survives_s2": true,
+      "s2_role": "projector_input_only",
+      "notes": "Stop emitting customer-facing review language; internal enum retained"
+    },
+    {
+      "id": "PS-02",
+      "module": "services/cer_governance_presentation.py",
+      "functions": ["derive_truth_presentation", "attach_cer_governance_presentation", "derive_assurance_tier", "cognition_next_step_for_requirement"],
+      "emits": ["truth_presentation_stage", "truth_presentation_label", "truth_presentation_subline", "truth_presentation_tier_supplement", "review_owner", "queue_backed_review", "assurance_tier", "governance_family"],
+      "current_responsibility": "Primary customer status derivation today — emits retired phrases (Platform verification pending, Escalated for platform review)",
+      "consumers": ["requirement_truth enrich", "operational_cognition_service", "cer_actionability_presentation", "frontend cerGovernancePresentation.js"],
+      "survives_s2": "partial",
+      "s2_role": "legacy_projection_during_shadow; governance_meta_only_after_active",
+      "notes": "derive_truth_presentation superseded by customer_status_projector_v2 when flag=active"
+    },
+    {
+      "id": "PS-03",
+      "module": "services/requirement_truth.py",
+      "functions": ["enrich_requirement_dict", "enrich_requirements_for_client"],
+      "emits": ["merges all enrich fields", "overwrites client_lifecycle_label from truth_presentation_label"],
+      "current_responsibility": "Orchestration hub — no single status authority",
+      "consumers": ["routes/client.py", "routes/portfolio.py", "command_center_service", "today_projection_service", "reporting_service"],
+      "survives_s2": true,
+      "s2_role": "integration_point — calls projector_v2 after legacy chain in shadow; replaces chain when active",
+      "notes": "CRITICAL PATH"
+    },
+    {
+      "id": "PS-04",
+      "module": "services/requirement_satisfaction_service.py",
+      "functions": ["attach_satisfaction_fields", "reconcile_client_lifecycle_with_satisfaction"],
+      "emits": ["satisfaction_state", "lifecycle reconciliation"],
+      "current_responsibility": "Can produce satisfied + review_pending coupling in presentation",
+      "consumers": ["enrich hub", "scoring drivers"],
+      "survives_s2": true,
+      "s2_role": "projector_input_only",
+      "notes": "Must not override customer_status_label post-projector"
+    },
+    {
+      "id": "PS-05",
+      "module": "services/cer_actionability_presentation.py",
+      "functions": ["apply_actionability_cta_override", "build_submission_banner"],
+      "emits": ["truth_presentation_stage mutations", "banner sublines with awaiting review"],
+      "current_responsibility": "CTA and banner copy; can rewrite take_action",
+      "consumers": ["enrich hub", "frontend banners"],
+      "survives_s2": true,
+      "s2_role": "consumes customer_status_* for copy; no independent status labels in S2",
+      "notes": "Queue-gate banner text in S2 task 2.5"
+    },
+    {
+      "id": "PS-06",
+      "module": "services/operational_cognition_service.py",
+      "functions": ["build_envelope_for_requirement", "recommended_next_step"],
+      "emits": ["operational_cognition.recommended_next_step", "recommended_reason", "copy with awaiting review"],
+      "current_responsibility": "Independent cognition copy from truth_presentation_stage branches",
+      "consumers": ["Command Centre", "Today tasks", "priority stream metadata"],
+      "survives_s2": true,
+      "s2_role": "consumer_of_projector_output",
+      "notes": "D9 drift — must read customer_status_* not re-derive"
+    },
+    {
+      "id": "PS-07",
+      "module": "services/requirement_attention_eligibility_service.py",
+      "functions": ["derive_attention_reasons"],
+      "emits": ["attention_reason codes including review_pending"],
+      "current_responsibility": "Today/inbox attention — review_pending for Class A falsely implies review",
+      "consumers": ["unified_tasks_service", "today_projection_service"],
+      "survives_s2": true,
+      "s2_role": "internal_signals_only; customer copy via projector",
+      "notes": "Suppress customer-facing review_pending mapping Class A"
+    },
+    {
+      "id": "PS-08",
+      "module": "services/audience_governance_v1.py",
+      "functions": ["interpret_requirement_for_audience"],
+      "emits": ["audience_interpretation.status_label", "export section buckets"],
+      "current_responsibility": "Landlord interpretation + Awaiting review aggregate",
+      "consumers": ["enrich payload", "reports S4"],
+      "survives_s2": "partial",
+      "s2_role": "S2: read customer_status_* for landlord_interpretation; S4: export bucket split",
+      "notes": "D8 export drift"
+    },
+    {
+      "id": "PS-09",
+      "module": "services/review_assurance_legacy_convergence.py",
+      "functions": ["converge_legacy_review_signals"],
+      "emits": ["truth_presentation_stage", "review_owner"],
+      "current_responsibility": "Legacy org-review artifact edge cases",
+      "consumers": ["enrich pre-governance paths"],
+      "survives_s2": true,
+      "s2_role": "projector_input_only",
+      "notes": "Prevent resurrection of retired stages"
+    },
+    {
+      "id": "PS-10",
+      "module": "services/review_queue_service.py",
+      "functions": ["document_in_pending_verification_queue", "escalation_queue_membership"],
+      "emits": ["queue membership signals"],
+      "current_responsibility": "Queue truth for emit_under_review gate",
+      "consumers": ["projector gate evaluation"],
+      "survives_s2": true,
+      "s2_role": "projector_input_only",
+      "notes": "No new queue — read existing document_pending_verification"
+    },
+    {
+      "id": "PS-11",
+      "module": "services/requirement_evidence_authority.py",
+      "functions": ["sync_requirement_evidence_authority"],
+      "emits": ["evidence_authority.state", "semantic_state"],
+      "current_responsibility": "Authority writer — EA_PENDING_ADMIN_REVIEW drives false review UI",
+      "consumers": ["lifecycle derivation", "projector gates"],
+      "survives_s2": true,
+      "s2_role": "projector_input_only",
+      "notes": "No mutation changes in S2"
+    },
+    {
+      "id": "PS-12",
+      "module": "services/assurance_actionability_service.py",
+      "functions": ["project_assurance_quick_actions"],
+      "emits": ["assurance presentation hints"],
+      "current_responsibility": "Assurance block inputs",
+      "consumers": ["modal assurance section via frontend"],
+      "survives_s2": true,
+      "s2_role": "consumer_of_assurance_tier + customer_status_class",
+      "notes": "D12 legionella/smoke assurance drift"
+    },
+    {
+      "id": "PS-13",
+      "module": "services/report_human_language_v1.py",
+      "functions": ["COMPLIANCE_STATUS_LABELS", "humanize_pending_review"],
+      "emits": ["Awaiting review", "export labels"],
+      "current_responsibility": "Report/export human language — independent of enrich",
+      "consumers": ["reports S4", "frontend reportHumanLanguage.js"],
+      "survives_s2": false,
+      "s2_role": "deferred_S4 — S2 may add read-through from cached enrich snapshot only in shadow",
+      "notes": "Not in S2 customer cutover scope"
+    },
+    {
+      "id": "PS-14",
+      "module": "services/report_layout_governance.py",
+      "functions": ["section_title_for_status"],
+      "emits": ["Awaiting platform review", "Awaiting review section titles"],
+      "current_responsibility": "PDF section headers",
+      "consumers": ["professional_reports", "audit packs"],
+      "survives_s2": false,
+      "s2_role": "deferred_S4",
+      "notes": ""
+    },
+    {
+      "id": "PS-15",
+      "module": "services/monthly_digest_operational_intelligence.py",
+      "functions": ["build_digest_posture_buckets"],
+      "emits": ["pending review bucket labels"],
+      "current_responsibility": "Digest aggregation copy",
+      "consumers": ["monthly_digest_assembly_service"],
+      "survives_s2": false,
+      "s2_role": "deferred_S4",
+      "notes": ""
+    },
+    {
+      "id": "PS-16",
+      "module": "frontend/src/utils/resolvedRequirementViewModel.js",
+      "functions": ["projectResolvedRequirementSemantics"],
+      "emits": ["local badge fallbacks", "tier badges"],
+      "current_responsibility": "Frontend re-derivation when API fields missing",
+      "consumers": ["RequirementsPage", "PropertyDetailPage", "RequirementIntelligenceModal"],
+      "survives_s2": "unchanged_until_S3",
+      "s2_role": "out_of_scope_S2 — backend must emit fields so S3 can consume",
+      "notes": "S2 delivers API; S3 removes fallbacks"
+    },
+    {
+      "id": "PS-17",
+      "module": "frontend/src/utils/requirementSubmissionModalContext.js",
+      "functions": ["buildModalContextHero"],
+      "emits": ["Awaiting platform review hero"],
+      "current_responsibility": "Modal hero independent of list badge",
+      "consumers": ["RequirementIntelligenceModal"],
+      "survives_s2": "unchanged_until_S3",
+      "s2_role": "out_of_scope_S2",
+      "notes": "D2/D3 modal drift"
+    },
+    {
+      "id": "PS-18",
+      "module": "frontend/src/utils/requirementLifecyclePresentation.js",
+      "functions": ["applyLifecycleAwareCtaPresentation"],
+      "emits": ["Review pending CTA labels"],
+      "current_responsibility": "CTA presentation from lifecycle not canonical pair",
+      "consumers": ["RequirementIntelligenceModal"],
+      "survives_s2": "unchanged_until_S3",
+      "s2_role": "out_of_scope_S2",
+      "notes": ""
+    },
+    {
+      "id": "PS-19",
+      "module": "frontend/src/utils/evidenceStatus.js",
+      "functions": ["evidenceStatusForStatus", "tierBadgeForRequirement"],
+      "emits": ["Platform verification pending", "Valid vs Verified"],
+      "current_responsibility": "Chip and tier badge local mapping",
+      "consumers": ["Requirements list", "property matrix"],
+      "survives_s2": "unchanged_until_S3",
+      "s2_role": "out_of_scope_S2",
+      "notes": "D5/D6"
+    },
+    {
+      "id": "PS-20",
+      "module": "frontend/src/utils/presentationLanguage.js",
+      "functions": ["OPERATIONAL_LABEL_BY_KEY"],
+      "emits": ["pending_review", "evidence_pending retired maps"],
+      "current_responsibility": "Token map parallel vocabulary system",
+      "consumers": ["filters", "digests", "misc surfaces"],
+      "survives_s2": "unchanged_until_S3",
+      "s2_role": "out_of_scope_S2",
+      "notes": "D11 dual mapping"
+    },
+    {
+      "id": "PS-21",
+      "module": "services/requirement_action_resolver.py",
+      "functions": ["resolve_take_action_envelope"],
+      "emits": ["take_action.primary.label"],
+      "current_responsibility": "CTA contract — not status badge but coupled copy",
+      "consumers": ["enrich", "Today", "unified tasks"],
+      "survives_s2": true,
+      "s2_role": "projector_input_for_cta_policy_matrix; labels align to customer_status in S2",
+      "notes": "CTA_POLICY_MATRIX.json"
+    }
+  ],
+  "summary": {
+    "backend_projection_sources": 15,
+    "frontend_fallback_sources_deferred_s3": 5,
+    "reporting_sources_deferred_s4": 3,
+    "single_authority_post_s2_active": "customer_status_projector_v2 → customer_status_* on enrich payload"
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "programme": "S2-CUSTOMER-STATUS-PROJECTOR-PLANNING-01",
+  "authority_pair": ["customer_status_label", "customer_status_subline"],
+  "consumers": [
+    {
+      "id": "C-01",
+      "surface": "Requirements page",
+      "path": "frontend/src/pages/RequirementsPage.js",
+      "current_source": "evidenceStatus.js + resolvedRequirementViewModel + client_lifecycle_label",
+      "future_source": "API customer_status_label/subline",
+      "migration_phase": "S3",
+      "s2_action": "API fields populated in shadow; no FE change",
+      "risk": "HIGH"
+    },
+    {
+      "id": "C-02",
+      "surface": "Property compliance matrix",
+      "path": "frontend/src/pages/PropertyDetailPage.js",
+      "current_source": "Same pipeline as requirements",
+      "future_source": "customer_status_*",
+      "migration_phase": "S3",
+      "s2_action": "API only",
+      "risk": "HIGH"
+    },
+    {
+      "id": "C-03",
+      "surface": "Requirement modal",
+      "path": "frontend/src/components/client/RequirementIntelligenceModal.js",
+      "current_source": "requirementSubmissionModalContext + lifecyclePresentation + assurancePresentation",
+      "future_source": "customer_status_* + modal headline table (non-contradicting)",
+      "migration_phase": "S3",
+      "s2_action": "API only; fixes D2/D3 when FE migrates",
+      "risk": "HIGH"
+    },
+    {
+      "id": "C-04",
+      "surface": "Today page",
+      "path": "frontend/src/pages/ClientTasksPage.js",
+      "current_source": "operational_cognition envelope + task metadata",
+      "future_source": "cognition reads customer_status_* (S2 backend)",
+      "migration_phase": "S2 partial / S3 UI",
+      "s2_action": "operational_cognition_service consumes projector",
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "C-05",
+      "surface": "Command Centre",
+      "path": "frontend/src/pages/ClientCommandCenterPage.js",
+      "current_source": "operational_cognition + priority stream",
+      "future_source": "customer_status_* via cognition",
+      "migration_phase": "S2 partial / S3 UI",
+      "s2_action": "Backend cognition alignment",
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "C-06",
+      "surface": "Documents page",
+      "path": "frontend/src/pages/DocumentsPage.js",
+      "current_source": "documentVisibilityRegistry + document row labels",
+      "future_source": "Doc row: Awaiting verification OK; requirement cross-links: customer_status_*",
+      "migration_phase": "S3",
+      "s2_action": "No doc-row change in S2",
+      "risk": "HIGH",
+      "note": "D7 — document vs requirement scoping preserved"
+    },
+    {
+      "id": "C-07",
+      "surface": "Dashboard widgets",
+      "path": "frontend/src/pages/ClientDashboard.js",
+      "current_source": "compliance_score stats + dashboardScoreWidgetLabels",
+      "future_source": "KPI unchanged; no review language on score",
+      "migration_phase": "S3",
+      "s2_action": "None",
+      "risk": "LOW"
+    },
+    {
+      "id": "C-08",
+      "surface": "Reports PDF / export",
+      "path": "backend/services/report_human_language_v1.py",
+      "current_source": "Independent export maps — Awaiting review aggregate",
+      "future_source": "Class-split export buckets",
+      "migration_phase": "S4",
+      "s2_action": "Out of scope",
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "C-09",
+      "surface": "Monthly digest email",
+      "path": "backend/services/monthly_digest_operational_intelligence.py",
+      "current_source": "Digest posture buckets",
+      "future_source": "Canonical bucket map",
+      "migration_phase": "S4",
+      "s2_action": "Out of scope",
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "C-10",
+      "surface": "Scheduled report email",
+      "path": "backend/email_templates/unified/scheduled_report_digest.py",
+      "current_source": "Template copy",
+      "future_source": "S4 wiring",
+      "migration_phase": "S4",
+      "s2_action": "Out of scope",
+      "risk": "LOW"
+    },
+    {
+      "id": "C-11",
+      "surface": "Admin explain API",
+      "path": "GET /api/admin/compliance-truth/.../explain",
+      "current_source": "Raw enrich + lifecycle",
+      "future_source": "Include customer_status_* + projector debug",
+      "migration_phase": "S2",
+      "s2_action": "Add fields to explain payload",
+      "risk": "LOW"
+    },
+    {
+      "id": "C-12",
+      "surface": "Enrich API (all client requirement endpoints)",
+      "path": "routes/client.py, routes/portfolio.py",
+      "current_source": "requirement_truth enrich",
+      "future_source": "customer_status_projector_v2",
+      "migration_phase": "S2",
+      "s2_action": "Primary S2 deliverable",
+      "risk": "CRITICAL"
+    },
+    {
+      "id": "C-13",
+      "surface": "Property operating hub",
+      "path": "frontend/src/components/property/PropertyOperatingHub.jsx",
+      "current_source": "Lifecycle + tier badges",
+      "future_source": "customer_status_*",
+      "migration_phase": "S3",
+      "s2_action": "API only",
+      "risk": "MEDIUM"
+    },
+    {
+      "id": "C-14",
+      "surface": "Unified tasks / Today backend",
+      "path": "services/unified_tasks_service.py",
+      "current_source": "take_action + attention reasons",
+      "future_source": "CTA from take_action; status from enrich snapshot",
+      "migration_phase": "S2/S3",
+      "s2_action": "Attention internal only",
+      "risk": "MEDIUM"
+    }
+  ],
+  "s2_in_scope_consumers": ["C-04", "C-05", "C-11", "C-12", "C-14"],
+  "s3_deferred": ["C-01", "C-02", "C-03", "C-06", "C-07", "C-13"],
+  "s4_deferred": ["C-08", "C-09", "C-10"]
+}

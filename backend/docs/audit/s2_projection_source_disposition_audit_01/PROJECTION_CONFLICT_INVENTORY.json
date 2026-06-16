@@ -1,0 +1,214 @@
+{
+  "programme": "S2-PROJECTION-SOURCE-DISPOSITION-AUDIT-01",
+  "date": "2026-06-02",
+  "definition": "Sources that emit, rewrite, or override customer-facing status/review/escalation/verification language after projector activation would be authoritative.",
+  "conflicts": [
+    {
+      "id": "PC-01",
+      "source": "PS-02",
+      "module": "cer_governance_presentation.py",
+      "functions": ["derive_truth_presentation", "attach_cer_governance_presentation"],
+      "conflict_type": ["emits_customer_status", "rewrites_review_language", "rewrites_escalation_language", "rewrites_verification_language"],
+      "severity": "CRITICAL",
+      "active_when": "flag=shadow (customer-visible via API); flag=active if not disabled",
+      "affected_surfaces": ["Enrich API", "Requirements (via truth_presentation_label)", "Modal assurance section", "Command Centre cognition chain"],
+      "retired_phrases_emitted": [
+        "Platform verification pending",
+        "Escalated for platform review",
+        "Review requirement status"
+      ],
+      "migration_path": "S2 shadow: run parallel, emit legacy only. S2 active: disable derive_truth_presentation label emission; projector owns customer_status_*. S3: remove FE reads of truth_presentation_label. S4: retire label fields from API contract."
+    },
+    {
+      "id": "PC-02",
+      "source": "PS-03",
+      "module": "requirement_truth.py",
+      "functions": ["enrich_requirement_dict"],
+      "lines": "804-806",
+      "conflict_type": ["rewrites_customer_status"],
+      "severity": "CRITICAL",
+      "active_when": "always (pre-projector overwrite)",
+      "affected_surfaces": ["All enrich consumers", "client_lifecycle_label field"],
+      "migration_path": "S2: projector runs after chain; when active, set customer_status_* from projector and stop overwriting client_lifecycle_label from truth_presentation_label; optionally mirror legacy fields read-only for admin."
+    },
+    {
+      "id": "PC-03",
+      "source": "PS-04",
+      "module": "requirement_satisfaction_service.py",
+      "functions": ["reconcile_client_lifecycle_with_satisfaction"],
+      "conflict_type": ["rewrites_customer_status"],
+      "severity": "HIGH",
+      "active_when": "post-governance reconciliation mutates labels",
+      "affected_surfaces": ["Enrich API lifecycle fields"],
+      "migration_path": "S2: reconciliation runs before projector; projector is final authority; no post-projector label mutation."
+    },
+    {
+      "id": "PC-04",
+      "source": "PS-05",
+      "module": "cer_actionability_presentation.py",
+      "functions": ["apply_actionability_cta_override", "build_submission_banner"],
+      "conflict_type": ["rewrites_review_language", "mutates_truth_presentation_stage"],
+      "severity": "HIGH",
+      "active_when": "queue-gate and CTA override paths",
+      "affected_surfaces": ["Submission banners", "truth_presentation_stage on enrich payload"],
+      "migration_path": "S2 task 2.5: banner sublines from customer_status_subline; no stage mutation for status semantics when flag=active."
+    },
+    {
+      "id": "PC-05",
+      "source": "PS-06",
+      "module": "operational_cognition_service.py",
+      "functions": ["recommended_next_step", "build_envelope_for_requirement"],
+      "conflict_type": ["emits_customer_status", "rewrites_review_language"],
+      "severity": "HIGH",
+      "active_when": "always until S2 cognition migration",
+      "affected_surfaces": ["Today page", "Command Centre", "unified task metadata"],
+      "retired_phrases_emitted": ["Awaiting review — submission not yet verified"],
+      "migration_path": "S2 in-scope: cognition reads customer_status_label/subline/class; remove truth_presentation_stage branches for customer copy."
+    },
+    {
+      "id": "PC-06",
+      "source": "PS-07",
+      "module": "requirement_attention_eligibility_service.py",
+      "functions": ["derive_attention_reasons"],
+      "conflict_type": ["rewrites_review_language"],
+      "severity": "MEDIUM",
+      "active_when": "Class A requirements with review_pending attention code surfaced to client",
+      "affected_surfaces": ["Today inbox", "unified_tasks_service"],
+      "migration_path": "S2: internal codes only on client path; customer copy from projector; map attention to non-review customer_status_class."
+    },
+    {
+      "id": "PC-07",
+      "source": "PS-08",
+      "module": "audience_governance_v1.py",
+      "functions": ["interpret_requirement_for_audience"],
+      "conflict_type": ["emits_customer_status", "rewrites_review_language"],
+      "severity": "HIGH",
+      "active_when": "landlord interpretation on enrich; export buckets S4",
+      "affected_surfaces": ["audience_interpretation.status_label", "PDF export sections"],
+      "retired_phrases_emitted": ["Awaiting review", "Review pending"],
+      "migration_path": "S2: enrich landlord interpretation reads customer_status_*. S4: export buckets split by customer_status_class not aggregate Awaiting review."
+    },
+    {
+      "id": "PC-08",
+      "source": "PS-12",
+      "module": "assurance_actionability_service.py + assurancePresentation.js",
+      "functions": ["project_assurance_quick_actions"],
+      "conflict_type": ["rewrites_verification_language"],
+      "severity": "MEDIUM",
+      "active_when": "modal assurance section",
+      "affected_surfaces": ["RequirementIntelligenceModal assurance block"],
+      "retired_phrases_emitted": ["Awaiting platform review"],
+      "migration_path": "S2 backend hints aligned; S3 FE assurancePresentation.js consumes customer_status_class + assurance_tier."
+    },
+    {
+      "id": "PC-09",
+      "source": "PS-13",
+      "module": "report_human_language_v1.py",
+      "functions": ["COMPLIANCE_STATUS_LABELS", "humanize_pending_review"],
+      "conflict_type": ["emits_customer_status", "rewrites_review_language"],
+      "severity": "MEDIUM",
+      "active_when": "report generation independent of enrich",
+      "affected_surfaces": ["PDF reports", "audit packs", "reportHumanLanguage.js"],
+      "migration_path": "S4: read customer_status_* from enrich snapshot at report time; retire COMPLIANCE_STATUS_LABELS review aggregates."
+    },
+    {
+      "id": "PC-10",
+      "source": "PS-14",
+      "module": "report_layout_governance.py",
+      "functions": ["section_title_for_status"],
+      "conflict_type": ["rewrites_review_language", "rewrites_escalation_language"],
+      "severity": "MEDIUM",
+      "active_when": "PDF section assembly",
+      "affected_surfaces": ["Professional reports section headers"],
+      "migration_path": "S4: section titles from customer_status_vocabulary section map keyed on customer_status_class."
+    },
+    {
+      "id": "PC-11",
+      "source": "PS-15",
+      "module": "monthly_digest_operational_intelligence.py",
+      "functions": ["build_digest_posture_buckets"],
+      "conflict_type": ["rewrites_review_language"],
+      "severity": "MEDIUM",
+      "active_when": "monthly digest email assembly",
+      "affected_surfaces": ["Monthly digest email", "digest PDF"],
+      "migration_path": "S4: bucket aggregation from customer_status_class distribution not legacy posture labels."
+    },
+    {
+      "id": "PC-12",
+      "source": "PS-16",
+      "module": "resolvedRequirementViewModel.js",
+      "functions": ["projectResolvedRequirementSemantics"],
+      "conflict_type": ["emits_customer_status", "frontend_fallback_override"],
+      "severity": "HIGH",
+      "active_when": "S2 active API change without S3 FE migration",
+      "affected_surfaces": ["RequirementsPage", "PropertyDetailPage", "RequirementIntelligenceModal badges"],
+      "migration_path": "S2: populate customer_status_* on API. S3: remove fallback re-derivation; display API fields only."
+    },
+    {
+      "id": "PC-13",
+      "source": "PS-17",
+      "module": "requirementSubmissionModalContext.js",
+      "functions": ["buildModalContextHero"],
+      "conflict_type": ["emits_customer_status", "modal_specific_override"],
+      "severity": "HIGH",
+      "active_when": "always until S3",
+      "affected_surfaces": ["RequirementIntelligenceModal hero"],
+      "migration_path": "S3: hero headline from customer_status_label + non-contradicting modal headline table."
+    },
+    {
+      "id": "PC-14",
+      "source": "PS-18",
+      "module": "requirementLifecyclePresentation.js",
+      "functions": ["applyLifecycleAwareCtaPresentation"],
+      "conflict_type": ["rewrites_review_language", "cta_specific_override"],
+      "severity": "HIGH",
+      "active_when": "modal CTA path",
+      "affected_surfaces": ["RequirementIntelligenceModal CTAs"],
+      "migration_path": "S3: CTA from API take_action envelope keyed on customer_status_class."
+    },
+    {
+      "id": "PC-15",
+      "source": "PS-19",
+      "module": "evidenceStatus.js",
+      "functions": ["evidenceStatusForStatus", "tierBadgeForRequirement"],
+      "conflict_type": ["emits_customer_status", "rewrites_verification_language", "frontend_fallback_override"],
+      "severity": "HIGH",
+      "active_when": "always until S3",
+      "affected_surfaces": ["Requirements list chips", "property compliance matrix"],
+      "migration_path": "S3: tier/chip from customer_status_label and customer_status_class."
+    },
+    {
+      "id": "PC-16",
+      "source": "PS-20",
+      "module": "presentationLanguage.js",
+      "functions": ["OPERATIONAL_LABEL_BY_KEY"],
+      "conflict_type": ["emits_customer_status", "parallel_vocabulary"],
+      "severity": "MEDIUM",
+      "active_when": "filters and misc surfaces",
+      "affected_surfaces": ["Portal filters", "digest widgets"],
+      "migration_path": "S3: filter keys map to customer_status_key; labels from customerStatusVocabulary.js."
+    },
+    {
+      "id": "PC-17",
+      "source": "PS-21",
+      "module": "requirement_action_resolver.py",
+      "functions": ["resolve_take_action_envelope"],
+      "conflict_type": ["rewrites_review_language"],
+      "severity": "MEDIUM",
+      "active_when": "CTA resolved before projector or with legacy stage keys",
+      "affected_surfaces": ["Today tasks", "take_action on enrich"],
+      "migration_path": "S2: resolve take_action after projector; CTA_POLICY_MATRIX keyed on customer_status_key/class."
+    }
+  ],
+  "severity_summary": {
+    "CRITICAL": 2,
+    "HIGH": 9,
+    "MEDIUM": 6
+  },
+  "post_active_blockers": [
+    "PC-01 must be disabled for customer label emission",
+    "PC-02 overwrite must be removed",
+    "PC-05 cognition migration must complete in S2 before flag=active",
+    "PC-12 through PC-16 remain until S3 — accepted partial customer-visible drift during S2 active-only API phase"
+  ]
+}

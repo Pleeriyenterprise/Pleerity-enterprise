@@ -374,6 +374,7 @@ async def get_admin_dashboard(request: Request):
             )
         
         from services.evidence_review_config import is_feature_evidence_review_v2
+        from services.customer_status_projector_config import get_customer_status_projector_mode
 
         return {
             "stats": {
@@ -396,6 +397,7 @@ async def get_admin_dashboard(request: Request):
             "operational_alerts": operational_alerts,
             "server_feature_flags": {
                 "evidence_review_v2_enabled": is_feature_evidence_review_v2(),
+                "customer_status_projector_v2_mode": get_customer_status_projector_mode(),
             },
         }
     

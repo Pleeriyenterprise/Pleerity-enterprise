@@ -356,14 +356,18 @@ def derive_truth_presentation(
     )
 
 
-def attach_cer_governance_presentation(requirement: Dict[str, Any]) -> Dict[str, Any]:
+def attach_cer_governance_presentation(
+    requirement: Dict[str, Any],
+    *,
+    emit_legacy_customer_labels: bool = True,
+) -> Dict[str, Any]:
     """Return governance + truth presentation fields for client enrichment."""
     meta = resolve_governance_meta(requirement)
     ea = requirement.get("evidence_authority") if isinstance(requirement.get("evidence_authority"), dict) else {}
     semantic = ea.get("semantic_state") or requirement.get("semantic_state")
     truth = derive_truth_presentation(requirement, meta)
     assurance_tier = derive_assurance_tier(requirement, meta, truth)
-    return {
+    out: Dict[str, Any] = {
         "assurance_tier": assurance_tier,
         "governance_family": meta.get("governance_family"),
         "review_authority": meta.get("review_authority"),
@@ -373,8 +377,10 @@ def attach_cer_governance_presentation(requirement: Dict[str, Any]) -> Dict[str,
         "review_owner": truth.get("review_owner"),
         "stale_owner": truth.get("stale_owner"),
         "queue_backed_review": truth.get("queue_backed_review"),
-        **truth,
     }
+    if emit_legacy_customer_labels:
+        out.update(truth)
+    return out
 
 
 def stale_allowed_for_requirement(requirement: Dict[str, Any]) -> bool:
