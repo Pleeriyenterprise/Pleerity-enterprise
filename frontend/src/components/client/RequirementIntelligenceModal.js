@@ -46,6 +46,7 @@ import {
   resolveAuthoritativeEvidenceViewPath,
   shouldViewEvidenceInModalInspectPanel,
 } from '../../utils/authoritativeEvidenceView';
+import { applyLifecycleAwareCtaPresentation } from '../../utils/requirementLifecyclePresentation';
 
 function formatIntelDate(value) {
   if (value == null || value === '') return null;
