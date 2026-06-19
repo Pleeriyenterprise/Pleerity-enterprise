@@ -1,0 +1,8 @@
+{
+  "workspace_id": "REPLACE_WITH_REAL_TWIN_WORKSPACE_ID",
+  "agent_id": "REPLACE_WITH_REAL_TWIN_AGENT_ID",
+  "agent_name": "Compliance Vault Pro Prospect Discovery",
+  "export_format": "discovery_twin_provider_v1",
+  "validated_at": "2026-06-19T00:00:00Z",
+  "notes": "Replace placeholders after Twin workspace configuration review. Do not commit real workspace IDs if policy restricts."
+}

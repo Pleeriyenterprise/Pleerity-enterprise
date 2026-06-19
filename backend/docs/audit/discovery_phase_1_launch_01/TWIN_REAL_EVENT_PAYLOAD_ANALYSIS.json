@@ -1,0 +1,31 @@
+{
+  "authority": "STAGE-Y-WEBHOOK-REGISTRATION-AND-REAL-EVENT-CAPTURE-02",
+  "generated_at": "2026-06-19T11:16:07.276196Z",
+  "overall_status": "BLOCKED",
+  "blockers": [
+    "404 \u2014 set DISCOVERY_TWIN_WEBHOOK_INGEST_ENABLED=true on staging Render and redeploy before Twin can POST webhooks",
+    "TWIN_API_KEY missing"
+  ],
+  "webhook_registration": {
+    "webhook_registration_status": "BLOCKED",
+    "webhook_id": null,
+    "registered_events": [
+      "run.completed",
+      "run.failed"
+    ],
+    "registered_url": null,
+    "signing_secret": {
+      "secret_present": false,
+      "secret_length": 0,
+      "secret_prefix_last4": null
+    },
+    "error": "TWIN_API_KEY missing"
+  },
+  "deployed_run_id": null,
+  "agent_id": "019edece-894a-7836-aecd-2b6eedbe443f",
+  "finished_analysis": {},
+  "extraction_readiness": "RED",
+  "event_retrieval": null,
+  "webhook_receipt_status": null,
+  "event_capture_status": null
+}

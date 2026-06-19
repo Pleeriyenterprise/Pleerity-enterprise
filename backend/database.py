@@ -984,6 +984,13 @@ class Database:
             except Exception as seed_err:
                 logger.warning("Agreement seed skipped or failed: %s", seed_err)
 
+            try:
+                from services.discovery.discovery_indexes import ensure_discovery_indexes
+
+                await ensure_discovery_indexes(self.db)
+            except Exception as disc_idx_err:
+                logger.warning("Discovery index creation note: %s", disc_idx_err)
+
             await self._seed_requirements_catalog()
             logger.info("MongoDB indexes created/verified")
         except Exception as e:

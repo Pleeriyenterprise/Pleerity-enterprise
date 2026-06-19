@@ -1,0 +1,23 @@
+email,company_name,website,contact_name,lawful_basis,marketing_consent,provider_reference
+dataset-e-good-001@stage-v-20260618204845.staging.pleerity.com,Mixed Good 1,https://dataset-e-good-001.example.test,Contact Mixed Good 1,consent,true,csv:stage-v-20260618204845-dataset-e-good-001
+dataset-e-good-002@stage-v-20260618204845.staging.pleerity.com,Mixed Good 2,https://dataset-e-good-002.example.test,Contact Mixed Good 2,consent,true,csv:stage-v-20260618204845-dataset-e-good-002
+dataset-e-good-003@stage-v-20260618204845.staging.pleerity.com,Mixed Good 3,https://dataset-e-good-003.example.test,Contact Mixed Good 3,consent,true,csv:stage-v-20260618204845-dataset-e-good-003
+dataset-e-good-004@stage-v-20260618204845.staging.pleerity.com,Mixed Good 4,https://dataset-e-good-004.example.test,Contact Mixed Good 4,consent,true,csv:stage-v-20260618204845-dataset-e-good-004
+dataset-e-good-005@stage-v-20260618204845.staging.pleerity.com,Mixed Good 5,https://dataset-e-good-005.example.test,Contact Mixed Good 5,consent,true,csv:stage-v-20260618204845-dataset-e-good-005
+dataset-e-good-006@stage-v-20260618204845.staging.pleerity.com,Mixed Good 6,https://dataset-e-good-006.example.test,Contact Mixed Good 6,consent,true,csv:stage-v-20260618204845-dataset-e-good-006
+dataset-e-good-007@stage-v-20260618204845.staging.pleerity.com,Mixed Good 7,https://dataset-e-good-007.example.test,Contact Mixed Good 7,consent,true,csv:stage-v-20260618204845-dataset-e-good-007
+dataset-e-good-008@stage-v-20260618204845.staging.pleerity.com,Mixed Good 8,https://dataset-e-good-008.example.test,Contact Mixed Good 8,consent,true,csv:stage-v-20260618204845-dataset-e-good-008
+dataset-e-good-009@stage-v-20260618204845.staging.pleerity.com,Mixed Good 9,https://dataset-e-good-009.example.test,Contact Mixed Good 9,consent,true,csv:stage-v-20260618204845-dataset-e-good-009
+dataset-e-good-010@stage-v-20260618204845.staging.pleerity.com,Mixed Good 10,https://dataset-e-good-010.example.test,Contact Mixed Good 10,consent,true,csv:stage-v-20260618204845-dataset-e-good-010
+,Missing Identity,,,consent,false,empty-identity
+dataset-e-bad-basis@stage-v-20260618204845.staging.pleerity.com,Mixed Bad Basis,https://dataset-e-bad-basis.example.test,Contact Mixed Bad Basis,invalid_basis,false,csv:stage-v-20260618204845-dataset-e-bad-basis
+dataset-e-good-011@stage-v-20260618204845.staging.pleerity.com,Mixed Good 11,https://dataset-e-good-011.example.test,Contact Mixed Good 11,consent,true,csv:stage-v-20260618204845-dataset-e-good-011
+dataset-e-good-012@stage-v-20260618204845.staging.pleerity.com,Mixed Good 12,https://dataset-e-good-012.example.test,Contact Mixed Good 12,consent,true,csv:stage-v-20260618204845-dataset-e-good-012
+dataset-e-good-013@stage-v-20260618204845.staging.pleerity.com,Mixed Good 13,https://dataset-e-good-013.example.test,Contact Mixed Good 13,consent,true,csv:stage-v-20260618204845-dataset-e-good-013
+dataset-e-good-014@stage-v-20260618204845.staging.pleerity.com,Mixed Good 14,https://dataset-e-good-014.example.test,Contact Mixed Good 14,consent,true,csv:stage-v-20260618204845-dataset-e-good-014
+dataset-e-good-015@stage-v-20260618204845.staging.pleerity.com,Mixed Good 15,https://dataset-e-good-015.example.test,Contact Mixed Good 15,consent,true,csv:stage-v-20260618204845-dataset-e-good-015
+dataset-e-good-016@stage-v-20260618204845.staging.pleerity.com,Mixed Good 16,https://dataset-e-good-016.example.test,Contact Mixed Good 16,consent,true,csv:stage-v-20260618204845-dataset-e-good-016
+dataset-e-good-017@stage-v-20260618204845.staging.pleerity.com,Mixed Good 17,https://dataset-e-good-017.example.test,Contact Mixed Good 17,consent,true,csv:stage-v-20260618204845-dataset-e-good-017
+dataset-e-good-018@stage-v-20260618204845.staging.pleerity.com,Mixed Good 18,https://dataset-e-good-018.example.test,Contact Mixed Good 18,consent,true,csv:stage-v-20260618204845-dataset-e-good-018
+dataset-e-good-019@stage-v-20260618204845.staging.pleerity.com,Mixed Good 19,https://dataset-e-good-019.example.test,Contact Mixed Good 19,consent,true,csv:stage-v-20260618204845-dataset-e-good-019
+dataset-e-good-020@stage-v-20260618204845.staging.pleerity.com,Mixed Good 20,https://dataset-e-good-020.example.test,Contact Mixed Good 20,consent,true,csv:stage-v-20260618204845-dataset-e-good-020

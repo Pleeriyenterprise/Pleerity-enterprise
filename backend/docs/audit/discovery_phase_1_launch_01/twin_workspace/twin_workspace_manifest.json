@@ -1,0 +1,84 @@
+{
+  "authority": "TWIN-PROVIDER-AGENT-SPECIFICATION-01",
+  "package_version": "1.0.0",
+  "workspace": {
+    "name": "Pleerity Discovery — Compliance Vault Pro",
+    "workspace_id": "REPLACE_AFTER_TWIN_WORKSPACE_CREATION",
+    "environment": "staging",
+    "owner": "Pleerity Enterprise Ltd",
+    "platform": "Compliance Vault Pro",
+    "geography": "GB",
+    "branch": "develop"
+  },
+  "agent": {
+    "name": "Pleerity Discovery Agent",
+    "agent_id": "REPLACE_AFTER_TWIN_AGENT_CREATION",
+    "role": "prospect_discovery_only",
+    "provider_id": "twin",
+    "adapter_version": "1.0.0",
+    "workflow_id": "wf-cvp-prospect-discovery-v1",
+    "system_prompt_file": "twin_agent_system_prompt.md",
+    "supports_async": true,
+    "supports_enrichment": true,
+    "enrichment_storage": "raw_payload_only"
+  },
+  "capabilities": {
+    "enabled": [
+      "public_web_search",
+      "company_website_read",
+      "public_directory_lookup",
+      "linkedin_company_page_read",
+      "prospect_record_generation",
+      "json_batch_export"
+    ],
+    "disabled": [
+      "email_sending",
+      "linkedin_messaging",
+      "sms",
+      "whatsapp",
+      "crm_integration",
+      "lead_creation",
+      "auto_import",
+      "nurture_sequences",
+      "approval_actions",
+      "consent_generation",
+      "suppression_override",
+      "legal_hold_override"
+    ]
+  },
+  "discovery_integration": {
+    "ingest_adapter": "TwinProvider",
+    "ingest_method": "ingest_async",
+    "destination_collection": "discovery_prospects",
+    "provider_flag": "DISCOVERY_PROVIDER_TWIN_ENABLED",
+    "provider_flag_default": false,
+    "review_queue_status": "needs_review",
+    "import_path": "DiscoveryImportService (manual post-approval only)",
+    "campaign_lawful_basis": "set_on_discovery_campaign_not_by_agent"
+  },
+  "batch_targets": {
+    "min_records": 50,
+    "target_records": 100,
+    "min_confidence_exported": 50,
+    "target_confidence_gte_70_pct": 70,
+    "target_duplicate_rate_pct": 5
+  },
+  "export": {
+    "format": "discovery_twin_provider_v1",
+    "schema_file": "twin_export_schema.json",
+    "staging_path": "backend/docs/audit/discovery_phase_1_launch_01/twin_exports/twin_staging_export.json",
+    "manifest_snapshot_path": "backend/docs/audit/discovery_phase_1_launch_01/twin_exports/twin_workspace_manifest.json"
+  },
+  "compliance": {
+    "agent_must_not_set": [
+      "lawful_basis",
+      "marketing_consent",
+      "prospect_id",
+      "imported_lead_id"
+    ],
+    "governance_owner": "Discovery Foundation",
+    "audit_events": "PROSPECT_DISCOVERED, DUPLICATE_DETECTED only"
+  },
+  "validated_at": null,
+  "notes": "Replace workspace_id and agent_id after Twin workspace creation. Copy to twin_exports/twin_workspace_manifest.json before Stage X rerun."
+}

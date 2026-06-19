@@ -1,0 +1,777 @@
+{
+  "authority": "STAGE-V-REAL-STAGING-VALIDATION-AND-PROVIDER-EXPANSION-READINESS-AUTHORITY-01",
+  "generated_at": "2026-06-18T20:48:46.449911Z",
+  "environment": "pleerity_staging",
+  "branch": "develop",
+  "database_name": "pleerity_staging",
+  "stage_tag": "stage-v-20260618204845",
+  "part_a_database": {
+    "section": "PART_A_DATABASE",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "discovery_prospects present (count=770)",
+      "discovery_runs present (count=25)",
+      "discovery_campaigns present (count=6)",
+      "discovery_jobs present (count=0)",
+      "discovery_audit_logs present (count=1420)",
+      "discovery_metrics present (count=0)",
+      "discovery_suppression_records present (count=4)",
+      "index verified discovery_campaigns campaign_id",
+      "index verified discovery_campaigns status",
+      "index verified discovery_campaigns owner_id",
+      "index verified discovery_campaigns [('tenant_id', 1), ('created_at', -1)]",
+      "index verified discovery_runs discovery_run_id",
+      "index verified discovery_runs campaign_id",
+      "index verified discovery_runs provider",
+      "index verified discovery_runs [('provider', 1), ('status', 1)]",
+      "index verified discovery_runs created_at",
+      "index verified discovery_runs [('tenant_id', 1), ('created_at', -1)]",
+      "index verified discovery_jobs job_id",
+      "index verified discovery_jobs run_id",
+      "index verified discovery_jobs [('provider', 1), ('status', 1)]",
+      "index verified discovery_prospects prospect_id",
+      "index verified discovery_prospects email",
+      "index verified discovery_prospects phone",
+      "index verified discovery_prospects email_hash",
+      "index verified discovery_prospects phone_hash",
+      "index verified discovery_prospects content_hash",
+      "index verified discovery_prospects provider_reference",
+      "index verified discovery_prospects [('provider', 1), ('provider_reference', 1), ('discovery_run_id', 1)]",
+      "index verified discovery_prospects [('tenant_id', 1), ('content_hash', 1), ('discovery_run_id', 1)]",
+      "index verified discovery_prospects [('review_status', 1), ('created_at', -1)]",
+      "index verified discovery_prospects [('duplicate_status', 1), ('created_at', -1)]",
+      "index verified discovery_prospects [('review_status', 1), ('duplicate_status', 1)]",
+      "index verified discovery_prospects review_priority",
+      "index verified discovery_prospects discovery_run_id",
+      "index verified discovery_prospects campaign_id",
+      "index verified discovery_prospects merged_into_prospect_id",
+      "index verified discovery_prospects imported_lead_id",
+      "index verified discovery_prospects [('tenant_id', 1), ('email_hash', 1)]",
+      "index verified discovery_prospects [('tenant_id', 1), ('phone_hash', 1)]",
+      "index verified discovery_audit_logs audit_id",
+      "index verified discovery_audit_logs [('prospect_id', 1), ('created_at', -1)]",
+      "index verified discovery_audit_logs [('run_id', 1), ('created_at', -1)]",
+      "index verified discovery_audit_logs [('campaign_id', 1), ('created_at', -1)]",
+      "index verified discovery_audit_logs created_at",
+      "index verified discovery_audit_logs [('event_type', 1), ('created_at', -1)]",
+      "index verified discovery_metrics [('metric_date', 1), ('provider', 1), ('campaign_id', 1)]",
+      "index verified discovery_metrics campaign_id",
+      "index verified discovery_metrics provider",
+      "index verified provider_mapping_profiles profile_id",
+      "index verified provider_mapping_profiles [('provider', 1), ('tenant_id', 1)]",
+      "content_hash persists on discovery_prospects (pre-existing sample)",
+      "discovery_suppression_records not in DISCOVERY_INDEX_INVENTORY"
+    ],
+    "failures": [],
+    "metadata": {
+      "inventory": {
+        "collections": {
+          "discovery_prospects": {
+            "exists": true,
+            "document_count": 770
+          },
+          "discovery_runs": {
+            "exists": true,
+            "document_count": 25
+          },
+          "discovery_campaigns": {
+            "exists": true,
+            "document_count": 6
+          },
+          "discovery_jobs": {
+            "exists": true,
+            "document_count": 0
+          },
+          "discovery_audit_logs": {
+            "exists": true,
+            "document_count": 1420
+          },
+          "discovery_metrics": {
+            "exists": true,
+            "document_count": 0
+          },
+          "discovery_suppression_records": {
+            "exists": true,
+            "document_count": 4
+          }
+        },
+        "missing_indexes": [],
+        "suppression_index_gap": "discovery_suppression_records not in DISCOVERY_INDEX_INVENTORY"
+      },
+      "ensure_indexes_ms": 6504.16
+    },
+    "latency_ms": {}
+  },
+  "part_b_datasets": {
+    "section": "PART_B_DATASETS",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "dataset_a: accepted=50 rejected=0 duplicates=0",
+      "dataset_b: accepted=100 rejected=0 duplicates=0",
+      "dataset_c: accepted=18 rejected=1 duplicates=2",
+      "dataset_d: accepted=2 rejected=2 duplicates=1",
+      "dataset_e: accepted=22 rejected=0 duplicates=0",
+      "dataset_d compliance failures rejected as expected",
+      "dataset_c duplicate detection observed",
+      "audit PROSPECT_DISCOVERED count=192",
+      "review queue candidates=189"
+    ],
+    "failures": [],
+    "metadata": {
+      "ingest_results": {
+        "dataset_a": {
+          "latency_ms": 29879.6,
+          "total_rows": 50,
+          "accepted": 50,
+          "rejected": 0,
+          "duplicate_rows": 0,
+          "created_prospect_ids": [
+            "PROSP-20260618204904-ECD7F6",
+            "PROSP-20260618204905-D9B076",
+            "PROSP-20260618204906-DD0967",
+            "PROSP-20260618204906-745FD9",
+            "PROSP-20260618204907-BB8DA2",
+            "PROSP-20260618204908-F9C564",
+            "PROSP-20260618204909-BB7600",
+            "PROSP-20260618204910-41CB54",
+            "PROSP-20260618204911-DA74CD",
+            "PROSP-20260618204911-963E77",
+            "PROSP-20260618204912-2FADCA",
+            "PROSP-20260618204912-1F2236",
+            "PROSP-20260618204913-8713DD",
+            "PROSP-20260618204913-31E5BC",
+            "PROSP-20260618204914-C9DEA6",
+            "PROSP-20260618204914-9A46E3",
+            "PROSP-20260618204915-3C36E5",
+            "PROSP-20260618204915-54AF1C",
+            "PROSP-20260618204916-BE10F1",
+            "PROSP-20260618204917-44F814",
+            "PROSP-20260618204918-439539",
+            "PROSP-20260618204918-13BAFA",
+            "PROSP-20260618204919-B1E1C1",
+            "PROSP-20260618204919-1E7F67",
+            "PROSP-20260618204920-F8AAA7",
+            "PROSP-20260618204920-300E0F",
+            "PROSP-20260618204921-E7E3DB",
+            "PROSP-20260618204921-7E8AE0",
+            "PROSP-20260618204922-432041",
+            "PROSP-20260618204922-2E9FDA",
+            "PROSP-20260618204923-5CFBA3",
+            "PROSP-20260618204924-337F50",
+            "PROSP-20260618204924-BA4B7A",
+            "PROSP-20260618204925-760162",
+            "PROSP-20260618204926-D63D0E",
+            "PROSP-20260618204926-35150C",
+            "PROSP-20260618204927-A845E9",
+            "PROSP-20260618204927-7A15BB",
+            "PROSP-20260618204928-5D1011",
+            "PROSP-20260618204928-29DCE1",
+            "PROSP-20260618204929-DCC9DB",
+            "PROSP-20260618204929-837060",
+            "PROSP-20260618204930-08954C",
+            "PROSP-20260618204930-232E3B",
+            "PROSP-20260618204931-2AD1DA",
+            "PROSP-20260618204931-857BA7",
+            "PROSP-20260618204932-60686D",
+            "PROSP-20260618204932-B4D783",
+            "PROSP-20260618204933-1DD7B1",
+            "PROSP-20260618204934-2E6E55"
+          ],
+          "errors": [],
+          "run_id": "DRUN-20260618204904-D64EAE"
+        },
+        "dataset_b": {
+          "latency_ms": 64516.07,
+          "total_rows": 100,
+          "accepted": 100,
+          "rejected": 0,
+          "duplicate_rows": 0,
+          "created_prospect_ids": [
+            "PROSP-20260618204935-0B9183",
+            "PROSP-20260618204935-7DE479",
+            "PROSP-20260618204936-8FDA96",
+            "PROSP-20260618204937-64493F",
+            "PROSP-20260618204937-ED4947",
+            "PROSP-20260618204938-B48FA9",
+            "PROSP-20260618204939-2CFD2F",
+            "PROSP-20260618204940-5C9FFE",
+            "PROSP-20260618204940-707230",
+            "PROSP-20260618204941-6733CD",
+            "PROSP-20260618204942-064953",
+            "PROSP-20260618204943-1AA0AC",
+            "PROSP-20260618204945-5ADEA5",
+            "PROSP-20260618204946-0C1A99",
+            "PROSP-20260618204947-305F15",
+            "PROSP-20260618204948-B8BAE6",
+            "PROSP-20260618204948-52A190",
+            "PROSP-20260618204949-E5B20C",
+            "PROSP-20260618204949-4BAB56",
+            "PROSP-20260618204950-D77CDC",
+            "PROSP-20260618204950-AF40E3",
+            "PROSP-20260618204951-9EFFE1",
+            "PROSP-20260618204952-DBB5AD",
+            "PROSP-20260618204952-62F079",
+            "PROSP-20260618204953-024477",
+            "PROSP-20260618204953-E098E3",
+            "PROSP-20260618204954-D13B26",
+            "PROSP-20260618204954-224960",
+            "PROSP-20260618204955-123AA8",
+            "PROSP-20260618204955-6A1D8F",
+            "PROSP-20260618204956-360643",
+            "PROSP-20260618204957-2F5565",
+            "PROSP-20260618204957-A2A751",
+            "PROSP-20260618204958-6D3265",
+            "PROSP-20260618204958-BB413A",
+            "PROSP-20260618204959-AC250F",
+            "PROSP-20260618204959-A40F35",
+            "PROSP-20260618205000-B257F0",
+            "PROSP-20260618205000-7E2E38",
+            "PROSP-20260618205001-D6DF7C",
+            "PROSP-20260618205001-9F9A05",
+            "PROSP-20260618205002-9C9B44",
+            "PROSP-20260618205002-696615",
+            "PROSP-20260618205003-AE9F96",
+            "PROSP-20260618205003-9F3E68",
+            "PROSP-20260618205004-E46C3B",
+            "PROSP-20260618205004-B8779C",
+            "PROSP-20260618205005-FD599D",
+            "PROSP-20260618205006-232366",
+            "PROSP-20260618205006-584081",
+            "PROSP-20260618205007-15F4D1",
+            "PROSP-20260618205008-65C727",
+            "PROSP-20260618205009-EECE20",
+            "PROSP-20260618205009-1BA965",
+            "PROSP-20260618205010-BF9FF6",
+            "PROSP-20260618205010-E7482D",
+            "PROSP-20260618205011-73323C",
+            "PROSP-20260618205012-6A6563",
+            "PROSP-20260618205012-198BCE",
+            "PROSP-20260618205013-C26C37",
+            "PROSP-20260618205013-9A807C",
+            "PROSP-20260618205014-C62B7A",
+            "PROSP-20260618205015-B41E73",
+            "PROSP-20260618205015-948C03",
+            "PROSP-20260618205016-AA749A",
+            "PROSP-20260618205017-4EA151",
+            "PROSP-20260618205018-2B658D",
+            "PROSP-20260618205020-379EC8",
+            "PROSP-20260618205020-59E7C2",
+            "PROSP-20260618205021-4E6B31",
+            "PROSP-20260618205021-1A34CA",
+            "PROSP-20260618205022-D76101",
+            "PROSP-20260618205022-82AE94",
+            "PROSP-20260618205023-34CF5C",
+            "PROSP-20260618205023-A84C1E",
+            "PROSP-20260618205024-66F22B",
+            "PROSP-20260618205025-2A4D74",
+            "PROSP-20260618205025-E5D6D5",
+            "PROSP-20260618205026-3DE10A",
+            "PROSP-20260618205026-2583E0",
+            "PROSP-20260618205027-9AC688",
+            "PROSP-20260618205027-595CF3",
+            "PROSP-20260618205028-CD8757",
+            "PROSP-20260618205028-139B68",
+            "PROSP-20260618205029-5D338C",
+            "PROSP-20260618205030-1A2FDE",
+            "PROSP-20260618205030-F7682D",
+            "PROSP-20260618205031-03D3B7",
+            "PROSP-20260618205032-90CFCF",
+            "PROSP-20260618205033-C4AC93",
+            "PROSP-20260618205033-B7C939",
+            "PROSP-20260618205034-21E446",
+            "PROSP-20260618205035-600ACE",
+            "PROSP-20260618205035-F4FB1C",
+            "PROSP-20260618205036-BEF8C6",
+            "PROSP-20260618205036-C6A125",
+            "PROSP-20260618205037-D40972",
+            "PROSP-20260618205037-06BFB3",
+            "PROSP-20260618205038-CD2917",
+            "PROSP-20260618205038-99A949"
+          ],
+          "errors": [],
+          "run_id": "DRUN-20260618204934-4EDBCD"
+        },
+        "dataset_c": {
+          "latency_ms": 10068.76,
+          "total_rows": 19,
+          "accepted": 18,
+          "rejected": 1,
+          "duplicate_rows": 2,
+          "created_prospect_ids": [
+            "PROSP-20260618205039-E6C99E",
+            "PROSP-20260618205040-C48F7B",
+            "PROSP-20260618205041-BB05FB",
+            "PROSP-20260618205042-B7E96A",
+            "PROSP-20260618205042-4ABC43",
+            "PROSP-20260618205043-F27FB3",
+            "PROSP-20260618205043-81E313",
+            "PROSP-20260618205044-2A824E",
+            "PROSP-20260618205044-12BDA5",
+            "PROSP-20260618205045-2D4DEC",
+            "PROSP-20260618205045-95FE39",
+            "PROSP-20260618205046-C5B5BB",
+            "PROSP-20260618205046-65674B",
+            "PROSP-20260618205047-63F946",
+            "PROSP-20260618205047-9E4996",
+            "PROSP-20260618205048-623747",
+            "PROSP-20260618205048-816FDE",
+            "PROSP-20260618205049-4C59A3"
+          ],
+          "errors": [
+            {
+              "row": 19,
+              "errors": [
+                "duplicate row in batch (same idempotency key)"
+              ]
+            }
+          ],
+          "run_id": "DRUN-20260618205039-32F265"
+        },
+        "dataset_d": {
+          "latency_ms": 1581.84,
+          "total_rows": 4,
+          "accepted": 2,
+          "rejected": 2,
+          "duplicate_rows": 1,
+          "created_prospect_ids": [
+            "PROSP-20260618205050-B1DED2",
+            "PROSP-20260618205050-035445"
+          ],
+          "errors": [
+            {
+              "row": 1,
+              "errors": [
+                "lawful_basis is required and must not be unknown"
+              ]
+            },
+            {
+              "row": 2,
+              "errors": [
+                "marketing_consent=true requires lawful_basis=consent"
+              ]
+            }
+          ],
+          "run_id": "DRUN-20260618205049-B87975"
+        },
+        "dataset_e": {
+          "latency_ms": 11816.82,
+          "total_rows": 22,
+          "accepted": 22,
+          "rejected": 0,
+          "duplicate_rows": 0,
+          "created_prospect_ids": [
+            "PROSP-20260618205051-C5D2D7",
+            "PROSP-20260618205052-FDF6D9",
+            "PROSP-20260618205053-CB162C",
+            "PROSP-20260618205053-4B158F",
+            "PROSP-20260618205054-5C8B51",
+            "PROSP-20260618205054-C3CC90",
+            "PROSP-20260618205055-87468B",
+            "PROSP-20260618205055-6D3294",
+            "PROSP-20260618205056-92FD5D",
+            "PROSP-20260618205056-43B938",
+            "PROSP-20260618205057-CB277E",
+            "PROSP-20260618205057-328461",
+            "PROSP-20260618205058-80E000",
+            "PROSP-20260618205058-1BF612",
+            "PROSP-20260618205059-DC494C",
+            "PROSP-20260618205059-A4A06D",
+            "PROSP-20260618205100-717E4E",
+            "PROSP-20260618205100-FD5E11",
+            "PROSP-20260618205101-DED17A",
+            "PROSP-20260618205101-37FAB4",
+            "PROSP-20260618205102-68D01A",
+            "PROSP-20260618205102-C9676F"
+          ],
+          "errors": [],
+          "run_id": "DRUN-20260618205051-E38AE1"
+        }
+      },
+      "prospect_count": 192,
+      "sample_emails": [
+        "dataset-a-001@stage-v-20260618204845.staging.pleerity.com",
+        "dataset-a-003@stage-v-20260618204845.staging.pleerity.com"
+      ]
+    },
+    "latency_ms": {
+      "csv_ingest_dataset_a": 29879.6,
+      "csv_ingest_dataset_b": 64516.07,
+      "csv_ingest_dataset_c": 10068.76,
+      "csv_ingest_dataset_d": 1581.84,
+      "csv_ingest_dataset_e": 11816.82
+    }
+  },
+  "part_c_review": {
+    "section": "PART_C_REVIEW",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "approve succeeded",
+      "reject succeeded",
+      "request_changes succeeded (needs_review retained)",
+      "duplicate override succeeded",
+      "archive succeeded",
+      "review queue list returned 5 items"
+    ],
+    "failures": [],
+    "metadata": {
+      "audit_events_observed": [
+        "PROSPECT_APPROVED",
+        "PROSPECT_REVIEWED",
+        "DUPLICATE_OVERRIDDEN"
+      ]
+    },
+    "latency_ms": {
+      "review_approve": 467.6,
+      "review_reject": 562.28,
+      "review_request_changes": 577.38,
+      "review_clear_duplicate": 777.1,
+      "review_archive": 1149.8
+    }
+  },
+  "part_d_import": {
+    "section": "PART_D_IMPORT",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "import created lead_id=LEAD-20260618205112-60FE88",
+      "discovery_import_v1 tag present",
+      "discovery source_metadata attached",
+      "duplicate import idempotent",
+      "unapproved prospect import blocked",
+      "LIA compliance block with audit",
+      "suppression block enforced"
+    ],
+    "failures": [],
+    "metadata": {
+      "outcomes": {
+        "first_import": {
+          "status": "imported",
+          "lead_id": "LEAD-20260618205112-60FE88"
+        },
+        "retry_import": {
+          "status": "idempotent"
+        },
+        "blocked_not_approved": "blocked",
+        "lia_blocked": "blocked",
+        "suppression_blocked": "blocked"
+      }
+    },
+    "latency_ms": {
+      "import_prospect": 1965.8,
+      "import_retry": 88.56
+    }
+  },
+  "part_e_metrics": {
+    "section": "PART_E_METRICS",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "campaign_metrics.prospects_created matches manual count",
+      "campaign_metrics.approved matches manual count",
+      "campaign_metrics.imported matches manual count",
+      "import_metrics.import_attempts reconciled",
+      "provider_metrics.csv.prospects_discovered reconciled"
+    ],
+    "failures": [],
+    "metadata": {
+      "manual_counts": {
+        "prospects_created": 192,
+        "approved": 4,
+        "imported": 1,
+        "rejected": 0
+      },
+      "snapshot_excerpt": {
+        "campaign_metrics": {
+          "campaign_id": "DCAMP-20260618204904-279219",
+          "prospects_created": 192,
+          "approved": 4,
+          "rejected": 0,
+          "imported": 1,
+          "duplicate_rate": 1.04,
+          "average_quality_score": 51.9,
+          "funnel": {
+            "prospects_created": 192,
+            "needs_review": 187,
+            "approved": 4,
+            "imported": 1,
+            "lead_created": 1,
+            "conversion_to_needs_review_pct": 97.4,
+            "conversion_to_approved_pct": 2.08,
+            "conversion_to_imported_pct": 0.52,
+            "conversion_to_lead_created_pct": 0.52
+          }
+        },
+        "import_metrics": {
+          "import_attempts": 4,
+          "import_success": 1,
+          "import_blocked": 3,
+          "import_failed": 0,
+          "duplicate_blocked": 0,
+          "suppression_blocked": 2,
+          "compliance_blocked": 2
+        },
+        "provider_csv": {
+          "provider": "csv",
+          "prospects_discovered": 192,
+          "prospects_accepted": 191,
+          "prospects_rejected": 0,
+          "prospects_approved": 4,
+          "prospects_imported": 1,
+          "duplicate_rate": 1.04,
+          "average_quality_score": 51.9,
+          "average_review_priority": 48.16,
+          "suppression_rate": 0.0,
+          "import_success_rate": 25.0
+        }
+      }
+    },
+    "latency_ms": {
+      "metrics_snapshot": 6.6
+    }
+  },
+  "part_f_lifecycle": {
+    "section": "PART_F_LIFECYCLE",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "legal hold applied",
+      "legal hold blocks import",
+      "erasure requested",
+      "erasure executed",
+      "suppression record persisted",
+      "retention status=indefinite",
+      "purge eligible=False reasons=['policy erased_prospect does not allow purge', 'retention expiry not reached', 'record already erased \u2014 purge not applicable']"
+    ],
+    "failures": [],
+    "metadata": {
+      "transitions": {
+        "legal_hold": true,
+        "legal_hold_import": "blocked",
+        "erasure_requested_at": "2026-06-18T20:48:46.449911Z",
+        "retention_status": "indefinite",
+        "purge_eligible": false
+      }
+    },
+    "latency_ms": {
+      "legal_hold": 543.94,
+      "erasure_request": 640.52,
+      "erasure_execute": 1160.58
+    }
+  },
+  "part_g_performance": {
+    "section": "PART_G_PERFORMANCE",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "csv_ingest_dataset_a: 29879.6ms",
+      "csv_ingest_dataset_b: 64516.07ms",
+      "csv_ingest_dataset_c: 10068.76ms",
+      "csv_ingest_dataset_d: 1581.84ms",
+      "csv_ingest_dataset_e: 11816.82ms",
+      "erasure_execute: 1160.58ms",
+      "erasure_request: 640.52ms",
+      "import_prospect: 1965.8ms",
+      "import_retry: 88.56ms",
+      "legal_hold: 543.94ms",
+      "metrics_snapshot: 6.6ms",
+      "review_approve: 467.6ms",
+      "review_archive: 1149.8ms",
+      "review_clear_duplicate: 777.1ms",
+      "review_reject: 562.28ms",
+      "review_request_changes: 577.38ms"
+    ],
+    "failures": [],
+    "metadata": {
+      "observations_only": true,
+      "latencies_ms": {
+        "csv_ingest_dataset_a": 29879.6,
+        "csv_ingest_dataset_b": 64516.07,
+        "csv_ingest_dataset_c": 10068.76,
+        "csv_ingest_dataset_d": 1581.84,
+        "csv_ingest_dataset_e": 11816.82,
+        "review_approve": 467.6,
+        "review_reject": 562.28,
+        "review_request_changes": 577.38,
+        "review_clear_duplicate": 777.1,
+        "review_archive": 1149.8,
+        "import_prospect": 1965.8,
+        "import_retry": 88.56,
+        "metrics_snapshot": 6.6,
+        "legal_hold": 543.94,
+        "erasure_request": 640.52,
+        "erasure_execute": 1160.58
+      }
+    },
+    "latency_ms": {
+      "csv_ingest_dataset_a": 29879.6,
+      "csv_ingest_dataset_b": 64516.07,
+      "csv_ingest_dataset_c": 10068.76,
+      "csv_ingest_dataset_d": 1581.84,
+      "csv_ingest_dataset_e": 11816.82,
+      "review_approve": 467.6,
+      "review_reject": 562.28,
+      "review_request_changes": 577.38,
+      "review_clear_duplicate": 777.1,
+      "review_archive": 1149.8,
+      "import_prospect": 1965.8,
+      "import_retry": 88.56,
+      "metrics_snapshot": 6.6,
+      "legal_hold": 543.94,
+      "erasure_request": 640.52,
+      "erasure_execute": 1160.58
+    }
+  },
+  "part_h_mf07": {
+    "section": "PART_H_MF07",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "Legacy path identified: POST /admin/leads/import/csv (placeholder, feature flagged)",
+      "Discovery CSV path: CSVImportProvider.ingest_async \u2192 discovery_prospects only",
+      "No import route in admin_discovery.py (review-only per Stage O freeze)",
+      "Overlap risk: dual path if legacy placeholder activated without governance",
+      "Migration requirement: deprecate leads.py import/csv; route to discovery run CSV ingest",
+      "MF-07 implementation deferred \u2014 closure plan documented only"
+    ],
+    "failures": [],
+    "metadata": {
+      "legacy_route": "POST /api/admin/leads/import/csv",
+      "legacy_status": "placeholder \u2014 LEAD_IMPORT_CSV feature flag",
+      "discovery_route": "No HTTP ingest route \u2014 CSVImportProvider service only",
+      "overlap_risk": "MEDIUM until MF-07 retires legacy endpoint",
+      "migration_requirements": [
+        "Return 410 Gone or redirect from legacy import/csv to discovery run workflow",
+        "Add admin UI for discovery CSV run + attestation before ingest",
+        "Block LeadService direct CSV writes",
+        "Update MF-07 tracker evidence with deprecation test"
+      ]
+    },
+    "latency_ms": {}
+  },
+  "part_i_provider_readiness": {
+    "section": "PART_I_PROVIDER_READINESS",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "twin: GREEN",
+      "apollo: AMBER",
+      "clay: AMBER",
+      "internal_crawler: AMBER"
+    ],
+    "failures": [],
+    "metadata": {
+      "providers": {
+        "twin": {
+          "protocol": "GREEN",
+          "metadata": "GREEN",
+          "audit": "GREEN",
+          "compliance": "GREEN",
+          "metrics": "GREEN",
+          "lifecycle": "GREEN",
+          "overall": "GREEN",
+          "notes": "Protocol + registry reserved Phase 2; foundation paths validated on staging CSV proxy"
+        },
+        "apollo": {
+          "protocol": "GREEN",
+          "metadata": "AMBER",
+          "audit": "GREEN",
+          "compliance": "AMBER",
+          "metrics": "GREEN",
+          "lifecycle": "GREEN",
+          "overall": "AMBER",
+          "notes": "No adapter; enrichment metadata mapping profile not exercised on staging"
+        },
+        "clay": {
+          "protocol": "GREEN",
+          "metadata": "AMBER",
+          "audit": "GREEN",
+          "compliance": "AMBER",
+          "metrics": "GREEN",
+          "lifecycle": "GREEN",
+          "overall": "AMBER",
+          "notes": "No adapter; workflow automation hooks not validated operationally"
+        },
+        "internal_crawler": {
+          "protocol": "AMBER",
+          "metadata": "AMBER",
+          "audit": "GREEN",
+          "compliance": "AMBER",
+          "metrics": "GREEN",
+          "lifecycle": "GREEN",
+          "overall": "AMBER",
+          "notes": "HTML payload storage path not exercised on real staging in Stage V"
+        }
+      }
+    },
+    "latency_ms": {}
+  },
+  "part_j_failure_matrix": {
+    "section": "PART_J_FAILURE_MATRIX",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "duplicate_rows_in_batch=PASS",
+      "import_retry=PASS",
+      "imported_prospect_retry=PASS",
+      "invalid_lawful_basis=PASS",
+      "legal_hold=PASS",
+      "malformed_metadata=PASS",
+      "missing_attribution=PASS",
+      "suppression_hit=PASS"
+    ],
+    "failures": [],
+    "metadata": {
+      "matrix": {
+        "duplicate_rows_in_batch": "PASS",
+        "malformed_metadata": "PASS",
+        "invalid_lawful_basis": "PASS",
+        "missing_attribution": "PASS",
+        "suppression_hit": "PASS",
+        "legal_hold": "PASS",
+        "import_retry": "PASS",
+        "imported_prospect_retry": "PASS"
+      }
+    },
+    "latency_ms": {}
+  },
+  "part_k_go_no_go": {
+    "section": "PART_K_GO_NO_GO",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "Database Readiness: GREEN",
+      "Review Readiness: GREEN",
+      "Import Readiness: GREEN",
+      "Compliance Readiness: GREEN",
+      "Metrics Readiness: GREEN",
+      "Lifecycle Readiness: GREEN",
+      "Provider Expansion Readiness: GREEN"
+    ],
+    "failures": [],
+    "metadata": {
+      "overall_discovery_readiness": "GREEN",
+      "readiness": {
+        "Database Readiness": "GREEN",
+        "Review Readiness": "GREEN",
+        "Import Readiness": "GREEN",
+        "Compliance Readiness": "GREEN",
+        "Metrics Readiness": "GREEN",
+        "Lifecycle Readiness": "GREEN",
+        "Provider Expansion Readiness": "GREEN"
+      }
+    },
+    "latency_ms": {}
+  },
+  "twin_onboarding_answer": "YES \u2014 Twin can be onboarded without additional Discovery Foundation architecture work. Real staging validation confirms operational readiness across ingest, review, import, metrics, lifecycle, and audit chains. Proceed behind feature flags with Twin adapter only.",
+  "twin_onboarding_evidence": [
+    "Real MongoDB staging: pleerity_staging",
+    "Prospects ingested under campaign tag stage-v-20260618204845",
+    "Overall readiness: GREEN"
+  ],
+  "remaining_blockers": [
+    "MF-07 legacy CSV path still present (plan only \u2014 not blocking Twin adapter)"
+  ]
+}

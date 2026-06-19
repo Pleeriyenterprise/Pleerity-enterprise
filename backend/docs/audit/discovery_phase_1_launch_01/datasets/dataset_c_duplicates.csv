@@ -1,0 +1,20 @@
+email,company_name,website,contact_name,lawful_basis,marketing_consent,provider_reference
+dataset-a-001@stage-v-20260618204845.staging.pleerity.com,Dup Co 1,https://dataset-a-001.example.test,Contact Dup Co 1,consent,true,csv:stage-v-20260618204845-dup-1
+dataset-a-002@stage-v-20260618204845.staging.pleerity.com,Dup Co 2,https://dataset-a-002.example.test,Contact Dup Co 2,consent,true,csv:stage-v-20260618204845-dup-2
+dataset-c-new-001@stage-v-20260618204845.staging.pleerity.com,Stage V Co C001,https://dataset-c-new-001.example.test,Contact Stage V Co C001,consent,true,csv:stage-v-20260618204845-dataset-c-new-001
+dataset-c-new-002@stage-v-20260618204845.staging.pleerity.com,Stage V Co C002,https://dataset-c-new-002.example.test,Contact Stage V Co C002,consent,true,csv:stage-v-20260618204845-dataset-c-new-002
+dataset-c-new-003@stage-v-20260618204845.staging.pleerity.com,Stage V Co C003,https://dataset-c-new-003.example.test,Contact Stage V Co C003,consent,true,csv:stage-v-20260618204845-dataset-c-new-003
+dataset-c-new-004@stage-v-20260618204845.staging.pleerity.com,Stage V Co C004,https://dataset-c-new-004.example.test,Contact Stage V Co C004,consent,true,csv:stage-v-20260618204845-dataset-c-new-004
+dataset-c-new-005@stage-v-20260618204845.staging.pleerity.com,Stage V Co C005,https://dataset-c-new-005.example.test,Contact Stage V Co C005,consent,true,csv:stage-v-20260618204845-dataset-c-new-005
+dataset-c-new-006@stage-v-20260618204845.staging.pleerity.com,Stage V Co C006,https://dataset-c-new-006.example.test,Contact Stage V Co C006,consent,true,csv:stage-v-20260618204845-dataset-c-new-006
+dataset-c-new-007@stage-v-20260618204845.staging.pleerity.com,Stage V Co C007,https://dataset-c-new-007.example.test,Contact Stage V Co C007,consent,true,csv:stage-v-20260618204845-dataset-c-new-007
+dataset-c-new-008@stage-v-20260618204845.staging.pleerity.com,Stage V Co C008,https://dataset-c-new-008.example.test,Contact Stage V Co C008,consent,true,csv:stage-v-20260618204845-dataset-c-new-008
+dataset-c-new-009@stage-v-20260618204845.staging.pleerity.com,Stage V Co C009,https://dataset-c-new-009.example.test,Contact Stage V Co C009,consent,true,csv:stage-v-20260618204845-dataset-c-new-009
+dataset-c-new-010@stage-v-20260618204845.staging.pleerity.com,Stage V Co C010,https://dataset-c-new-010.example.test,Contact Stage V Co C010,consent,true,csv:stage-v-20260618204845-dataset-c-new-010
+dataset-c-new-011@stage-v-20260618204845.staging.pleerity.com,Stage V Co C011,https://dataset-c-new-011.example.test,Contact Stage V Co C011,consent,true,csv:stage-v-20260618204845-dataset-c-new-011
+dataset-c-new-012@stage-v-20260618204845.staging.pleerity.com,Stage V Co C012,https://dataset-c-new-012.example.test,Contact Stage V Co C012,consent,true,csv:stage-v-20260618204845-dataset-c-new-012
+dataset-c-new-013@stage-v-20260618204845.staging.pleerity.com,Stage V Co C013,https://dataset-c-new-013.example.test,Contact Stage V Co C013,consent,true,csv:stage-v-20260618204845-dataset-c-new-013
+dataset-c-new-014@stage-v-20260618204845.staging.pleerity.com,Stage V Co C014,https://dataset-c-new-014.example.test,Contact Stage V Co C014,consent,true,csv:stage-v-20260618204845-dataset-c-new-014
+dataset-c-new-015@stage-v-20260618204845.staging.pleerity.com,Stage V Co C015,https://dataset-c-new-015.example.test,Contact Stage V Co C015,consent,true,csv:stage-v-20260618204845-dataset-c-new-015
+dataset-c-batch-dup@stage-v-20260618204845.staging.pleerity.com,Batch Dup Co,https://dataset-c-batch-dup.example.test,Contact Batch Dup Co,consent,true,csv:stage-v-20260618204845-batch-dup
+dataset-c-batch-dup@stage-v-20260618204845.staging.pleerity.com,Batch Dup Co,https://dataset-c-batch-dup.example.test,Contact Batch Dup Co,consent,true,csv:stage-v-20260618204845-batch-dup

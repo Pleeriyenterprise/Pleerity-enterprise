@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pleerity.enterprise/schemas/discovery/twin-export-v1.json",
+  "title": "Twin Discovery Export",
+  "description": "Batch export from Pleerity Discovery Agent for TwinProvider.ingest_async()",
+  "type": "object",
+  "required": ["export_id", "records"],
+  "additionalProperties": true,
+  "properties": {
+    "export_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique batch identifier"
+    },
+    "workspace_id": {
+      "type": "string",
+      "description": "Twin workspace ID"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Twin agent ID"
+    },
+    "workflow_id": {
+      "type": "string",
+      "const": "wf-cvp-prospect-discovery-v1"
+    },
+    "exported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC batch export time"
+    },
+    "provenance": {
+      "type": "string",
+      "enum": ["real_workspace", "contract_cohort"],
+      "description": "Stage X operational provenance"
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/prospect_record" }
+    }
+  },
+  "$defs": {
+    "prospect_record": {
+      "type": "object",
+      "description": "Single Twin export row — maps via TwinProvider to Discovery canonical fields",
+      "required": ["twin_id", "company_name", "source_url", "confidence_score", "country"],
+      "additionalProperties": true,
+      "properties": {
+        "twin_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Maps to provider_reference (twin: prefix added by adapter if missing)"
+        },
+        "company_name": { "type": "string", "minLength": 1 },
+        "website": { "type": "string", "format": "uri" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "contact_name": { "type": "string" },
+        "city": { "type": "string" },
+        "region": { "type": "string" },
+        "postcode": { "type": "string" },
+        "country": {
+          "type": "string",
+          "pattern": "^(GB|UK)$",
+          "description": "United Kingdom only"
+        },
+        "business_type": {
+          "type": "string",
+          "enum": [
+            "landlord",
+            "letting_agency",
+            "property_manager",
+            "hmo_operator",
+            "compliance_provider",
+            "unknown"
+          ]
+        },
+        "landlord_type": {
+          "type": "string",
+          "enum": ["single_property", "portfolio", "hmo", "unknown"]
+        },
+        "confidence_score": {
+          "type": "integer",
+          "minimum": 50,
+          "maximum": 100,
+          "description": "Maps to provider_confidence; records below 50 must not be exported"
+        },
+        "linkedin_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Alias for source_url when primary evidence is LinkedIn company page"
+        },
+        "source_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Primary public evidence URL (http/https)"
+        },
+        "enrichment_data": {
+          "type": "object",
+          "description": "Raw payload only — never promoted to Discovery prospect document fields",
+          "properties": {
+            "company_description": { "type": "string" },
+            "property_count_estimate": { "type": "integer", "minimum": 0 },
+            "qualification_signals": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "discovered_at": { "type": "string", "format": "date-time" },
+            "origin_lineage": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["lawful_basis"] },
+          { "required": ["marketing_consent"] },
+          { "required": ["prospect_id"] },
+          { "required": ["imported_lead_id"] },
+          { "required": ["lead_id"] }
+        ]
+      },
+      "anyOf": [
+        { "required": ["email"] },
+        { "required": ["phone"] },
+        { "required": ["website"] },
+        { "required": ["company_name"] }
+      ]
+    }
+  }
+}

@@ -45,9 +45,11 @@ import {
   ListChecks,
   GitCompare,
   Rocket,
+  Search,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { BRAND_LOGO_URL } from '../../config/branding';
+import { isDiscoveryModuleEnabled } from '../../api/discoveryApi';
 import SessionIdleGuard from '../SessionIdleGuard';
 import AdminClientSupportSearch from './AdminClientSupportSearch';
 
@@ -102,6 +104,13 @@ const navSections = [
       { href: '/admin/dashboard', label: 'Clients', icon: Users, tabTarget: 'clients' },
       { href: '/admin/leads', label: 'Lead Management', icon: Target, badge: 'leads' },
       { href: '/admin/risk-leads', label: 'Risk Check Leads', icon: Activity },
+      {
+        href: '/admin/discovery/review',
+        label: 'Discovery Review',
+        icon: Search,
+        ownerOrAdminOnly: true,
+        discoveryModuleOnly: true,
+      },
       { href: '/admin/talent-pool', label: 'Talent Pool', icon: Briefcase },
       { href: '/admin/partnership-enquiries', label: 'Partnership Enquiries', icon: Handshake },
       { href: '/admin/inbox/enquiries', label: 'Contact Enquiries', icon: Mail },
@@ -335,9 +344,11 @@ const UnifiedAdminLayout = ({ children }) => {
     else if (isAuditor?.()) sections = navSections.filter((s) => SECTIONS_FOR_AUDITOR.includes(s.id));
     const isOwnerOrAdmin = isOwner?.() || isAdmin?.();
     const isAuditorRole = isAuditor?.();
+    const discoveryEnabled = isDiscoveryModuleEnabled();
     return sections.map((sec) => ({
       ...sec,
       items: (sec.items || []).filter((item) => {
+        if (item.discoveryModuleOnly && !discoveryEnabled) return false;
         if (isAuditorRole && sec.id === 'system') return item.tabTarget === 'audit';
         // Auditor can see compliance engine + operations items (read-only; write actions 403 on backend)
         if (isAuditorRole && (sec.id === 'operations' || sec.id === 'compliance')) return true;

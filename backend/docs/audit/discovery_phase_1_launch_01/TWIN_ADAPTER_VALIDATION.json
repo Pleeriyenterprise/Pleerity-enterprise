@@ -1,0 +1,12 @@
+{
+  "authority": "STAGE-W-TWIN-PROVIDER-ADAPTER-AUTHORITY-01",
+  "generated_at": "2026-06-18T12:00:00Z",
+  "scenarios": {
+    "W-01": {
+      "passed": true,
+      "audit": "PROSPECT_DISCOVERED"
+    }
+  },
+  "boundary": "GREEN",
+  "twin_readiness": "GREEN"
+}

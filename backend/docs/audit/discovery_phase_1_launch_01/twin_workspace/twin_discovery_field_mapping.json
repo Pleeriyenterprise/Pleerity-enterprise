@@ -1,0 +1,171 @@
+{
+  "authority": "TWIN-PROVIDER-AGENT-SPECIFICATION-01",
+  "provider_id": "twin",
+  "adapter_version": "1.0.0",
+  "adapter_source": "backend/services/discovery/providers/twin_provider.py",
+  "mapping_rules": {
+    "canonical_fields_on_prospect_document": [
+      "email",
+      "phone",
+      "company_name",
+      "website",
+      "source_url",
+      "contact_name",
+      "business_type",
+      "landlord_type",
+      "provider_reference",
+      "provider_confidence"
+    ],
+    "location_fields": {
+      "twin_fields": ["city", "region", "postcode", "country"],
+      "discovery_destination": "provider_extensions.location",
+      "notes": "Structured location object on prospect; not a single 'location' string field"
+    },
+    "raw_payload_only_fields": [
+      "workflow_id",
+      "workflow_name",
+      "twin_campaign_id",
+      "twin_sequence_id",
+      "enrichment_data",
+      "enrichment_tags",
+      "twin_metadata",
+      "export_batch_id",
+      "export_id"
+    ],
+    "agent_prohibited_fields": [
+      "lawful_basis",
+      "marketing_consent",
+      "prospect_id",
+      "imported_lead_id",
+      "lead_id",
+      "customer_id"
+    ]
+  },
+  "field_map": [
+    {
+      "twin_export_field": "twin_id",
+      "aliases": ["external_id"],
+      "discovery_field": "provider_reference",
+      "transform": "Adapter prefixes twin: if namespace missing",
+      "required": true
+    },
+    {
+      "twin_export_field": "company_name",
+      "aliases": ["company", "organisation", "organization"],
+      "discovery_field": "company_name",
+      "required": true
+    },
+    {
+      "twin_export_field": "website",
+      "aliases": ["url", "web"],
+      "discovery_field": "website",
+      "required": false
+    },
+    {
+      "twin_export_field": "source_url",
+      "aliases": ["linkedin_url", "profile_url"],
+      "discovery_field": "source_url",
+      "transform": "Must be http(s) URL",
+      "required": true
+    },
+    {
+      "twin_export_field": "email",
+      "discovery_field": "email",
+      "required": false,
+      "notes": "At least one identity field required across email/phone/company_name/website"
+    },
+    {
+      "twin_export_field": "phone",
+      "discovery_field": "phone",
+      "required": false
+    },
+    {
+      "twin_export_field": "contact_name",
+      "aliases": ["contact", "full_name", "name"],
+      "discovery_field": "contact_name",
+      "required": false
+    },
+    {
+      "twin_export_field": "confidence_score",
+      "aliases": ["confidence", "score"],
+      "discovery_field": "provider_confidence",
+      "transform": "Integer 0-100; export only if >= 50",
+      "required": true
+    },
+    {
+      "twin_export_field": "business_type",
+      "discovery_field": "business_type",
+      "enum": [
+        "landlord",
+        "letting_agency",
+        "property_manager",
+        "hmo_operator",
+        "compliance_provider",
+        "unknown"
+      ],
+      "required": false
+    },
+    {
+      "twin_export_field": "landlord_type",
+      "discovery_field": "landlord_type",
+      "enum": ["single_property", "portfolio", "hmo", "unknown"],
+      "required": false
+    },
+    {
+      "twin_export_field": "city",
+      "discovery_field": "provider_extensions.location.city",
+      "required": false
+    },
+    {
+      "twin_export_field": "region",
+      "discovery_field": "provider_extensions.location.region",
+      "required": false
+    },
+    {
+      "twin_export_field": "postcode",
+      "aliases": ["post_code", "zip"],
+      "discovery_field": "provider_extensions.location.postcode",
+      "required": false
+    },
+    {
+      "twin_export_field": "country",
+      "discovery_field": "provider_extensions.location.country",
+      "required": true,
+      "notes": "Must be GB for UK prospects"
+    },
+    {
+      "twin_export_field": "enrichment_data",
+      "discovery_field": "raw_payload_store",
+      "required": false,
+      "notes": "Never on DiscoveryProspectDocument"
+    },
+    {
+      "twin_export_field": "enrichment_data.discovered_at",
+      "discovery_field": "raw_payload_store + audit lineage",
+      "required": true,
+      "notes": "Agent audit lineage; Discovery audit uses PROSPECT_DISCOVERED at ingest"
+    },
+    {
+      "twin_export_field": "enrichment_data.origin_lineage",
+      "discovery_field": "raw_payload_store",
+      "required": true,
+      "notes": "Source trail for operational review"
+    }
+  ],
+  "ingest_contract": {
+    "payload_shape": {
+      "export_id": "string",
+      "records": "array of prospect_record"
+    },
+    "alternate_shapes": [
+      "Top-level JSON array of records (auto-wrapped)",
+      "payload.prospects alias for records"
+    ],
+    "service_entrypoint": "TwinProvider.ingest_async(IngestSource(payload=...), IngestContext(...))"
+  },
+  "audit": {
+    "provider_id": "twin",
+    "events_created_by_adapter": ["PROSPECT_DISCOVERED", "DUPLICATE_DETECTED"],
+    "agent_must_include_per_record": ["twin_id", "source_url", "enrichment_data.discovered_at", "enrichment_data.origin_lineage"]
+  }
+}

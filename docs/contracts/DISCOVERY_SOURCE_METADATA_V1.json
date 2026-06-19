@@ -1,0 +1,276 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pleerity.com/contracts/discovery-source-metadata/v1",
+  "title": "Discovery Source Metadata V1",
+  "description": "Versioned lead-side metadata written by DiscoveryImportService into leads.source_metadata.discovery. Platform authority — providers must not write this structure directly. Aligned with discovery_models.OriginLineageEntry per DISCOVERY-HASH-GOVERNANCE-ALIGNMENT-UPDATE-01.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "discovery_provider",
+    "discovery_prospect_id",
+    "discovery_run_id",
+    "lawful_basis",
+    "imported_at",
+    "content_hash",
+    "origin_lineage",
+    "erasure_status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Contract version. Breaking changes require new schema_version and migration plan."
+    },
+    "discovery_provider": {
+      "type": "string",
+      "enum": ["csv", "manual", "apollo", "clay", "twin", "internal_crawler"],
+      "description": "Provider that sourced the prospect. Phase 1 active: csv, manual only."
+    },
+    "discovery_channel": {
+      "type": ["string", "null"],
+      "description": "Sub-channel within provider, e.g. linkedin_export, conference_list, directory_scrape."
+    },
+    "discovery_campaign_id": {
+      "type": ["string", "null"],
+      "pattern": "^DCAMP-",
+      "description": "Link to discovery_campaigns.campaign_id."
+    },
+    "discovery_run_id": {
+      "type": "string",
+      "pattern": "^DRUN-",
+      "description": "Link to discovery_runs.discovery_run_id."
+    },
+    "discovery_job_id": {
+      "type": ["string", "null"],
+      "pattern": "^DJOB-",
+      "description": "Link to discovery_jobs.job_id. Null for sync CSV if no job row."
+    },
+    "discovery_prospect_id": {
+      "type": "string",
+      "pattern": "^PROSP-",
+      "description": "Immutable link to discovery_prospects.prospect_id."
+    },
+    "origin_lineage": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/origin_lineage_entry"
+      },
+      "description": "Ordered provenance chain. Append-only. Last entry is importing source."
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 Canonical Ingest Fingerprint at import time. Not a global identity key — see Architecture §12."
+    },
+    "content_hash_version": {
+      "type": "string",
+      "const": "1",
+      "description": "Governance version of canonical hash field set and normalisation rules. V1 documented; persistence optional until Stage K/P."
+    },
+    "hash_algorithm": {
+      "type": "string",
+      "const": "sha256",
+      "description": "Digest algorithm identifier. V1 documented; persistence optional until Stage K/P."
+    },
+    "canonical_identity_snapshot": {
+      "$ref": "#/$defs/canonical_identity_snapshot",
+      "description": "Reserved — not implemented Phase 1. Normalised preimage at import for audit and dispute resolution."
+    },
+    "lawful_basis": {
+      "type": "string",
+      "enum": ["legitimate_interest_b2b", "consent", "unknown"],
+      "description": "Lawful basis at import. unknown must not be imported."
+    },
+    "imported_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of DiscoveryImportService completion."
+    },
+    "provider_reference": {
+      "type": ["string", "null"],
+      "description": "Provider-native row/id reference (namespaced per discovery_hashing.normalize_provider_reference)."
+    },
+    "quality_snapshot": {
+      "$ref": "#/$defs/quality_snapshot",
+      "description": "Scores frozen at import for reporting."
+    },
+    "erasure_status": {
+      "type": "string",
+      "enum": ["active", "erased", "suppressed"],
+      "default": "active",
+      "description": "active = normal; erased = GDPR erasure applied; suppressed = re-ingest blocked."
+    },
+    "erased_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Set when erasure cascade completes. Append-only — never unset."
+    },
+    "data_transfer_basis": {
+      "type": ["string", "null"],
+      "enum": ["adequacy", "scc", "uk_extension", "none", null],
+      "description": "Reserved Phase 2. Phase 1 CSV/manual: none."
+    },
+    "provider_data_region": {
+      "type": ["string", "null"],
+      "description": "Reserved Phase 2. Phase 1: UK."
+    }
+  },
+  "$defs": {
+    "origin_lineage_entry": {
+      "type": "object",
+      "required": [
+        "provider",
+        "discovery_run_id",
+        "content_hash",
+        "ingested_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "description": "Provider identifier at time of discovery."
+        },
+        "provider_reference": {
+          "type": ["string", "null"],
+          "description": "Provider-native reference; namespaced when stored."
+        },
+        "discovery_run_id": {
+          "type": "string",
+          "description": "Run that produced this lineage entry."
+        },
+        "discovery_job_id": {
+          "type": ["string", "null"],
+          "description": "Job id when async provider; null for sync CSV."
+        },
+        "campaign_id": {
+          "type": ["string", "null"],
+          "pattern": "^DCAMP-",
+          "description": "Campaign context when available."
+        },
+        "source_url": {
+          "type": ["string", "null"],
+          "description": "Source URL when available."
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Canonical Ingest Fingerprint for this lineage entry."
+        },
+        "content_hash_version": {
+          "type": "string",
+          "const": "1",
+          "description": "Hash version active when entry was recorded."
+        },
+        "discovered_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When prospect was discovered. Defaults to ingested_at when omitted at service layer."
+        },
+        "ingested_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When entry was appended to lineage."
+        }
+      }
+    },
+    "canonical_identity_snapshot": {
+      "type": "object",
+      "description": "Reserved Phase 1 — governance only. Normalised canonical field values at hash time.",
+      "additionalProperties": false,
+      "properties": {
+        "content_hash_version": {
+          "type": "string",
+          "const": "1"
+        },
+        "provider": { "type": "string" },
+        "provider_reference": { "type": ["string", "null"] },
+        "source_url": { "type": ["string", "null"] },
+        "company_name": { "type": ["string", "null"] },
+        "contact_name": { "type": ["string", "null"] },
+        "email_normalised": { "type": ["string", "null"] },
+        "phone_normalised": { "type": ["string", "null"] },
+        "website": { "type": ["string", "null"] },
+        "location_normalised": { "type": ["string", "null"] },
+        "business_type": { "type": ["string", "null"] },
+        "landlord_type": { "type": ["string", "null"] },
+        "campaign_id": { "type": ["string", "null"] },
+        "discovery_run_id": { "type": "string" }
+      }
+    },
+    "quality_snapshot": {
+      "type": "object",
+      "required": ["platform_quality_score", "provider_confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "platform_quality_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "provider_confidence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "completeness_score": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "validity_score": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "risk_flags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1.0.0",
+      "discovery_provider": "csv",
+      "discovery_channel": "conference_list",
+      "discovery_campaign_id": "DCAMP-20260602120000-A1B2C3",
+      "discovery_run_id": "DRUN-20260602120001-D4E5F6",
+      "discovery_job_id": "DJOB-20260602120002-G7H8I9",
+      "discovery_prospect_id": "PROSP-20260602120003-J0K1L2",
+      "origin_lineage": [
+        {
+          "provider": "csv",
+          "provider_reference": "csv:row-42",
+          "discovery_run_id": "DRUN-20260602120001-D4E5F6",
+          "discovery_job_id": "DJOB-20260602120002-G7H8I9",
+          "campaign_id": "DCAMP-20260602120000-A1B2C3",
+          "source_url": null,
+          "content_hash": "a3f5c8d9e2b147f68091c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3",
+          "content_hash_version": "1",
+          "discovered_at": "2026-06-02T12:00:03Z",
+          "ingested_at": "2026-06-02T12:00:03Z"
+        }
+      ],
+      "content_hash": "a3f5c8d9e2b147f68091c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3",
+      "content_hash_version": "1",
+      "hash_algorithm": "sha256",
+      "lawful_basis": "legitimate_interest_b2b",
+      "imported_at": "2026-06-02T14:30:00Z",
+      "provider_reference": "csv:row-42",
+      "quality_snapshot": {
+        "platform_quality_score": 72,
+        "provider_confidence": 50,
+        "completeness_score": 80,
+        "validity_score": 85,
+        "risk_flags": []
+      },
+      "erasure_status": "active",
+      "erased_at": null,
+      "data_transfer_basis": "none",
+      "provider_data_region": "UK"
+    }
+  ]
+}

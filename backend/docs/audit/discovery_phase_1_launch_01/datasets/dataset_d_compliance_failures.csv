@@ -1,0 +1,5 @@
+email,company_name,website,contact_name,lawful_basis,marketing_consent,provider_reference
+dataset-d-unknown@stage-v-20260618204845.staging.pleerity.com,Unknown Basis Co,https://dataset-d-unknown.example.test,Contact Unknown Basis Co,unknown,false,csv:stage-v-20260618204845-dataset-d-unknown
+dataset-d-consent-mismatch@stage-v-20260618204845.staging.pleerity.com,Consent Mismatch Co,https://dataset-d-consent-mismatch.example.test,Contact Consent Mismatch Co,legitimate_interest_b2b,true,csv:stage-v-20260618204845-dataset-d-consent-mismatch
+bad@example.com,Bad URL Co,not-a-url,Bad Contact,consent,true,bad-url-ref
+dataset-d-valid@stage-v-20260618204845.staging.pleerity.com,Valid D Co,https://dataset-d-valid.example.test,Contact Valid D Co,consent,true,csv:stage-v-20260618204845-dataset-d-valid

@@ -1,0 +1,38 @@
+{
+  "export_id": "exp-cvp-staging-EXAMPLE",
+  "workspace_id": "REPLACE_AFTER_TWIN_WORKSPACE_CREATION",
+  "agent_id": "REPLACE_AFTER_TWIN_AGENT_CREATION",
+  "workflow_id": "wf-cvp-prospect-discovery-v1",
+  "exported_at": "2026-06-19T12:00:00Z",
+  "provenance": "real_workspace",
+  "records": [
+    {
+      "twin_id": "twin-cvp-20260619-0001",
+      "company_name": "Example Lettings Ltd",
+      "website": "https://www.examplelettings.co.uk",
+      "email": "info@examplelettings.co.uk",
+      "phone": "+441312345678",
+      "contact_name": "Office",
+      "city": "Edinburgh",
+      "region": "Scotland",
+      "postcode": "EH1 1AA",
+      "country": "GB",
+      "business_type": "letting_agency",
+      "landlord_type": "portfolio",
+      "confidence_score": 82,
+      "source_url": "https://www.examplelettings.co.uk/about",
+      "linkedin_url": "https://www.linkedin.com/company/example-lettings",
+      "enrichment_data": {
+        "company_description": "Independent letting agency managing residential properties across Edinburgh.",
+        "property_count_estimate": 40,
+        "qualification_signals": [
+          "letting services",
+          "property management",
+          "landlord compliance information"
+        ],
+        "discovered_at": "2026-06-19T11:45:00Z",
+        "origin_lineage": "google_search:letting agency Edinburgh → company website → about page"
+      }
+    }
+  ]
+}

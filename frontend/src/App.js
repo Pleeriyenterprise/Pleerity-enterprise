@@ -146,6 +146,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminAssistantPage from './pages/AdminAssistantPage';
 import AdminBillingPage from './pages/AdminBillingPage';
 import AdminPilotInvitesPage from './pages/admin/AdminPilotInvitesPage';
+import AdminDiscoveryReviewPage from './pages/admin/discovery/AdminDiscoveryReviewPage';
 import AdminPilotInviteDetailPage from './pages/admin/AdminPilotInviteDetailPage';
 import AdminPilotOperationsPage from './pages/admin/AdminPilotOperationsPage';
 import AdminPilotAccountDetailPage from './pages/admin/AdminPilotAccountDetailPage';
@@ -533,6 +534,14 @@ function App() {
                   <AdminBillingPage />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/admin/discovery/review"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminDiscoveryReviewPage />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/admin/pilot-invites"

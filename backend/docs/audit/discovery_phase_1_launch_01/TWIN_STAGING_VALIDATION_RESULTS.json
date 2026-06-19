@@ -1,0 +1,493 @@
+{
+  "authority": "STAGE-X-TWIN-STAGING-OPERATIONAL-VALIDATION-AUTHORITY-01",
+  "generated_at": "2026-06-19T06:40:24.956467Z",
+  "environment": "pleerity_staging",
+  "branch": "develop",
+  "stage_tag": "stage-x-20260619064024",
+  "export_source": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\discovery_phase_1_launch_01\\twin_exports\\contract_cohort_stage-x-20260619064024.json",
+  "export_record_count": 100,
+  "export_provenance": "contract_cohort",
+  "part_a_workspace": {
+    "section": "PART_A_WORKSPACE",
+    "passed": true,
+    "status": "AMBER",
+    "checks": [
+      "workspace manifest not supplied (contract cohort mode)",
+      "agent_id present in manifest or export",
+      "export_id: contract-cohort-stage-x-20260619064024",
+      "export records array present (100 rows)",
+      "TwinProvider payload contract: records[] + provider_reference mapping",
+      "export provenance: contract_cohort"
+    ],
+    "failures": [
+      "contract cohort \u2014 not a real Twin workspace export"
+    ],
+    "metadata": {
+      "manifest": {
+        "workspace_id": "",
+        "agent_id": "",
+        "agent_name": "",
+        "export_format": "discovery_twin_provider_v1",
+        "validated_at": "2026-06-19T06:40:24.956467Z",
+        "source": "missing"
+      },
+      "provenance": "contract_cohort"
+    },
+    "latency_ms": {}
+  },
+  "part_b_export": {
+    "section": "PART_B_EXPORT",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "record 1: 3 twin-only fields isolated to payload",
+      "record 2: 3 twin-only fields isolated to payload",
+      "record 3: 3 twin-only fields isolated to payload",
+      "record 4: 3 twin-only fields isolated to payload",
+      "record 5: 3 twin-only fields isolated to payload",
+      "record 6: 3 twin-only fields isolated to payload",
+      "record 7: 3 twin-only fields isolated to payload",
+      "record 8: 3 twin-only fields isolated to payload",
+      "record 9: 3 twin-only fields isolated to payload",
+      "record 10: 3 twin-only fields isolated to payload",
+      "record 11: 3 twin-only fields isolated to payload",
+      "record 12: 3 twin-only fields isolated to payload",
+      "record 13: 3 twin-only fields isolated to payload",
+      "record 14: 3 twin-only fields isolated to payload",
+      "record 15: 3 twin-only fields isolated to payload",
+      "record 16: 3 twin-only fields isolated to payload",
+      "record 17: 3 twin-only fields isolated to payload",
+      "record 18: 3 twin-only fields isolated to payload",
+      "record 19: 3 twin-only fields isolated to payload",
+      "record 20: 3 twin-only fields isolated to payload",
+      "record 21: 3 twin-only fields isolated to payload",
+      "record 22: 3 twin-only fields isolated to payload",
+      "record 23: 3 twin-only fields isolated to payload",
+      "record 24: 3 twin-only fields isolated to payload",
+      "record 25: 3 twin-only fields isolated to payload",
+      "record 26: 3 twin-only fields isolated to payload",
+      "record 27: 3 twin-only fields isolated to payload",
+      "record 28: 3 twin-only fields isolated to payload",
+      "record 29: 3 twin-only fields isolated to payload",
+      "record 30: 3 twin-only fields isolated to payload",
+      "record 31: 3 twin-only fields isolated to payload",
+      "record 32: 3 twin-only fields isolated to payload",
+      "record 33: 3 twin-only fields isolated to payload",
+      "record 34: 3 twin-only fields isolated to payload",
+      "record 35: 3 twin-only fields isolated to payload",
+      "record 36: 3 twin-only fields isolated to payload",
+      "record 37: 3 twin-only fields isolated to payload",
+      "record 38: 3 twin-only fields isolated to payload",
+      "record 39: 3 twin-only fields isolated to payload",
+      "record 40: 3 twin-only fields isolated to payload",
+      "record 41: 3 twin-only fields isolated to payload",
+      "record 42: 3 twin-only fields isolated to payload",
+      "record 43: 3 twin-only fields isolated to payload",
+      "record 44: 3 twin-only fields isolated to payload",
+      "record 45: 3 twin-only fields isolated to payload",
+      "record 46: 3 twin-only fields isolated to payload",
+      "record 47: 3 twin-only fields isolated to payload",
+      "record 48: 3 twin-only fields isolated to payload",
+      "record 49: 3 twin-only fields isolated to payload",
+      "record 50: 3 twin-only fields isolated to payload",
+      "record 51: 3 twin-only fields isolated to payload",
+      "record 52: 3 twin-only fields isolated to payload",
+      "record 53: 3 twin-only fields isolated to payload",
+      "record 54: 3 twin-only fields isolated to payload",
+      "record 55: 3 twin-only fields isolated to payload",
+      "record 56: 3 twin-only fields isolated to payload",
+      "record 57: 3 twin-only fields isolated to payload",
+      "record 58: 3 twin-only fields isolated to payload",
+      "record 59: 3 twin-only fields isolated to payload",
+      "record 60: 3 twin-only fields isolated to payload",
+      "record 61: 3 twin-only fields isolated to payload",
+      "record 62: 3 twin-only fields isolated to payload",
+      "record 63: 3 twin-only fields isolated to payload",
+      "record 64: 3 twin-only fields isolated to payload",
+      "record 65: 3 twin-only fields isolated to payload",
+      "record 66: 3 twin-only fields isolated to payload",
+      "record 67: 3 twin-only fields isolated to payload",
+      "record 68: 3 twin-only fields isolated to payload",
+      "record 69: 3 twin-only fields isolated to payload",
+      "record 70: 3 twin-only fields isolated to payload",
+      "record 71: 3 twin-only fields isolated to payload",
+      "record 72: 3 twin-only fields isolated to payload",
+      "record 73: 3 twin-only fields isolated to payload",
+      "record 74: 3 twin-only fields isolated to payload",
+      "record 75: 3 twin-only fields isolated to payload",
+      "record 76: 3 twin-only fields isolated to payload",
+      "record 77: 3 twin-only fields isolated to payload",
+      "record 78: 3 twin-only fields isolated to payload",
+      "record 79: 3 twin-only fields isolated to payload",
+      "record 80: 3 twin-only fields isolated to payload",
+      "record 81: 3 twin-only fields isolated to payload",
+      "record 82: 3 twin-only fields isolated to payload",
+      "record 83: 3 twin-only fields isolated to payload",
+      "record 84: 3 twin-only fields isolated to payload",
+      "record 85: 3 twin-only fields isolated to payload",
+      "record 86: 3 twin-only fields isolated to payload",
+      "record 87: 3 twin-only fields isolated to payload",
+      "record 88: 3 twin-only fields isolated to payload",
+      "record 89: 3 twin-only fields isolated to payload",
+      "record 90: 3 twin-only fields isolated to payload",
+      "record 91: 3 twin-only fields isolated to payload",
+      "record 92: 3 twin-only fields isolated to payload",
+      "record 93: 3 twin-only fields isolated to payload",
+      "record 94: 3 twin-only fields isolated to payload",
+      "record 95: 3 twin-only fields isolated to payload",
+      "record 96: 3 twin-only fields isolated to payload",
+      "record 97: 3 twin-only fields isolated to payload",
+      "record 98: 3 twin-only fields isolated to payload",
+      "record 99: 3 twin-only fields isolated to payload",
+      "record 100: 3 twin-only fields isolated to payload",
+      "export count 100 meets minimum 50",
+      "provider_reference populated on 100/100 (100.0%)",
+      "source_url populated on 100/100 (100.0%)",
+      "company_name populated on 100/100 (100.0%)",
+      "provider_confidence populated on 100/100 (100.0%)",
+      "email populated on 100/100 (100.0%)"
+    ],
+    "failures": [],
+    "metadata": {
+      "field_coverage": {
+        "provider_reference": 100,
+        "source_url": 100,
+        "company_name": 100,
+        "provider_confidence": 100,
+        "email": 100
+      },
+      "record_count": 100
+    },
+    "latency_ms": {}
+  },
+  "part_c_ingest": {
+    "section": "PART_C_INGEST",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "ingest accepted=100 rejected=0 duplicates=0",
+      "ingest success rate=100.0% failure rate=0.0%",
+      "discovery_job_id=DJOB-20260619064034-445CFD",
+      "PROSPECT_DISCOVERED audits=100",
+      "prospects persisted=100",
+      "review queue candidates=100",
+      "content_hash generated on Twin prospects"
+    ],
+    "failures": [],
+    "metadata": {
+      "ingest": {
+        "total": 100,
+        "accepted": 100,
+        "rejected": 0,
+        "duplicate_rows": 0,
+        "success_rate_pct": 100.0,
+        "failure_rate_pct": 0.0,
+        "created_prospect_ids": [
+          "PROSP-20260619064035-4F27EA",
+          "PROSP-20260619064035-080149",
+          "PROSP-20260619064036-675ED1",
+          "PROSP-20260619064037-5BB551",
+          "PROSP-20260619064038-702FB0",
+          "PROSP-20260619064038-2BDCF9",
+          "PROSP-20260619064039-32BC4B",
+          "PROSP-20260619064040-081CF1",
+          "PROSP-20260619064041-3EAB75",
+          "PROSP-20260619064042-9973E6"
+        ]
+      }
+    },
+    "latency_ms": {
+      "twin_ingest": 82024.22
+    }
+  },
+  "part_d_review": {
+    "section": "PART_D_REVIEW",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "sample reviewed=20",
+      "approval_rate=25.0%",
+      "rejection_rate=25.0%",
+      "duplicate_rate=0.0%",
+      "avg_quality_score=75.1",
+      "avg_review_priority=24.9"
+    ],
+    "failures": [],
+    "metadata": {
+      "total_prospects": 100,
+      "sample_size": 20,
+      "approval_rate_pct": 25.0,
+      "rejection_rate_pct": 25.0,
+      "duplicate_rate_pct": 0.0,
+      "avg_quality_score": 75.1,
+      "avg_review_priority": 24.9,
+      "import_rate_pct": 1.0
+    },
+    "latency_ms": {
+      "review_approve": 583.25
+    }
+  },
+  "part_e_import": {
+    "section": "PART_E_IMPORT",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "imported lead_id=LEAD-20260619064212-6770DD",
+      "discovery_import_v1 tag present",
+      "source_metadata.discovery_provider=twin",
+      "duplicate import idempotent",
+      "unapproved import blocked",
+      "LIA compliance block enforced",
+      "suppression block enforced"
+    ],
+    "failures": [],
+    "metadata": {
+      "outcomes": {
+        "first": {
+          "status": "imported",
+          "lead_id": "LEAD-20260619064212-6770DD"
+        },
+        "retry": "idempotent",
+        "blocked_not_approved": "blocked",
+        "lia_blocked": "blocked",
+        "suppression_blocked": "blocked"
+      }
+    },
+    "latency_ms": {
+      "import_prospect": 2378.95
+    }
+  },
+  "part_f_metrics": {
+    "section": "PART_F_METRICS",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "provider_metrics.twin reconciled",
+      "campaign_metrics present (provider-neutral)",
+      "import_metrics present (provider-neutral)",
+      "metrics service uses provider-neutral aggregation"
+    ],
+    "failures": [],
+    "metadata": {
+      "twin_provider_metrics": {
+        "provider": "twin",
+        "prospects_discovered": 100,
+        "prospects_accepted": 95,
+        "prospects_rejected": 0,
+        "prospects_approved": 8,
+        "prospects_imported": 1,
+        "duplicate_rate": 0.0,
+        "average_quality_score": 75.82,
+        "average_review_priority": 24.18,
+        "suppression_rate": 0.0,
+        "import_success_rate": 25.0
+      },
+      "campaign_metrics": {
+        "campaign_id": "DCAMP-20260619064034-1A10D7",
+        "prospects_created": 100,
+        "approved": 8,
+        "rejected": 0,
+        "imported": 1,
+        "duplicate_rate": 0.0,
+        "average_quality_score": 75.82,
+        "funnel": {
+          "prospects_created": 100,
+          "needs_review": 87,
+          "approved": 8,
+          "imported": 1,
+          "lead_created": 1,
+          "conversion_to_needs_review_pct": 87.0,
+          "conversion_to_approved_pct": 8.0,
+          "conversion_to_imported_pct": 1.0,
+          "conversion_to_lead_created_pct": 1.0
+        }
+      }
+    },
+    "latency_ms": {}
+  },
+  "part_g_compliance": {
+    "section": "PART_G_COMPLIANCE",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "compliance block rate (sample)=0.0%",
+      "import eligibility rate (sample)=100.0%",
+      "legal hold blocks import=True"
+    ],
+    "failures": [],
+    "metadata": {
+      "compliance_block_rate_pct": 0.0,
+      "import_eligibility_rate_pct": 100.0
+    },
+    "latency_ms": {}
+  },
+  "part_h_lifecycle": {
+    "section": "PART_H_LIFECYCLE",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "erasure_status=erased",
+      "suppression_records=1",
+      "retention_status=indefinite",
+      "purge_eligible=False",
+      "lifecycle identical path to CSV prospects (no Twin-specific service)"
+    ],
+    "failures": [],
+    "metadata": {
+      "retention": {
+        "category": "erased_prospect",
+        "status": "indefinite",
+        "policy": "erased_prospect",
+        "expiry_at": null,
+        "archive_eligible_at": null,
+        "purge_eligible_at": null,
+        "retention_expiry_reached": false
+      },
+      "purge": {
+        "eligible": false,
+        "blocking_reasons": [
+          "policy erased_prospect does not allow purge",
+          "retention expiry not reached",
+          "record already erased \u2014 purge not applicable",
+          "active review item"
+        ],
+        "review_required": true,
+        "retention_expiry_reached": false
+      }
+    },
+    "latency_ms": {}
+  },
+  "part_i_cost": {
+    "section": "PART_I_COST",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "twin_cost_gbp=150.0",
+      "prospects_generated=100",
+      "approved=9",
+      "imported=1",
+      "cost_per_prospect=1.5",
+      "cost_per_approved=16.6667",
+      "cost_per_imported=150.0"
+    ],
+    "failures": [],
+    "metadata": {
+      "twin_cost_gbp": 150.0,
+      "cost_per_prospect": 1.5,
+      "cost_per_approved": 16.6667,
+      "cost_per_imported": 150.0
+    },
+    "latency_ms": {}
+  },
+  "part_j_comparison": {
+    "section": "PART_J_COMPARISON",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "approval_rate: Twin Better vs CSV baseline",
+      "duplicate_rate: Twin Better vs CSV baseline",
+      "avg_quality_score: Twin Better vs CSV baseline",
+      "import_rate: Twin Equal vs CSV baseline"
+    ],
+    "failures": [],
+    "metadata": {
+      "comparisons": {
+        "approval_rate": "Better",
+        "duplicate_rate": "Better",
+        "avg_quality_score": "Better",
+        "import_rate": "Equal"
+      },
+      "csv_baseline": {
+        "prospects_ingested": 192,
+        "approval_rate_pct": 2.08,
+        "import_rate_pct": 0.52,
+        "duplicate_rate_pct": 1.04,
+        "avg_quality_score": 51.9,
+        "ingest_latency_ms": {
+          "dataset_a_50": 29879.6,
+          "dataset_b_100": 64516.07
+        },
+        "stage_v_tag": "stage-v-20260618204845"
+      },
+      "twin": {
+        "total_prospects": 100,
+        "sample_size": 20,
+        "approval_rate_pct": 25.0,
+        "rejection_rate_pct": 25.0,
+        "duplicate_rate_pct": 0.0,
+        "avg_quality_score": 75.1,
+        "avg_review_priority": 24.9,
+        "import_rate_pct": 1.0
+      }
+    },
+    "latency_ms": {}
+  },
+  "part_k_failure_matrix": {
+    "section": "PART_K_FAILURE_MATRIX",
+    "passed": true,
+    "status": "GREEN",
+    "checks": [
+      "compliance_failure=PASS",
+      "duplicate_twin_prospect=PASS",
+      "import_retry=PASS",
+      "invalid_confidence=PASS",
+      "malformed_twin_payload=PASS",
+      "missing_attribution=PASS",
+      "missing_provider_reference=PASS",
+      "suppression_match=PASS"
+    ],
+    "failures": [],
+    "metadata": {
+      "matrix": {
+        "malformed_twin_payload": "PASS",
+        "missing_provider_reference": "PASS",
+        "invalid_confidence": "PASS",
+        "duplicate_twin_prospect": "PASS",
+        "compliance_failure": "PASS",
+        "suppression_match": "PASS",
+        "import_retry": "PASS",
+        "missing_attribution": "PASS"
+      }
+    },
+    "latency_ms": {}
+  },
+  "part_l_readiness": {
+    "section": "PART_L_READINESS",
+    "passed": true,
+    "status": "AMBER",
+    "checks": [
+      "Twin Adapter: GREEN",
+      "Twin Data Quality: GREEN",
+      "Twin Compliance Compatibility: GREEN",
+      "Twin Lifecycle Compatibility: GREEN",
+      "Twin Metrics Compatibility: GREEN",
+      "Twin Operational Value: AMBER",
+      "Twin Production Readiness: RED"
+    ],
+    "failures": [],
+    "metadata": {
+      "readiness": {
+        "Twin Adapter": "GREEN",
+        "Twin Data Quality": "GREEN",
+        "Twin Compliance Compatibility": "GREEN",
+        "Twin Lifecycle Compatibility": "GREEN",
+        "Twin Metrics Compatibility": "GREEN",
+        "Twin Operational Value": "AMBER",
+        "Twin Production Readiness": "RED"
+      },
+      "overall": "AMBER"
+    },
+    "latency_ms": {}
+  },
+  "operational_recommendation": "CONDITIONAL \u2014 Twin adapter path is operationally viable on staging (ingest, review, import, metrics, compliance, lifecycle validated without architectural exceptions). Operational value and production readiness require a real Twin workspace export with measured approval/import rates against business thresholds.",
+  "operational_recommendation_evidence": [
+    "export_provenance=contract_cohort",
+    "prospects_ingested=100",
+    "ingest_status=GREEN",
+    "review_status=GREEN",
+    "import_status=GREEN"
+  ],
+  "remaining_blockers": [
+    "Real Twin workspace export not supplied \u2014 substitute twin_exports/twin_staging_export.json"
+  ]
+}
