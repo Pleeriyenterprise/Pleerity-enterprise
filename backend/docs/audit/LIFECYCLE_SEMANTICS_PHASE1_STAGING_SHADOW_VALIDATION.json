@@ -1,0 +1,363 @@
+{
+  "authority": "LIFECYCLE-SEMANTICS-PHASE1-STAGING-SHADOW-VALIDATION-01",
+  "generated_at": "2026-06-24T07:36:17.622889Z",
+  "local_commit": "99cfea46",
+  "local_branch": "feature/lifecycle-semantics-phase1",
+  "lifecycle_semantics_mode": "shadow",
+  "active_mode_blocked": "services.lifecycle_semantics_config",
+  "staging_database": "pleerity_staging",
+  "staging_api": {
+    "base_url": "https://pleerity-enterprise.onrender.com",
+    "health_path": "/api/health",
+    "http_status": 200,
+    "reachable": true,
+    "body": {
+      "status": "healthy",
+      "environment": "staging",
+      "readiness": {
+        "stage": "ready",
+        "degraded": false,
+        "last_error": null
+      }
+    }
+  },
+  "deploy_note": "Shadow logs on Render require deploy of feature/lifecycle-semantics-phase1 with LIFECYCLE_SEMANTICS_MODE=shadow. This script validates resolver against staging Mongo rows using local Phase 1 code (read-only).",
+  "scenarios": [
+    {
+      "scenario_id": "S1",
+      "slug": "gas_safety",
+      "expected_semantics": "EXPIRY_BASED",
+      "sample_found": true,
+      "requirement_id": "4d802998-ba39-4644-a341-71b97e2751c9",
+      "lifecycle_semantics": "EXPIRY_BASED",
+      "attention_kind": null,
+      "canonical_dates": {
+        "expiry_date": null,
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2026-03-28T12:37:27.179450+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S2",
+      "slug": "eicr",
+      "expected_semantics": "EXPIRY_BASED",
+      "sample_found": true,
+      "requirement_id": "c293defd-06a2-4734-9ae3-33ece5e7d022",
+      "lifecycle_semantics": "EXPIRY_BASED",
+      "attention_kind": null,
+      "canonical_dates": {
+        "expiry_date": null,
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2026-04-27T12:37:27.423959+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S3",
+      "slug": "epc",
+      "expected_semantics": "EXPIRY_BASED",
+      "sample_found": true,
+      "requirement_id": "321b085c-0821-4962-b572-39a4a1a3dcec",
+      "lifecycle_semantics": "EXPIRY_BASED",
+      "attention_kind": null,
+      "canonical_dates": {
+        "expiry_date": null,
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2026-05-27T12:37:27.673332+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S4",
+      "slug": "hmo_license",
+      "expected_semantics": "EXPIRY_BASED",
+      "sample_found": true,
+      "requirement_id": "294059b4-0874-4134-aace-6ba1cfb2569c",
+      "lifecycle_semantics": "EXPIRY_BASED",
+      "attention_kind": "CERTIFICATE_EXPIRING",
+      "canonical_dates": {
+        "expiry_date": "2026-08-23T12:56:16.593558+00:00",
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2026-08-23T12:56:16.593558+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [
+        "conflict_expects_expiry_false_expiry_semantics"
+      ],
+      "shadow_divergence": {
+        "type": "semantics_mismatch",
+        "legacy_would_treat_as_expiry": false,
+        "resolver_lifecycle_semantics": "EXPIRY_BASED"
+      },
+      "status": "CONFLICT",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S5",
+      "slug": "legionella",
+      "expected_semantics": "REVIEW_BASED",
+      "sample_found": true,
+      "requirement_id": "44de8e1b-0218-44e8-91f9-e6d0f57034d0",
+      "lifecycle_semantics": "REVIEW_BASED",
+      "attention_kind": null,
+      "canonical_dates": {
+        "expiry_date": null,
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2026-04-27T12:37:28.157309+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S6",
+      "slug": "deposit_pi",
+      "expected_semantics": "DECLARATION_BASED",
+      "sample_found": true,
+      "requirement_id": "b7a12498-67e3-475a-aa06-88aeda8c328f",
+      "lifecycle_semantics": "DECLARATION_BASED",
+      "attention_kind": "EVENT_ACTION_REQUIRED",
+      "canonical_dates": {
+        "expiry_date": null,
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2026-06-14T20:43:03.918861+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S7",
+      "slug": "right_to_rent",
+      "expected_semantics": "OCCUPANCY_LIFECYCLE",
+      "sample_found": true,
+      "requirement_id": "ae03d099-993f-4e17-ab2f-0b44039b8d09",
+      "lifecycle_semantics": "OCCUPANCY_LIFECYCLE",
+      "attention_kind": null,
+      "canonical_dates": {
+        "expiry_date": "2026-07-07T21:18:34.111037+00:00",
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2026-07-07T21:18:34.111037+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S8",
+      "slug": "tenancy_agreement",
+      "expected_semantics": "TENANCY_LIFECYCLE",
+      "sample_found": true,
+      "requirement_id": "58dd9efc-9050-4905-812e-23944394fa83",
+      "lifecycle_semantics": "TENANCY_LIFECYCLE",
+      "attention_kind": null,
+      "canonical_dates": {
+        "expiry_date": null,
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2036-03-05T15:50:20.549875+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S9",
+      "slug": "smoke_heat_alarms",
+      "expected_semantics": "EVENT_BASED",
+      "sample_found": true,
+      "requirement_id": "6d1c3d99-a22c-47cb-9c81-ddbc8efa454d",
+      "lifecycle_semantics": "EVENT_BASED",
+      "attention_kind": "EVENT_ACTION_REQUIRED",
+      "canonical_dates": {
+        "expiry_date": "2026-05-30T20:58:19+00:00",
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2026-05-30T20:58:19+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    },
+    {
+      "scenario_id": "S10",
+      "slug": "fitness_for_human_habitation",
+      "expected_semantics": "OPERATIONAL",
+      "sample_found": true,
+      "requirement_id": "63c3deb8-bf2a-4828-b96a-6dfc84bc0b03",
+      "lifecycle_semantics": "OPERATIONAL",
+      "attention_kind": null,
+      "canonical_dates": {
+        "expiry_date": null,
+        "issue_date": null,
+        "review_date": null,
+        "next_review_date": null,
+        "event_date": null,
+        "tenancy_start_date": null,
+        "tenancy_end_date": null,
+        "occupancy_check_date": null,
+        "occupancy_follow_up_date": null,
+        "operational_due_date": "2027-05-22T23:23:26.151750+00:00"
+      },
+      "resolution_source": "legacy_map",
+      "validation_issues": [],
+      "shadow_divergence": null,
+      "status": "PASS",
+      "runtime_projection_parity": true,
+      "property_score_snapshot": null
+    }
+  ],
+  "unresolved": [],
+  "conflicts": [
+    {
+      "scenario": "S4",
+      "issues": [
+        "conflict_expects_expiry_false_expiry_semantics"
+      ]
+    }
+  ],
+  "parity_checks": [
+    {
+      "scenario": "S1",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S2",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S3",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S4",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S5",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S6",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S7",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S8",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S9",
+      "projection_parity": true
+    },
+    {
+      "scenario": "S10",
+      "projection_parity": true
+    }
+  ],
+  "mongo_ping": "ok",
+  "active_mode_resolves_to": "disabled",
+  "summary": {
+    "scenarios_total": 10,
+    "scenarios_pass_or_pass_with_notes": 9,
+    "unresolved_count": 0,
+    "conflict_count": 1,
+    "projection_parity_all": true
+  }
+}
