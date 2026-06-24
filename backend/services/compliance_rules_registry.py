@@ -335,6 +335,24 @@ def _build_registry() -> Dict[str, Dict[str, ComplianceRuleSpec]]:
             sla_risk_days_before_complete=3,
             sla_risk_hours_before_respond=6,
         ),
+        "HMO_LICENSING": ComplianceRuleSpec(
+            canonical_code="HMO_LICENSING",
+            storage_type="hmo_license",
+            description="HMO / selective / additional licensing",
+            frequency_days=365,
+            warning_days=30,
+            expects_expiry=True,
+            allowed_document_types=(
+                "hmo_license",
+                "property_licence",
+                "hmo_licensing",
+                "selective_license",
+            ),
+            sla_complete_days=21,
+            sla_respond_hours=48,
+            sla_risk_days_before_complete=3,
+            sla_risk_hours_before_respond=6,
+        ),
         "FIRE_DETECTION": ComplianceRuleSpec(
             canonical_code="FIRE_DETECTION",
             storage_type="fire_alarm",
@@ -432,6 +450,7 @@ def _build_registry() -> Dict[str, Dict[str, ComplianceRuleSpec]]:
     )
     # Shared extended rules (HMO fire, Wales contract) use same cadence hints as EW unless forked later.
     scotland["HMO_FIRE_RISK"] = base_ew["HMO_FIRE_RISK"]
+    scotland["HMO_LICENSING"] = base_ew["HMO_LICENSING"]
     scotland["OCCUPATION_CONTRACT"] = base_ew["OCCUPATION_CONTRACT"]
     return {"ENGLAND_WALES": base_ew, "SCOTLAND": scotland}
 
@@ -452,6 +471,7 @@ REQ_TO_DOC_TYPE: Dict[str, str] = {
     "FIRE_DETECTION": "fire_safety",
     "LEGIONELLA": "legionella",
     "HMO_FIRE_RISK": "fire_safety",
+    "HMO_LICENSING": "hmo_license",
     "LANDLORD_REGISTRATION": "licence",
     "OCCUPATION_CONTRACT": "tenancy_agreement",
 }
@@ -542,6 +562,9 @@ def expects_expiry_for_requirement(scoring_jurisdiction: str, canonical_code: st
         "GAS_SAFETY",
         "EICR",
         "EPC",
+        "HMO_LICENSING",
+        "HMO_LICENSE",
+        "HMO_LICENCE",
         "HMO_FIRE_RISK",
         "LANDLORD_REGISTRATION",
         "OCCUPATION_CONTRACT",

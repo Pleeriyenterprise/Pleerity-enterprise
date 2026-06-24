@@ -241,35 +241,42 @@ async def get_evidence_resolution(
     except Exception:
         reopen_context = None
 
-    return {
-        "requirement_id": requirement_id,
-        "property_id": property_id,
-        "modal_title": modal_title,
-        "primary_client_cta": guided_label,
-        "client_evidence_disclosure": ced,
-        "primary_resolution_workflow": policy.get("primary_resolution_workflow"),
-        "allowed_evidence_modes": modes,
-        "guided_methods": methods,
-        "supporting_upload_required": bool(policy.get("supporting_upload_required")),
-        "supporting_upload_recommended": bool(policy.get("supporting_upload_recommended")),
-        "allowed_upload_types": list(policy.get("allowed_upload_types") or []),
-        "policy": policy,
-        "operational_cognition": cognition,
-        "requirement_guidance_v1": guidance,
-        "component_guidance_lines": component_guidance,
-        "existing_submission_banner": existing_submission_banner,
-        "reopen_context": reopen_context,
-        "requirement": {
-            "requirement_id": enriched.get("requirement_id"),
-            "client_lifecycle_state": enriched.get("client_lifecycle_state"),
-            "evidence_authority": enriched.get("evidence_authority"),
-            "take_action": enriched.get("take_action"),
-            "truth_presentation_stage": enriched.get("truth_presentation_stage"),
-            "queue_backed_review": enriched.get("queue_backed_review"),
-            "review_owner": enriched.get("review_owner"),
-            "evidence_completeness": enriched.get("evidence_completeness"),
+    from services.lifecycle_confirm_contract import maybe_attach_lifecycle_confirm_contract
+
+    return maybe_attach_lifecycle_confirm_contract(
+        {
+            "requirement_id": requirement_id,
+            "property_id": property_id,
+            "modal_title": modal_title,
+            "primary_client_cta": guided_label,
+            "client_evidence_disclosure": ced,
+            "primary_resolution_workflow": policy.get("primary_resolution_workflow"),
+            "allowed_evidence_modes": modes,
+            "guided_methods": methods,
+            "supporting_upload_required": bool(policy.get("supporting_upload_required")),
+            "supporting_upload_recommended": bool(policy.get("supporting_upload_recommended")),
+            "allowed_upload_types": list(policy.get("allowed_upload_types") or []),
+            "policy": policy,
+            "operational_cognition": cognition,
+            "requirement_guidance_v1": guidance,
+            "component_guidance_lines": component_guidance,
+            "existing_submission_banner": existing_submission_banner,
+            "reopen_context": reopen_context,
+            "requirement": {
+                "requirement_id": enriched.get("requirement_id"),
+                "client_lifecycle_state": enriched.get("client_lifecycle_state"),
+                "evidence_authority": enriched.get("evidence_authority"),
+                "take_action": enriched.get("take_action"),
+                "truth_presentation_stage": enriched.get("truth_presentation_stage"),
+                "queue_backed_review": enriched.get("queue_backed_review"),
+                "review_owner": enriched.get("review_owner"),
+                "evidence_completeness": enriched.get("evidence_completeness"),
+            },
         },
-    }
+        requirement=enriched,
+        surface="evidence_resolution",
+        requirement_id=requirement_id,
+    )
 
 
 @router.post("/properties/{property_id}/requirements/{requirement_id}/compliance-evidence")
