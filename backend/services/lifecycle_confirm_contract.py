@@ -280,32 +280,25 @@ def observe_confirm_payload_shadow(
     surface: str,
 ) -> None:
     """
-    Observe-only validation logging — does not block requests (S3).
+    Observe-only validation logging — does not block requests (S3/S4).
     """
-    if is_lifecycle_aware_confirm_off():
-        return
-    if not is_lifecycle_aware_confirm_shadow():
+    if is_lifecycle_aware_confirm_off() or not is_lifecycle_aware_confirm_shadow():
         return
 
-    forbidden = set(contract.get("forbidden_fields") or [])
-    confirm = set(contract.get("confirm_fields") or [])
-    present = set(payload.keys()) if isinstance(payload, dict) else set()
+    from services.lifecycle_confirm_validation import validate_confirm_payload_against_contract
 
-    violations: List[str] = []
-    for field in forbidden:
-        if field in present and payload.get(field) not in (None, ""):
-            violations.append(f"forbidden:{field}")
-    for field in confirm:
-        if field not in present or payload.get(field) in (None, ""):
-            violations.append(f"missing:{field}")
-
-    if violations:
-        logger.info(
-            "lifecycle_confirm_shadow_would_reject",
-            extra={"surface": surface, "violations": violations, "contract_version": contract.get("contract_version")},
-        )
-    else:
+    would_accept, violations = validate_confirm_payload_against_contract(payload, contract)
+    if would_accept:
         logger.info(
             "lifecycle_confirm_shadow_would_accept",
             extra={"surface": surface, "contract_version": contract.get("contract_version")},
+        )
+    else:
+        logger.info(
+            "lifecycle_confirm_shadow_would_reject",
+            extra={
+                "surface": surface,
+                "violations": violations,
+                "contract_version": contract.get("contract_version"),
+            },
         )
