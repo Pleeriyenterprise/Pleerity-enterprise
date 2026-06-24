@@ -3257,7 +3257,15 @@ async def get_document_extraction(request: Request, document_id: str):
     try:
         document = await db.documents.find_one(
             {"document_id": document_id},
-            {"_id": 0, "client_id": 1, "extraction_id": 1, "extraction_status": 1, "ai_extraction": 1}
+            {
+                "_id": 0,
+                "client_id": 1,
+                "extraction_id": 1,
+                "extraction_status": 1,
+                "ai_extraction": 1,
+                "requirement_id": 1,
+                "document_type": 1,
+            },
         )
         if not document:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -3286,6 +3294,15 @@ async def get_document_extraction(request: Request, document_id: str):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this document")
 
         extraction_id = document.get("extraction_id")
+        requirement_row = None
+        storage_slug = document.get("document_type")
+        rid = document.get("requirement_id")
+        if rid:
+            requirement_row = await db.requirements.find_one(
+                {"requirement_id": rid, "client_id": document.get("client_id")},
+                {"_id": 0},
+            )
+
         if extraction_id:
             rec = await db.extracted_documents.find_one(
                 {"extraction_id": extraction_id},
@@ -3293,6 +3310,8 @@ async def get_document_extraction(request: Request, document_id: str):
             )
             if rec:
                 ext = rec.get("extracted") or {}
+                if not storage_slug and ext.get("doc_type"):
+                    storage_slug = ext.get("doc_type")
                 # Unified shape for frontend (status, data with confidence)
                 extraction = {
                     "status": rec.get("status"),
@@ -3312,12 +3331,46 @@ async def get_document_extraction(request: Request, document_id: str):
                     "mapping_suggestion": rec.get("mapping_suggestion"),
                     "errors": rec.get("errors"),
                 }
-                return {"has_extraction": True, "extraction": extraction}
+                from services.lifecycle_confirm_contract import maybe_attach_lifecycle_confirm_contract
+
+                payload = {"has_extraction": True, "extraction": extraction}
+                return maybe_attach_lifecycle_confirm_contract(
+                    payload,
+                    requirement=requirement_row,
+                    storage_slug=storage_slug,
+                    surface="document_extraction",
+                    requirement_id=rid,
+                    document_id=document_id,
+                )
 
         extraction = document.get("ai_extraction")
         if not extraction:
-            return {"has_extraction": False, "extraction": None}
-        return {"has_extraction": True, "extraction": extraction}
+            from services.lifecycle_confirm_contract import maybe_attach_lifecycle_confirm_contract
+
+            payload = {"has_extraction": False, "extraction": None}
+            return maybe_attach_lifecycle_confirm_contract(
+                payload,
+                requirement=requirement_row,
+                storage_slug=storage_slug,
+                surface="document_extraction",
+                requirement_id=rid,
+                document_id=document_id,
+            )
+        if not storage_slug:
+            data = extraction.get("data") if isinstance(extraction, dict) else None
+            if isinstance(data, dict) and data.get("document_type"):
+                storage_slug = data.get("document_type")
+        from services.lifecycle_confirm_contract import maybe_attach_lifecycle_confirm_contract
+
+        payload = {"has_extraction": True, "extraction": extraction}
+        return maybe_attach_lifecycle_confirm_contract(
+            payload,
+            requirement=requirement_row,
+            storage_slug=storage_slug,
+            surface="document_extraction",
+            requirement_id=rid,
+            document_id=document_id,
+        )
     except HTTPException:
         raise
     except Exception as e:

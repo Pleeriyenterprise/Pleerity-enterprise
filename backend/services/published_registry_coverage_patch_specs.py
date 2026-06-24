@@ -303,6 +303,25 @@ _COVERAGE_PATCHES: List[Tuple[str, str, Dict[str, Any]]] = [
     ),
 ]
 
+# Phase 2 extraction profile ids (S1 registry alignment).
+_EXTRACTION_PROFILE_BY_CANONICAL: Dict[str, str] = {
+    "GAS_SAFETY": "certificate_standard_v1",
+    "EICR": "certificate_standard_v1",
+    "EPC": "certificate_standard_v1",
+    "HMO_LICENSING": "hmo_licence_v1",
+    "LEGIONELLA": "legionella_review_v1",
+    "SMOKE_HEAT_ALARMS": "event_completion_v1",
+    "RIGHT_TO_RENT": "right_to_rent_v1",
+    "HOW_TO_RENT": "prescribed_information_v1",
+    "TENANCY_AGREEMENT": "tenancy_agreement_v1",
+    "TENANCY_DEPOSIT_PROTECTION": "deposit_protection_v1",
+    "HMO_FIRE_RISK": "certificate_standard_v1",
+    "PAT_TESTING": "certificate_standard_v1",
+    "LANDLORD_REGISTRATION": "landlord_registration_v1",
+    "LANDLORD_REGISTRATION_NI": "landlord_registration_v1",
+    "OCCUPATION_CONTRACT": "tenancy_agreement_v1",
+}
+
 # Phase 1 lifecycle semantics backfill (ADR_REQUIREMENT_LIFECYCLE_SEMANTICS).
 _LIFECYCLE_BY_CANONICAL: Dict[str, Tuple[str, FieldContract]] = {
     "GAS_SAFETY": ("EXPIRY_BASED", FieldContract(requires_expiry_date=True, requires_issue_date=True)),
@@ -348,6 +367,7 @@ def _enrich_patch_with_lifecycle(canon: str, patch: Dict[str, Any]) -> Dict[str,
         semantics,  # type: ignore[arg-type]
         field_contract,
         vocabulary_family=vocabulary_family_for_semantics(semantics),  # type: ignore[arg-type]
+        extraction_profile_id=_EXTRACTION_PROFILE_BY_CANONICAL.get(canon),
     )
     return out
 
