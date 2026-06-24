@@ -52,8 +52,5 @@ services:
         value: "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
       - key: RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS
         value: "yopmail.com"
-      # Phase 2 lifecycle confirm contract — staging shadow observe-only (S1-S3).
-      - key: LIFECYCLE_AWARE_CONFIRM
-        value: "shadow"
       # - key: RENT_REMINDERS_PRODUCTION_MODE
       #   value: "true"
