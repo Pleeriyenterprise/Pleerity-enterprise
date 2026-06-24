@@ -2162,42 +2162,37 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
     requirement_id = document.get("requirement_id")
     extraction_fanout_for_notice: Optional[Dict[str, Any]] = None
     if requirement_id and data.get("expiry_date"):
-        try:
-            expiry_dt = _normalize_and_parse_date(data["expiry_date"])
-            now = datetime.now(timezone.utc)
-            update_fields = {
-                "due_date": expiry_dt.isoformat(),
-                "extracted_expiry_date": expiry_dt.isoformat(),
-                "expiry_source": "EXTRACTED",
-                "updated_at": now.isoformat(),
-            }
-            if expiry_dt < now:
-                update_fields["status"] = "OVERDUE"
-            elif expiry_dt < now + timedelta(days=30):
-                update_fields["status"] = "EXPIRING_SOON"
-            else:
-                update_fields["status"] = "COMPLIANT"
-            conf = (data.get("confidence_scores") or {}).get("overall") if isinstance(data.get("confidence_scores"), dict) else data.get("confidence")
-            if conf is not None:
-                try:
-                    update_fields["extraction_confidence"] = float(conf)
-                except (TypeError, ValueError):
-                    pass
-            await db.requirements.update_one({"requirement_id": requirement_id}, {"$set": update_fields})
-            extraction_fanout_for_notice = {}
-            await _document_path_sync_requirement_authority(
-                db,
-                requirement_id,
-                property_id=str(document.get("property_id") or "") or None,
-                client_id=str(document.get("client_id") or ""),
-                correlation_base=f"ADMIN_EXTRACTION_CONFIRM:{document_id}",
-                transition_origin="routes.documents.admin_confirm_extraction",
-                transition_fanout=extraction_fanout_for_notice,
-                document_id=document_id,
-                stale_document_transition_possible=True,
-            )
-        except ValueError:
-            extraction_fanout_for_notice = None
+        requirement = await db.requirements.find_one({"requirement_id": requirement_id}, {"_id": 0})
+        if requirement:
+            from services.lifecycle_confirm_apply import get_apply_extraction_requirement_update
+
+            try:
+                persistence_plan = get_apply_extraction_requirement_update(
+                    requirement,
+                    data,
+                    parse_date=_normalize_and_parse_date,
+                    surface="admin_confirm_extraction",
+                    document=document,
+                    requirement_id=requirement_id,
+                    document_id=document_id,
+                )
+                update_fields = dict(persistence_plan.update_fields)
+                update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+                await db.requirements.update_one({"requirement_id": requirement_id}, {"$set": update_fields})
+                extraction_fanout_for_notice = {}
+                await _document_path_sync_requirement_authority(
+                    db,
+                    requirement_id,
+                    property_id=str(document.get("property_id") or "") or None,
+                    client_id=str(document.get("client_id") or ""),
+                    correlation_base=f"ADMIN_EXTRACTION_CONFIRM:{document_id}",
+                    transition_origin="routes.documents.admin_confirm_extraction",
+                    transition_fanout=extraction_fanout_for_notice,
+                    document_id=document_id,
+                    stale_document_transition_possible=True,
+                )
+            except ValueError:
+                extraction_fanout_for_notice = None
     now = datetime.now(timezone.utc)
     await db.extracted_documents.update_one(
         {"extraction_id": extraction_id},
@@ -3338,6 +3333,7 @@ async def get_document_extraction(request: Request, document_id: str):
                     payload,
                     requirement=requirement_row,
                     storage_slug=storage_slug,
+                    document=document,
                     surface="document_extraction",
                     requirement_id=rid,
                     document_id=document_id,
@@ -3352,6 +3348,7 @@ async def get_document_extraction(request: Request, document_id: str):
                 payload,
                 requirement=requirement_row,
                 storage_slug=storage_slug,
+                document=document,
                 surface="document_extraction",
                 requirement_id=rid,
                 document_id=document_id,
@@ -3367,6 +3364,7 @@ async def get_document_extraction(request: Request, document_id: str):
             payload,
             requirement=requirement_row,
             storage_slug=storage_slug,
+            document=document,
             surface="document_extraction",
             requirement_id=rid,
             document_id=document_id,
@@ -3631,43 +3629,31 @@ async def apply_ai_extraction(
             "status": requirement.get("status")
         }
         
-        # Prepare update data
-        update_fields = {}
-        changes_made = []
-        
-        # Apply expiry date if provided (this affects due_date)
+        # Prepare update data via lifecycle confirm apply layer (legacy writes in off/shadow).
+        from services.lifecycle_confirm_apply import get_apply_extraction_requirement_update
+
+        try:
+            persistence_plan = get_apply_extraction_requirement_update(
+                requirement,
+                data if isinstance(data, dict) else {},
+                parse_date=_normalize_and_parse_date,
+                surface="apply_extraction",
+                document=document,
+                requirement_id=requirement_id,
+                document_id=document_id,
+            )
+        except ValueError as date_err:
+            expiry_date = (data or {}).get("expiry_date")
+            logger.warning(f"Failed to parse expiry date '{expiry_date}': {date_err}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid expiry date format: {expiry_date}. Expected formats: YYYY-MM-DD or DD/MM/YYYY."
+            ) from date_err
+
+        update_fields = dict(persistence_plan.update_fields)
+        changes_made = list(persistence_plan.changes_made)
         expiry_date = data.get("expiry_date")
-        if expiry_date:
-            try:
-                expiry_dt = _normalize_and_parse_date(expiry_date)
-                update_fields["due_date"] = expiry_dt.isoformat()
-                update_fields["extracted_expiry_date"] = expiry_dt.isoformat()
-                update_fields["expiry_source"] = "EXTRACTED"
-                changes_made.append(f"Due date set to {expiry_dt.strftime('%Y-%m-%d')}")
-                conf = data.get("confidence_scores", {}).get("overall") if isinstance(data.get("confidence_scores"), dict) else data.get("confidence")
-                if conf is not None:
-                    try:
-                        update_fields["extraction_confidence"] = float(conf)
-                    except (TypeError, ValueError):
-                        pass
-                # Also update status based on date if needed
-                now = datetime.now(timezone.utc)
-                if expiry_dt < now:
-                    update_fields["status"] = "OVERDUE"
-                    changes_made.append("Status set to OVERDUE (past due date)")
-                elif expiry_dt < now + timedelta(days=30):
-                    update_fields["status"] = "EXPIRING_SOON"
-                    changes_made.append("Status set to EXPIRING_SOON (expires within 30 days)")
-                else:
-                    update_fields["status"] = "COMPLIANT"
-                    changes_made.append("Status set to COMPLIANT (valid certificate)")
-            except ValueError as date_err:
-                logger.warning(f"Failed to parse expiry date '{expiry_date}': {date_err}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid expiry date format: {expiry_date}. Expected formats: YYYY-MM-DD or DD/MM/YYYY."
-                )
-        else:
+        if not expiry_date:
             logger.info(f"No expiry_date in extraction data for document {document_id}")
         
         # Store extracted data in document for reference

@@ -620,21 +620,33 @@ async def patch_requirement(
 
     update = {"updated_at": datetime.now(timezone.utc).isoformat()}
     unset_na_metadata = False
-    if data.confirmed_expiry_date is not None:
+
+    def _parse_patch_iso(raw: str) -> datetime:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+
+    if patch_confirm_payload:
+        from services.lifecycle_confirm_apply import get_patch_requirement_update
+
         try:
-            parsed = datetime.fromisoformat(data.confirmed_expiry_date.replace("Z", "+00:00"))
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            update["confirmed_expiry_date"] = parsed.isoformat()
-            update["expiry_source"] = "CONFIRMED"
-            update["due_date"] = parsed.isoformat()
-            update["date_source"] = "USER_PROVIDED"
-            update["confidence_state"] = "PARTIALLY_CONFIRMED"
-        except (ValueError, TypeError):
+            patch_plan = get_patch_requirement_update(
+                req,
+                confirmed_expiry_date=data.confirmed_expiry_date,
+                issue_date=data.issue_date,
+                certificate_number=data.certificate_number,
+                parse_iso=_parse_patch_iso,
+                requirement_id=requirement_id,
+            )
+        except (ValueError, TypeError) as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid confirmed_expiry_date format; use YYYY-MM-DD or ISO datetime",
-            )
+                detail="Invalid date format; use YYYY-MM-DD or ISO datetime",
+            ) from exc
+        for key, value in patch_plan.update_fields.items():
+            update[key] = value
+
     if data.applicability is not None:
         app = data.applicability.strip().upper()
         if app not in ("REQUIRED", "NOT_REQUIRED", "UNKNOWN"):
@@ -660,20 +672,6 @@ async def patch_requirement(
             update["not_applicable_audit_reason"] = audit
         elif app in ("REQUIRED", "UNKNOWN"):
             unset_na_metadata = True
-
-    if data.issue_date is not None:
-        try:
-            parsed = datetime.fromisoformat(data.issue_date.replace("Z", "+00:00"))
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            update["issue_date"] = parsed.isoformat()
-        except (ValueError, TypeError):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid issue_date format; use YYYY-MM-DD or ISO datetime",
-            )
-    if data.certificate_number is not None:
-        update["certificate_number"] = (data.certificate_number or "").strip() or None
 
     if len(update) <= 1 and not unset_na_metadata:
         return {"message": "No updates", "requirement_id": requirement_id}

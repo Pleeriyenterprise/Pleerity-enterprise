@@ -17,6 +17,10 @@ from services.lifecycle_semantics_registry_loader import extract_lifecycle_from_
 from services.lifecycle_semantics_resolver import resolve_lifecycle_semantics
 from services.lifecycle_semantics_types import LifecycleSemantics, ResolutionSource
 
+_PRESCRIBED_INFO_DOCUMENT_SLUGS = frozenset(
+    {"how_to_rent", "prescribed_information", "deposit_prescribed_info"}
+)
+
 
 @dataclass(frozen=True)
 class ResolvedExtractionProfile:
@@ -40,6 +44,25 @@ def _requirement_storage_slug(requirement: Dict[str, Any]) -> Optional[str]:
     return None
 
 
+def _profile_id_from_document_context(document: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not document or not isinstance(document, dict):
+        return None
+    for key in ("document_type", "doc_type", "storage_slug"):
+        raw = document.get(key)
+        if not raw:
+            continue
+        raw_lower = str(raw).strip().lower()
+        if raw_lower in _PRESCRIBED_INFO_DOCUMENT_SLUGS:
+            return "prescribed_information_v1"
+        from services.requirement_code_registry import normalize_requirement_code
+
+        normalized = normalize_requirement_code(raw)
+        if normalized and str(normalized).strip().lower() in _PRESCRIBED_INFO_DOCUMENT_SLUGS:
+            return "prescribed_information_v1"
+        break
+    return None
+
+
 def _profile_id_from_registry_row(registry_row: Optional[Dict[str, Any]]) -> Optional[str]:
     if not registry_row or not isinstance(registry_row, dict):
         return None
@@ -56,13 +79,15 @@ def resolve_extraction_profile(
     requirement: Dict[str, Any],
     *,
     registry_row: Optional[Dict[str, Any]] = None,
+    document: Optional[Dict[str, Any]] = None,
 ) -> ResolvedExtractionProfile:
     """
     Resolution order (Phase 2 design):
     1. registry.lifecycle.extraction_profile_id
-    2. PROFILE_BY_STORAGE_SLUG[slug]
-    3. PROFILE_BY_SEMANTICS[lifecycle_semantics]
-    4. supporting_document_v1
+    2. document context override (prescribed-information family)
+    3. PROFILE_BY_STORAGE_SLUG[slug]
+    4. PROFILE_BY_SEMANTICS[lifecycle_semantics]
+    5. supporting_document_v1
     """
     resolved_lifecycle = resolve_lifecycle_semantics(requirement, registry_row=registry_row)
     semantics = resolved_lifecycle.lifecycle_semantics
@@ -77,6 +102,18 @@ def resolve_extraction_profile(
                 profile=profile,
                 lifecycle_semantics=semantics,
                 resolution_source="registry",
+                requirement_code=slug,
+            )
+
+    document_pid = _profile_id_from_document_context(document)
+    if document_pid:
+        profile = get_extraction_profile(document_pid)
+        if profile:
+            return ResolvedExtractionProfile(
+                profile_id=document_pid,
+                profile=profile,
+                lifecycle_semantics=semantics,
+                resolution_source="document_context",
                 requirement_code=slug,
             )
 
@@ -118,9 +155,13 @@ def resolve_extraction_profile_from_slug(
     storage_slug: Optional[str],
     *,
     registry_row: Optional[Dict[str, Any]] = None,
+    document: Optional[Dict[str, Any]] = None,
 ) -> ResolvedExtractionProfile:
     """Resolve profile when only a document type / storage slug is known."""
     req: Dict[str, Any] = {}
     if storage_slug:
         req["requirement_code"] = storage_slug
-    return resolve_extraction_profile(req, registry_row=registry_row)
+    doc = document
+    if doc is None and storage_slug:
+        doc = {"document_type": storage_slug}
+    return resolve_extraction_profile(req, registry_row=registry_row, document=doc)

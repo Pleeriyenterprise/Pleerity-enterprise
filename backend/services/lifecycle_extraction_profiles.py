@@ -121,7 +121,6 @@ _PROFILES: Dict[ProfileId, ExtractionProfile] = {
             {
                 "deposit_pi",
                 "tenancy_deposit_protection",
-                "deposit_prescribed_info",
             }
         ),
         description="Tenancy deposit protection evidence",
