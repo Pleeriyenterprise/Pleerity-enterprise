@@ -3598,6 +3598,16 @@ async def apply_ai_extraction(
                     detail=f"Associated requirement not found: {requirement_id}",
                 )
 
+        from services.lifecycle_confirm_validation import observe_lifecycle_confirm_shadow_for_requirement
+
+        observe_lifecycle_confirm_shadow_for_requirement(
+            requirement,
+            data if isinstance(data, dict) else {},
+            surface="apply_extraction",
+            document_id=document_id,
+            requirement_id=requirement_id,
+        )
+
         apply_mev = evaluate_document_requirement_match(
             requirement=requirement,
             filename=str(document.get("file_name") or ""),

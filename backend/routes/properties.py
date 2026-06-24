@@ -592,6 +592,23 @@ async def patch_requirement(
     if not req:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Requirement not found")
 
+    patch_confirm_payload: Dict[str, Any] = {}
+    if data.confirmed_expiry_date is not None:
+        patch_confirm_payload["confirmed_expiry_date"] = data.confirmed_expiry_date
+    if data.issue_date is not None:
+        patch_confirm_payload["issue_date"] = data.issue_date
+    if data.certificate_number is not None:
+        patch_confirm_payload["certificate_number"] = data.certificate_number
+    if patch_confirm_payload:
+        from services.lifecycle_confirm_validation import observe_lifecycle_confirm_shadow_for_requirement
+
+        observe_lifecycle_confirm_shadow_for_requirement(
+            req,
+            patch_confirm_payload,
+            surface="patch_requirement",
+            requirement_id=requirement_id,
+        )
+
     prop_row = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
         {"_id": 0, "jurisdiction": 1},
