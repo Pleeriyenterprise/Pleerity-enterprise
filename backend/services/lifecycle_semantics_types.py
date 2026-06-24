@@ -25,7 +25,13 @@ AttentionKind = Literal[
     "OPERATIONAL_ACTION_REQUIRED",
 ]
 
-ResolutionSource = Literal["registry", "governance_fallback", "legacy_map", "default"]
+ResolutionSource = Literal[
+    "registry",
+    "document_context",
+    "governance_fallback",
+    "legacy_map",
+    "default",
+]
 
 LIFECYCLE_SEMANTICS_VALUES: frozenset[str] = frozenset(
     {

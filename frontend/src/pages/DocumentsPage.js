@@ -76,6 +76,14 @@ import {
   openClientDocumentFileInNewTab,
   downloadClientDocumentFile,
 } from '../utils/clientDocumentPreview';
+import LifecycleAwareConfirm, {
+  buildLifecycleConfirmPayload,
+  isLifecycleConfirmContractPresent,
+} from '../components/documents/LifecycleAwareConfirm';
+import {
+  contractShowsExpiryField,
+  initialFormValuesFromExtraction,
+} from '../utils/lifecycleAwareConfirm';
 
 const EVIDENCE_DOCUMENT_TYPES = [
   { value: '', label: 'Select type (optional)' },
@@ -136,6 +144,8 @@ const DocumentsPage = () => {
   const [confirmIssueDate, setConfirmIssueDate] = useState('');
   const [confirmCertificateNumber, setConfirmCertificateNumber] = useState('');
   const [confirmDetailsSaving, setConfirmDetailsSaving] = useState(false);
+  const [lifecycleFormValues, setLifecycleFormValues] = useState({});
+  const [confirmLifecycleFormValues, setConfirmLifecycleFormValues] = useState({});
   const [extractingDocumentId, setExtractingDocumentId] = useState(null);
   const [deletingDocumentId, setDeletingDocumentId] = useState(null);
   const extractingContextRef = useRef(null);
@@ -229,9 +239,15 @@ const DocumentsPage = () => {
       .then((res) => {
         if (cancelled) return;
         const ext = res.data?.extraction?.data || res.data?.extraction?.extracted || {};
-        if (ext.expiry_date) setConfirmExpiryDate(String(ext.expiry_date).slice(0, 10));
-        if (ext.issue_date) setConfirmIssueDate(String(ext.issue_date).slice(0, 10));
-        if (ext.certificate_number) setConfirmCertificateNumber(ext.certificate_number);
+        const contract = res.data?.lifecycle_confirm_contract || null;
+        if (isLifecycleConfirmContractPresent(contract)) {
+          setConfirmDetailsModal((prev) => (prev ? { ...prev, lifecycle_confirm_contract: contract } : prev));
+          setConfirmLifecycleFormValues(initialFormValuesFromExtraction(contract, ext));
+        } else {
+          if (ext.expiry_date) setConfirmExpiryDate(String(ext.expiry_date).slice(0, 10));
+          if (ext.issue_date) setConfirmIssueDate(String(ext.issue_date).slice(0, 10));
+          if (ext.certificate_number) setConfirmCertificateNumber(ext.certificate_number);
+        }
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -262,6 +278,7 @@ const DocumentsPage = () => {
       setConfirmExpiryDate('');
       setConfirmIssueDate('');
       setConfirmCertificateNumber('');
+      setConfirmLifecycleFormValues({});
       setConfirmDetailsModal({
         ...ctx,
         document_id: extractingDocumentId,
@@ -595,11 +612,13 @@ const DocumentsPage = () => {
 
   const openReviewModal = async (doc) => {
     let extraction = doc.ai_extraction;
-    if (doc.extraction_id) {
-      try {
-        const res = await api.get(`/documents/${doc.document_id}/extraction`);
-        extraction = res.data?.extraction || null;
-      } catch (e) {
+    let lifecycle_confirm_contract = null;
+    try {
+      const res = await api.get(`/documents/${doc.document_id}/extraction`);
+      extraction = res.data?.extraction || extraction;
+      lifecycle_confirm_contract = res.data?.lifecycle_confirm_contract || null;
+    } catch (e) {
+      if (doc.extraction_id) {
         toast.error('Failed to load extraction');
         return;
       }
@@ -615,7 +634,12 @@ const DocumentsPage = () => {
       company_name: data.engineer_details?.company_name || data.inspector_company || '',
       result: data.result_summary?.overall_result || data.result || ''
     });
-    setReviewModal({ ...doc, extraction });
+    if (isLifecycleConfirmContractPresent(lifecycle_confirm_contract)) {
+      setLifecycleFormValues(initialFormValuesFromExtraction(lifecycle_confirm_contract, data));
+    } else {
+      setLifecycleFormValues({});
+    }
+    setReviewModal({ ...doc, extraction, lifecycle_confirm_contract });
   };
 
   const applyExtraction = async () => {
@@ -623,21 +647,50 @@ const DocumentsPage = () => {
     
     setApplying(true);
     try {
-      // Build the confirmed data object
-      const confirmedData = {
-        document_type: editedData.document_type,
-        certificate_number: editedData.certificate_number,
-        issue_date: editedData.issue_date,
-        expiry_date: editedData.expiry_date,
-        engineer_details: {
-          name: editedData.engineer_name,
-          registration_number: editedData.engineer_registration,
-          company_name: editedData.company_name
-        },
-        result_summary: {
-          overall_result: editedData.result
+      const contract = reviewModal.lifecycle_confirm_contract;
+      let confirmedData;
+
+      if (isLifecycleConfirmContractPresent(contract)) {
+        const semanticPayload = buildLifecycleConfirmPayload(contract, lifecycleFormValues);
+        const required = contract.confirm_fields || [];
+        const missing = required.filter((field) => !String(semanticPayload[field] || '').trim());
+        if (missing.length > 0) {
+          toast.error('Please complete all required confirmation fields before applying.');
+          setApplying(false);
+          return;
         }
-      };
+        confirmedData = { ...semanticPayload };
+        if (contract.lifecycle_semantics === 'EXPIRY_BASED') {
+          confirmedData.document_type = editedData.document_type;
+          confirmedData.certificate_number =
+            semanticPayload.certificate_number || editedData.certificate_number;
+          confirmedData.issue_date = semanticPayload.issue_date || editedData.issue_date;
+          confirmedData.expiry_date = semanticPayload.expiry_date || editedData.expiry_date;
+          confirmedData.engineer_details = {
+            name: editedData.engineer_name,
+            registration_number: editedData.engineer_registration,
+            company_name: editedData.company_name,
+          };
+          confirmedData.result_summary = {
+            overall_result: editedData.result,
+          };
+        }
+      } else {
+        confirmedData = {
+          document_type: editedData.document_type,
+          certificate_number: editedData.certificate_number,
+          issue_date: editedData.issue_date,
+          expiry_date: editedData.expiry_date,
+          engineer_details: {
+            name: editedData.engineer_name,
+            registration_number: editedData.engineer_registration,
+            company_name: editedData.company_name
+          },
+          result_summary: {
+            overall_result: editedData.result
+          }
+        };
+      }
 
       const response = await api.post(`/documents/${reviewModal.document_id}/apply-extraction`, {
         confirmed_data: confirmedData
@@ -703,21 +756,39 @@ const DocumentsPage = () => {
 
   const handleConfirmDetailsSubmit = async () => {
     if (!confirmDetailsModal) return;
+    const contract = confirmDetailsModal.lifecycle_confirm_contract;
     const payload = {};
-    if (confirmExpiryDate.trim()) payload.confirmed_expiry_date = confirmExpiryDate.trim();
-    if (confirmIssueDate.trim()) payload.issue_date = confirmIssueDate.trim();
-    if (confirmCertificateNumber.trim()) payload.certificate_number = confirmCertificateNumber.trim();
+
+    if (isLifecycleConfirmContractPresent(contract)) {
+      const semanticPayload = buildLifecycleConfirmPayload(contract, confirmLifecycleFormValues);
+      const required = contract.confirm_fields || [];
+      const missing = required.filter((field) => !String(semanticPayload[field] || '').trim());
+      if (missing.length > 0) {
+        toast.error('Please complete all required confirmation fields before saving.');
+        return;
+      }
+      Object.assign(payload, semanticPayload);
+      if (contract.lifecycle_semantics === 'EXPIRY_BASED' && semanticPayload.expiry_date) {
+        payload.confirmed_expiry_date = semanticPayload.expiry_date;
+      }
+    } else {
+      if (confirmExpiryDate.trim()) payload.confirmed_expiry_date = confirmExpiryDate.trim();
+      if (confirmIssueDate.trim()) payload.issue_date = confirmIssueDate.trim();
+      if (confirmCertificateNumber.trim()) payload.certificate_number = confirmCertificateNumber.trim();
+    }
+
     if (Object.keys(payload).length === 0) {
       setConfirmDetailsModal(null);
       setConfirmExpiryDate('');
       setConfirmIssueDate('');
       setConfirmCertificateNumber('');
+      setConfirmLifecycleFormValues({});
       return;
     }
     setConfirmDetailsSaving(true);
     try {
       if (confirmDetailsModal.document_id && !confirmDetailsModal.extractionFailed) {
-        if (!confirmExpiryDate.trim()) {
+        if (!isLifecycleConfirmContractPresent(contract) && !confirmExpiryDate.trim()) {
           toast.error('Please confirm an expiry date before saving.');
           return;
         }
@@ -725,29 +796,46 @@ const DocumentsPage = () => {
         try {
           const extRes = await api.get(`/documents/${confirmDetailsModal.document_id}/extraction`);
           const d = extRes.data?.extraction?.data || {};
-          extractionPayload = {
-            document_type: d.document_type || d.doc_type || '',
-            certificate_number: confirmCertificateNumber.trim() || d.certificate_number || '',
-            issue_date: confirmIssueDate.trim() || d.issue_date || '',
-            expiry_date: confirmExpiryDate.trim() || d.expiry_date || '',
-            engineer_details:
-              typeof d.engineer_details === 'object' && d.engineer_details !== null ? d.engineer_details : {},
-            result_summary:
-              typeof d.result_summary === 'object' && d.result_summary !== null ? d.result_summary : {},
-            confidence_scores:
-              typeof d.confidence_scores === 'object' && d.confidence_scores !== null
-                ? d.confidence_scores
-                : undefined,
-          };
+          if (isLifecycleConfirmContractPresent(contract)) {
+            extractionPayload = {
+              ...buildLifecycleConfirmPayload(contract, confirmLifecycleFormValues),
+              document_type: d.document_type || d.doc_type || '',
+              engineer_details:
+                typeof d.engineer_details === 'object' && d.engineer_details !== null ? d.engineer_details : {},
+              result_summary:
+                typeof d.result_summary === 'object' && d.result_summary !== null ? d.result_summary : {},
+              confidence_scores:
+                typeof d.confidence_scores === 'object' && d.confidence_scores !== null
+                  ? d.confidence_scores
+                  : undefined,
+            };
+          } else {
+            extractionPayload = {
+              document_type: d.document_type || d.doc_type || '',
+              certificate_number: confirmCertificateNumber.trim() || d.certificate_number || '',
+              issue_date: confirmIssueDate.trim() || d.issue_date || '',
+              expiry_date: confirmExpiryDate.trim() || d.expiry_date || '',
+              engineer_details:
+                typeof d.engineer_details === 'object' && d.engineer_details !== null ? d.engineer_details : {},
+              result_summary:
+                typeof d.result_summary === 'object' && d.result_summary !== null ? d.result_summary : {},
+              confidence_scores:
+                typeof d.confidence_scores === 'object' && d.confidence_scores !== null
+                  ? d.confidence_scores
+                  : undefined,
+            };
+          }
         } catch (_) {
-          extractionPayload = {
-            document_type: '',
-            certificate_number: confirmCertificateNumber.trim(),
-            issue_date: confirmIssueDate.trim(),
-            expiry_date: confirmExpiryDate.trim(),
-            engineer_details: {},
-            result_summary: {},
-          };
+          extractionPayload = isLifecycleConfirmContractPresent(contract)
+            ? buildLifecycleConfirmPayload(contract, confirmLifecycleFormValues)
+            : {
+                document_type: '',
+                certificate_number: confirmCertificateNumber.trim(),
+                issue_date: confirmIssueDate.trim(),
+                expiry_date: confirmExpiryDate.trim(),
+                engineer_details: {},
+                result_summary: {},
+              };
         }
         const response = await api.post(`/documents/${confirmDetailsModal.document_id}/apply-extraction`, {
           confirmed_data: extractionPayload,
@@ -786,6 +874,7 @@ const DocumentsPage = () => {
       setConfirmExpiryDate('');
       setConfirmIssueDate('');
       setConfirmCertificateNumber('');
+      setConfirmLifecycleFormValues({});
       fetchData();
     } catch (error) {
       toast.error(parseApiError(error, 'Failed to save details'));
@@ -799,6 +888,7 @@ const DocumentsPage = () => {
     setConfirmExpiryDate('');
     setConfirmIssueDate('');
     setConfirmCertificateNumber('');
+    setConfirmLifecycleFormValues({});
   };
 
   const openConfirmDetailsForDocument = (doc) => {
@@ -1754,13 +1844,87 @@ const DocumentsPage = () => {
                   <div>
                     <p className="text-sm font-medium text-amber-800">Important</p>
                     <p className="text-sm text-amber-700 mt-1">
-                      Review all fields carefully. The <strong>expiry date</strong> will be used to update 
-                      the requirement's due date. Compliance status is determined by dates, not AI.
+                      {isLifecycleConfirmContractPresent(reviewModal.lifecycle_confirm_contract) &&
+                      reviewModal.lifecycle_confirm_contract.lifecycle_semantics !== 'EXPIRY_BASED' ? (
+                        <>Review the required fields carefully before applying. Compliance uses lifecycle-appropriate dates, not certificate expiry.</>
+                      ) : (
+                        <>Review all fields carefully. The <strong>expiry date</strong> will be used to update the requirement&apos;s due date. Compliance status is determined by dates, not AI.</>
+                      )}
                     </p>
                   </div>
                 </div>
               </div>
 
+              {isLifecycleConfirmContractPresent(reviewModal.lifecycle_confirm_contract) ? (
+                <LifecycleAwareConfirm
+                  contract={reviewModal.lifecycle_confirm_contract}
+                  values={lifecycleFormValues}
+                  onChange={(fieldId, value) =>
+                    setLifecycleFormValues((prev) => ({ ...prev, [fieldId]: value }))
+                  }
+                  testIdPrefix="review-lifecycle-confirm"
+                >
+                  {reviewModal.lifecycle_confirm_contract.lifecycle_semantics === 'EXPIRY_BASED' ? (
+                    <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+                        <input
+                          type="text"
+                          value={editedData.document_type}
+                          onChange={(e) => setEditedData({ ...editedData, document_type: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                          data-testid="edit-document-type"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Engineer Name</label>
+                        <input
+                          type="text"
+                          value={editedData.engineer_name}
+                          onChange={(e) => setEditedData({ ...editedData, engineer_name: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                          data-testid="edit-engineer-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Registration Number</label>
+                        <input
+                          type="text"
+                          value={editedData.engineer_registration}
+                          onChange={(e) => setEditedData({ ...editedData, engineer_registration: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                          data-testid="edit-engineer-registration"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                        <input
+                          type="text"
+                          value={editedData.company_name}
+                          onChange={(e) => setEditedData({ ...editedData, company_name: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                          data-testid="edit-company-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Result</label>
+                        <select
+                          value={editedData.result}
+                          onChange={(e) => setEditedData({ ...editedData, result: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                          data-testid="edit-result"
+                        >
+                          <option value="">Select...</option>
+                          <option value="PASS">PASS</option>
+                          <option value="FAIL">FAIL</option>
+                          <option value="SATISFACTORY">SATISFACTORY</option>
+                          <option value="UNSATISFACTORY">UNSATISFACTORY</option>
+                        </select>
+                      </div>
+                    </div>
+                  ) : null}
+                </LifecycleAwareConfirm>
+              ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
@@ -1858,6 +2022,7 @@ const DocumentsPage = () => {
                   </select>
                 </div>
               </div>
+              )}
 
               <div className="flex gap-3 mt-6 pt-6 border-t">
                 <Button
@@ -1904,7 +2069,10 @@ const DocumentsPage = () => {
                 </button>
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                Confirm or edit the certificate details so the calendar and reminders use the correct date.
+                {isLifecycleConfirmContractPresent(confirmDetailsModal.lifecycle_confirm_contract) &&
+                !contractShowsExpiryField(confirmDetailsModal.lifecycle_confirm_contract)
+                  ? 'Confirm the required details for this obligation before saving.'
+                  : 'Confirm or edit the certificate details so the calendar and reminders use the correct date.'}
               </p>
               {confirmDetailsModal.extractionFailed && (
                 <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4" data-testid="extraction-failed-message">
@@ -1922,38 +2090,51 @@ const DocumentsPage = () => {
                   <label className="block text-xs font-medium text-gray-500 mb-0.5">Requirement type</label>
                   <p className="text-sm text-midnight-blue font-medium">{confirmDetailsModal.requirement_type}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Expiry date</label>
-                  <input
-                    type="date"
-                    value={confirmExpiryDate}
-                    onChange={(e) => setConfirmExpiryDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
-                    data-testid="confirm-expiry-date-input"
+                {isLifecycleConfirmContractPresent(confirmDetailsModal.lifecycle_confirm_contract) ? (
+                  <LifecycleAwareConfirm
+                    contract={confirmDetailsModal.lifecycle_confirm_contract}
+                    values={confirmLifecycleFormValues}
+                    onChange={(fieldId, value) =>
+                      setConfirmLifecycleFormValues((prev) => ({ ...prev, [fieldId]: value }))
+                    }
+                    testIdPrefix="confirm-lifecycle"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Confirm expiry so calendar and reminders use this date.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Issue date</label>
-                  <input
-                    type="date"
-                    value={confirmIssueDate}
-                    onChange={(e) => setConfirmIssueDate(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
-                    data-testid="confirm-issue-date-input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Certificate number</label>
-                  <input
-                    type="text"
-                    value={confirmCertificateNumber}
-                    onChange={(e) => setConfirmCertificateNumber(e.target.value)}
-                    placeholder="Optional"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
-                    data-testid="confirm-certificate-number-input"
-                  />
-                </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Expiry date</label>
+                      <input
+                        type="date"
+                        value={confirmExpiryDate}
+                        onChange={(e) => setConfirmExpiryDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                        data-testid="confirm-expiry-date-input"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Confirm expiry so calendar and reminders use this date.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Issue date</label>
+                      <input
+                        type="date"
+                        value={confirmIssueDate}
+                        onChange={(e) => setConfirmIssueDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                        data-testid="confirm-issue-date-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Certificate number</label>
+                      <input
+                        type="text"
+                        value={confirmCertificateNumber}
+                        onChange={(e) => setConfirmCertificateNumber(e.target.value)}
+                        placeholder="Optional"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+                        data-testid="confirm-certificate-number-input"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex gap-3">
                 <Button

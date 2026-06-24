@@ -202,8 +202,13 @@ def build_contract_for_requirement(
     requirement: Dict[str, Any],
     *,
     registry_row: Optional[Dict[str, Any]] = None,
+    document: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    resolved = resolve_extraction_profile(requirement, registry_row=registry_row)
+    resolved = resolve_extraction_profile(
+        requirement,
+        registry_row=registry_row,
+        document=document,
+    )
     return build_lifecycle_confirm_contract(resolved)
 
 
@@ -211,8 +216,13 @@ def build_contract_for_storage_slug(
     storage_slug: Optional[str],
     *,
     registry_row: Optional[Dict[str, Any]] = None,
+    document: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    resolved = resolve_extraction_profile_from_slug(storage_slug, registry_row=registry_row)
+    resolved = resolve_extraction_profile_from_slug(
+        storage_slug,
+        registry_row=registry_row,
+        document=document,
+    )
     return build_lifecycle_confirm_contract(resolved)
 
 
@@ -246,6 +256,7 @@ def maybe_attach_lifecycle_confirm_contract(
     requirement: Optional[Dict[str, Any]] = None,
     registry_row: Optional[Dict[str, Any]] = None,
     storage_slug: Optional[str] = None,
+    document: Optional[Dict[str, Any]] = None,
     surface: str,
     requirement_id: Optional[str] = None,
     document_id: Optional[str] = None,
@@ -258,9 +269,17 @@ def maybe_attach_lifecycle_confirm_contract(
         return payload
 
     if requirement:
-        contract = build_contract_for_requirement(requirement, registry_row=registry_row)
+        contract = build_contract_for_requirement(
+            requirement,
+            registry_row=registry_row,
+            document=document,
+        )
     else:
-        contract = build_contract_for_storage_slug(storage_slug, registry_row=registry_row)
+        contract = build_contract_for_storage_slug(
+            storage_slug,
+            registry_row=registry_row,
+            document=document,
+        )
 
     observe_confirm_contract_shadow(
         contract,
