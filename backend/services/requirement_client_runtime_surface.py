@@ -106,6 +106,9 @@ def project_requirement_row_client_runtime(requirement: Dict[str, Any]) -> Dict[
     out.setdefault("policy_criticality", requirement.get("policy_criticality"))
     out.setdefault("policy_classification_version", requirement.get("policy_classification_version"))
     out["evidence_state_normalized"] = normalized_evidence_state_for_policy(requirement)
+    from services.lifecycle_semantics_shadow import observe_lifecycle_semantics_shadow_if_enabled
+
+    observe_lifecycle_semantics_shadow_if_enabled(requirement)
     return out
 
 

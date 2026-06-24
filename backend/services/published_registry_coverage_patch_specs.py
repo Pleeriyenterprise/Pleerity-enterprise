@@ -12,6 +12,9 @@ import copy
 from typing import Any, Dict, List, Optional, Tuple
 
 from services.compliance_registry_admin_service import default_draft_shell, merge_partial_draft
+from services.lifecycle_semantics_registry_loader import lifecycle_block_for_registry
+from services.lifecycle_semantics_types import FieldContract
+from services.lifecycle_semantics_fallback_map import vocabulary_family_for_semantics
 
 # Re-open eligibility on snapshots that were soft-retired in Mongo while retaining keys.
 _RUNTIME_SANITY_PATCH: Dict[str, Any] = {
@@ -298,6 +301,60 @@ _COVERAGE_PATCHES: List[Tuple[str, str, Dict[str, Any]]] = [
             ),
         },
     ),
+]
+
+# Phase 1 lifecycle semantics backfill (ADR_REQUIREMENT_LIFECYCLE_SEMANTICS).
+_LIFECYCLE_BY_CANONICAL: Dict[str, Tuple[str, FieldContract]] = {
+    "GAS_SAFETY": ("EXPIRY_BASED", FieldContract(requires_expiry_date=True, requires_issue_date=True)),
+    "EICR": ("EXPIRY_BASED", FieldContract(requires_expiry_date=True, requires_issue_date=True)),
+    "EPC": ("EXPIRY_BASED", FieldContract(requires_expiry_date=True, requires_issue_date=True)),
+    "HMO_LICENSING": ("EXPIRY_BASED", FieldContract(requires_expiry_date=True, requires_issue_date=True)),
+    "LEGIONELLA": (
+        "REVIEW_BASED",
+        FieldContract(requires_review_date=True, does_not_expire=True),
+    ),
+    "SMOKE_HEAT_ALARMS": (
+        "EVENT_BASED",
+        FieldContract(requires_event_date=True, does_not_expire=True),
+    ),
+    "RIGHT_TO_RENT": (
+        "OCCUPANCY_LIFECYCLE",
+        FieldContract(requires_occupancy_dates=True, does_not_expire=True),
+    ),
+    "HOW_TO_RENT": (
+        "DECLARATION_BASED",
+        FieldContract(requires_event_date=True, does_not_expire=True),
+    ),
+    "TENANCY_AGREEMENT": (
+        "TENANCY_LIFECYCLE",
+        FieldContract(requires_tenancy_dates=True, does_not_expire=True),
+    ),
+    "TENANCY_DEPOSIT_PROTECTION": (
+        "DECLARATION_BASED",
+        FieldContract(requires_event_date=True, does_not_expire=True),
+    ),
+    "HMO_FIRE_RISK": ("EXPIRY_BASED", FieldContract(requires_expiry_date=True, requires_issue_date=True)),
+    "PAT_TESTING": ("EXPIRY_BASED", FieldContract(requires_expiry_date=True, requires_issue_date=True)),
+}
+
+
+def _enrich_patch_with_lifecycle(canon: str, patch: Dict[str, Any]) -> Dict[str, Any]:
+    entry = _LIFECYCLE_BY_CANONICAL.get(canon)
+    if not entry:
+        return patch
+    semantics, field_contract = entry
+    out = copy.deepcopy(patch)
+    out["lifecycle"] = lifecycle_block_for_registry(
+        semantics,  # type: ignore[arg-type]
+        field_contract,
+        vocabulary_family=vocabulary_family_for_semantics(semantics),  # type: ignore[arg-type]
+    )
+    return out
+
+
+_COVERAGE_PATCHES = [
+    (canon, sk, _enrich_patch_with_lifecycle(canon, patch))
+    for canon, sk, patch in _COVERAGE_PATCHES
 ]
 
 
