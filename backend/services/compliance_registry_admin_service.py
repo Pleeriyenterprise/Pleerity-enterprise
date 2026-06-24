@@ -238,6 +238,10 @@ def validate_registry_draft(doc: Dict[str, Any]) -> List[str]:
     if pam not in _VALID_ACTION_MODES:
         errs.append("action_behaviour.primary_action_mode is invalid")
 
+    from services.lifecycle_semantics_validation import validate_registry_row_lifecycle_block
+
+    errs.extend(validate_registry_row_lifecycle_block(doc))
+
     links = doc.get("action_links")
     if links is not None:
         if not isinstance(links, list):

@@ -137,6 +137,16 @@ GOVERNANCE_SURFACE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "allows_noncanonical_requirement_rows": False,
         "enforcement_level": "PARTIAL",
     },
+    "lifecycle_resolver": {
+        "consumes_workflow_contract": False,
+        "consumes_requirement_display_contract": False,
+        "consumes_reporting_semantics": False,
+        "consumes_execution_semantics": False,
+        "uses_local_fallback_logic": False,
+        "allows_noncanonical_requirement_rows": False,
+        "enforcement_level": "NONE",
+        "phase1_mode": "shadow_only",
+    },
 }
 
 

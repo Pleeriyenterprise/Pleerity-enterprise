@@ -1,0 +1,43 @@
+{
+  "gas_safety": {
+    "lifecycle_semantics": "EXPIRY_BASED",
+    "requires_expiry_date": true
+  },
+  "eicr": {
+    "lifecycle_semantics": "EXPIRY_BASED",
+    "requires_expiry_date": true
+  },
+  "epc": {
+    "lifecycle_semantics": "EXPIRY_BASED",
+    "requires_expiry_date": true
+  },
+  "hmo_license": {
+    "lifecycle_semantics": "EXPIRY_BASED",
+    "requires_expiry_date": true
+  },
+  "legionella": {
+    "lifecycle_semantics": "REVIEW_BASED",
+    "requires_expiry_date": false,
+    "does_not_expire": true
+  },
+  "deposit_pi": {
+    "lifecycle_semantics": "DECLARATION_BASED",
+    "requires_expiry_date": false
+  },
+  "right_to_rent": {
+    "lifecycle_semantics": "OCCUPANCY_LIFECYCLE",
+    "requires_expiry_date": false
+  },
+  "tenancy_agreement": {
+    "lifecycle_semantics": "TENANCY_LIFECYCLE",
+    "requires_expiry_date": false
+  },
+  "smoke_heat_alarms": {
+    "lifecycle_semantics": "EVENT_BASED",
+    "requires_expiry_date": false
+  },
+  "fitness_for_human_habitation": {
+    "lifecycle_semantics": "OPERATIONAL",
+    "requires_expiry_date": false
+  }
+}

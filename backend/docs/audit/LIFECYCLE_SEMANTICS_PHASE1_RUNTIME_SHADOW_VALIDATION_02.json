@@ -1,0 +1,335 @@
+{
+  "authority": "LIFECYCLE-SEMANTICS-PHASE1-RUNTIME-SHADOW-VALIDATION-02",
+  "generated_at": "2026-06-24T09:39:45.132219Z",
+  "branch": "feature/lifecycle-semantics-phase1",
+  "expected_commits": [
+    "98476a3f13c399c70c4378410196c92a0c24f81c",
+    "99cfea46"
+  ],
+  "post_deploy_revalidation_at": "2026-06-24T09:45:00.000000Z",
+  "operator_confirmed": {
+    "branch": "feature/lifecycle-semantics-phase1",
+    "lifecycle_semantics_mode": "shadow",
+    "preview_deployed": true
+  },
+  "deployed_traffic_probe": {
+    "public_api_healthy": true,
+    "authenticated_client_traffic": false,
+    "reason": "admin impersonation credentials unavailable (401)"
+  },
+  "tests_61_passed": true,
+  "deployment": {
+    "staging_api_base": "https://pleerity-enterprise.onrender.com",
+    "expected_branch": "feature/lifecycle-semantics-phase1",
+    "expected_commits": [
+      "98476a3f13c399c70c4378410196c92a0c24f81c",
+      "99cfea46"
+    ],
+    "checks": {
+      "/api/health": {
+        "http_status": 200,
+        "body": {
+          "status": "healthy",
+          "environment": "staging",
+          "readiness": {
+            "stage": "ready",
+            "degraded": false,
+            "last_error": null
+          }
+        },
+        "elapsed_ms": 1810.7
+      },
+      "/api/version": {
+        "http_status": 200,
+        "body": {
+          "commit_sha": "98476a3f13c399c70c4378410196c92a0c24f81c",
+          "environment": "staging"
+        },
+        "elapsed_ms": 2557.6
+      }
+    },
+    "deployed_commit_sha": "98476a3f13c399c70c4378410196c92a0c24f81c",
+    "deployed_environment": "staging",
+    "startup_success": true,
+    "commit_matches_feature_branch": true,
+    "resolver_code_present_on_deploy": true,
+    "lifecycle_semantics_mode_on_deploy": "shadow (operator-confirmed; not exposed via API)"
+  },
+  "api_smoke": {
+    "endpoints": [],
+    "api_failures": 0,
+    "errors": [],
+    "skipped": "admin login failed 401"
+  },
+  "mongo_runtime": {
+    "database": "pleerity_staging",
+    "scenarios": [
+      {
+        "scenario_id": "S1",
+        "slug": "gas_safety",
+        "expected_semantics": "EXPIRY_BASED",
+        "sample_found": true,
+        "requirement_id": "4d802998-ba39-4644-a341-71b97e2751c9",
+        "lifecycle_semantics": "EXPIRY_BASED",
+        "attention_kind": null,
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      },
+      {
+        "scenario_id": "S2",
+        "slug": "eicr",
+        "expected_semantics": "EXPIRY_BASED",
+        "sample_found": true,
+        "requirement_id": "c293defd-06a2-4734-9ae3-33ece5e7d022",
+        "lifecycle_semantics": "EXPIRY_BASED",
+        "attention_kind": null,
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      },
+      {
+        "scenario_id": "S3",
+        "slug": "epc",
+        "expected_semantics": "EXPIRY_BASED",
+        "sample_found": true,
+        "requirement_id": "321b085c-0821-4962-b572-39a4a1a3dcec",
+        "lifecycle_semantics": "EXPIRY_BASED",
+        "attention_kind": null,
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      },
+      {
+        "scenario_id": "S4",
+        "slug": "hmo_license",
+        "expected_semantics": "EXPIRY_BASED",
+        "sample_found": true,
+        "requirement_id": "294059b4-0874-4134-aace-6ba1cfb2569c",
+        "lifecycle_semantics": "EXPIRY_BASED",
+        "attention_kind": "CERTIFICATE_EXPIRING",
+        "resolution_source": "legacy_map",
+        "validation_issues": [
+          "conflict_expects_expiry_false_expiry_semantics"
+        ],
+        "shadow_divergence": {
+          "type": "semantics_mismatch",
+          "legacy_would_treat_as_expiry": false,
+          "resolver_lifecycle_semantics": "EXPIRY_BASED"
+        },
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS_WITH_SHADOW_CONFLICT"
+      },
+      {
+        "scenario_id": "S5",
+        "slug": "legionella",
+        "expected_semantics": "REVIEW_BASED",
+        "sample_found": true,
+        "requirement_id": "44de8e1b-0218-44e8-91f9-e6d0f57034d0",
+        "lifecycle_semantics": "REVIEW_BASED",
+        "attention_kind": null,
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      },
+      {
+        "scenario_id": "S6",
+        "slug": "deposit_pi",
+        "expected_semantics": "DECLARATION_BASED",
+        "sample_found": true,
+        "requirement_id": "b7a12498-67e3-475a-aa06-88aeda8c328f",
+        "lifecycle_semantics": "DECLARATION_BASED",
+        "attention_kind": "EVENT_ACTION_REQUIRED",
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      },
+      {
+        "scenario_id": "S7",
+        "slug": "right_to_rent",
+        "expected_semantics": "OCCUPANCY_LIFECYCLE",
+        "sample_found": true,
+        "requirement_id": "ae03d099-993f-4e17-ab2f-0b44039b8d09",
+        "lifecycle_semantics": "OCCUPANCY_LIFECYCLE",
+        "attention_kind": null,
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      },
+      {
+        "scenario_id": "S8",
+        "slug": "tenancy_agreement",
+        "expected_semantics": "TENANCY_LIFECYCLE",
+        "sample_found": true,
+        "requirement_id": "58dd9efc-9050-4905-812e-23944394fa83",
+        "lifecycle_semantics": "TENANCY_LIFECYCLE",
+        "attention_kind": null,
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      },
+      {
+        "scenario_id": "S9",
+        "slug": "smoke_heat_alarms",
+        "expected_semantics": "EVENT_BASED",
+        "sample_found": true,
+        "requirement_id": "6d1c3d99-a22c-47cb-9c81-ddbc8efa454d",
+        "lifecycle_semantics": "EVENT_BASED",
+        "attention_kind": "EVENT_ACTION_REQUIRED",
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      },
+      {
+        "scenario_id": "S10",
+        "slug": "fitness_for_human_habitation",
+        "expected_semantics": "OPERATIONAL",
+        "sample_found": true,
+        "requirement_id": "63c3deb8-bf2a-4828-b96a-6dfc84bc0b03",
+        "lifecycle_semantics": "OPERATIONAL",
+        "attention_kind": null,
+        "resolution_source": "legacy_map",
+        "validation_issues": [],
+        "shadow_divergence": null,
+        "runtime_projection_parity": true,
+        "customer_shadow_field_leaked": false,
+        "status": "PASS"
+      }
+    ],
+    "shadow_logging": {
+      "mode": "shadow",
+      "active_mode_blocked": true,
+      "local_shadow_log_samples": [
+        {
+          "log_message": "lifecycle_semantics_shadow_observed",
+          "lifecycle_semantics": "EXPIRY_BASED",
+          "attention_kind": null,
+          "canonical_dates_in_payload": {
+            "expects_expiry": true,
+            "expiry_type": null
+          },
+          "divergence": null,
+          "resolution_source": "legacy_map"
+        },
+        {
+          "log_message": "build_shadow_payload",
+          "lifecycle_semantics": "EXPIRY_BASED",
+          "attention_kind": null,
+          "canonical_dates_in_payload": {
+            "expects_expiry": true,
+            "expiry_type": null
+          },
+          "divergence": null,
+          "resolution_source": "legacy_map"
+        },
+        {
+          "log_message": "build_shadow_payload",
+          "lifecycle_semantics": "EXPIRY_BASED",
+          "attention_kind": null,
+          "canonical_dates_in_payload": {
+            "expects_expiry": true,
+            "expiry_type": null
+          },
+          "divergence": null,
+          "resolution_source": "legacy_map"
+        },
+        {
+          "log_message": "lifecycle_semantics_shadow_divergence",
+          "lifecycle_semantics": "EXPIRY_BASED",
+          "attention_kind": "CERTIFICATE_EXPIRING",
+          "canonical_dates_in_payload": {
+            "expects_expiry": false,
+            "expiry_type": null
+          },
+          "divergence": {
+            "type": "semantics_mismatch",
+            "legacy_would_treat_as_expiry": false,
+            "resolver_lifecycle_semantics": "EXPIRY_BASED"
+          },
+          "resolution_source": "legacy_map"
+        }
+      ],
+      "note": "Local process capture \u2014 NOT Render server logs. Deployed shadow logging requires feature-branch staging deploy."
+    },
+    "summary": {
+      "scenarios_total": 10,
+      "samples_found": 10,
+      "semantics_match": 10,
+      "projection_parity_all": true,
+      "shadow_conflicts": 1,
+      "customer_field_leaks": 0
+    }
+  },
+  "hmo_drift": {
+    "requirement_slug": "hmo_license",
+    "canonical_code": "HMO_LICENSE",
+    "legacy_source": "compliance_rules_registry.expects_expiry_for_requirement + get_rule",
+    "resolver_source": "lifecycle_semantics_fallback_map.hmo_license \u2192 EXPIRY_BASED (legacy_map)",
+    "intended_authority": "lifecycle_semantics registry/fallback per ADR_REQUIREMENT_LIFECYCLE_SEMANTICS (EXPIRY_BASED for HMO licence)",
+    "legacy_by_jurisdiction": {
+      "ENGLAND_WALES": {
+        "get_rule_found": false,
+        "expects_expiry": false,
+        "spec_expects_expiry": null
+      },
+      "SCOTLAND": {
+        "get_rule_found": false,
+        "expects_expiry": false,
+        "spec_expects_expiry": null
+      },
+      "WALES": {
+        "get_rule_found": false,
+        "expects_expiry": false,
+        "spec_expects_expiry": null
+      },
+      "NORTHERN_IRELAND": {
+        "get_rule_found": false,
+        "expects_expiry": false,
+        "spec_expects_expiry": null
+      }
+    },
+    "resolver_fallback": {
+      "semantics": "EXPIRY_BASED",
+      "field_contract": "FieldContract(requires_expiry_date=True, requires_issue_date=True, requires_review_date=False, requires_next_review_date=False, requires_event_date=False, requires_tenancy_dates=False, requires_occupancy_dates=False, allows_estimated_expiry=False, does_not_expire=False)"
+    },
+    "root_cause": "HMO_LICENSING is absent from ComplianceRuleSpec tables; expects_expiry_for_requirement falls through to a hardcoded cert list that omits HMO_LICENSING, returning False. Resolver correctly maps storage slug hmo_license via fallback map before expects_expiry path.",
+    "recommended_disposition": "Phase 2: add HMO_LICENSING to governed registry lifecycle block and ComplianceRuleSpec; align expects_expiry until legacy path is retired. Do not fix in Phase 1.",
+    "customer_impact_phase1": "None \u2014 shadow log only; runtime projection unchanged"
+  },
+  "completion_gate": {
+    "verdict": "AMBER-PASS",
+    "deployed_staging_runtime_verified": true,
+    "shadow_logging_verified_on_deploy": false,
+    "resolver_stable": true,
+    "no_behaviour_changes": true,
+    "no_api_failures": false,
+    "no_unresolved_classifications": true,
+    "no_production_changes": true
+  },
+  "final_recommendation": "READY_FOR_DEVELOP_MERGE_WITH_OBSERVATIONS"
+}
