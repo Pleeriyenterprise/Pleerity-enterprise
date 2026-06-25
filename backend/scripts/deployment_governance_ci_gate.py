@@ -117,11 +117,37 @@ def check_render_production_blueprint() -> list[str]:
     return errors
 
 
+def check_production_blueprints_lifecycle_active() -> list[str]:
+    """Fail if any production Render blueprint enables lifecycle active enforcement."""
+    errors: list[str] = []
+    candidates = [
+        ROOT / "render.production.yaml",
+        ROOT / "render.yaml",
+    ]
+    pattern = re.compile(
+        r"lifecycle_aware_confirm[\s\S]{0,120}?\bactive\b",
+        re.IGNORECASE,
+    )
+    for path in candidates:
+        if not path.is_file():
+            continue
+        rel = _rel(path)
+        if path.name != "render.production.yaml" and "production" not in path.read_text(
+            encoding="utf-8", errors="ignore"
+        ).lower():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        if pattern.search(text):
+            errors.append(f"{rel}: LIFECYCLE_AWARE_CONFIRM must not be active in production blueprint")
+    return errors
+
+
 def main() -> int:
     failures: list[str] = []
     failures.extend(check_committed_secrets())
     failures.extend(check_staging_urls_in_frontend())
     failures.extend(check_render_production_blueprint())
+    failures.extend(check_production_blueprints_lifecycle_active())
 
     if failures:
         print("DEPLOYMENT GOVERNANCE CI GATE: FAIL")

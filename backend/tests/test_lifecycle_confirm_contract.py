@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from services.lifecycle_aware_confirm_config import get_lifecycle_aware_confirm_mode
+from services.lifecycle_aware_confirm_config import get_effective_confirm_mode
 from services.lifecycle_confirm_contract import (
     build_contract_for_requirement,
     maybe_attach_lifecycle_confirm_contract,
@@ -16,15 +16,17 @@ from services.lifecycle_extraction_profiles import EXTRACTION_PROFILE_IDS
 class TestLifecycleAwareConfirmConfig:
     def test_default_mode_is_off(self, monkeypatch):
         monkeypatch.delenv("LIFECYCLE_AWARE_CONFIRM", raising=False)
-        assert get_lifecycle_aware_confirm_mode() == "off"
+        assert get_effective_confirm_mode() == "off"
 
-    def test_active_mode_prohibited(self, monkeypatch):
+    def test_active_without_preview_downgrades_to_off(self, monkeypatch):
+        monkeypatch.delenv("DEPLOYMENT_TIER", raising=False)
+        monkeypatch.delenv("LIFECYCLE_AWARE_CONFIRM_PREVIEW_OVERRIDE", raising=False)
         monkeypatch.setenv("LIFECYCLE_AWARE_CONFIRM", "active")
-        assert get_lifecycle_aware_confirm_mode() == "off"
+        assert get_effective_confirm_mode() == "off"
 
     def test_shadow_mode(self, monkeypatch):
         monkeypatch.setenv("LIFECYCLE_AWARE_CONFIRM", "shadow")
-        assert get_lifecycle_aware_confirm_mode() == "shadow"
+        assert get_effective_confirm_mode() == "shadow"
 
 
 class TestConfirmContractShape:

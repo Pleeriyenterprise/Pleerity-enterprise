@@ -2161,12 +2161,21 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
     }
     requirement_id = document.get("requirement_id")
     extraction_fanout_for_notice: Optional[Dict[str, Any]] = None
-    if requirement_id and data.get("expiry_date"):
+    if requirement_id:
         requirement = await db.requirements.find_one({"requirement_id": requirement_id}, {"_id": 0})
         if requirement:
             from services.lifecycle_confirm_apply import get_apply_extraction_requirement_update
+            from services.lifecycle_confirm_validation import enforce_lifecycle_confirm_or_raise
 
             try:
+                data = enforce_lifecycle_confirm_or_raise(
+                    requirement,
+                    data,
+                    surface="admin_confirm_extraction",
+                    document=document,
+                    requirement_id=requirement_id,
+                    document_id=document_id,
+                )
                 persistence_plan = get_apply_extraction_requirement_update(
                     requirement,
                     data,
@@ -2177,8 +2186,11 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
                     document_id=document_id,
                 )
                 update_fields = dict(persistence_plan.update_fields)
-                update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
-                await db.requirements.update_one({"requirement_id": requirement_id}, {"$set": update_fields})
+                if update_fields:
+                    update_fields["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    await db.requirements.update_one(
+                        {"requirement_id": requirement_id}, {"$set": update_fields}
+                    )
                 extraction_fanout_for_notice = {}
                 await _document_path_sync_requirement_authority(
                     db,
@@ -2191,6 +2203,8 @@ async def admin_confirm_extraction(request: Request, body: AdminExtractionConfir
                     document_id=document_id,
                     stale_document_transition_possible=True,
                 )
+            except HTTPException:
+                raise
             except ValueError:
                 extraction_fanout_for_notice = None
     now = datetime.now(timezone.utc)
@@ -3596,15 +3610,19 @@ async def apply_ai_extraction(
                     detail=f"Associated requirement not found: {requirement_id}",
                 )
 
-        from services.lifecycle_confirm_validation import observe_lifecycle_confirm_shadow_for_requirement
+        from services.lifecycle_confirm_validation import enforce_lifecycle_confirm_or_raise
 
-        observe_lifecycle_confirm_shadow_for_requirement(
-            requirement,
-            data if isinstance(data, dict) else {},
-            surface="apply_extraction",
-            document_id=document_id,
-            requirement_id=requirement_id,
-        )
+        try:
+            data = enforce_lifecycle_confirm_or_raise(
+                requirement,
+                data if isinstance(data, dict) else {},
+                surface="apply_extraction",
+                document_id=document_id,
+                requirement_id=requirement_id,
+                document=document,
+            )
+        except HTTPException:
+            raise
 
         apply_mev = evaluate_document_requirement_match(
             requirement=requirement,

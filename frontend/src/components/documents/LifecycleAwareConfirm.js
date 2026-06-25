@@ -17,6 +17,7 @@ export default function LifecycleAwareConfirm({
   values,
   onChange,
   testIdPrefix = 'lifecycle-confirm',
+  fieldErrors = {},
   children,
 }) {
   if (!isLifecycleConfirmContractPresent(contract)) {
@@ -45,9 +46,24 @@ export default function LifecycleAwareConfirm({
               type={isDateField(fieldId) ? 'date' : 'text'}
               value={values[fieldId] || ''}
               onChange={(e) => onChange(fieldId, e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-electric-teal"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-electric-teal ${
+                fieldErrors[fieldId] ? 'border-red-500' : 'border-gray-200'
+              }`}
               data-testid={`${testIdPrefix}-${fieldId}`}
+              aria-invalid={fieldErrors[fieldId] ? 'true' : undefined}
+              aria-describedby={
+                fieldErrors[fieldId] ? `${testIdPrefix}-${fieldId}-error` : undefined
+              }
             />
+            {fieldErrors[fieldId] ? (
+              <p
+                id={`${testIdPrefix}-${fieldId}-error`}
+                className="mt-1 text-sm text-red-600"
+                data-testid={`${testIdPrefix}-${fieldId}-error`}
+              >
+                {fieldErrors[fieldId]}
+              </p>
+            ) : null}
           </div>
         ))}
       </div>

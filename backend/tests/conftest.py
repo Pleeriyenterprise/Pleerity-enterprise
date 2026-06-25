@@ -38,6 +38,25 @@ os.environ.setdefault(
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def _lifecycle_tier_env_baseline(request, monkeypatch):
+    """
+    Lifecycle flag tests assume unknown deployment tier unless they set DEPLOYMENT_TIER.
+    Clear tier-related env at each test start to avoid order/shell pollution.
+    """
+    mod_name = getattr(request.node, "module", None)
+    mod_basename = getattr(mod_name, "__name__", "").rpartition(".")[-1]
+    if not mod_basename.startswith("test_lifecycle"):
+        return
+    for key in (
+        "DEPLOYMENT_TIER",
+        "LIFECYCLE_AWARE_CONFIRM_PREVIEW_OVERRIDE",
+        "LIFECYCLE_AWARE_EXTRACTION_PREVIEW_OVERRIDE",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+
 # CMS, blog, experimental tooling, internal analytics only (Phase 5.3). Not landlord core flows.
 # REF-PRODTEST-QUARANTINE-001 — set PYTEST_RUN_QUARANTINED=1 to collect/run these modules.
 QUARANTINE_REF = "REF-PRODTEST-QUARANTINE-001"

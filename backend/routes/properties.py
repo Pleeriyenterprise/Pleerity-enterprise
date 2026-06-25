@@ -599,15 +599,6 @@ async def patch_requirement(
         patch_confirm_payload["issue_date"] = data.issue_date
     if data.certificate_number is not None:
         patch_confirm_payload["certificate_number"] = data.certificate_number
-    if patch_confirm_payload:
-        from services.lifecycle_confirm_validation import observe_lifecycle_confirm_shadow_for_requirement
-
-        observe_lifecycle_confirm_shadow_for_requirement(
-            req,
-            patch_confirm_payload,
-            surface="patch_requirement",
-            requirement_id=requirement_id,
-        )
 
     prop_row = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
@@ -629,13 +620,30 @@ async def patch_requirement(
 
     if patch_confirm_payload:
         from services.lifecycle_confirm_apply import get_patch_requirement_update
+        from services.lifecycle_confirm_validation import enforce_lifecycle_confirm_or_raise
+
+        try:
+            patch_confirm_payload = enforce_lifecycle_confirm_or_raise(
+                req,
+                patch_confirm_payload,
+                surface="patch_requirement",
+                requirement_id=requirement_id,
+            )
+        except HTTPException:
+            raise
 
         try:
             patch_plan = get_patch_requirement_update(
                 req,
-                confirmed_expiry_date=data.confirmed_expiry_date,
-                issue_date=data.issue_date,
-                certificate_number=data.certificate_number,
+                confirmed_expiry_date=patch_confirm_payload.get("confirmed_expiry_date")
+                if data.confirmed_expiry_date is not None
+                else None,
+                issue_date=patch_confirm_payload.get("issue_date")
+                if data.issue_date is not None
+                else None,
+                certificate_number=patch_confirm_payload.get("certificate_number")
+                if data.certificate_number is not None
+                else None,
                 parse_iso=_parse_patch_iso,
                 requirement_id=requirement_id,
             )

@@ -243,20 +243,12 @@ async def test_apply_extraction_off_mode_still_calls_observer_without_effect(mon
         patch("services.score_events_service.write_score_event", new_callable=AsyncMock),
         patch("services.compliance_outcome_engine.apply_action_outcome", new_callable=AsyncMock, return_value=None),
         patch("services.property_assets_service.update_asset_last_service_from_requirement", new_callable=AsyncMock),
-        patch("services.lifecycle_confirm_validation.observe_lifecycle_confirm_shadow_for_requirement") as observe_mock,
+        patch("services.lifecycle_confirm_validation.enforce_lifecycle_confirm_or_raise", side_effect=lambda _req, payload, **_kw: payload) as enforce_mock,
     ):
         out = await apply_ai_extraction(MagicMock(spec=Request), "doc-off", None)
 
     assert out.get("document_id") == "doc-off"
-    observe_mock.assert_called_once()
-    assert (
-        observe_lifecycle_confirm_shadow_for_requirement(
-            requirement,
-            document["ai_extraction"]["data"],
-            surface="apply_extraction",
-        )
-        is None
-    )
+    enforce_mock.assert_called_once()
 
 
 def test_patch_requirement_shadow_would_reject_but_succeeds(client_http, monkeypatch):

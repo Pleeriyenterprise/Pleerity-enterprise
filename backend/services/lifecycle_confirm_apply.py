@@ -1,8 +1,7 @@
 """
-Phase 2 S5 — lifecycle-aware confirm persistence authority.
+Phase 2 S5/S5.4 — lifecycle-aware confirm persistence authority.
 
-Off/shadow: callers apply legacy persistence only; shadow logs active-plan diffs.
-Active mode enforcement is deferred to S5.4.
+Off: legacy persistence. Shadow: legacy + telemetry. Active (preview): active plan.
 """
 
 from __future__ import annotations
@@ -13,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from services.lifecycle_aware_confirm_config import (
+    get_effective_confirm_mode,
     is_lifecycle_aware_confirm_off,
     is_lifecycle_aware_confirm_shadow,
 )
@@ -398,6 +398,102 @@ def observe_shadow_persistence_for_requirement(
     return obs
 
 
+def strip_forbidden_contract_fields(
+    payload: Dict[str, Any],
+    contract: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Remove contract-forbidden keys before active-mode persistence."""
+    forbidden = set(contract.get("forbidden_fields") or [])
+    semantics = str(contract.get("lifecycle_semantics") or "")
+    if semantics != "EXPIRY_BASED":
+        forbidden |= _EXPIRY_PROXY_FIELDS | _CERT_EXPIRY_PERSISTENCE_FIELDS | {"status"}
+    return {k: v for k, v in payload.items() if k not in forbidden}
+
+
+def resolve_confirm_persistence_update(
+    requirement: Dict[str, Any],
+    payload: Dict[str, Any],
+    *,
+    surface: str,
+    parse_date: Callable[[Any], datetime],
+    parse_iso: Optional[Callable[[str], datetime]] = None,
+    registry_row: Optional[Dict[str, Any]] = None,
+    document: Optional[Dict[str, Any]] = None,
+    requirement_id: Optional[str] = None,
+    document_id: Optional[str] = None,
+    confirmed_expiry_date: Optional[str] = None,
+    issue_date: Optional[str] = None,
+    certificate_number: Optional[str] = None,
+) -> PersistencePlan:
+    """
+    Mode matrix:
+    - off → legacy persistence
+    - shadow → legacy persistence + shadow telemetry
+    - active → active persistence plan (forbidden fields stripped)
+    """
+    mode = get_effective_confirm_mode()
+    iso_parser = parse_iso or (
+        lambda raw: datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    )
+
+    if surface == "patch_requirement":
+        patch_payload = dict(payload)
+        if confirmed_expiry_date is not None:
+            patch_payload.setdefault("confirmed_expiry_date", confirmed_expiry_date)
+        if issue_date is not None:
+            patch_payload.setdefault("issue_date", issue_date)
+        if certificate_number is not None:
+            patch_payload.setdefault("certificate_number", certificate_number)
+    else:
+        patch_payload = payload
+
+    if mode == "shadow":
+        observe_shadow_persistence_for_requirement(
+            requirement,
+            patch_payload if surface == "patch_requirement" else payload,
+            surface=surface,
+            parse_date=parse_date,
+            parse_iso=iso_parser,
+            registry_row=registry_row,
+            document=document,
+            requirement_id=requirement_id,
+            document_id=document_id,
+        )
+
+    if mode != "active":
+        if surface == "patch_requirement":
+            return build_legacy_patch_requirement_update(
+                confirmed_expiry_date=confirmed_expiry_date,
+                issue_date=issue_date,
+                certificate_number=certificate_number,
+                parse_iso=iso_parser,
+            )
+        return build_legacy_apply_extraction_update(payload, parse_date=parse_date)
+
+    contract = build_contract_for_requirement(
+        requirement,
+        registry_row=registry_row,
+        document=document,
+    )
+    semantics = str(contract.get("lifecycle_semantics") or "")
+    if surface == "patch_requirement":
+        active_payload = strip_forbidden_contract_fields(patch_payload, contract)
+        return build_active_plan_patch_requirement_update(
+            requirement,
+            active_payload,
+            contract,
+            parse_iso=iso_parser,
+        )
+
+    active_payload = strip_forbidden_contract_fields(payload, contract)
+    return build_active_plan_apply_extraction_update(
+        requirement,
+        active_payload,
+        contract,
+        parse_date=parse_date,
+    )
+
+
 def get_apply_extraction_requirement_update(
     requirement: Dict[str, Any],
     payload: Dict[str, Any],
@@ -410,10 +506,9 @@ def get_apply_extraction_requirement_update(
     document_id: Optional[str] = None,
 ) -> PersistencePlan:
     """
-    Returns legacy persistence plan for off/shadow modes (actual writes).
-    Emits shadow persistence telemetry when flag=shadow.
+    Returns persistence plan for apply-extraction / admin-confirm surfaces.
     """
-    observe_shadow_persistence_for_requirement(
+    return resolve_confirm_persistence_update(
         requirement,
         payload,
         surface=surface,
@@ -423,7 +518,6 @@ def get_apply_extraction_requirement_update(
         requirement_id=requirement_id,
         document_id=document_id,
     )
-    return build_legacy_apply_extraction_update(payload, parse_date=parse_date)
 
 
 def get_patch_requirement_update(
@@ -445,7 +539,7 @@ def get_patch_requirement_update(
     if certificate_number is not None:
         payload["certificate_number"] = certificate_number
 
-    observe_shadow_persistence_for_requirement(
+    return resolve_confirm_persistence_update(
         requirement,
         payload,
         surface="patch_requirement",
@@ -454,10 +548,7 @@ def get_patch_requirement_update(
         registry_row=registry_row,
         document=document,
         requirement_id=requirement_id,
-    )
-    return build_legacy_patch_requirement_update(
         confirmed_expiry_date=confirmed_expiry_date,
         issue_date=issue_date,
         certificate_number=certificate_number,
-        parse_iso=parse_iso,
     )

@@ -122,3 +122,35 @@ export function contractShowsExpiryField(contract) {
   if (contract.lifecycle_semantics === 'EXPIRY_BASED') return true;
   return !isFieldForbidden(contract, 'expiry_date');
 }
+
+/** Map lifecycle 422 violation list to fieldId → message for form display. */
+export function mapLifecycleViolationsToFieldErrors(violations) {
+  const out = {};
+  if (!Array.isArray(violations)) return out;
+  for (const v of violations) {
+    if (!v || typeof v !== 'object') continue;
+    const field = v.field;
+    if (!field || field === '*') continue;
+    const message = typeof v.message === 'string' ? v.message : v.code || 'Invalid value';
+    out[field] = message;
+  }
+  return out;
+}
+
+/** Extract lifecycle confirm 422 payload from FastAPI error detail. */
+export function parseLifecycleConfirm422Detail(err) {
+  const raw = err?.response?.data?.detail;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  if (raw.code !== 'LIFECYCLE_CONFIRM_REJECTED' && !Array.isArray(raw.violations)) {
+    return null;
+  }
+  return {
+    code: raw.code || 'LIFECYCLE_CONFIRM_REJECTED',
+    message: typeof raw.message === 'string' ? raw.message : null,
+    violations: Array.isArray(raw.violations) ? raw.violations : [],
+    lifecycle_semantics: raw.lifecycle_semantics,
+    extraction_profile_id: raw.extraction_profile_id,
+    contract_version: raw.contract_version,
+    fieldErrors: mapLifecycleViolationsToFieldErrors(raw.violations),
+  };
+}
