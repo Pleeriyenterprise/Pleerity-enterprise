@@ -7,12 +7,17 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List
 
 from database import database
+from services.lifecycle_reminder_template_registry import all_lifecycle_reminder_template_keys
 
 logger = logging.getLogger(__name__)
 
 # Job names and their template_keys for message_log matching (email/report delivery)
 RECONCILIATION_JOBS: Dict[str, List[str]] = {
-    "daily_reminders": ["COMPLIANCE_EXPIRY_REMINDER", "COMPLIANCE_EXPIRY_REMINDER_SMS"],
+    "daily_reminders": [
+        "COMPLIANCE_EXPIRY_REMINDER",
+        "COMPLIANCE_EXPIRY_REMINDER_SMS",
+        *sorted(all_lifecycle_reminder_template_keys()),
+    ],
     "monthly_digest": ["MONTHLY_DIGEST"],
     "pending_verification_digest": ["PENDING_VERIFICATION_DIGEST"],
     "compliance_check_morning": ["COMPLIANCE_ALERT"],

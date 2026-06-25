@@ -17,6 +17,11 @@ from services.lifecycle_aware_reminders_config import (
     is_lifecycle_aware_reminder_off,
     is_lifecycle_aware_reminder_shadow,
 )
+from services.lifecycle_reminder_template_registry import (
+    legacy_reminder_template_keys,
+    planned_email_template_by_attention,
+    planned_sms_template_by_attention,
+)
 from services.lifecycle_semantics_resolver import resolve_lifecycle_semantics
 from services.lifecycle_semantics_types import AttentionKind, LifecycleSemantics
 
@@ -27,27 +32,11 @@ REASON_NOT_RELEVANT = "NOT_RELEVANT"
 REASON_NO_EFFECTIVE_DATE = "NO_EFFECTIVE_DATE"
 REASON_NO_LONGER_DUE = "NO_LONGER_DUE"
 
-_LEGACY_EMAIL_TEMPLATE = "COMPLIANCE_EXPIRY_REMINDER"
-_LEGACY_SMS_TEMPLATE = "COMPLIANCE_EXPIRY_REMINDER_SMS"
+_LEGACY_EMAIL_TEMPLATE, _LEGACY_SMS_TEMPLATE = legacy_reminder_template_keys()
 
-# Planned template families per attention_kind (S4.3 routing; seed keys unchanged until Phase 4+).
-_PLANNED_EMAIL_TEMPLATE_BY_ATTENTION: Dict[str, str] = {
-    "CERTIFICATE_EXPIRING": _LEGACY_EMAIL_TEMPLATE,
-    "REVIEW_DUE": _LEGACY_EMAIL_TEMPLATE,
-    "EVENT_ACTION_REQUIRED": _LEGACY_EMAIL_TEMPLATE,
-    "TENANCY_TERM_ENDING": _LEGACY_EMAIL_TEMPLATE,
-    "OCCUPANCY_REVIEW_DUE": _LEGACY_EMAIL_TEMPLATE,
-    "OPERATIONAL_ACTION_REQUIRED": _LEGACY_EMAIL_TEMPLATE,
-}
-
-_PLANNED_SMS_TEMPLATE_BY_ATTENTION: Dict[str, str] = {
-    "CERTIFICATE_EXPIRING": _LEGACY_SMS_TEMPLATE,
-    "REVIEW_DUE": _LEGACY_SMS_TEMPLATE,
-    "EVENT_ACTION_REQUIRED": _LEGACY_SMS_TEMPLATE,
-    "TENANCY_TERM_ENDING": _LEGACY_SMS_TEMPLATE,
-    "OCCUPANCY_REVIEW_DUE": _LEGACY_SMS_TEMPLATE,
-    "OPERATIONAL_ACTION_REQUIRED": _LEGACY_SMS_TEMPLATE,
-}
+# S4.4 — dedicated template_key per attention_kind (active preview-tier only).
+_PLANNED_EMAIL_TEMPLATE_BY_ATTENTION: Dict[str, str] = planned_email_template_by_attention()
+_PLANNED_SMS_TEMPLATE_BY_ATTENTION: Dict[str, str] = planned_sms_template_by_attention()
 
 
 @dataclass(frozen=True)
@@ -207,7 +196,7 @@ def resolve_lifecycle_reminder_template_key(
 
     off: legacy template only.
     shadow: legacy template authoritative; logs planned routing when attention_kind present.
-    active: planned mapping (currently all seed keys resolve to legacy COMPLIANCE_EXPIRY_*).
+    active: planned S4.4 mapping (LIFECYCLE_REMINDER_* per attention_kind).
     """
     legacy = _LEGACY_EMAIL_TEMPLATE if str(channel).upper() == "EMAIL" else _LEGACY_SMS_TEMPLATE
     if is_lifecycle_aware_reminder_off():

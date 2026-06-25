@@ -245,7 +245,10 @@ class TestLifecycleReminderTemplateRouting:
         monkeypatch.setenv("LIFECYCLE_AWARE_REMINDERS", "active")
         monkeypatch.setenv("DEPLOYMENT_TIER", "preview")
         assert resolve_lifecycle_reminder_template_key("CERTIFICATE_EXPIRING") == (
-            "COMPLIANCE_EXPIRY_REMINDER"
+            "LIFECYCLE_REMINDER_CERTIFICATE_EXPIRING"
+        )
+        assert resolve_lifecycle_reminder_template_key("REVIEW_DUE", channel="SMS") == (
+            "LIFECYCLE_REMINDER_REVIEW_DUE_SMS"
         )
 
     def test_classify_reminder_timing_overdue(self):

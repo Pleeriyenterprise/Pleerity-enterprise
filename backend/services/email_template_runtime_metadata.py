@@ -34,6 +34,12 @@ _UNCONDITIONAL_CODE_BUILT = frozenset(
         "contractor-visit-confirmed",
         "contractor-proof-required",
         "contractor-invoice-ready",
+        "reminder",
+        "lifecycle-reminder-review-due",
+        "lifecycle-reminder-event-action-required",
+        "lifecycle-reminder-tenancy-term-ending",
+        "lifecycle-reminder-occupancy-review-due",
+        "lifecycle-reminder-operational-action-required",
     }
 )
 

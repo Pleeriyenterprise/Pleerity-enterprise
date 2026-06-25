@@ -23,8 +23,61 @@ from presentation.label_service import (
 )
 from services.scoring_semantics_v1 import headline_score_display_for_export
 from services.scoring_explanation_copy import email_score_delta_line
+from services.lifecycle_reminder_template_registry import lifecycle_reminder_spec
 
 logger = logging.getLogger(__name__)
+
+LIFECYCLE_REMINDER_ALIASES = frozenset(
+    {
+        EmailTemplateAlias.REMINDER,
+        EmailTemplateAlias.LIFECYCLE_REMINDER_REVIEW_DUE,
+        EmailTemplateAlias.LIFECYCLE_REMINDER_EVENT_ACTION_REQUIRED,
+        EmailTemplateAlias.LIFECYCLE_REMINDER_TENANCY_TERM_ENDING,
+        EmailTemplateAlias.LIFECYCLE_REMINDER_OCCUPANCY_REVIEW_DUE,
+        EmailTemplateAlias.LIFECYCLE_REMINDER_OPERATIONAL_ACTION_REQUIRED,
+    }
+)
+
+_ALIAS_TO_ATTENTION_KIND = {
+    EmailTemplateAlias.REMINDER: "CERTIFICATE_EXPIRING",
+    EmailTemplateAlias.LIFECYCLE_REMINDER_REVIEW_DUE: "REVIEW_DUE",
+    EmailTemplateAlias.LIFECYCLE_REMINDER_EVENT_ACTION_REQUIRED: "EVENT_ACTION_REQUIRED",
+    EmailTemplateAlias.LIFECYCLE_REMINDER_TENANCY_TERM_ENDING: "TENANCY_TERM_ENDING",
+    EmailTemplateAlias.LIFECYCLE_REMINDER_OCCUPANCY_REVIEW_DUE: "OCCUPANCY_REVIEW_DUE",
+    EmailTemplateAlias.LIFECYCLE_REMINDER_OPERATIONAL_ACTION_REQUIRED: "OPERATIONAL_ACTION_REQUIRED",
+}
+
+
+def _attention_kind_for_reminder_alias(
+    template_alias: EmailTemplateAlias,
+    model: Dict[str, Any],
+) -> str:
+    kind = (model.get("lifecycle_attention_kind") or "").strip()
+    if kind:
+        return kind
+    return _ALIAS_TO_ATTENTION_KIND.get(template_alias, "CERTIFICATE_EXPIRING")
+
+
+def _lifecycle_reminder_intro_html(model: Dict[str, Any], template_alias: EmailTemplateAlias) -> str:
+    spec = lifecycle_reminder_spec(_attention_kind_for_reminder_alias(template_alias, model))
+    rc = (model.get("requirement_code") or model.get("requirement_type") or "").strip()
+    req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
+    return spec["intro_html"].format(
+        req_name=req_name,
+        prop_addr=model.get("property_address", "Your property"),
+        due_date=model.get("due_date", ""),
+    )
+
+
+def _lifecycle_reminder_intro_text(model: Dict[str, Any], template_alias: EmailTemplateAlias) -> str:
+    spec = lifecycle_reminder_spec(_attention_kind_for_reminder_alias(template_alias, model))
+    rc = (model.get("requirement_code") or model.get("requirement_type") or "").strip()
+    req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
+    return spec["intro_text"].format(
+        req_name=req_name,
+        prop_addr=model.get("property_address", "Your property"),
+        due_date=model.get("due_date", ""),
+    )
 
 
 def _strip_html_to_text(html: str) -> str:
@@ -1026,11 +1079,8 @@ class EmailService:
                 preferences_url=_notification_preferences_url(model) or None,
                 customer_reference=customer_ref or None,
             )
-        elif template_alias == EmailTemplateAlias.REMINDER:
-            rc = (model.get("requirement_code") or model.get("requirement_type") or "").strip()
-            req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
-            prop_addr = model.get("property_address", "Your property")
-            due_date = model.get("due_date", "")
+        elif template_alias in LIFECYCLE_REMINDER_ALIASES:
+            spec = lifecycle_reminder_spec(_attention_kind_for_reminder_alias(template_alias, model))
             days_overdue = model.get("days_overdue")
             days_remaining = model.get("days_remaining", 0)
             if days_overdue is not None and days_overdue >= 0:
@@ -1040,7 +1090,7 @@ class EmailService:
             grouped_sections_html = _build_grouped_reminder_sections_html(model)
             grouped_block = f"{grouped_sections_html}" if grouped_sections_html else ""
             body = (
-                f"<p>This is a reminder that <strong>{req_name}</strong> for your property at <strong>{prop_addr}</strong> is due on <strong>{due_date}</strong>.</p>"
+                f"<p>{_lifecycle_reminder_intro_html(model, template_alias)}</p>"
                 f"{urgency_line}"
                 f"{grouped_block}"
             )
@@ -1049,10 +1099,10 @@ class EmailService:
                 model,
                 greeting=greeting,
                 body_html=body,
-                header_title="Compliance renewal reminder",
+                header_title=spec["header_title"],
                 cta_label="Open portal for details",
                 cta_url=model.get('portal_link', '#'),
-                why_received="compliance monitoring and expiry reminders are enabled for your account.",
+                why_received=spec["why_received"],
                 show_preferences_link=True,
                 preferences_url=_notification_preferences_url(model) or None,
                 customer_reference=model.get('customer_reference'),
@@ -1986,11 +2036,8 @@ HOW TO READ THIS:
 This message is informational; the portal is authoritative for obligation state and evidence.
 {footer}
             """
-        elif template_alias == EmailTemplateAlias.REMINDER:
-            rc = (model.get("requirement_code") or model.get("requirement_type") or "").strip()
-            req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
-            prop_addr = model.get("property_address", "Your property")
-            due_date = model.get("due_date", "")
+        elif template_alias in LIFECYCLE_REMINDER_ALIASES:
+            spec = lifecycle_reminder_spec(_attention_kind_for_reminder_alias(template_alias, model))
             days_overdue = model.get("days_overdue")
             days_remaining = model.get("days_remaining", 0)
             if days_overdue is not None and days_overdue >= 0:
@@ -2000,13 +2047,13 @@ This message is informational; the portal is authoritative for obligation state 
             grouped_sections_text = _build_grouped_reminder_sections_text(model)
             grouped_block = f"\n\n{grouped_sections_text}" if grouped_sections_text else ""
             return f"""
-Compliance renewal reminder
+{spec['header_title']}
 =========================
 {ref_line}
 
 Hello {model.get('client_name', 'Valued Customer')},
 
-This is a reminder that {req_name} for your property at {prop_addr} is due on {due_date}.
+{_lifecycle_reminder_intro_text(model, template_alias)}
 
 {urgency_line}
 {grouped_block}

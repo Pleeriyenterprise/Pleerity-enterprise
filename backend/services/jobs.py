@@ -1028,13 +1028,19 @@ class JobScheduler:
                 dominant_attention_kind_for_batch,
                 resolve_lifecycle_reminder_template_key,
             )
+            from services.lifecycle_reminder_template_registry import (
+                legacy_reminder_template_keys,
+                lifecycle_reminder_subject,
+            )
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             to_addr = (recipient_email or client.get("email") or client.get("contact_email") or "").strip()
             if not to_addr:
                 return False
             key_suffix = to_addr.replace("@", "_at_") if recipient_email else "client"
             _scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
-            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_{date_key}_{key_suffix}_{_scope_fp}"
+            attention_kind = dominant_attention_kind_for_batch(expiring, overdue)
+            template_key = resolve_lifecycle_reminder_template_key(attention_kind, channel="EMAIL")
+            idempotency_key = f"{client['client_id']}_{template_key}_{date_key}_{key_suffix}_{_scope_fp}"
             from utils.app_urls import get_app_base_url, client_portal_requirements_list_url
 
             base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
@@ -1072,20 +1078,28 @@ class JobScheduler:
                     context["requirement_code"] = rc_item
                 context["property_address"] = first_item.get("property_address", "Your property")
                 context["due_date"] = first_item.get("due_date", "")
+                if attention_kind:
+                    context["lifecycle_attention_kind"] = attention_kind
                 is_overdue = first_item.get("days_overdue") is not None
                 if is_overdue:
                     context["days_remaining"] = 0
                     context["days_overdue"] = first_item.get("days_overdue", 0)
-                    context["subject"] = f"Renewal reminder: {context['requirement_name']} is overdue"
                 else:
                     context["days_remaining"] = first_item.get("days_remaining", 0)
                     context["days_overdue"] = None
+                legacy_email_key, _ = legacy_reminder_template_keys()
+                if template_key != legacy_email_key:
+                    context["subject"] = lifecycle_reminder_subject(
+                        attention_kind=attention_kind,
+                        requirement_name=context["requirement_name"],
+                        is_overdue=is_overdue,
+                    )
+                elif is_overdue:
+                    context["subject"] = f"Renewal reminder: {context['requirement_name']} is overdue"
+                else:
                     context["subject"] = f"Renewal reminder: {context['requirement_name']} due soon"
             result = await notification_orchestrator.send(
-                template_key=resolve_lifecycle_reminder_template_key(
-                    dominant_attention_kind_for_batch(expiring, overdue),
-                    channel="EMAIL",
-                ),
+                template_key=template_key,
                 client_id=client["client_id"],
                 context=context,
                 idempotency_key=idempotency_key,
@@ -1217,7 +1231,9 @@ class JobScheduler:
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             key_suffix = (recipient_phone or "").replace("+", "").replace(" ", "")[:20] if recipient_phone else "client"
             _sms_scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
-            idempotency_key = f"{client['client_id']}_COMPLIANCE_EXPIRY_REMINDER_SMS_{date_key}_{key_suffix}_{_sms_scope_fp}"
+            attention_kind = dominant_attention_kind_for_batch(expiring, overdue)
+            sms_template_key = resolve_lifecycle_reminder_template_key(attention_kind, channel="SMS")
+            idempotency_key = f"{client['client_id']}_{sms_template_key}_{date_key}_{key_suffix}_{_sms_scope_fp}"
             from utils.app_urls import get_app_base_url, client_portal_requirements_list_url
 
             base_url = get_app_base_url(for_email_links=True).strip().rstrip("/")
@@ -1234,10 +1250,7 @@ class JobScheduler:
             if reminder_refs is not None:
                 context["reminder_refs"] = json.dumps(reminder_refs)
             await notification_orchestrator.send(
-                template_key=resolve_lifecycle_reminder_template_key(
-                    dominant_attention_kind_for_batch(expiring, overdue),
-                    channel="SMS",
-                ),
+                template_key=sms_template_key,
                 client_id=client["client_id"],
                 context=context,
                 idempotency_key=idempotency_key,
