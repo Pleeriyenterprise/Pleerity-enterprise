@@ -144,7 +144,7 @@ def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str
             expiring_soon += 1
         elif s in ("OVERDUE", "EXPIRED"):
             overdue += 1
-    return {
+    stats = {
         "total_requirements": total,
         # Authoritative satisfied count for portfolio KPIs (includes recorded-on-file / declaration paths).
         "compliant": satisfied,
@@ -155,6 +155,18 @@ def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str
         "expiring_soon": expiring_soon,
         "overdue": overdue,
     }
+    from services.lifecycle_kpi_gates import (
+        compute_lifecycle_kpi_stats,
+        lifecycle_kpi_enabled,
+        observe_kpi_shadow,
+    )
+
+    if lifecycle_kpi_enabled():
+        observe_kpi_shadow(
+            legacy_stats=stats,
+            lifecycle_stats=compute_lifecycle_kpi_stats(portal_projected_rows),
+        )
+    return stats
 
 
 def _status_upper(val: Optional[str]) -> str:
