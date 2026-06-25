@@ -7,14 +7,15 @@
 
 ---
 
-## Phase 4 status: **IN PROGRESS** (S4.1–S4.3 complete — 2026-06-25)
+## Phase 4 status: **IN PROGRESS** (S4.1–S4.4 complete — local)
 
 | Phase 4 slice | Status | PR | Merge SHA |
 |---------------|--------|-----|-----------|
 | **S4.1** — reminder flag infrastructure | **Complete** | [#11](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/11) | `4a15747a` |
 | **S4.2** — shadow reminder telemetry | **Complete** | [#12](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/12) | `906e67b6` |
 | **S4.3** — active eligibility gates + template routing | **Complete** | [#12](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/12) | `906e67b6` |
-| **S4.4+** — dedicated `attention_kind` email/SMS templates | **Not started** | — | — |
+| **S4.4** — dedicated `attention_kind` email/SMS templates | **Complete (local)** | — | — |
+| **S4.5+** — KPIs, reports, legacy deprecation | **Not started** | — | — |
 
 **`develop` tip:** `906e67b65ae6c04316ecf53a82a7e2b8c20faeac`  
 **Staging deploy:** `906e67b6` @ `pleerity-enterprise.onrender.com` — `environment=staging`, `/api/health` **healthy**, `/api/version` confirms SHA  
@@ -103,7 +104,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **1** | Resolver + registry backfill | `lifecycle_semantics_resolver.py` | `LIFECYCLE_SEMANTICS_MODE` | Complete |
 | **2** | Confirm + extraction | Profiles, confirm contract | `LIFECYCLE_AWARE_CONFIRM`, `LIFECYCLE_AWARE_EXTRACTION` | Complete |
 | **3** | Scoring gates | Penalty eligibility via `field_contract` | `LIFECYCLE_AWARE_SCORING` | **Complete** |
-| **4** | Reminders + gaps | `attention_kind` templates | `LIFECYCLE_AWARE_REMINDERS` | **IN PROGRESS** (S4.4+ next) |
+| **4** | Reminders + gaps | `attention_kind` templates | `LIFECYCLE_AWARE_REMINDERS` | **IN PROGRESS** (S4.5+ next) |
 | **5** | Dashboard KPIs | Split widgets | `LIFECYCLE_AWARE_KPIS` | Not started |
 | **6** | Reports + digest | Section language | — | Not started |
 | **7** | Legacy deprecation | Remove independent expiry inference | — | Not started |
@@ -123,7 +124,8 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **Phase 4 S4.1** | 4 | `LIFECYCLE_AWARE_REMINDERS` flag + boot + CI | **Merged** PR #11 |
 | **Phase 4 S4.2** | 4 | Shadow reminder telemetry (`lifecycle_reminder_shadow_*`) | **Merged** PR #12 |
 | **Phase 4 S4.3** | 4 | Active eligibility gates + template routing authority | **Merged** PR #12 |
-| **Phase 4 S4.4+** | 4 | Dedicated `attention_kind` email/SMS templates | **Not started** |
+| **Phase 4 S4.4** | 4 | Dedicated `attention_kind` email/SMS templates | **Complete (local)** |
+| **Phase 4 S4.5+** | 4 | KPIs, reports, legacy deprecation | **Not started** |
 | Phase 5 KPIs | 5 | Dashboard widget split | Not started |
 | Phase 6 reports | 6 | Report/digest language | Not started |
 
@@ -163,7 +165,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 - CI governance for production blueprint
 - STREAM_B §5b scoring authority inventory
 
-**Not implemented (Phase 4 S4.4+):** dedicated `attention_kind` email/SMS template bodies, KPIs, reports, legacy deprecation.
+**Not implemented (Phase 4 S4.5+):** KPIs, reports, legacy deprecation.
 
 ---
 
@@ -230,7 +232,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 ```
 Phase 1 + Phase 2 + Phase 3 (COMPLETE on develop)
-    └── Phase 4 reminders (LIFECYCLE_AWARE_REMINDERS)  ← S4.1–S4.3 COMPLETE; S4.4+ NEXT
+    └── Phase 4 reminders (LIFECYCLE_AWARE_REMINDERS)  ← S4.1–S4.4 COMPLETE; S4.5+ NEXT
             └── Phase 5 dashboard KPIs
                     └── Phase 6 reports
                             └── Phase 7 legacy deprecation
@@ -264,6 +266,6 @@ Phase 1 + Phase 2 + Phase 3 (COMPLETE on develop)
 
 ## 10. Next recommended action
 
-**Begin Phase 4 S4.4 planning** (dedicated `attention_kind` email/SMS templates). Do not add Phase 3 slices. Run reminder shadow runtime evidence campaign on staging in parallel.
+**Next:** Phase 4 S4.5+ (KPIs, reports, legacy deprecation). Run reminder shadow runtime evidence campaign on staging in parallel.
 
 **Tracker verdict:** `READY_FOR_PHASE4_S4_4_PLANNING`

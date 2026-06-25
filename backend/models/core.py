@@ -527,6 +527,11 @@ class EmailTemplateAlias(str, Enum):
     ADMIN_MANUAL = "admin-manual"
     PAYMENT_RECEIPT = "payment-receipt"
     REMINDER = "reminder"
+    LIFECYCLE_REMINDER_REVIEW_DUE = "lifecycle-reminder-review-due"
+    LIFECYCLE_REMINDER_EVENT_ACTION_REQUIRED = "lifecycle-reminder-event-action-required"
+    LIFECYCLE_REMINDER_TENANCY_TERM_ENDING = "lifecycle-reminder-tenancy-term-ending"
+    LIFECYCLE_REMINDER_OCCUPANCY_REVIEW_DUE = "lifecycle-reminder-occupancy-review-due"
+    LIFECYCLE_REMINDER_OPERATIONAL_ACTION_REQUIRED = "lifecycle-reminder-operational-action-required"
     WELCOME = "welcome"
     COMPLIANCE_ALERT = "compliance-alert"  # Status change notifications
     TENANT_INVITE = "tenant-invite"  # Tenant portal invitation

@@ -1003,6 +1003,17 @@ class NotificationOrchestrator:
                 placeholder = "{{" + str(k) + "}}"
                 subj = subj.replace(placeholder, str(v))
             return html, text, subj
+        from services.lifecycle_reminder_template_registry import is_lifecycle_reminder_email_alias
+
+        if is_lifecycle_reminder_email_alias(alias_str):
+            from services.email_service import EmailService
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(alias, model)
+            text = svc._build_text_body(alias, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
         db_template = await db.email_templates.find_one({"alias": alias_str, "is_active": True}, {"_id": 0})
         if db_template:
             from services.branding_resolver_service import finalize_db_email_html

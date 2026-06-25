@@ -162,17 +162,19 @@ Use one row per **entry surface** (route, job step, script, or service called by
 | `services/reminder_truth_service.py` | system | **legacy authoritative** | Resolver eligibility + `attention_kind` (S4.2+) | **off/shadow/active (S4.1):** unchanged — flag dormant |
 | `services/jobs.py` — daily reminders | system | legacy send paths | Gate before `send_daily_reminders` (S4.2+) | Same flag |
 | Scheduler / compliance jobs | system | legacy schedule | No lifecycle gate in S4.1 | Same flag |
-| Email / SMS templates (`COMPLIANCE_EXPIRY_REMINDER`, etc.) | system | certificate-expiry family | Split per `attention_kind` (S4.3+) | **Not in S4.1** |
+| Email / SMS templates (`COMPLIANCE_EXPIRY_REMINDER`, etc.) | system | certificate-expiry family | Split per `attention_kind` (S4.4) | **S4.4 local** |
 | `get_effective_expiry_date()` consumers | system | expiry-date inference | `effective_attention_date` via resolver (S4.2+) | **Not in S4.1** |
 | Notification orchestrator | system | governed send path | Template routing per `attention_kind` (S4.3+) | **Not in S4.1** |
 
-**Implemented (S4.2/S4.3):** `lifecycle_reminder_gates.py` — shadow `lifecycle_reminder_shadow_*` logs; active gates suppress non-`EXPIRY_BASED` from `DAILY_COMPLIANCE_EXPIRY_*` pipeline; `resolve_lifecycle_reminder_template_key` (legacy seed keys until dedicated templates); wired in `reminder_truth_service.py` and `jobs.py`.
+**Implemented (S4.2/S4.3):** `lifecycle_reminder_gates.py` — shadow `lifecycle_reminder_shadow_*` logs; active gates suppress non-`EXPIRY_BASED` from `DAILY_COMPLIANCE_EXPIRY_*` pipeline; `resolve_lifecycle_reminder_template_key`; wired in `reminder_truth_service.py` and `jobs.py`.
+
+**Implemented (S4.4):** `lifecycle_reminder_template_registry.py` — `LIFECYCLE_REMINDER_*` seed keys (EMAIL+SMS per `attention_kind`); kind-specific EmailService copy; active preview-tier routing; shadow/off remain legacy-authoritative.
 
 **Staging (shadow):** Legacy reminder eligibility remains authoritative; lifecycle path observe-only.
 
 **Active (preview-tier only):** Lifecycle-gated eligibility; template routing returns planned mapping (currently same `COMPLIANCE_EXPIRY_*` seed keys).
 
-**Not in scope for S4.2/S4.3:** New email/SMS template bodies, scheduler changes, attention-date calculation changes in resolver, dashboards, reports, scoring.
+**Not in scope for S4.2–S4.4:** Scheduler changes, attention-date calculation changes in resolver, dashboards, reports, scoring.
 
 ---
 
