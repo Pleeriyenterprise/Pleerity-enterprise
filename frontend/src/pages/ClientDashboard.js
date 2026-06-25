@@ -33,6 +33,7 @@ import {
   portalPageRoot,
 } from '../components/client/ClientPortalPatterns';
 import PortalLoadingState from '../components/loading/PortalLoadingState';
+import LifecycleKpiAttentionStrip from '../components/dashboard/LifecycleKpiAttentionStrip';
 import PortalCardLoading from '../components/loading/PortalCardLoading';
 import { dashboardLoadingStages } from '../components/loading/portalLoadingStageModels';
 import { usePortalLoadingTelemetry } from '../components/loading/usePortalLoadingTelemetry';
@@ -3390,6 +3391,8 @@ const ClientDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        <LifecycleKpiAttentionStrip stats={complianceScore?.stats} className="mb-8" />
 
         {/* Focus strip: prioritised subset — not a second copy of Portfolio summary */}
         <div className="grid lg:grid-cols-3 gap-6 mb-8">

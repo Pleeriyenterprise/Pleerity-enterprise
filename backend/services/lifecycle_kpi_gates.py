@@ -42,6 +42,17 @@ _SEMANTICS_TO_ATTENTION_KIND: Dict[str, str] = {
 
 _SUPPORTED_KPI_SEMANTICS = frozenset(_SEMANTICS_TO_ATTENTION_KIND.keys())
 
+_ATTENTION_KIND_TO_API_KEY: Dict[str, str] = {
+    "CERTIFICATE_EXPIRING": "certificate_expiring",
+    "REVIEW_DUE": "review_due",
+    "EVENT_ACTION_REQUIRED": "event_action_required",
+    "TENANCY_TERM_ENDING": "tenancy_term_ending",
+    "OCCUPANCY_REVIEW_DUE": "occupancy_review_due",
+    "OPERATIONAL_ACTION_REQUIRED": "operational_action_required",
+}
+
+LIFECYCLE_KPI_BREAKDOWN_KEYS: tuple[str, ...] = tuple(_ATTENTION_KIND_TO_API_KEY.values())
+
 _AUTHORITATIVE_STAT_KEYS: tuple[str, ...] = (
     "total_requirements",
     "compliant",
@@ -163,6 +174,29 @@ def compute_lifecycle_kpi_stats(portal_projected_rows: List[Dict[str, Any]]) -> 
 def lifecycle_stats_authoritative_payload(lifecycle_stats: Dict[str, Any]) -> Dict[str, int]:
     """Return the 8-key client KPI dict from lifecycle aggregation (active authority)."""
     return {key: int(lifecycle_stats.get(key) or 0) for key in _AUTHORITATIVE_STAT_KEYS}
+
+
+def lifecycle_kpi_breakdown_api_payload(lifecycle_stats: Dict[str, Any]) -> Dict[str, int]:
+    """Map internal attention_kind buckets to additive API snake_case keys."""
+    buckets = dict(lifecycle_stats.get("attention_kind_buckets") or {})
+    return {
+        api_key: int(buckets.get(attention_kind) or 0)
+        for attention_kind, api_key in _ATTENTION_KIND_TO_API_KEY.items()
+    }
+
+
+def lifecycle_kpi_breakdown_for_portal_rows(
+    portal_projected_rows: List[Dict[str, Any]],
+) -> Optional[Dict[str, int]]:
+    """
+    Additive lifecycle attention breakdown for API exposure (P5-S5).
+
+    Returned when ``LIFECYCLE_AWARE_KPIS`` is not off; absent when off.
+    Does not alter the authoritative 8-key KPI contract.
+    """
+    if not lifecycle_kpi_enabled():
+        return None
+    return lifecycle_kpi_breakdown_api_payload(compute_lifecycle_kpi_stats(portal_projected_rows))
 
 
 def observe_kpi_shadow(

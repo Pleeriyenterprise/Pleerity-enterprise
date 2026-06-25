@@ -999,6 +999,13 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             _semantic_counts.get(METRIC_LIFECYCLE_SATISFIED)
             or sum(1 for r in portal_reqs if is_requirement_satisfied(r))
         )
+        from services.lifecycle_aware_kpis_config import get_effective_kpi_mode
+        from services.lifecycle_kpi_gates import lifecycle_kpi_breakdown_for_portal_rows
+
+        _lifecycle_kpi_breakdown = lifecycle_kpi_breakdown_for_portal_rows(portal_reqs)
+        if _lifecycle_kpi_breakdown is not None:
+            stats["lifecycle_kpi_breakdown"] = _lifecycle_kpi_breakdown
+            stats["lifecycle_kpi_effective_mode"] = get_effective_kpi_mode()
         _score_confidence = build_score_confidence_explanation(
             score=client_score,
             semantic_counts=_semantic_counts,
