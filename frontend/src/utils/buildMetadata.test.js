@@ -1,5 +1,7 @@
 import { getBuildMetadata, exposeBuildMetadataOnWindow } from './buildMetadata';
 
+const TEST_BACKEND_URL = 'https://api.example.test';
+
 describe('buildMetadata', () => {
   const originalEnv = process.env;
 
@@ -18,20 +20,20 @@ describe('buildMetadata', () => {
   it('returns commit SHA, deployment env, and API base URL', () => {
     process.env.REACT_APP_BUILD_SHA = '0904b29c';
     process.env.REACT_APP_DEPLOYMENT_ENV = 'preview';
-    process.env.REACT_APP_BACKEND_URL = 'https://pleerity-enterprise.onrender.com';
-    window.__CVP_BACKEND_URL = 'https://pleerity-enterprise.onrender.com';
+    process.env.REACT_APP_BACKEND_URL = TEST_BACKEND_URL;
+    window.__CVP_BACKEND_URL = TEST_BACKEND_URL;
 
     const meta = getBuildMetadata();
     expect(meta.buildSha).toBe('0904b29c');
     expect(meta.deploymentEnv).toBe('preview');
-    expect(meta.apiBaseUrl).toBe('https://pleerity-enterprise.onrender.com');
+    expect(meta.apiBaseUrl).toBe(TEST_BACKEND_URL);
   });
 
   it('prefers window backend URL when set', () => {
     process.env.REACT_APP_BACKEND_URL = 'https://ignored.example.com';
-    window.__CVP_BACKEND_URL = 'https://pleerity-enterprise.onrender.com';
+    window.__CVP_BACKEND_URL = TEST_BACKEND_URL;
 
-    expect(getBuildMetadata().apiBaseUrl).toBe('https://pleerity-enterprise.onrender.com');
+    expect(getBuildMetadata().apiBaseUrl).toBe(TEST_BACKEND_URL);
   });
 
   it('exposes metadata on window without secrets', () => {
