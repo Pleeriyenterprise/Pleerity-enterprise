@@ -1,7 +1,7 @@
 """
-Phase 2 S4 — lifecycle confirm contract validation (shadow observe-only).
+Phase 2 S4/S5.4 — lifecycle confirm contract validation.
 
-Validates confirmed payloads against lifecycle_confirm_contract without blocking requests.
+Shadow: observe-only. Active (preview-only): enforce via enforce_lifecycle_confirm_or_raise.
 """
 
 from __future__ import annotations
@@ -10,12 +10,22 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
+from fastapi import HTTPException, status
+
 from services.lifecycle_aware_confirm_config import (
+    contract_version,
+    get_effective_confirm_mode,
     is_lifecycle_aware_confirm_off,
     is_lifecycle_aware_confirm_shadow,
 )
-from services.lifecycle_confirm_contract import build_contract_for_requirement
+from services.lifecycle_confirm_contract import (
+    build_contract_for_requirement,
+    build_lifecycle_confirm_contract,
+)
+from services.lifecycle_extraction_profile_resolver import resolve_extraction_profile
+from services.lifecycle_semantics_resolver import resolve_lifecycle_semantics
 from services.lifecycle_semantics_types import LifecycleSemantics
+from utils.api_errors import structured_error
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +94,14 @@ def _alias_confirm_value(payload: Dict[str, Any], field: str, contract: Dict[str
                 if _is_present(payload.get(alias)):
                     return payload.get(alias)
     return None
+
+
+def normalize_confirm_payload_for_contract(
+    payload: Dict[str, Any],
+    contract: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Normalize confirmed payload to contract field names (active persistence input)."""
+    return _normalize_payload_for_validation(payload, contract)
 
 
 def _normalize_payload_for_validation(
@@ -226,6 +244,117 @@ def validate_confirm_payload_against_contract(
                 )
 
     return len(violations) == 0, violations
+
+
+def try_resolve_lifecycle_confirm_contract(
+    requirement: Dict[str, Any],
+    *,
+    registry_row: Optional[Dict[str, Any]] = None,
+    document: Optional[Dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    Build enforcement contract when lifecycle semantics and profile resolve.
+    Returns None when semantics or profile cannot be resolved (active → 409).
+    """
+    if not isinstance(requirement, dict):
+        return None
+
+    resolved_lifecycle = resolve_lifecycle_semantics(requirement, registry_row=registry_row)
+    semantics = resolved_lifecycle.lifecycle_semantics
+    if not semantics:
+        return None
+
+    resolved_profile = resolve_extraction_profile(
+        requirement,
+        registry_row=registry_row,
+        document=document,
+    )
+    if not resolved_profile.profile_id or not resolved_profile.profile:
+        return None
+
+    contract = build_lifecycle_confirm_contract(resolved_profile)
+    if not contract.get("lifecycle_semantics") or not contract.get("extraction_profile_id"):
+        return None
+    return contract
+
+
+def enforce_lifecycle_confirm_or_raise(
+    requirement: Dict[str, Any],
+    payload: Dict[str, Any],
+    *,
+    surface: str,
+    registry_row: Optional[Dict[str, Any]] = None,
+    document: Optional[Dict[str, Any]] = None,
+    requirement_id: Optional[str] = None,
+    document_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Single enforcement entry for confirm surfaces.
+
+    off: no-op, return payload
+    shadow: observe-only, return payload
+    active: validate + normalize; 422 on violation; 409 if contract unavailable
+    """
+    mode = get_effective_confirm_mode()
+    data = payload if isinstance(payload, dict) else {}
+
+    if mode == "off":
+        return data
+
+    if mode == "shadow":
+        observe_lifecycle_confirm_shadow_for_requirement(
+            requirement,
+            data,
+            surface=surface,
+            requirement_id=requirement_id,
+            document_id=document_id,
+            registry_row=registry_row,
+        )
+        return data
+
+    contract = try_resolve_lifecycle_confirm_contract(
+        requirement,
+        registry_row=registry_row,
+        document=document,
+    )
+    if not contract:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=structured_error(
+                "LIFECYCLE_CONTRACT_UNAVAILABLE",
+                "Lifecycle confirm contract could not be resolved for this requirement.",
+                surface=surface,
+                requirement_id=requirement_id or requirement.get("requirement_id"),
+                document_id=document_id,
+            ),
+        )
+
+    would_accept, violations = validate_confirm_payload_against_contract(data, contract)
+    if not would_accept:
+        reject_extra = {
+            "surface": surface,
+            "requirement_id": requirement_id or requirement.get("requirement_id"),
+            "document_id": document_id,
+            "lifecycle_semantics": contract.get("lifecycle_semantics"),
+            "extraction_profile_id": contract.get("extraction_profile_id"),
+            "contract_version": contract.get("contract_version") or contract_version(),
+            "violations": violations,
+            "code": "LIFECYCLE_CONFIRM_REJECTED",
+        }
+        logger.info("lifecycle_confirm_enforced_reject", extra=reject_extra)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "LIFECYCLE_CONFIRM_REJECTED",
+                "message": "Confirmed data does not satisfy the lifecycle confirm contract.",
+                "violations": violations,
+                "lifecycle_semantics": contract.get("lifecycle_semantics"),
+                "extraction_profile_id": contract.get("extraction_profile_id"),
+                "contract_version": contract.get("contract_version") or contract_version(),
+            },
+        )
+
+    return normalize_confirm_payload_for_contract(data, contract)
 
 
 def observe_lifecycle_confirm_shadow_for_requirement(

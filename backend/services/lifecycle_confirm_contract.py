@@ -11,6 +11,7 @@ from services.lifecycle_aware_confirm_config import (
     contract_version,
     is_lifecycle_aware_confirm_off,
     is_lifecycle_aware_confirm_shadow,
+    is_lifecycle_aware_confirm_active,
 )
 from services.lifecycle_extraction_profile_resolver import (
     ResolvedExtractionProfile,
@@ -233,7 +234,7 @@ def observe_confirm_contract_shadow(
     requirement_id: Optional[str] = None,
     document_id: Optional[str] = None,
 ) -> None:
-    if not is_lifecycle_aware_confirm_shadow():
+    if not is_lifecycle_aware_confirm_shadow() and not is_lifecycle_aware_confirm_active():
         return
     logger.info(
         "lifecycle_confirm_contract_built",
@@ -262,7 +263,7 @@ def maybe_attach_lifecycle_confirm_contract(
     document_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Attach lifecycle_confirm_contract when LIFECYCLE_AWARE_CONFIRM=shadow.
+    Attach lifecycle_confirm_contract when LIFECYCLE_AWARE_CONFIRM is shadow or active.
     When off, payload is unchanged (no behaviour change).
     """
     if is_lifecycle_aware_confirm_off():

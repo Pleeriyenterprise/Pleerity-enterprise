@@ -10,6 +10,8 @@ import LifecycleAwareConfirm, {
 import {
   contractShowsExpiryField,
   initialFormValuesFromExtraction,
+  mapLifecycleViolationsToFieldErrors,
+  parseLifecycleConfirm422Detail,
 } from '../../utils/lifecycleAwareConfirm';
 
 const gasContract = {
@@ -115,5 +117,53 @@ describe('LifecycleAwareConfirm', () => {
       target: { value: '2028-01-01' },
     });
     expect(onChange).toHaveBeenCalledWith('expiry_date', '2028-01-01');
+  });
+
+  it('renders field-level errors from 422 violations', () => {
+    render(
+      <LifecycleAwareConfirm
+        contract={gasContract}
+        values={{ expiry_date: 'bad' }}
+        onChange={() => {}}
+        fieldErrors={{ expiry_date: 'invalid date format: expiry_date' }}
+      />,
+    );
+    expect(screen.getByTestId('lifecycle-confirm-expiry_date-error')).toHaveTextContent(
+      'invalid date format: expiry_date',
+    );
+  });
+});
+
+describe('lifecycle 422 helpers', () => {
+  it('maps violations to field errors', () => {
+    const mapped = mapLifecycleViolationsToFieldErrors([
+      { code: 'LIFECYCLE_FIELD_FORBIDDEN', field: 'expiry_date', message: 'forbidden field present' },
+    ]);
+    expect(mapped.expiry_date).toBe('forbidden field present');
+  });
+
+  it('parses lifecycle 422 detail from axios-like error', () => {
+    const parsed = parseLifecycleConfirm422Detail({
+      response: {
+        status: 422,
+        data: {
+          detail: {
+            code: 'LIFECYCLE_CONFIRM_REJECTED',
+            message: 'Rejected',
+            violations: [{ field: 'expiry_date', message: 'forbidden' }],
+          },
+        },
+      },
+    });
+    expect(parsed.code).toBe('LIFECYCLE_CONFIRM_REJECTED');
+    expect(parsed.fieldErrors.expiry_date).toBe('forbidden');
+  });
+
+  it('returns null for non-lifecycle errors (legacy fallback)', () => {
+    expect(
+      parseLifecycleConfirm422Detail({
+        response: { data: { detail: 'plain string error' } },
+      }),
+    ).toBeNull();
   });
 });

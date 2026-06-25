@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from services.lifecycle_aware_confirm_config import get_lifecycle_aware_confirm_mode
+from services.lifecycle_aware_confirm_config import get_effective_confirm_mode
 from services.lifecycle_confirm_apply import (
     build_active_plan_apply_extraction_update,
     build_legacy_apply_extraction_update,
@@ -130,9 +130,11 @@ class TestShadowPersistenceTelemetry:
 
 
 class TestActiveModeBlocked:
-    def test_active_resolves_to_off(self, monkeypatch):
+    def test_active_without_preview_resolves_to_off(self, monkeypatch):
+        monkeypatch.delenv("DEPLOYMENT_TIER", raising=False)
+        monkeypatch.delenv("LIFECYCLE_AWARE_CONFIRM_PREVIEW_OVERRIDE", raising=False)
         monkeypatch.setenv("LIFECYCLE_AWARE_CONFIRM", "active")
-        assert get_lifecycle_aware_confirm_mode() == "off"
+        assert get_effective_confirm_mode() == "off"
 
 
 class TestDepositPiDocumentContext:

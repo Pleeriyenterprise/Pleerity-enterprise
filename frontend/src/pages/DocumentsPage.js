@@ -83,6 +83,7 @@ import LifecycleAwareConfirm, {
 import {
   contractShowsExpiryField,
   initialFormValuesFromExtraction,
+  parseLifecycleConfirm422Detail,
 } from '../utils/lifecycleAwareConfirm';
 
 const EVIDENCE_DOCUMENT_TYPES = [
@@ -146,6 +147,8 @@ const DocumentsPage = () => {
   const [confirmDetailsSaving, setConfirmDetailsSaving] = useState(false);
   const [lifecycleFormValues, setLifecycleFormValues] = useState({});
   const [confirmLifecycleFormValues, setConfirmLifecycleFormValues] = useState({});
+  const [reviewLifecycleFieldErrors, setReviewLifecycleFieldErrors] = useState({});
+  const [confirmLifecycleFieldErrors, setConfirmLifecycleFieldErrors] = useState({});
   const [extractingDocumentId, setExtractingDocumentId] = useState(null);
   const [deletingDocumentId, setDeletingDocumentId] = useState(null);
   const extractingContextRef = useRef(null);
@@ -636,6 +639,7 @@ const DocumentsPage = () => {
     });
     if (isLifecycleConfirmContractPresent(lifecycle_confirm_contract)) {
       setLifecycleFormValues(initialFormValuesFromExtraction(lifecycle_confirm_contract, data));
+      setReviewLifecycleFieldErrors({});
     } else {
       setLifecycleFormValues({});
     }
@@ -646,6 +650,7 @@ const DocumentsPage = () => {
     if (!reviewModal) return;
     
     setApplying(true);
+    setReviewLifecycleFieldErrors({});
     try {
       const contract = reviewModal.lifecycle_confirm_contract;
       let confirmedData;
@@ -733,6 +738,17 @@ const DocumentsPage = () => {
         );
         return;
       }
+      if (st === 422) {
+        const lifecycleReject = parseLifecycleConfirm422Detail(error);
+        if (lifecycleReject) {
+          setReviewLifecycleFieldErrors(lifecycleReject.fieldErrors || {});
+          toast.error(
+            lifecycleReject.message ||
+              'Please correct the highlighted confirmation fields before applying.',
+          );
+          return;
+        }
+      }
       toast.error(parseApiError(error, 'Failed to apply extraction'));
     } finally {
       setApplying(false);
@@ -786,6 +802,7 @@ const DocumentsPage = () => {
       return;
     }
     setConfirmDetailsSaving(true);
+    setConfirmLifecycleFieldErrors({});
     try {
       if (confirmDetailsModal.document_id && !confirmDetailsModal.extractionFailed) {
         if (!isLifecycleConfirmContractPresent(contract) && !confirmExpiryDate.trim()) {
@@ -877,6 +894,18 @@ const DocumentsPage = () => {
       setConfirmLifecycleFormValues({});
       fetchData();
     } catch (error) {
+      const st = error.response?.status;
+      if (st === 422) {
+        const lifecycleReject = parseLifecycleConfirm422Detail(error);
+        if (lifecycleReject) {
+          setConfirmLifecycleFieldErrors(lifecycleReject.fieldErrors || {});
+          toast.error(
+            lifecycleReject.message ||
+              'Please correct the highlighted confirmation fields before saving.',
+          );
+          return;
+        }
+      }
       toast.error(parseApiError(error, 'Failed to save details'));
     } finally {
       setConfirmDetailsSaving(false);
@@ -1859,9 +1888,16 @@ const DocumentsPage = () => {
                 <LifecycleAwareConfirm
                   contract={reviewModal.lifecycle_confirm_contract}
                   values={lifecycleFormValues}
-                  onChange={(fieldId, value) =>
-                    setLifecycleFormValues((prev) => ({ ...prev, [fieldId]: value }))
-                  }
+                  fieldErrors={reviewLifecycleFieldErrors}
+                  onChange={(fieldId, value) => {
+                    setLifecycleFormValues((prev) => ({ ...prev, [fieldId]: value }));
+                    setReviewLifecycleFieldErrors((prev) => {
+                      if (!prev[fieldId]) return prev;
+                      const next = { ...prev };
+                      delete next[fieldId];
+                      return next;
+                    });
+                  }}
                   testIdPrefix="review-lifecycle-confirm"
                 >
                   {reviewModal.lifecycle_confirm_contract.lifecycle_semantics === 'EXPIRY_BASED' ? (
@@ -2094,9 +2130,16 @@ const DocumentsPage = () => {
                   <LifecycleAwareConfirm
                     contract={confirmDetailsModal.lifecycle_confirm_contract}
                     values={confirmLifecycleFormValues}
-                    onChange={(fieldId, value) =>
-                      setConfirmLifecycleFormValues((prev) => ({ ...prev, [fieldId]: value }))
-                    }
+                    fieldErrors={confirmLifecycleFieldErrors}
+                    onChange={(fieldId, value) => {
+                      setConfirmLifecycleFormValues((prev) => ({ ...prev, [fieldId]: value }));
+                      setConfirmLifecycleFieldErrors((prev) => {
+                        if (!prev[fieldId]) return prev;
+                        const next = { ...prev };
+                        delete next[fieldId];
+                        return next;
+                      });
+                    }}
                     testIdPrefix="confirm-lifecycle"
                   />
                 ) : (

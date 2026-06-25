@@ -204,6 +204,14 @@ async def lifespan(app: FastAPI):
             logger.critical("Startup aborted (deployment guard): %s", e)
             raise RuntimeError(str(e)) from e
 
+        try:
+            from services.lifecycle_aware_confirm_config import validate_lifecycle_confirm_boot
+
+            validate_lifecycle_confirm_boot()
+        except Exception as e:
+            logger.critical("Startup aborted (lifecycle confirm guard): %s", e)
+            raise
+
     # Defer DB/seeds/scheduler until after lifespan yield so Uvicorn can bind $PORT (Render port scan).
     # RENDER is set on native Render; RENDER_SERVICE_ID is also set and catches blueprints/dashboard drift.
     _render_defer = os.environ.get("RENDER", "").strip().lower() in ("true", "1", "yes") or bool(
