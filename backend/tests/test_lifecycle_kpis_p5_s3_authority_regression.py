@@ -55,6 +55,17 @@ _ALLOWED_LIFECYCLE_KPI_BREAKDOWN_MODULES = frozenset(
     {
         "services/lifecycle_kpi_gates.py",
         "services/compliance_score.py",
+        "services/reporting_service.py",
+        "services/professional_reports.py",
+    }
+)
+
+_ALLOWED_LIFECYCLE_KPI_BREAKDOWN_ATTACH_MODULES = frozenset(
+    {
+        "services/lifecycle_kpi_gates.py",
+        "services/compliance_score.py",
+        "services/reporting_service.py",
+        "services/professional_reports.py",
     }
 )
 
@@ -233,6 +244,17 @@ class TestSingleKpiAuthorityEntryPoint:
             if "lifecycle_kpi_breakdown_for_portal_rows" not in text:
                 continue
             if rel not in _ALLOWED_LIFECYCLE_KPI_BREAKDOWN_MODULES:
+                violations.append(rel)
+        assert violations == []
+
+    def test_lifecycle_kpi_breakdown_attach_only_on_allowlisted_modules(self):
+        violations: List[str] = []
+        for path in _iter_backend_python_modules():
+            rel = _relative_backend_path(path)
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if "attach_additive_lifecycle_kpi_fields" not in text:
+                continue
+            if rel not in _ALLOWED_LIFECYCLE_KPI_BREAKDOWN_ATTACH_MODULES:
                 violations.append(rel)
         assert violations == []
 

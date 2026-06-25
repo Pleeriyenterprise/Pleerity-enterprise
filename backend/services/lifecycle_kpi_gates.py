@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from services.lifecycle_aware_kpis_config import (
     get_effective_kpi_mode,
@@ -197,6 +197,60 @@ def lifecycle_kpi_breakdown_for_portal_rows(
     if not lifecycle_kpi_enabled():
         return None
     return lifecycle_kpi_breakdown_api_payload(compute_lifecycle_kpi_stats(portal_projected_rows))
+
+
+def attach_additive_lifecycle_kpi_fields(
+    target: Dict[str, Any],
+    portal_projected_rows: List[Dict[str, Any]],
+) -> None:
+    """
+    Attach additive ``lifecycle_kpi_breakdown`` + ``lifecycle_kpi_effective_mode`` when flag ≠ off.
+
+    Used by compliance-score and reporting consumers (P5-S5/P5-S6). Does not mutate 8-key stats.
+    """
+    breakdown = lifecycle_kpi_breakdown_for_portal_rows(portal_projected_rows)
+    if breakdown is not None:
+        target["lifecycle_kpi_breakdown"] = breakdown
+        target["lifecycle_kpi_effective_mode"] = get_effective_kpi_mode()
+
+
+LIFECYCLE_KPI_BREAKDOWN_REPORT_LABELS: Dict[str, str] = {
+    "certificate_expiring": "Certificate expiring",
+    "review_due": "Review due",
+    "event_action_required": "Event action required",
+    "tenancy_term_ending": "Tenancy term ending",
+    "occupancy_review_due": "Occupancy review due",
+    "operational_action_required": "Operational action required",
+}
+
+
+def lifecycle_kpi_breakdown_report_entries(
+    breakdown: Optional[Dict[str, int]],
+) -> List[Tuple[str, int]]:
+    """Non-zero breakdown rows as (presentation label, count) in stable key order."""
+    if not breakdown or not isinstance(breakdown, dict):
+        return []
+    return [
+        (LIFECYCLE_KPI_BREAKDOWN_REPORT_LABELS.get(key, key), int(breakdown.get(key) or 0))
+        for key in LIFECYCLE_KPI_BREAKDOWN_KEYS
+        if int(breakdown.get(key) or 0) > 0
+    ]
+
+
+def lifecycle_kpi_report_framing_note(effective_mode: Optional[str]) -> str:
+    """Report wording for shadow vs active lifecycle exposure (presentation only)."""
+    mode = str(effective_mode or "").strip().lower()
+    if mode == "shadow":
+        return (
+            "Legacy KPI totals in this report remain authoritative. "
+            "Lifecycle categorisation below is supplemental (observe-only)."
+        )
+    if mode == "active":
+        return (
+            "Lifecycle KPI totals are authoritative for this report. "
+            "Lifecycle categorisation is shown below."
+        )
+    return ""
 
 
 def observe_kpi_shadow(

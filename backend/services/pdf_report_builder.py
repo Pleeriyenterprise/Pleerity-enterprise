@@ -699,6 +699,28 @@ def build_score_explanation_report(
     <b>Properties monitored:</b> {props_count} &nbsp;|&nbsp; <b>Data completeness:</b> {completeness_str}
     """
     elements.append(Paragraph(snapshot_text, styles["body"]))
+    from services.lifecycle_kpi_gates import (
+        lifecycle_kpi_breakdown_report_entries,
+        lifecycle_kpi_report_framing_note,
+    )
+
+    breakdown = stats.get("lifecycle_kpi_breakdown")
+    lifecycle_entries = lifecycle_kpi_breakdown_report_entries(breakdown)
+    if lifecycle_entries:
+        mode = stats.get("lifecycle_kpi_effective_mode")
+        framing = lifecycle_kpi_report_framing_note(mode)
+        if framing:
+            elements.append(Paragraph(_xml_escape(framing), styles["small"]))
+        lb_lines = " &nbsp;|&nbsp; ".join(
+            f"<b>{_xml_escape(label)}:</b> {count}" for label, count in lifecycle_entries
+        )
+        elements.append(
+            Paragraph(
+                f"<b>Lifecycle attention breakdown:</b> {lb_lines}",
+                styles["body"],
+            )
+        )
+        elements.append(Spacer(1, 8))
     elements.append(Spacer(1, 16))
     elements.append(Paragraph("Jurisdiction scope", styles["heading"]))
     elements.append(Paragraph(
