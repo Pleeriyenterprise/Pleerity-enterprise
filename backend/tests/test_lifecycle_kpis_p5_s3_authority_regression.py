@@ -51,6 +51,13 @@ _ALLOWED_LIFECYCLE_STATS_PAYLOAD_MODULES = frozenset(
     }
 )
 
+_ALLOWED_LIFECYCLE_KPI_BREAKDOWN_MODULES = frozenset(
+    {
+        "services/lifecycle_kpi_gates.py",
+        "services/compliance_score.py",
+    }
+)
+
 
 def _expiring_soon_row(requirement_code: str) -> dict:
     return {
@@ -215,6 +222,17 @@ class TestSingleKpiAuthorityEntryPoint:
             if "lifecycle_stats_authoritative_payload" not in text:
                 continue
             if rel not in _ALLOWED_LIFECYCLE_STATS_PAYLOAD_MODULES:
+                violations.append(rel)
+        assert violations == []
+
+    def test_lifecycle_kpi_breakdown_not_used_outside_exposure_points(self):
+        violations: List[str] = []
+        for path in _iter_backend_python_modules():
+            rel = _relative_backend_path(path)
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if "lifecycle_kpi_breakdown_for_portal_rows" not in text:
+                continue
+            if rel not in _ALLOWED_LIFECYCLE_KPI_BREAKDOWN_MODULES:
                 violations.append(rel)
         assert violations == []
 
