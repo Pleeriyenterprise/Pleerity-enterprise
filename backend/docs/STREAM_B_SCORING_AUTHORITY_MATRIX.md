@@ -151,6 +151,29 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 ---
 
+## 5c. Reminder authority (Phase 4 — planned; **NOT IN SCOPE FOR S4.1**)
+
+**Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md` constraints #4, #8, #161; master tracker `REQUIREMENT_LIFECYCLE_MASTER_IMPLEMENTATION_TRACKER.md`.
+
+**Feature flag (S4.1 infrastructure only):** `LIFECYCLE_AWARE_REMINDERS` (`off` | `shadow` | `active`) — config in `services/lifecycle_aware_reminders_config.py`. **No reminder consumers wired in S4.1.** Legacy reminder behaviour remains 100% authoritative.
+
+| Entry / surface | Actor | Current authority | Lifecycle gate (planned) | Flag mode behaviour (future) |
+|-----------------|-------|-------------------|--------------------------|------------------------------|
+| `services/reminder_truth_service.py` | system | **legacy authoritative** | Resolver eligibility + `attention_kind` (S4.2+) | **off/shadow/active (S4.1):** unchanged — flag dormant |
+| `services/jobs.py` — daily reminders | system | legacy send paths | Gate before `send_daily_reminders` (S4.2+) | Same flag |
+| Scheduler / compliance jobs | system | legacy schedule | No lifecycle gate in S4.1 | Same flag |
+| Email / SMS templates (`COMPLIANCE_EXPIRY_REMINDER`, etc.) | system | certificate-expiry family | Split per `attention_kind` (S4.3+) | **Not in S4.1** |
+| `get_effective_expiry_date()` consumers | system | expiry-date inference | `effective_attention_date` via resolver (S4.2+) | **Not in S4.1** |
+| Notification orchestrator | system | governed send path | Template routing per `attention_kind` (S4.3+) | **Not in S4.1** |
+
+**Write/send authority unchanged in S4.1:** All reminder eligibility, scheduling, template selection, and customer wording remain on legacy paths. The flag module is registered at boot for governance only.
+
+**Safety (S4.1):** Tier guards mirror confirm/extraction/scoring — staging raw `active` → effective `shadow`; production raw `active` → effective `off`; `LIFECYCLE_AWARE_REMINDER_PREVIEW_OVERRIDE` never enables active on production; CI rejects `LIFECYCLE_AWARE_REMINDERS=active` in production blueprints; boot guard `validate_lifecycle_reminder_boot()`.
+
+**Explicitly out of scope for S4.1:** Reminder logic, templates, scheduling behaviour, attention-date calculations, effective reminder dates, customer-visible wording, dashboards, reports, scoring.
+
+---
+
 ## 9. Recommended migration order
 
 1. ~~**Stream B — Legacy path labelling**~~ — Done (docstrings in `compliance_score.py`, `compliance_scoring.py`, module notes in `compliance_scoring_service.py` / `admin.py`).  

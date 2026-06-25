@@ -146,6 +146,13 @@ def check_production_blueprints_lifecycle_active() -> list[str]:
             ),
             "LIFECYCLE_AWARE_SCORING must not be active in production blueprint",
         ),
+        (
+            re.compile(
+                r"lifecycle_aware_reminders[\s\S]{0,120}?\bactive\b",
+                re.IGNORECASE,
+            ),
+            "LIFECYCLE_AWARE_REMINDERS must not be active in production blueprint",
+        ),
     ]
     for path in candidates:
         if not path.is_file():
