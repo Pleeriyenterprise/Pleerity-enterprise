@@ -124,10 +124,22 @@ def check_production_blueprints_lifecycle_active() -> list[str]:
         ROOT / "render.production.yaml",
         ROOT / "render.yaml",
     ]
-    pattern = re.compile(
-        r"lifecycle_aware_confirm[\s\S]{0,120}?\bactive\b",
-        re.IGNORECASE,
-    )
+    patterns = [
+        (
+            re.compile(
+                r"lifecycle_aware_confirm[\s\S]{0,120}?\bactive\b",
+                re.IGNORECASE,
+            ),
+            "LIFECYCLE_AWARE_CONFIRM must not be active in production blueprint",
+        ),
+        (
+            re.compile(
+                r"lifecycle_aware_extraction[\s\S]{0,120}?\bactive\b",
+                re.IGNORECASE,
+            ),
+            "LIFECYCLE_AWARE_EXTRACTION must not be active in production blueprint",
+        ),
+    ]
     for path in candidates:
         if not path.is_file():
             continue
@@ -137,8 +149,9 @@ def check_production_blueprints_lifecycle_active() -> list[str]:
         ).lower():
             continue
         text = path.read_text(encoding="utf-8", errors="ignore")
-        if pattern.search(text):
-            errors.append(f"{rel}: LIFECYCLE_AWARE_CONFIRM must not be active in production blueprint")
+        for pattern, message in patterns:
+            if pattern.search(text):
+                errors.append(f"{rel}: {message}")
     return errors
 
 

@@ -268,6 +268,29 @@ class DocumentAnalysisService:
                 "requires_review": True,
             }
 
+        from services.lifecycle_aware_extraction_config import get_effective_extraction_mode
+        from services.lifecycle_profile_extraction import maybe_run_profile_extraction_observe
+
+        if get_effective_extraction_mode() in ("shadow", "active"):
+            doc_row = await db.documents.find_one(
+                {"document_id": document_id},
+                {"_id": 0, "requirement_id": 1},
+            )
+            requirement = None
+            if doc_row and doc_row.get("requirement_id"):
+                requirement = await db.requirements.find_one(
+                    {"requirement_id": doc_row["requirement_id"]},
+                    {"_id": 0},
+                )
+            await maybe_run_profile_extraction_observe(
+                text,
+                os.path.basename(file_path),
+                legacy_extracted=result["extracted"],
+                requirement=requirement,
+                document={"document_type": doc_type_hint} if doc_type_hint else None,
+                document_id=document_id,
+            )
+
         mapped = self._map_ai_provider_to_analysis(result["extracted"])
         extracted_data = self._normalize_extraction_data(mapped)
         extraction_quality = self._assess_extraction_quality(extracted_data)
