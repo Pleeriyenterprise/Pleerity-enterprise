@@ -4,7 +4,7 @@
 **Phase:** Scoring authority matrix (audit only; no runtime or API changes)  
 **Named authority (writes):** `compliance_scoring_service.recalculate_and_persist`  
 **Companion reads:** `compliance_scoring_service.calculate_property_compliance` (v2 planner, no persist unless called inside `recalculate_and_persist` or read-repair), `compliance_score.calculate_compliance_score` (portfolio headline + live `stats` from persisted rows + runtime projection)  
-**Last updated:** 2026-06-02 (Phase 5 P5-S1 KPI authority inventory §5d; infrastructure only)
+**Last updated:** 2026-06-02 (Phase 5 P5-S2 shadow KPI telemetry §5d)
 
 ---
 
@@ -180,26 +180,28 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 ---
 
-## 5d. KPI authority (Phase 5 — **P5-S1 infrastructure only**; no KPI logic)
+## 5d. KPI authority (Phase 5 — P5-S1 complete; **P5-S2 shadow observe-only**)
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`; master tracker `REQUIREMENT_LIFECYCLE_MASTER_IMPLEMENTATION_TRACKER.md`.
 
-**Feature flag (P5-S1 infrastructure only):** `LIFECYCLE_AWARE_KPIS` (`off` | `shadow` | `active`) — config in `services/lifecycle_aware_kpis_config.py`. **No KPI consumers wired in P5-S1.** Legacy KPI and dashboard behaviour remains 100% authoritative.
+**Feature flag:** `LIFECYCLE_AWARE_KPIS` (`off` | `shadow` | `active`) — config in `services/lifecycle_aware_kpis_config.py`.
 
-| Entry / surface | Actor | Current authority | Lifecycle gate (planned) | Flag mode behaviour (future) |
-|-----------------|-------|-------------------|--------------------------|------------------------------|
-| Dashboard KPI widgets | client/admin | legacy headline KPIs | Split per `attention_kind` (P5-S3+) | **off/shadow/active (P5-S1):** unchanged — flag dormant |
-| Dashboard KPI APIs | client/admin | legacy aggregation paths | Lifecycle-gated counts (P5-S2+) | Same flag |
-| Portfolio / property headline readers | system | persisted scores + legacy KPI math | Lifecycle overlay (P5-S2+) | Same flag |
-| Command centre / digest KPI surfaces | system | legacy reporting KPIs | Section language (Phase 6) | **Not in P5-S1** |
+| Entry / surface | Actor | Current authority | Lifecycle gate | Flag mode behaviour |
+|-----------------|-------|-------------------|----------------|---------------------|
+| `compute_client_portal_requirement_stats` | system | **legacy authoritative** | Dual-run shadow via `lifecycle_kpi_gates.py` (P5-S2) | **off:** unchanged; **shadow:** legacy authoritative + `lifecycle_kpi_shadow_*` logs; **active (P5-S3+):** lifecycle-gated counts |
+| Dashboard KPI widgets | client/admin | legacy headline KPIs | Split per `attention_kind` (P5-S3+) | **Not in P5-S2** |
+| Dashboard KPI APIs | client/admin | legacy aggregation paths | Lifecycle-gated counts (P5-S3+) | Same flag |
+| Command centre / digest KPI surfaces | system | legacy reporting KPIs | Section language (Phase 6) | **Not in P5-S2** |
+
+**Implemented (P5-S2):** `lifecycle_kpi_gates.py` — shadow `lifecycle_kpi_shadow_*` logs; planned `attention_kind` bucket aggregation; wired in `compute_client_portal_requirement_stats`.
 
 **Safety (P5-S1):** Tier guards mirror confirm/extraction/scoring/reminders — staging raw `active` → effective `shadow`; production raw `active` → effective `off`; CI rejects `LIFECYCLE_AWARE_KPIS=active` in production blueprints; boot guard `validate_lifecycle_kpi_boot()`.
 
-**Staging (shadow, post-P5-S1 deploy):** Legacy KPI calculations and dashboard widgets remain authoritative; no lifecycle KPI path in P5-S1.
+**Staging (shadow):** Legacy KPI stats from `compute_client_portal_requirement_stats` remain authoritative; lifecycle path observe-only.
 
-**Active (preview-tier only, future P5-S3+):** Lifecycle-gated KPI presentation; not enabled on staging or production in P5-S1.
+**Active (preview-tier only, P5-S3+):** Lifecycle-gated KPI presentation; not enabled on staging or production.
 
-**Not in P5-S1:** KPI calculations, dashboard widget changes, dashboard API changes, reports, reminders, scoring, confirm, extraction, production config.
+**Not in P5-S2:** Dashboard widget/API changes, active KPI gates, reports, production config.
 
 ---
 

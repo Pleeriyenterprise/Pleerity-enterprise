@@ -2,23 +2,24 @@
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`, `REQUIREMENT_LIFECYCLE_PHASE2_IMPLEMENTATION_DESIGN_01.md`  
 **Maintained:** Programme / lifecycle workstream  
-**Last updated:** 2026-06-02 (Phase 5 P5-S1 KPI infrastructure — in progress)  
+**Last updated:** 2026-06-02 (Phase 5 P5-S1 merged; P5-S2 in progress)  
 **Purpose:** Single source of truth for phases, slices, PRs, commits, gates, and remaining work.
 
 ---
 
-## Phase 5 status: **IN PROGRESS** (P5-S1 in progress — 2026-06-02)
+## Phase 5 status: **IN PROGRESS** (P5-S1 complete; P5-S2 in progress — 2026-06-02)
 
-Phase 5 (lifecycle-aware dashboard KPIs) has started. **P5-S1** (flag infrastructure) is in flight on branch `feature/lifecycle-phase5-p5-s1-kpi-infra`. No KPI calculations, dashboard widgets, or APIs are modified in P5-S1.
+Phase 5 (lifecycle-aware dashboard KPIs) is underway. **P5-S1** merged to `develop` and deployed to staging in **shadow** governance. **P5-S2** (shadow KPI telemetry) in flight on `feature/lifecycle-phase5-p5-s2-kpi-shadow`.
 
 | Phase 5 slice | Status | PR | Merge SHA |
 |---------------|--------|-----|-----------|
-| **P5-S1** — KPI flag infrastructure | **In progress** | — | — |
-| **P5-S2+** — shadow telemetry, active gates, widget split | **Not started** | — | — |
+| **P5-S1** — KPI flag infrastructure | **Complete** | [#14](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/14) | `10ef1733` |
+| **P5-S2** — shadow KPI telemetry (`lifecycle_kpi_shadow_*`) | **In progress** | — | — |
+| **P5-S3+** — active gates, dashboard widget split | **Not started** | — | — |
 
-**Branch:** `feature/lifecycle-phase5-p5-s1-kpi-infra`  
-**`develop` tip:** `8bd6fc2a` (Phase 4 governance closeout)  
-**Staging deploy:** `c58616e2` @ `pleerity-enterprise.onrender.com` — P5-S1 not yet deployed  
+**Branch:** `feature/lifecycle-phase5-p5-s2-kpi-shadow`  
+**`develop` tip:** `10ef1733`  
+**Staging deploy:** `10ef1733` @ `pleerity-enterprise.onrender.com` — `environment=staging`, `/api/health` **healthy**, `/api/version` confirms SHA  
 **`main` / production:** `60c1dbbe` — **untouched**
 
 ---
@@ -122,7 +123,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **2** | Confirm + extraction | Profiles, confirm contract | `LIFECYCLE_AWARE_CONFIRM`, `LIFECYCLE_AWARE_EXTRACTION` | Complete |
 | **3** | Scoring gates | Penalty eligibility via `field_contract` | `LIFECYCLE_AWARE_SCORING` | **Complete** |
 | **4** | Reminders + gaps | `attention_kind` templates | `LIFECYCLE_AWARE_REMINDERS` | **Complete** |
-| **5** | Dashboard KPIs | Split widgets | `LIFECYCLE_AWARE_KPIS` | **IN PROGRESS** (P5-S1) |
+| **5** | Dashboard KPIs | Split widgets | `LIFECYCLE_AWARE_KPIS` | **IN PROGRESS** (P5-S2) |
 | **6** | Reports + digest | Section language | — | Not started |
 | **7** | Legacy deprecation | Remove independent expiry inference | — | Not started |
 
@@ -142,8 +143,9 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **Phase 4 S4.2** | 4 | Shadow reminder telemetry (`lifecycle_reminder_shadow_*`) | **Merged** PR #12 |
 | **Phase 4 S4.3** | 4 | Active eligibility gates + template routing authority | **Merged** PR #12 |
 | **Phase 4 S4.4** | 4 | Dedicated `attention_kind` email/SMS templates | **Merged** PR #13 |
-| **Phase 5 P5-S1** | 5 | `LIFECYCLE_AWARE_KPIS` flag + boot + CI | **In progress** |
-| Phase 5 KPIs (P5-S2+) | 5 | Shadow telemetry, active gates, dashboard widget split | Not started |
+| **Phase 5 P5-S1** | 5 | `LIFECYCLE_AWARE_KPIS` flag + boot + CI | **Merged** PR #14 |
+| **Phase 5 P5-S2** | 5 | Shadow KPI telemetry (`lifecycle_kpi_shadow_*`) | **In progress** |
+| Phase 5 P5-S3+ | 5 | Active gates, dashboard widget split | Not started |
 | Phase 6 reports | 6 | Report/digest language | Not started |
 | Phase 7 legacy deprecation | 7 | Remove independent expiry inference | Not started |
 
@@ -160,17 +162,18 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | Phase 4 S4.1 | Complete | #11 | `4a15747a` | Yes | Deployed | Untouched |
 | Phase 4 S4.2–S4.3 | Complete | #12 | `906e67b6` | Yes | Deployed @ `906e67b6` | Untouched |
 | Phase 4 S4.4 | Complete | #13 | `c58616e2` | Yes | Deployed @ `c58616e2` | Untouched |
-| Phase 5 P5-S1 | In progress | — | — | No | — | Untouched |
-| Phase 5 P5-S2+ / 6–7 | Not started | — | — | No | — | Untouched |
+| Phase 5 P5-S1 | Complete | #14 | `10ef1733` | Yes | Deployed @ `10ef1733` | Untouched |
+| Phase 5 P5-S2 | In progress | — | — | No | — | Untouched |
+| Phase 5 P5-S3+ / 6–7 | Not started | — | — | No | — | Untouched |
 
 **Branch heads (2026-06-02):**
 
 | Branch | HEAD |
 |--------|------|
-| `develop` | `c58616e2` (feature) / `ac0357f9` (governance closeout, push pending) |
+| `develop` | `10ef1733` |
 | `main` | `60c1dbbe` |
 
-**Staging configuration:** `DEPLOYMENT_TIER=staging`, `LIFECYCLE_AWARE_CONFIRM=shadow`, `LIFECYCLE_AWARE_EXTRACTION=shadow`, `LIFECYCLE_AWARE_SCORING=shadow`, `LIFECYCLE_AWARE_REMINDERS=shadow` — all shadow-only @ `c58616e2`. P5-S1 adds `LIFECYCLE_AWARE_KPIS=shadow` on branch (not yet on staging deploy).  
+**Staging configuration:** `DEPLOYMENT_TIER=staging`, `LIFECYCLE_AWARE_CONFIRM=shadow`, `LIFECYCLE_AWARE_EXTRACTION=shadow`, `LIFECYCLE_AWARE_SCORING=shadow`, `LIFECYCLE_AWARE_REMINDERS=shadow`, `LIFECYCLE_AWARE_KPIS=shadow` — all shadow-only @ `10ef1733`.  
 **Production configuration:** `render.production.yaml` — **no lifecycle flags** (including no `LIFECYCLE_AWARE_KPIS`).
 
 ---
@@ -188,16 +191,28 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 ---
 
-## 5a. Phase 5 P5-S1 scope (in progress — infrastructure only)
+## 5a. Phase 5 P5-S1 scope delivered (merged PR #14)
 
 - `lifecycle_aware_kpis_config.py` — flag, tier guards, boot validation (`validate_lifecycle_kpi_boot`)
 - `server.py` — boot guard registration (after reminders)
 - `deployment_governance_ci_gate.py` — reject `LIFECYCLE_AWARE_KPIS=active` in production blueprints
 - `render.staging.yaml` — `LIFECYCLE_AWARE_KPIS=shadow`
 - `test_lifecycle_kpis_p5_s1.py` — flag/tier/CI tests
-- STREAM_B §5d KPI authority inventory (P5-S1 infrastructure only)
+- STREAM_B §5d KPI authority inventory
 
 **Explicitly not in P5-S1:** KPI calculations, dashboard widgets, dashboard APIs, reporting, reminder/scoring/confirm/extraction semantics, production config changes.
+
+---
+
+## 5b. Phase 5 P5-S2 scope (in progress — shadow telemetry only)
+
+- `lifecycle_kpi_gates.py` — resolver context, shadow `lifecycle_kpi_shadow_*` logs, planned `attention_kind` bucket aggregation
+- `requirement_client_runtime_surface.py` — dual-run shadow in `compute_client_portal_requirement_stats`; legacy stats authoritative
+- `test_lifecycle_kpis_p5_s2.py` — shadow divergence, legacy authority tests
+
+**Staging behaviour:** `LIFECYCLE_AWARE_KPIS=shadow` — legacy `compute_client_portal_requirement_stats` authoritative; lifecycle path observe-only.
+
+**Not in P5-S2:** dashboard widget/API changes, active KPI gates (P5-S3), reports, production config.
 
 ---
 
@@ -254,7 +269,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | `LIFECYCLE_AWARE_EXTRACTION` | `off` | `shadow` | `off` if raw `active` |
 | `LIFECYCLE_AWARE_SCORING` | `off` | `shadow` | `off` if raw `active` |
 | `LIFECYCLE_AWARE_REMINDERS` | `off` | `shadow` | `off` if raw `active` |
-| `LIFECYCLE_AWARE_KPIS` | `off` | `shadow` (P5-S1 branch) | `off` if raw `active` |
+| `LIFECYCLE_AWARE_KPIS` | `off` | `shadow` | `off` if raw `active` |
 | `LIFECYCLE_AWARE_REMINDER_PREVIEW_OVERRIDE` | unset | unset (staging) | **never** enables active on production |
 | `LIFECYCLE_AWARE_KPIS_PREVIEW_OVERRIDE` | unset | unset (staging) | **never** enables active on production |
 
@@ -286,13 +301,14 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 | Suite | Count |
 |-------|-------|
-| Full `test_lifecycle_*.py` on `develop` | **249** |
+| Full `test_lifecycle_*.py` on `develop` + P5-S2 branch | **265** |
+| `test_lifecycle_kpis_p5_s1.py` | **11** |
+| `test_lifecycle_kpis_p5_s2.py` | **5** |
 | `test_lifecycle_scoring_s31.py` | **9** |
 | `test_lifecycle_scoring_s32_s33.py` | **11** |
 | `test_lifecycle_reminders_s4.py` | **11** |
 | `test_lifecycle_reminders_s42_s43.py` | **10** |
 | `test_lifecycle_reminders_s44.py` | **11** |
-| `test_lifecycle_kpis_p5_s1.py` | **11** |
 | Phase 4 reminder suites (S4.1–S4.4) | **32** |
 | `test_lifecycle_extraction_s5_extract.py` | **46** |
 | Frontend `LifecycleAwareConfirm` | **12** |
@@ -303,7 +319,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 ```
 Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
-    └── Phase 5 dashboard KPIs (LIFECYCLE_AWARE_KPIS)  ← P5-S1 IN PROGRESS
+    └── Phase 5 dashboard KPIs (LIFECYCLE_AWARE_KPIS)  ← P5-S1 COMPLETE; P5-S2 IN PROGRESS
             └── Phase 6 reports
                     └── Phase 7 legacy deprecation
 ```
@@ -316,7 +332,8 @@ Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
 |------|---------|
 | **Phase 3 feature-complete on `develop`** | **PASS** — PRs #9–#10 merged |
 | **Phase 4 feature-complete on `develop`** | **PASS** — PRs #11–#13 merged |
-| **Staging shadow (confirm + extraction + scoring + reminders)** | **ACTIVE** @ `c58616e2` |
+| **Staging shadow (confirm + extraction + scoring + reminders + KPIs)** | **ACTIVE** @ `10ef1733` |
+| **KPI shadow runtime evidence** | **PENDING** — operational (non-blocking) |
 | **Reminder shadow runtime evidence** | **PENDING** — operational (non-blocking) |
 | **Preview active reminder soak** | **NOT STARTED** |
 | **Scoring shadow runtime evidence** | **PENDING** — operational |
@@ -338,6 +355,6 @@ Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
 
 ## 10. Next recommended action
 
-**Next:** Complete P5-S1 PR merge to `develop`; then P5-S2 shadow KPI telemetry. Run reminder shadow runtime evidence campaign on staging in parallel (operational, non-blocking).
+**Next:** Complete P5-S2 PR merge to `develop`; then P5-S3 active KPI gates. Run KPI shadow runtime evidence campaign on staging in parallel (operational, non-blocking).
 
-**Tracker verdict:** `P5_S1_IN_PROGRESS`
+**Tracker verdict:** `P5_S2_IN_PROGRESS`
