@@ -2,12 +2,26 @@
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`, `REQUIREMENT_LIFECYCLE_PHASE2_IMPLEMENTATION_DESIGN_01.md`  
 **Maintained:** Programme / lifecycle workstream  
-**Last updated:** 2026-06-25  
+**Last updated:** 2026-06-02  
 **Purpose:** Single source of truth for phases, slices, PRs, commits, gates, and remaining work.
 
 ---
 
-## Phase 2 status: **FEATURE-COMPLETE** (2026-06-25)
+## Phase 3 status: **IN PROGRESS** — S3.1 infrastructure (2026-06-02)
+
+Phase 3 (lifecycle-aware scoring) has begun. **S3.1** delivers flag infrastructure only — no scoring penalty wiring.
+
+| Phase 3 slice | Status | Branch | PR | Merge SHA |
+|---------------|--------|--------|-----|-----------|
+| **S3.1** — scoring flag infrastructure | **In progress** | `feature/lifecycle-phase3-s31-scoring-infra` | — | — |
+| **S3.2** — shadow scoring telemetry | Not started | — | — | — |
+| **S3.3** — active penalty gates | Not started | — | — | — |
+
+**`develop` tip (pre-S3.1 merge):** `9730a0c6` (governance tracker doc) / Phase 2 code `d017a084`  
+**Staging deploy:** `d017a084` @ `pleerity-enterprise.onrender.com` — pending S3.1 deploy  
+**`main` / production:** `60c1dbbe` — **untouched**
+
+---
 
 Phase 2 (confirm + extraction) is **closed**. All planned Phase 2 implementation slices are merged to `develop` and deployed to staging in **shadow** governance. No further Phase 2 feature slices should be added except critical bug fixes. Remaining lifecycle programme work belongs to Phases 3–7.
 
@@ -74,7 +88,7 @@ Recorded for Phase 3+ planning. **None block Phase 2 completion.**
 | **Design S7** (admin confirm parity) | Phase 2+ | Admin extraction queue semantic confirm UX | **Partial** — deferred |
 | **Design S8** (staging gate V2-U1–U10) | Phase 2+ gate | 48h shadow + preview active + regression | **Deferred** |
 | **Design S9** (pipeline convergence) | Phase 2 optional | Client upload → `enqueue_extraction` | **Not started** |
-| **Phase 3 scoring** | Phase 3 | `LIFECYCLE_AWARE_SCORING` | **Not started** |
+| **Phase 3 scoring** | Phase 3 | `LIFECYCLE_AWARE_SCORING` | **S3.1 in progress** |
 | **Phase 4 reminders** | Phase 4 | `LIFECYCLE_AWARE_REMINDERS` | **Not started** |
 | **Phase 5 KPIs** | Phase 5 | Dashboard widget split | **Not started** |
 | **Phase 6 reports** | Phase 6 | Report/digest language | **Not started** |
@@ -91,16 +105,18 @@ Recorded for Phase 3+ planning. **None block Phase 2 completion.**
 | Phase 2 S5.1–S5.3 | **Complete** | `feature/lifecycle-phase2-s5-enforcement` | #6 | `757f328f` | Yes | On develop lineage | Untouched |
 | Phase 2 S5.4 | **Complete** | `feature/lifecycle-phase2-s54-enforcement` | #7 | `b6d79641` | Yes | Deployed | Untouched |
 | S5-extract | **Complete** | `feature/lifecycle-phase2-s5-extract` | #8 | `d017a084` | Yes | Deployed @ `d017a084` | Untouched |
-| Phase 3–7 | **Not started** | — | — | — | No | — | Untouched |
+| Phase 3 S3.1 | **In progress** | `feature/lifecycle-phase3-s31-scoring-infra` | — | — | No | — | Untouched |
+| Phase 3 S3.2–S3.3 | **Not started** | — | — | — | No | — | Untouched |
+| Phase 4–7 | **Not started** | — | — | — | No | — | Untouched |
 
 **Branch heads (2026-06-25):**
 
 | Branch | HEAD |
 |--------|------|
-| `develop` | `d017a084` |
+| `develop` | `9730a0c6` (tracker doc) / Phase 2 code `d017a084` |
 | `main` | `60c1dbbe` |
 
-**Staging configuration:** `render.staging.yaml` → `DEPLOYMENT_TIER=staging`, `LIFECYCLE_AWARE_CONFIRM=shadow`, `LIFECYCLE_AWARE_EXTRACTION=shadow`.  
+**Staging configuration:** `render.staging.yaml` → `DEPLOYMENT_TIER=staging`, `LIFECYCLE_AWARE_CONFIRM=shadow`, `LIFECYCLE_AWARE_EXTRACTION=shadow`, `LIFECYCLE_AWARE_SCORING=shadow` (S3.1).  
 **Production configuration:** `render.production.yaml` — no lifecycle `active` flags.
 
 ---
@@ -129,19 +145,20 @@ Phase 2 now contains **only** the following (all merged):
 
 ---
 
-## 5. Feature flags and safety (Phase 2)
+## 5. Feature flags and safety (Phase 2 + Phase 3 S3.1)
 
 | Flag | Default | Staging | Production effective |
 |------|---------|---------|----------------------|
 | `LIFECYCLE_SEMANTICS_MODE` | observe (Phase 1) | Per Phase 1 deploy | Per Phase 1 deploy |
 | `LIFECYCLE_AWARE_CONFIRM` | `off` | `shadow` | `off` if raw `active` |
 | `LIFECYCLE_AWARE_EXTRACTION` | `off` | `shadow` | `off` if raw `active` |
+| `LIFECYCLE_AWARE_SCORING` | `off` | `shadow` (S3.1) | `off` if raw `active` |
 
 **Safety mechanisms:**
 
 - Deployment tier guards: staging raw `active` → effective `shadow`; production raw `active` → effective `off`
-- Boot validation: `validate_lifecycle_confirm_boot()`, `validate_lifecycle_extraction_boot()`
-- CI governance: rejects `LIFECYCLE_AWARE_CONFIRM=active` and `LIFECYCLE_AWARE_EXTRACTION=active` in production blueprints
+- Boot validation: `validate_lifecycle_confirm_boot()`, `validate_lifecycle_extraction_boot()`, `validate_lifecycle_scoring_boot()`
+- CI governance: rejects `LIFECYCLE_AWARE_CONFIRM=active`, `LIFECYCLE_AWARE_EXTRACTION=active`, and `LIFECYCLE_AWARE_SCORING=active` in production blueprints
 - Shadow modes: legacy confirm/extraction responses authoritative; profile paths observe-only
 - Rollback: set flags to `off` for instant cert-centric behaviour
 
@@ -151,7 +168,7 @@ Phase 2 now contains **only** the following (all merged):
 
 | Suite | Count |
 |-------|-------|
-| Full `test_lifecycle_*.py` on `develop` | **199** |
+| Full `test_lifecycle_*.py` on `develop` | **199** (+ S3.1 tests pending merge) |
 | `test_lifecycle_extraction_s5_extract.py` | **46** (subset of 199) |
 | Frontend `LifecycleAwareConfirm` | **12** |
 
@@ -179,7 +196,8 @@ Preview active confirm/extraction soak and runtime evidence campaign are **opera
 | Gate | Current |
 |------|---------|
 | **Phase 2 feature-complete on `develop`** | **PASS** — PRs #3–#8 merged |
-| **Staging shadow (confirm + extraction)** | **ACTIVE** @ `d017a084` |
+| **Phase 3 S3.1 on `develop`** | **IN PROGRESS** — flag infra only |
+| **Staging shadow (confirm + extraction + scoring flag)** | **PENDING** S3.1 deploy |
 | **Preview active soak** | **NOT STARTED** — deferred to Phase 3 planning |
 | **Staging active** | **BLOCKED** by policy |
 | **Production promotion** | **BLOCKED** — `main` untouched |
@@ -200,6 +218,6 @@ Preview active confirm/extraction soak and runtime evidence campaign are **opera
 
 ## 10. Next recommended action
 
-**Begin Phase 3 planning** (`LIFECYCLE_AWARE_SCORING`). Do not add new Phase 2 slices. Address operational observations during Phase 3 programme setup, not as Phase 2 implementation.
+**Complete S3.1 PR** → merge to `develop` → staging deploy with `LIFECYCLE_AWARE_SCORING=shadow`. Then begin **S3.2** shadow scoring telemetry. Do not add Phase 2 slices.
 
-**Tracker verdict:** `PHASE2_FEATURE_COMPLETE`
+**Tracker verdict:** `PHASE3_S3_1_IN_PROGRESS`

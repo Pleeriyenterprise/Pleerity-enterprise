@@ -53,6 +53,7 @@ def _lifecycle_tier_env_baseline(request, monkeypatch):
         "DEPLOYMENT_TIER",
         "LIFECYCLE_AWARE_CONFIRM_PREVIEW_OVERRIDE",
         "LIFECYCLE_AWARE_EXTRACTION_PREVIEW_OVERRIDE",
+        "LIFECYCLE_AWARE_SCORING_PREVIEW_OVERRIDE",
     ):
         monkeypatch.delenv(key, raising=False)
 

@@ -61,3 +61,6 @@ services:
       # Phase 2 S5-extract — profile-aware extraction shadow observe-only.
       - key: LIFECYCLE_AWARE_EXTRACTION
         value: "shadow"
+      # Phase 3 S3.1 — lifecycle-aware scoring flag (infrastructure; shadow observe-only).
+      - key: LIFECYCLE_AWARE_SCORING
+        value: "shadow"

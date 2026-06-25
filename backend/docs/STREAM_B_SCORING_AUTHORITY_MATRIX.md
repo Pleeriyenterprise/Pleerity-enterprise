@@ -128,6 +128,27 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 ---
 
+## 5b. Lifecycle-aware scoring gates (Phase 3 — INITIATIVE-REQUIREMENT-LIFECYCLE-SEMANTICS)
+
+**Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md` constraint #5 and #10; master tracker `REQUIREMENT_LIFECYCLE_MASTER_IMPLEMENTATION_TRACKER.md`.
+
+**Feature flag:** `LIFECYCLE_AWARE_SCORING` (`off` | `shadow` | `active`) — config in `services/lifecycle_aware_scoring_config.py` (S3.1).
+
+| Entry / surface | Actor | Scoring source | Lifecycle gate (planned) | Flag mode behaviour |
+|-----------------|-------|----------------|--------------------------|---------------------|
+| `compliance_scoring_service.recalculate_and_persist` | system | `compute_property_score_v2` | `field_contract.requires_expiry_date` via resolver (S3.3) | **off:** legacy `expects_expiry_for_requirement`; **shadow:** legacy authoritative + parallel observe (S3.2); **active:** lifecycle-gated penalties (preview only) |
+| `compliance_scoring_v2._status_fraction_from_requirement` | system | internal | Suppress `due_date` → `EXPIRING_SOON` for non-`EXPIRY_BASED` semantics (S3.3) | Same flag |
+| `document_status_service.compute_requirement_status` | system | internal | Gate `expects_expiry` missing-expiry penalty on `requires_expiry_date` (S3.3) | Same flag |
+| `customer_status_projector_v2._emit_expiry_needed` | system | overlay vocabulary | `EXPIRY_DATE_NEEDED` only when resolver allows (S3.3 boundary) | Same flag |
+
+**Write authority unchanged:** `recalculate_and_persist` remains the sole property score persistence path. Lifecycle scoring does not add alternate writers.
+
+**Safety (S3.1):** Tier guards mirror confirm/extraction — staging raw `active` → effective `shadow`; production raw `active` → effective `off`; CI rejects `LIFECYCLE_AWARE_SCORING=active` in production blueprints; boot guard `validate_lifecycle_scoring_boot()`.
+
+**Not in scope for S3.1:** No changes to penalty fractions, persisted scores, or client-visible headline until S3.2 (shadow telemetry) and S3.3 (active gates).
+
+---
+
 ## 9. Recommended migration order
 
 1. ~~**Stream B — Legacy path labelling**~~ — Done (docstrings in `compliance_score.py`, `compliance_scoring.py`, module notes in `compliance_scoring_service.py` / `admin.py`).  
