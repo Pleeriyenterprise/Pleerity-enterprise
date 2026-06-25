@@ -285,6 +285,27 @@ def build_monthly_digest_pdf_bytes(model: Dict[str, Any], *, brand: Any) -> byte
     t_exec = Table([[Paragraph(cell, styles["Normal"]) for cell in row] for row in exec_rows], colWidths=[9 * cm, 7 * cm])
     t_exec.setStyle(_table_style())
     body.append(t_exec)
+    lifecycle_block = intelligence.get("lifecycle_attention_breakdown")
+    if lifecycle_block and isinstance(lifecycle_block, dict):
+        body.append(Spacer(1, 0.2 * cm))
+        body.append(Paragraph("Lifecycle attention breakdown", h2))
+        framing = (lifecycle_block.get("framing_note") or "").strip()
+        if framing:
+            body.append(Paragraph(html.escape(framing), small))
+        lb_rows = [["Category", "Count"]]
+        for entry in lifecycle_block.get("entries") or []:
+            lb_rows.append(
+                [
+                    html.escape(str(entry.get("label") or "")),
+                    str(int(entry.get("count") or 0)),
+                ]
+            )
+        t_lb = Table(
+            [[Paragraph(cell, styles["Normal"]) for cell in row] for row in lb_rows],
+            colWidths=[9 * cm, 7 * cm],
+        )
+        t_lb.setStyle(_table_style())
+        body.append(t_lb)
     body.append(Spacer(1, 0.35 * cm))
 
     # C — What changed this month

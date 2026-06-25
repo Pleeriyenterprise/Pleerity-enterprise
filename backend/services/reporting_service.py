@@ -151,6 +151,9 @@ class ReportingService:
                 "expiring_next_90_days": expiring_90
             }
         }
+        from services.lifecycle_kpi_gates import attach_additive_lifecycle_kpi_fields
+
+        attach_additive_lifecycle_kpi_fields(report_data["summary"], portal_reqs)
         try:
             from services.compliance_score import calculate_compliance_score
 
@@ -477,6 +480,24 @@ class ReportingService:
         output.write(f"Pending,{summary['requirements_breakdown']['pending']}\n")
         output.write(f"Overdue,{summary['requirements_breakdown']['overdue']}\n")
         output.write(f"Expiring Soon,{summary['requirements_breakdown']['expiring_soon']}\n\n")
+
+        breakdown = summary.get("lifecycle_kpi_breakdown")
+        if breakdown and isinstance(breakdown, dict):
+            from services.lifecycle_kpi_gates import (
+                lifecycle_kpi_breakdown_report_entries,
+                lifecycle_kpi_report_framing_note,
+            )
+
+            output.write("=== LIFECYCLE ATTENTION BREAKDOWN (SUPPLEMENTAL) ===\n")
+            framing = lifecycle_kpi_report_framing_note(summary.get("lifecycle_kpi_effective_mode"))
+            if framing:
+                output.write(f"lifecycle_kpi_note,{framing}\n")
+            output.write(
+                f"lifecycle_kpi_effective_mode,{summary.get('lifecycle_kpi_effective_mode') or ''}\n"
+            )
+            for label, count in lifecycle_kpi_breakdown_report_entries(breakdown):
+                output.write(f"{label},{count}\n")
+            output.write("\n")
         
         output.write(f"Expiring in 30 days,{summary['expiring_next_30_days']}\n")
         output.write(f"Expiring in 60 days,{summary['expiring_next_60_days']}\n")

@@ -180,7 +180,7 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 ---
 
-## 5d. KPI authority (Phase 5 — P5-S1/S2/S3 merged; **P5-S4/S5 in progress**)
+## 5d. KPI authority (Phase 5 — P5-S1–S6 implemented; **P5-S7 deferred**)
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`; master tracker `REQUIREMENT_LIFECYCLE_MASTER_IMPLEMENTATION_TRACKER.md`.
 
@@ -222,21 +222,28 @@ Use one row per **entry surface** (route, job step, script, or service called by
 | `compute_client_portal_requirement_stats` | system | **Mode-dependent** (see above) | `lifecycle_kpi_gates.py` | **off:** legacy; **shadow:** legacy + logs; **active (preview):** lifecycle |
 | Dashboard KPI headline tiles | client | 8-key `stats` from choke point | Unchanged | **off/shadow:** legacy counts; **active (preview):** lifecycle counts |
 | Dashboard attention strip | client | Supplemental UI only | `lifecycle_kpi_breakdown` | **off:** hidden; **shadow:** visible when breakdown non-zero; **active:** visible |
-| Compliance-score API `stats` | client | 8-key authoritative + additive breakdown | `lifecycle_kpi_breakdown_api_payload` | **off:** no breakdown key; **shadow/active:** additive `lifecycle_kpi_breakdown` |
-| Command centre / digest KPI surfaces | system | legacy reporting KPIs | Section language (Phase 6) | **Deferred — P5-S6** |
+| Compliance-score API `stats` | client | 8-key authoritative + additive breakdown | `attach_additive_lifecycle_kpi_fields` | **off:** no breakdown key; **shadow/active:** additive `lifecycle_kpi_breakdown` |
+| Compliance summary reports (CSV/PDF) | client/admin | 8-key via `compute_client_portal_requirement_stats` | `attach_additive_lifecycle_kpi_fields` | **off:** unchanged; **shadow:** legacy totals + supplemental breakdown; **active:** lifecycle totals + breakdown |
+| Monthly digest / scheduled digest | client | `calculate_compliance_score.stats` pass-through | No second aggregation | **off:** unchanged; **shadow/active:** additive breakdown in digest model |
+| Score explanation PDF | client | `score_payload.stats` pass-through | Render only | **off:** unchanged; **shadow/active:** supplemental breakdown section |
+| Evidence Readiness PDF (parallel counts) | client | legacy status sums | — | **Deferred** — convergence (not P5-S6) |
 
 **Implemented (P5-S2):** `lifecycle_kpi_gates.py` — shadow `lifecycle_kpi_shadow_*` logs; `attention_kind` bucket aggregation (internal telemetry).
 
 **Implemented (P5-S3):** Authority switch in `compute_client_portal_requirement_stats`; explicit semantics→bucket map; `lifecycle_stats_authoritative_payload` (8-key contract); authority regression tests.
 
-**In progress (P5-S5):** Additive API field `stats.lifecycle_kpi_breakdown` on compliance-score path only — does not alter 8-key contract. Breakdown keys: `certificate_expiring`, `review_due`, `event_action_required`, `tenancy_term_ending`, `occupancy_review_due`, `operational_action_required`. Includes `lifecycle_kpi_effective_mode` for frontend gating.
+**Implemented (P5-S5):** Additive API field `stats.lifecycle_kpi_breakdown` on compliance-score path — does not alter 8-key contract. Breakdown keys: `certificate_expiring`, `review_due`, `event_action_required`, `tenancy_term_ending`, `occupancy_review_due`, `operational_action_required`. Includes `lifecycle_kpi_effective_mode`.
 
-**In progress (P5-S4):** Dashboard `LifecycleKpiAttentionStrip` — supplemental attention strip below headline KPI tiles; tiles remain authoritative from 8-key `stats.expiring_soon` etc.
+**Implemented (P5-S4):** Dashboard `LifecycleKpiAttentionStrip` — supplemental attention strip below headline KPI tiles.
 
-**Deferred (not in P5-S4/S5):**
+**Implemented (P5-S6):** Reporting surfaces consume existing authority via `attach_additive_lifecycle_kpi_fields` or `calculate_compliance_score.stats` pass-through. No report-specific KPI aggregation.
+
+**Reporting authority rule (P5-S6):** Reports are **consumer-only**. No lifecycle authority exists inside reporting modules — no `resolve_lifecycle_semantics`, no `compute_lifecycle_kpi_stats`, no `attention_kind_buckets` construction. Presentation helpers (`lifecycle_kpi_breakdown_report_entries`, `lifecycle_kpi_report_framing_note`) are labels/framing only.
+
+**Deferred (not in P5-S6):**
 
 - Portfolio/requirements straggler convergence — **P5-S4b**
-- Reports, exports, PDFs, monthly digest — **P5-S6**
+- Evidence Readiness parallel count convergence
 - Legacy deprecation — **P5-S7**
 - Production config changes
 

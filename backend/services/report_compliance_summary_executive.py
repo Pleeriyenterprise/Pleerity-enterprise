@@ -452,7 +452,7 @@ def build_compliance_summary_executive_model(
     )
     condensed, matrix_omitted = select_condensed_matrix_rows(matrix_rows)
 
-    return {
+    model = {
         "interpretation": interpretation,
         "readiness": enriched_readiness,
         "risk_concentration": risk_concentration,
@@ -473,6 +473,59 @@ def build_compliance_summary_executive_model(
             "missing_evidence": missing,
         },
     }
+    if counts.get("lifecycle_kpi_breakdown"):
+        model["lifecycle_kpi_breakdown"] = counts["lifecycle_kpi_breakdown"]
+        model["lifecycle_kpi_effective_mode"] = counts.get("lifecycle_kpi_effective_mode")
+    return model
+
+
+def append_lifecycle_kpi_breakdown_report_section(
+    elements: List[Any],
+    *,
+    model: Dict[str, Any],
+    styles: Dict[str, Any],
+    table_style: TableStyle,
+) -> None:
+    """Supplemental lifecycle attention breakdown (P5-S6) — presentation only."""
+    from services.lifecycle_kpi_gates import (
+        lifecycle_kpi_breakdown_report_entries,
+        lifecycle_kpi_report_framing_note,
+    )
+
+    breakdown = model.get("lifecycle_kpi_breakdown")
+    entries = lifecycle_kpi_breakdown_report_entries(breakdown)
+    if not entries:
+        return
+    mode = model.get("lifecycle_kpi_effective_mode")
+    framing = lifecycle_kpi_report_framing_note(mode)
+    table_width = formal_report_table_width()
+    col_widths = proportional_col_widths(table_width, [0.55, 0.45])
+    rows = [
+        [
+            _table_cell_para("Lifecycle attention category", styles, bold=True),
+            _table_cell_para("Count", styles, bold=True),
+        ]
+    ]
+    for label, count in entries:
+        rows.append(
+            [
+                _table_cell_para(label, styles),
+                _table_cell_para(str(count), styles),
+            ]
+        )
+    tbl = Table(rows, colWidths=col_widths, repeatRows=1)
+    tbl.setStyle(table_style)
+    intro = (
+        framing
+        or "Lifecycle categorisation by attention kind (supplemental to headline KPI totals)."
+    )
+    append_section_block(
+        elements,
+        title="Lifecycle attention breakdown",
+        intro=intro,
+        styles=styles,
+        body_items=[tbl, Spacer(1, 10)],
+    )
 
 
 def append_compliance_summary_executive_sections(
@@ -485,6 +538,13 @@ def append_compliance_summary_executive_sections(
     from services.report_interpretation_v1 import append_how_to_read_pdf_section, audit_readiness_scope_note
 
     append_how_to_read_pdf_section(elements, report_class="compliance_summary", styles=styles)
+
+    append_lifecycle_kpi_breakdown_report_section(
+        elements,
+        model=model,
+        styles=styles,
+        table_style=table_style,
+    )
 
     metrics = model.get("portfolio_metrics") or {}
     interp = model.get("interpretation") or []

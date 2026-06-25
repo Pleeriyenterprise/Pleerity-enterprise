@@ -597,6 +597,9 @@ async def assemble_monthly_digest_payload(
         "jurisdiction_compliance_notice": _jur_notice,
         **digest_prefs,
     }
+    if stats.get("lifecycle_kpi_breakdown") is not None:
+        payload["lifecycle_kpi_breakdown"] = stats["lifecycle_kpi_breakdown"]
+        payload["lifecycle_kpi_effective_mode"] = stats.get("lifecycle_kpi_effective_mode")
     payload.update(digest_pr5_override_observability(score_block))
 
     try:

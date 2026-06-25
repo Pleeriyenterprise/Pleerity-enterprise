@@ -247,6 +247,20 @@ def build_scheduled_report_digest_html(model: Dict[str, Any]) -> Tuple[str, str]
                         human_score_authority_label(str(ch.get("score_authority") or "")),
                     )
                 )
+        breakdown = summary.get("lifecycle_kpi_breakdown")
+        if breakdown and isinstance(breakdown, dict):
+            from services.lifecycle_kpi_gates import (
+                lifecycle_kpi_breakdown_report_entries,
+                lifecycle_kpi_report_framing_note,
+            )
+
+            mode = summary.get("lifecycle_kpi_effective_mode")
+            framing = lifecycle_kpi_report_framing_note(mode)
+            if framing:
+                kv.append(("Lifecycle KPI note", framing))
+            kv.append(("Lifecycle KPI effective mode", str(mode or "")))
+            for label, count in lifecycle_kpi_breakdown_report_entries(breakdown):
+                kv.append((f"Lifecycle — {label}", str(count)))
             kv.append(("CVP last calculated", str(ch.get("last_calculated_at") or "—")))
         parts.append(key_value_table_html(kv))
         red_props = [p for p in properties if str(p.get("compliance_status", "")).upper() == "RED"]

@@ -652,6 +652,25 @@ def build_digest_intelligence(model: Dict[str, Any]) -> Dict[str, Any]:
         "evidence_posture_counts": _count_evidence_postures(model),
         "email_operational_themes": build_email_operational_themes(model),
         "operational_posture_label": operational_posture_label(str(model.get("risk_level") or "")),
+        "lifecycle_attention_breakdown": _build_lifecycle_attention_breakdown(model),
+    }
+
+
+def _build_lifecycle_attention_breakdown(model: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Pass-through lifecycle KPI breakdown for digest presentation (P5-S6)."""
+    from services.lifecycle_kpi_gates import (
+        lifecycle_kpi_breakdown_report_entries,
+        lifecycle_kpi_report_framing_note,
+    )
+
+    breakdown = model.get("lifecycle_kpi_breakdown")
+    entries = lifecycle_kpi_breakdown_report_entries(breakdown)
+    if not entries:
+        return None
+    return {
+        "lifecycle_kpi_effective_mode": model.get("lifecycle_kpi_effective_mode"),
+        "framing_note": lifecycle_kpi_report_framing_note(model.get("lifecycle_kpi_effective_mode")),
+        "entries": [{"label": label, "count": count} for label, count in entries],
     }
 
 

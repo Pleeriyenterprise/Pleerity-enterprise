@@ -232,6 +232,9 @@ class ProfessionalReportGenerator:
             requirements=requirements,
         )
         counts = compute_client_portal_requirement_stats(portal_reqs)
+        from services.lifecycle_kpi_gates import attach_additive_lifecycle_kpi_fields
+
+        attach_additive_lifecycle_kpi_fields(counts, portal_reqs)
 
         # Calculate stats
         total_props = len(properties)
