@@ -7,18 +7,16 @@
 
 ---
 
-## Phase 3 status: **IN PROGRESS** — S3.1 infrastructure (2026-06-02)
-
-Phase 3 (lifecycle-aware scoring) has begun. **S3.1** delivers flag infrastructure only — no scoring penalty wiring.
+## Phase 3 status: **IN PROGRESS** — S3.2 + S3.3 complete on branch (2026-06-02)
 
 | Phase 3 slice | Status | Branch | PR | Merge SHA |
 |---------------|--------|--------|-----|-----------|
-| **S3.1** — scoring flag infrastructure | **In progress** | `feature/lifecycle-phase3-s31-scoring-infra` | — | — |
-| **S3.2** — shadow scoring telemetry | Not started | — | — | — |
-| **S3.3** — active penalty gates | Not started | — | — | — |
+| **S3.1** — scoring flag infrastructure | **Complete** | — | [#9](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/9) | `f29e066d` |
+| **S3.2** — shadow scoring telemetry | **Complete (branch)** | `feature/lifecycle-phase3-s32-s33-scoring-gates` | — | — |
+| **S3.3** — active penalty gates | **Complete (branch)** | `feature/lifecycle-phase3-s32-s33-scoring-gates` | — | — |
 
-**`develop` tip (pre-S3.1 merge):** `9730a0c6` (governance tracker doc) / Phase 2 code `d017a084`  
-**Staging deploy:** `d017a084` @ `pleerity-enterprise.onrender.com` — pending S3.1 deploy  
+**`develop` tip:** `f29e066d` (S3.1 merged)  
+**Staging deploy:** pending S3.2/S3.3 merge  
 **`main` / production:** `60c1dbbe` — **untouched**
 
 ---
@@ -88,7 +86,7 @@ Recorded for Phase 3+ planning. **None block Phase 2 completion.**
 | **Design S7** (admin confirm parity) | Phase 2+ | Admin extraction queue semantic confirm UX | **Partial** — deferred |
 | **Design S8** (staging gate V2-U1–U10) | Phase 2+ gate | 48h shadow + preview active + regression | **Deferred** |
 | **Design S9** (pipeline convergence) | Phase 2 optional | Client upload → `enqueue_extraction` | **Not started** |
-| **Phase 3 scoring** | Phase 3 | `LIFECYCLE_AWARE_SCORING` | **S3.1 in progress** |
+| **Phase 3 scoring** | Phase 3 | `LIFECYCLE_AWARE_SCORING` | **S3.1 merged; S3.2/S3.3 on branch** |
 | **Phase 4 reminders** | Phase 4 | `LIFECYCLE_AWARE_REMINDERS` | **Not started** |
 | **Phase 5 KPIs** | Phase 5 | Dashboard widget split | **Not started** |
 | **Phase 6 reports** | Phase 6 | Report/digest language | **Not started** |
@@ -105,8 +103,8 @@ Recorded for Phase 3+ planning. **None block Phase 2 completion.**
 | Phase 2 S5.1–S5.3 | **Complete** | `feature/lifecycle-phase2-s5-enforcement` | #6 | `757f328f` | Yes | On develop lineage | Untouched |
 | Phase 2 S5.4 | **Complete** | `feature/lifecycle-phase2-s54-enforcement` | #7 | `b6d79641` | Yes | Deployed | Untouched |
 | S5-extract | **Complete** | `feature/lifecycle-phase2-s5-extract` | #8 | `d017a084` | Yes | Deployed @ `d017a084` | Untouched |
-| Phase 3 S3.1 | **In progress** | `feature/lifecycle-phase3-s31-scoring-infra` | — | — | No | — | Untouched |
-| Phase 3 S3.2–S3.3 | **Not started** | — | — | — | No | — | Untouched |
+| Phase 3 S3.1 | **Complete** | — | #9 | `f29e066d` | Yes | Deployed lineage | Untouched |
+| Phase 3 S3.2–S3.3 | **Complete (branch)** | `feature/lifecycle-phase3-s32-s33-scoring-gates` | — | — | No | — | Untouched |
 | Phase 4–7 | **Not started** | — | — | — | No | — | Untouched |
 
 **Branch heads (2026-06-25):**
@@ -168,7 +166,7 @@ Phase 2 now contains **only** the following (all merged):
 
 | Suite | Count |
 |-------|-------|
-| Full `test_lifecycle_*.py` on `develop` | **199** (+ S3.1 tests pending merge) |
+| Full `test_lifecycle_*.py` | **219** (208 pre-S3.2/S3.3 + 11 S3.2/S3.3) |
 | `test_lifecycle_extraction_s5_extract.py` | **46** (subset of 199) |
 | Frontend `LifecycleAwareConfirm` | **12** |
 
@@ -196,8 +194,9 @@ Preview active confirm/extraction soak and runtime evidence campaign are **opera
 | Gate | Current |
 |------|---------|
 | **Phase 2 feature-complete on `develop`** | **PASS** — PRs #3–#8 merged |
-| **Phase 3 S3.1 on `develop`** | **IN PROGRESS** — flag infra only |
-| **Staging shadow (confirm + extraction + scoring flag)** | **PENDING** S3.1 deploy |
+| **Phase 3 S3.1 on `develop`** | **PASS** — PR #9 @ `f29e066d` |
+| **Phase 3 S3.2/S3.3** | **READY FOR PR** — shadow + active gates on branch |
+| **Staging shadow (confirm + extraction + scoring)** | **ACTIVE** (scoring shadow observe on staging) |
 | **Preview active soak** | **NOT STARTED** — deferred to Phase 3 planning |
 | **Staging active** | **BLOCKED** by policy |
 | **Production promotion** | **BLOCKED** — `main` untouched |
@@ -218,6 +217,6 @@ Preview active confirm/extraction soak and runtime evidence campaign are **opera
 
 ## 10. Next recommended action
 
-**Complete S3.1 PR** → merge to `develop` → staging deploy with `LIFECYCLE_AWARE_SCORING=shadow`. Then begin **S3.2** shadow scoring telemetry. Do not add Phase 2 slices.
+**Open PR for S3.2/S3.3** → merge to `develop` → verify staging shadow scoring telemetry. Preview active soak for scoring deferred.
 
-**Tracker verdict:** `PHASE3_S3_1_IN_PROGRESS`
+**Tracker verdict:** `PHASE3_S3_2_S3_3_BRANCH_COMPLETE`

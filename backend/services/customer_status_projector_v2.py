@@ -163,7 +163,9 @@ def _emit_under_review(requirement: Dict[str, Any], obligation_class: str) -> bo
 
 
 def _emit_expiry_needed(requirement: Dict[str, Any], ea: Dict[str, Any]) -> bool:
-    return str(ea.get("state_reason") or "") == "document_upload_missing_required_expiry_semantics"
+    from services.lifecycle_scoring_gates import emit_expiry_needed_overlay
+
+    return emit_expiry_needed_overlay(requirement, ea)
 
 
 def _emit_escalation_resolved(requirement: Dict[str, Any], ea: Dict[str, Any]) -> bool:
