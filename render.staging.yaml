@@ -64,3 +64,6 @@ services:
       # Phase 3 S3.1 — lifecycle-aware scoring flag (infrastructure; shadow observe-only).
       - key: LIFECYCLE_AWARE_SCORING
         value: "shadow"
+      # Phase 4 S4.1 — lifecycle-aware reminders flag (infrastructure; shadow observe-only).
+      - key: LIFECYCLE_AWARE_REMINDERS
+        value: "shadow"
