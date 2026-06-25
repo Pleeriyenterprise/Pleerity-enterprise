@@ -18,7 +18,7 @@ Phase 4 (lifecycle-aware reminders) is **closed**. All planned slices (S4.1–S4
 | **S4.3** — active eligibility gates + template routing | **Complete** | [#12](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/12) | `906e67b6` |
 | **S4.4** — dedicated `attention_kind` email/SMS templates | **Complete** | [#13](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/13) | `c58616e2` |
 
-**`develop` tip:** `610944d4`  
+**`develop` tip:** `c58616e2` (S4.4 merge); governance closeout commit `ac0357f9` local ahead of `origin/develop`  
 **Staging deploy:** `c58616e2` @ `pleerity-enterprise.onrender.com` — `environment=staging`, `/api/health` **healthy**, `/api/version` confirms SHA  
 **`main` / production:** `60c1dbbe` — **untouched**
 
@@ -150,7 +150,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 | Branch | HEAD |
 |--------|------|
-| `develop` | `610944d4` |
+| `develop` | `c58616e2` (feature) / `ac0357f9` (governance closeout, push pending) |
 | `main` | `60c1dbbe` |
 
 **Staging configuration:** `DEPLOYMENT_TIER=staging`, `LIFECYCLE_AWARE_CONFIRM=shadow`, `LIFECYCLE_AWARE_EXTRACTION=shadow`, `LIFECYCLE_AWARE_SCORING=shadow`, `LIFECYCLE_AWARE_REMINDERS=shadow` — all shadow-only @ `c58616e2`.  
