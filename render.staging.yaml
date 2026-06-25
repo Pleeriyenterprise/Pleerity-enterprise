@@ -67,3 +67,6 @@ services:
       # Phase 4 S4.1 — lifecycle-aware reminders flag (infrastructure; shadow observe-only).
       - key: LIFECYCLE_AWARE_REMINDERS
         value: "shadow"
+      # Phase 5 P5-S1 — lifecycle-aware KPIs flag (infrastructure; shadow observe-only).
+      - key: LIFECYCLE_AWARE_KPIS
+        value: "shadow"

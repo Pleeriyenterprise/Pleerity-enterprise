@@ -2,8 +2,24 @@
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`, `REQUIREMENT_LIFECYCLE_PHASE2_IMPLEMENTATION_DESIGN_01.md`  
 **Maintained:** Programme / lifecycle workstream  
-**Last updated:** 2026-06-02 (Phase 4 programme closeout — reminders complete)  
+**Last updated:** 2026-06-02 (Phase 5 P5-S1 KPI infrastructure — in progress)  
 **Purpose:** Single source of truth for phases, slices, PRs, commits, gates, and remaining work.
+
+---
+
+## Phase 5 status: **IN PROGRESS** (P5-S1 in progress — 2026-06-02)
+
+Phase 5 (lifecycle-aware dashboard KPIs) has started. **P5-S1** (flag infrastructure) is in flight on branch `feature/lifecycle-phase5-p5-s1-kpi-infra`. No KPI calculations, dashboard widgets, or APIs are modified in P5-S1.
+
+| Phase 5 slice | Status | PR | Merge SHA |
+|---------------|--------|-----|-----------|
+| **P5-S1** — KPI flag infrastructure | **In progress** | — | — |
+| **P5-S2+** — shadow telemetry, active gates, widget split | **Not started** | — | — |
+
+**Branch:** `feature/lifecycle-phase5-p5-s1-kpi-infra`  
+**`develop` tip:** `8bd6fc2a` (Phase 4 governance closeout)  
+**Staging deploy:** `c58616e2` @ `pleerity-enterprise.onrender.com` — P5-S1 not yet deployed  
+**`main` / production:** `60c1dbbe` — **untouched**
 
 ---
 
@@ -106,7 +122,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **2** | Confirm + extraction | Profiles, confirm contract | `LIFECYCLE_AWARE_CONFIRM`, `LIFECYCLE_AWARE_EXTRACTION` | Complete |
 | **3** | Scoring gates | Penalty eligibility via `field_contract` | `LIFECYCLE_AWARE_SCORING` | **Complete** |
 | **4** | Reminders + gaps | `attention_kind` templates | `LIFECYCLE_AWARE_REMINDERS` | **Complete** |
-| **5** | Dashboard KPIs | Split widgets | `LIFECYCLE_AWARE_KPIS` | Not started |
+| **5** | Dashboard KPIs | Split widgets | `LIFECYCLE_AWARE_KPIS` | **IN PROGRESS** (P5-S1) |
 | **6** | Reports + digest | Section language | — | Not started |
 | **7** | Legacy deprecation | Remove independent expiry inference | — | Not started |
 
@@ -126,8 +142,8 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **Phase 4 S4.2** | 4 | Shadow reminder telemetry (`lifecycle_reminder_shadow_*`) | **Merged** PR #12 |
 | **Phase 4 S4.3** | 4 | Active eligibility gates + template routing authority | **Merged** PR #12 |
 | **Phase 4 S4.4** | 4 | Dedicated `attention_kind` email/SMS templates | **Merged** PR #13 |
-| **Phase 5 S5.1** | 5 | `LIFECYCLE_AWARE_KPIS` flag + boot + CI | Not started |
-| Phase 5 KPIs (S5.2+) | 5 | Dashboard widget split | Not started |
+| **Phase 5 P5-S1** | 5 | `LIFECYCLE_AWARE_KPIS` flag + boot + CI | **In progress** |
+| Phase 5 KPIs (P5-S2+) | 5 | Shadow telemetry, active gates, dashboard widget split | Not started |
 | Phase 6 reports | 6 | Report/digest language | Not started |
 | Phase 7 legacy deprecation | 7 | Remove independent expiry inference | Not started |
 
@@ -144,7 +160,8 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | Phase 4 S4.1 | Complete | #11 | `4a15747a` | Yes | Deployed | Untouched |
 | Phase 4 S4.2–S4.3 | Complete | #12 | `906e67b6` | Yes | Deployed @ `906e67b6` | Untouched |
 | Phase 4 S4.4 | Complete | #13 | `c58616e2` | Yes | Deployed @ `c58616e2` | Untouched |
-| Phase 5–7 | Not started | — | — | No | — | Untouched |
+| Phase 5 P5-S1 | In progress | — | — | No | — | Untouched |
+| Phase 5 P5-S2+ / 6–7 | Not started | — | — | No | — | Untouched |
 
 **Branch heads (2026-06-02):**
 
@@ -153,8 +170,8 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | `develop` | `c58616e2` (feature) / `ac0357f9` (governance closeout, push pending) |
 | `main` | `60c1dbbe` |
 
-**Staging configuration:** `DEPLOYMENT_TIER=staging`, `LIFECYCLE_AWARE_CONFIRM=shadow`, `LIFECYCLE_AWARE_EXTRACTION=shadow`, `LIFECYCLE_AWARE_SCORING=shadow`, `LIFECYCLE_AWARE_REMINDERS=shadow` — all shadow-only @ `c58616e2`.  
-**Production configuration:** `render.production.yaml` — **no lifecycle flags** (including no `LIFECYCLE_AWARE_REMINDERS`).
+**Staging configuration:** `DEPLOYMENT_TIER=staging`, `LIFECYCLE_AWARE_CONFIRM=shadow`, `LIFECYCLE_AWARE_EXTRACTION=shadow`, `LIFECYCLE_AWARE_SCORING=shadow`, `LIFECYCLE_AWARE_REMINDERS=shadow` — all shadow-only @ `c58616e2`. P5-S1 adds `LIFECYCLE_AWARE_KPIS=shadow` on branch (not yet on staging deploy).  
+**Production configuration:** `render.production.yaml` — **no lifecycle flags** (including no `LIFECYCLE_AWARE_KPIS`).
 
 ---
 
@@ -167,7 +184,20 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 - CI governance for production blueprint
 - STREAM_B §5b scoring authority inventory
 
-**Not implemented (Phase 5+ per ADR):** Dashboard KPIs (`LIFECYCLE_AWARE_KPIS`), reports/digest language, legacy deprecation.
+**Not implemented (Phase 5 P5-S2+ / 6–7 per ADR):** KPI shadow/active gates, dashboard widget split, reports/digest language, legacy deprecation.
+
+---
+
+## 5a. Phase 5 P5-S1 scope (in progress — infrastructure only)
+
+- `lifecycle_aware_kpis_config.py` — flag, tier guards, boot validation (`validate_lifecycle_kpi_boot`)
+- `server.py` — boot guard registration (after reminders)
+- `deployment_governance_ci_gate.py` — reject `LIFECYCLE_AWARE_KPIS=active` in production blueprints
+- `render.staging.yaml` — `LIFECYCLE_AWARE_KPIS=shadow`
+- `test_lifecycle_kpis_p5_s1.py` — flag/tier/CI tests
+- STREAM_B §5d KPI authority inventory (P5-S1 infrastructure only)
+
+**Explicitly not in P5-S1:** KPI calculations, dashboard widgets, dashboard APIs, reporting, reminder/scoring/confirm/extraction semantics, production config changes.
 
 ---
 
@@ -224,9 +254,11 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | `LIFECYCLE_AWARE_EXTRACTION` | `off` | `shadow` | `off` if raw `active` |
 | `LIFECYCLE_AWARE_SCORING` | `off` | `shadow` | `off` if raw `active` |
 | `LIFECYCLE_AWARE_REMINDERS` | `off` | `shadow` | `off` if raw `active` |
+| `LIFECYCLE_AWARE_KPIS` | `off` | `shadow` (P5-S1 branch) | `off` if raw `active` |
 | `LIFECYCLE_AWARE_REMINDER_PREVIEW_OVERRIDE` | unset | unset (staging) | **never** enables active on production |
+| `LIFECYCLE_AWARE_KPIS_PREVIEW_OVERRIDE` | unset | unset (staging) | **never** enables active on production |
 
-**Preview override env vars:** `LIFECYCLE_AWARE_CONFIRM_PREVIEW_OVERRIDE`, `LIFECYCLE_AWARE_EXTRACTION_PREVIEW_OVERRIDE`, `LIFECYCLE_AWARE_SCORING_PREVIEW_OVERRIDE`, `LIFECYCLE_AWARE_REMINDER_PREVIEW_OVERRIDE` — allow raw `active` on non-production tiers only.
+**Preview override env vars:** `LIFECYCLE_AWARE_CONFIRM_PREVIEW_OVERRIDE`, `LIFECYCLE_AWARE_EXTRACTION_PREVIEW_OVERRIDE`, `LIFECYCLE_AWARE_SCORING_PREVIEW_OVERRIDE`, `LIFECYCLE_AWARE_REMINDER_PREVIEW_OVERRIDE`, `LIFECYCLE_AWARE_KPIS_PREVIEW_OVERRIDE` — allow raw `active` on non-production tiers only.
 
 **Safety:** tier guards, boot validation, CI production blueprint gate, shadow modes keep legacy authoritative on staging.
 
@@ -260,6 +292,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | `test_lifecycle_reminders_s4.py` | **11** |
 | `test_lifecycle_reminders_s42_s43.py` | **10** |
 | `test_lifecycle_reminders_s44.py` | **11** |
+| `test_lifecycle_kpis_p5_s1.py` | **11** |
 | Phase 4 reminder suites (S4.1–S4.4) | **32** |
 | `test_lifecycle_extraction_s5_extract.py` | **46** |
 | Frontend `LifecycleAwareConfirm` | **12** |
@@ -270,7 +303,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 ```
 Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
-    └── Phase 5 dashboard KPIs (LIFECYCLE_AWARE_KPIS)  ← S5.1 NEXT
+    └── Phase 5 dashboard KPIs (LIFECYCLE_AWARE_KPIS)  ← P5-S1 IN PROGRESS
             └── Phase 6 reports
                     └── Phase 7 legacy deprecation
 ```
@@ -305,6 +338,6 @@ Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
 
 ## 10. Next recommended action
 
-**Next:** Phase 5 S5.1 — `LIFECYCLE_AWARE_KPIS` flag infrastructure (mirror S4.1 / S3.1 pattern). Run reminder shadow runtime evidence campaign on staging in parallel (operational, non-blocking).
+**Next:** Complete P5-S1 PR merge to `develop`; then P5-S2 shadow KPI telemetry. Run reminder shadow runtime evidence campaign on staging in parallel (operational, non-blocking).
 
-**Tracker verdict:** `READY_FOR_PHASE5_S5_1_PLANNING`
+**Tracker verdict:** `P5_S1_IN_PROGRESS`
