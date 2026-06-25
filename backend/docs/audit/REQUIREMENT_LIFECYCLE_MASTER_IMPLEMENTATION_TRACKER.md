@@ -2,12 +2,14 @@
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`, `REQUIREMENT_LIFECYCLE_PHASE2_IMPLEMENTATION_DESIGN_01.md`  
 **Maintained:** Programme / lifecycle workstream  
-**Last updated:** 2026-06-25 (Phase 4 S4.4 closeout — PR #13)  
+**Last updated:** 2026-06-02 (Phase 4 programme closeout — reminders complete)  
 **Purpose:** Single source of truth for phases, slices, PRs, commits, gates, and remaining work.
 
 ---
 
-## Phase 4 status: **IN PROGRESS** (S4.1–S4.4 complete — 2026-06-25)
+## Phase 4 status: **COMPLETE** (2026-06-02)
+
+Phase 4 (lifecycle-aware reminders) is **closed**. All planned slices (S4.1–S4.4) are merged to `develop` and deployed to staging in **shadow** governance. No further Phase 4 feature slices should be added except critical bug fixes. **Next programme work: Phase 5 (dashboard KPIs).**
 
 | Phase 4 slice | Status | PR | Merge SHA |
 |---------------|--------|-----|-----------|
@@ -15,9 +17,8 @@
 | **S4.2** — shadow reminder telemetry | **Complete** | [#12](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/12) | `906e67b6` |
 | **S4.3** — active eligibility gates + template routing | **Complete** | [#12](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/12) | `906e67b6` |
 | **S4.4** — dedicated `attention_kind` email/SMS templates | **Complete** | [#13](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/13) | `c58616e2` |
-| **S4.5+** — KPIs, reports, legacy deprecation | **Not started** | — | — |
 
-**`develop` tip:** `c58616e2095a168777eb58c1424e0df647fb3208`  
+**`develop` tip:** `610944d4`  
 **Staging deploy:** `c58616e2` @ `pleerity-enterprise.onrender.com` — `environment=staging`, `/api/health` **healthy**, `/api/version` confirms SHA  
 **`main` / production:** `60c1dbbe` — **untouched**
 
@@ -58,7 +59,7 @@ Phase 2 (confirm + extraction) is **closed** and frozen. See Phase 2 slice table
 
 ## Phase 4 Operational Observations
 
-Recorded for S4.4+ planning. **None block S4.2/S4.3 closeout.**
+Recorded for Phase 5+ planning. **None block Phase 4 completion.**
 
 | Observation | Classification | Notes |
 |-------------|----------------|-------|
@@ -104,7 +105,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **1** | Resolver + registry backfill | `lifecycle_semantics_resolver.py` | `LIFECYCLE_SEMANTICS_MODE` | Complete |
 | **2** | Confirm + extraction | Profiles, confirm contract | `LIFECYCLE_AWARE_CONFIRM`, `LIFECYCLE_AWARE_EXTRACTION` | Complete |
 | **3** | Scoring gates | Penalty eligibility via `field_contract` | `LIFECYCLE_AWARE_SCORING` | **Complete** |
-| **4** | Reminders + gaps | `attention_kind` templates | `LIFECYCLE_AWARE_REMINDERS` | **IN PROGRESS** (S4.5+ next) |
+| **4** | Reminders + gaps | `attention_kind` templates | `LIFECYCLE_AWARE_REMINDERS` | **Complete** |
 | **5** | Dashboard KPIs | Split widgets | `LIFECYCLE_AWARE_KPIS` | Not started |
 | **6** | Reports + digest | Section language | — | Not started |
 | **7** | Legacy deprecation | Remove independent expiry inference | — | Not started |
@@ -125,9 +126,10 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **Phase 4 S4.2** | 4 | Shadow reminder telemetry (`lifecycle_reminder_shadow_*`) | **Merged** PR #12 |
 | **Phase 4 S4.3** | 4 | Active eligibility gates + template routing authority | **Merged** PR #12 |
 | **Phase 4 S4.4** | 4 | Dedicated `attention_kind` email/SMS templates | **Merged** PR #13 |
-| **Phase 4 S4.5+** | 4 | KPIs, reports, legacy deprecation | **Not started** |
-| Phase 5 KPIs | 5 | Dashboard widget split | Not started |
+| **Phase 5 S5.1** | 5 | `LIFECYCLE_AWARE_KPIS` flag + boot + CI | Not started |
+| Phase 5 KPIs (S5.2+) | 5 | Dashboard widget split | Not started |
 | Phase 6 reports | 6 | Report/digest language | Not started |
+| Phase 7 legacy deprecation | 7 | Remove independent expiry inference | Not started |
 
 ---
 
@@ -142,14 +144,13 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | Phase 4 S4.1 | Complete | #11 | `4a15747a` | Yes | Deployed | Untouched |
 | Phase 4 S4.2–S4.3 | Complete | #12 | `906e67b6` | Yes | Deployed @ `906e67b6` | Untouched |
 | Phase 4 S4.4 | Complete | #13 | `c58616e2` | Yes | Deployed @ `c58616e2` | Untouched |
-| Phase 4 S4.5+ | Not started | — | — | No | — | Untouched |
 | Phase 5–7 | Not started | — | — | No | — | Untouched |
 
-**Branch heads (2026-06-25):**
+**Branch heads (2026-06-02):**
 
 | Branch | HEAD |
 |--------|------|
-| `develop` | `c58616e2` |
+| `develop` | `610944d4` |
 | `main` | `60c1dbbe` |
 
 **Staging configuration:** `DEPLOYMENT_TIER=staging`, `LIFECYCLE_AWARE_CONFIRM=shadow`, `LIFECYCLE_AWARE_EXTRACTION=shadow`, `LIFECYCLE_AWARE_SCORING=shadow`, `LIFECYCLE_AWARE_REMINDERS=shadow` — all shadow-only @ `c58616e2`.  
@@ -166,7 +167,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 - CI governance for production blueprint
 - STREAM_B §5b scoring authority inventory
 
-**Not implemented (Phase 4 S4.5+):** KPIs, reports, legacy deprecation.
+**Not implemented (Phase 5+ per ADR):** Dashboard KPIs (`LIFECYCLE_AWARE_KPIS`), reports/digest language, legacy deprecation.
 
 ---
 
@@ -208,7 +209,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 - `deployment_governance_ci_gate.py` — reject `LIFECYCLE_AWARE_REMINDERS=active` in production blueprints
 - `render.staging.yaml` — `LIFECYCLE_AWARE_REMINDERS=shadow`
 - `test_lifecycle_reminders_s4.py` — flag/tier/CI tests
-- STREAM_B §5c reminder authority inventory (planned only)
+- STREAM_B §5c reminder authority inventory
 
 **Explicitly not in S4.1:** `reminder_truth_service.py`, jobs, scheduler, email/SMS templates, notification services, attention-date calculations, effective reminder dates, `get_effective_expiry_date()` consumers.
 
@@ -231,16 +232,35 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 ---
 
-## 6. Test inventory (2026-06-25)
+## 4d. Phase 4 programme scope delivered (S4.1–S4.4)
+
+- `lifecycle_aware_reminders_config.py` — flag, tier guards, boot validation
+- `lifecycle_reminder_gates.py` — shadow telemetry, active eligibility gates, template routing
+- `reminder_truth_service.py` — dual-run shadow; active lifecycle eligibility (preview only)
+- `lifecycle_reminder_template_registry.py` — 12 `LIFECYCLE_REMINDER_*` templates (EMAIL+SMS per `attention_kind`)
+- `jobs.py` / `email_service.py` / `notification_orchestrator.py` — send path, code-built render, idempotency keys
+- CI governance for production blueprint; `render.staging.yaml` shadow flag
+- STREAM_B §5c reminder authority inventory
+
+**Staging behaviour:** `LIFECYCLE_AWARE_REMINDERS=shadow` — legacy eligibility and `COMPLIANCE_EXPIRY_*` templates authoritative.
+
+**Active (preview-tier only):** lifecycle-gated eligibility and `LIFECYCLE_REMINDER_*` sends; not enabled on staging or production.
+
+**Not in Phase 4 (ADR Phases 5–7):** dashboard KPIs, reports/digest, legacy deprecation, scheduler registration changes.
+
+---
+
+## 6. Test inventory (2026-06-02)
 
 | Suite | Count |
 |-------|-------|
-| Full `test_lifecycle_*.py` on `develop` | **243** |
+| Full `test_lifecycle_*.py` on `develop` | **249** |
 | `test_lifecycle_scoring_s31.py` | **9** |
 | `test_lifecycle_scoring_s32_s33.py` | **11** |
 | `test_lifecycle_reminders_s4.py` | **11** |
-| `test_lifecycle_reminders_s42_s43.py` | **13** |
-| `test_lifecycle_reminders_s44.py` | **10** |
+| `test_lifecycle_reminders_s42_s43.py` | **10** |
+| `test_lifecycle_reminders_s44.py` | **11** |
+| Phase 4 reminder suites (S4.1–S4.4) | **32** |
 | `test_lifecycle_extraction_s5_extract.py` | **46** |
 | Frontend `LifecycleAwareConfirm` | **12** |
 
@@ -249,11 +269,10 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 ## 7. Dependency map
 
 ```
-Phase 1 + Phase 2 + Phase 3 (COMPLETE on develop)
-    └── Phase 4 reminders (LIFECYCLE_AWARE_REMINDERS)  ← S4.1–S4.4 COMPLETE; S4.5+ NEXT
-            └── Phase 5 dashboard KPIs
-                    └── Phase 6 reports
-                            └── Phase 7 legacy deprecation
+Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
+    └── Phase 5 dashboard KPIs (LIFECYCLE_AWARE_KPIS)  ← S5.1 NEXT
+            └── Phase 6 reports
+                    └── Phase 7 legacy deprecation
 ```
 
 ---
@@ -263,8 +282,10 @@ Phase 1 + Phase 2 + Phase 3 (COMPLETE on develop)
 | Gate | Current |
 |------|---------|
 | **Phase 3 feature-complete on `develop`** | **PASS** — PRs #9–#10 merged |
+| **Phase 4 feature-complete on `develop`** | **PASS** — PRs #11–#13 merged |
 | **Staging shadow (confirm + extraction + scoring + reminders)** | **ACTIVE** @ `c58616e2` |
-| **Reminder shadow runtime evidence** | **PENDING** — operational |
+| **Reminder shadow runtime evidence** | **PENDING** — operational (non-blocking) |
+| **Preview active reminder soak** | **NOT STARTED** |
 | **Scoring shadow runtime evidence** | **PENDING** — operational |
 | **Preview active scoring soak** | **NOT STARTED** |
 | **Staging active** | **BLOCKED** by policy |
@@ -284,6 +305,6 @@ Phase 1 + Phase 2 + Phase 3 (COMPLETE on develop)
 
 ## 10. Next recommended action
 
-**Next:** Phase 4 S4.5+ (KPIs, reports, legacy deprecation). Run reminder shadow runtime evidence campaign on staging in parallel.
+**Next:** Phase 5 S5.1 — `LIFECYCLE_AWARE_KPIS` flag infrastructure (mirror S4.1 / S3.1 pattern). Run reminder shadow runtime evidence campaign on staging in parallel (operational, non-blocking).
 
-**Tracker verdict:** `READY_FOR_PHASE4_NEXT_PLANNING`
+**Tracker verdict:** `READY_FOR_PHASE5_S5_1_PLANNING`

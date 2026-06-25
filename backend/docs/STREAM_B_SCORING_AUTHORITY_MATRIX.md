@@ -4,7 +4,7 @@
 **Phase:** Scoring authority matrix (audit only; no runtime or API changes)  
 **Named authority (writes):** `compliance_scoring_service.recalculate_and_persist`  
 **Companion reads:** `compliance_scoring_service.calculate_property_compliance` (v2 planner, no persist unless called inside `recalculate_and_persist` or read-repair), `compliance_score.calculate_compliance_score` (portfolio headline + live `stats` from persisted rows + runtime projection)  
-**Last updated:** 2026-04-30 (FE async honesty + digest/export snapshot + score-explanation + Evidence Readiness + professional compliance summary PDF copy; §6–§7)  
+**Last updated:** 2026-06-02 (Phase 4 reminder authority complete; §5c)
 
 ---
 
@@ -151,30 +151,32 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 ---
 
-## 5c. Reminder authority (Phase 4 — planned; **NOT IN SCOPE FOR S4.1**)
+## 5c. Reminder authority (Phase 4 — **complete**; INITIATIVE-REQUIREMENT-LIFECYCLE-SEMANTICS)
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md` constraints #4, #8, #161; master tracker `REQUIREMENT_LIFECYCLE_MASTER_IMPLEMENTATION_TRACKER.md`.
 
-**Feature flag (S4.1 infrastructure only):** `LIFECYCLE_AWARE_REMINDERS` (`off` | `shadow` | `active`) — config in `services/lifecycle_aware_reminders_config.py`. **No reminder consumers wired in S4.1.** Legacy reminder behaviour remains 100% authoritative.
+**Feature flag:** `LIFECYCLE_AWARE_REMINDERS` (`off` | `shadow` | `active`) — config in `services/lifecycle_aware_reminders_config.py` (S4.1). Consumers wired S4.2–S4.4.
 
-| Entry / surface | Actor | Current authority | Lifecycle gate (planned) | Flag mode behaviour (future) |
-|-----------------|-------|-------------------|--------------------------|------------------------------|
-| `services/reminder_truth_service.py` | system | **legacy authoritative** | Resolver eligibility + `attention_kind` (S4.2+) | **off/shadow/active (S4.1):** unchanged — flag dormant |
-| `services/jobs.py` — daily reminders | system | legacy send paths | Gate before `send_daily_reminders` (S4.2+) | Same flag |
-| Scheduler / compliance jobs | system | legacy schedule | No lifecycle gate in S4.1 | Same flag |
-| Email / SMS templates (`COMPLIANCE_EXPIRY_REMINDER`, etc.) | system | certificate-expiry family | Split per `attention_kind` (S4.4) | **S4.4 local** |
-| `get_effective_expiry_date()` consumers | system | expiry-date inference | `effective_attention_date` via resolver (S4.2+) | **Not in S4.1** |
-| Notification orchestrator | system | governed send path | Template routing per `attention_kind` (S4.3+) | **Not in S4.1** |
+| Entry / surface | Actor | Current authority | Lifecycle gate | Flag mode behaviour |
+|-----------------|-------|----------------|----------------|---------------------|
+| `services/reminder_truth_service.py` | system | legacy eligibility | Resolver eligibility + `attention_kind` (S4.2/S4.3) | **off/shadow:** legacy authoritative; **active (preview):** lifecycle eligibility |
+| `services/jobs.py` — daily reminders | system | legacy send paths | `resolve_lifecycle_reminder_template_key` + gated pipeline (S4.2–S4.4) | Same flag |
+| Scheduler / compliance jobs | system | legacy schedule | No lifecycle scheduler changes in Phase 4 | Same flag |
+| Email / SMS templates | system | `COMPLIANCE_EXPIRY_*` (shadow/off) | `LIFECYCLE_REMINDER_*` per `attention_kind` (S4.4) | **shadow/off:** legacy templates; **active (preview):** lifecycle templates |
+| `get_effective_expiry_date()` consumers | system | expiry-date inference | Unchanged in Phase 4 (carry-forward observation) | Legacy display path |
+| Notification orchestrator | system | governed send path | Code-built lifecycle reminder render (S4.4) | Bypass for `is_lifecycle_reminder_email_alias()` when active |
+
+**Safety (S4.1):** Tier guards mirror confirm/extraction/scoring — staging raw `active` → effective `shadow`; production raw `active` → effective `off`; CI rejects `LIFECYCLE_AWARE_REMINDERS=active` in production blueprints; boot guard `validate_lifecycle_reminder_boot()`.
 
 **Implemented (S4.2/S4.3):** `lifecycle_reminder_gates.py` — shadow `lifecycle_reminder_shadow_*` logs; active gates suppress non-`EXPIRY_BASED` from `DAILY_COMPLIANCE_EXPIRY_*` pipeline; `resolve_lifecycle_reminder_template_key`; wired in `reminder_truth_service.py` and `jobs.py`.
 
 **Implemented (S4.4):** `lifecycle_reminder_template_registry.py` — `LIFECYCLE_REMINDER_*` seed keys (EMAIL+SMS per `attention_kind`); kind-specific EmailService copy; active preview-tier routing; shadow/off remain legacy-authoritative.
 
-**Staging (shadow):** Legacy reminder eligibility remains authoritative; lifecycle path observe-only.
+**Staging (shadow):** Legacy reminder eligibility and `COMPLIANCE_EXPIRY_*` templates remain authoritative; lifecycle path observe-only.
 
-**Active (preview-tier only):** Lifecycle-gated eligibility; template routing returns planned mapping (currently same `COMPLIANCE_EXPIRY_*` seed keys).
+**Active (preview-tier only):** Lifecycle-gated eligibility; sends `LIFECYCLE_REMINDER_*` templates per `attention_kind`; not enabled on staging or production.
 
-**Not in scope for S4.2–S4.4:** Scheduler changes, attention-date calculation changes in resolver, dashboards, reports, scoring.
+**Not in Phase 4 (ADR Phases 5–7):** Scheduler changes, attention-date calculation changes in resolver, dashboards, reports, scoring, legacy deprecation.
 
 ---
 
