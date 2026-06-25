@@ -3,7 +3,7 @@ Feature flag: LIFECYCLE_AWARE_REMINDERS (off | shadow | active).
 
 Phase 4 S4.1: infrastructure only — no reminder pipeline wiring in this slice.
 
-Shadow: legacy reminder behaviour authoritative; lifecycle-gated observe deferred to S4.2.
+Shadow: legacy reminder behaviour authoritative; lifecycle-gated observe in S4.2.
 Active: lifecycle-gated reminders (preview-tier only; staging downgrades to shadow).
 """
 

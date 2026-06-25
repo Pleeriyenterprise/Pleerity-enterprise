@@ -166,11 +166,13 @@ Use one row per **entry surface** (route, job step, script, or service called by
 | `get_effective_expiry_date()` consumers | system | expiry-date inference | `effective_attention_date` via resolver (S4.2+) | **Not in S4.1** |
 | Notification orchestrator | system | governed send path | Template routing per `attention_kind` (S4.3+) | **Not in S4.1** |
 
-**Write/send authority unchanged in S4.1:** All reminder eligibility, scheduling, template selection, and customer wording remain on legacy paths. The flag module is registered at boot for governance only.
+**Implemented (S4.2/S4.3):** `lifecycle_reminder_gates.py` — shadow `lifecycle_reminder_shadow_*` logs; active gates suppress non-`EXPIRY_BASED` from `DAILY_COMPLIANCE_EXPIRY_*` pipeline; `resolve_lifecycle_reminder_template_key` (legacy seed keys until dedicated templates); wired in `reminder_truth_service.py` and `jobs.py`.
 
-**Safety (S4.1):** Tier guards mirror confirm/extraction/scoring — staging raw `active` → effective `shadow`; production raw `active` → effective `off`; `LIFECYCLE_AWARE_REMINDER_PREVIEW_OVERRIDE` never enables active on production; CI rejects `LIFECYCLE_AWARE_REMINDERS=active` in production blueprints; boot guard `validate_lifecycle_reminder_boot()`.
+**Staging (shadow):** Legacy reminder eligibility remains authoritative; lifecycle path observe-only.
 
-**Explicitly out of scope for S4.1:** Reminder logic, templates, scheduling behaviour, attention-date calculations, effective reminder dates, customer-visible wording, dashboards, reports, scoring.
+**Active (preview-tier only):** Lifecycle-gated eligibility; template routing returns planned mapping (currently same `COMPLIANCE_EXPIRY_*` seed keys).
+
+**Not in scope for S4.2/S4.3:** New email/SMS template bodies, scheduler changes, attention-date calculation changes in resolver, dashboards, reports, scoring.
 
 ---
 

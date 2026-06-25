@@ -321,17 +321,90 @@ async def evaluate_requirement_for_daily_reminder(
             "gap_engine": gap_ctx,
         }
 
-    due_date = get_effective_expiry_date(current)
-    if due_date is None:
+    legacy_due_date = get_effective_expiry_date(current)
+    from services.lifecycle_reminder_gates import (
+        build_reminder_lifecycle_context,
+        classify_reminder_timing,
+        evaluate_lifecycle_certificate_expiry_reminder,
+        lifecycle_reminder_due_date,
+        lifecycle_reminder_enabled,
+        observe_reminder_shadow,
+    )
+    from services.lifecycle_aware_reminders_config import is_lifecycle_aware_reminder_active
+
+    legacy_eligible, legacy_classification, legacy_timing_reason = classify_reminder_timing(
+        legacy_due_date,
+        now=now,
+        reminder_days=reminder_days,
+    )
+
+    lifecycle_ctx = None
+    lifecycle_eligible = legacy_eligible
+    lifecycle_classification = legacy_classification
+    lifecycle_timing_reason = legacy_timing_reason
+
+    if lifecycle_reminder_enabled():
+        lifecycle_ctx = build_reminder_lifecycle_context(current, as_of=now)
+        lifecycle_eligible, lifecycle_classification, lifecycle_timing_reason = (
+            evaluate_lifecycle_certificate_expiry_reminder(
+                lifecycle_ctx,
+                reminder_type=reminder_type,
+                now=now,
+                reminder_days=reminder_days,
+                legacy_due_date=legacy_due_date,
+                apply_lifecycle_gates=True,
+            )
+        )
+        observe_reminder_shadow(
+            requirement_code=str(
+                current.get("requirement_code")
+                or current.get("requirement_type")
+                or current.get("code")
+                or ""
+            ),
+            reminder_type=reminder_type,
+            legacy_eligible=legacy_eligible,
+            legacy_classification=legacy_classification,
+            legacy_suppression_reason=legacy_timing_reason,
+            lifecycle_eligible=lifecycle_eligible,
+            lifecycle_classification=lifecycle_classification,
+            lifecycle_suppression_reason=lifecycle_timing_reason,
+            lifecycle_context=lifecycle_ctx,
+        )
+
+    if is_lifecycle_aware_reminder_active() and lifecycle_ctx is not None:
+        eligible_timing = lifecycle_eligible
+        classification = lifecycle_classification
+        timing_reason = lifecycle_timing_reason
+        due_date = lifecycle_reminder_due_date(
+            lifecycle_ctx,
+            legacy_due_date,
+            apply_lifecycle_gates=True,
+        )
+    else:
+        eligible_timing = legacy_eligible
+        classification = legacy_classification
+        timing_reason = legacy_timing_reason
+        due_date = legacy_due_date
+
+    if not eligible_timing:
+        suppression_reason = timing_reason or REASON_NO_EFFECTIVE_DATE
+        underlying_days = None
+        if due_date is not None:
+            underlying_days = (due_date - now).days
         await db.reminder_item_state.update_one(
             state_key,
             {
                 "$set": {
                     **state_key,
                     "suppressed_at": now.isoformat(),
-                    "suppression_reason": REASON_NO_EFFECTIVE_DATE,
+                    "suppression_reason": suppression_reason,
                     "last_evaluated_at": now.isoformat(),
-                    "last_underlying_state": {"status": status, "applicability": applicability},
+                    "last_underlying_state": {
+                        "status": status,
+                        "applicability": applicability,
+                        "days_until_due": underlying_days,
+                    },
                     "updated_at": now.isoformat(),
                 },
                 "$setOnInsert": {"created_at": now.isoformat()},
@@ -343,56 +416,24 @@ async def evaluate_requirement_for_daily_reminder(
             reminder_type=reminder_type,
             state_key=state_key,
             decision="evaluated_suppressed",
-            suppression_reason=REASON_NO_EFFECTIVE_DATE,
-            underlying_state={"status": status, "applicability": applicability, "gap_engine": gap_ctx},
+            suppression_reason=suppression_reason,
+            underlying_state={
+                "status": status,
+                "applicability": applicability,
+                "days_until_due": underlying_days,
+                "gap_engine": gap_ctx,
+            },
         )
         return {
             "eligible": False,
-            "suppression_reason": REASON_NO_EFFECTIVE_DATE,
+            "suppression_reason": suppression_reason,
             "classification": None,
             "state_key": state_key,
             "current_requirement": current,
             "gap_engine": gap_ctx,
         }
 
-    days_until_due = (due_date - now).days
-    classification = None
-    if days_until_due < 0:
-        classification = "overdue"
-    elif 0 <= days_until_due <= int(reminder_days):
-        classification = "expiring"
-    if not classification:
-        await db.reminder_item_state.update_one(
-            state_key,
-            {
-                "$set": {
-                    **state_key,
-                    "suppressed_at": now.isoformat(),
-                    "suppression_reason": REASON_NO_LONGER_DUE,
-                    "last_evaluated_at": now.isoformat(),
-                    "last_underlying_state": {"status": status, "days_until_due": days_until_due},
-                    "updated_at": now.isoformat(),
-                },
-                "$setOnInsert": {"created_at": now.isoformat()},
-            },
-            upsert=True,
-        )
-        await _log_evaluation(
-            db,
-            reminder_type=reminder_type,
-            state_key=state_key,
-            decision="evaluated_suppressed",
-            suppression_reason=REASON_NO_LONGER_DUE,
-            underlying_state={"status": status, "days_until_due": days_until_due, "gap_engine": gap_ctx},
-        )
-        return {
-            "eligible": False,
-            "suppression_reason": REASON_NO_LONGER_DUE,
-            "classification": None,
-            "state_key": state_key,
-            "current_requirement": current,
-            "gap_engine": gap_ctx,
-        }
+    days_until_due = (due_date - now).days if due_date is not None else 0
 
     state = await db.reminder_item_state.find_one(state_key, {"_id": 0, "next_eligible_send_at": 1})
     next_eligible = _parse_iso((state or {}).get("next_eligible_send_at"))
@@ -459,6 +500,11 @@ async def evaluate_requirement_for_daily_reminder(
         "state_key": state_key,
         "current_requirement": current,
         "gap_engine": gap_ctx,
+        **(
+            {"lifecycle_attention_kind": lifecycle_ctx.attention_kind}
+            if lifecycle_ctx is not None
+            else {}
+        ),
     }
 
 
