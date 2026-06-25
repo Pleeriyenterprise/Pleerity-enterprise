@@ -372,6 +372,7 @@ class JobScheduler:
                         suppressed_by_reason[reason] = int(suppressed_by_reason.get(reason, 0)) + 1
                         continue
                     current_req = truth.get("current_requirement") or req
+                    lifecycle_attention_kind = truth.get("lifecycle_attention_kind")
                     due_date = get_effective_expiry_date(current_req)
                     if due_date is None:
                         continue
@@ -395,6 +396,7 @@ class JobScheduler:
                             ),
                             "workflow_semantics_bucket": _infer_reminder_workflow_bucket(current_req),
                             "__state_key": truth.get("state_key"),
+                            "lifecycle_attention_kind": lifecycle_attention_kind,
                         })
                         reminder_refs.append({
                             "property_id": current_req.get("property_id"),
@@ -422,6 +424,7 @@ class JobScheduler:
                             ),
                             "workflow_semantics_bucket": _infer_reminder_workflow_bucket(current_req),
                             "__state_key": truth.get("state_key"),
+                            "lifecycle_attention_kind": lifecycle_attention_kind,
                         })
                         reminder_refs.append({
                             "property_id": current_req.get("property_id"),
@@ -1021,6 +1024,10 @@ class JobScheduler:
         try:
             from services.notification_orchestrator import notification_orchestrator
             from services.webhook_service import fire_reminder_sent
+            from services.lifecycle_reminder_gates import (
+                dominant_attention_kind_for_batch,
+                resolve_lifecycle_reminder_template_key,
+            )
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             to_addr = (recipient_email or client.get("email") or client.get("contact_email") or "").strip()
             if not to_addr:
@@ -1075,7 +1082,10 @@ class JobScheduler:
                     context["days_overdue"] = None
                     context["subject"] = f"Renewal reminder: {context['requirement_name']} due soon"
             result = await notification_orchestrator.send(
-                template_key="COMPLIANCE_EXPIRY_REMINDER",
+                template_key=resolve_lifecycle_reminder_template_key(
+                    dominant_attention_kind_for_batch(expiring, overdue),
+                    channel="EMAIL",
+                ),
                 client_id=client["client_id"],
                 context=context,
                 idempotency_key=idempotency_key,
@@ -1200,6 +1210,10 @@ class JobScheduler:
         """Send SMS reminder via NotificationOrchestrator (plan-gated, 24h throttle inside orchestrator). Writes message_log with event_type REMINDER and reminder_refs in metadata."""
         try:
             from services.notification_orchestrator import notification_orchestrator
+            from services.lifecycle_reminder_gates import (
+                dominant_attention_kind_for_batch,
+                resolve_lifecycle_reminder_template_key,
+            )
             date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             key_suffix = (recipient_phone or "").replace("+", "").replace(" ", "")[:20] if recipient_phone else "client"
             _sms_scope_fp = daily_compliance_reminder_scope_fingerprint(reminder_refs=reminder_refs)
@@ -1220,7 +1234,10 @@ class JobScheduler:
             if reminder_refs is not None:
                 context["reminder_refs"] = json.dumps(reminder_refs)
             await notification_orchestrator.send(
-                template_key="COMPLIANCE_EXPIRY_REMINDER_SMS",
+                template_key=resolve_lifecycle_reminder_template_key(
+                    dominant_attention_kind_for_batch(expiring, overdue),
+                    channel="SMS",
+                ),
                 client_id=client["client_id"],
                 context=context,
                 idempotency_key=idempotency_key,

@@ -2,20 +2,20 @@
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`, `REQUIREMENT_LIFECYCLE_PHASE2_IMPLEMENTATION_DESIGN_01.md`  
 **Maintained:** Programme / lifecycle workstream  
-**Last updated:** 2026-06-02 (Phase 4 S4.1 reminder infrastructure started)  
+**Last updated:** 2026-06-25 (Phase 4 S4.2/S4.3)  
 **Purpose:** Single source of truth for phases, slices, PRs, commits, gates, and remaining work.
 
 ---
 
-## Phase 4 status: **IN PROGRESS** (S4.1 — 2026-06-02)
+## Phase 4 status: **IN PROGRESS** (S4.2/S4.3 — 2026-06-25)
 
-Phase 4 (lifecycle-aware reminders) has begun with **S4.1 infrastructure only**. No reminder pipeline wiring, templates, scheduling, attention-date calculations, or customer-visible behaviour changes in this slice.
+| Phase 4 slice | Status | Notes |
+|---------------|--------|-------|
+| **S4.1** — reminder flag infrastructure | **Complete** | Merged PR #11 @ `4a15747a` |
+| **S4.2** — shadow reminder telemetry | **In progress** | `lifecycle_reminder_gates.py` + `reminder_truth_service` dual-run |
+| **S4.3** — active eligibility gates + template routing | **In progress** | Preview-tier active only; legacy template keys until dedicated templates |
 
-| Phase 4 slice | Status | Branch | Notes |
-|---------------|--------|--------|-------|
-| **S4.1** — reminder flag infrastructure | **In progress** | `feature/lifecycle-phase4-s41-reminder-infra` | Config, boot, CI, staging `shadow`; dormant until S4.2+ |
-
-**Feature branch:** `feature/lifecycle-phase4-s41-reminder-infra` (from `develop` @ `e07f8fd0`)
+**Feature branch:** `feature/lifecycle-phase4-s42-s43-reminder-gates`
 
 ---
 
@@ -102,8 +102,10 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **Phase 3 S3.1** | 3 | `LIFECYCLE_AWARE_SCORING` flag + boot + CI | **Merged** PR #9 |
 | **Phase 3 S3.2** | 3 | Shadow scoring telemetry (`lifecycle_scoring_shadow_*`) | **Merged** PR #10 |
 | **Phase 3 S3.3** | 3 | Active penalty gates + projector overlay | **Merged** PR #10 |
-| **Phase 4 S4.1** | 4 | `LIFECYCLE_AWARE_REMINDERS` flag + boot + CI | **In progress** — branch `feature/lifecycle-phase4-s41-reminder-infra` |
-| Phase 4 S4.2+ | 4 | Shadow telemetry, active gates, templates | Not started |
+| **Phase 4 S4.1** | 4 | `LIFECYCLE_AWARE_REMINDERS` flag + boot + CI | **Merged** PR #11 |
+| **Phase 4 S4.2** | 4 | Shadow reminder telemetry (`lifecycle_reminder_shadow_*`) | **In progress** |
+| **Phase 4 S4.3** | 4 | Active eligibility gates + template routing authority | **In progress** |
+| Phase 4 S4.4+ | 4 | Dedicated `attention_kind` email/SMS templates | Not started |
 | Phase 5 KPIs | 5 | Dashboard widget split | Not started |
 | Phase 6 reports | 6 | Report/digest language | Not started |
 
@@ -141,7 +143,20 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 - CI governance for production blueprint
 - STREAM_B §5b scoring authority inventory
 
-**Not implemented (Phase 4 S4.2+):** reminder pipeline wiring, shadow telemetry, active gates, `attention_kind` templates, KPIs, reports, legacy deprecation.
+**Not implemented (Phase 4 S4.4+):** dedicated `attention_kind` email/SMS template bodies, KPIs, reports, legacy deprecation.
+
+---
+
+## 4b. Phase 4 S4.2/S4.3 scope (in progress)
+
+- `lifecycle_reminder_gates.py` — resolver context, shadow `lifecycle_reminder_shadow_*` logs, active certificate-expiry pipeline gates, template routing authority
+- `reminder_truth_service.py` — dual-run shadow; active uses lifecycle eligibility (legacy authoritative on staging shadow)
+- `jobs.py` — `resolve_lifecycle_reminder_template_key` for email/SMS sends; `lifecycle_attention_kind` on reminder items
+- `test_lifecycle_reminders_s42_s43.py` — shadow divergence, active gates, template routing
+
+**Staging behaviour unchanged:** `LIFECYCLE_AWARE_REMINDERS=shadow` keeps legacy eligibility authoritative; lifecycle path observe-only.
+
+**Active (preview-tier only):** suppresses non-`EXPIRY_BASED` requirements from `DAILY_COMPLIANCE_EXPIRY_*` pipeline.
 
 ---
 
@@ -183,6 +198,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | `test_lifecycle_scoring_s31.py` | **9** |
 | `test_lifecycle_scoring_s32_s33.py` | **11** |
 | `test_lifecycle_reminders_s4.py` | **11** |
+| `test_lifecycle_reminders_s42_s43.py` | **13** |
 | `test_lifecycle_extraction_s5_extract.py` | **46** |
 | Frontend `LifecycleAwareConfirm` | **12** |
 
