@@ -2,14 +2,14 @@
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`, `REQUIREMENT_LIFECYCLE_PHASE2_IMPLEMENTATION_DESIGN_01.md`  
 **Maintained:** Programme / lifecycle workstream  
-**Last updated:** 2026-06-02 (Phase 5 P5-S6 implemented — ready for commit on `feature/lifecycle-phase5-p5-s6-reporting-exposure`)  
+**Last updated:** 2026-06-02 (Phase 5 P5-S6 merged PR #18; develop @ `921073d6`)  
 **Purpose:** Single source of truth for phases, slices, PRs, commits, gates, and remaining work.
 
 ---
 
-## Phase 5 status: **IN PROGRESS** (P5-S1–S6 implemented; P5-S7 deferred — 2026-06-02)
+## Phase 5 status: **FEATURE-COMPLETE** (P5-S1–S6 merged; P5-S7 / P5-S4b deferred — 2026-06-02)
 
-Phase 5 (lifecycle-aware dashboard KPIs) is underway. **P5-S1** through **P5-S6** are implemented on `develop` (P5-S6 pending commit/PR). Staging remains **shadow** governance (`LIFECYCLE_AWARE_KPIS=shadow`). **P5-S4b** (portfolio/requirements straggler convergence) remains **deferred**. **P5-S7** (legacy deprecation) is **not started**.
+Phase 5 (lifecycle-aware dashboard KPIs) feature slices **P5-S1** through **P5-S6** are merged to `develop` and deploying to staging in **shadow** governance (`LIFECYCLE_AWARE_KPIS=shadow`). **P5-S7** (legacy deprecation) is **not started** — next planning item. **P5-S4b** (portfolio/requirements straggler convergence) and **Evidence Readiness PDF parallel counts** remain **deferred**.
 
 | Phase 5 slice | Status | PR | Merge SHA |
 |---------------|--------|-----|-----------|
@@ -19,12 +19,11 @@ Phase 5 (lifecycle-aware dashboard KPIs) is underway. **P5-S1** through **P5-S6*
 | **P5-S5** — additive API `lifecycle_kpi_breakdown` | **Complete** | [#17](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/17) | `4a5a3a5c` |
 | **P5-S4** — dashboard attention strip | **Complete** | [#17](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/17) | `4a5a3a5c` |
 | **P5-S4b** — portfolio/requirements straggler convergence | **Deferred** | — | — |
-| **P5-S6** — reports / digest / exports lifecycle exposure | **Implemented** (pending PR) | — | — |
+| **P5-S6** — reports / digest / exports lifecycle exposure | **Complete** | [#18](https://github.com/Pleeriyenterprise/Pleerity-enterprise/pull/18) | `921073d6` |
 | **P5-S7** — legacy deprecation | **Not started** | — | — |
 
-**`develop` tip:** `60e7a379` (P5-S4/S5 governance closeout; P5-S6 uncommitted)  
-**P5-S6 branch:** `feature/lifecycle-phase5-p5-s6-reporting-exposure` (planned)  
-**Staging deploy:** `4a5a3a5c` @ `pleerity-enterprise.onrender.com`  
+**`develop` tip:** `921073d6` (P5-S6 merge PR #18)  
+**Staging deploy:** pending @ `pleerity-enterprise.onrender.com` — auto-deploy from `develop`  
 **`main` / production:** `60c1dbbe` — **untouched**
 
 **P5-S6 dependencies:** P5-S3 (`compute_client_portal_requirement_stats` authority), P5-S5 (`lifecycle_kpi_breakdown` payload contract), `attach_additive_lifecycle_kpi_fields` in `lifecycle_kpi_gates.py`.
@@ -37,7 +36,7 @@ Phase 5 (lifecycle-aware dashboard KPIs) is underway. **P5-S1** through **P5-S6*
 
 **P5-S4 dashboard:** supplemental `LifecycleKpiAttentionStrip` below headline KPI tiles; tiles remain authoritative from 8-key `stats`.
 
-**Next slice:** **P5-S7** — legacy deprecation (not started). **P5-S4b** straggler convergence deferred.
+**Next slice:** **P5-S7** — legacy deprecation (planning; not started). **P5-S4b** portfolio/requirements straggler convergence **deferred**. **Evidence Readiness PDF** parallel counts **deferred**.
 
 ---
 
@@ -140,7 +139,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **2** | Confirm + extraction | Profiles, confirm contract | `LIFECYCLE_AWARE_CONFIRM`, `LIFECYCLE_AWARE_EXTRACTION` | Complete |
 | **3** | Scoring gates | Penalty eligibility via `field_contract` | `LIFECYCLE_AWARE_SCORING` | **Complete** |
 | **4** | Reminders + gaps | `attention_kind` templates | `LIFECYCLE_AWARE_REMINDERS` | **Complete** |
-| **5** | Dashboard KPIs | Split widgets | `LIFECYCLE_AWARE_KPIS` | **IN PROGRESS** (P5-S1–S5 complete; P5-S6 next) |
+| **5** | Dashboard KPIs | Split widgets | `LIFECYCLE_AWARE_KPIS` | **FEATURE-COMPLETE** (P5-S1–S6 merged; P5-S7 deferred) |
 | **6** | Reports + digest | Section language | — | Not started |
 | **7** | Legacy deprecation | Remove independent expiry inference | — | Not started |
 
@@ -166,7 +165,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | **Phase 5 P5-S5** | 5 | Additive API `lifecycle_kpi_breakdown` | **Merged** PR #17 |
 | **Phase 5 P5-S4** | 5 | Dashboard attention strip | **Merged** PR #17 |
 | Phase 5 P5-S4b | 5 | Portfolio/requirements straggler convergence | Deferred |
-| **Phase 5 P5-S6** | 5 | Reports / digest / exports lifecycle exposure | **Implemented** (pending PR) |
+| **Phase 5 P5-S6** | 5 | Reports / digest / exports lifecycle exposure | **Merged** PR #18 |
 | Phase 7 legacy deprecation | 7 | Remove independent expiry inference | Not started |
 
 ---
@@ -187,7 +186,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 | Phase 5 P5-S3 | Complete | #16 | `4fd1d3e1` | Yes | Deployed @ `4fd1d3e1` | Untouched |
 | Phase 5 P5-S5 | Complete | #17 | `4a5a3a5c` | Yes | Deploy pending | Untouched |
 | Phase 5 P5-S4 | Complete | #17 | `4a5a3a5c` | Yes | Deploy pending | Untouched |
-| Phase 5 P5-S6 | Implemented | — | — | No | — | Untouched |
+| Phase 5 P5-S6 | Complete | #18 | `921073d6` | Yes | Deploy pending | Untouched |
 | Phase 5 P5-S4b / S7 | Deferred / not started | — | — | No | — | Untouched |
 
 **Branch heads (2026-06-02):**
@@ -286,7 +285,7 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 **Not in P5-S4:** portfolio/requirements straggler convergence (P5-S4b), production config.
 
-## 5f. Phase 5 P5-S6 scope delivered (implemented — pending PR)
+## 5f. Phase 5 P5-S6 scope delivered (merged PR #18)
 
 - `lifecycle_kpi_gates.py` — `attach_additive_lifecycle_kpi_fields`, report presentation helpers (labels, framing)
 - `reporting_service.py` — compliance summary report + CSV supplemental lifecycle section
@@ -413,10 +412,9 @@ Recorded for Phase 4+ planning. **None block Phase 3 completion.**
 
 ```
 Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
-    └── Phase 5 dashboard KPIs (LIFECYCLE_AWARE_KPIS)  ← P5-S1–S5 MERGED; P5-S6 NEXT
+    └── Phase 5 dashboard KPIs (LIFECYCLE_AWARE_KPIS)  ← P5-S1–S6 MERGED; P5-S7 DEFERRED
             ├── P5-S4b portfolio/requirements stragglers (deferred)
-            ├── P5-S6 reports / digest / exports lifecycle exposure (implemented — pending PR)
-            ├── P5-S4b portfolio/requirements stragglers (deferred)
+            ├── Evidence Readiness PDF parallel counts (deferred)
             └── P5-S7 legacy deprecation (not started)
 ```
 
@@ -428,7 +426,7 @@ Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
 |------|---------|
 | **Phase 3 feature-complete on `develop`** | **PASS** — PRs #9–#10 merged |
 | **Phase 4 feature-complete on `develop`** | **PASS** — PRs #11–#13 merged |
-| **Staging shadow (confirm + extraction + scoring + reminders + KPIs)** | **ACTIVE** — deploy pending @ `4a5a3a5c` |
+| **Staging shadow (confirm + extraction + scoring + reminders + KPIs)** | **ACTIVE** — deploy pending @ `921073d6` |
 | **KPI shadow runtime evidence** | **PENDING** — operational (non-blocking) |
 | **Reminder shadow runtime evidence** | **PENDING** — operational (non-blocking) |
 | **Preview active reminder soak** | **NOT STARTED** |
@@ -451,6 +449,6 @@ Phase 1 + Phase 2 + Phase 3 + Phase 4 (COMPLETE on develop)
 
 ## 10. Next recommended action
 
-**Next:** Commit and open PR for **P5-S6** on `feature/lifecycle-phase5-p5-s6-reporting-exposure`. **P5-S4b** portfolio/requirements straggler convergence remains deferred. **P5-S7** not started.
+**Next:** Begin **P5-S7** legacy deprecation planning (or Phase 5 closeout review). **P5-S4b** portfolio/requirements straggler convergence and **Evidence Readiness PDF** parallel counts remain deferred.
 
-**Tracker verdict:** `READY_FOR_P5_S6_COMMIT`
+**Tracker verdict:** `READY_FOR_P5_S7_OR_PHASE5_CLOSEOUT_PLANNING`
