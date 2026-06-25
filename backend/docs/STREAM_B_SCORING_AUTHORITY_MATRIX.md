@@ -147,6 +147,8 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 **Not in scope for S3.1:** No changes to penalty fractions, persisted scores, or client-visible headline until S3.2 (shadow telemetry) and S3.3 (active gates).
 
+**Implemented (S3.2/S3.3):** `lifecycle_scoring_gates.py` — shadow `lifecycle_scoring_shadow_*` logs; active gates in `compliance_scoring_v2.py` via `field_contract.requires_expiry_date` and `EXPIRY_BASED` due-date suppression; `customer_status_projector_v2` EXPIRY_DATE_NEEDED gated when scoring active.
+
 ---
 
 ## 9. Recommended migration order

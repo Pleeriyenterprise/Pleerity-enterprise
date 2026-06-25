@@ -28,6 +28,14 @@ from services.compliance_rules_registry import (
     expiring_soon_days_for_requirement,
     expects_expiry_for_requirement,
 )
+from services.lifecycle_aware_scoring_config import is_lifecycle_aware_scoring_active
+from services.lifecycle_scoring_gates import (
+    build_scoring_lifecycle_context,
+    lifecycle_authority_expiry_calendar_allowed,
+    lifecycle_due_date_expiry_penalties_allowed,
+    lifecycle_scoring_enabled,
+    observe_scoring_shadow,
+)
 
 
 BUCKET_WEIGHTS = {
@@ -248,6 +256,8 @@ def _status_fraction_from_requirement(
     expiring_soon_days: int,
     *,
     expects_expiry: bool,
+    apply_lifecycle_gates: bool = False,
+    lifecycle_semantics: Optional[str] = None,
 ) -> Tuple[float, str, Optional[str], Optional[str], List[str]]:
     if not req:
         return _status_fraction_from_doc(code, docs, as_of, expiring_soon_days, expects_expiry=expects_expiry)
@@ -262,40 +272,49 @@ def _status_fraction_from_requirement(
             except ValueError:
                 exp_d = None
         if auth_status == "VALID" and exp_d is not None:
-            days = (exp_d - as_of).days
-            if days < 0:
+            if lifecycle_authority_expiry_calendar_allowed(
+                apply_lifecycle_gates=apply_lifecycle_gates,
+                requires_expiry_date=expects_expiry,
+            ):
+                days = (exp_d - as_of).days
+                if days < 0:
+                    return (
+                        STATUS_TO_FRACTION[STATUS_EXPIRED],
+                        "EXPIRED",
+                        exp_d.isoformat(),
+                        None,
+                        ["DOCUMENT_EXPIRED"],
+                    )
+                if days <= expiring_soon_days:
+                    return (
+                        STATUS_TO_FRACTION[STATUS_EXPIRING_SOON],
+                        "EXPIRING_SOON",
+                        exp_d.isoformat(),
+                        None,
+                        ["DOCUMENT_EXPIRING_SOON"],
+                    )
                 return (
-                    STATUS_TO_FRACTION[STATUS_EXPIRED],
-                    "EXPIRED",
+                    STATUS_TO_FRACTION[STATUS_VALID],
+                    "VALID",
                     exp_d.isoformat(),
                     None,
-                    ["DOCUMENT_EXPIRED"],
+                    [],
                 )
-            if days <= expiring_soon_days:
-                return (
-                    STATUS_TO_FRACTION[STATUS_EXPIRING_SOON],
-                    "EXPIRING_SOON",
-                    exp_d.isoformat(),
-                    None,
-                    ["DOCUMENT_EXPIRING_SOON"],
-                )
-            return (
-                STATUS_TO_FRACTION[STATUS_VALID],
-                "VALID",
-                exp_d.isoformat(),
-                None,
-                [],
-            )
         if auth_status == "VALID":
             return (STATUS_TO_FRACTION[STATUS_VALID], "VALID", None, None, [])
         if auth_status == "EXPIRED":
-            return (
-                STATUS_TO_FRACTION[STATUS_EXPIRED],
-                "EXPIRED",
-                exp_d.isoformat() if exp_d else None,
-                None,
-                ["DOCUMENT_EXPIRED"],
-            )
+            if lifecycle_authority_expiry_calendar_allowed(
+                apply_lifecycle_gates=apply_lifecycle_gates,
+                requires_expiry_date=expects_expiry,
+            ):
+                return (
+                    STATUS_TO_FRACTION[STATUS_EXPIRED],
+                    "EXPIRED",
+                    exp_d.isoformat() if exp_d else None,
+                    None,
+                    ["DOCUMENT_EXPIRED"],
+                )
+            return (STATUS_TO_FRACTION[STATUS_VALID], "VALID", None, None, [])
         if auth_status == "NEEDS_REVIEW":
             assurance = _satisfaction_aware_assurance_fraction(req)
             if assurance:
@@ -338,7 +357,10 @@ def _status_fraction_from_requirement(
     verified_at = req.get("verified_at")
     if req_status in ("NOT_REQUIRED", "NOT_APPLICABLE"):
         return 1.0, "NOT_APPLICABLE", due.isoformat() if due else None, str(verified_at) if verified_at else None, []
-    if due is not None:
+    if due is not None and lifecycle_due_date_expiry_penalties_allowed(
+        lifecycle_semantics,
+        apply_lifecycle_gates=apply_lifecycle_gates,
+    ):
         days = (due - as_of).days
         if days < 0:
             return 0.0, "EXPIRED", due.isoformat(), str(verified_at) if verified_at else None, ["DOCUMENT_EXPIRED"]
@@ -347,9 +369,15 @@ def _status_fraction_from_requirement(
             return base, "EXPIRING_SOON", due.isoformat(), str(verified_at) if verified_at else None, ["DOCUMENT_EXPIRING_SOON"]
     if req_status in ("COMPLIANT", "VALID", "VERIFIED"):
         return 1.0, "VALID", due.isoformat() if due else None, str(verified_at) if verified_at else None, []
-    if req_status in ("EXPIRING_SOON",):
+    if req_status in ("EXPIRING_SOON",) and lifecycle_due_date_expiry_penalties_allowed(
+        lifecycle_semantics,
+        apply_lifecycle_gates=apply_lifecycle_gates,
+    ):
         return 0.7, "EXPIRING_SOON", due.isoformat() if due else None, str(verified_at) if verified_at else None, ["DOCUMENT_EXPIRING_SOON"]
-    if req_status in ("OVERDUE", "EXPIRED"):
+    if req_status in ("OVERDUE", "EXPIRED") and lifecycle_due_date_expiry_penalties_allowed(
+        lifecycle_semantics,
+        apply_lifecycle_gates=apply_lifecycle_gates,
+    ):
         return 0.0, "EXPIRED", due.isoformat() if due else None, str(verified_at) if verified_at else None, ["DOCUMENT_EXPIRED"]
     if req_status in ("PENDING", "MISSING"):
         return 0.0, "MISSING", due.isoformat() if due else None, str(verified_at) if verified_at else None, ["NO_DOCUMENT_FOUND"]
@@ -499,17 +527,72 @@ def compute_property_score_v2(
         applicable_points += float(cfg["weight"])
         code_expiring = expiring_soon_days_for_requirement(jurisdiction, code, expiring_soon_days)
         code_expects_expiry = expects_expiry_for_requirement(jurisdiction, code)
-        fraction, status, expiry_date, verified_at, reasons = _status_fraction_from_requirement(
-            code,
-            req_by_code.get(code),
-            docs_by_code.get(code, []),
-            today,
-            code_expiring,
-            expects_expiry=code_expects_expiry,
-        )
         docs_for_code = docs_by_code.get(code, [])
-        evidence_state = evidence_state_for_documents_list(docs_for_code)
         req_row = req_by_code.get(code)
+        legacy_fraction, legacy_status, legacy_expiry, legacy_verified, legacy_reasons = (
+            _status_fraction_from_requirement(
+                code,
+                req_row,
+                docs_for_code,
+                today,
+                code_expiring,
+                expects_expiry=code_expects_expiry,
+                apply_lifecycle_gates=False,
+            )
+        )
+        if lifecycle_scoring_enabled():
+            lifecycle_ctx = build_scoring_lifecycle_context(
+                req_row,
+                jurisdiction=jurisdiction,
+                scoring_code=code,
+            )
+            lifecycle_fraction, lifecycle_status, lifecycle_expiry, lifecycle_verified, lifecycle_reasons = (
+                _status_fraction_from_requirement(
+                    code,
+                    req_row,
+                    docs_for_code,
+                    today,
+                    code_expiring,
+                    expects_expiry=lifecycle_ctx.requires_expiry_date,
+                    apply_lifecycle_gates=True,
+                    lifecycle_semantics=lifecycle_ctx.lifecycle_semantics,
+                )
+            )
+            observe_scoring_shadow(
+                requirement_code=code,
+                legacy_fraction=legacy_fraction,
+                legacy_status=legacy_status,
+                lifecycle_fraction=lifecycle_fraction,
+                lifecycle_status=lifecycle_status,
+                lifecycle_context=lifecycle_ctx,
+                legacy_reasons=legacy_reasons,
+                lifecycle_reasons=lifecycle_reasons,
+            )
+            if is_lifecycle_aware_scoring_active():
+                fraction, status, expiry_date, verified_at, reasons = (
+                    lifecycle_fraction,
+                    lifecycle_status,
+                    lifecycle_expiry,
+                    lifecycle_verified,
+                    lifecycle_reasons,
+                )
+            else:
+                fraction, status, expiry_date, verified_at, reasons = (
+                    legacy_fraction,
+                    legacy_status,
+                    legacy_expiry,
+                    legacy_verified,
+                    legacy_reasons,
+                )
+        else:
+            fraction, status, expiry_date, verified_at, reasons = (
+                legacy_fraction,
+                legacy_status,
+                legacy_expiry,
+                legacy_verified,
+                legacy_reasons,
+            )
+        evidence_state = evidence_state_for_documents_list(docs_for_code)
         date_source = infer_date_source_for_scoring(req_row, evidence_state)
         confidence_state = infer_confidence_state(date_source, evidence_state)
         reasons = list(reasons)

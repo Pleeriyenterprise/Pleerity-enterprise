@@ -1,9 +1,9 @@
 """
 Feature flag: LIFECYCLE_AWARE_SCORING (off | shadow | active).
 
-Phase 3 S3.1: infrastructure only — no scoring penalty wiring in this slice.
+Phase 3 S3.1: infrastructure. S3.2/S3.3: shadow telemetry + active penalty gates in lifecycle_scoring_gates.py.
 
-Shadow: legacy scoring authoritative; lifecycle-gated compute deferred to S3.2.
+Shadow: legacy scoring authoritative; parallel lifecycle-gated compute logs divergences.
 Active: lifecycle-gated penalties (preview-tier only; staging downgrades to shadow).
 """
 
