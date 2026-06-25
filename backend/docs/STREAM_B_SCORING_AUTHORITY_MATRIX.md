@@ -4,7 +4,7 @@
 **Phase:** Scoring authority matrix (audit only; no runtime or API changes)  
 **Named authority (writes):** `compliance_scoring_service.recalculate_and_persist`  
 **Companion reads:** `compliance_scoring_service.calculate_property_compliance` (v2 planner, no persist unless called inside `recalculate_and_persist` or read-repair), `compliance_score.calculate_compliance_score` (portfolio headline + live `stats` from persisted rows + runtime projection)  
-**Last updated:** 2026-06-02 (Phase 5 P5-S2 shadow KPI telemetry §5d)
+**Last updated:** 2026-06-02 (Phase 5 P5-S3 active KPI authority §5d)
 
 ---
 
@@ -180,28 +180,68 @@ Use one row per **entry surface** (route, job step, script, or service called by
 
 ---
 
-## 5d. KPI authority (Phase 5 — P5-S1 complete; **P5-S2 shadow observe-only**)
+## 5d. KPI authority (Phase 5 — P5-S1/S2 merged; **P5-S3 active authority complete**)
 
 **Authority:** `ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md`; master tracker `REQUIREMENT_LIFECYCLE_MASTER_IMPLEMENTATION_TRACKER.md`.
 
 **Feature flag:** `LIFECYCLE_AWARE_KPIS` (`off` | `shadow` | `active`) — config in `services/lifecycle_aware_kpis_config.py`.
 
+**Single choke point:** `compute_client_portal_requirement_stats` in `requirement_client_runtime_surface.py`. All client-visible KPI counts (dashboard, compliance score `stats`, reporting parity paths) flow through this function. No dashboard-specific, report-specific, or API-specific KPI calculations.
+
+### Authority model by flag mode
+
+| Mode | Returned authority | Parallel lifecycle | Customer-visible change |
+|------|-------------------|--------------------|-------------------------|
+| **OFF** | Legacy only | None | None |
+| **SHADOW** | Legacy only | Computed + divergence logged (`lifecycle_kpi_shadow_*`) | None |
+| **ACTIVE** (preview-tier only) | Lifecycle only | N/A (lifecycle is returned) | Count values may differ; payload shape unchanged |
+
+**OFF → legacy authority**
+
+- `compute_client_portal_requirement_stats` returns legacy status-based aggregation only.
+- No lifecycle computation.
+
+**SHADOW → legacy authority + lifecycle observe**
+
+- Legacy stats returned to all consumers.
+- `compute_lifecycle_kpi_stats` runs in parallel via `lifecycle_kpi_gates.observe_kpi_shadow`.
+- Divergence logged (`lifecycle_kpi_shadow_complete`, `lifecycle_kpi_shadow_divergence`).
+- No customer-visible change.
+
+**ACTIVE → lifecycle authority** (preview tier, or non-production preview override)
+
+- `lifecycle_stats_authoritative_payload(compute_lifecycle_kpi_stats(...))` returned.
+- Legacy stats never merged into the returned payload.
+- Staging raw `active` → effective **shadow** (legacy returned).
+- Production raw `active` → effective **off** (legacy returned).
+
+### Entry / surface inventory
+
 | Entry / surface | Actor | Current authority | Lifecycle gate | Flag mode behaviour |
 |-----------------|-------|-------------------|----------------|---------------------|
-| `compute_client_portal_requirement_stats` | system | **legacy authoritative** | Dual-run shadow via `lifecycle_kpi_gates.py` (P5-S2) | **off:** unchanged; **shadow:** legacy authoritative + `lifecycle_kpi_shadow_*` logs; **active (P5-S3+):** lifecycle-gated counts |
-| Dashboard KPI widgets | client/admin | legacy headline KPIs | Split per `attention_kind` (P5-S3+) | **Not in P5-S2** |
-| Dashboard KPI APIs | client/admin | legacy aggregation paths | Lifecycle-gated counts (P5-S3+) | Same flag |
-| Command centre / digest KPI surfaces | system | legacy reporting KPIs | Section language (Phase 6) | **Not in P5-S2** |
+| `compute_client_portal_requirement_stats` | system | **Mode-dependent** (see above) | `lifecycle_kpi_gates.py` | **off:** legacy; **shadow:** legacy + logs; **active (preview):** lifecycle |
+| Dashboard KPI widgets | client/admin | legacy headline KPIs | Split per `attention_kind` | **Deferred — P5-S4** |
+| Dashboard KPI APIs | client/admin | legacy aggregation paths | Additive lifecycle fields | **Deferred — P5-S5** (`lifecycle_kpi_breakdown` not exposed) |
+| Command centre / digest KPI surfaces | system | legacy reporting KPIs | Section language (Phase 6) | **Deferred — P5-S6** |
 
-**Implemented (P5-S2):** `lifecycle_kpi_gates.py` — shadow `lifecycle_kpi_shadow_*` logs; planned `attention_kind` bucket aggregation; wired in `compute_client_portal_requirement_stats`.
+**Implemented (P5-S2):** `lifecycle_kpi_gates.py` — shadow `lifecycle_kpi_shadow_*` logs; `attention_kind` bucket aggregation (internal telemetry).
+
+**Implemented (P5-S3):** Authority switch in `compute_client_portal_requirement_stats`; explicit semantics→bucket map; `lifecycle_stats_authoritative_payload` (8-key contract); authority regression tests.
+
+**Deferred (not in P5-S3):**
+
+- Dashboard widget exposure — **P5-S4**
+- Additive API fields / `lifecycle_kpi_breakdown` — **P5-S5**
+- Reports, exports, PDFs, monthly digest — **P5-S6**
+- Frontend, production config changes
 
 **Safety (P5-S1):** Tier guards mirror confirm/extraction/scoring/reminders — staging raw `active` → effective `shadow`; production raw `active` → effective `off`; CI rejects `LIFECYCLE_AWARE_KPIS=active` in production blueprints; boot guard `validate_lifecycle_kpi_boot()`.
 
-**Staging (shadow):** Legacy KPI stats from `compute_client_portal_requirement_stats` remain authoritative; lifecycle path observe-only.
+**Payload contract (unchanged across modes):** `total_requirements`, `compliant`, `satisfied`, `status_valid`, `pending`, `missing_evidence`, `expiring_soon`, `overdue` — no additional, removed, or renamed keys.
 
-**Active (preview-tier only, P5-S3+):** Lifecycle-gated KPI presentation; not enabled on staging or production.
+**Staging (shadow):** Legacy KPI stats authoritative; lifecycle path observe-only @ `LIFECYCLE_AWARE_KPIS=shadow`.
 
-**Not in P5-S2:** Dashboard widget/API changes, active KPI gates, reports, production config.
+**Active (preview-tier only):** Lifecycle-gated KPI counts returned; not enabled on staging or production without preview override.
 
 ---
 
