@@ -19,6 +19,12 @@ from services.document_extraction_llm_gateway import (
     validate_extraction_json,
 )
 from services.extraction_error_presentation import user_facing_extraction_message
+from services.lifecycle_extraction_profiles import ExtractionProfile
+from services.lifecycle_profile_extraction import (
+    build_profile_system_prompt,
+    normalize_profile_extraction,
+    validate_profile_extraction_json,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +173,105 @@ async def extract_compliance_fields_async(
         "llm_latency_ms": llm_result.llm_latency_ms,
         "extraction_attempted_at": llm_result.extraction_attempted_at,
     }
+
+
+async def extract_profile_aware_fields_async(
+    text: str,
+    file_name: str,
+    profile: ExtractionProfile,
+    hints: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Profile-aware extraction (Phase 2 S5-extract). Uses per-profile schema and prompts.
+    """
+    if not ai_config.AI_ENABLED:
+        return _base_failure("AI_NOT_CONFIGURED")
+
+    if not is_any_document_extraction_llm_configured():
+        return _base_failure("AI_NOT_CONFIGURED")
+
+    if not text or not text.strip():
+        return _base_failure("NO_TEXT")
+
+    hint_str = ""
+    if hints:
+        hint_str = f" Hints: {json.dumps(hints)}."
+    user_content = (
+        f"Document filename: {file_name}.{hint_str}\n\n"
+        f"Extract fields from this document text:\n\n{text}"
+    )
+    system_prompt = build_profile_system_prompt(profile)
+
+    def _validate(raw: str) -> bool:
+        return validate_profile_extraction_json(raw, profile)
+
+    llm_result = await complete_document_extraction_llm(
+        system_prompt,
+        user_content[:30000],
+        validate_output=_validate,
+        temperature=ai_config.AI_TEMPERATURE,
+        max_tokens=ai_config.AI_MAX_OUTPUT_TOKENS,
+    )
+
+    if llm_result is None:
+        return _base_failure("AI_EXTRACTION_UNAVAILABLE")
+
+    llm_meta = _llm_meta_from_result(llm_result)
+    raw_text = llm_result.text
+
+    try:
+        parsed = json.loads(raw_text)
+    except json.JSONDecodeError as e:
+        logger.warning("Profile AI extraction JSON decode error: %s", e)
+        return _base_failure(
+            "PARSE_ERROR",
+            raw_message=str(e),
+            raw_response_json=raw_text,
+            llm_meta=llm_meta,
+        )
+
+    extracted = normalize_profile_extraction(parsed, profile)
+    prompt_version = f"{AI_EXTRACTION_PROMPT_VERSION}:{profile.profile_id}"
+    return {
+        "success": True,
+        "error_code": None,
+        "error_message": None,
+        "extracted": extracted,
+        "raw_response_json": raw_text,
+        "model": llm_result.model_used,
+        "prompt_version": prompt_version,
+        "tokens_in": llm_result.tokens_in,
+        "tokens_out": llm_result.tokens_out,
+        "provider_used": llm_result.provider_used,
+        "fallback_used": llm_result.fallback_used,
+        "llm_error_class": llm_result.llm_error_class,
+        "llm_latency_ms": llm_result.llm_latency_ms,
+        "extraction_attempted_at": llm_result.extraction_attempted_at,
+        "extraction_profile_id": profile.profile_id,
+    }
+
+
+def extract_profile_aware_fields(
+    text: str,
+    file_name: str,
+    profile: ExtractionProfile,
+    hints: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Sync wrapper for profile-aware extraction."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(
+                asyncio.run,
+                extract_profile_aware_fields_async(text, file_name, profile, hints),
+            )
+            return future.result()
+    return asyncio.run(extract_profile_aware_fields_async(text, file_name, profile, hints))
 
 
 def extract_compliance_fields(

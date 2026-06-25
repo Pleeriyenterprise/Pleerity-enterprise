@@ -15,8 +15,17 @@ from database import database
 from models import AuditAction
 from utils.audit import create_audit_log
 
-from services.ai_provider import extract_compliance_fields_async
+from services.ai_provider import extract_compliance_fields
 from services.extraction_error_presentation import user_facing_extraction_message
+from services.lifecycle_aware_extraction_config import get_effective_extraction_mode
+from services.lifecycle_profile_extraction import (
+    build_storage_payload_from_legacy,
+    build_storage_payload_from_profile,
+    legacy_extraction_status,
+    maybe_run_profile_extraction_observe,
+    merge_profile_into_legacy_storage,
+    profile_extraction_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -233,18 +242,18 @@ async def run_extraction_job(extraction_id: str) -> None:
         )
         return
     # Call AI (sync) in thread to not block
-    result = await asyncio.to_thread(
+    legacy_result = await asyncio.to_thread(
         extract_compliance_fields,
         text,
         file_name,
-        hints={"source": record.get("source")},
+        {"source": record.get("source")},
     )
     now = datetime.now(timezone.utc)
-    if not result.get("success"):
-        error_code = result.get("error_code") or "AI_ERROR"
+    if not legacy_result.get("success"):
+        error_code = legacy_result.get("error_code") or "AI_ERROR"
         error_message = user_facing_extraction_message(
             error_code,
-            result.get("error_message"),
+            legacy_result.get("error_message"),
         )
         await _set_failed(
             db,
@@ -254,32 +263,80 @@ async def run_extraction_job(extraction_id: str) -> None:
             error_code,
             error_message,
             audit_extra={
-                "raw_response_json": result.get("raw_response_json"),
-                "model": result.get("model"),
-                "prompt_version": result.get("prompt_version"),
-                "provider_used": result.get("provider_used"),
-                "fallback_used": result.get("fallback_used"),
-                "llm_error_class": result.get("llm_error_class"),
-                "llm_latency_ms": result.get("llm_latency_ms"),
-                "extraction_attempted_at": result.get("extraction_attempted_at"),
+                "raw_response_json": legacy_result.get("raw_response_json"),
+                "model": legacy_result.get("model"),
+                "prompt_version": legacy_result.get("prompt_version"),
+                "provider_used": legacy_result.get("provider_used"),
+                "fallback_used": legacy_result.get("fallback_used"),
+                "llm_error_class": legacy_result.get("llm_error_class"),
+                "llm_latency_ms": legacy_result.get("llm_latency_ms"),
+                "extraction_attempted_at": legacy_result.get("extraction_attempted_at"),
             },
         )
         return
-    extracted = result.get("extracted") or {}
-    raw_json = result.get("raw_response_json")
-    model = result.get("model") or ""
-    prompt_version = result.get("prompt_version") or ""
-    tokens_in = result.get("tokens_in")
-    tokens_out = result.get("tokens_out")
-    confidence = extracted.get("confidence") or {}
-    overall = float(confidence.get("overall") or 0)
+    legacy_extracted = legacy_result.get("extracted") or {}
+    raw_json = legacy_result.get("raw_response_json")
+    model = legacy_result.get("model") or ""
+    prompt_version = legacy_result.get("prompt_version") or ""
+    tokens_in = legacy_result.get("tokens_in")
+    tokens_out = legacy_result.get("tokens_out")
+
+    requirement = None
+    if record.get("document_id"):
+        dreq = await db.documents.find_one(
+            {"document_id": document_id},
+            {"_id": 0, "requirement_id": 1, "property_id": 1},
+        )
+        rid = (dreq or {}).get("requirement_id")
+        if rid:
+            requirement = await db.requirements.find_one({"requirement_id": rid}, {"_id": 0})
+
+    extraction_mode = get_effective_extraction_mode()
+    profile_extracted = None
+    resolved_profile = None
+    if extraction_mode in ("shadow", "active"):
+        profile_extracted, resolved_profile = await maybe_run_profile_extraction_observe(
+            text,
+            file_name,
+            legacy_extracted=legacy_extracted,
+            requirement=requirement,
+            document=doc,
+            document_id=document_id,
+            extraction_id=extraction_id,
+            hints={"source": record.get("source")},
+        )
+
+    if (
+        extraction_mode == "active"
+        and profile_extracted is not None
+        and resolved_profile is not None
+    ):
+        extracted = merge_profile_into_legacy_storage(
+            legacy_extracted,
+            profile_extracted,
+            resolved_profile.profile,
+        )
+        profile_conf = profile_extracted.get("confidence") or {}
+        overall = float(profile_conf.get("overall") or legacy_extracted.get("confidence", {}).get("overall") or 0)
+        status = profile_extraction_status(resolved_profile.profile, profile_extracted)
+        extracted_for_storage = build_storage_payload_from_profile(
+            resolved_profile.profile,
+            extracted,
+            overall,
+        )
+        result = legacy_result
+    else:
+        extracted = legacy_extracted
+        confidence = legacy_extracted.get("confidence") or {}
+        overall = float(confidence.get("overall") or 0)
+        status = legacy_extraction_status(legacy_extracted)
+        extracted_for_storage = build_storage_payload_from_legacy(extracted, overall)
+        result = legacy_result
+
     expiry_date = extracted.get("expiry_date")
-    # Task: if overall_confidence >= 0.85 AND expiry_date present => EXTRACTED, else => NEEDS_REVIEW
-    if overall >= CONFIDENCE_THRESHOLD and expiry_date:
-        status = "EXTRACTED"
+    if status == "EXTRACTED":
         audit_action = AuditAction.DOC_EXTRACT_SUCCEEDED
     else:
-        status = "NEEDS_REVIEW"
         audit_action = AuditAction.DOC_EXTRACT_NEEDS_REVIEW
     mapping_suggestion = None
     req_key = extracted.get("requirement_key")
@@ -288,25 +345,6 @@ async def run_extraction_job(extraction_id: str) -> None:
             "requirement_key": req_key or _doc_type_to_requirement_key(extracted.get("doc_type")),
             "suggested_property_id": record.get("property_id"),
         }
-    extracted_for_storage = {
-        "doc_type": extracted.get("doc_type") or "UNKNOWN",
-        "certificate_number": extracted.get("certificate_number"),
-        "issue_date": extracted.get("issue_date"),
-        "expiry_date": extracted.get("expiry_date"),
-        "inspector_company": extracted.get("inspector_company"),
-        "inspector_id": extracted.get("inspector_id"),
-        "address_line_1": extracted.get("address_line_1"),
-        "postcode": extracted.get("postcode"),
-        "property_match_confidence": overall,
-        "overall_confidence": overall,
-        "notes": extracted.get("notes"),
-    }
-    requirement = None
-    if record.get("document_id"):
-        dreq = await db.documents.find_one({"document_id": document_id}, {"_id": 0, "requirement_id": 1, "property_id": 1})
-        rid = (dreq or {}).get("requirement_id")
-        if rid:
-            requirement = await db.requirements.find_one({"requirement_id": rid}, {"_id": 0})
     prop = None
     pid = (record.get("property_id") or (requirement or {}).get("property_id"))
     if pid:

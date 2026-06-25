@@ -58,3 +58,6 @@ services:
       # Phase 2 lifecycle confirm contract — staging shadow observe-only (S1-S3).
       - key: LIFECYCLE_AWARE_CONFIRM
         value: "shadow"
+      # Phase 2 S5-extract — profile-aware extraction shadow observe-only.
+      - key: LIFECYCLE_AWARE_EXTRACTION
+        value: "shadow"
