@@ -1,5 +1,5 @@
 """
-Lifecycle-aware KPI gates — Phase 5 P5-S2 (shadow).
+Lifecycle-aware KPI gates — Phase 5 P5-S2 (shadow) + P5-S3 (active authority).
 
 ADR: backend/docs/architecture/ADR_REQUIREMENT_LIFECYCLE_SEMANTICS.md constraint #9.
 """
@@ -29,6 +29,30 @@ _ATTENTION_KIND_BUCKETS: tuple[str, ...] = (
     "OPERATIONAL_ACTION_REQUIRED",
 )
 
+# Explicit semantics → attention_kind bucket (no certificate fallback).
+_SEMANTICS_TO_ATTENTION_KIND: Dict[str, str] = {
+    "EXPIRY_BASED": "CERTIFICATE_EXPIRING",
+    "REVIEW_BASED": "REVIEW_DUE",
+    "EVENT_BASED": "EVENT_ACTION_REQUIRED",
+    "DECLARATION_BASED": "EVENT_ACTION_REQUIRED",
+    "TENANCY_LIFECYCLE": "TENANCY_TERM_ENDING",
+    "OCCUPANCY_LIFECYCLE": "OCCUPANCY_REVIEW_DUE",
+    "OPERATIONAL": "OPERATIONAL_ACTION_REQUIRED",
+}
+
+_SUPPORTED_KPI_SEMANTICS = frozenset(_SEMANTICS_TO_ATTENTION_KIND.keys())
+
+_AUTHORITATIVE_STAT_KEYS: tuple[str, ...] = (
+    "total_requirements",
+    "compliant",
+    "satisfied",
+    "status_valid",
+    "pending",
+    "missing_evidence",
+    "expiring_soon",
+    "overdue",
+)
+
 
 @dataclass(frozen=True)
 class KpiLifecycleContext:
@@ -55,32 +79,28 @@ def lifecycle_kpi_enabled() -> bool:
     return not is_lifecycle_aware_kpi_off()
 
 
-def _attention_kind_for_kpi_bucket(ctx: KpiLifecycleContext) -> str:
+def attention_kind_for_kpi_bucket(ctx: KpiLifecycleContext) -> str:
+    """Map resolver context to a lifecycle KPI bucket; raises on unsupported semantics."""
     if ctx.attention_kind:
-        return str(ctx.attention_kind)
-    semantics_to_kind = {
-        "EXPIRY_BASED": "CERTIFICATE_EXPIRING",
-        "REVIEW_BASED": "REVIEW_DUE",
-        "EVENT_BASED": "EVENT_ACTION_REQUIRED",
-        "TENANCY_LIFECYCLE": "TENANCY_TERM_ENDING",
-        "OCCUPANCY_LIFECYCLE": "OCCUPANCY_REVIEW_DUE",
-        "OPERATIONAL": "OPERATIONAL_ACTION_REQUIRED",
-    }
-    return semantics_to_kind.get(str(ctx.lifecycle_semantics), "CERTIFICATE_EXPIRING")
+        kind = str(ctx.attention_kind)
+        if kind not in _ATTENTION_KIND_BUCKETS:
+            raise ValueError(f"unsupported attention_kind for KPI bucket: {kind}")
+        return kind
+    semantics = str(ctx.lifecycle_semantics)
+    if semantics not in _SUPPORTED_KPI_SEMANTICS:
+        raise ValueError(f"unsupported lifecycle_semantics for KPI bucket: {semantics}")
+    return _SEMANTICS_TO_ATTENTION_KIND[semantics]
 
 
 def lifecycle_kpi_monolithic_expiring_soon_allowed(ctx: KpiLifecycleContext) -> bool:
     """
-    Planned lifecycle monolithic ``expiring_soon`` count — certificate-style expiry only.
+    Lifecycle ``expiring_soon`` KPI — certificate-style expiry only (EXPIRY_BASED + requires_expiry_date).
 
-    Review-based and other non-certificate attention kinds route to ``attention_kind`` buckets
-    without inflating the legacy monolithic ``expiring_soon`` KPI.
+    Review-based and other non-certificate semantics route to ``attention_kind`` buckets only.
     """
-    if ctx.lifecycle_semantics == "REVIEW_BASED":
-        return False
     if ctx.lifecycle_semantics == "EXPIRY_BASED":
         return ctx.requires_expiry_date
-    return str(ctx.attention_kind or "") == "CERTIFICATE_EXPIRING"
+    return False
 
 
 def _empty_attention_kind_buckets() -> Dict[str, int]:
@@ -89,9 +109,10 @@ def _empty_attention_kind_buckets() -> Dict[str, int]:
 
 def compute_lifecycle_kpi_stats(portal_projected_rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Parallel lifecycle-gated KPI aggregation for shadow observe-only.
+    Lifecycle-gated KPI aggregation.
 
-    Legacy ``compute_client_portal_requirement_stats`` remains authoritative on staging shadow.
+    Shadow: observe-only parallel to legacy authority.
+    Active (preview): authoritative counts returned via ``lifecycle_stats_authoritative_payload``.
     """
     from services.requirement_satisfaction_service import is_requirement_satisfied, row_counts_as_missing_evidence
 
@@ -119,9 +140,8 @@ def compute_lifecycle_kpi_stats(portal_projected_rows: List[Dict[str, Any]]) -> 
                 missing_evidence += 1
         elif s == "EXPIRING_SOON":
             ctx = build_kpi_lifecycle_context(r)
-            kind = _attention_kind_for_kpi_bucket(ctx)
-            if kind in attention_kind_buckets:
-                attention_kind_buckets[kind] += 1
+            kind = attention_kind_for_kpi_bucket(ctx)
+            attention_kind_buckets[kind] += 1
             if lifecycle_kpi_monolithic_expiring_soon_allowed(ctx):
                 expiring_soon += 1
         elif s in ("OVERDUE", "EXPIRED"):
@@ -138,6 +158,11 @@ def compute_lifecycle_kpi_stats(portal_projected_rows: List[Dict[str, Any]]) -> 
         "overdue": overdue,
         "attention_kind_buckets": attention_kind_buckets,
     }
+
+
+def lifecycle_stats_authoritative_payload(lifecycle_stats: Dict[str, Any]) -> Dict[str, int]:
+    """Return the 8-key client KPI dict from lifecycle aggregation (active authority)."""
+    return {key: int(lifecycle_stats.get(key) or 0) for key in _AUTHORITATIVE_STAT_KEYS}
 
 
 def observe_kpi_shadow(

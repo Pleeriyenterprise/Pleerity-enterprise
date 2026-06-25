@@ -112,12 +112,8 @@ def project_requirement_row_client_runtime(requirement: Dict[str, Any]) -> Dict[
     return out
 
 
-def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str, Any]]) -> Dict[str, int]:
-    """
-    Aggregate counts from **portal-visible** rows that have already passed
-    ``project_requirement_row_client_runtime``. Single authority for KPI tiles, Command Centre,
-    compliance score ``stats``, and reporting parity.
-    """
+def _compute_legacy_portal_requirement_stats(portal_projected_rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Legacy status-based KPI aggregation (authoritative when KPI flag is off)."""
     total = len(portal_projected_rows)
     compliant = 0
     satisfied = 0
@@ -144,7 +140,7 @@ def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str
             expiring_soon += 1
         elif s in ("OVERDUE", "EXPIRED"):
             overdue += 1
-    stats = {
+    return {
         "total_requirements": total,
         # Authoritative satisfied count for portfolio KPIs (includes recorded-on-file / declaration paths).
         "compliant": satisfied,
@@ -155,18 +151,34 @@ def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str
         "expiring_soon": expiring_soon,
         "overdue": overdue,
     }
+
+
+def compute_client_portal_requirement_stats(portal_projected_rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    """
+    Aggregate counts from **portal-visible** rows that have already passed
+    ``project_requirement_row_client_runtime``. Single authority for KPI tiles, Command Centre,
+    compliance score ``stats``, and reporting parity.
+    """
+    legacy_stats = _compute_legacy_portal_requirement_stats(portal_projected_rows)
+    from services.lifecycle_aware_kpis_config import is_lifecycle_aware_kpi_active
     from services.lifecycle_kpi_gates import (
         compute_lifecycle_kpi_stats,
         lifecycle_kpi_enabled,
+        lifecycle_stats_authoritative_payload,
         observe_kpi_shadow,
     )
 
+    if is_lifecycle_aware_kpi_active():
+        return lifecycle_stats_authoritative_payload(
+            compute_lifecycle_kpi_stats(portal_projected_rows),
+        )
+
     if lifecycle_kpi_enabled():
         observe_kpi_shadow(
-            legacy_stats=stats,
+            legacy_stats=legacy_stats,
             lifecycle_stats=compute_lifecycle_kpi_stats(portal_projected_rows),
         )
-    return stats
+    return legacy_stats
 
 
 def _status_upper(val: Optional[str]) -> str:
