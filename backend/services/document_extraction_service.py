@@ -223,10 +223,17 @@ async def run_extraction_job(extraction_id: str) -> None:
     if not doc:
         await _set_failed(db, extraction_id, document_id, client_id, "DOCUMENT_NOT_FOUND", "Document no longer exists")
         return
-    file_path = doc.get("file_path")
-    if not file_path or not Path(file_path).is_file():
+    file_path_raw = doc.get("file_path")
+    if not file_path_raw:
         await _set_failed(db, extraction_id, document_id, client_id, "FILE_NOT_FOUND", "File not found on storage")
         return
+    from utils.storage_paths import resolve_stored_document_file_path
+
+    resolved_path = resolve_stored_document_file_path(str(file_path_raw))
+    if not resolved_path.is_file():
+        await _set_failed(db, extraction_id, document_id, client_id, "FILE_NOT_FOUND", "File not found on storage")
+        return
+    file_path = str(resolved_path)
     file_name = doc.get("file_name") or "document"
     mime_type = doc.get("mime_type") or ""
     text, extraction_source = _extract_text_with_ocr_fallback(file_path, mime_type)

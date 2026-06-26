@@ -87,6 +87,14 @@ def resolve_document_storage_path() -> Path:
     return Path(resolve_data_dir()) / "data" / "documents"
 
 
+def resolve_stored_document_file_path(raw_path: str) -> Path:
+    """Resolve mongo ``file_path`` (relative vault key or absolute path) to a filesystem path."""
+    p = Path(raw_path)
+    if p.is_absolute():
+        return p.resolve()
+    return (resolve_document_storage_path() / raw_path).resolve()
+
+
 def resolve_intake_upload_dir() -> Path:
     explicit = (os.environ.get("INTAKE_UPLOAD_DIR") or "").strip()
     if explicit:
