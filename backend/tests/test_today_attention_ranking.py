@@ -188,3 +188,74 @@ def test_enrich_task_bucket_preserves_attention_authority_order():
     now = datetime.now(timezone.utc)
     out = enrich_task_bucket([approval, issue], now, filter_non_actionable=False)
     assert [t["id"] for t in out] == ["issue:i1", "approval:a1"]
+
+
+def test_fresh_issue_outranks_stale_issue_with_same_impact():
+    from datetime import datetime, timedelta, timezone
+
+    from services.today_attention_ranking import today_attention_sort_key
+
+    now = datetime.now(timezone.utc)
+    stale = {
+        "id": "issue:stale",
+        "source_type": "issue",
+        "section": "in_progress",
+        "urgency_level": "medium",
+        "impact_score": 45,
+        "updated_at": (now - timedelta(days=30)).isoformat(),
+        "metadata": {"action_type": ACTION_OPEN_ISSUE},
+    }
+    fresh = {
+        "id": "issue:fresh",
+        "source_type": "issue",
+        "section": "in_progress",
+        "urgency_level": "medium",
+        "impact_score": 45,
+        "updated_at": now.isoformat(),
+        "metadata": {"action_type": ACTION_OPEN_ISSUE},
+    }
+    assert today_attention_sort_key(fresh) < today_attention_sort_key(stale)
+
+
+def test_fresh_issue_surfaces_in_capped_today_in_progress_bucket():
+    from datetime import datetime, timedelta, timezone
+
+    from services.today_projection_service import TODAY_BUCKET_CAPS, build_today_payload_from_unified
+
+    now = datetime.now(timezone.utc)
+    stale_issues = [
+        {
+            "id": f"issue:old-{i}",
+            "source_type": "issue",
+            "section": "in_progress",
+            "title": f"Old issue {i}",
+            "urgency_level": "medium",
+            "impact_score": 45,
+            "primary_action_url": f"/operations/issues/old-{i}",
+            "updated_at": (now - timedelta(days=i + 1)).isoformat(),
+            "metadata": {"action_type": ACTION_OPEN_ISSUE, "related_issue_id": f"old-{i}"},
+        }
+        for i in range(20)
+    ]
+    fresh = {
+        "id": "issue:fresh-new",
+        "source_type": "issue",
+        "section": "in_progress",
+        "title": "Fresh maintenance item",
+        "urgency_level": "medium",
+        "impact_score": 45,
+        "primary_action_url": "/operations/issues/fresh-new",
+        "updated_at": now.isoformat(),
+        "metadata": {"action_type": ACTION_OPEN_ISSUE, "related_issue_id": "fresh-new"},
+    }
+    payload = {
+        "tasks": {"in_progress": stale_issues + [fresh]},
+        "summary": {"in_progress_count": len(stale_issues) + 1},
+        "freshness": {},
+        "activity_feed": [],
+    }
+    out = build_today_payload_from_unified(payload, compact=True)
+    visible_ids = [t["id"] for t in out["tasks"]["in_progress"]]
+    assert "issue:fresh-new" in visible_ids
+    assert len(visible_ids) == TODAY_BUCKET_CAPS["in_progress"]
+    assert out.get("bucket_continuation", {}).get("in_progress", 0) > 0

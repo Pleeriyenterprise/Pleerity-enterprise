@@ -253,9 +253,16 @@ def _mutation_sequence(token: str) -> Dict[str, Any]:
         tasks = _flatten_tasks(_fetch_today(token))
         for t in tasks:
             meta = t.get("metadata") or {}
-            if str(meta.get("issue_id") or t.get("source_entity_id") or "") == issue_id:
+            task_issue_id = str(
+                meta.get("issue_id")
+                or meta.get("related_issue_id")
+                or t.get("source_entity_id")
+                or ""
+            )
+            task_row_id = str(t.get("id") or "")
+            if task_issue_id == issue_id or task_row_id == f"issue:{issue_id}":
                 appeared = True
-                found_task_id = str(t.get("id") or "")
+                found_task_id = task_row_id
                 break
             if MARKER in (t.get("title") or "") or MARKER in (t.get("description") or ""):
                 appeared = True

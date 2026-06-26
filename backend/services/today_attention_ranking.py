@@ -6,7 +6,8 @@ Deterministic sort keys for unified task / Today inbox ordering. Aligns with
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional, Tuple
 
 from services.client_priority_stream import (
     ACTION_CERT_EXPIRING_SOON,
@@ -120,6 +121,40 @@ def _urgency_tier(task: Dict[str, Any]) -> int:
     return 3
 
 
+def _parse_task_timestamp(value: Any) -> Optional[datetime]:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+    except Exception:
+        return None
+
+
+def _operational_recency_key(task: Dict[str, Any]) -> float:
+    """
+    Newer operational items sort earlier within the same attention band.
+    Returns negative epoch seconds (newer = lower tuple component).
+    """
+    source = str(task.get("source_type") or "").lower()
+    action_type = _action_type(task)
+    operational = source in ("issue", "work_order", "maintenance_issue") or action_type in (
+        ACTION_OPEN_ISSUE,
+        ACTION_OPEN_WORK_ORDER,
+        ACTION_WORK_ORDER_BREACHED,
+        ACTION_WORK_ORDER_NEAR_BREACH,
+    )
+    if not operational:
+        return 0.0
+    ts = task.get("updated_at") or task.get("created_at") or task.get("freshness_timestamp")
+    dt = _parse_task_timestamp(ts)
+    if not dt:
+        return 0.0
+    return -dt.timestamp()
+
+
 def attention_rank_explanation(task: Dict[str, Any]) -> Dict[str, Any]:
     debt_class = attention_class_for_task(task)
     key = today_attention_sort_key(task)
@@ -128,6 +163,7 @@ def attention_rank_explanation(task: Dict[str, Any]) -> Dict[str, Any]:
         "precedence_rank": ATTENTION_PRECEDENCE.get(debt_class, 99),
         "sub_rank": _sub_rank_within_class(task, debt_class),
         "urgency_tier": _urgency_tier(task),
+        "operational_recency_key": _operational_recency_key(task),
         "impact_score": int(task.get("impact_score") or 0),
         "sort_key": list(key),
     }
@@ -141,7 +177,8 @@ def today_attention_sort_key(task: Dict[str, Any]) -> Tuple[Any, ...]:
     precedence = ATTENTION_PRECEDENCE.get(debt_class, 99)
     sub = _sub_rank_within_class(task, debt_class)
     urgency = _urgency_tier(task)
+    recency = _operational_recency_key(task)
     impact = -int(task.get("impact_score") or 0)
     title = str(task.get("title") or "")
     tid = str(task.get("id") or "")
-    return (precedence, sub, urgency, impact, title, tid)
+    return (precedence, sub, urgency, recency, impact, title, tid)

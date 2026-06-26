@@ -603,6 +603,7 @@ def _slim_metadata_for_list(meta: Dict[str, Any]) -> Dict[str, Any]:
         "action_type",
         "requirement_id",
         "linked_property_requirement_id",
+        "related_issue_id",
         "related_work_order_id",
         "related_risk_signal_id",
         "requirement_code",
