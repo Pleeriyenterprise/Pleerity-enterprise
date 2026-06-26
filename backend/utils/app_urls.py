@@ -25,8 +25,50 @@ def _running_on_render() -> bool:
 
 
 _CANONICAL_APP_URL = "https://pleerityenterprise.co.uk"
+# Vercel preview deployment for develop branch (verified operational 2026-06-26).
+# Do not use pleerity-enterprise-9jig.vercel.app — that deployment returns DEPLOYMENT_NOT_FOUND.
+_STAGING_CANONICAL_APP_URL = "https://pleerity-enterprise-9jjg.vercel.app"
+_STAGING_CANONICAL_API_URL = "https://pleerity-enterprise.onrender.com"
 _DEFAULT_API_DEV = "http://localhost:8000"
 _DEFAULT_APP_DEV = "http://localhost:3000"
+
+# Known-dead Vercel preview hostnames (typo / retired deployment aliases).
+_DEAD_STAGING_APP_HOSTS = frozenset(
+    {
+        "pleerity-enterprise-9jig.vercel.app",
+    }
+)
+
+
+def staging_canonical_app_base_url() -> str:
+    """Canonical staging SPA origin for emails and admin links when env is unset."""
+    return _STAGING_CANONICAL_APP_URL
+
+
+def staging_canonical_api_base_url() -> str:
+    """Canonical staging API origin when env is unset."""
+    return _STAGING_CANONICAL_API_URL
+
+
+def is_dead_staging_app_host(url: str) -> bool:
+    raw = _strip_base(url)
+    if not raw:
+        return False
+    if not raw.startswith(("http://", "https://")):
+        raw = f"https://{raw}"
+    host = (urlparse(raw).netloc or "").lower()
+    return host in _DEAD_STAGING_APP_HOSTS
+
+
+def _is_staging_tier() -> bool:
+    explicit = (os.getenv("DEPLOYMENT_TIER") or "").strip().lower()
+    if explicit == "staging":
+        return True
+    db = (os.getenv("DB_NAME") or "").strip().lower()
+    if db == "pleerity_staging" or "staging" in db:
+        return True
+    env = (os.getenv("ENVIRONMENT") or os.getenv("ENV") or "").strip().lower()
+    return env in ("staging", "preview")
 
 
 def _strip_base(url: str) -> str:
@@ -43,7 +85,8 @@ def get_app_base_url(*, for_email_links: bool = False) -> str:
     Canonical public web app origin (SPA). No trailing slash.
 
     Priority: APP_BASE_URL → FRONTEND_PUBLIC_URL → PUBLIC_APP_URL → FRONTEND_URL → PORTAL_BASE_URL.
-    If still empty: for_email_links=True → _CANONICAL_APP_URL; else → http://localhost:3000.
+    If still empty on staging tier: for_email_links=True → staging Vercel preview;
+    production for_email_links → _CANONICAL_APP_URL; else → http://localhost:3000.
 
     Upgrades bare http to https for non-localhost hosts (email safety).
     """
@@ -57,12 +100,28 @@ def get_app_base_url(*, for_email_links: bool = False) -> str:
     raw = _strip_base(raw)
     if not raw:
         if for_email_links:
+            if _is_staging_tier():
+                logger.debug(
+                    "get_app_base_url: staging tier with no APP_BASE_URL; using %s",
+                    _STAGING_CANONICAL_APP_URL,
+                )
+                return _STAGING_CANONICAL_APP_URL
             logger.debug(
                 "get_app_base_url: no APP_BASE_URL/FRONTEND_* set; using canonical %s",
                 _CANONICAL_APP_URL,
             )
             return _CANONICAL_APP_URL
         return _DEFAULT_APP_DEV
+
+    if is_dead_staging_app_host(raw):
+        logger.error(
+            "get_app_base_url: APP_BASE_URL uses dead staging host %r; "
+            "use %s",
+            raw,
+            _STAGING_CANONICAL_APP_URL,
+        )
+        if _is_staging_tier() and for_email_links:
+            return _STAGING_CANONICAL_APP_URL
 
     if raw.startswith("http://") and not _is_localhost(raw):
         raw = "https://" + raw.split("://", 1)[1]
@@ -95,6 +154,8 @@ def get_api_base_url() -> str:
     )
     raw = _strip_base(raw)
     if not raw:
+        if _is_staging_tier():
+            return _STAGING_CANONICAL_API_URL
         return _DEFAULT_API_DEV
     return raw
 

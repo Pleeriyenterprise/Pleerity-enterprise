@@ -180,3 +180,32 @@ def test_staging_passes_valid_config():
     }
     with patch.dict(os.environ, env, clear=False):
         assert validate_deployment_environment() == "staging"
+
+
+def test_staging_passes_vercel_preview_canonical():
+    env = {
+        "DEPLOYMENT_TIER": "staging",
+        "DB_NAME": "pleerity_staging",
+        "STRIPE_MODE": "test",
+        "APP_BASE_URL": "https://pleerity-enterprise-9jjg.vercel.app",
+        "API_BASE_URL": "https://pleerity-enterprise.onrender.com",
+        "PYTEST_RUNNING": "",
+        "SKIP_DEPLOYMENT_GUARD": "",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        assert validate_deployment_environment() == "staging"
+
+
+def test_staging_refuses_dead_9jig_vercel_host():
+    env = {
+        "DEPLOYMENT_TIER": "staging",
+        "DB_NAME": "pleerity_staging",
+        "STRIPE_MODE": "test",
+        "APP_BASE_URL": "https://pleerity-enterprise-9jig.vercel.app",
+        "API_BASE_URL": "https://pleerity-enterprise.onrender.com",
+        "PYTEST_RUNNING": "",
+        "SKIP_DEPLOYMENT_GUARD": "",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        with pytest.raises(DeploymentEnvironmentError, match="9jig"):
+            validate_deployment_environment()

@@ -45,9 +45,12 @@ services:
         value: /var/data/uploads/intake
       - key: INTAKE_QUARANTINE_DIR
         value: /var/data/uploads/intake_quarantine
-      # Staging URL examples — set in dashboard to match your staging DNS:
+      - key: APP_BASE_URL
+        value: https://pleerity-enterprise-9jjg.vercel.app
+      - key: API_BASE_URL
+        value: https://pleerity-enterprise.onrender.com
+      # Staging URL examples — custom domain when DNS is restored:
       # APP_BASE_URL=https://staging.pleerityenterprise.co.uk
-      # API_BASE_URL=https://pleerity-enterprise.onrender.com
       # Rent reminders: staging-safe allowlist (do not enable RENT_REMINDERS_PRODUCTION_MODE)
       - key: RENT_REMINDERS_LIVE_SEND
         value: "true"

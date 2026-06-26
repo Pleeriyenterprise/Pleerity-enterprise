@@ -90,7 +90,8 @@ Until `DEPLOYMENT_TIER=staging` is set, production URL mismatches on staging log
 | Setting | Staging | Production |
 |---------|---------|------------|
 | **Project / env** | Preview or `staging` project | Production project |
-| **Domain** | `staging.pleerityenterprise.co.uk` or `*.vercel.app` | `pleerityenterprise.co.uk` |
+| **Domain** | `https://pleerity-enterprise-9jjg.vercel.app` (Vercel develop preview) or `staging.pleerityenterprise.co.uk` when DNS live | `pleerityenterprise.co.uk` |
+| **`APP_BASE_URL` (Render staging)** | `https://pleerity-enterprise-9jjg.vercel.app` | `https://pleerityenterprise.co.uk` |
 | **`REACT_APP_BACKEND_URL`** | Staging API URL | `https://api.pleerityenterprise.co.uk` |
 | **Stripe publishable** | `REACT_APP_STRIPE_PUBLISHABLE_KEY_TEST` | `REACT_APP_STRIPE_PUBLISHABLE_KEY_LIVE` |
 | **Deploy branch** | `develop` (auto) | `main` (manual promote) |

@@ -161,6 +161,14 @@ def _collect_staging_violations(*, tier_explicit: bool) -> Tuple[List[str], List
 
     app_url = get_app_base_url(for_email_links=True)
     app_host = _host_from_url(app_url)
+    from utils.app_urls import is_dead_staging_app_host
+
+    raw_app_env = (os.getenv("APP_BASE_URL") or "").strip()
+    if is_dead_staging_app_host(raw_app_env or app_url):
+        fatal.append(
+            "APP_BASE_URL uses retired Vercel deployment pleerity-enterprise-9jig.vercel.app. "
+            "Set APP_BASE_URL to https://pleerity-enterprise-9jjg.vercel.app (canonical staging frontend)."
+        )
     if _host_is_exact(app_host, _PRODUCTION_APP_HOSTS):
         msg = (
             f"Staging APP_BASE_URL points at production frontend ({app_url!r}). "

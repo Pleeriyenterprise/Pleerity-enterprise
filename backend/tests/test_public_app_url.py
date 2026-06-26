@@ -75,3 +75,41 @@ def test_get_public_app_url_uses_canonical_when_missing():
         url = get_public_app_url(for_email_links=True)
     assert url == "https://pleerityenterprise.co.uk"
     assert "vercel.app" not in url
+
+
+def test_get_public_app_url_staging_canonical_when_missing():
+    """Staging tier without APP_BASE_URL must not emit production links."""
+    from utils.public_app_url import get_public_app_url
+
+    with patch.dict(
+        os.environ,
+        {
+            "APP_BASE_URL": "",
+            "PUBLIC_APP_URL": "",
+            "FRONTEND_PUBLIC_URL": "",
+            "FRONTEND_URL": "",
+            "DEPLOYMENT_TIER": "staging",
+            "ENVIRONMENT": "staging",
+            "DB_NAME": "pleerity_staging",
+        },
+        clear=False,
+    ):
+        url = get_public_app_url(for_email_links=True)
+    assert url == "https://pleerity-enterprise-9jjg.vercel.app"
+
+
+def test_get_public_app_url_rejects_dead_9jig_staging_host():
+    from utils.public_app_url import get_public_app_url
+
+    with patch.dict(
+        os.environ,
+        {
+            "APP_BASE_URL": "https://pleerity-enterprise-9jig.vercel.app",
+            "DEPLOYMENT_TIER": "staging",
+            "ENVIRONMENT": "staging",
+            "DB_NAME": "pleerity_staging",
+        },
+        clear=False,
+    ):
+        url = get_public_app_url(for_email_links=True)
+    assert url == "https://pleerity-enterprise-9jjg.vercel.app"

@@ -44,6 +44,16 @@ services:
         value: /var/data/uploads/intake
       - key: INTAKE_QUARANTINE_DIR
         value: /var/data/uploads/intake_quarantine
+      - key: ENVIRONMENT
+        value: staging
+      - key: DEPLOYMENT_TIER
+        value: staging
+      - key: DB_NAME
+        value: pleerity_staging
+      - key: APP_BASE_URL
+        value: https://pleerity-enterprise-9jjg.vercel.app
+      - key: API_BASE_URL
+        value: https://pleerity-enterprise.onrender.com
       # Rent reminder live delivery — staging-safe: allowlisted client + yopmail recipients only.
       # Production: set RENT_REMINDERS_PRODUCTION_MODE=true (all RENT_OPERATIONS clients, any tenant domain).
       - key: RENT_REMINDERS_LIVE_SEND
