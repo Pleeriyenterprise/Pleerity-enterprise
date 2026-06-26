@@ -62,5 +62,16 @@ services:
         value: "6fd5ac4c-3fd4-4112-ade7-156977deb49f"
       - key: RENT_REMINDERS_SAFE_RECIPIENT_DOMAINS
         value: "yopmail.com"
+      # Phase 2–5 lifecycle flags — staging shadow observe-only (legacy blueprint parity with render.staging.yaml).
+      - key: LIFECYCLE_AWARE_CONFIRM
+        value: "shadow"
+      - key: LIFECYCLE_AWARE_EXTRACTION
+        value: "shadow"
+      - key: LIFECYCLE_AWARE_SCORING
+        value: "shadow"
+      - key: LIFECYCLE_AWARE_REMINDERS
+        value: "shadow"
+      - key: LIFECYCLE_AWARE_KPIS
+        value: "shadow"
       # - key: RENT_REMINDERS_PRODUCTION_MODE
       #   value: "true"

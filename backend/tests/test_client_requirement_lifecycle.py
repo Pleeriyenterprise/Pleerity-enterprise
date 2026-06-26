@@ -7,6 +7,7 @@ from services.client_requirement_lifecycle import (
     SATISFIED_UNVERIFIED,
     VERIFIED,
     derive_client_lifecycle_fields,
+    finalize_client_lifecycle_label_after_enrichment,
 )
 from services.requirement_evidence_authority import (
     EA_EXTRACTION_PENDING_CONFIRMATION,
@@ -114,3 +115,51 @@ def test_v2_review_pending_linked_doc(monkeypatch):
         linked_primary_document=doc,
     )
     assert out["client_lifecycle_state"] == PENDING_REVIEW
+
+
+def test_finalize_label_action_required_overrides_verified_badge():
+    out = finalize_client_lifecycle_label_after_enrichment(
+        {
+            "client_lifecycle_state": ACTION_REQUIRED,
+            "truth_presentation_label": "Verified",
+            "requirement_attention_reason": "expired",
+        }
+    )
+    assert out["client_lifecycle_label"] == "Renewal overdue"
+
+
+def test_finalize_label_verified_keeps_truth_badge():
+    out = finalize_client_lifecycle_label_after_enrichment(
+        {
+            "client_lifecycle_state": VERIFIED,
+            "truth_presentation_label": "Verified",
+        }
+    )
+    assert out["client_lifecycle_label"] == "Verified"
+
+
+def test_enrich_smoke_heat_action_required_not_verified_label(monkeypatch):
+    """ACTION_REQUIRED must not display Verified after governance/reconcile passes."""
+    monkeypatch.setenv("CUSTOMER_STATUS_PROJECTOR_V2_MODE", "disabled")
+    from services.requirement_truth import EVIDENCE_VERIFIED, enrich_requirement_dict
+
+    row = {
+        "requirement_id": "r1",
+        "property_id": "p1",
+        "requirement_type": "smoke_heat_alarms",
+        "requirement_code": "smoke_heat_alarms",
+        "applicability": "REQUIRED",
+        "status": "COMPLIANT",
+        "evidence_state": "VERIFIED",
+        "evidence_authority": {"version": 1, "state": EA_VERIFIED_CURRENT},
+        "evidence_completeness": {
+            "evaluated": True,
+            "is_complete": False,
+            "required_missing_count": 1,
+            "completion_percent": 50.0,
+        },
+        "client_surface_visible": True,
+    }
+    enriched = enrich_requirement_dict(row, EVIDENCE_VERIFIED, audience="client")
+    assert enriched.get("client_lifecycle_state") == ACTION_REQUIRED
+    assert enriched.get("client_lifecycle_label") != "Verified"

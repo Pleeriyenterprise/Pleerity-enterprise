@@ -36,6 +36,20 @@ ACTION_RESTORE = "restore"
 _TASK_ID_RE = re.compile(r"^[a-z_]+:[A-Za-z0-9_-]{1,128}$")
 
 
+def _invalidate_operational_surfaces(client_id: str) -> None:
+    """Bust cached Today/Command Centre projections after inbox override mutations."""
+    try:
+        from services.operational_surface_cache import invalidate_client_operational_surfaces
+
+        invalidate_client_operational_surfaces(client_id)
+    except Exception:
+        logger.debug(
+            "operational surface cache invalidation failed client_id=%s",
+            client_id,
+            exc_info=True,
+        )
+
+
 def is_valid_task_id(task_id: str) -> bool:
     if not task_id or len(task_id) > 180:
         return False
@@ -147,6 +161,7 @@ async def apply_task_action(
                 "inbox_action_summary": "Today inbox visibility: item restored to Today lists (does not change underlying work)",
             },
         )
+        _invalidate_operational_surfaces(client_id)
         return {"ok": True, "task_id": task_id, "state": None}
 
     now = _now()
@@ -212,6 +227,7 @@ async def apply_task_action(
                 ),
             },
         )
+        _invalidate_operational_surfaces(client_id)
         return {"ok": True, "task_id": task_id, "state": OVERRIDE_SNOOZE, "snoozed_until": until.isoformat()}
 
     if action == ACTION_DISMISS:
@@ -310,6 +326,7 @@ async def apply_task_action(
         resource_id=task_id,
         metadata=audit_meta,
     )
+    _invalidate_operational_surfaces(client_id)
     return {"ok": True, "task_id": task_id, "state": override}
 
 

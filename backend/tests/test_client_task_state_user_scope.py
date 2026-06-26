@@ -211,3 +211,27 @@ def test_dismiss_requires_reason(monkeypatch):
         assert "reason" in str(e).lower()
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_apply_task_action_invalidates_operational_cache(monkeypatch):
+    fake_db = _FakeDb()
+    monkeypatch.setattr(svc.database, "get_db", lambda: fake_db)
+    monkeypatch.setattr(svc, "create_audit_log", AsyncMock(return_value=None))
+    calls = []
+    monkeypatch.setattr(
+        svc,
+        "_invalidate_operational_surfaces",
+        lambda client_id: calls.append(client_id),
+    )
+
+    asyncio.run(
+        svc.apply_task_action(
+            "c1",
+            "requirement:req-1",
+            "snooze",
+            portal_user_id="pu-1",
+            snooze_days=2,
+            title_snapshot="Snooze me",
+        )
+    )
+    assert calls == ["c1"]

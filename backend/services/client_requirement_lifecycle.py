@@ -287,5 +287,57 @@ def derive_client_lifecycle_fields(
     return pack(ACTION_REQUIRED, "Action required", reasons)
 
 
+_ATTENTION_REASON_LABELS = {
+    "expired": "Renewal overdue",
+    "renewal_due": "Renewal due soon",
+    "followup_required": "Follow-up required",
+    "operational_incomplete": "Additional action still required",
+    "follow_up_required": "Follow-up required",
+    "platform_verification_pending": "Awaiting review",
+    "review_pending": "Awaiting review",
+    "rejected": "Action required",
+    "escalation_review": "Escalated for platform review",
+    "collect_evidence": "Action required",
+    "action_required": "Action required",
+}
+
+
+def finalize_client_lifecycle_label_after_enrichment(row: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Final chip label authority after reconcile/satisfaction/projector passes.
+
+    Prevents ACTION_REQUIRED state from retaining a stale Verified truth badge.
+    """
+    state = _status_upper(row.get("client_lifecycle_state"))
+    if not state:
+        return {}
+
+    truth_label = str(row.get("truth_presentation_label") or "").strip()
+    attention_reason = str(row.get("requirement_attention_reason") or "").strip().lower()
+
+    if state == ACTION_REQUIRED:
+        return {
+            "client_lifecycle_label": _ATTENTION_REASON_LABELS.get(
+                attention_reason, "Action required"
+            )
+        }
+
+    if state == PENDING_REVIEW:
+        if truth_label and "review" in truth_label.lower():
+            return {"client_lifecycle_label": truth_label}
+        return {"client_lifecycle_label": "Awaiting review"}
+
+    if state == NOT_APPLICABLE:
+        return {"client_lifecycle_label": "Not applicable"}
+
+    if state == VERIFIED:
+        return {"client_lifecycle_label": truth_label or "Verified"}
+
+    if state == SATISFIED_UNVERIFIED:
+        return {"client_lifecycle_label": truth_label or "Evidence recorded"}
+
+    return {}
+
+
 def validate_client_lifecycle_state(value: str) -> bool:
     return _status_upper(value) in _CLIENT_LIFECYCLE_STATES

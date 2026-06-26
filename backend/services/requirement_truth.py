@@ -821,11 +821,6 @@ def enrich_requirement_dict(
                 emit_legacy_customer_labels=_emit_legacy_labels,
             )
         )
-        if _emit_legacy_labels:
-            truth_label = str(out.get("truth_presentation_label") or "").strip()
-            if truth_label:
-                out["client_lifecycle_label"] = truth_label
-
         from services.requirement_satisfaction_service import (
             attach_satisfaction_fields,
             reconcile_client_lifecycle_with_satisfaction,
@@ -841,6 +836,13 @@ def enrich_requirement_dict(
             linked_primary_document=linked_primary_document,
             mode=_projector_mode,
         )
+
+        if _emit_legacy_labels:
+            from services.client_requirement_lifecycle import (
+                finalize_client_lifecycle_label_after_enrichment,
+            )
+
+            out.update(finalize_client_lifecycle_label_after_enrichment(out))
 
         try:
             from services.audience_governance_v1 import (

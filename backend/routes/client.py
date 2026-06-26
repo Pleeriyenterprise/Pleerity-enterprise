@@ -7,6 +7,10 @@ from services.compliance_score import calculate_compliance_score
 from services.evidence_review_config import is_feature_evidence_review_v2
 from services.customer_status_projector_config import get_customer_status_projector_mode
 from services.lifecycle_aware_kpis_config import get_effective_kpi_mode
+from services.lifecycle_aware_confirm_config import get_effective_confirm_mode
+from services.lifecycle_aware_extraction_config import get_effective_extraction_mode
+from services.lifecycle_aware_scoring_config import get_effective_scoring_mode
+from services.lifecycle_aware_reminders_config import get_effective_reminder_mode
 from services.scoring_semantics_v1 import SCORE_AUTHORITY_UNAVAILABLE, SCORE_STATUS_UNAVAILABLE
 from services.compliance_scoring_service import get_authoritative_property_compliance_for_client
 from typing import Optional, List, Dict, Any
@@ -629,6 +633,10 @@ async def get_dashboard(
             "server_feature_flags": {
                 "evidence_review_v2_enabled": is_feature_evidence_review_v2(),
                 "customer_status_projector_v2_mode": get_customer_status_projector_mode(),
+                "lifecycle_aware_confirm_effective_mode": get_effective_confirm_mode(),
+                "lifecycle_aware_extraction_effective_mode": get_effective_extraction_mode(),
+                "lifecycle_aware_scoring_effective_mode": get_effective_scoring_mode(),
+                "lifecycle_aware_reminders_effective_mode": get_effective_reminder_mode(),
                 "lifecycle_aware_kpis_effective_mode": get_effective_kpi_mode(),
             },
         }
