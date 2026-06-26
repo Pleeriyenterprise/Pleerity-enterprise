@@ -1417,7 +1417,7 @@ async def get_unified_tasks_for_client(
         portal_user_id=portal_user_id,
     )
 
-    hidden_limit = 0 if list_surface else 40
+    hidden_limit = 5 if profile == "today" else (0 if list_surface else 40)
     hidden_inbox = (
         []
         if hidden_limit == 0

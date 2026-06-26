@@ -363,6 +363,9 @@ async def create_issue(request: Request, body: CreateIssueBody):
             },
             ip_address=request.client.host if request.client else None,
         )
+        from services.operational_surface_cache import invalidate_client_operational_surfaces
+
+        invalidate_client_operational_surfaces(client_id)
         return doc
     except ValueError as e:
         await issue_create_abort(db, fingerprint=fingerprint)
@@ -569,7 +572,9 @@ async def update_issue(request: Request, issue_id: str, body: UpdateIssueBody):
     if not doc:
         raise HTTPException(status_code=404, detail="Issue not found")
     from services.operational_cognition_service import attach_cognition_to_issue
+    from services.operational_surface_cache import invalidate_client_operational_surfaces
 
+    invalidate_client_operational_surfaces(user["client_id"])
     return await attach_cognition_to_issue(doc)
 
 

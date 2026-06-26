@@ -60,6 +60,7 @@ TODAY_BUCKET_CAPS: Dict[str, int] = {
     "in_progress": 8,
     "recently_completed": 5,
     "snoozed": 5,
+    "hidden": 5,
 }
 
 
