@@ -5,6 +5,10 @@
 
 import { filterRequirementsForAttentionViews } from './portalRequirementAttention';
 import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle';
+import {
+  getTimelineSortDateIso,
+  isTimelineEstimated,
+} from './complianceTimelinePresentation';
 
 export const SCORE_WIDGET_LABEL_OBLIGATIONS = 'Score-tracked obligations';
 export const SCORE_WIDGET_LABEL_VALID = 'Valid for scoring';
@@ -42,10 +46,10 @@ function parseDueDate(value) {
  */
 export function isRequirementExpiryEstimated(req) {
   if (!req || typeof req !== 'object') return false;
+  if (isTimelineEstimated(req)) return true;
   if (req.date_source === 'SYSTEM_ESTIMATED') return true;
   const ea = req.evidence_authority;
   if (ea && typeof ea === 'object' && ea.effective_expiry_is_estimated === true) return true;
-  if (!req.confirmed_expiry_date && (req.due_date || req.extracted_expiry_date)) return true;
   return false;
 }
 
@@ -65,11 +69,13 @@ export function pickNearestRenewalFromRequirements(requirements) {
   for (const r of requirements) {
     const st = String(r.status || '').toUpperCase();
     if (!RENEWAL_ELIGIBLE_STATUSES.has(st)) continue;
-    const due =
+    const dueIso = getTimelineSortDateIso(r);
+    const due = dueIso ? parseDueDate(dueIso) : (
       parseDueDate(r.due_date) ||
       parseDueDate(r.confirmed_expiry_date) ||
       parseDueDate(r.extracted_expiry_date) ||
-      parseDueDate(r.evidence_authority?.effective_expiry_date);
+      parseDueDate(r.evidence_authority?.effective_expiry_date)
+    );
     if (!due) continue;
     const days = Math.floor((due.getTime() - now) / (24 * 60 * 60 * 1000));
     if (days < 0) continue;

@@ -335,21 +335,21 @@ async def get_score_drivers_csv(
                     if pb.get("property_id") == d.get("property_id"):
                         postcode = pb.get("postcode") or ""
                         break
-            date_used = d.get("date_used")
-            if date_used:
+            date_cell = d.get("date_display") or d.get("date_used")
+            if date_cell and isinstance(date_cell, str) and not d.get("date_display"):
                 try:
-                    date_used = date_used[:10] if isinstance(date_used, str) else str(date_used)[:10]
+                    date_cell = date_cell[:10] if isinstance(date_cell, str) else str(date_cell)[:10]
                 except Exception:
-                    date_used = str(date_used) if date_used else "—"
+                    date_cell = str(date_cell) if date_cell else "—"
             else:
-                date_used = "—"
+                date_cell = date_cell or "—"
             writer.writerow([
                 crn,
                 (d.get("property_name") or d.get("property_id") or "—"),
                 postcode,
                 (d.get("requirement_name") or "—"),
                 (d.get("status") or "—"),
-                date_used,
+                date_cell,
                 (d.get("date_confidence") or "UNKNOWN"),
                 "Y" if d.get("evidence_uploaded") else "N",
                 _next_step_label(d.get("actions") or []),

@@ -6,6 +6,7 @@ import { clientAPI } from '../../api/client';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { requirementTitleFromRow } from '../../domain/presentDomain';
+import { getTimelineSortDateIso } from '../../utils/complianceTimelinePresentation';
 import { humanRiskType, humanSeverity, humanAction } from '../../utils/riskPresentation';
 import {
   buildEntityRoute,
@@ -64,7 +65,7 @@ function daysLeft(d) {
 }
 
 function rowExpiry(r) {
-  return r.expiry_date || r.due_date;
+  return getTimelineSortDateIso(r) || r.expiry_date || r.due_date;
 }
 
 function rowReqId(r) {

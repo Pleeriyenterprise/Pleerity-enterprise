@@ -48,6 +48,17 @@ def effective_digest_calendar_day(day_preference: int, when: datetime) -> int:
     return min(dp, last_dom)
 
 
+def _reminder_customer_due_display(current_req: dict, due_date: datetime) -> str:
+    """Customer-facing due line in reminder emails — timeline label when available."""
+    from services.compliance_timeline import build_compliance_timeline
+
+    tl = build_compliance_timeline(current_req)
+    label = str(tl.get("primary_date_label") or "").strip()
+    if label and label.lower() != "no date on file":
+        return label
+    return due_date.strftime("%d %B %Y")
+
+
 def _reminder_item_label_from_req(current_req: dict) -> str:
     rd = current_req.get("requirement_display") if isinstance(current_req.get("requirement_display"), dict) else {}
     short_name = str(rd.get("short_name") or "").strip()
@@ -385,7 +396,7 @@ class JobScheduler:
                         overdue_requirements.append({
                             "type": compact_title,
                             "code": current_req.get("code") or current_req.get("requirement_type") or "",
-                            "due_date": due_date.strftime("%d %B %Y"),
+                            "due_date": _reminder_customer_due_display(current_req, due_date),
                             "days_overdue": -days_until_due,
                             "property_address": prop_addr,
                             "detail_type": detail_title,
@@ -412,7 +423,7 @@ class JobScheduler:
                         expiring_requirements.append({
                             "type": compact_title,
                             "code": current_req.get("code") or current_req.get("requirement_type") or "",
-                            "due_date": due_date.strftime("%d %B %Y"),
+                            "due_date": _reminder_customer_due_display(current_req, due_date),
                             "days_remaining": days_until_due,
                             "status": "URGENT" if days_until_due <= 7 else "WARNING",
                             "property_address": prop_addr,

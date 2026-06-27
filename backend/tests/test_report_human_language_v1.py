@@ -30,9 +30,7 @@ def test_lifecycle_mapping_no_raw_enum_in_label():
 
 
 def test_operational_renewal_date_unknown():
-    assert human_operational_renewal_date({"due_date": "UNKNOWN_DATE"}) == (
-        "No verified renewal date recorded"
-    )
+    assert human_operational_renewal_date({"due_date": "UNKNOWN_DATE"}) == "No date on file"
 
 
 def test_requirements_evidence_posture_human():

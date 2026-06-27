@@ -7,6 +7,7 @@ import { pickCanonicalWhyItMattersShort } from './requirementCanonicalNarrative'
 import { workflowAwareMissingEvidenceLabel } from './evidenceStatus';
 import { isSubmissionAwaitingReview, resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
 import { projectResolvedRequirementSemantics } from './resolvedRequirementViewModel';
+import { getTimelineSortDateIso, isTimelineEstimated } from './complianceTimelinePresentation';
 
 function resolvedProjectionForRequirementRow(r) {
   if (!r || typeof r !== 'object' || typeof r.take_action !== 'object') return null;
@@ -40,8 +41,8 @@ export function complianceWhatChangedLine(req) {
     req?.days_to_expiry != null
       ? req.days_to_expiry
       : null;
-  const due = req?.expiry_date || req?.due_date;
-  const est = req?.date_source === 'SYSTEM_ESTIMATED';
+  const dueIso = getTimelineSortDateIso(req) || req?.expiry_date || req?.due_date;
+  const est = isTimelineEstimated(req) || req?.date_source === 'SYSTEM_ESTIMATED';
 
   if (isRequirementMissingDocument(req)) {
     return 'There is no linked document on file for this requirement yet.';
@@ -50,8 +51,8 @@ export function complianceWhatChangedLine(req) {
     return 'A document is linked; it still needs to be confirmed on the Documents tab (or processing may be in progress).';
   }
   if (['OVERDUE', 'EXPIRED'].includes(s)) {
-    if (due) {
-      return `${est ? 'Estimated ' : ''}Due date has passed (${String(due).slice(0, 10)}). Renew and upload a document.`;
+    if (dueIso) {
+      return `${est ? 'Estimated ' : ''}Due date has passed (${String(dueIso).slice(0, 10)}). Renew and upload a document.`;
     }
     return 'This requirement is past its due date. Renew and upload a document.';
   }
@@ -59,8 +60,8 @@ export function complianceWhatChangedLine(req) {
     if (days != null && days >= 0) {
       return `Due within ${days} day${days === 1 ? '' : 's'}. Plan renewal before the deadline.`;
     }
-    if (due) {
-      return `${est ? 'Estimated ' : ''}Due ${String(due).slice(0, 10)}. Renew before it expires.`;
+    if (dueIso) {
+      return `${est ? 'Estimated ' : ''}Due ${String(dueIso).slice(0, 10)}. Renew before it expires.`;
     }
     return 'This requirement is due soon. Plan renewal before the deadline.';
   }

@@ -1,0 +1,128 @@
+{
+  "programme": "COMPLIANCE-TIMELINE-PHASE-2-CONSUMER-MIGRATION-PLAN-01",
+  "phase": 2,
+  "completed_at": "2026-06-02",
+  "constraints_observed": {
+    "production_data_mutation": false,
+    "migrations_created": false,
+    "repair_scripts_run": false,
+    "customer_status_projector_v2_enabled": false,
+    "event_ledger_implemented": false,
+    "legacy_fields_removed": false,
+    "compliance_timeline_calculator_modified": false
+  },
+  "consumers_migrated": [
+    "RequirementsPage (display, sort, filter)",
+    "PropertyDetailPage (matrix, modal labels, attention ordering)",
+    "PropertyOperatingHub",
+    "RequirementIntelligenceModal",
+    "ComplianceScorePage (driver date_display)",
+    "AdminDashboard (requirement due label)",
+    "dashboardScoreWidgetLabels / complianceObligationPresent",
+    "requirement_truth enrich + build_date_presentation delegation",
+    "monthly_digest_assembly_service",
+    "report_requirements_operational + scheduled email rows",
+    "report_compliance_summary_executive + report_pdf_templates matrix",
+    "pdf_report_builder score drivers",
+    "professional_reports expiry schedule",
+    "compliance_pack audit pack + property summary",
+    "client_calendar_timeline_service requirement events",
+    "scheduled_report_digest due wording",
+    "jobs reminder customer display",
+    "routes/reports score driver CSV",
+    "compliance_score driver presentation fields"
+  ],
+  "files_changed": [
+    "backend/services/compliance_timeline_presentation.py",
+    "backend/services/compliance_score.py",
+    "backend/services/pdf_report_builder.py",
+    "backend/services/report_pdf_templates.py",
+    "backend/services/report_compliance_summary_executive.py",
+    "backend/services/professional_reports.py",
+    "backend/services/compliance_pack.py",
+    "backend/services/client_calendar_timeline_service.py",
+    "backend/services/report_requirements_operational.py",
+    "backend/email_templates/unified/scheduled_report_digest.py",
+    "backend/routes/reports.py",
+    "frontend/src/utils/complianceTimelinePresentation.js",
+    "frontend/src/pages/RequirementsPage.js",
+    "frontend/src/pages/PropertyDetailPage.js",
+    "frontend/src/pages/ComplianceScorePage.js",
+    "frontend/src/pages/AdminDashboard.js",
+    "frontend/src/components/property/PropertyOperatingHub.jsx",
+    "frontend/src/components/client/RequirementIntelligenceModal.js",
+    "frontend/src/utils/dashboardScoreWidgetLabels.js",
+    "frontend/src/utils/complianceObligationPresent.js",
+    "backend/tests/test_compliance_timeline_consumer_migration.py",
+    "frontend/src/utils/complianceTimelinePresentation.test.js"
+  ],
+  "duplicate_presentation_logic_retired": [
+    "build_date_presentation local renewal/review inference → timeline delegation",
+    "human_operational_renewal_date raw due_date formatting → timeline_report_date_display",
+    "RequirementIntelligenceModal pickDueOrRenewal heuristics → timeline_primary_date_label",
+    "Matrix/report expiry ISO-only cells → expiry_display timeline labels",
+    "Score PDF/CSV date_used-only columns → date_display preferred"
+  ],
+  "remaining_legacy_consumers": [
+    {
+      "consumer": "compliance_score scoring math",
+      "fields": ["due_date", "get_effective_expiry_date"],
+      "phase_3_action": "Optional scoring consumer migration with explicit programme"
+    },
+    {
+      "consumer": "ClientDashboard onboarding banners",
+      "fields": ["confirmed_expiry_date"],
+      "phase_3_action": "Replace with evidence_state / lifecycle semantics when workflow programme runs"
+    },
+    {
+      "consumer": "reminder_truth_service scheduling",
+      "fields": ["get_effective_expiry_date"],
+      "phase_3_action": "Keep separate — reminder config must not become timeline truth"
+    }
+  ],
+  "tests_added": [
+    "backend/tests/test_compliance_timeline_consumer_migration.py (10 cases)",
+    "frontend/src/utils/complianceTimelinePresentation.test.js (4 cases)"
+  ],
+  "tests_passed": {
+    "backend_consumer_migration_suite": "78 passed",
+    "frontend_complianceTimelinePresentation": "4 passed"
+  },
+  "cross_surface_consistency_results": {
+    "enrich_date_label_equals_timeline_label": "PASS",
+    "report_renewal_equals_timeline_label": "PASS",
+    "matrix_expiry_display_contains_timeline_wording": "PASS",
+    "calendar_event_date_equals_timeline_primary": "PASS",
+    "estimated_never_labeled_renewal_in_reports": "PASS"
+  },
+  "family_validation": {
+    "Certificate": "PASS via Phase 1 test_compliance_timeline.py (Gas, EPC, EICR, PAT, HMO, Selective)",
+    "Assessment": "PASS (Legionella, Lead Testing)",
+    "Declaration": "PASS (Deposit Protection, How to Rent)",
+    "Tenancy": "PASS (Tenancy Agreement)",
+    "Registration": "PASS (Rent Smart Wales, Landlord Registration)",
+    "Event": "PASS (Smoke, Heat & CO)",
+    "Hybrid": "PASS (HMO Fire Risk)"
+  },
+  "reminder_integrity": {
+    "scheduling_authority": "reminder_truth_service + get_effective_expiry_date (unchanged)",
+    "customer_display": "jobs._reminder_customer_due_display uses timeline label",
+    "windows_overwrite_timeline": false
+  },
+  "known_limitations": [
+    "ensure_compliance_timeline_on_requirement falls back silently when lifecycle context is sparse (consumer layer only)",
+    "Scoring engine still uses due_date for urgency calculations — presentation migrated separately",
+    "ClientDashboard confirmed_expiry_date heuristics remain for onboarding workflow, not date labels",
+    "Legacy date_label retained on API for backward compatibility"
+  ],
+  "phase_3_go_no_go": {
+    "verdict": "GO",
+    "rationale": "Customer-facing date presentation now reads Compliance Timeline across UI, reports, emails, calendar, and audit pack. Cross-surface label consistency tests pass. Reminder scheduling remains isolated. Legacy fields preserved for compatibility. Phase 3 may proceed to scoring consumer alignment, legacy field retirement planning, and optional event-ledger programme — without enabling CUSTOMER_STATUS_PROJECTOR_V2_MODE in this phase.",
+    "preconditions_for_phase_3": [
+      "Dedicated programme for scoring math timeline alignment if desired",
+      "Workflow banner migration off confirmed_expiry_date",
+      "Documented legacy fallback retirement schedule",
+      "No production repair scripts without separate approval"
+    ]
+  }
+}

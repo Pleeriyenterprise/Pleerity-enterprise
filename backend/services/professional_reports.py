@@ -630,13 +630,15 @@ class ProfessionalReportGenerator:
         exp_data = [["Expiry Date", "Requirement", "Property", "Schedule status"]]
         for req in requirements:
             prop = property_map.get(req.get("property_id"), {})
-            eff = get_effective_expiry_date(req)
-            due_date = ""
-            if eff:
-                try:
-                    due_date = eff.strftime("%d %b %Y")
-                except Exception:
-                    due_date = str(eff)[:12]
+            from services.compliance_timeline_presentation import (
+                ensure_compliance_timeline_on_requirement,
+                timeline_report_date_display,
+            )
+
+            tl_row = ensure_compliance_timeline_on_requirement(req)
+            due_date = timeline_report_date_display(tl_row)
+            if due_date == "No date on file":
+                due_date = ""
             cs = get_computed_status(req, property_doc=prop, client_doc=client_row) or (req.get("status") or "")
 
             exp_data.append([

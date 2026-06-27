@@ -337,19 +337,30 @@ async def assemble_monthly_digest_payload(
         )
 
     requirement_rows_pdf: List[Dict[str, Any]] = []
+    from services.requirement_truth import enrich_requirements_for_client
+
+    enriched_applicable, _ = await enrich_requirements_for_client(db, cid, list(applicable))
+    enriched_by_id = {str(r.get("requirement_id") or ""): r for r in enriched_applicable if r.get("requirement_id")}
+
     for r in sorted(applicable, key=lambda x: (x.get("property_id") or "", x.get("requirement_type") or "")):
         pid = r.get("property_id")
-        code = r.get("code") or r.get("requirement_type")
+        rid = str(r.get("requirement_id") or "")
+        row = enriched_by_id.get(rid, r)
+        code = row.get("code") or row.get("requirement_type")
         label = requirement_label(code)
-        st = str(r.get("status") or "").upper()
-        ea = r.get("evidence_authority") or {}
-        ev_raw = (ea.get("state") or r.get("evidence_state") or "—") if r.get("evidence_authority_synced_at") else (r.get("evidence_state") or "—")
+        st = str(row.get("status") or "").upper()
+        ea = row.get("evidence_authority") or {}
+        ev_raw = (ea.get("state") or row.get("evidence_state") or "—") if row.get("evidence_authority_synced_at") else (row.get("evidence_state") or "—")
         ev = str(ev_raw).upper()
-        eff_dt = get_effective_expiry_date(r)
-        date_used_s = eff_dt.isoformat() if eff_dt else ""
-        ea_src = (ea.get("expiry_source") or r.get("expiry_source") or "").upper()
-        verified = ea_src in ("VERIFIED_DOCUMENT", "CONFIRMED") or (r.get("confidence_state") or "").upper() == "VERIFIED"
-        date_kind = "verified" if verified else "estimated"
+        from services.compliance_timeline_presentation import (
+            timeline_report_date_display,
+            timeline_report_date_kind,
+            timeline_sort_date_iso,
+        )
+
+        date_display = timeline_report_date_display(row)
+        date_used_s = timeline_sort_date_iso(row) or ""
+        date_kind = timeline_report_date_kind(row)
         days_n, direction = _days_remaining_or_overdue(date_used_s or None, now)
         if st in ("OVERDUE", "EXPIRED"):
             next_action = "Renew or upload compliant evidence urgently."
@@ -369,6 +380,9 @@ async def assemble_monthly_digest_payload(
                 "state": compliance_requirement_status_label(st),
                 "evidence_state": ev.replace("_", " ").title() if ev else "—",
                 "date_used": date_used_s[:10] if date_used_s else "—",
+                "date_display": date_display,
+                "timeline_primary_date_label": row.get("timeline_primary_date_label") or date_display,
+                "timeline_primary_date_concept": row.get("timeline_primary_date_concept"),
                 "date_kind": date_kind,
                 "days_value": days_n,
                 "days_direction": direction,

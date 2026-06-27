@@ -1,0 +1,156 @@
+{
+  "programme": "COMPLIANCE-TIMELINE-PHASE-1-AND-2-RELEASE-VALIDATION-01",
+  "validated_at": "2026-06-02",
+  "validation_scope": "local pytest (test_compliance_timeline.py) — staging BLOCKED (programme not deployed)",
+  "overall_verdict": "LOCAL_PASS_STAGING_NOT_RUN",
+  "families": [
+    {
+      "family": "Certificate",
+      "requirement_type": "gas_safety",
+      "timeline_category": "certificate_lifecycle",
+      "primary_date_concept": "certificate_expiry",
+      "confidence_verified_fixture": "VERIFIED",
+      "wording_contains": "Certificate expires",
+      "false_expiry": false,
+      "false_review": false,
+      "legacy_interpretation": false,
+      "test": "test_gas_safety_verified_certificate_expiry",
+      "result": "PASS"
+    },
+    {
+      "family": "Certificate",
+      "requirement_type": "epc",
+      "timeline_category": "certificate_lifecycle",
+      "primary_date_source": "AI_EXTRACTED",
+      "confidence": "not verified on extract",
+      "test": "test_epc_ai_extracted_unverified",
+      "result": "PASS"
+    },
+    {
+      "family": "Certificate",
+      "requirement_type": "eicr",
+      "primary_date_source": "USER_CONFIRMED",
+      "test": "test_eicr_user_confirmed_expiry",
+      "result": "PASS"
+    },
+    {
+      "family": "Certificate",
+      "requirement_type": "portable_appliance_test",
+      "timeline_category": "certificate_lifecycle",
+      "test": "test_pat_certificate_lifecycle",
+      "result": "PASS"
+    },
+    {
+      "family": "Certificate",
+      "requirement_type": "hmo_license",
+      "note": "Covered under property_licence / licence certificate patterns in calculator",
+      "test": "implicit in calculator registry",
+      "result": "LOCAL_PASS_REGISTRY"
+    },
+    {
+      "family": "Certificate",
+      "requirement_type": "selective_license",
+      "note": "Covered under property_licence patterns",
+      "result": "LOCAL_PASS_REGISTRY"
+    },
+    {
+      "family": "Assessment",
+      "requirement_type": "legionella",
+      "timeline_category": "assessment_lifecycle",
+      "primary_date_concept": "next_assessment_due",
+      "expiry_date_null": true,
+      "test": "test_legionella_assessment_and_next_review",
+      "result": "PASS"
+    },
+    {
+      "family": "Assessment",
+      "requirement_type": "lead_testing",
+      "primary_date_from": "follow_up_date",
+      "test": "test_lead_testing_assessment_follow_up",
+      "result": "PASS"
+    },
+    {
+      "family": "Declaration",
+      "requirement_type": "how_to_rent",
+      "timeline_category": "declaration_lifecycle",
+      "wording_contains": "Guide delivery date",
+      "expiry_date_null": true,
+      "test": "test_how_to_rent_delivery_timeline",
+      "result": "PASS"
+    },
+    {
+      "family": "Declaration",
+      "requirement_type": "deposit_pi",
+      "primary_date_concept": "protection_date",
+      "expiry_date_null": true,
+      "test": "test_deposit_protection_declaration",
+      "result": "PASS"
+    },
+    {
+      "family": "Tenancy",
+      "requirement_type": "tenancy_agreement",
+      "timeline_category": "tenancy_lifecycle",
+      "expiry_date_null": true,
+      "tenancy_end_date_set": true,
+      "test": "test_tenancy_agreement_timeline",
+      "result": "PASS"
+    },
+    {
+      "family": "Registration",
+      "requirement_type": "rent_smart_wales",
+      "timeline_category": "registration_lifecycle",
+      "primary_date_concept": "registration_date",
+      "test": "test_rent_smart_wales_registration_timeline",
+      "result": "PASS"
+    },
+    {
+      "family": "Registration",
+      "requirement_type": "landlord_registration",
+      "note": "Calculator registry entry; no dedicated unit test name in suite",
+      "result": "LOCAL_PASS_REGISTRY"
+    },
+    {
+      "family": "Event",
+      "requirement_type": "smoke_heat_alarms",
+      "timeline_category": "event_lifecycle",
+      "primary_date_concept": "event_date",
+      "expiry_date_null": true,
+      "no_false_expiry": true,
+      "test": "test_smoke_heat_co_no_false_expiry",
+      "result": "PASS"
+    },
+    {
+      "family": "Hybrid",
+      "requirement_type": "hmo_fire_risk",
+      "timeline_category": "hybrid_lifecycle",
+      "test": "test_hmo_fire_risk_hybrid_expiry",
+      "result": "PASS"
+    }
+  ],
+  "cross_cutting_guards": [
+    {
+      "guard": "warning_days due_date treated as estimate not renewal truth",
+      "test": "test_warning_days_due_date_is_estimated_not_authoritative",
+      "result": "PASS"
+    },
+    {
+      "guard": "verified authority beats stale estimate",
+      "test": "test_verified_authority_beats_stale_estimate",
+      "result": "PASS"
+    },
+    {
+      "guard": "supporting document does not override authority expiry",
+      "test": "test_supporting_document_does_not_alter_timeline_authority",
+      "result": "PASS"
+    },
+    {
+      "guard": "reminder_start_date separate from primary_date",
+      "test": "test_reminder_start_date_separate_from_primary",
+      "result": "PASS"
+    }
+  ],
+  "staging_family_validation": {
+    "executed": false,
+    "reason": "Programme not deployed; no authenticated staging requirement sampling"
+  }
+}

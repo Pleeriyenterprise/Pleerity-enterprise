@@ -19,6 +19,7 @@ import {
 } from '../utils/adminActionGovernance';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
 import { presentScoreChangeReason } from '../utils/timelinePresent';
+import { getTimelineDateLabel } from '../utils/complianceTimelinePresentation';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
 import ManualJobExecutionModal from '../components/admin/ManualJobExecutionModal';
 import AccountEnvironmentBadge from '../components/admin/AccountEnvironmentBadge';
@@ -1283,7 +1284,7 @@ const KPIDrilldownModal = ({ drilldownType, onClose, onSelectClient }) => {
                     <div>
                       <p className="font-medium text-midnight-blue">{req.category || req.requirement_type || 'Requirement'}</p>
                       <p className="text-sm text-gray-500">
-                        Due {req.due_date ? new Date(req.due_date).toLocaleDateString() : 'N/A'}
+                        Due {getTimelineDateLabel(req)}
                         {req.property?.nickname ? ` • ${req.property.nickname}` : ''}
                         {!req.property?.nickname && req.property?.address_line_1 ? ` • ${req.property.address_line_1}` : ''}
                         {req.property?.effective_jurisdiction_label

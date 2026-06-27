@@ -340,19 +340,31 @@ def build_matrix_rows(
     pmap = {p.get("property_id"): p for p in properties if p.get("property_id")}
     docs_by_req = docs_by_req or {}
     delivery_by_req = delivery_by_req or {}
+    from services.compliance_timeline_presentation import (
+        ensure_compliance_timeline_on_requirement,
+        timeline_report_date_display,
+        timeline_sort_date_iso,
+    )
+
     rows: List[Dict[str, str]] = []
     for r in requirements:
         pid = r.get("property_id")
         if property_filter_id and pid != property_filter_id:
             continue
         pd = pmap.get(pid)
-        eff = get_effective_expiry_date(r)
-        due_str = "—"
-        if eff and hasattr(eff, "date"):
-            due_str = eff.date().isoformat()
-        elif r.get("due_date"):
-            due_str = str(r.get("due_date"))[:10]
-        days = _days_to_expiry(eff or r.get("due_date"), now)
+        tl_row = ensure_compliance_timeline_on_requirement(r)
+        sort_iso = timeline_sort_date_iso(tl_row)
+        expiry_display = timeline_report_date_display(tl_row)
+        due_str = sort_iso or "—"
+        if expiry_display == "No date on file":
+            expiry_display = "—"
+        if due_str == "—":
+            eff = get_effective_expiry_date(r)
+            if eff and hasattr(eff, "date"):
+                due_str = eff.date().isoformat()
+            elif r.get("due_date"):
+                due_str = str(r.get("due_date"))[:10]
+        days = _days_to_expiry(sort_iso or due_str if due_str != "—" else r.get("due_date"), now)
         cs = get_computed_status(r, property_doc=pd, client_doc=client_doc)
         rid = str(r.get("requirement_id") or "")
         rows.append(
@@ -364,6 +376,7 @@ def build_matrix_rows(
                 "evidence_ref": _evidence_file_ref(r, docs_by_req)[:36],
                 "delivery_proof": _delivery_proof_label(rid, delivery_by_req),
                 "expiry": due_str,
+                "expiry_display": expiry_display,
                 "days_to_expiry": str(days) if days is not None else "—",
                 "risk_level": _risk_level_for_row(r, property_doc=pd, client_doc=client_doc),
                 "action_required": _action_required_label(r, property_doc=pd, client_doc=client_doc),

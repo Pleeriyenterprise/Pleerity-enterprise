@@ -76,6 +76,10 @@ import {
   sortRequirementsCriticalityThenTitle,
   sortRequirementsAttentionOrder,
 } from '../utils/propertyDocumentsMatrix';
+import {
+  getTimelineDateLabel,
+  getTimelineSortDateIso,
+} from '../utils/complianceTimelinePresentation';
 import { suppressMarkNotApplicableCta } from '../utils/clientApplicabilityPresentation';
 import {
   filterInboxTasksForTrackedRequirements,
@@ -1361,7 +1365,8 @@ export default function PropertyDetailPage() {
   const isMatrixRow = (r) => r.title != null || r.requirement_code != null;
   const rowTitle = (r) => requirementTitleFromRow(r, 'detail');
   const rowCompactTitle = (r) => requirementTitleFromRow(r, 'compact');
-  const rowExpiry = (r) => r.expiry_date || r.due_date;
+  const rowExpiry = (r) => getTimelineSortDateIso(r) || r.expiry_date || r.due_date;
+  const rowExpiryLabel = (r) => getTimelineDateLabel(r);
   const rowDays = (r) => (r.days_to_expiry != null ? r.days_to_expiry : daysLeft(rowExpiry(r)));
   const rowReqId = (r) => r.requirement_id || r.id;
 
@@ -1425,9 +1430,13 @@ export default function PropertyDetailPage() {
 
   const getNextDueDate = () => {
     const withDue = requirements
-      .filter((r) => r.expiry_date || r.due_date)
-      .sort((a, b) => new Date(a.expiry_date || a.due_date) - new Date(b.expiry_date || b.due_date));
-    return withDue[0] ? (withDue[0].expiry_date || withDue[0].due_date) : null;
+      .filter((r) => getTimelineSortDateIso(r))
+      .sort((a, b) => {
+        const da = getTimelineSortDateIso(a);
+        const db = getTimelineSortDateIso(b);
+        return new Date(da) - new Date(db);
+      });
+    return withDue[0] ? getTimelineSortDateIso(withDue[0]) : null;
   };
 
   const getFilteredRequirements = () => {
@@ -1457,11 +1466,11 @@ export default function PropertyDetailPage() {
   /** Same urgent rules as before, sorted like the obligations matrix (single source: `requirements`). */
   const urgentRequirementsOrdered = useMemo(() => {
     const scoped = getTrackedRequirementsForProperty(propertyId, requirements);
-    return sortRequirementsAttentionOrder(scoped, (r) => r.expiry_date || r.due_date);
+    return sortRequirementsAttentionOrder(scoped, (r) => getTimelineSortDateIso(r) || r.expiry_date || r.due_date);
   }, [propertyId, requirements]);
   const NEEDS_ATTENTION_CAP = 8;
   const urgentNeedsAttention = useMemo(
-    () => buildNeedsAttentionSubset(urgentRequirementsOrdered, (r) => r.expiry_date || r.due_date, NEEDS_ATTENTION_CAP),
+    () => buildNeedsAttentionSubset(urgentRequirementsOrdered, (r) => getTimelineSortDateIso(r) || r.expiry_date || r.due_date, NEEDS_ATTENTION_CAP),
     [urgentRequirementsOrdered],
   );
   const urgentRequirementsCapped = urgentNeedsAttention.items;
@@ -2483,7 +2492,7 @@ export default function PropertyDetailPage() {
                                   ) : null}
                                 </div>
                               </td>
-                              <td className="p-3 text-gray-600">{formatDate(rowExpiry(r))}</td>
+                              <td className="p-3 text-gray-600">{rowExpiryLabel(r)}</td>
                               <td className="p-3 text-gray-600">{hasEvidence ? 'Linked' : '—'}</td>
                               <td className="p-3">
                                 <span className={`inline-flex px-2 py-1 rounded border text-xs ${impact.className}`}>{impact.label}</span>
@@ -2592,7 +2601,7 @@ export default function PropertyDetailPage() {
                                       {status.subline ? ` — ${status.subline}` : ''}
                                     </p>
                                     <p>
-                                      <span className="font-semibold text-midnight-blue">Due date:</span> {formatDate(rowExpiry(r))}
+                                      <span className="font-semibold text-midnight-blue">Compliance date:</span> {rowExpiryLabel(r)}
                                       {days != null ? (days < 0 ? ` (${Math.abs(days)} days overdue)` : ` (${days} days left)`) : ''}
                                     </p>
                                     <p><span className="font-semibold text-midnight-blue">Document on file:</span> {hasEvidence ? 'Yes' : 'No'}</p>
@@ -2667,7 +2676,7 @@ export default function PropertyDetailPage() {
                         <span className={`inline-flex px-2 py-0.5 rounded border text-xs ${impact.className}`}>Risk: {impact.label}</span>
                       </div>
                       {status.subline ? <p className="text-xs text-gray-500 mt-1">{status.subline}</p> : null}
-                      <div className="text-xs text-gray-500 mt-1">{formatDate(rowExpiry(r))} · {hasEvidence ? 'Document linked' : 'No document'}</div>
+                      <div className="text-xs text-gray-500 mt-1">{rowExpiryLabel(r)} · {hasEvidence ? 'Document linked' : 'No document'}</div>
                       <div className="mt-2 flex flex-col gap-1.5">
                         <div className="flex flex-wrap gap-1 items-center">
                           <Button

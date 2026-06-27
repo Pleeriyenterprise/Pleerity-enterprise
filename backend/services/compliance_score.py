@@ -878,6 +878,16 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             elif s == "PENDING" and evidence:
                 display_status = "NEEDS_CONFIRMATION"
 
+            from services.compliance_timeline_presentation import (
+                ensure_compliance_timeline_on_requirement,
+                timeline_report_date_display,
+                timeline_report_date_kind,
+                timeline_sort_date_iso,
+            )
+
+            tl_row = ensure_compliance_timeline_on_requirement(r)
+            date_sort_iso = timeline_sort_date_iso(tl_row)
+            date_confidence = timeline_report_date_kind(tl_row).upper()
             drivers.append({
                 "property_id": pid,
                 "property_name": prop.get("nickname") or prop.get("address_line_1") or pid,
@@ -887,8 +897,9 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "semantic_state": semantic_state,
                 "workflow_class": workflow_class,
                 "status": display_status,
-                "date_used": r.get("due_date"),
-                "date_confidence": "UNKNOWN",
+                "date_used": date_sort_iso or r.get("due_date"),
+                "date_display": timeline_report_date_display(tl_row),
+                "date_confidence": date_confidence if date_confidence != "UNKNOWN" else "UNKNOWN",
                 "evidence_uploaded": evidence,
                 "actions": list(dict.fromkeys(actions)) if actions else ["VIEW"],
                 "take_action": take_action,

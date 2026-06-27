@@ -76,6 +76,12 @@ import {
 } from '../utils/clientPersistedSubmissionPresentation';
 import { pickWhyItMattersForDisplay } from '../utils/requirementIntelligenceMerge';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
+import {
+  daysUntilTimelineDate,
+  getLegacyEditableDateIso,
+  getTimelineDateLabel,
+  getTimelineSortDate,
+} from '../utils/complianceTimelinePresentation';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -250,7 +256,7 @@ const RequirementsPage = () => {
   const hasUnknownApplicability = requirements.some(r => (r.applicability || 'UNKNOWN') === 'UNKNOWN');
 
   const openEditModal = (req) => {
-    const due = req.confirmed_expiry_date || req.extracted_expiry_date || req.due_date;
+    const due = getLegacyEditableDateIso(req);
     const dateStr = due ? (typeof due === 'string' ? due : new Date(due).toISOString()).slice(0, 10) : '';
     setEditForm({
       confirmed_expiry_date: dateStr,
@@ -418,7 +424,7 @@ const RequirementsPage = () => {
 
     // Window filter (for "Expiring Soon" tile)
     if (windowDays) {
-      const days = getDaysUntilDue(req.due_date);
+      const days = daysUntilTimelineDate(req);
       return days !== null && days >= 0 && days <= parseInt(windowDays);
     }
 
@@ -430,8 +436,8 @@ const RequirementsPage = () => {
     if (priorityDiff !== 0) return priorityDiff;
     
     // Then sort by due date
-    const dateA = a.due_date ? new Date(a.due_date) : new Date('9999-12-31');
-    const dateB = b.due_date ? new Date(b.due_date) : new Date('9999-12-31');
+    const dateA = getTimelineSortDate(a) || new Date('9999-12-31');
+    const dateB = getTimelineSortDate(b) || new Date('9999-12-31');
     return dateA - dateB;
   });
 
@@ -446,7 +452,7 @@ const RequirementsPage = () => {
       (req.portal_renewal_countdown_eligible !== false &&
         req.requirement_attention_eligible === true &&
         ['expired', 'renewal_due'].includes(String(req.requirement_attention_reason || '')));
-    const daysUntil = showRenewalCountdown ? getDaysUntilDue(req.due_date) : null;
+    const daysUntil = showRenewalCountdown ? daysUntilTimelineDate(req) : null;
     const docCount = documentCountByRequirementId[req.requirement_id] || 0;
     const hasDocs = docCount > 0;
     const reqClass = String(req.compliance_requirement_class || req.requirement_class || '').toUpperCase();
@@ -628,7 +634,7 @@ const RequirementsPage = () => {
                       </span>
                     ) : null}
                   </span>
-                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{req.date_label || `Due: ${formatDate(req.due_date)}`}</span>
+                  <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{getTimelineDateLabel(req)}</span>
                   {runtimeSourceLabel ? (
                     <span className="text-[11px] text-gray-500 uppercase tracking-wide" data-testid={`runtime-source-${req.requirement_id}`}>
                       {runtimeSourceLabel}

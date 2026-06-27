@@ -147,7 +147,13 @@ def humanize_matrix_row(row: Dict[str, str]) -> Dict[str, str]:
     st = str(row.get("status") or "")
     if st and st.upper() not in ("—", "N/A"):
         out["status"] = human_compliance_status_label(st.upper()) or st
-    out["expiry"] = human_operational_renewal_date({"due_date": row.get("expiry")}) if row.get("expiry") not in (None, "—", "") else "—"
+    expiry_display = row.get("expiry_display")
+    if expiry_display and expiry_display not in ("—", ""):
+        out["expiry"] = expiry_display
+    elif row.get("expiry") not in (None, "—", ""):
+        out["expiry"] = human_operational_renewal_date({"due_date": row.get("expiry")})
+    else:
+        out["expiry"] = "—"
     for v in out.values():
         if isinstance(v, str):
             assert_executive_safe_text(v)

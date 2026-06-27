@@ -58,6 +58,9 @@ def _property_display(prop: Dict[str, Any]) -> str:
 
 
 def _requirement_date_source(req: Dict[str, Any]) -> str:
+    tl_src = req.get("timeline_primary_date_source")
+    if tl_src:
+        return str(tl_src).strip().lower()
     ea = req.get("evidence_authority") or {}
     if req.get("evidence_authority_synced_at") and int(ea.get("version") or 0) >= 1:
         src = (ea.get("expiry_source") or "").strip().lower()
@@ -180,12 +183,22 @@ def build_requirement_timeline_events(
     client_doc: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     req_to_doc = req_to_doc or {}
+    from services.compliance_timeline_presentation import (
+        ensure_compliance_timeline_on_requirement,
+        timeline_sort_date_iso,
+    )
+
     out: List[Dict[str, Any]] = []
     for req in requirements:
         if not is_included_for_calendar(req):
             continue
-        effective = get_effective_expiry_date(req)
-        if effective is None:
+        tl_row = ensure_compliance_timeline_on_requirement(req)
+        sort_iso = timeline_sort_date_iso(tl_row)
+        if not sort_iso:
+            continue
+        try:
+            effective = datetime.fromisoformat(f"{sort_iso[:10]}T00:00:00+00:00")
+        except Exception:
             continue
         if not (start <= effective < end):
             continue

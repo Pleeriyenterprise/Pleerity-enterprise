@@ -1,0 +1,291 @@
+{
+  "programme": "COMPLIANCE-TIMELINE-PHASE-2-CONSUMER-MIGRATION-PLAN-01",
+  "generated_at": "2026-06-02",
+  "authoritative_fields": [
+    "compliance_timeline",
+    "timeline_primary_date",
+    "timeline_primary_date_label",
+    "timeline_primary_date_confidence",
+    "timeline_primary_date_source",
+    "timeline_primary_date_concept"
+  ],
+  "consumers": [
+    {
+      "surface": "Requirements list",
+      "layer": "frontend",
+      "file": "frontend/src/pages/RequirementsPage.js",
+      "legacy_fields": ["due_date", "confirmed_expiry_date (edit only)"],
+      "timeline_fields": ["timeline_primary_date_label", "compliance_timeline.effective_attention_date"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "HIGH",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Property compliance matrix",
+      "layer": "frontend",
+      "file": "frontend/src/pages/PropertyDetailPage.js",
+      "legacy_fields": ["expiry_date", "due_date (sort fallback)"],
+      "timeline_fields": ["getTimelineDateLabel", "getTimelineSortDateIso"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "HIGH",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Requirement modal",
+      "layer": "frontend",
+      "file": "frontend/src/components/client/RequirementIntelligenceModal.js",
+      "legacy_fields": ["date_label (fallback)"],
+      "timeline_fields": ["timeline_primary_date_label"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "HIGH",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Property dashboard / operating hub",
+      "layer": "frontend",
+      "file": "frontend/src/components/property/PropertyOperatingHub.jsx",
+      "legacy_fields": ["expiry_date", "due_date (fallback)"],
+      "timeline_fields": ["getTimelineSortDateIso"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "MEDIUM",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Client dashboard widgets",
+      "layer": "frontend",
+      "file": "frontend/src/utils/dashboardScoreWidgetLabels.js",
+      "legacy_fields": ["due_date (sort fallback only)"],
+      "timeline_fields": ["getTimelineSortDateIso", "isTimelineEstimated"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "HIGH",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Compliance score drivers",
+      "layer": "frontend",
+      "file": "frontend/src/pages/ComplianceScorePage.js",
+      "legacy_fields": ["date_used (ISO fallback)"],
+      "timeline_fields": ["date_display from API"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "HIGH",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Admin client requirements panel",
+      "layer": "frontend",
+      "file": "frontend/src/pages/AdminDashboard.js",
+      "legacy_fields": ["due_date"],
+      "timeline_fields": ["getTimelineDateLabel"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "LOW",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Compliance widgets / obligation present",
+      "layer": "frontend",
+      "file": "frontend/src/utils/complianceObligationPresent.js",
+      "legacy_fields": ["expiry_date", "due_date (fallback)"],
+      "timeline_fields": ["getTimelineSortDateIso"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "MEDIUM",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Requirement enrich API / date_label",
+      "layer": "backend",
+      "file": "backend/services/requirement_truth.py",
+      "legacy_fields": ["build_date_presentation legacy path"],
+      "timeline_fields": ["all timeline_primary_*", "compliance_timeline"],
+      "migration_status": "MIGRATED",
+      "complexity": "HIGH",
+      "customer_impact": "HIGH",
+      "regression_risk": "HIGH"
+    },
+    {
+      "surface": "Monthly digest assembly",
+      "layer": "backend",
+      "file": "backend/services/monthly_digest_assembly_service.py",
+      "legacy_fields": ["date_used (ISO sort anchor only)"],
+      "timeline_fields": ["date_display", "timeline_primary_date_label", "timeline_report_date_kind"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "HIGH",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Requirements operational report",
+      "layer": "backend",
+      "file": "backend/services/report_requirements_operational.py",
+      "legacy_fields": ["renewal via human_operational_renewal_date fallback"],
+      "timeline_fields": ["renewal column from timeline label"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "HIGH",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Executive compliance summary matrix",
+      "layer": "backend",
+      "file": "backend/services/report_compliance_summary_executive.py",
+      "legacy_fields": ["expiry ISO via matrix row"],
+      "timeline_fields": ["expiry_display from build_matrix_rows"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "HIGH",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Report PDF matrix",
+      "layer": "backend",
+      "file": "backend/services/report_pdf_templates.py",
+      "legacy_fields": ["get_effective_expiry_date fallback when timeline sparse"],
+      "timeline_fields": ["expiry_display", "timeline_sort_date_iso"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "HIGH",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Portfolio score PDF drivers",
+      "layer": "backend",
+      "file": "backend/services/pdf_report_builder.py",
+      "legacy_fields": ["date_used ISO fallback"],
+      "timeline_fields": ["date_display"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "MEDIUM",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Audit evidence pack",
+      "layer": "backend",
+      "file": "backend/services/compliance_pack.py",
+      "legacy_fields": ["due_date in summary list"],
+      "timeline_fields": ["timeline_report_date_display"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "HIGH",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Expiry schedule PDF",
+      "layer": "backend",
+      "file": "backend/services/professional_reports.py",
+      "legacy_fields": ["get_effective_expiry_date"],
+      "timeline_fields": ["timeline_report_date_display"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "MEDIUM",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Client calendar",
+      "layer": "backend",
+      "file": "backend/services/client_calendar_timeline_service.py",
+      "legacy_fields": ["get_effective_expiry_date (removed for req events)"],
+      "timeline_fields": ["timeline_sort_date_iso", "timeline_primary_date_source"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "MEDIUM",
+      "regression_risk": "MEDIUM"
+    },
+    {
+      "surface": "Scheduled report email digest",
+      "layer": "backend",
+      "file": "backend/email_templates/unified/scheduled_report_digest.py",
+      "legacy_fields": ["due_date legacy key"],
+      "timeline_fields": ["renewal_date timeline label preferred"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "HIGH",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Reminder email display",
+      "layer": "backend",
+      "file": "backend/services/jobs.py",
+      "legacy_fields": ["scheduling still uses get_effective_expiry_date"],
+      "timeline_fields": ["_reminder_customer_due_display uses timeline label"],
+      "migration_status": "MIGRATED",
+      "complexity": "MEDIUM",
+      "customer_impact": "HIGH",
+      "regression_risk": "MEDIUM",
+      "notes": "Reminder windows unchanged; display only migrated"
+    },
+    {
+      "surface": "Score driver export CSV",
+      "layer": "backend",
+      "file": "backend/routes/reports.py",
+      "legacy_fields": ["date_used ISO fallback"],
+      "timeline_fields": ["date_display"],
+      "migration_status": "MIGRATED",
+      "complexity": "LOW",
+      "customer_impact": "LOW",
+      "regression_risk": "LOW"
+    },
+    {
+      "surface": "Compliance score calculation",
+      "layer": "backend",
+      "file": "backend/services/compliance_score.py",
+      "legacy_fields": ["due_date for scoring math"],
+      "timeline_fields": ["date_display on drivers only"],
+      "migration_status": "PARTIAL",
+      "complexity": "HIGH",
+      "customer_impact": "MEDIUM",
+      "regression_risk": "HIGH",
+      "notes": "Scoring math intentionally unchanged; driver presentation migrated"
+    },
+    {
+      "surface": "Today / Command Centre task cards",
+      "layer": "backend",
+      "file": "backend/services/today_projection_service.py, command_center_service.py",
+      "legacy_fields": ["task due_date for inbox ordering"],
+      "timeline_fields": ["requirement rows enriched via API include timeline"],
+      "migration_status": "COMPATIBLE",
+      "complexity": "LOW",
+      "customer_impact": "MEDIUM",
+      "regression_risk": "LOW",
+      "notes": "Task due_date is operational inbox metadata, not requirement date truth"
+    },
+    {
+      "surface": "Client dashboard onboarding heuristics",
+      "layer": "frontend",
+      "file": "frontend/src/pages/ClientDashboard.js",
+      "legacy_fields": ["confirmed_expiry_date for workflow banners"],
+      "timeline_fields": ["N/A — workflow not date presentation"],
+      "migration_status": "DEFERRED_PHASE_3",
+      "complexity": "MEDIUM",
+      "customer_impact": "LOW",
+      "regression_risk": "MEDIUM",
+      "notes": "Uses confirmed_expiry for evidence onboarding, not customer date labels"
+    }
+  ],
+  "duplicate_presentation_retired": [
+    "requirement_truth.build_date_presentation → delegates to build_date_presentation_from_timeline when timeline present",
+    "report_human_language_v1.human_operational_renewal_date → timeline_report_date_display first",
+    "RequirementIntelligenceModal.pickDueOrRenewal → timeline_primary_date_label only",
+    "PropertyDetailPage rowExpiryLabel → getTimelineDateLabel"
+  ],
+  "remaining_legacy_consumers": [
+    {
+      "file": "backend/services/compliance_score.py",
+      "reason": "Scoring engine uses due_date for urgency math — out of presentation scope"
+    },
+    {
+      "file": "frontend/src/pages/ClientDashboard.js",
+      "reason": "confirmed_expiry_date workflow banners — not date display"
+    },
+    {
+      "file": "backend/services/reminder_truth_service.py",
+      "reason": "Reminder scheduling authority — intentionally separate from timeline truth"
+    }
+  ]
+}

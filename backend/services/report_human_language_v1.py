@@ -179,7 +179,17 @@ def human_evidence_presence_label(row: Dict[str, Any]) -> str:
 
 
 def human_operational_renewal_date(row: Dict[str, Any]) -> str:
-    """Customer-facing renewal/expiry — never expose UNKNOWN_DATE."""
+    """Customer-facing obligation date — Compliance Timeline when enriched."""
+    from services.compliance_timeline_presentation import (
+        ensure_compliance_timeline_on_requirement,
+        timeline_report_date_display,
+    )
+
+    enriched = ensure_compliance_timeline_on_requirement(row)
+    display = timeline_report_date_display(enriched)
+    if display != "No date on file":
+        return display
+
     from utils.expiry_utils import get_effective_expiry_date
 
     eff = get_effective_expiry_date(row)
@@ -187,10 +197,10 @@ def human_operational_renewal_date(row: Dict[str, Any]) -> str:
         return eff.date().isoformat()
     raw = row.get("due_date") or row.get("confirmed_expiry_date") or row.get("extracted_expiry_date")
     if raw is None or str(raw).strip() == "":
-        return "No verified renewal date recorded"
+        return "No date on file"
     s = str(raw).strip().upper()
     if s in ("N/A", "UNKNOWN", "UNKNOWN_DATE", "NONE", "—"):
-        return "No verified renewal date recorded"
+        return "No date on file"
     try:
         from datetime import datetime
 
@@ -199,7 +209,7 @@ def human_operational_renewal_date(row: Dict[str, Any]) -> str:
     except Exception:
         cleaned = str(raw)[:10]
         if cleaned.upper() in ("UNKNOWN_D", "UNKNOWN"):
-            return "No verified renewal date recorded"
+            return "No date on file"
         return cleaned
 
 

@@ -502,7 +502,7 @@ def build_requirements_scheduled_email_rows(
     out: List[Dict[str, str]] = []
     for r in enriched_rows:
         renewal = str(r.get("renewal") or "")
-        due = renewal if renewal and renewal != "No verified renewal date recorded" else "N/A"
+        due = renewal if renewal and renewal not in ("No verified renewal date recorded", "No date on file") else "N/A"
         out.append(
             {
                 "property_address": str(r.get("property") or "—"),

@@ -79,11 +79,15 @@ def _props(n=1):
 
 
 def test_human_renewal_date_no_unknown_date():
-    assert human_operational_renewal_date({"due_date": "UNKNOWN_DATE"}) == (
-        "No verified renewal date recorded"
-    )
-    assert human_operational_renewal_date({}) == "No verified renewal date recorded"
-    assert human_operational_renewal_date({"due_date": "2026-12-01"}) == "2026-12-01"
+    assert human_operational_renewal_date({"due_date": "UNKNOWN_DATE"}) == "No date on file"
+    assert human_operational_renewal_date({}) == "No date on file"
+    row = {
+        "requirement_type": "gas_safety",
+        "due_date": "2026-12-01",
+        "date_source": "SYSTEM_ESTIMATED",
+    }
+    display = human_operational_renewal_date(row)
+    assert "2026-12-01" in display or "Dec" in display or "December" in display
 
 
 def test_classify_triage_buckets():

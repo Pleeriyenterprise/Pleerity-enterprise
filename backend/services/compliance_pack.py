@@ -389,7 +389,10 @@ class CompliancePackService:
         for req in sorted(requirements, key=lambda x: x.get('requirement_type', '')):
             req_type = req.get('requirement_type', 'unknown')
             status = req.get('status', 'UNKNOWN')
-            due_date = req.get('due_date')
+            from services.compliance_timeline import build_compliance_timeline
+
+            timeline = build_compliance_timeline(req)
+            timeline_label = timeline.get("primary_date_label") or "No date on file"
             
             story.append(Paragraph(
                 self._get_requirement_display_name(req_type),
@@ -401,9 +404,9 @@ class CompliancePackService:
             status_display = status.replace('_', ' ')
             story.append(Paragraph(f"Status: {status_display}", self.styles[status_style]))
             
-            # Expiry date
+            # Compliance timeline date (authoritative customer-facing)
             story.append(Paragraph(
-                f"Valid Until: {self._format_date(due_date)}",
+                f"Compliance date: {timeline_label}",
                 self.styles['CertificateDetail']
             ))
             
@@ -519,6 +522,25 @@ class CompliancePackService:
             properties=[property_doc],
         )
         
+        from services.compliance_timeline_presentation import (
+            ensure_compliance_timeline_on_requirement,
+            timeline_report_date_display,
+        )
+
+        certificates = []
+        for r in requirements:
+            tl_row = ensure_compliance_timeline_on_requirement(r)
+            expiry_label = timeline_report_date_display(tl_row)
+            if expiry_label == "No date on file":
+                expiry_label = "—"
+            certificates.append(
+                {
+                    "type": self._get_requirement_display_name(r.get('requirement_type', '')),
+                    "status": r.get('status'),
+                    "expiry": expiry_label,
+                }
+            )
+
         return {
             "property_address": f"{property_doc.get('address_line_1', '')}, {property_doc.get('postcode', '')}",
             "property_nickname": property_doc.get('nickname'),
@@ -526,14 +548,7 @@ class CompliancePackService:
             "compliant": sum(1 for r in requirements if r.get('status') == 'COMPLIANT'),
             "expiring_soon": sum(1 for r in requirements if r.get('status') == 'EXPIRING_SOON'),
             "overdue": sum(1 for r in requirements if r.get('status') == 'OVERDUE'),
-            "certificates": [
-                {
-                    "type": self._get_requirement_display_name(r.get('requirement_type', '')),
-                    "status": r.get('status'),
-                    "expiry": self._format_date(r.get('due_date'))
-                }
-                for r in requirements
-            ]
+            "certificates": certificates,
         }
 
 

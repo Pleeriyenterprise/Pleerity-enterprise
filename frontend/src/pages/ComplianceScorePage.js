@@ -106,6 +106,18 @@ function scoreDriverEvidenceLabel(driver, requirements) {
   return driver?.evidence_uploaded ? 'Uploaded' : 'Not uploaded';
 }
 
+function scoreDriverDateDisplay(driver) {
+  if (driver?.date_display) return driver.date_display;
+  if (driver?.date_used) {
+    try {
+      return new Date(driver.date_used).toLocaleDateString();
+    } catch {
+      return String(driver.date_used);
+    }
+  }
+  return '—';
+}
+
 /**
  * Score-driver remediation: only `take_action.primary` shapes that pass
  * {@link requirementUsesServerTakeActionPrimary} may render actionable labels/routes.
@@ -894,7 +906,7 @@ const ComplianceScorePage = () => {
                               </span>
                             </td>
                             <td className="py-3 pr-2">
-                              {d.date_used ? new Date(d.date_used).toLocaleDateString() : '—'}
+                              {scoreDriverDateDisplay(d)}
                               {d.date_confidence && d.date_confidence !== 'UNKNOWN' && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -937,7 +949,7 @@ const ComplianceScorePage = () => {
                           {scoreDriverStatusLabel(d.status)}
                         </span>
                         {' · '}
-                        {d.date_used ? new Date(d.date_used).toLocaleDateString() : '—'} · {scoreDriverEvidenceLabel(d, requirements)}
+                        {scoreDriverDateDisplay(d)} · {scoreDriverEvidenceLabel(d, requirements)}
                       </p>
                       <div className="flex flex-col gap-2 pt-1">
                         <ScoreDriverRemediationActions

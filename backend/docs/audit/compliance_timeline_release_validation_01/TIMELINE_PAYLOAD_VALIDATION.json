@@ -1,0 +1,57 @@
+{
+  "programme": "COMPLIANCE-TIMELINE-PHASE-1-AND-2-RELEASE-VALIDATION-01",
+  "validated_at": "2026-06-02",
+  "environment": "staging",
+  "verdict": "BLOCKED",
+  "staging_api_url": "https://pleerity-enterprise.onrender.com",
+  "deployed_commit_sha": "29fbe35599213686931a7e45ac9902e263d4f3d9",
+  "required_enrich_fields": [
+    "compliance_timeline",
+    "timeline_primary_date",
+    "timeline_primary_date_label",
+    "timeline_primary_date_confidence",
+    "timeline_primary_date_source",
+    "timeline_primary_date_concept"
+  ],
+  "staging_api_probe": {
+    "endpoint": "/api/client/requirements",
+    "authenticated": false,
+    "http_status": 401,
+    "response": "Not authenticated",
+    "interpretation": "Cannot enumerate live enriched requirement payloads without a valid staging session. Programme code is not deployed at 29fbe355 regardless."
+  },
+  "deployed_code_check": {
+    "compliance_timeline_service_in_sha": false,
+    "requirement_truth_timeline_enrich_in_sha": false,
+    "calculator_can_supply_values_on_staging": false
+  },
+  "local_validation": {
+    "method": "enrich_requirement_dict on synthetic gas_safety fixture",
+    "environment": "local working tree (uncommitted)",
+    "result": "PASS",
+    "fields_present": {
+      "compliance_timeline": true,
+      "timeline_primary_date": true,
+      "timeline_primary_date_label": true,
+      "timeline_primary_date_confidence": true,
+      "timeline_primary_date_source": true,
+      "timeline_primary_date_concept": true
+    },
+    "date_label_matches_timeline_label": true,
+    "legacy_due_date_preserved": true,
+    "test_reference": "test_enrich_adds_compliance_timeline_fields, test_enrich_date_label_matches_timeline"
+  },
+  "additive_contract": {
+    "legacy_fields_removed": false,
+    "due_date_preserved_on_enrich": true,
+    "staging_confirmed": false,
+    "local_confirmed": true
+  },
+  "consumers_read_timeline_on_staging": false,
+  "consumers_read_timeline_locally": true,
+  "blockers": [
+    "Programme not committed or deployed to staging",
+    "No authenticated staging API session available for live payload sampling",
+    "Deployed SHA lacks timeline enrich integration"
+  ]
+}

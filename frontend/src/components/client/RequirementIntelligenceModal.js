@@ -60,16 +60,17 @@ function formatIntelDate(value) {
 }
 
 function pickDueOrRenewal(merged) {
-  const raw =
-    merged.confirmed_expiry_date ||
-    merged.extracted_expiry_date ||
-    merged.due_date ||
-    merged.renewal_date ||
-    merged.next_review_date ||
-    null;
-  const label = merged.confirmed_expiry_date ? 'Renewal / confirmed date' : 'Due / renewal date';
-  const formatted = formatIntelDate(raw);
-  return formatted ? `${label}: ${formatted}` : null;
+  if (merged?.timeline_primary_date_label) {
+    return merged.timeline_primary_date_label;
+  }
+  const tl = merged?.compliance_timeline;
+  if (tl?.primary_date_label) {
+    return tl.primary_date_label;
+  }
+  if (merged?.date_label) {
+    return merged.date_label;
+  }
+  return null;
 }
 
 function tenantSafeTriggerExplanation(merged) {

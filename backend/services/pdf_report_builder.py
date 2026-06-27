@@ -826,14 +826,14 @@ def build_score_explanation_report(
                 next_step = "Confirm details"
             elif "VIEW" in acts:
                 next_step = "View requirement"
-            date_used = d.get("date_used")
-            if date_used and isinstance(date_used, str):
-                date_used = date_used[:10] if len(date_used) >= 10 else date_used
+            date_cell = d.get("date_display") or d.get("date_used")
+            if date_cell and isinstance(date_cell, str) and not d.get("date_display"):
+                date_cell = date_cell[:10] if len(date_cell) >= 10 else date_cell
             driver_rows.append([
                 (d.get("property_name") or d.get("property_id") or "—")[:25],
                 (d.get("requirement_name") or "—")[:30],
                 (d.get("status") or "—"),
-                str(date_used) if date_used else "—",
+                str(date_cell) if date_cell else "—",
                 "Yes" if d.get("evidence_uploaded") else "No",
                 next_step,
             ])
@@ -867,14 +867,14 @@ def build_score_explanation_report(
         elements.append(Paragraph("Appendix: full driver list", styles["heading"]))
         full_rows = [["Property", "Requirement", "Status", "Date used", "Evidence"]]
         for d in drivers:
-            date_used = d.get("date_used")
-            if date_used and isinstance(date_used, str):
-                date_used = date_used[:10] if len(date_used) >= 10 else date_used
+            date_cell = d.get("date_display") or d.get("date_used")
+            if date_cell and isinstance(date_cell, str) and not d.get("date_display"):
+                date_cell = date_cell[:10] if len(date_cell) >= 10 else date_cell
             full_rows.append([
                 (d.get("property_name") or d.get("property_id") or "—")[:30],
                 (d.get("requirement_name") or "—")[:35],
                 (d.get("status") or "—")[:15],
-                str(date_used) if date_used else "—",
+                str(date_cell) if date_cell else "—",
                 "Y" if d.get("evidence_uploaded") else "N",
             ])
         ft = Table(full_rows, colWidths=[120, 130, 70, 75, 45])

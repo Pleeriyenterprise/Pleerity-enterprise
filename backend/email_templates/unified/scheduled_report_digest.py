@@ -123,7 +123,7 @@ def _row_label(row: Dict[str, Any]) -> str:
 
 
 def _row_due_date(row: Dict[str, Any]) -> Any:
-    return row.get("due_date") or row.get("renewal_date")
+    return row.get("renewal_date") or row.get("due_date") or row.get("date_display")
 
 
 def _row_status_bucket(row: Dict[str, Any]) -> str:

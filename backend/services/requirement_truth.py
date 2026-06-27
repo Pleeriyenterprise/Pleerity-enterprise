@@ -486,7 +486,15 @@ def build_date_presentation(
 ) -> Tuple[str, Optional[str]]:
     """
     Returns (date_label, helper_text) for client-facing surfaces.
+
+    Phase 2: delegates to Compliance Timeline when timeline fields are present on the row.
+    Legacy path retained for callers that predate timeline enrichment.
     """
+    if requirement.get("timeline_primary_date_label") or requirement.get("compliance_timeline"):
+        from services.compliance_timeline_presentation import build_date_presentation_from_timeline
+
+        return build_date_presentation_from_timeline(requirement, date_source, evidence_state)
+
     due_raw = requirement.get("due_date") or requirement.get("confirmed_expiry_date") or requirement.get("extracted_expiry_date")
     d = _parse_due_date_value(due_raw)
     formatted = _format_gb_date(d) if d else None
@@ -598,7 +606,23 @@ def enrich_requirement_dict(
     status_raw = (out.get("status") or "").strip().upper()
     out["display_label"] = requirement_label(_label_code, audience=audience)
     out["status_label"] = compliance_requirement_status_label(status_raw, audience=audience)
-    date_label, helper = build_date_presentation(out, date_source, evidence_state)
+
+    from services.compliance_timeline import build_compliance_timeline
+
+    timeline = build_compliance_timeline(
+        out,
+        compliance_evidence_records=compliance_evidence_records,
+    )
+    out["compliance_timeline"] = timeline
+    out["timeline_primary_date"] = timeline.get("primary_date")
+    out["timeline_primary_date_label"] = timeline.get("primary_date_label")
+    out["timeline_primary_date_confidence"] = timeline.get("primary_date_confidence")
+    out["timeline_primary_date_source"] = timeline.get("primary_date_source")
+    out["timeline_primary_date_concept"] = timeline.get("primary_date_concept")
+
+    from services.compliance_timeline_presentation import build_date_presentation_from_timeline
+
+    date_label, helper = build_date_presentation_from_timeline(out, date_source, evidence_state)
     out["date_label"] = date_label
     out["date_explanation_helper"] = helper
 
