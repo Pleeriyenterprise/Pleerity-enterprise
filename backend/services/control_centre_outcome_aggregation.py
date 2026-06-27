@@ -130,6 +130,7 @@ REGISTRY_JOB_OUTCOME_FAMILY: Dict[str, str] = {
     "client_lifecycle_stale_archive": "platform_other",
     "client_purge_eligibility_scan": "platform_other",
     "client_test_like_flag_job": "platform_other",
+    "commercial_entitlement_expiry": "billing_and_subscription_jobs",
     "compliance_check_evening": "notification_and_delivery",
     "compliance_check_morning": "notification_and_delivery",
     "compliance_recalc_enqueue_property": "queue_processing",
@@ -149,12 +150,14 @@ REGISTRY_JOB_OUTCOME_FAMILY: Dict[str, str] = {
     "notification_failure_spike_monitor": "monitoring_and_watchdog",
     "notification_retry_worker": "queue_processing",
     "onboarding_sequence_processing": "notification_and_delivery",
+    "operational_recovery_processing": "notification_and_delivery",
     "order_delivery_processing": "notification_and_delivery",
     "pending_payment_lifecycle": "billing_and_subscription_jobs",
     "pending_verification_digest": "notification_and_delivery",
     "pilot_lifecycle_reconcile": "billing_and_subscription_jobs",
     "predictive_insights_job": "compliance_scheduled_batch",
     "queued_order_processing": "platform_other",
+    "rent_operations_daily_job": "notification_and_delivery",
     "risk_lead_nurture_processing": "notification_and_delivery",
     "risk_signal_regen_alert_monitor": "risk_regeneration",
     "risk_signal_regen_worker": "risk_regeneration",
@@ -172,7 +175,6 @@ REGISTRY_JOB_OUTCOME_FAMILY: Dict[str, str] = {
     "work_order_schedule_reminders": "notification_and_delivery",
     "work_order_sla_breach_job": "monitoring_and_watchdog",
     "workflow_nudge_processing": "notification_and_delivery",
-    "operational_recovery_processing": "notification_and_delivery",
 }
 
 

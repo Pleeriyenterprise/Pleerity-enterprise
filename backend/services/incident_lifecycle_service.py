@@ -338,13 +338,15 @@ async def _record_repeat(
     first_dt = _parse_iso(first_detected) or now
     impact_seconds = int((now - first_dt).total_seconds())
 
-    lifecycle_state = existing.get("lifecycle_state") or LIFECYCLE_OPEN
     degraded_after = DEFAULT_DEGRADED_AFTER_SECONDS
-    if impact_seconds >= degraded_after and lifecycle_state == LIFECYCLE_OPEN:
+    prev_lifecycle = existing.get("lifecycle_state") or LIFECYCLE_OPEN
+    lifecycle_state = prev_lifecycle
+    degraded_transition = False
+    if impact_seconds >= degraded_after and prev_lifecycle == LIFECYCLE_OPEN:
         lifecycle_state = LIFECYCLE_DEGRADED
+        degraded_transition = True
 
     suppression_sec = suppression_window_seconds(severity)
-    last_repeat_at = existing.get("last_repeat_at")
     last_alert_at = existing.get("last_alert_email_at")
     should_send = False
     suppressed_reason = "repeat_within_suppression_window"
@@ -353,6 +355,10 @@ async def _record_repeat(
     trig = (metadata.get("triggering_reason") or meta_existing.get("triggering_reason") or "").strip()
 
     if escalation:
+        should_send = True
+        suppressed_reason = None
+    elif degraded_transition:
+        # One worsening notification when OPEN → DEGRADED; no hourly re-email for unchanged condition.
         should_send = True
         suppressed_reason = None
     elif not last_alert_at:
@@ -365,17 +371,7 @@ async def _record_repeat(
         else:
             should_send = True
             suppressed_reason = None
-    else:
-        last_alert_dt = _parse_iso(last_alert_at)
-        if last_alert_dt and (now - last_alert_dt).total_seconds() >= suppression_sec:
-            if lifecycle_state == LIFECYCLE_DEGRADED:
-                deploy_now, _ = is_deployment_suppression_active(now)
-                if deploy_now and severity == SEVERITY_P2 and trig in ("missed_sla", "job_never_succeeded"):
-                    should_send = False
-                    suppressed_reason = "deployment_window_p2_transient"
-                else:
-                    should_send = True
-                    suppressed_reason = None
+    # Persistent repeats with last_alert_email_at set: in-app incident updates only (no periodic re-email).
 
     # Flap detection
     flap_window = DEFAULT_FLAP_WINDOW_SECONDS
@@ -404,10 +400,10 @@ async def _record_repeat(
             set_doc[f"metadata.{k}"] = v
 
     inc_update: Dict[str, Any] = {"$set": set_doc, "$inc": {"metadata.sla_watchdog_condition_ticks": 1}}
-    if lifecycle_state != (existing.get("lifecycle_state") or LIFECYCLE_OPEN):
+    if lifecycle_state != prev_lifecycle:
         history = _append_lifecycle_history(
             existing.get("lifecycle_history"),
-            existing.get("lifecycle_state") or LIFECYCLE_OPEN,
+            prev_lifecycle,
             lifecycle_state,
             reason="persistent_condition",
             at=now,

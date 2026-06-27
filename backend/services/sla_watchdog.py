@@ -62,7 +62,14 @@ async def _detect_and_alert(
     alert_sent = False
     if outcome.should_send_open_alert:
         meta = metadata or {}
-        if await _send_incident_alert_email(
+        emails = _get_admin_alert_emails()
+        if not emails:
+            logger.warning(
+                "ADMIN_ALERT_EMAILS / OPS_ALERT_EMAIL not set; incident %s alert not sent (no retry loop)",
+                outcome.incident_id,
+            )
+            await mark_open_alert_sent(outcome.incident_id)
+        elif await _send_incident_alert_email(
             outcome.incident_id,
             title,
             description,
@@ -265,31 +272,17 @@ async def run_sla_watchdog() -> Dict[str, Any]:
         except Exception:
             heartbeat_stale = True
     if heartbeat_stale:
-        existing = await db.incidents.find_one({"status": STATUS_OPEN, "source": SOURCE_HEARTBEAT}, {"_id": 1})
-        if existing:
-            await _touch_persistent_incident_ticks(
-                db,
-                existing["_id"],
-                now,
-                snapshot={
-                    "last_heartbeat_at_seen": str(last_hb),
-                    "last_watchdog_tick_reason": "heartbeat_stale",
-                },
-            )
-        if not existing:
-            incident_id = await create_incident(
-                severity=SEVERITY_P1,
-                title="Scheduler heartbeat stale",
-                description="The background scheduler has not updated the heartbeat within the expected window. Jobs may not be running. Check server process and logs.",
-                source=SOURCE_HEARTBEAT,
-                metadata={"last_heartbeat_at": str(last_hb), "triggering_reason": "heartbeat_stale"},
-            )
+        created, sent = await _detect_and_alert(
+            SEVERITY_P1,
+            "Scheduler heartbeat stale",
+            "The background scheduler has not updated the heartbeat within the expected window. Jobs may not be running. Check server process and logs.",
+            SOURCE_HEARTBEAT,
+            metadata={"last_heartbeat_at": str(last_hb), "triggering_reason": "heartbeat_stale"},
+        )
+        if created:
             incidents_created += 1
-            if await _send_incident_alert_email(
-                incident_id, "Scheduler heartbeat stale", "Scheduler heartbeat is stale; jobs may not be running.", SEVERITY_P1,
-                source=SOURCE_HEARTBEAT, metadata={"last_heartbeat_at": str(last_hb)},
-            ):
-                alerts_sent += 1
+        if sent:
+            alerts_sent += 1
 
     # 2) Delivery unknown stale -> P2 incident
     stale_cutoff = now - timedelta(hours=DELIVERY_UNKNOWN_STALE_HOURS)

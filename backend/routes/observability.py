@@ -524,6 +524,74 @@ def _compute_overall_health(
     return OVERALL_HEALTH_HEALTHY
 
 
+async def _fetch_jobs_detail_for_health_summary(db, job_names: List[str]) -> Dict[str, Dict[str, Any]]:
+    """Batch-fetch per-job run summaries (4 aggregations instead of 4×N point queries)."""
+    from services.job_run_service import STATUS_SUCCESS, STATUS_FAILED, STATUS_DEGRADED
+
+    empty_detail: Dict[str, Any] = {
+        "last_triggered": None,
+        "last_completed": None,
+        "last_run_status": None,
+        "last_success": None,
+        "last_failure": None,
+        "last_failure_message": None,
+        "last_degraded": None,
+        "last_outcome_status": None,
+        "outcome_metrics": None,
+    }
+    jobs_detail = {name: dict(empty_detail) for name in job_names}
+    if not job_names:
+        return jobs_detail
+
+    job_filter = {"job_name": {"$in": list(job_names)}}
+
+    async def _latest_by_job(extra_match: Dict[str, Any], field_map: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
+        pipeline = [
+            {"$match": {**job_filter, **extra_match}},
+            {"$sort": {"finished_at": -1}},
+            {
+                "$group": {
+                    "_id": "$job_name",
+                    **{out_key: {"$first": f"${src_key}"} for out_key, src_key in field_map.items()},
+                }
+            },
+        ]
+        rows = await db.job_runs.aggregate(pipeline).to_list(len(job_names) + 10)
+        return {str(r["_id"]): r for r in rows if r.get("_id")}
+
+    last_runs = await _latest_by_job(
+        {},
+        {
+            "last_triggered": "started_at",
+            "last_completed": "finished_at",
+            "last_run_status": "status",
+            "last_outcome_status": "outcome_status",
+            "outcome_metrics": "outcome_metrics",
+        },
+    )
+    last_success_rows = await _latest_by_job({"status": STATUS_SUCCESS}, {"last_success": "finished_at"})
+    last_failure_rows = await _latest_by_job(
+        {"status": STATUS_FAILED},
+        {"last_failure": "finished_at", "last_failure_message": "error_message"},
+    )
+    last_degraded_rows = await _latest_by_job({"status": STATUS_DEGRADED}, {"last_degraded": "finished_at"})
+
+    for name in job_names:
+        detail = jobs_detail[name]
+        if name in last_runs:
+            detail.update({k: last_runs[name].get(k) for k in (
+                "last_triggered", "last_completed", "last_run_status", "last_outcome_status", "outcome_metrics"
+            )})
+        if name in last_success_rows:
+            detail["last_success"] = last_success_rows[name].get("last_success")
+        if name in last_failure_rows:
+            detail["last_failure"] = last_failure_rows[name].get("last_failure")
+            detail["last_failure_message"] = last_failure_rows[name].get("last_failure_message")
+        if name in last_degraded_rows:
+            detail["last_degraded"] = last_degraded_rows[name].get("last_degraded")
+    return jobs_detail
+
+
 async def build_health_summary_payload() -> Dict[str, Any]:
     """
     Core observability payload (no HTTP). Used by GET /health-summary and Control Centre.
@@ -541,39 +609,7 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     critical_job_ids = get_critical_job_ids()
 
     # Per-job: last_run (any), last_success, last_failure, last_degraded, last_outcome_status, outcome_metrics
-    jobs_detail = {}
-    for job_name in HEALTH_SUMMARY_JOBS:
-        last_run = await db.job_runs.find_one(
-            {"job_name": job_name},
-            {"_id": 0, "finished_at": 1, "status": 1, "outcome_status": 1, "outcome_metrics": 1, "started_at": 1},
-            sort=[("finished_at", -1)],
-        )
-        last_success_doc = await db.job_runs.find_one(
-            {"job_name": job_name, "status": STATUS_SUCCESS},
-            {"_id": 0, "finished_at": 1},
-            sort=[("finished_at", -1)],
-        )
-        last_failure_doc = await db.job_runs.find_one(
-            {"job_name": job_name, "status": STATUS_FAILED},
-            {"_id": 0, "finished_at": 1, "error_message": 1},
-            sort=[("finished_at", -1)],
-        )
-        last_degraded_doc = await db.job_runs.find_one(
-            {"job_name": job_name, "status": STATUS_DEGRADED},
-            {"_id": 0, "finished_at": 1, "outcome_metrics": 1},
-            sort=[("finished_at", -1)],
-        )
-        jobs_detail[job_name] = {
-            "last_triggered": last_run.get("started_at") if last_run else None,
-            "last_completed": last_run.get("finished_at") if last_run else None,
-            "last_run_status": last_run.get("status") if last_run else None,
-            "last_success": last_success_doc.get("finished_at") if last_success_doc else None,
-            "last_failure": last_failure_doc.get("finished_at") if last_failure_doc else None,
-            "last_failure_message": last_failure_doc.get("error_message") if last_failure_doc else None,
-            "last_degraded": last_degraded_doc.get("finished_at") if last_degraded_doc else None,
-            "last_outcome_status": last_run.get("outcome_status") if last_run else None,
-            "outcome_metrics": last_run.get("outcome_metrics") if last_run else None,
-        }
+    jobs_detail = await _fetch_jobs_detail_for_health_summary(db, HEALTH_SUMMARY_JOBS)
 
     last_success = {j: jobs_detail[j]["last_success"] for j in HEALTH_SUMMARY_JOBS}
 

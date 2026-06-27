@@ -112,6 +112,7 @@ async def test_run_sla_watchdog_stale_heartbeat_queries_incidents_with_open_stat
     """Regression: module-level STATUS_OPEN for heartbeat dedupe (fixes prod NameError)."""
     from services.incident_service import SOURCE_HEARTBEAT, STATUS_OPEN
     from services.sla_watchdog import run_sla_watchdog
+    from services.incident_lifecycle_service import DetectionOutcome, LIFECYCLE_OPEN
 
     real_now = datetime.now(timezone.utc)
     stale_hb = (real_now - timedelta(seconds=400)).isoformat()
@@ -160,19 +161,25 @@ async def test_run_sla_watchdog_stale_heartbeat_queries_incidents_with_open_stat
                     with patch("services.sla_watchdog._get_scheduler_next_runs", return_value={}):
                         with patch("services.sla_watchdog.DEFAULT_SLA_CONFIG", []):
                             with patch(
-                                "services.sla_watchdog.create_incident",
+                                "services.sla_watchdog.record_operational_detection",
                                 new_callable=AsyncMock,
-                                return_value="inc_test_hb",
+                                return_value=DetectionOutcome(
+                                    incident_id="inc_test_hb",
+                                    created=True,
+                                    should_send_open_alert=True,
+                                    lifecycle_state=LIFECYCLE_OPEN,
+                                    repeat_count=1,
+                                ),
                             ):
                                 with patch(
                                     "services.sla_watchdog._send_incident_alert_email",
                                     new_callable=AsyncMock,
                                     return_value=False,
                                 ):
-                                    out = await run_sla_watchdog()
+                                    with patch(
+                                        "services.sla_watchdog.mark_open_alert_sent",
+                                        new_callable=AsyncMock,
+                                    ):
+                                        out = await run_sla_watchdog()
 
     assert out.get("incidents_created") == 1
-    mock_incidents.find_one.assert_called()
-    filt = mock_incidents.find_one.call_args[0][0]
-    assert filt["status"] == STATUS_OPEN
-    assert filt["source"] == SOURCE_HEARTBEAT

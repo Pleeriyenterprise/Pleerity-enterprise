@@ -298,3 +298,54 @@ async def test_severity_escalation_sends_even_when_deploy_suppressed_p2(monkeypa
     assert out.created is False
     assert out.should_send_open_alert is True
     assert out.escalation_level_changed is True
+
+
+@pytest.mark.asyncio
+async def test_repeat_does_not_reemail_after_suppression_window_when_unchanged(monkeypatch):
+    """Persistent DEGRADED incidents must not re-email every suppression window."""
+    oid = ObjectId()
+    fingerprint = compute_incident_fingerprint(
+        "job_monitor",
+        related_job_name="activation_reminder_processing",
+        triggering_reason="missed_sla",
+    )
+    now = datetime.now(timezone.utc)
+
+    doc = {
+        "_id": oid,
+        "id": str(oid),
+        "status": "open",
+        "severity": SEVERITY_P2,
+        "lifecycle_state": LIFECYCLE_DEGRADED,
+        "repeat_count": 20,
+        "first_detected_at": (now - timedelta(hours=2)).isoformat(),
+        "created_at": (now - timedelta(hours=2)).isoformat(),
+        "incident_fingerprint": fingerprint,
+        "last_alert_email_at": (now - timedelta(hours=1)).isoformat(),
+        "metadata": {"triggering_reason": "missed_sla"},
+        "lifecycle_history": [],
+        "health_transitions": [],
+    }
+
+    incidents = MagicMock()
+    incidents.find_one = AsyncMock(return_value=doc.copy())
+    incidents.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+    db = MagicMock()
+    db.__getitem__ = MagicMock(return_value=incidents)
+    db.incidents = incidents
+
+    monkeypatch.setattr(
+        "services.incident_lifecycle_service.database",
+        MagicMock(get_db=lambda: db),
+    )
+
+    out = await record_operational_detection(
+        SEVERITY_P2,
+        "Job activation_reminder_processing missed SLA",
+        "still missed",
+        "job_monitor",
+        related_job_name="activation_reminder_processing",
+        metadata={"triggering_reason": "missed_sla"},
+    )
+    assert out.created is False
+    assert out.should_send_open_alert is False

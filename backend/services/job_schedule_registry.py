@@ -85,6 +85,7 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     JobScheduleEntry("client_test_like_flag_job", False, 26 * 60, "Daily", True),
     JobScheduleEntry("lead_sla_check", False, 90, "Hourly", True),
     JobScheduleEntry("checklist_nurture_processing", False, 26 * 60, "Daily", True),
+    JobScheduleEntry("commercial_entitlement_expiry", False, 26 * 60, "Daily", True),
     JobScheduleEntry("risk_lead_nurture_processing", False, 26 * 60, "Daily", True),
     JobScheduleEntry("onboarding_sequence_processing", False, 90, "Hourly", True),
     JobScheduleEntry("activation_reminder_processing", False, 7 * 60, "Every 6 hours", True),
@@ -92,8 +93,10 @@ CRITICAL_JOB_REGISTRY: List[JobScheduleEntry] = [
     # Risk signals batch job (non-critical; zero signals after scanning data is valid)
     JobScheduleEntry("risk_signals_job", False, 26 * 60, "Daily", True),
     JobScheduleEntry("rent_operations_daily_job", False, 26 * 60, "Daily", True),
+    JobScheduleEntry("scheduled_admin_communications", False, 5, "Every 2 min", True),
     JobScheduleEntry("work_order_sla_breach_job", False, 90, "Hourly", True),
     JobScheduleEntry("work_order_contractor_confirmation_timeout_job", False, 90, "Hourly", True),
+    JobScheduleEntry("work_order_schedule_reminders", False, 90, "Hourly", True),
     JobScheduleEntry("workflow_nudge_processing", False, 90, "Hourly", True),
     JobScheduleEntry("operational_recovery_processing", False, 90, "Hourly", True),
 ]
