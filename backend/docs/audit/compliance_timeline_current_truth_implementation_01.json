@@ -1,0 +1,66 @@
+{
+  "implementation_id": "COMPLIANCE-TIMELINE-CURRENT-TRUTH-IMPLEMENTATION-01",
+  "generated_at": "2026-06-02T12:30:00+00:00",
+  "phase": "Date Architecture Correction — Phase 1 (current truth)",
+  "verdict": {
+    "implementation_complete": true,
+    "event_ledger_created": false,
+    "production_data_mutated": false,
+    "next_phase_consumer_migration": "GO"
+  },
+  "files_changed": [
+    "backend/services/compliance_timeline.py",
+    "backend/services/requirement_truth.py",
+    "backend/tests/test_compliance_timeline.py"
+  ],
+  "timeline_version": "v1",
+  "authority_hierarchy": [
+    "verified_document",
+    "structured_cer",
+    "user_confirmed",
+    "ai_extracted",
+    "system_estimate",
+    "unknown"
+  ],
+  "families_implemented": [
+    "gas_safety",
+    "epc",
+    "eicr",
+    "portable_appliance_test",
+    "hmo_license",
+    "selective_license",
+    "property_licence",
+    "legionella",
+    "lead_testing",
+    "how_to_rent",
+    "deposit_pi",
+    "tenancy_agreement",
+    "rent_smart_wales",
+    "landlord_registration",
+    "smoke_heat_alarms",
+    "hmo_fire_risk"
+  ],
+  "tests": {
+    "file": "backend/tests/test_compliance_timeline.py",
+    "count": 21,
+    "regression_suites": [
+      "test_supporting_evidence_linkage_fix_01.py",
+      "test_client_requirement_lifecycle.py"
+    ],
+    "all_passed": true
+  },
+  "consumer_drift_remaining": [
+    "Property page — raw due_date",
+    "Dashboard KPI filters — raw due_date / stats",
+    "Submission modal — raw due_date",
+    "build_date_presentation — legacy date_label path",
+    "compliance_scoring_service — enriched rows; score engine may still weight legacy fields",
+    "Reports/email templates — partial get_effective_expiry_date usage"
+  ],
+  "phase_2_tasks": [
+    "Migrate frontend surfaces to timeline_primary_date_* fields",
+    "Align build_date_presentation with compliance_timeline",
+    "Score engine explicit timeline anchor consumption",
+    "Optional: persist timeline hash for drift detection"
+  ]
+}
