@@ -475,7 +475,10 @@ async def list_pending_verification_documents(
     await admin_route_guard(request)
     db = database.get_db()
     try:
-        query: Dict[str, Any] = {"status": "UPLOADED"}
+        query: Dict[str, Any] = {
+            "status": "UPLOADED",
+            "admin_verification_pending_suppressed": {"$ne": True},
+        }
         if hours and hours > 0:
             cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
             query["uploaded_at"] = {"$lte": cutoff}

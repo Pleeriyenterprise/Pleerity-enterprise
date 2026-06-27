@@ -173,16 +173,35 @@ def derive_client_lifecycle_fields(
         if cs_pack is not None:
             return cs_pack
 
+    from services.supporting_evidence_linkage import (
+        is_supporting_evidence_attachment_document,
+        requirement_structured_satisfaction_suppresses_document_escalation,
+    )
+
+    _supporting_doc_suppressed = bool(
+        linked_primary_document
+        and is_supporting_evidence_attachment_document(linked_primary_document)
+        and requirement_structured_satisfaction_suppresses_document_escalation(row)
+    )
+
     # --- PENDING_REVIEW (admin / V2 queue) ---
-    if ea == EA_PENDING_ADMIN_REVIEW:
-        reasons.append("EA_PENDING_ADMIN_REVIEW")
-        lbl = (
-            "Evidence submitted — review pending"
-            if (row.get("evidence_authority") or {}).get("state_reason") == "uploaded_pending_admin"
-            else "Awaiting review"
-        )
-        return pack(PENDING_REVIEW, lbl, reasons)
-    if linked_primary_document and _v2_review_pending(linked_primary_document):
+    if ea == EA_PENDING_ADMIN_REVIEW and not _supporting_doc_suppressed:
+        if requirement_structured_satisfaction_suppresses_document_escalation(row):
+            reasons.append("EA_PENDING_ADMIN_REVIEW_DEFERRED_SUPPORTING_DOC")
+        else:
+            reasons.append("EA_PENDING_ADMIN_REVIEW")
+            lbl = (
+                "Evidence submitted — review pending"
+                if (row.get("evidence_authority") or {}).get("state_reason") == "uploaded_pending_admin"
+                else "Awaiting review"
+            )
+            return pack(PENDING_REVIEW, lbl, reasons)
+    if (
+        linked_primary_document
+        and _v2_review_pending(linked_primary_document)
+        and not _supporting_doc_suppressed
+        and not requirement_structured_satisfaction_suppresses_document_escalation(row)
+    ):
         reasons.append("EVIDENCE_REVIEW_V2_PENDING")
         st = effective_evidence_review_state(linked_primary_document)
         reasons.append(f"DOC_REVIEW_STATE:{st}")
@@ -221,17 +240,26 @@ def derive_client_lifecycle_fields(
             reasons.append(f"STATUS:{status}")
             return pack(ACTION_REQUIRED, "Action required", reasons)
     if ea in (EA_MISSING, EA_REJECTED, EA_MISMATCH_FLAGGED):
-        reasons.append(f"EA:{ea}")
-        return pack(ACTION_REQUIRED, "Action required", reasons)
+        if ea == EA_MISMATCH_FLAGGED and requirement_structured_satisfaction_suppresses_document_escalation(row):
+            reasons.append("EA_MISMATCH_FLAGGED_DEFERRED_SUPPORTING_DOC")
+        else:
+            reasons.append(f"EA:{ea}")
+            return pack(ACTION_REQUIRED, "Action required", reasons)
     if ea == EA_VERIFIED_EXPIRED:
         reasons.append("EA_VERIFIED_EXPIRED")
         return pack(ACTION_REQUIRED, "Action required", reasons)
     if ea == EA_EXTRACTION_PENDING_CONFIRMATION:
-        reasons.append("EA_EXTRACTION_PENDING_CONFIRMATION")
-        return pack(ACTION_REQUIRED, "Action required", reasons)
+        if requirement_structured_satisfaction_suppresses_document_escalation(row):
+            reasons.append("EA_EXTRACTION_PENDING_DEFERRED_SUPPORTING_DOC")
+        else:
+            reasons.append("EA_EXTRACTION_PENDING_CONFIRMATION")
+            return pack(ACTION_REQUIRED, "Action required", reasons)
     if evidence_state in ("MISSING", "MISMATCH_FLAGGED", "AWAITING_USER_CONFIRM"):
-        reasons.append(f"EVIDENCE_STATE:{evidence_state}")
-        return pack(ACTION_REQUIRED, "Action required", reasons)
+        if evidence_state == "MISMATCH_FLAGGED" and requirement_structured_satisfaction_suppresses_document_escalation(row):
+            reasons.append("EVIDENCE_MISMATCH_DEFERRED_SUPPORTING_DOC")
+        else:
+            reasons.append(f"EVIDENCE_STATE:{evidence_state}")
+            return pack(ACTION_REQUIRED, "Action required", reasons)
     if semantic in ("PARTIALLY_COMPLETE", "OPERATIONALLY_OPEN", "ASSESSMENT_FOLLOWUP_REQUIRED"):
         reasons.append(f"SEMANTIC:{semantic}")
         return pack(ACTION_REQUIRED, "Action required", reasons)
@@ -274,6 +302,9 @@ def derive_client_lifecycle_fields(
             reasons.append("LEGACY_PENDING_NO_DOC")
             return pack(ACTION_REQUIRED, "Action required", reasons)
         if has_doc:
+            if requirement_structured_satisfaction_suppresses_document_escalation(row):
+                reasons.append("LEGACY_PENDING_WITH_SUPPORTING_DOC")
+                return pack(SATISFIED_UNVERIFIED, "Evidence recorded", reasons)
             reasons.append("LEGACY_PENDING_WITH_DOC")
             return pack(PENDING_REVIEW, "Awaiting review", reasons)
         reasons.append("LEGACY_PENDING")

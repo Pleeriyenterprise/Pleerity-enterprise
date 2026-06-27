@@ -1,0 +1,47 @@
+{
+  "fix_id": "SUPPORTING-DOCUMENT-LINKAGE-ESCALATION-FIX-01",
+  "fix_date": "2026-06-02",
+  "audit_reference": "SUPPORTING-DOCUMENT-LINKAGE-ESCALATION-AUDIT-01",
+  "verdict": "GO_FOR_MERGE_PENDING_STAGING_DEPLOY_VALIDATION",
+  "root_cause_fixed": "reconcile-linkage link_requirement no longer runs primary-document pipeline (CER upsert + document-centric authority sync) for supporting_evidence_attachment or structured-satisfied non-document requirements; authority primary selection excludes supporting docs when structured CER satisfies; lifecycle/presentation/admin reminder guards prevent false escalation and verification noise.",
+  "files_changed": [
+    "backend/services/supporting_evidence_linkage.py",
+    "backend/routes/documents.py",
+    "backend/services/requirement_evidence_authority.py",
+    "backend/services/client_requirement_lifecycle.py",
+    "backend/services/cer_governance_presentation.py",
+    "backend/services/requirement_attention_eligibility_service.py",
+    "backend/services/reminder_truth_service.py",
+    "backend/routes/admin.py",
+    "backend/tests/test_supporting_evidence_linkage_fix_01.py",
+    "frontend/src/pages/DocumentsPage.js"
+  ],
+  "constraints_honoured": {
+    "production_data_modified": false,
+    "repair_scripts_run": false,
+    "registry_content_changed": false,
+    "customer_status_projector_v2_changed": false,
+    "customer_status_projector_v2_enabled": false,
+    "s2_shadow_rollout_touched": false
+  },
+  "certificate_primary_unchanged": true,
+  "tests_added": "backend/tests/test_supporting_evidence_linkage_fix_01.py (13 cases)",
+  "tests_passed": {
+    "fix_suite": "13 passed",
+    "related_suites": "48 passed (fix + test_requirement_evidence_authority + test_client_requirement_lifecycle)"
+  },
+  "staging_validation": {
+    "executed_in_session": false,
+    "reason": "Fix requires staging API deploy before live repro; local unit/integration tests cover authority, lifecycle, presentation, admin filter paths.",
+    "post_deploy_steps": [
+      "Deploy backend + frontend to staging",
+      "Record Legionella structured assessment on test property",
+      "Upload supporting PDF via modal (supporting_evidence_attachment)",
+      "Resolve linkage on Documents attention queue",
+      "Verify requirement stays Assessment recorded / green",
+      "Verify no new DOCUMENT_UPLOAD CER",
+      "Verify admin pending-verification count excludes suppressed supporting doc",
+      "Verify Gas Safety upload still enters pending verification"
+    ]
+  }
+}

@@ -205,6 +205,12 @@ def _has_persisted_submission(req: Dict[str, Any]) -> bool:
 
 
 def _is_escalation_active(req: Dict[str, Any], ea: Dict[str, Any]) -> bool:
+    from services.supporting_evidence_linkage import (
+        requirement_structured_satisfaction_suppresses_document_escalation,
+    )
+
+    if requirement_structured_satisfaction_suppresses_document_escalation(req):
+        return False
     if ea.get("manual_review_flag") is True:
         return True
     if str(ea.get("state") or "").upper() in ("MISMATCH_FLAGGED", "EA_MISMATCH_FLAGGED"):

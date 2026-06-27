@@ -182,7 +182,13 @@ def derive_attention_reason(
 
     if ea_st == EA_REJECTED:
         return "rejected"
+    from services.supporting_evidence_linkage import (
+        requirement_structured_satisfaction_suppresses_document_escalation,
+    )
+
     if truth_stage == "escalation_review" or str(row.get("review_owner") or "") == "platform_admin_escalation":
+        if requirement_structured_satisfaction_suppresses_document_escalation(row):
+            return None
         return "escalation_review"
     if truth_stage == "platform_verification_pending":
         if str(row.get("client_lifecycle_state") or "").upper() in ("VERIFIED", "SATISFIED_UNVERIFIED"):

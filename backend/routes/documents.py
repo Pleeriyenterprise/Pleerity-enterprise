@@ -4214,52 +4214,65 @@ async def reconcile_document_linkage(
                     "Document scope is incompatible with requirement scope.",
                 ),
             )
+        from services.supporting_evidence_linkage import (
+            persist_supporting_linkage_document_fields,
+            should_skip_primary_document_pipeline_on_link,
+        )
+
+        skip_primary_pipeline = await should_skip_primary_document_pipeline_on_link(
+            db,
+            doc=doc,
+            requirement=req,
+            client_id=user["client_id"],
+        )
+        link_persist = persist_fields_for_linked_requirement(
+            rid,
+            actor_user_id=user.get("portal_user_id"),
+            reason=body.reason,
+            prior_requirement_id=str(prior_requirement_id) if prior_requirement_id else None,
+        )
+        if skip_primary_pipeline:
+            link_persist = persist_supporting_linkage_document_fields(link_persist)
         await db.documents.update_one(
             {"document_id": document_id},
-            {
-                "$set": persist_fields_for_linked_requirement(
-                    rid,
-                    actor_user_id=user.get("portal_user_id"),
-                    reason=body.reason,
-                    prior_requirement_id=str(prior_requirement_id) if prior_requirement_id else None,
-                )
-            },
+            {"$set": link_persist},
         )
-        await safe_upsert_document_upload_evidence_for_linked_document(
-            db,
-            client_id=user["client_id"],
-            property_id=str(req.get("property_id") or property_id),
-            requirement_id=rid,
-            document_id=document_id,
-            actor_user_id=user.get("portal_user_id"),
-            filename=doc.get("file_name"),
-            context="client_linkage_reconcile",
-        )
-        link_fanout: Dict[str, Any] = {}
-        await _document_path_sync_requirement_authority(
-            db,
-            rid,
-            property_id=str(req.get("property_id") or property_id),
-            client_id=user["client_id"],
-            correlation_base=f"AUTHORITY_SYNC:CLIENT_LINK_RECONCILE:{document_id}",
-            transition_origin="routes.documents.reconcile_document_linkage",
-            transition_fanout=link_fanout,
-            document_id=document_id,
-            stale_document_transition_possible=True,
-        )
-        from services.compliance_recalc_queue import TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
+        if not skip_primary_pipeline:
+            await safe_upsert_document_upload_evidence_for_linked_document(
+                db,
+                client_id=user["client_id"],
+                property_id=str(req.get("property_id") or property_id),
+                requirement_id=rid,
+                document_id=document_id,
+                actor_user_id=user.get("portal_user_id"),
+                filename=doc.get("file_name"),
+                context="client_linkage_reconcile",
+            )
+            link_fanout: Dict[str, Any] = {}
+            await _document_path_sync_requirement_authority(
+                db,
+                rid,
+                property_id=str(req.get("property_id") or property_id),
+                client_id=user["client_id"],
+                correlation_base=f"AUTHORITY_SYNC:CLIENT_LINK_RECONCILE:{document_id}",
+                transition_origin="routes.documents.reconcile_document_linkage",
+                transition_fanout=link_fanout,
+                document_id=document_id,
+                stale_document_transition_possible=True,
+            )
+            from services.compliance_recalc_queue import TRIGGER_DOC_UPLOADED, ACTOR_CLIENT
 
-        await _document_path_enqueue_recalc(
-            link_fanout,
-            property_id=str(req.get("property_id") or property_id),
-            client_id=user["client_id"],
-            trigger_reason=TRIGGER_DOC_UPLOADED,
-            actor_type=ACTOR_CLIENT,
-            actor_id=user.get("portal_user_id"),
-            correlation_id=f"AUTHORITY_SYNC:CLIENT_LINK_RECONCILE:{document_id}",
-            trigger_origin="routes.documents.reconcile_document_linkage",
-            propagation_stage="post_client_link_reconcile",
-        )
+            await _document_path_enqueue_recalc(
+                link_fanout,
+                property_id=str(req.get("property_id") or property_id),
+                client_id=user["client_id"],
+                trigger_reason=TRIGGER_DOC_UPLOADED,
+                actor_type=ACTOR_CLIENT,
+                actor_id=user.get("portal_user_id"),
+                correlation_id=f"AUTHORITY_SYNC:CLIENT_LINK_RECONCILE:{document_id}",
+                trigger_origin="routes.documents.reconcile_document_linkage",
+                propagation_stage="post_client_link_reconcile",
+            )
 
     updated = await db.documents.find_one({"document_id": document_id}, {"_id": 0, "file_path": 0})
     runtime_ids_after, runtime_reqs_after = await load_runtime_requirements_for_client(

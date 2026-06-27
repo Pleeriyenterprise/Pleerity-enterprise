@@ -533,8 +533,12 @@ async def mark_requirement_reminder_sent(
 
 async def get_pending_verification_snapshot(db) -> Dict[str, int]:
     cutoff_24h = (_now() - timedelta(hours=24)).isoformat()
-    count_pending = await db.documents.count_documents({"status": "UPLOADED"})
+    base_query: Dict[str, Any] = {
+        "status": "UPLOADED",
+        "admin_verification_pending_suppressed": {"$ne": True},
+    }
+    count_pending = await db.documents.count_documents(base_query)
     count_older_24h = await db.documents.count_documents(
-        {"status": "UPLOADED", "uploaded_at": {"$lte": cutoff_24h}}
+        {**base_query, "uploaded_at": {"$lte": cutoff_24h}}
     )
     return {"count_pending": int(count_pending or 0), "count_older_24h": int(count_older_24h or 0)}

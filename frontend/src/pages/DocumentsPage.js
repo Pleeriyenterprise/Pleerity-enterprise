@@ -1558,11 +1558,11 @@ const DocumentsPage = () => {
                         className="border border-gray-200 rounded-lg p-4 hover:border-electric-teal transition-colors"
                         data-testid={`document-${doc.document_id}`}
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <FileText className="w-5 h-5 text-electric-teal" />
-                              <span className="font-medium text-midnight-blue">
+                              <span className="font-medium text-midnight-blue truncate max-w-full" title={doc.file_name || doc.original_filename || 'Document'}>
                                 {doc.file_name || doc.original_filename || 'Document'}
                               </span>
                               {getStatusBadge(doc)}
@@ -1742,8 +1742,8 @@ const DocumentsPage = () => {
                             )}
                           </div>
                           
-                          <div className="flex flex-col items-end gap-2 ml-4">
-                            <div className="flex items-center gap-2">
+                          <div className="flex flex-col items-stretch sm:items-end gap-2 sm:ml-4 shrink-0 w-full sm:w-auto">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"

@@ -624,8 +624,22 @@ def _compute_authority(
 
     linked = [d for d in documents if (d.get("requirement_id") or "") == rid]
     linked_compatible = [d for d in linked if document_evidence_compatible_with_requirement(d, requirement)]
+    recs_for_primary = evidence_records if evidence_records is not None else []
+    policy_for_primary = evidence_policy
+    if policy_for_primary is None:
+        from services.compliance_evidence_record_service import effective_evidence_resolution
+
+        policy_for_primary = effective_evidence_resolution(requirement)
+    from services.supporting_evidence_linkage import documents_for_authority_primary_selection
+
+    linked_for_primary = documents_for_authority_primary_selection(
+        linked_compatible,
+        requirement,
+        recs_for_primary,
+        evidence_policy=policy_for_primary,
+    )
     scope_mismatch = bool(linked) and not linked_compatible
-    primary = _pick_primary_evidence_doc(linked_compatible)
+    primary = _pick_primary_evidence_doc(linked_for_primary)
     evidence_match_blocks_satisfaction = bool(
         primary and document_blocks_verified_satisfaction(primary)
     )
