@@ -1,0 +1,111 @@
+{
+  "validated_at": "2026-06-27T21:56:13.804680+00:00",
+  "runs": [
+    {
+      "run_id": "6a3f911298ddeab695956935",
+      "status": 200,
+      "message_log_count": 30,
+      "status_counts": {
+        "DELIVERED": 22,
+        "SMS_24H_THROTTLE": 2,
+        "SENT": 3,
+        "FAILED": 3
+      },
+      "sample": [
+        {
+          "message_id": "0490e392-6fba-41eb-9437-5dbc848c4cf0",
+          "status": "DELIVERED",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "sent_at": "2026-06-27T09:04:13.480000",
+          "delivered_at": "2026-06-27T09:04:14Z",
+          "bounced_at": null
+        },
+        {
+          "message_id": "4abe670a-732a-4bba-a8b8-863062fc44a1",
+          "status": "DELIVERED",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "sent_at": "2026-06-27T09:03:57.698000",
+          "delivered_at": "2026-06-27T09:03:59Z",
+          "bounced_at": null
+        },
+        {
+          "message_id": "160e1a74-a0a4-4347-a7d0-888689dd9dc1",
+          "status": "DELIVERED",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "sent_at": "2026-06-27T09:03:45.445000",
+          "delivered_at": "2026-06-27T09:03:46Z",
+          "bounced_at": null
+        },
+        {
+          "message_id": "adfe1989-cdda-4ebb-a9df-8b15a4f7a59f",
+          "status": "sms_24h_throttle",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+          "sent_at": null,
+          "delivered_at": null,
+          "bounced_at": null
+        },
+        {
+          "message_id": "c6ce60ce-2753-46b6-8a88-923a157ad87d",
+          "status": "SENT",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+          "sent_at": "2026-06-27T09:03:36.380000",
+          "delivered_at": null,
+          "bounced_at": null
+        }
+      ]
+    },
+    {
+      "run_id": "6a3e3f921b11c763c37c839f",
+      "status": 200,
+      "message_log_count": 27,
+      "status_counts": {
+        "DELIVERED": 19,
+        "SMS_24H_THROTTLE": 2,
+        "SENT": 3,
+        "FAILED": 3
+      },
+      "sample": [
+        {
+          "message_id": "b6a2f4ea-8ae9-4917-b9de-253189c69e91",
+          "status": "DELIVERED",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "sent_at": "2026-06-26T09:04:02.285000",
+          "delivered_at": "2026-06-26T09:04:03Z",
+          "bounced_at": null
+        },
+        {
+          "message_id": "7c86283a-6d66-4fc6-9929-dd8e381502ac",
+          "status": "DELIVERED",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "sent_at": "2026-06-26T09:03:46.971000",
+          "delivered_at": "2026-06-26T09:03:48Z",
+          "bounced_at": null
+        },
+        {
+          "message_id": "8a04d3bc-4255-4414-8b59-88f29545c3e0",
+          "status": "DELIVERED",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+          "sent_at": "2026-06-26T09:03:34.543000",
+          "delivered_at": "2026-06-26T09:03:35Z",
+          "bounced_at": null
+        },
+        {
+          "message_id": "6b42463e-29f1-4ae3-8cbc-e1243011c6ab",
+          "status": "sms_24h_throttle",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+          "sent_at": null,
+          "delivered_at": null,
+          "bounced_at": null
+        },
+        {
+          "message_id": "91ddea87-964c-4e5d-82e9-1be6031668a3",
+          "status": "SENT",
+          "template_key": "COMPLIANCE_EXPIRY_REMINDER_SMS",
+          "sent_at": "2026-06-26T09:03:25.843000",
+          "delivered_at": null,
+          "bounced_at": null
+        }
+      ]
+    }
+  ]
+}

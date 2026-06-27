@@ -1,0 +1,80 @@
+{
+  "samples": [
+    {
+      "recorded_at": "2026-06-27T21:55:11.815683+00:00",
+      "open_count": 7,
+      "incidents": [
+        {
+          "id": "6a40468ad6c74b0b73d79a70",
+          "title": "Job risk_signal_regen_worker missed SLA",
+          "severity": "P0",
+          "repeat_count": 1,
+          "lifecycle_state": "OPEN",
+          "last_alert_email_at": "2026-06-27T21:54:20.770683+00:00",
+          "last_repeat_at": "2026-06-27T21:54:18.106662+00:00",
+          "first_detected_at": "2026-06-27T21:54:18.106662+00:00"
+        },
+        {
+          "id": "6a404678d6c74b0b73d79a63",
+          "title": "Scheduler heartbeat stale",
+          "severity": "P1",
+          "repeat_count": 1,
+          "lifecycle_state": "OPEN",
+          "last_alert_email_at": "2026-06-27T21:54:02.745103+00:00",
+          "last_repeat_at": "2026-06-27T21:53:59.887647+00:00",
+          "first_detected_at": "2026-06-27T21:53:59.887647+00:00"
+        },
+        {
+          "id": "6a402e210f70083943946497",
+          "title": "Job compliance_check_evening missed SLA",
+          "severity": "P2",
+          "repeat_count": 11,
+          "lifecycle_state": "DEGRADED",
+          "last_alert_email_at": "2026-06-27T20:20:09.917576+00:00",
+          "last_repeat_at": "2026-06-27T21:54:05.159056+00:00",
+          "first_detected_at": "2026-06-27T20:10:09.391715+00:00"
+        },
+        {
+          "id": "6a3fd5279b0f87c652ad972f",
+          "title": "Job activation_reminder_processing missed SLA",
+          "severity": "P2",
+          "repeat_count": 29,
+          "lifecycle_state": "DEGRADED",
+          "last_alert_email_at": "2026-06-27T15:00:32.855189+00:00",
+          "last_repeat_at": "2026-06-27T18:30:31.170428+00:00",
+          "first_detected_at": "2026-06-27T13:50:31.136166+00:00"
+        },
+        {
+          "id": "6a3f937098ddeab695956bcd",
+          "title": "Job daily_reminders last run was degraded",
+          "severity": "P2",
+          "repeat_count": 77,
+          "lifecycle_state": "DEGRADED",
+          "last_alert_email_at": "2026-06-27T15:00:10.732686+00:00",
+          "last_repeat_at": "2026-06-27T21:54:04.317711+00:00",
+          "first_detected_at": "2026-06-27T09:10:08.757094+00:00"
+        },
+        {
+          "id": "6a3d15f11a40aa5a17db319a",
+          "title": "Job subscription_ops_digest missed SLA",
+          "severity": "P2",
+          "repeat_count": 133,
+          "lifecycle_state": "RECOVERED",
+          "last_alert_email_at": "2026-06-26T09:30:11.005250+00:00",
+          "last_repeat_at": "2026-06-26T09:40:08.953013+00:00",
+          "first_detected_at": "2026-06-25T11:50:08.951450+00:00"
+        },
+        {
+          "id": "6a0614ab1506bff1aab398c7",
+          "title": "Delivery unknown unresolved",
+          "severity": "P2",
+          "repeat_count": null,
+          "lifecycle_state": null,
+          "last_alert_email_at": null,
+          "last_repeat_at": null,
+          "first_detected_at": null
+        }
+      ]
+    }
+  ]
+}

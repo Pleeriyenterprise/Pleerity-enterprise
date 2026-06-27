@@ -1,0 +1,73 @@
+{
+  "validated_at": "2026-06-27T15:47:05.014744+00:00",
+  "environment": "staging",
+  "checks": {
+    "health": {
+      "status": "healthy",
+      "environment": "staging",
+      "readiness": {
+        "stage": "ready",
+        "degraded": false,
+        "last_error": null
+      }
+    },
+    "version": {
+      "commit_sha": "02e7125443e020296ea8ac9a7cf23374fcd877f8",
+      "environment": "staging"
+    },
+    "health_summary_ms": 16524.67,
+    "health_summary_status": 200,
+    "overall_health": "attention_required",
+    "heartbeat_stale": false,
+    "last_heartbeat_at": "2026-06-27T15:46:49.347687+00:00",
+    "open_incidents": 5,
+    "scheduler_runtime": {
+      "available": true,
+      "registered_jobs_count": 51
+    },
+    "recalc_queue_health": {
+      "queue_depth_pending": 0,
+      "active_running": 0,
+      "retrying_failed": 0,
+      "dead_letter": 0,
+      "missing_correlation_rows": 0,
+      "stale_pending_markers": 0,
+      "stuck_running_markers": 0,
+      "stale_running_reclaimed_last_24h": 0,
+      "regeneration_pending_backlog": 0,
+      "duplicate_suppression_observed_total": 3080,
+      "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+    },
+    "summary_counts": {
+      "critical_missed": 0,
+      "never_ran": 0,
+      "never_ran_overdue": 0,
+      "not_yet_due_since_startup": 0,
+      "degraded_24h": 1,
+      "failed_24h": 0,
+      "open_incidents": 5,
+      "heartbeat_stale": 0,
+      "delivery_unknown_stale": 20
+    },
+    "job_state_counts": {
+      "conditional_no_output": 39,
+      "degraded": 1,
+      "healthy": 10,
+      "missed": 1
+    },
+    "jobs_in_health_summary": 51,
+    "jobs_not_scheduler_registered": [],
+    "jobs_not_scheduler_registered_count": 0,
+    "control_centre_ms": 31945.03,
+    "control_centre_status": 500,
+    "automation_health_score": null,
+    "platform_status_label": null,
+    "open_incidents_api_count": 0,
+    "incident_fingerprints": 0,
+    "recent_job_runs_status": 200,
+    "recent_job_runs_sample": []
+  },
+  "admin_login": true,
+  "elapsed_ms": 85985.68,
+  "pass": false
+}

@@ -1,0 +1,183 @@
+{
+  "programme": "OPERATIONAL-RELIABILITY-OBSERVABILITY-INTEGRITY-AUDIT-02",
+  "validated_at": "2026-06-27T15:44:42.033237+00:00",
+  "environment": "staging",
+  "audit_01_remediations": {
+    "jobs_in_health_summary_51": true,
+    "health_summary_under_15s": false,
+    "control_centre_200": false,
+    "sha_deployed": true
+  },
+  "surfaces": {
+    "health_summary": {
+      "status": 200,
+      "latency_ms": 18298.05,
+      "error": null,
+      "overall_health": "attention_required",
+      "heartbeat_stale": false,
+      "jobs_count": 51,
+      "scheduler_registered": {
+        "available": true,
+        "registered_jobs_count": 51
+      },
+      "delivery_unknown_stale": 20,
+      "open_incidents": 6
+    },
+    "control_centre": {
+      "status": 500,
+      "latency_ms": 28468.78,
+      "error": "{\"detail\":\"Internal server error\"}",
+      "platform_status": null,
+      "automation_health": null,
+      "job_confidence": null
+    },
+    "automation_centre": {
+      "status": 200,
+      "recent_runs": [
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "finished_at": "2026-06-27T15:45:34.103883+00:00"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "finished_at": "2026-06-27T15:45:19.416617+00:00"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "finished_at": "2026-06-27T15:45:19.226518+00:00"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "finished_at": "2026-06-27T15:45:04.123103+00:00"
+        },
+        {
+          "job_name": "generation_auto_retry_processing",
+          "status": "success",
+          "finished_at": "2026-06-27T15:45:01.925356+00:00"
+        }
+      ]
+    }
+  },
+  "incidents": {
+    "open_count": 6,
+    "unique_fingerprints": 6,
+    "duplicate_fingerprint_rows": 0,
+    "by_job": {
+      "scheduled_admin_communications": 1,
+      "aggregate": 2,
+      "activation_reminder_processing": 1,
+      "daily_reminders": 1,
+      "subscription_ops_digest": 1
+    },
+    "sample": [
+      {
+        "title": "Job scheduled_admin_communications missed SLA",
+        "severity": "P0",
+        "repeat_count": 2,
+        "last_alert_email_at": "2026-06-27T15:24:23.504938+00:00",
+        "lifecycle_state": "RECOVERED"
+      },
+      {
+        "title": "Scheduler heartbeat stale",
+        "severity": "P1",
+        "repeat_count": 2,
+        "last_alert_email_at": "2026-06-27T15:43:05.991795+00:00",
+        "lifecycle_state": "DEGRADED"
+      },
+      {
+        "title": "Job activation_reminder_processing missed SLA",
+        "severity": "P2",
+        "repeat_count": 12,
+        "last_alert_email_at": "2026-06-27T15:00:32.855189+00:00",
+        "lifecycle_state": "DEGRADED"
+      },
+      {
+        "title": "Job daily_reminders last run was degraded",
+        "severity": "P2",
+        "repeat_count": 40,
+        "last_alert_email_at": "2026-06-27T15:00:10.732686+00:00",
+        "lifecycle_state": "DEGRADED"
+      },
+      {
+        "title": "Job subscription_ops_digest missed SLA",
+        "severity": "P2",
+        "repeat_count": 133,
+        "last_alert_email_at": "2026-06-26T09:30:11.005250+00:00",
+        "lifecycle_state": "RECOVERED"
+      },
+      {
+        "title": "Delivery unknown unresolved",
+        "severity": "P2",
+        "repeat_count": null,
+        "last_alert_email_at": null,
+        "lifecycle_state": null
+      }
+    ]
+  },
+  "delivery_unknown": {
+    "stale_count": 20,
+    "sample": [
+      {
+        "job_name": "daily_reminders",
+        "run_id": "6a3f911298ddeab695956935",
+        "finished_at": "2026-06-27T09:04:15.273626+00:00",
+        "delivery_unknown": 3
+      },
+      {
+        "job_name": "daily_reminders",
+        "run_id": "6a3e3f921b11c763c37c839f",
+        "finished_at": "2026-06-26T09:04:04.221793+00:00",
+        "delivery_unknown": 3
+      },
+      {
+        "job_name": "daily_reminders",
+        "run_id": "6a3cee120a09056a888af93e",
+        "finished_at": "2026-06-25T09:03:15.662968+00:00",
+        "delivery_unknown": 1
+      },
+      {
+        "job_name": "daily_reminders",
+        "run_id": "6a3b9c928e525cd3b210b695",
+        "finished_at": "2026-06-24T09:04:05.922912+00:00",
+        "delivery_unknown": 2
+      },
+      {
+        "job_name": "daily_reminders",
+        "run_id": "6a38f9928e525cd3b21022dc",
+        "finished_at": "2026-06-22T09:04:05.924587+00:00",
+        "delivery_unknown": 2
+      }
+    ],
+    "recalc_queue": {
+      "queue_depth_pending": 0,
+      "active_running": 0,
+      "retrying_failed": 0,
+      "dead_letter": 0,
+      "missing_correlation_rows": 0,
+      "stale_pending_markers": 0,
+      "stuck_running_markers": 0,
+      "stale_running_reclaimed_last_24h": 0,
+      "regeneration_pending_backlog": 0,
+      "duplicate_suppression_observed_total": 3080,
+      "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+    }
+  },
+  "e2e": {},
+  "pass": false,
+  "deployed_sha": "02e7125443e020296ea8ac9a7cf23374fcd877f8",
+  "deployed_sha_matches_audit_02": true,
+  "health": {
+    "status": "healthy",
+    "environment": "staging",
+    "readiness": {
+      "stage": "ready",
+      "degraded": false,
+      "last_error": null
+    }
+  },
+  "admin_login": true
+}

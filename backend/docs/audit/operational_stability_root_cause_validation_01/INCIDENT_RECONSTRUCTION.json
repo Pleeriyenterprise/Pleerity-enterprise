@@ -1,0 +1,1745 @@
+{
+  "programme": "OPERATIONAL-STABILITY-ROOT-CAUSE-VALIDATION-01",
+  "window_start": "2026-06-27T14:00:00+00:00",
+  "window_end": "2026-06-27T22:32:50.279334+00:00",
+  "incidents": [
+    {
+      "severity": "P1",
+      "title": "Scheduler heartbeat stale",
+      "description": "The background scheduler has not updated the heartbeat within the expected window. Jobs may not be running. Check server process and logs.",
+      "source": "heartbeat",
+      "status": "resolved",
+      "created_at": "2026-06-27T15:23:51.455045+00:00",
+      "updated_at": "2026-06-27T16:10:04.225301+00:00",
+      "resolved_at": "2026-06-27T16:10:04.225280+00:00",
+      "related_job_name": null,
+      "metadata": {
+        "last_heartbeat_at": "2026-06-27T15:37:34.173865+00:00",
+        "triggering_reason": "heartbeat_stale",
+        "presentation_severity": null,
+        "sla_watchdog_condition_ticks": 1,
+        "queue_health_at_recovery": {
+          "queue_depth_pending": 0,
+          "active_running": 0,
+          "retrying_failed": 0,
+          "dead_letter": 0,
+          "missing_correlation_rows": 0,
+          "stale_pending_markers": 0,
+          "stuck_running_markers": 0,
+          "stale_running_reclaimed_last_24h": 0,
+          "regeneration_pending_backlog": 0,
+          "duplicate_suppression_observed_total": 3080,
+          "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+        },
+        "recovery_note": "Recovery detected: scheduler heartbeat is fresh (last_heartbeat_at=2026-06-27T15:48:49.109345+00:00).",
+        "recovery_source": "automatic_job_recovery",
+        "resolution_notes": "Recovery detected: scheduler heartbeat is fresh (last_heartbeat_at=2026-06-27T16:08:49.343863+00:00). Auto-closed after stable recovery window."
+      },
+      "lifecycle_state": "RESOLVED",
+      "repeat_count": 2,
+      "last_alert_email_at": "2026-06-27T15:43:05.991795+00:00",
+      "recovered_at": "2026-06-27T15:50:03.998790+00:00",
+      "id": "6a3feb07d8e99979cbf0fed5"
+    },
+    {
+      "severity": "P0",
+      "title": "Job risk_signal_regen_worker missed SLA",
+      "description": "risk_signal_regen_worker must run at least every 3 min Last success: 2026-06-27T15:19:31.112617+00:00. Delay: 4 min.",
+      "source": "job_monitor",
+      "status": "resolved",
+      "created_at": "2026-06-27T15:24:09.397841+00:00",
+      "updated_at": "2026-06-27T15:44:52.318500+00:00",
+      "resolved_at": "2026-06-27T15:44:52.318474+00:00",
+      "related_job_name": "risk_signal_regen_worker",
+      "metadata": {
+        "last_finished_at": "2026-06-27T15:39:04.476763+00:00",
+        "delay_minutes": 3.9629084833333335,
+        "max_delay_minutes": 3,
+        "triggering_reason": "missed_sla",
+        "presentation_severity": null,
+        "sla_watchdog_condition_ticks": 1,
+        "queue_health_at_recovery": {
+          "queue_depth_pending": 0,
+          "active_running": 0,
+          "retrying_failed": 0,
+          "dead_letter": 0,
+          "missing_correlation_rows": 0,
+          "stale_pending_markers": 0,
+          "stuck_running_markers": 0,
+          "stale_running_reclaimed_last_24h": 0,
+          "regeneration_pending_backlog": 0,
+          "duplicate_suppression_observed_total": 3080,
+          "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+        },
+        "recovery_note": "Automatically resolved after run of job risk_signal_regen_worker at 2026-06-27T15:29:34.811078+00:00 (status=success). Run id: 6a3fec5ed8e99979cbf0ff8a.",
+        "recovery_source": "automatic_job_recovery",
+        "resolution_notes": "Automatically resolved after run of job risk_signal_regen_worker at 2026-06-27T15:44:49.806656+00:00 (status=success). Run id: 6a3feff00f7008394394585d. Auto-closed after stable recovery window."
+      },
+      "lifecycle_state": "RESOLVED",
+      "repeat_count": 2,
+      "last_alert_email_at": "2026-06-27T15:24:11.796993+00:00",
+      "recovered_at": "2026-06-27T15:29:37.063560+00:00",
+      "id": "6a3feb19d8e99979cbf0fee3"
+    },
+    {
+      "severity": "P0",
+      "title": "Job scheduled_admin_communications missed SLA",
+      "description": "scheduled_admin_communications must run at least every 5 min Last success: 2026-06-27T15:18:01.085346+00:00. Delay: 6 min.",
+      "source": "job_monitor",
+      "status": "resolved",
+      "created_at": "2026-06-27T15:24:21.123502+00:00",
+      "updated_at": "2026-06-27T15:46:03.753416+00:00",
+      "resolved_at": "2026-06-27T15:46:03.753400+00:00",
+      "related_job_name": "scheduled_admin_communications",
+      "metadata": {
+        "last_finished_at": "2026-06-27T15:38:00.721162+00:00",
+        "delay_minutes": 5.025501833333333,
+        "max_delay_minutes": 5,
+        "triggering_reason": "missed_sla",
+        "presentation_severity": null,
+        "sla_watchdog_condition_ticks": 1,
+        "queue_health_at_recovery": {
+          "queue_depth_pending": 0,
+          "active_running": 0,
+          "retrying_failed": 0,
+          "dead_letter": 0,
+          "missing_correlation_rows": 0,
+          "stale_pending_markers": 0,
+          "stuck_running_markers": 0,
+          "stale_running_reclaimed_last_24h": 0,
+          "regeneration_pending_backlog": 0,
+          "duplicate_suppression_observed_total": 3080,
+          "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+        },
+        "recovery_note": "Automatically resolved after run of job scheduled_admin_communications at 2026-06-27T15:30:02.829742+00:00 (status=success). Run id: 6a3fec7ad8e99979cbf0ff94.",
+        "recovery_source": "automatic_job_recovery",
+        "resolution_notes": "Automatically resolved after run of job scheduled_admin_communications at 2026-06-27T15:46:00.968210+00:00 (status=success). Run id: 6a3ff0380f70083943945870. Auto-closed after stable recovery window."
+      },
+      "lifecycle_state": "RESOLVED",
+      "repeat_count": 2,
+      "last_alert_email_at": "2026-06-27T15:24:23.504938+00:00",
+      "recovered_at": "2026-06-27T15:30:05.613981+00:00",
+      "id": "6a3feb25d8e99979cbf0fef0"
+    },
+    {
+      "severity": "P2",
+      "title": "Job work_order_schedule_reminders missed SLA",
+      "description": "work_order_schedule_reminders must run at least every 90 min Last success: 2026-06-27T14:20:02.034325+00:00. Delay: 100 min.",
+      "source": "job_monitor",
+      "status": "resolved",
+      "created_at": "2026-06-27T16:00:33.988451+00:00",
+      "updated_at": "2026-06-27T18:20:04.834053+00:00",
+      "resolved_at": "2026-06-27T18:20:04.834033+00:00",
+      "related_job_name": "work_order_schedule_reminders",
+      "metadata": {
+        "last_finished_at": "2026-06-27T14:20:02.034325+00:00",
+        "delay_minutes": 109.9880456,
+        "max_delay_minutes": 90,
+        "triggering_reason": "missed_sla",
+        "presentation_severity": null,
+        "sla_watchdog_condition_ticks": 1,
+        "queue_health_at_recovery": {
+          "queue_depth_pending": 0,
+          "active_running": 0,
+          "retrying_failed": 0,
+          "dead_letter": 0,
+          "missing_correlation_rows": 0,
+          "stale_pending_markers": 0,
+          "stuck_running_markers": 0,
+          "stale_running_reclaimed_last_24h": 0,
+          "regeneration_pending_backlog": 0,
+          "duplicate_suppression_observed_total": 3080,
+          "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+        },
+        "recovery_note": "Automatically resolved after run of job work_order_schedule_reminders at 2026-06-27T17:20:01.802363+00:00 (status=success). Run id: 6a4006410f70083943945c8f.",
+        "recovery_source": "automatic_job_recovery",
+        "resolution_notes": "Automatically resolved after run of job work_order_schedule_reminders at 2026-06-27T18:20:01.934814+00:00 (status=success). Run id: 6a4014510f70083943945f59. Auto-closed after stable recovery window."
+      },
+      "lifecycle_state": "RESOLVED",
+      "repeat_count": 2,
+      "last_alert_email_at": "2026-06-27T16:00:36.576842+00:00",
+      "recovered_at": "2026-06-27T17:20:04.376469+00:00",
+      "id": "6a3ff3a10f70083943945904"
+    },
+    {
+      "severity": "P2",
+      "title": "Job compliance_check_evening missed SLA",
+      "description": "compliance_check_evening must run at least every 1560 min Last success: 2026-06-26T18:01:09.180794+00:00. Delay: 1569 min.",
+      "source": "job_monitor",
+      "status": "open",
+      "created_at": "2026-06-27T20:10:09.628079+00:00",
+      "updated_at": "2026-06-27T22:30:11.230232+00:00",
+      "resolved_at": null,
+      "related_job_name": "compliance_check_evening",
+      "metadata": {
+        "last_finished_at": "2026-06-26T18:01:09.180794+00:00",
+        "delay_minutes": 1708.8945985166667,
+        "max_delay_minutes": 1560,
+        "triggering_reason": "missed_sla",
+        "presentation_severity": null,
+        "sla_watchdog_condition_ticks": 14
+      },
+      "lifecycle_state": "DEGRADED",
+      "repeat_count": 15,
+      "last_alert_email_at": "2026-06-27T20:20:09.917576+00:00",
+      "id": "6a402e210f70083943946497"
+    },
+    {
+      "severity": "P1",
+      "title": "Scheduler heartbeat stale",
+      "description": "The background scheduler has not updated the heartbeat within the expected window. Jobs may not be running. Check server process and logs.",
+      "source": "heartbeat",
+      "status": "resolved",
+      "created_at": "2026-06-27T21:54:00.126444+00:00",
+      "updated_at": "2026-06-27T22:30:05.547293+00:00",
+      "resolved_at": "2026-06-27T22:30:05.547262+00:00",
+      "related_job_name": null,
+      "metadata": {
+        "last_heartbeat_at": "2026-06-27T21:48:49.353883+00:00",
+        "triggering_reason": "heartbeat_stale",
+        "presentation_severity": null,
+        "sla_watchdog_condition_ticks": 0,
+        "queue_health_at_recovery": {
+          "queue_depth_pending": 0,
+          "active_running": 0,
+          "retrying_failed": 0,
+          "dead_letter": 0,
+          "missing_correlation_rows": 0,
+          "stale_pending_markers": 0,
+          "stuck_running_markers": 0,
+          "stale_running_reclaimed_last_24h": 0,
+          "regeneration_pending_backlog": 0,
+          "duplicate_suppression_observed_total": 3080,
+          "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+        },
+        "recovery_note": "Recovery detected: scheduler heartbeat is fresh (last_heartbeat_at=2026-06-27T22:09:43.327284+00:00).",
+        "recovery_source": "automatic_job_recovery",
+        "resolution_notes": "Recovery detected: scheduler heartbeat is fresh (last_heartbeat_at=2026-06-27T22:29:43.322338+00:00). Auto-closed after stable recovery window."
+      },
+      "lifecycle_state": "RESOLVED",
+      "repeat_count": 1,
+      "last_alert_email_at": "2026-06-27T21:54:02.745103+00:00",
+      "recovered_at": "2026-06-27T22:10:03.748053+00:00",
+      "id": "6a404678d6c74b0b73d79a63"
+    },
+    {
+      "severity": "P0",
+      "title": "Job risk_signal_regen_worker missed SLA",
+      "description": "risk_signal_regen_worker must run at least every 3 min Last success: 2026-06-27T21:49:49.423429+00:00. Delay: 4 min.",
+      "source": "job_monitor",
+      "status": "resolved",
+      "created_at": "2026-06-27T21:54:18.344271+00:00",
+      "updated_at": "2026-06-27T22:15:16.447913+00:00",
+      "resolved_at": "2026-06-27T22:15:16.447889+00:00",
+      "related_job_name": "risk_signal_regen_worker",
+      "metadata": {
+        "last_finished_at": "2026-06-27T21:49:49.423429+00:00",
+        "delay_minutes": 4.1198378,
+        "max_delay_minutes": 3,
+        "triggering_reason": "missed_sla",
+        "presentation_severity": null,
+        "sla_watchdog_condition_ticks": 0,
+        "queue_health_at_recovery": {
+          "queue_depth_pending": 0,
+          "active_running": 0,
+          "retrying_failed": 0,
+          "dead_letter": 0,
+          "missing_correlation_rows": 0,
+          "stale_pending_markers": 0,
+          "stuck_running_markers": 0,
+          "stale_running_reclaimed_last_24h": 0,
+          "regeneration_pending_backlog": 0,
+          "duplicate_suppression_observed_total": 3080,
+          "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+        },
+        "recovery_note": "Automatically resolved after run of job risk_signal_regen_worker at 2026-06-27T21:59:44.106500+00:00 (status=success). Run id: 6a4047cfd6c74b0b73d79ab0.",
+        "recovery_source": "automatic_job_recovery",
+        "resolution_notes": "Automatically resolved after run of job risk_signal_regen_worker at 2026-06-27T22:15:13.891350+00:00 (status=success). Run id: 6a404b71d6c74b0b73d79b56. Auto-closed after stable recovery window."
+      },
+      "lifecycle_state": "RESOLVED",
+      "repeat_count": 1,
+      "last_alert_email_at": "2026-06-27T21:54:20.770683+00:00",
+      "recovered_at": "2026-06-27T21:59:46.434969+00:00",
+      "id": "6a40468ad6c74b0b73d79a70"
+    }
+  ],
+  "job_timelines": {
+    "scheduler_heartbeat": {
+      "run_count": 249,
+      "success": 249,
+      "failed": 0,
+      "degraded": 0,
+      "running_at_end": 0,
+      "first_finished": "2026-06-27T14:00:31.117673+00:00",
+      "last_finished": "2026-06-27T22:31:43.442203+00:00",
+      "runs": [
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T21:48:49.232520+00:00",
+          "finished_at": "2026-06-27T21:48:49.474270+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4045410f70083943946974"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T21:55:43.196021+00:00",
+          "finished_at": "2026-06-27T21:55:43.479768+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4046dfd6c74b0b73d79a90"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T21:57:43.443129+00:00",
+          "finished_at": "2026-06-27T21:57:43.723054+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404757d6c74b0b73d79aa1"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T21:59:43.429510+00:00",
+          "finished_at": "2026-06-27T21:59:43.706316+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4047cfd6c74b0b73d79ab1"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:01:43.430782+00:00",
+          "finished_at": "2026-06-27T22:01:43.673444+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404847d6c74b0b73d79ad3"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:03:43.431687+00:00",
+          "finished_at": "2026-06-27T22:03:43.684650+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4048bfd6c74b0b73d79ae3"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:05:43.201990+00:00",
+          "finished_at": "2026-06-27T22:05:43.446056+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404937d6c74b0b73d79af8"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:07:43.195237+00:00",
+          "finished_at": "2026-06-27T22:07:43.437279+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4049afd6c74b0b73d79b07"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:09:43.206566+00:00",
+          "finished_at": "2026-06-27T22:09:43.448483+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404a27d6c74b0b73d79b17"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:11:43.196681+00:00",
+          "finished_at": "2026-06-27T22:11:43.440874+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404a9fd6c74b0b73d79b31"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:13:43.194817+00:00",
+          "finished_at": "2026-06-27T22:13:43.442325+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404b17d6c74b0b73d79b41"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:15:43.199558+00:00",
+          "finished_at": "2026-06-27T22:15:43.446780+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404b8fd6c74b0b73d79b5b"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:17:43.199605+00:00",
+          "finished_at": "2026-06-27T22:17:43.441383+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404c07d6c74b0b73d79b6a"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:19:43.436778+00:00",
+          "finished_at": "2026-06-27T22:19:43.677987+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404c7fd6c74b0b73d79b7b"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:21:43.200861+00:00",
+          "finished_at": "2026-06-27T22:21:43.443700+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404cf7d6c74b0b73d79b93"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:23:43.437333+00:00",
+          "finished_at": "2026-06-27T22:23:43.679707+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404d6fd6c74b0b73d79ba3"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:25:43.222528+00:00",
+          "finished_at": "2026-06-27T22:25:43.464005+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404de7d6c74b0b73d79c13"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:27:43.437487+00:00",
+          "finished_at": "2026-06-27T22:27:43.679216+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404e5fd6c74b0b73d79c23"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:29:43.201113+00:00",
+          "finished_at": "2026-06-27T22:29:43.450506+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404ed7d6c74b0b73d79c33"
+        },
+        {
+          "job_name": "scheduler_heartbeat",
+          "status": "success",
+          "started_at": "2026-06-27T22:31:43.199825+00:00",
+          "finished_at": "2026-06-27T22:31:43.442203+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404f4fd6c74b0b73d79c4f"
+        }
+      ]
+    },
+    "risk_signal_regen_worker": {
+      "run_count": 1003,
+      "success": 1003,
+      "failed": 0,
+      "degraded": 0,
+      "running_at_end": 0,
+      "first_finished": "2026-06-27T14:00:03.305363+00:00",
+      "last_finished": "2026-06-27T22:32:43.632663+00:00",
+      "runs": [
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:23:13.079216+00:00",
+          "finished_at": "2026-06-27T22:23:13.627673+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404d51d6c74b0b73d79b9e"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:23:43.078585+00:00",
+          "finished_at": "2026-06-27T22:23:43.864531+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404d6fd6c74b0b73d79ba2"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:24:13.081331+00:00",
+          "finished_at": "2026-06-27T22:24:13.639542+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404d8dd6c74b0b73d79ba8"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:24:43.078589+00:00",
+          "finished_at": "2026-06-27T22:24:43.628509+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404dabd6c74b0b73d79baa"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:25:13.078996+00:00",
+          "finished_at": "2026-06-27T22:25:13.621194+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404dc9d6c74b0b73d79c03"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:25:43.221990+00:00",
+          "finished_at": "2026-06-27T22:25:43.764620+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404de7d6c74b0b73d79c12"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:26:13.078719+00:00",
+          "finished_at": "2026-06-27T22:26:13.627294+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e05d6c74b0b73d79c17"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:26:43.080398+00:00",
+          "finished_at": "2026-06-27T22:26:43.643764+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e23d6c74b0b73d79c1b"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:27:13.080748+00:00",
+          "finished_at": "2026-06-27T22:27:13.626019+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e41d6c74b0b73d79c1f"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:27:43.078279+00:00",
+          "finished_at": "2026-06-27T22:27:43.862874+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e5fd6c74b0b73d79c22"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:28:13.079715+00:00",
+          "finished_at": "2026-06-27T22:28:13.632283+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e7dd6c74b0b73d79c28"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:28:43.078618+00:00",
+          "finished_at": "2026-06-27T22:28:43.623974+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e9bd6c74b0b73d79c2a"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:29:13.319272+00:00",
+          "finished_at": "2026-06-27T22:29:13.862032+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404eb9d6c74b0b73d79c2f"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:29:43.200544+00:00",
+          "finished_at": "2026-06-27T22:29:43.758220+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404ed7d6c74b0b73d79c31"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:13.086401+00:00",
+          "finished_at": "2026-06-27T22:30:13.637056+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404ef5d6c74b0b73d79c44"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:43.079537+00:00",
+          "finished_at": "2026-06-27T22:30:43.656918+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f13d6c74b0b73d79c46"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:31:13.078759+00:00",
+          "finished_at": "2026-06-27T22:31:13.624531+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f31d6c74b0b73d79c4a"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:31:43.199614+00:00",
+          "finished_at": "2026-06-27T22:31:43.748240+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f4fd6c74b0b73d79c4d"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:32:13.089752+00:00",
+          "finished_at": "2026-06-27T22:32:13.664650+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f6dd6c74b0b73d79c53"
+        },
+        {
+          "job_name": "risk_signal_regen_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:32:43.079091+00:00",
+          "finished_at": "2026-06-27T22:32:43.632663+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f8bd6c74b0b73d79c56"
+        }
+      ]
+    },
+    "notification_retry_worker": {
+      "run_count": 503,
+      "success": 503,
+      "failed": 0,
+      "degraded": 0,
+      "running_at_end": 0,
+      "first_finished": "2026-06-27T14:00:02.866657+00:00",
+      "last_finished": "2026-06-27T22:32:00.760334+00:00",
+      "runs": [
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:13:00.356498+00:00",
+          "finished_at": "2026-06-27T22:13:00.601614+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404aecd6c74b0b73d79b3b"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:14:00.477242+00:00",
+          "finished_at": "2026-06-27T22:14:00.719363+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404b28d6c74b0b73d79b44"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:15:01.564535+00:00",
+          "finished_at": "2026-06-27T22:15:01.810150+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404b65d6c74b0b73d79b50"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:16:00.481776+00:00",
+          "finished_at": "2026-06-27T22:16:00.722415+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404ba0d6c74b0b73d79b5d"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:17:00.359177+00:00",
+          "finished_at": "2026-06-27T22:17:00.598075+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404bdcd6c74b0b73d79b65"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:18:00.480864+00:00",
+          "finished_at": "2026-06-27T22:18:00.721003+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404c18d6c74b0b73d79b6d"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:19:00.359429+00:00",
+          "finished_at": "2026-06-27T22:19:00.600453+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404c54d6c74b0b73d79b75"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:20:01.452785+00:00",
+          "finished_at": "2026-06-27T22:20:01.700056+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404c91d6c74b0b73d79b86"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:21:00.359567+00:00",
+          "finished_at": "2026-06-27T22:21:00.601436+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404cccd6c74b0b73d79b8d"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:22:00.495806+00:00",
+          "finished_at": "2026-06-27T22:22:00.738293+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404d08d6c74b0b73d79b96"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:23:00.360943+00:00",
+          "finished_at": "2026-06-27T22:23:00.601573+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404d44d6c74b0b73d79b9d"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:24:00.480127+00:00",
+          "finished_at": "2026-06-27T22:24:00.717540+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404d80d6c74b0b73d79ba5"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:25:01.222688+00:00",
+          "finished_at": "2026-06-27T22:25:01.462770+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404dbdd6c74b0b73d79bb1"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:26:00.482520+00:00",
+          "finished_at": "2026-06-27T22:26:00.723444+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404df8d6c74b0b73d79c16"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:27:00.358811+00:00",
+          "finished_at": "2026-06-27T22:27:00.599311+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404e34d6c74b0b73d79c1d"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:28:00.514521+00:00",
+          "finished_at": "2026-06-27T22:28:00.753102+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404e70d6c74b0b73d79c26"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:29:00.360699+00:00",
+          "finished_at": "2026-06-27T22:29:00.599294+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404eacd6c74b0b73d79c2d"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:02.097800+00:00",
+          "finished_at": "2026-06-27T22:30:02.340782+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404eead6c74b0b73d79c3c"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:31:00.360451+00:00",
+          "finished_at": "2026-06-27T22:31:00.600343+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404f24d6c74b0b73d79c49"
+        },
+        {
+          "job_name": "notification_retry_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:32:00.482098+00:00",
+          "finished_at": "2026-06-27T22:32:00.760334+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404f60d6c74b0b73d79c51"
+        }
+      ]
+    },
+    "scheduled_admin_communications": {
+      "run_count": 252,
+      "success": 252,
+      "failed": 0,
+      "degraded": 0,
+      "running_at_end": 0,
+      "first_finished": "2026-06-27T14:00:02.865174+00:00",
+      "last_finished": "2026-06-27T22:32:00.761211+00:00",
+      "runs": [
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T21:54:32.164021+00:00",
+          "finished_at": "2026-06-27T21:54:33.034294+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404698d6c74b0b73d79a80"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T21:56:00.479708+00:00",
+          "finished_at": "2026-06-27T21:56:00.722551+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4046f0d6c74b0b73d79a93"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T21:58:00.475371+00:00",
+          "finished_at": "2026-06-27T21:58:00.717187+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404768d6c74b0b73d79aa4"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:00:02.281845+00:00",
+          "finished_at": "2026-06-27T22:00:02.668766+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4047e2d6c74b0b73d79ab6"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:02:00.477162+00:00",
+          "finished_at": "2026-06-27T22:02:00.718084+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404858d6c74b0b73d79ad6"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:04:00.484935+00:00",
+          "finished_at": "2026-06-27T22:04:00.738912+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4048d0d6c74b0b73d79ae6"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:06:00.479850+00:00",
+          "finished_at": "2026-06-27T22:06:00.722081+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404948d6c74b0b73d79afb"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:08:00.477419+00:00",
+          "finished_at": "2026-06-27T22:08:00.718879+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4049c0d6c74b0b73d79b0a"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:10:01.200402+00:00",
+          "finished_at": "2026-06-27T22:10:01.442933+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404a39d6c74b0b73d79b1b"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:12:00.477430+00:00",
+          "finished_at": "2026-06-27T22:12:00.718666+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404ab0d6c74b0b73d79b34"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:14:00.476461+00:00",
+          "finished_at": "2026-06-27T22:14:00.719482+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404b28d6c74b0b73d79b43"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:16:00.481464+00:00",
+          "finished_at": "2026-06-27T22:16:00.722549+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404ba0d6c74b0b73d79b5e"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:18:00.480557+00:00",
+          "finished_at": "2026-06-27T22:18:00.721768+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404c18d6c74b0b73d79b6e"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:20:01.451320+00:00",
+          "finished_at": "2026-06-27T22:20:01.700182+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404c91d6c74b0b73d79b85"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:22:00.495011+00:00",
+          "finished_at": "2026-06-27T22:22:00.739198+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404d08d6c74b0b73d79b95"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:24:00.479805+00:00",
+          "finished_at": "2026-06-27T22:24:00.721614+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404d80d6c74b0b73d79ba6"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:26:00.482184+00:00",
+          "finished_at": "2026-06-27T22:26:00.720179+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404df8d6c74b0b73d79c15"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:28:00.514219+00:00",
+          "finished_at": "2026-06-27T22:28:00.751849+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404e70d6c74b0b73d79c25"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:02.095047+00:00",
+          "finished_at": "2026-06-27T22:30:02.338221+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404eead6c74b0b73d79c39"
+        },
+        {
+          "job_name": "scheduled_admin_communications",
+          "status": "success",
+          "started_at": "2026-06-27T22:32:00.481765+00:00",
+          "finished_at": "2026-06-27T22:32:00.761211+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404f60d6c74b0b73d79c52"
+        }
+      ]
+    },
+    "sla_watchdog": {
+      "run_count": 52,
+      "success": 52,
+      "failed": 0,
+      "degraded": 0,
+      "running_at_end": 0,
+      "first_finished": "2026-06-27T14:00:32.852073+00:00",
+      "last_finished": "2026-06-27T22:30:33.801102+00:00",
+      "runs": [
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T19:20:01.326740+00:00",
+          "finished_at": "2026-06-27T19:20:31.469610+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4022610f70083943946229"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T19:30:02.061912+00:00",
+          "finished_at": "2026-06-27T19:30:32.645839+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4024ba0f700839439462e5"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T19:40:01.225722+00:00",
+          "finished_at": "2026-06-27T19:40:31.767442+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4027110f70083943946377"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T19:50:01.212567+00:00",
+          "finished_at": "2026-06-27T19:50:31.623730+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4029690f700839439463d6"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T20:00:02.312495+00:00",
+          "finished_at": "2026-06-27T20:00:32.944989+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a402bc20f70083943946437"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T20:10:01.206093+00:00",
+          "finished_at": "2026-06-27T20:10:34.448698+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a402e190f70083943946495"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T20:20:01.452235+00:00",
+          "finished_at": "2026-06-27T20:20:32.535951+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4030710f70083943946504"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T20:30:02.052915+00:00",
+          "finished_at": "2026-06-27T20:30:32.637745+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4032ca0f700839439465c0"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T20:40:01.196905+00:00",
+          "finished_at": "2026-06-27T20:40:31.774885+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4035210f7008394394664e"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T20:50:01.197878+00:00",
+          "finished_at": "2026-06-27T20:50:31.745654+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4037790f700839439466ad"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T21:00:02.327245+00:00",
+          "finished_at": "2026-06-27T21:00:33.216194+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4039d20f7008394394670e"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T21:10:01.204270+00:00",
+          "finished_at": "2026-06-27T21:10:31.583337+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a403c290f70083943946771"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T21:20:01.346757+00:00",
+          "finished_at": "2026-06-27T21:20:31.693990+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a403e810f700839439467d9"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T21:30:02.063109+00:00",
+          "finished_at": "2026-06-27T21:30:32.770770+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4040da0f70083943946895"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T21:40:01.218821+00:00",
+          "finished_at": "2026-06-27T21:40:31.515997+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4043310f70083943946920"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T21:53:56.488704+00:00",
+          "finished_at": "2026-06-27T21:54:30.314459+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404674d6c74b0b73d79a62"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T22:00:02.291100+00:00",
+          "finished_at": "2026-06-27T22:00:33.827630+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a4047e2d6c74b0b73d79ac5"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T22:10:01.203492+00:00",
+          "finished_at": "2026-06-27T22:10:33.476049+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404a39d6c74b0b73d79b1f"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T22:20:01.453382+00:00",
+          "finished_at": "2026-06-27T22:20:32.298129+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404c91d6c74b0b73d79b81"
+        },
+        {
+          "job_name": "sla_watchdog",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:02.098935+00:00",
+          "finished_at": "2026-06-27T22:30:33.801102+00:00",
+          "error_message": null,
+          "outcome_status": "success",
+          "id": "6a404eead6c74b0b73d79c40"
+        }
+      ]
+    },
+    "compliance_recalc_worker": {
+      "run_count": 2001,
+      "success": 2001,
+      "failed": 0,
+      "degraded": 0,
+      "running_at_end": 0,
+      "first_finished": "2026-06-27T14:00:03.105896+00:00",
+      "last_finished": "2026-06-27T22:32:43.437438+00:00",
+      "runs": [
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:27:57.957804+00:00",
+          "finished_at": "2026-06-27T22:27:58.312184+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e6dd6c74b0b73d79c24"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:28:13.078856+00:00",
+          "finished_at": "2026-06-27T22:28:13.450783+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e7dd6c74b0b73d79c27"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:28:27.957864+00:00",
+          "finished_at": "2026-06-27T22:28:28.312801+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e8bd6c74b0b73d79c29"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:28:43.078343+00:00",
+          "finished_at": "2026-06-27T22:28:43.435977+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404e9bd6c74b0b73d79c2b"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:28:57.958031+00:00",
+          "finished_at": "2026-06-27T22:28:58.312744+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404ea9d6c74b0b73d79c2c"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:29:12.959717+00:00",
+          "finished_at": "2026-06-27T22:29:13.556317+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404eb8d6c74b0b73d79c2e"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:29:27.957893+00:00",
+          "finished_at": "2026-06-27T22:29:28.317696+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404ec7d6c74b0b73d79c30"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:29:43.200247+00:00",
+          "finished_at": "2026-06-27T22:29:43.566718+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404ed7d6c74b0b73d79c32"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:29:57.960327+00:00",
+          "finished_at": "2026-06-27T22:29:58.314871+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404ee5d6c74b0b73d79c34"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:13.086057+00:00",
+          "finished_at": "2026-06-27T22:30:13.447089+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404ef5d6c74b0b73d79c43"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:27.961417+00:00",
+          "finished_at": "2026-06-27T22:30:28.318902+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f03d6c74b0b73d79c45"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:43.079131+00:00",
+          "finished_at": "2026-06-27T22:30:43.437665+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f13d6c74b0b73d79c47"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:30:57.958373+00:00",
+          "finished_at": "2026-06-27T22:30:58.316688+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f21d6c74b0b73d79c48"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:31:13.078440+00:00",
+          "finished_at": "2026-06-27T22:31:13.437625+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f31d6c74b0b73d79c4b"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:31:27.959621+00:00",
+          "finished_at": "2026-06-27T22:31:28.320813+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f3fd6c74b0b73d79c4c"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:31:43.199307+00:00",
+          "finished_at": "2026-06-27T22:31:43.560970+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f4fd6c74b0b73d79c4e"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:31:57.958109+00:00",
+          "finished_at": "2026-06-27T22:31:58.316029+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f5dd6c74b0b73d79c50"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:32:13.089462+00:00",
+          "finished_at": "2026-06-27T22:32:13.448385+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f6dd6c74b0b73d79c54"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:32:27.958649+00:00",
+          "finished_at": "2026-06-27T22:32:28.315997+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f7bd6c74b0b73d79c55"
+        },
+        {
+          "job_name": "compliance_recalc_worker",
+          "status": "success",
+          "started_at": "2026-06-27T22:32:43.078813+00:00",
+          "finished_at": "2026-06-27T22:32:43.437438+00:00",
+          "error_message": null,
+          "outcome_status": "conditional_no_output",
+          "id": "6a404f8bd6c74b0b73d79c57"
+        }
+      ]
+    }
+  },
+  "heartbeat_doc": {
+    "_id": "default",
+    "last_heartbeat_at": "2026-06-27T22:31:43.322091+00:00",
+    "updated_at": "2026-06-27T22:31:43.322091+00:00"
+  },
+  "gap_analysis": [
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 838.8,
+      "from_finished": "2026-06-27T21:40:31.515997+00:00",
+      "to_finished": "2026-06-27T21:54:30.314459+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 832.8,
+      "from_finished": "2026-06-27T15:10:31.511213+00:00",
+      "to_finished": "2026-06-27T15:24:24.261871+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 777.8,
+      "from_finished": "2026-06-27T15:30:33.324322+00:00",
+      "to_finished": "2026-06-27T15:43:31.123656+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 616.1,
+      "from_finished": "2026-06-27T18:10:31.449761+00:00",
+      "to_finished": "2026-06-27T18:20:47.534347+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 603.1,
+      "from_finished": "2026-06-27T15:50:33.871268+00:00",
+      "to_finished": "2026-06-27T16:00:36.937748+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 602.5,
+      "from_finished": "2026-06-27T14:50:31.394207+00:00",
+      "to_finished": "2026-06-27T15:00:33.856583+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 602.1,
+      "from_finished": "2026-06-27T16:50:32.066184+00:00",
+      "to_finished": "2026-06-27T17:00:34.128531+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.7,
+      "from_finished": "2026-06-27T17:50:31.386790+00:00",
+      "to_finished": "2026-06-27T18:00:33.100802+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.5,
+      "from_finished": "2026-06-27T18:50:31.265594+00:00",
+      "to_finished": "2026-06-27T19:00:32.803756+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.5,
+      "from_finished": "2026-06-27T20:00:32.944989+00:00",
+      "to_finished": "2026-06-27T20:10:34.448698+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.5,
+      "from_finished": "2026-06-27T20:50:31.745654+00:00",
+      "to_finished": "2026-06-27T21:00:33.216194+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.5,
+      "from_finished": "2026-06-27T22:20:32.298129+00:00",
+      "to_finished": "2026-06-27T22:30:33.801102+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.3,
+      "from_finished": "2026-06-27T19:50:31.623730+00:00",
+      "to_finished": "2026-06-27T20:00:32.944989+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.2,
+      "from_finished": "2026-06-27T17:20:31.836191+00:00",
+      "to_finished": "2026-06-27T17:30:32.989727+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.2,
+      "from_finished": "2026-06-27T19:20:31.469610+00:00",
+      "to_finished": "2026-06-27T19:30:32.645839+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 601.1,
+      "from_finished": "2026-06-27T21:20:31.693990+00:00",
+      "to_finished": "2026-06-27T21:30:32.770770+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 600.4,
+      "from_finished": "2026-06-27T16:20:32.494825+00:00",
+      "to_finished": "2026-06-27T16:30:32.919007+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 600.4,
+      "from_finished": "2026-06-27T16:40:31.697846+00:00",
+      "to_finished": "2026-06-27T16:50:32.066184+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 600.2,
+      "from_finished": "2026-06-27T14:10:32.005517+00:00",
+      "to_finished": "2026-06-27T14:20:32.252806+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 600.1,
+      "from_finished": "2026-06-27T20:20:32.535951+00:00",
+      "to_finished": "2026-06-27T20:30:32.637745+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "sla_watchdog",
+      "gap_seconds": 600.1,
+      "from_finished": "2026-06-27T21:10:31.583337+00:00",
+      "to_finished": "2026-06-27T21:20:31.693990+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "scheduler_heartbeat",
+      "gap_seconds": 435.6,
+      "from_finished": "2026-06-27T15:37:34.294653+00:00",
+      "to_finished": "2026-06-27T15:44:49.872470+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "scheduler_heartbeat",
+      "gap_seconds": 423.4,
+      "from_finished": "2026-06-27T15:18:31.144230+00:00",
+      "to_finished": "2026-06-27T15:25:34.512895+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "scheduler_heartbeat",
+      "gap_seconds": 414.0,
+      "from_finished": "2026-06-27T21:48:49.474270+00:00",
+      "to_finished": "2026-06-27T21:55:43.479768+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "risk_signal_regen_worker",
+      "gap_seconds": 296.0,
+      "from_finished": "2026-06-27T15:19:31.112617+00:00",
+      "to_finished": "2026-06-27T15:24:27.158601+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "risk_signal_regen_worker",
+      "gap_seconds": 283.9,
+      "from_finished": "2026-06-27T21:49:49.423429+00:00",
+      "to_finished": "2026-06-27T21:54:33.344466+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    },
+    {
+      "job": "risk_signal_regen_worker",
+      "gap_seconds": 268.8,
+      "from_finished": "2026-06-27T15:39:04.476763+00:00",
+      "to_finished": "2026-06-27T15:43:33.295188+00:00",
+      "from_run_id": "",
+      "to_run_id": ""
+    }
+  ],
+  "deploy_correlation": [
+    {
+      "sha": "12ea3502",
+      "approx_utc": "2026-06-27T15:20:00+00:00",
+      "event": "ops remediations deploy",
+      "gaps_within_15min": [
+        {
+          "job": "sla_watchdog",
+          "gap_seconds": 832.8,
+          "from_finished": "2026-06-27T15:10:31.511213+00:00",
+          "to_finished": "2026-06-27T15:24:24.261871+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        },
+        {
+          "job": "sla_watchdog",
+          "gap_seconds": 777.8,
+          "from_finished": "2026-06-27T15:30:33.324322+00:00",
+          "to_finished": "2026-06-27T15:43:31.123656+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        },
+        {
+          "job": "scheduler_heartbeat",
+          "gap_seconds": 423.4,
+          "from_finished": "2026-06-27T15:18:31.144230+00:00",
+          "to_finished": "2026-06-27T15:25:34.512895+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        },
+        {
+          "job": "risk_signal_regen_worker",
+          "gap_seconds": 296.0,
+          "from_finished": "2026-06-27T15:19:31.112617+00:00",
+          "to_finished": "2026-06-27T15:24:27.158601+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        }
+      ]
+    },
+    {
+      "sha": "02e71254",
+      "approx_utc": "2026-06-27T15:35:00+00:00",
+      "event": "health batch hotfix deploy",
+      "gaps_within_15min": [
+        {
+          "job": "sla_watchdog",
+          "gap_seconds": 777.8,
+          "from_finished": "2026-06-27T15:30:33.324322+00:00",
+          "to_finished": "2026-06-27T15:43:31.123656+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        },
+        {
+          "job": "scheduler_heartbeat",
+          "gap_seconds": 435.6,
+          "from_finished": "2026-06-27T15:37:34.294653+00:00",
+          "to_finished": "2026-06-27T15:44:49.872470+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        },
+        {
+          "job": "risk_signal_regen_worker",
+          "gap_seconds": 268.8,
+          "from_finished": "2026-06-27T15:39:04.476763+00:00",
+          "to_finished": "2026-06-27T15:43:33.295188+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        }
+      ]
+    },
+    {
+      "sha": "f2c10442",
+      "approx_utc": "2026-06-27T21:45:00+00:00",
+      "event": "control centre fix deploy",
+      "gaps_within_15min": [
+        {
+          "job": "sla_watchdog",
+          "gap_seconds": 838.8,
+          "from_finished": "2026-06-27T21:40:31.515997+00:00",
+          "to_finished": "2026-06-27T21:54:30.314459+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        },
+        {
+          "job": "scheduler_heartbeat",
+          "gap_seconds": 414.0,
+          "from_finished": "2026-06-27T21:48:49.474270+00:00",
+          "to_finished": "2026-06-27T21:55:43.479768+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        },
+        {
+          "job": "risk_signal_regen_worker",
+          "gap_seconds": 283.9,
+          "from_finished": "2026-06-27T21:49:49.423429+00:00",
+          "to_finished": "2026-06-27T21:54:33.344466+00:00",
+          "from_run_id": "",
+          "to_run_id": ""
+        }
+      ]
+    }
+  ],
+  "recalc_queue": {
+    "queue_depth_pending": null,
+    "active_running": null,
+    "dead_letter": null
+  }
+}

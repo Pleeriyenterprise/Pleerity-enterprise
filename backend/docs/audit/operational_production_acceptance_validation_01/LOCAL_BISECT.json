@@ -1,0 +1,46 @@
+{
+  "steps": {
+    "health": {
+      "ok": true,
+      "ms": 16097.14
+    },
+    "security": {
+      "ok": true,
+      "ms": 1331.09
+    },
+    "revenue": {
+      "ok": false,
+      "ms": 205.34,
+      "error": "StripeModeConfigurationError: STRIPE_MODE is not set and no Stripe secret key is configured.",
+      "tb": "Traceback (most recent call last):\n  File \"<string>\", line 27, in step\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\control_centre_service.py\", line 256, in _collect_revenue_block\n    plan_def = plan_registry.get_plan_by_code_string(plan_code)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\plan_registry.py\", line 688, in get_plan_by_code_string\n    return self.get_plan(plan_code)\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\plan_registry.py\", line 609, in get_plan\n    config = get_stripe_price_mappings()\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\plan_registry.py\", line 191, in get_stripe_price_mappings\n    mode = _get_stripe_mode()\n           ^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\plan_registry.py\", line 128, in _get_stripe_mode\n    return get_stripe_mode()\n           ^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\stripe_mode_authority.py\", line 152, in get_stripe_mode\n    raise StripeModeConfigurationError(\nservices.stripe_mode_authority.StripeModeConfigurationError: STRIPE_MODE is not set and no Stripe secret key is configured.\n"
+    },
+    "engagement": {
+      "ok": true,
+      "ms": 422.42
+    },
+    "published_registry": {
+      "ok": true,
+      "ms": 181.46
+    },
+    "drift": {
+      "ok": false,
+      "ms": 2770.41,
+      "error": "AttributeError: 'NoneType' object has no attribute 'upper'",
+      "tb": "Traceback (most recent call last):\n  File \"<string>\", line 27, in step\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\requirement_workflow_audit.py\", line 517, in summarize_workflow_drift_from_requirements_sample\n    enriched = await enrich_requirements_for_admin(db, rows)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\requirement_truth.py\", line 1137, in enrich_requirements_for_admin\n    enrich_requirement_dict(\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\requirement_truth.py\", line 612, in enrich_requirement_dict\n    timeline = build_compliance_timeline(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\compliance_timeline.py\", line 795, in build_compliance_timeline\n    return calculate_compliance_timeline(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\compliance_timeline.py\", line 716, in calculate_compliance_timeline\n    family = _family_rules_for_requirement(requirement, semantics, field_contract)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\compliance_timeline.py\", line 445, in _family_rules_for_requirement\n    canonical = normalize_requirement_code(slug).upper() if slug else \"\"\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'NoneType' object has no attribute 'upper'\n"
+    },
+    "wo_mismatch": {
+      "ok": true,
+      "ms": 134.9
+    },
+    "full_snapshot": {
+      "ok": false,
+      "ms": 21133.05,
+      "error": "AttributeError: 'NoneType' object has no attribute 'upper'",
+      "tb": "Traceback (most recent call last):\n  File \"<string>\", line 27, in step\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\control_centre_service.py\", line 682, in get_control_centre_snapshot\n    drift_sample = await summarize_workflow_drift_from_requirements_sample(db, max_rows=120)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\requirement_workflow_audit.py\", line 517, in summarize_workflow_drift_from_requirements_sample\n    enriched = await enrich_requirements_for_admin(db, rows)\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\requirement_truth.py\", line 1137, in enrich_requirements_for_admin\n    enrich_requirement_dict(\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\requirement_truth.py\", line 612, in enrich_requirement_dict\n    timeline = build_compliance_timeline(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\compliance_timeline.py\", line 795, in build_compliance_timeline\n    return calculate_compliance_timeline(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\compliance_timeline.py\", line 716, in calculate_compliance_timeline\n    family = _family_rules_for_requirement(requirement, semantics, field_contract)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\services\\compliance_timeline.py\", line 445, in _family_rules_for_requirement\n    canonical = normalize_requirement_code(slug).upper() if slug else \"\"\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'NoneType' object has no attribute 'upper'\n"
+    }
+  },
+  "last_completed_type_counts": {
+    "str": 22
+  },
+  "max_test": "2026-06-27T21:42:19.237292+00:00"
+}

@@ -1,0 +1,32 @@
+{
+  "validated_at": "2026-06-27T21:53:03.726607+00:00",
+  "api": {
+    "/admin/observability/health-summary": {
+      "status": 200,
+      "ms": 15829.02
+    },
+    "/admin/control-centre/snapshot": {
+      "status": 200,
+      "ms": 41560.76
+    },
+    "/admin/observability/incidents?status=open&limit=20": {
+      "status": 200,
+      "ms": 2170.06
+    },
+    "/admin/observability/job-runs?limit=5": {
+      "status": 200,
+      "ms": 2096.49
+    }
+  },
+  "admin_login": true,
+  "max_last_completed_simulation": {
+    "count": 22,
+    "types": {
+      "str": 22
+    },
+    "max_ok": true,
+    "max_error": null,
+    "max_result": "2026-06-27T21:50:01.925903+00:00"
+  },
+  "jobs_in_summary": 51
+}
