@@ -596,6 +596,14 @@ export default function AdminAutomationCentrePage() {
                               Message logs
                             </button>
                           )}
+                          {info.lastRun?.id && (
+                            <Link
+                              to={`/admin/ops/evidence-timeline?job_run_id=${encodeURIComponent(info.lastRun.id)}`}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-teal-300 rounded hover:bg-teal-50 text-teal-800"
+                            >
+                              Evidence
+                            </Link>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -44,6 +44,7 @@ import {
   Link2,
   ListChecks,
   GitCompare,
+  GitBranch,
   Rocket,
   Search,
 } from 'lucide-react';
@@ -169,6 +170,7 @@ const navSections = [
       { href: '/admin/dashboard', label: 'Email Templates', icon: Mail, tabTarget: 'templates' },
       { href: '/admin/dashboard', label: 'Email Delivery', icon: Mail, tabTarget: 'emailDelivery' },
       { href: '/admin/automation', label: 'Automation Control Centre', icon: Zap },
+      { href: '/admin/ops/evidence-timeline', label: 'Operational Evidence Timeline', icon: GitBranch },
       { href: '/admin/incidents', label: 'Incidents', icon: AlertTriangle, badge: 'incidents' },
       { href: '/admin/security', label: 'Security Monitoring', icon: Shield },
       { href: '/admin/dashboard', label: 'System Audit Logs', icon: History, tabTarget: 'audit' },

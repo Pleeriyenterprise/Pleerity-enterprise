@@ -108,6 +108,51 @@ class NotificationResult:
     details: Dict[str, Any] = field(default_factory=dict)
 
 
+async def _operational_evidence_notification_queued(
+    message_id: str,
+    client_id: Optional[str],
+    channel: str,
+    template_key: str,
+) -> None:
+    try:
+        from services.operational_evidence.producers import emit_notification_queued
+
+        await emit_notification_queued(
+            message_id=message_id,
+            client_id=client_id,
+            channel=channel,
+            template_key=template_key,
+        )
+    except Exception:
+        pass
+
+
+async def _operational_evidence_notification_result(
+    message_id: Optional[str],
+    client_id: Optional[str],
+    channel: str,
+    template_key: str,
+    result: NotificationResult,
+) -> None:
+    if not message_id or result.outcome in ("duplicate_ignored", "blocked"):
+        return
+    try:
+        from services.operational_evidence.producers import emit_notification_outcome
+
+        await emit_notification_outcome(
+            message_id=message_id,
+            client_id=client_id,
+            channel=channel,
+            template_key=template_key,
+            outcome=result.outcome,
+            error_message=result.error_message,
+            transient=bool(result.details.get("transient")),
+            attempt_count=result.details.get("attempt_count"),
+        )
+    except Exception:
+        pass
+
+
 def _is_transient_error(exc: Exception) -> bool:
     """True if error is retryable (timeout, 5xx)."""
     if isinstance(exc, TimeoutError):
@@ -289,6 +334,7 @@ class NotificationOrchestrator:
                     existing = await db.message_logs.find_one({"idempotency_key": idempotency_key}, {"_id": 0, "message_id": 1})
                     return NotificationResult(outcome="duplicate_ignored", message_id=existing.get("message_id") if existing else None, details={"idempotency_key": idempotency_key})
                 raise
+            await _operational_evidence_notification_queued(message_id, None, channel, template_key)
             throttle_result = await self._check_global_throttle(db, channel, message_id, None, template_key)
             if throttle_result:
                 return throttle_result
@@ -296,6 +342,7 @@ class NotificationOrchestrator:
                 result = await self._send_email(template_key, template, client, context, message_id, db, datetime.now(timezone.utc), str(recipient).strip())
             else:
                 result = await self._send_sms(template_key, template, client, context, message_id, db, datetime.now(timezone.utc), str(recipient).strip())
+            await _operational_evidence_notification_result(message_id, None, channel, template_key, result)
             return result
 
         # Load client
@@ -465,6 +512,7 @@ class NotificationOrchestrator:
                 )
             raise
 
+        await _operational_evidence_notification_queued(message_id, client_id, channel, template_key)
         throttle_result = await self._check_global_throttle(db, channel, message_id, client_id, template_key)
         if throttle_result:
             return throttle_result
@@ -476,6 +524,7 @@ class NotificationOrchestrator:
             result = await self._send_sms(template_key, template, client, context, message_id, db, now, recipient)
 
         if result.outcome == "sent":
+            await _operational_evidence_notification_result(message_id, client_id, channel, template_key, result)
             return result
         if result.outcome == "failed" and result.details.get("transient") and result.details.get("attempt_count") is not None:
             # Enqueue retry
@@ -504,6 +553,7 @@ class NotificationOrchestrator:
                     "error": result.error_message,
                 },
             )
+        await _operational_evidence_notification_result(message_id, client_id, channel, template_key, result)
         return result
 
     async def _apply_gating(
@@ -1173,6 +1223,7 @@ class NotificationOrchestrator:
         await db.notification_retry_queue.delete_many({"message_id": message_id})
 
         if result.outcome == "sent":
+            await _operational_evidence_notification_result(message_id, client_id, channel, template_key, result)
             return result
         if result.outcome == "failed":
             new_attempt = attempt + 1
@@ -1203,6 +1254,7 @@ class NotificationOrchestrator:
                     client_id=client_id,
                     metadata={"message_id": message_id, "template_key": template_key, "channel": channel},
                 )
+        await _operational_evidence_notification_result(message_id, client_id, channel, template_key, result)
         return result
 
 

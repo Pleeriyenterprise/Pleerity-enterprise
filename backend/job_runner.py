@@ -16,6 +16,34 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
+async def _emit_job_run_evidence_finished(
+    job_run_id: str,
+    job_id: str,
+    status: str,
+    *,
+    error_message: Optional[str] = None,
+    outcome_status: Optional[str] = None,
+) -> None:
+    try:
+        from services.job_run_service import COLLECTION as JR_COL
+        from database import database
+        from services.operational_evidence.producers import emit_job_run_finished
+
+        db = database.get_db()
+        run = await db[JR_COL].find_one({"_id": __import__("bson").ObjectId(job_run_id)})
+        duration_ms = run.get("duration_ms") if run else None
+        await emit_job_run_finished(
+            job_run_id=job_run_id,
+            job_name=job_id,
+            status=status,
+            duration_ms=duration_ms,
+            error_message=error_message,
+            outcome_status=outcome_status,
+        )
+    except Exception as emit_err:
+        logger.debug("operational_evidence job finished emit skipped: %s", emit_err)
+
+
 def _filter_kwargs_for_callable(fn: Callable[..., Any], kw: Dict[str, Any]) -> Dict[str, Any]:
     """Pass only parameters the job runner function declares (plus optional **kwargs)."""
     if not kw:
@@ -62,10 +90,34 @@ async def run_instrumented(
     kw = {k: v for k, v in dict(job_kwargs or {}).items() if v is not None}
     if job_id == "monthly_digest" and triggered_by:
         kw.setdefault("triggered_by_admin_id", triggered_by)
+    try:
+        from services.operational_evidence.context import merge_context, set_operational_context
+        ctx = merge_context().ensure_execution()
+        set_operational_context(ctx)
+    except Exception:
+        pass
+    corr = None
+    try:
+        from services.operational_evidence.context import get_operational_context
+        ctx = get_operational_context()
+        corr = ctx.correlation_id if ctx else None
+    except Exception:
+        pass
     job_run_id = await start_job_run(
-        job_id, run_type, triggered_by=triggered_by, metadata=meta if meta else None
+        job_id, run_type, triggered_by=triggered_by, correlation_id=corr, metadata=meta if meta else None
     )
     logger.info("run_instrumented: start_job_run returned job_run_id=%s for job_id=%s", job_run_id, job_id)
+    try:
+        from services.operational_evidence.producers import emit_job_run_started
+        await emit_job_run_started(
+            job_run_id=job_run_id,
+            job_name=job_id,
+            run_type=run_type,
+            correlation_id=corr,
+            triggered_by=triggered_by,
+        )
+    except Exception as emit_err:
+        logger.debug("operational_evidence job started emit skipped: %s", emit_err)
     try:
         call_kw = _filter_kwargs_for_callable(fn, kw)
         if call_kw:
@@ -86,6 +138,13 @@ async def run_instrumented(
                 stack_trace=result.get("stack_trace"),
                 outcome_metrics=outcome_metrics if outcome_metrics else None,
             )
+            await _emit_job_run_evidence_finished(
+                job_run_id,
+                job_id,
+                "failed",
+                error_message=result.get("error_message"),
+                outcome_status=outcome_status,
+            )
             return result
         if outcome_status == OUTCOME_DEGRADED:
             await finish_job_run_degraded(
@@ -102,6 +161,9 @@ async def run_instrumented(
                     logger.info("Incident recovery: resolved %s incident(s) for job %s after degraded run", n, job_id)
             except Exception as rec_err:
                 logger.warning("Incident recovery after degraded run failed: %s", rec_err)
+            await _emit_job_run_evidence_finished(
+                job_run_id, job_id, "degraded", error_message=result.get("error_message"), outcome_status=outcome_status
+            )
             return result
         await finish_job_run_success(
             job_run_id,
@@ -117,6 +179,9 @@ async def run_instrumented(
                 logger.info("Incident recovery: resolved %s incident(s) for job %s after success", n, job_id)
         except Exception as rec_err:
             logger.warning("Incident recovery after success failed: %s", rec_err)
+        await _emit_job_run_evidence_finished(
+            job_run_id, job_id, "success", outcome_status=outcome_status
+        )
         return result
     except Exception as e:
         await finish_job_run_failure(
@@ -125,6 +190,7 @@ async def run_instrumented(
             error_message=str(e),
             stack_trace=traceback.format_exc(),
         )
+        await _emit_job_run_evidence_finished(job_run_id, job_id, "failed", error_message=str(e))
         raise
 
 
@@ -351,12 +417,34 @@ async def run_compliance_recalc_worker():
             if r.modified_count == 0:
                 claim_skipped += 1
                 continue
+            queue_item_id = str(jid)
+            queue_collection = "compliance_recalc_queue"
             actor = {"id": actor_id or "system", "role": actor_type}
             _nctx = normalize_recalc_job_context(job)
             context = {
                 "correlation_id": (_nctx.get("correlation_id") or correlation_id or ""),
                 "trigger_reason": (_nctx.get("trigger_reason") or trigger_reason or ""),
             }
+            try:
+                from services.operational_evidence.context import merge_context, set_operational_context
+                from services.operational_evidence.producers import emit_queue_item_claimed
+
+                octx = merge_context(
+                    queue_item_id=queue_item_id,
+                    property_id=property_id,
+                    client_id=client_id,
+                    correlation_id=context["correlation_id"],
+                ).fork_execution()
+                set_operational_context(octx)
+                await emit_queue_item_claimed(
+                    queue_item_id=queue_item_id,
+                    queue_collection=queue_collection,
+                    property_id=property_id,
+                    client_id=client_id or "",
+                    correlation_id=context["correlation_id"],
+                )
+            except Exception as emit_err:
+                logger.debug("operational_evidence queue claimed emit skipped: %s", emit_err)
             old_prop = await db.properties.find_one(
                 {"property_id": property_id},
                 {"_id": 0, "compliance_score": 1, "compliance_version": 1},
@@ -446,6 +534,18 @@ async def run_compliance_recalc_worker():
                     },
                 )
                 processed += 1
+                try:
+                    from services.operational_evidence.producers import emit_queue_item_completed
+
+                    await emit_queue_item_completed(
+                        queue_item_id=queue_item_id,
+                        queue_collection=queue_collection,
+                        property_id=property_id,
+                        client_id=client_id or "",
+                        correlation_id=context["correlation_id"],
+                    )
+                except Exception as emit_err:
+                    logger.debug("operational_evidence queue completed emit skipped: %s", emit_err)
             except Exception as e:
                 next_attempts = attempts + 1
                 if next_attempts >= 5:
@@ -515,6 +615,30 @@ async def run_compliance_recalc_worker():
                     failure_stage,
                     err_str,
                 )
+                try:
+                    from services.operational_evidence.producers import emit_queue_item_dead, emit_queue_item_failed
+
+                    if new_status == STATUS_DEAD:
+                        await emit_queue_item_dead(
+                            queue_item_id=queue_item_id,
+                            queue_collection=queue_collection,
+                            property_id=property_id,
+                            client_id=client_id or "",
+                            correlation_id=context["correlation_id"],
+                            error_message=err_str,
+                        )
+                    else:
+                        await emit_queue_item_failed(
+                            queue_item_id=queue_item_id,
+                            queue_collection=queue_collection,
+                            property_id=property_id,
+                            client_id=client_id or "",
+                            correlation_id=context["correlation_id"],
+                            error_message=err_str,
+                            will_retry=True,
+                        )
+                except Exception as emit_err:
+                    logger.debug("operational_evidence queue failed emit skipped: %s", emit_err)
             finally:
                 hb_task.cancel()
                 try:

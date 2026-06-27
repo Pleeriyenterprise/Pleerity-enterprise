@@ -44,4 +44,18 @@ async def append_evidence_review_event(
         "correlation_id": correlation_id,
     }
     await db.evidence_review_events.insert_one(row)
+    try:
+        from services.operational_evidence.producers import emit_evidence_review_transition
+
+        await emit_evidence_review_transition(
+            event_id=event_id,
+            document_id=document_id,
+            client_id=client_id,
+            property_id=property_id,
+            requirement_id=requirement_id,
+            correlation_id=correlation_id,
+            to_state=to_state,
+        )
+    except Exception:
+        pass
     return event_id

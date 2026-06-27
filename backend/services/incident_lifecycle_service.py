@@ -306,6 +306,23 @@ async def record_operational_detection(
         should_send = False
         suppressed_reason = "deployment_window_p2_transient"
 
+    try:
+        from services.operational_evidence.constants import EVT_INCIDENT_OPENED
+        from services.operational_evidence.producers import emit_incident_lifecycle
+
+        await emit_incident_lifecycle(
+            incident_id=incident_id,
+            event_type=EVT_INCIDENT_OPENED,
+            title=title,
+            severity=severity,
+            lifecycle_state=lifecycle_state,
+            related_job_name=related_job_name,
+            related_job_run_id=related_job_run_id,
+            repeat_count=1,
+        )
+    except Exception as emit_err:
+        logger.debug("operational_evidence incident opened emit skipped: %s", emit_err)
+
     return DetectionOutcome(
         incident_id=incident_id,
         created=True,
@@ -411,6 +428,24 @@ async def _record_repeat(
         set_doc["lifecycle_history"] = history
 
     await db[COLLECTION].update_one({"_id": oid, "status": {"$in": list(ACTIVE_INCIDENT_STATUSES)}}, inc_update)
+
+    if degraded_transition:
+        try:
+            from services.operational_evidence.constants import EVT_INCIDENT_DEGRADED
+            from services.operational_evidence.producers import emit_incident_lifecycle
+
+            await emit_incident_lifecycle(
+                incident_id=incident_id,
+                event_type=EVT_INCIDENT_DEGRADED,
+                title=existing.get("title") or "Incident degraded",
+                severity=severity,
+                lifecycle_state=lifecycle_state,
+                related_job_name=existing.get("related_job_name"),
+                related_job_run_id=existing.get("related_job_run_id"),
+                repeat_count=repeat_count,
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence incident degraded emit skipped: %s", emit_err)
 
     return DetectionOutcome(
         incident_id=incident_id,
@@ -521,6 +556,19 @@ async def try_transition_to_recovered(
         {"_id": ObjectId(incident_id), "status": {"$in": list(ACTIVE_INCIDENT_STATUSES)}},
         {"$set": set_doc},
     )
+    if doc.get("lifecycle_state") != LIFECYCLE_RECOVERED:
+        try:
+            from services.operational_evidence.producers import emit_incident_recovered
+
+            await emit_incident_recovered(
+                incident_id=incident_id,
+                title=doc.get("title") or "Incident recovered",
+                severity=doc.get("severity") or "P2",
+                recovery_note=recovery_note,
+                related_job_name=doc.get("related_job_name"),
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence incident recovered emit skipped: %s", emit_err)
     return True, should_send
 
 
@@ -559,6 +607,17 @@ async def try_auto_resolve_after_recovery(incident_id: str, resolution_note: str
                 }
             },
         )
+        try:
+            from services.operational_evidence.producers import emit_incident_resolved_auto
+
+            await emit_incident_resolved_auto(
+                incident_id=incident_id,
+                title=doc.get("title") or "Incident resolved",
+                severity=doc.get("severity") or "P2",
+                resolution_note=resolution_note,
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence incident resolved emit skipped: %s", emit_err)
     return ok
 
 

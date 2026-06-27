@@ -1074,6 +1074,15 @@ export const adminAPI = {
     }),
   getDeliveryStateDefinitions: () => apiClient.get('/admin/observability/delivery-state-definitions'),
   getIncidents: (params = {}) => apiClient.get('/admin/observability/incidents', { params }),
+  getOperationalEvidenceEvents: (params = {}) => apiClient.get('/admin/observability/evidence/events', { params }),
+  getOperationalEvidenceStory: (params = {}) => apiClient.get('/admin/observability/evidence/stories', { params }),
+  getOperationalEvidenceChain: (params = {}) => apiClient.get('/admin/observability/evidence/chains', { params }),
+  getOperationalEvidenceIncidentView: (incidentId) =>
+    apiClient.get(`/admin/observability/evidence/views/incident/${incidentId}`),
+  getOperationalEvidenceJobRunView: (jobRunId) =>
+    apiClient.get(`/admin/observability/evidence/views/job-run/${jobRunId}`),
+  getOperationalEvidenceIntelligence: (params = {}) =>
+    apiClient.get('/admin/observability/evidence/intelligence/shortcuts', { params }),
   getIncident: (incidentId) => apiClient.get(`/admin/observability/incidents/${incidentId}`),
   acknowledgeIncident: (incidentId, note) =>
     apiClient.post(`/admin/observability/incidents/${incidentId}/ack`, note != null ? { note } : {}),
