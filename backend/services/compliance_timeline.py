@@ -442,7 +442,7 @@ def _family_rules_for_requirement(
     slug = _storage_slug(requirement)
     if slug in _FAMILY_RULES:
         return _FAMILY_RULES[slug]
-    canonical = normalize_requirement_code(slug).upper() if slug else ""
+    canonical = (normalize_requirement_code(slug) or "").upper() if slug else ""
     if canonical:
         mapped = fallback_entry_for_canonical_code(canonical)
         if mapped and slug:
