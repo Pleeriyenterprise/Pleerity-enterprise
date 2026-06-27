@@ -544,20 +544,34 @@ async def _fetch_jobs_detail_for_health_summary(db, job_names: List[str]) -> Dic
         return jobs_detail
 
     job_filter = {"job_name": {"$in": list(job_names)}}
+    finished_filter = {"finished_at": {"$exists": True, "$ne": None}}
 
     async def _latest_by_job(extra_match: Dict[str, Any], field_map: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
+        # $top avoids a collection-wide $sort before $group (memory limit on large job_runs).
+        output_doc = {out_key: f"${src_key}" for out_key, src_key in field_map.items()}
         pipeline = [
-            {"$match": {**job_filter, **extra_match}},
-            {"$sort": {"finished_at": -1}},
+            {"$match": {**job_filter, **finished_filter, **extra_match}},
             {
                 "$group": {
                     "_id": "$job_name",
-                    **{out_key: {"$first": f"${src_key}"} for out_key, src_key in field_map.items()},
+                    "row": {
+                        "$top": {
+                            "sortBy": {"finished_at": -1},
+                            "output": output_doc,
+                        }
+                    },
                 }
             },
         ]
-        rows = await db.job_runs.aggregate(pipeline).to_list(len(job_names) + 10)
-        return {str(r["_id"]): r for r in rows if r.get("_id")}
+        rows = await db.job_runs.aggregate(pipeline, allowDiskUse=True).to_list(len(job_names) + 10)
+        out: Dict[str, Dict[str, Any]] = {}
+        for row in rows:
+            jid = row.get("_id")
+            if not jid:
+                continue
+            payload = row.get("row") or {}
+            out[str(jid)] = payload
+        return out
 
     last_runs = await _latest_by_job(
         {},
