@@ -23,6 +23,7 @@ from services.operational_evidence.query_service import (
     list_evidence_events,
 )
 from services.operational_evidence.story_service import get_operational_story
+from services.operational_evidence.backfill_service import run_operational_evidence_backfill
 
 router = APIRouter(
     prefix="/api/admin/observability/evidence",
@@ -36,6 +37,12 @@ class AnnotationCreate(BaseModel):
     root_execution_id: Optional[str] = None
     correlation_id: Optional[str] = None
     note: str = Field(..., min_length=1, max_length=4000)
+
+
+class BackfillRequest(BaseModel):
+    days: int = Field(7, ge=1, le=90)
+    limit_per_source: int = Field(500, ge=1, le=2000)
+    sources: Optional[list[str]] = None
 
 
 def _filter_kwargs(**kwargs: Any) -> Dict[str, Any]:
@@ -215,6 +222,17 @@ async def view_notification(request: Request, notification_id: str, limit: int =
 async def intelligence_shortcuts(request: Request, hours: int = Query(24, ge=1, le=168)):
     await admin_route_guard(request)
     return await get_intelligence_shortcuts(hours=hours)
+
+
+@router.post("/backfill")
+async def trigger_backfill(request: Request, body: BackfillRequest):
+    """Admin-triggered historical backfill from authoritative sources (bounded, idempotent)."""
+    await admin_route_guard(request)
+    return await run_operational_evidence_backfill(
+        days=body.days,
+        limit_per_source=body.limit_per_source,
+        sources=body.sources,
+    )
 
 
 @router.post("/annotations")

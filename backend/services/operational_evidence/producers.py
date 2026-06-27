@@ -804,3 +804,204 @@ async def emit_incident_resolved_auto(
         metadata={"resolution_note": resolution_note, "auto": True},
         context=ctx,
     )
+
+
+RISK_REGEN_QUEUE_COLLECTION = "risk_signal_regen_queue"
+
+
+def _risk_regen_correlation(property_id: str) -> str:
+    return f"risk-regen:{property_id}"
+
+
+async def emit_risk_regen_queue_created(
+    *,
+    queue_item_id: str,
+    property_id: str,
+    client_id: str,
+    trigger_reason: str,
+) -> Optional[str]:
+    correlation_id = _risk_regen_correlation(property_id)
+    ctx = merge_context(
+        queue_item_id=queue_item_id,
+        property_id=property_id,
+        client_id=client_id,
+        correlation_id=correlation_id,
+    ).fork_execution()
+    return await emit_operational_evidence(
+        category=CATEGORY_RISK,
+        event_type=EVT_QUEUE_ITEM_CREATED,
+        severity="info",
+        status="success",
+        summary=f"Risk signal regen queued ({trigger_reason}) for property {property_id}",
+        source_service="risk_signal_regen_queue",
+        source_component="enqueue_risk_signal_regen",
+        trigger={"type": "enqueue", "ref": trigger_reason},
+        customer_impact={
+            "classification": IMPACT_OPERATIONAL_ONLY,
+            "scope": "property",
+            "affected_count": 1,
+            "summary": "Risk signal regeneration scheduled",
+        },
+        evidence={
+            "source_collection": RISK_REGEN_QUEUE_COLLECTION,
+            "source_id": queue_item_id,
+            "deep_link": f"/admin/ops/evidence-timeline?property_id={property_id}&category=risk",
+        },
+        metadata={"trigger_reason": trigger_reason},
+        context=ctx,
+    )
+
+
+async def emit_risk_regen_queue_claimed(
+    *,
+    queue_item_id: str,
+    property_id: str,
+    client_id: str,
+    job_run_id: Optional[str] = None,
+) -> Optional[str]:
+    correlation_id = _risk_regen_correlation(property_id)
+    ctx = merge_context(
+        queue_item_id=queue_item_id,
+        property_id=property_id,
+        client_id=client_id,
+        correlation_id=correlation_id,
+        job_run_id=job_run_id,
+    ).fork_execution()
+    return await emit_operational_evidence(
+        category=CATEGORY_WORKER,
+        event_type=EVT_QUEUE_ITEM_CLAIMED,
+        severity="info",
+        status="started",
+        summary=f"Risk regen worker claimed queue item for property {property_id}",
+        source_service="risk_signal_regen_queue",
+        source_component="run_risk_signal_regen_worker",
+        relationship_type=REL_CAUSED,
+        customer_impact={
+            "classification": IMPACT_OPERATIONAL_ONLY,
+            "scope": "property",
+            "affected_count": 1,
+            "summary": "Risk signal regeneration in progress",
+        },
+        evidence={
+            "source_collection": RISK_REGEN_QUEUE_COLLECTION,
+            "source_id": queue_item_id,
+            "deep_link": f"/admin/ops/evidence-timeline?property_id={property_id}&category=risk",
+        },
+        context=ctx,
+    )
+
+
+async def emit_risk_regen_queue_completed(
+    *,
+    queue_item_id: str,
+    property_id: str,
+    client_id: str,
+    generated: Optional[int] = None,
+) -> Optional[str]:
+    correlation_id = _risk_regen_correlation(property_id)
+    ctx = merge_context(
+        queue_item_id=queue_item_id,
+        property_id=property_id,
+        client_id=client_id,
+        correlation_id=correlation_id,
+    )
+    return await emit_operational_evidence(
+        category=CATEGORY_RISK,
+        event_type=EVT_QUEUE_ITEM_COMPLETED,
+        severity="info",
+        status="success",
+        summary=f"Risk signals regenerated for property {property_id}",
+        source_service="risk_signal_regen_queue",
+        source_component="run_risk_signal_regen_worker",
+        customer_impact={
+            "classification": IMPACT_PROPERTY,
+            "scope": "property",
+            "affected_count": 1,
+            "summary": "Property risk signals refreshed",
+        },
+        evidence={
+            "source_collection": RISK_REGEN_QUEUE_COLLECTION,
+            "source_id": queue_item_id,
+            "deep_link": f"/admin/ops/evidence-timeline?property_id={property_id}&category=risk",
+        },
+        metadata={"generated": generated},
+        context=ctx,
+    )
+
+
+async def emit_risk_regen_queue_failed(
+    *,
+    queue_item_id: str,
+    property_id: str,
+    client_id: str,
+    error_message: str,
+    will_retry: bool,
+) -> Optional[str]:
+    correlation_id = _risk_regen_correlation(property_id)
+    ctx = merge_context(
+        queue_item_id=queue_item_id,
+        property_id=property_id,
+        client_id=client_id,
+        correlation_id=correlation_id,
+    )
+    return await emit_operational_evidence(
+        category=CATEGORY_RISK,
+        event_type=EVT_QUEUE_ITEM_FAILED,
+        severity="error",
+        status="failed",
+        summary=f"Risk regen failed: {error_message[:200]}",
+        source_service="risk_signal_regen_queue",
+        source_component="run_risk_signal_regen_worker",
+        recovery_status="in_progress" if will_retry else "failed",
+        customer_impact={
+            "classification": IMPACT_DELAYED if will_retry else IMPACT_PROPERTY,
+            "scope": "property",
+            "affected_count": 1,
+            "summary": "Risk signal regeneration delayed" if will_retry else "Risk signal regeneration failed",
+        },
+        evidence={
+            "source_collection": RISK_REGEN_QUEUE_COLLECTION,
+            "source_id": queue_item_id,
+            "deep_link": f"/admin/ops/evidence-timeline?property_id={property_id}&category=risk",
+        },
+        metadata={"will_retry": will_retry},
+        context=ctx,
+    )
+
+
+async def emit_risk_regen_queue_dead(
+    *,
+    queue_item_id: str,
+    property_id: str,
+    client_id: str,
+    error_message: str,
+) -> Optional[str]:
+    correlation_id = _risk_regen_correlation(property_id)
+    ctx = merge_context(
+        queue_item_id=queue_item_id,
+        property_id=property_id,
+        client_id=client_id,
+        correlation_id=correlation_id,
+    )
+    return await emit_operational_evidence(
+        category=CATEGORY_RISK,
+        event_type=EVT_QUEUE_ITEM_DEAD,
+        severity="critical",
+        status="failed",
+        summary=f"Risk regen dead-lettered: {error_message[:200]}",
+        source_service="risk_signal_regen_queue",
+        source_component="run_risk_signal_regen_worker",
+        recovery_status="failed",
+        customer_impact={
+            "classification": IMPACT_PROPERTY,
+            "scope": "property",
+            "affected_count": 1,
+            "summary": "Risk signal regeneration exhausted retries",
+        },
+        evidence={
+            "source_collection": RISK_REGEN_QUEUE_COLLECTION,
+            "source_id": queue_item_id,
+            "deep_link": f"/admin/ops/evidence-timeline?property_id={property_id}&category=risk",
+        },
+        context=ctx,
+    )

@@ -21,6 +21,7 @@ import {
   getAutomationCentreDegradedReviewTitle,
 } from '../utils/automationCentreReviewHints';
 import ManualJobExecutionModal from '../components/admin/ManualJobExecutionModal';
+import OperationalEvidencePanel from '../components/admin/OperationalEvidencePanel';
 
 const JOB_STATE = {
   healthy: { label: 'Healthy', className: 'bg-green-100 text-green-800', Icon: CheckCircle },
@@ -83,6 +84,7 @@ export default function AdminAutomationCentrePage() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(null);
   const [messageLogsRun, setMessageLogsRun] = useState(null);
+  const [evidenceRun, setEvidenceRun] = useState(null);
   const [messageLogs, setMessageLogs] = useState({ items: [], job_name: '' });
   const [messageLogsLoading, setMessageLogsLoading] = useState(false);
 
@@ -164,6 +166,11 @@ export default function AdminAutomationCentrePage() {
     setMessageLogsRun(null);
     setMessageLogs({ items: [], job_name: '' });
   };
+  const openEvidencePanel = (run) => {
+    if (!run?.id) return;
+    setEvidenceRun(run);
+  };
+  const closeEvidencePanel = () => setEvidenceRun(null);
   const exportMessageLogsCsv = () => {
     if (!messageLogsRun?.id) return;
     adminAPI
@@ -597,12 +604,13 @@ export default function AdminAutomationCentrePage() {
                             </button>
                           )}
                           {info.lastRun?.id && (
-                            <Link
-                              to={`/admin/ops/evidence-timeline?job_run_id=${encodeURIComponent(info.lastRun.id)}`}
+                            <button
+                              type="button"
+                              onClick={() => openEvidencePanel(info.lastRun)}
                               className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-teal-300 rounded hover:bg-teal-50 text-teal-800"
                             >
                               Evidence
-                            </Link>
+                            </button>
                           )}
                         </div>
                       </td>
@@ -629,6 +637,28 @@ export default function AdminAutomationCentrePage() {
               load();
             }}
           />
+        )}
+
+        {evidenceRun && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="evidence-panel-title">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col m-4">
+              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <h2 id="evidence-panel-title" className="text-lg font-semibold text-gray-900">
+                  Operational evidence — {evidenceRun.job_name} (run {evidenceRun.id?.slice(-8)})
+                </h2>
+                <button
+                  type="button"
+                  onClick={closeEvidencePanel}
+                  className="px-2 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto p-4">
+                <OperationalEvidencePanel jobRunId={evidenceRun.id} defaultExpanded />
+              </div>
+            </div>
+          </div>
         )}
 
         {messageLogsRun && (

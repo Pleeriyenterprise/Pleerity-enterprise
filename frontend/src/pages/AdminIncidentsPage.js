@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import OperationalEvidencePanel from '../components/admin/OperationalEvidencePanel';
 import { AlertTriangle, RefreshCw, CheckCircle, MessageSquare } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 
@@ -212,6 +213,7 @@ export default function AdminIncidentsPage() {
                           </>
                         )}
                     </p>
+                    <OperationalEvidencePanel incidentId={inc.id} className="mt-3" />
                     {pr.technical_details && (
                       <details className="mt-3 text-xs text-gray-600">
                         <summary className="cursor-pointer text-gray-500 font-medium">Technical details</summary>

@@ -139,3 +139,56 @@ def test_score_ledger_event_type_threshold():
     assert len(story["steps"]) == 2
     assert story["steps"][0]["label"] == "Started"
     assert story["raw_evidence_available"] is True
+
+
+@pytest.mark.asyncio
+async def test_backfill_skips_already_indexed():
+    from services.operational_evidence.backfill_service import _already_indexed, _emit_backfill
+
+    mock_events = AsyncMock()
+    mock_events.find_one = AsyncMock(return_value={"_id": "existing"})
+    mock_db = MagicMock()
+    mock_db.__getitem__ = MagicMock(return_value=mock_events)
+
+    with patch("services.operational_evidence.backfill_service.database") as db_mod:
+        db_mod.get_db.return_value = mock_db
+        assert await _already_indexed("job_runs", "run1", "JOB_RUN_COMPLETED") is True
+
+
+@pytest.mark.asyncio
+async def test_backfill_emit_sets_metadata():
+    from services.operational_evidence.backfill_service import _emit_backfill
+
+    with patch("services.operational_evidence.backfill_service.emit_operational_evidence", new_callable=AsyncMock) as emit:
+        emit.return_value = "evt-1"
+        ok = await _emit_backfill(
+            category="scheduler",
+            event_type="JOB_RUN_COMPLETED",
+            summary="test",
+            source_service="backfill_service",
+            source_component="test",
+            evidence={"source_collection": "job_runs", "source_id": "r1", "deep_link": "/"},
+        )
+        assert ok is True
+        kwargs = emit.call_args.kwargs
+        assert kwargs["metadata"]["backfill"] is True
+        assert kwargs["confidence"] == 80
+
+
+@pytest.mark.asyncio
+async def test_risk_regen_queue_created_emit():
+    from services.operational_evidence.producers import emit_risk_regen_queue_created
+    from services.operational_evidence.constants import CATEGORY_RISK, EVT_QUEUE_ITEM_CREATED
+
+    with patch("services.operational_evidence.producers.emit_operational_evidence", new_callable=AsyncMock) as emit:
+        emit.return_value = "evt-risk"
+        await emit_risk_regen_queue_created(
+            queue_item_id="q1",
+            property_id="prop-1",
+            client_id="client-1",
+            trigger_reason="DOCUMENT_UPLOAD",
+        )
+        kwargs = emit.call_args.kwargs
+        assert kwargs["category"] == CATEGORY_RISK
+        assert kwargs["event_type"] == EVT_QUEUE_ITEM_CREATED
+        assert kwargs["evidence"]["source_collection"] == "risk_signal_regen_queue"

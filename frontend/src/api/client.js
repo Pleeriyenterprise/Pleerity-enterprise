@@ -1083,6 +1083,8 @@ export const adminAPI = {
     apiClient.get(`/admin/observability/evidence/views/job-run/${jobRunId}`),
   getOperationalEvidenceIntelligence: (params = {}) =>
     apiClient.get('/admin/observability/evidence/intelligence/shortcuts', { params }),
+  runOperationalEvidenceBackfill: (body = {}) =>
+    apiClient.post('/admin/observability/evidence/backfill', body),
   getIncident: (incidentId) => apiClient.get(`/admin/observability/incidents/${incidentId}`),
   acknowledgeIncident: (incidentId, note) =>
     apiClient.post(`/admin/observability/incidents/${incidentId}/ack`, note != null ? { note } : {}),

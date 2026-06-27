@@ -146,13 +146,24 @@ async def enqueue_risk_signal_regen(
         "updated_at": now.isoformat(),
     }
     try:
-        await db.risk_signal_regen_queue.insert_one(doc)
+        insert_result = await db.risk_signal_regen_queue.insert_one(doc)
         logger.info(
             "risk_regen_queue enqueued property_id=%s next_run_at=%s trigger=%s",
             property_id,
             next_run,
             trigger_reason,
         )
+        try:
+            from services.operational_evidence.producers import emit_risk_regen_queue_created
+
+            await emit_risk_regen_queue_created(
+                queue_item_id=str(insert_result.inserted_id),
+                property_id=property_id,
+                client_id=client_id,
+                trigger_reason=trigger_reason,
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence risk regen created emit skipped: %s", emit_err)
         return {
             "merged": False,
             "next_run_at": next_run,
@@ -223,6 +234,26 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
         property_id = job["property_id"]
         client_id = job.get("client_id") or ""
         attempts = int(job.get("attempts") or 0)
+        queue_item_id = str(jid)
+
+        try:
+            from services.operational_evidence.context import merge_context, set_operational_context
+            from services.operational_evidence.producers import emit_risk_regen_queue_claimed
+
+            octx = merge_context(
+                queue_item_id=queue_item_id,
+                property_id=property_id,
+                client_id=client_id,
+                correlation_id=f"risk-regen:{property_id}",
+            ).fork_execution()
+            set_operational_context(octx)
+            await emit_risk_regen_queue_claimed(
+                queue_item_id=queue_item_id,
+                property_id=property_id,
+                client_id=client_id,
+            )
+        except Exception as emit_err:
+            logger.debug("operational_evidence risk regen claimed emit skipped: %s", emit_err)
 
         try:
             if not client_id:
@@ -249,6 +280,18 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
             logger.info("risk_regen_worker start property_id=%s client_id=%s", property_id, client_id)
             out = await risk_signal_service.generate_risk_signals_for_property(property_id, client_id)
             await evaluate_operational_automation_after_risk_refresh(property_id, client_id)
+
+            try:
+                from services.operational_evidence.producers import emit_risk_regen_queue_completed
+
+                await emit_risk_regen_queue_completed(
+                    queue_item_id=queue_item_id,
+                    property_id=property_id,
+                    client_id=client_id,
+                    generated=out.get("generated"),
+                )
+            except Exception as emit_err:
+                logger.debug("operational_evidence risk regen completed emit skipped: %s", emit_err)
 
             await db.risk_signal_regen_queue.delete_one({"_id": jid})
             await create_audit_log(
@@ -284,6 +327,17 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                         }
                     },
                 )
+                try:
+                    from services.operational_evidence.producers import emit_risk_regen_queue_dead
+
+                    await emit_risk_regen_queue_dead(
+                        queue_item_id=queue_item_id,
+                        property_id=property_id,
+                        client_id=client_id,
+                        error_message=err_str,
+                    )
+                except Exception as emit_err:
+                    logger.debug("operational_evidence risk regen dead emit skipped: %s", emit_err)
                 await create_audit_log(
                     action=AuditAction.RISK_SIGNAL_REGEN_FAILED,
                     client_id=client_id,
@@ -312,6 +366,18 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                         }
                     },
                 )
+                try:
+                    from services.operational_evidence.producers import emit_risk_regen_queue_failed
+
+                    await emit_risk_regen_queue_failed(
+                        queue_item_id=queue_item_id,
+                        property_id=property_id,
+                        client_id=client_id,
+                        error_message=err_str,
+                        will_retry=True,
+                    )
+                except Exception as emit_err:
+                    logger.debug("operational_evidence risk regen failed emit skipped: %s", emit_err)
                 await create_audit_log(
                     action=AuditAction.RISK_SIGNAL_REGEN_FAILED,
                     client_id=client_id,
