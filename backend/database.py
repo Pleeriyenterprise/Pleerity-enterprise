@@ -442,6 +442,48 @@ class Database:
                 await self.db.operational_evidence_annotations.create_index([("correlation_id", 1), ("created_at", -1)])
             except Exception as e:
                 logger.warning("operational_evidence indexes: %s", e)
+            # Compliance Evidence Graph — decision foundation (Phase 1)
+            try:
+                await self.db.compliance_decisions.create_index("decision_id", unique=True)
+                await self.db.compliance_decisions.create_index("dedupe_key", unique=True)
+                await self.db.compliance_decisions.create_index([("client_id", 1), ("decision_timestamp", -1)])
+                await self.db.compliance_decisions.create_index([("property_id", 1), ("decision_timestamp", -1)])
+                await self.db.compliance_decisions.create_index([("requirement_id", 1), ("decision_timestamp", -1)])
+                await self.db.compliance_decisions.create_index([("decision_type", 1), ("decision_timestamp", -1)])
+                await self.db.compliance_decisions.create_index("previous_decision_id")
+                await self.db.compliance_decisions.create_index("operational_correlation_id")
+                await self.db.compliance_decisions.create_index("snapshot_id", unique=True)
+                await self.db.compliance_decision_snapshots.create_index("snapshot_id", unique=True)
+                await self.db.compliance_decision_snapshots.create_index("decision_id", unique=True)
+                await self.db.compliance_decision_snapshots.create_index([("client_id", 1), ("snapshot_timestamp", -1)])
+                await self.db.compliance_decision_snapshots.create_index([("property_id", 1), ("snapshot_timestamp", -1)])
+                await self.db.compliance_decision_snapshots.create_index("snapshot_hash")
+                await self.db.compliance_evidence_nodes.create_index("node_id", unique=True)
+                await self.db.compliance_evidence_nodes.create_index("dedupe_key", unique=True)
+                await self.db.compliance_evidence_nodes.create_index([("client_id", 1), ("occurred_at", -1)])
+                await self.db.compliance_evidence_nodes.create_index([("property_id", 1), ("occurred_at", -1)])
+                await self.db.compliance_evidence_nodes.create_index([("requirement_id", 1), ("occurred_at", -1)])
+                await self.db.compliance_evidence_nodes.create_index([("decision_id", 1), ("occurred_at", 1)])
+                await self.db.compliance_evidence_nodes.create_index([("node_type", 1), ("occurred_at", -1)])
+                await self.db.compliance_evidence_nodes.create_index([("correlation_id", 1), ("occurred_at", 1)])
+                await self.db.compliance_evidence_nodes.create_index(
+                    [("source.collection", 1), ("source.id", 1), ("node_type", 1)]
+                )
+                await self.db.compliance_evidence_edges.create_index("edge_id", unique=True)
+                await self.db.compliance_evidence_edges.create_index("dedupe_key", unique=True)
+                await self.db.compliance_evidence_edges.create_index([("from_node_id", 1), ("edge_type", 1)])
+                await self.db.compliance_evidence_edges.create_index([("to_node_id", 1), ("edge_type", 1)])
+                await self.db.compliance_evidence_edges.create_index(
+                    [("provenance.decision_id", 1), ("recorded_at", -1)]
+                )
+                await self.db.compliance_evidence_edges.create_index(
+                    [("provenance.correlation_id", 1), ("recorded_at", 1)]
+                )
+                await self.db.compliance_evidence_edges.create_index(
+                    [("provenance.is_active", 1), ("edge_type", 1)]
+                )
+            except Exception as e:
+                logger.warning("compliance_evidence_graph indexes: %s", e)
             await self.db.score_ledger_events.create_index([("correlation_id", 1), ("created_at", -1)])
             await self.db.incidents.create_index([("status", 1), ("created_at", -1)])
             await self.db.incidents.create_index([("severity", 1), ("status", 1)])
