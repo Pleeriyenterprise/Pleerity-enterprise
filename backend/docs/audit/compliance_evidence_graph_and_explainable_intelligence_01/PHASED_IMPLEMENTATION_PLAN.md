@@ -51,17 +51,81 @@ The graph is a **shared platform capability**, not an AI feature. Graph storage 
 
 ---
 
-## Phase 2 — Runtime producers & OE bridge
+## Phase 2 — Runtime producers, integrity & OE bridge (Refinement-02)
 
-**Scope:**
-- `producers.py` at mutation authorities (authority sync, scoring, review, CER, applicability)
-- Each producer emits decision + snapshot atomically
-- Downstream artefacts receive `decision_id` (`score_ledger_events`, etc.)
-- `bridge_operational.py` — `operational_correlation_id` + OE metadata
-- `backfill_service.py` — bounded historical decisions from authoritative sources (reduced confidence, `metadata.backfill=true`)
-- Feature flag: `shadow` mode on staging
+**Refinement:** `ARCHITECTURE_REFINEMENT_02.md`  
+**Delivery:** Incremental sub-stages 2A → 2E (each independently deployable and validated)
 
-**Exit criteria:** New staging mutations create decisions; score ledger cites `decision_id`; OE cross-link works.
+### 2A — Infrastructure
+
+- Producer registry skeleton + `_base.py` (dedupe, provenance, `decision_quality` computation)
+- `bridge_operational.py` — OE correlation enrichment
+- `validation/integrity_validator.py` — shared validation core
+- `compliance_graph_health/` — health service + admin routes
+- `decision_quality` schema on decisions/snapshots
+- Unit tests: validator, health, registry gating
+- **Gate:** validator + health smoke on fixtures; commit; deploy staging
+
+### 2B — P0 primary authority producers
+
+- Wire P0 hooks: authority sync, scoring, review, outcome engine
+- `decision_id` on `score_ledger_events`, `compliance_activity_log`, `evidence_review_events`
+- P0 mutation matrix → 100% implemented
+- Runtime: explain/replay smoke; idempotency tests
+- Staging: `COMPLIANCE_EVIDENCE_GRAPH_MODE=shadow`
+- **Gate:** P0 validated; commit; deploy staging
+
+### 2C — P1 secondary producers
+
+- Applicability, materialization, risk, document extraction, CER/linkage
+- Rule lineage nodes + edges (`RULE_LINEAGE_MODEL.md`)
+- Evidence graph vertices (document, CER, requirement)
+- P1 mutation matrix → 100% validated
+- **Gate:** lineage validator pass; commit; deploy staging
+
+### 2D — P2 operational artefacts + backfill
+
+- Reminders, notifications, work orders, reports, knowledge refs
+- `backfill_service.py` — bounded, idempotent historical decisions
+- P2 mutation matrix → ≥95% validated (deferrals documented)
+- **Gate:** backfill idempotency; historical explain; commit; deploy staging
+
+### 2E — Acceptance validation
+
+- Full compliance journeys (onboarding → report)
+- Graph Service direct validation: explain, replay, trace, compare, historical, operational impact
+- Failure injection: retry, duplicate, worker restart, queue replay
+- Graph Integrity Validator full suite
+- Graph Health report (no structural failures)
+- Performance assessment (emit/producer latency)
+- Regression gate (`disabled` mode unchanged behaviour)
+- Deliverables: `PHASE_2_STAGING_READINESS.json`, coverage + integrity validation JSON
+
+**Scope summary:**
+
+| Component | Stage |
+|-----------|-------|
+| `producers/` at mutation authorities | 2B–2D |
+| Decision Quality metadata | 2A emit, enforced 2B+ |
+| Graph Health service | 2A |
+| Graph Integrity Validator | 2A |
+| Rule lineage model | 2C |
+| Operational bridge | 2A–2B |
+| Historical backfill | 2D |
+| Downstream `decision_id` propagation | 2B–2D |
+| Mutation coverage matrix | 2B–2E |
+
+**Exit criteria (Refinement-02):**
+
+- Decision Quality on every decision
+- Graph Health + Validator pass on staging shadow data
+- Rule lineage traceable for P0/P1 paths
+- Graph Service reconstructs history without AI
+- P0 100%, P1 100%, P2 ≥95% coverage (deferrals registered)
+- Backfill idempotent and reproducible
+- Each 2A–2E stage independently validated on staging
+- No compliance regression with flag `disabled`
+- Phase 3 ready without redesign
 
 ---
 
@@ -197,5 +261,7 @@ Feature flag: `COMPLIANCE_EVIDENCE_GRAPH_MODE=disabled|shadow|enabled`
 | Item | Status |
 |------|--------|
 | Refinement-01 architecture | **Approved** |
-| Phase 1 implementation | **Authorised** — proceed on `develop` |
-| Production | Untouched until Phase 9 gate |
+| Phase 1 implementation | **Complete** — `ae1d8ae1` on `develop` |
+| Refinement-02 architecture | **Approved** |
+| Phase 2A implementation | **Authorised** — proceed on `develop` |
+| Production | Untouched until Phase 2E staging acceptance; flag `disabled` |

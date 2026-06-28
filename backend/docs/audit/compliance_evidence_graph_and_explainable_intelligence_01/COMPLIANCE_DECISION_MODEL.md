@@ -1,7 +1,7 @@
 # Compliance Decision Model & Decision Snapshots
 
 **Programme:** COMPLIANCE-EVIDENCE-GRAPH-AND-EXPLAINABLE-COMPLIANCE-INTELLIGENCE-01  
-**Refinement:** COMPLIANCE-EVIDENCE-GRAPH-ARCHITECTURE-REFINEMENT-01
+**Refinement:** COMPLIANCE-EVIDENCE-GRAPH-ARCHITECTURE-REFINEMENT-01, REFINEMENT-02 (Decision Quality)
 
 ---
 
@@ -86,9 +86,54 @@ The platform must answer **"Why was this exact decision made?"** from a single d
   "metadata": {
     "trigger": "authority_sync",
     "correlation_id": "corr_uuid"
+  },
+  "decision_quality": {
+    "evidence_completeness": "complete",
+    "evidence_confidence": { "score": 100, "label": "verified" },
+    "ai_extraction_confidence": { "score": 85, "label": "high" },
+    "human_verification_status": "approved",
+    "missing_required_evidence": [],
+    "conflicting_evidence": [],
+    "rule_certainty": { "score": 100, "label": "confirmed" },
+    "jurisdiction_certainty": { "score": 100, "label": "confirmed" },
+    "decision_stability": "stable",
+    "outstanding_review_requirements": [],
+    "overall_label": "confirmed",
+    "computed_at": "2026-06-28T10:00:00.123456+00:00",
+    "computed_by": "compliance_evidence_graph.producers._base"
   }
 }
 ```
+
+### Decision Quality (Refinement-02)
+
+**Required on every runtime decision.** Descriptive metadata only — **must never modify compliance outcomes**.
+
+Future Compliance Intelligence services may use this block when explaining confidence or recommending follow-up actions.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `evidence_completeness` | enum | `complete` \| `partial` \| `insufficient` \| `unknown` |
+| `evidence_confidence` | object | `{ score, label }` from verification / authority state |
+| `ai_extraction_confidence` | object \| null | From extraction record when applicable |
+| `human_verification_status` | enum | `approved` \| `rejected` \| `pending` \| `not_required` \| `unknown` |
+| `missing_required_evidence` | array | Requirement IDs or doc types still missing |
+| `conflicting_evidence` | array | Conflicts detected by authority (refs only) |
+| `rule_certainty` | object | Completeness of rules evaluation trace |
+| `jurisdiction_certainty` | object | Jurisdiction attribution confidence |
+| `decision_stability` | enum | `stable` \| `recently_superseded` \| `volatile` \| `unknown` |
+| `outstanding_review_requirements` | array | Pending human review tiers / scopes |
+| `overall_label` | enum | `confirmed` \| `partial` \| `inferred` \| `insufficient` \| `unknown` |
+| `computed_at` | ISO8601 | When quality was assessed |
+| `computed_by` | string | Producer component (audit) |
+
+**Rules:**
+
+1. Producers compute quality from **authoritative post-write state only**.
+2. Missing data → explicit `unknown` / `insufficient` — never upgrade confidence.
+3. Backfill decisions: `overall_label: inferred`, `metadata.backfill: true`.
+4. Quality is mirrored in snapshot as `decision_quality` for historical reproducibility.
+5. Graph Service `explain_decision` includes quality in `confidence_metadata` envelope section.
 
 ### Decision types (enum)
 

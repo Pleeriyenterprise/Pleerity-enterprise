@@ -1,7 +1,7 @@
 # Compliance Evidence Graph — Data Model & Relationship Strategy
 
 **Programme:** COMPLIANCE-EVIDENCE-GRAPH-AND-EXPLAINABLE-COMPLIANCE-INTELLIGENCE-01  
-**Refinement:** COMPLIANCE-EVIDENCE-GRAPH-ARCHITECTURE-REFINEMENT-01
+**Refinement:** COMPLIANCE-EVIDENCE-GRAPH-ARCHITECTURE-REFINEMENT-01, REFINEMENT-02 (Rule Lineage)
 
 ---
 
@@ -276,3 +276,32 @@ CEG node optional field:
 ```
 
 Join recipe: `correlation_id` + explicit `correlates_with` edges.
+
+---
+
+## Rule lineage (Refinement-02)
+
+Full legislative hierarchy modelled as graph nodes and edges. See `RULE_LINEAGE_MODEL.md`.
+
+### Additional node types (Phase 2)
+
+| `node_type` | Role |
+|-------------|------|
+| `legislation` | Primary legislation |
+| `statutory_instrument` | Regulations / SI |
+| `government_guidance` | Official guidance |
+| `knowledge_article` | Knowledge Centre article |
+| `policy_registry_entry` | Internal policy registry snapshot |
+| `jurisdiction_rule` | National jurisdiction rule |
+| `local_authority_rule` | Council-specific rule |
+
+### Additional edge types (Phase 2)
+
+| `edge_type` | Meaning |
+|-------------|---------|
+| `derived_from` | Child authority derived from parent (legislation chain) |
+| `interpreted_by` | Rule interpreted by guidance or KC article |
+
+Existing `governed_by`, `decided_under`, `based_on_evidence`, `produced` connect decisions to rules and outcomes.
+
+Lineage edges require full provenance. Incomplete chains set `metadata.lineage_incomplete: true` on the lowest resolved node.

@@ -68,6 +68,12 @@ AI Intelligence Layer (Phase 5+ — consumes Graph Service responses only)
 | `GRAPH_DATA_MODEL.md` | Node/edge schemas with provenance |
 | `AI_INTELLIGENCE_LAYER_ARCHITECTURE.md` | AI consumes Graph Service only |
 | `PHASED_IMPLEMENTATION_PLAN.md` | Revised phases |
+| `ARCHITECTURE_REFINEMENT_02.md` | Phase 2 refinements (Decision Quality, Health, Validator, Lineage) |
+| `PRODUCER_ARCHITECTURE.md` | Producer registry and hooks |
+| `MUTATION_COVERAGE_MATRIX.md` | P0/P1/P2 coverage thresholds |
+| `RULE_LINEAGE_MODEL.md` | Legislative hierarchy graph |
+| `GRAPH_HEALTH_SERVICE.md` | Graph health metrics |
+| `GRAPH_INTEGRITY_VALIDATOR.md` | Integrity validation component |
 
 ---
 
