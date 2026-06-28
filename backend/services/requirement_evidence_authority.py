@@ -1050,7 +1050,69 @@ async def sync_requirement_evidence_authority(
             duplicate_transition_possible=trace.get("duplicate_transition_possible"),
         ),
     )
+    await _dispatch_authority_sync_producer(
+        requirement=requirement,
+        requirement_id=str(requirement_id),
+        blob=blob,
+        trace=trace,
+        corr=corr,
+        transition_id=transition_id,
+        transition_origin=transition_origin,
+        docs=docs,
+    )
     return blob
+
+
+async def _dispatch_authority_sync_producer(
+    *,
+    requirement: Dict[str, Any],
+    requirement_id: str,
+    blob: Dict[str, Any],
+    trace: Dict[str, Any],
+    corr: str,
+    transition_id: str,
+    transition_origin: Optional[str],
+    docs: list,
+) -> None:
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p0_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        client_id = str(requirement.get("client_id") or "")
+        if not client_id:
+            return
+        await dispatch_p0_producer(
+            ProducerContext(
+                mutation_kind="evidence_authority_sync",
+                client_id=client_id,
+                source_collection="requirements",
+                source_id=str(requirement_id),
+                property_id=str(requirement.get("property_id") or "") or None,
+                requirement_id=str(requirement_id),
+                correlation_id=corr,
+                mutation_timestamp=trace.get("recorded_at") or trace.get("transition_timestamp"),
+                authoritative_payload={
+                    "semantic_state": trace.get("semantic_state") or blob.get("semantic_state") or blob.get("state"),
+                    "state": blob.get("state"),
+                    "authority_version": blob.get("version"),
+                    "state_reason": trace.get("state_reason"),
+                    "effective_expiry": blob.get("effective_expiry"),
+                    "transition_id": transition_id,
+                    "correlation_id": corr,
+                    "transition_origin": transition_origin,
+                    "missing_dependencies": blob.get("missing_dependencies") or [],
+                    "conflicts": blob.get("conflicts") or [],
+                    "document_ids": [d.get("document_id") for d in docs if d.get("document_id")],
+                    "document_versions": [
+                        {"document_id": d.get("document_id"), "verification_status": d.get("verification_status")}
+                        for d in docs
+                        if d.get("document_id")
+                    ],
+                },
+            )
+        )
+    except Exception as ceg_err:
+        logger.debug("ceg evidence_authority_sync producer skipped: %s", ceg_err)
 
 
 async def sync_for_documents_touching(

@@ -45,6 +45,29 @@ async def append_evidence_review_event(
     }
     await db.evidence_review_events.insert_one(row)
     try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p0_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        if client_id:
+            await dispatch_p0_producer(
+                ProducerContext(
+                    mutation_kind="evidence_review_transition",
+                    client_id=str(client_id),
+                    source_collection="evidence_review_events",
+                    source_id=event_id,
+                    property_id=property_id,
+                    requirement_id=requirement_id,
+                    correlation_id=correlation_id,
+                    mutation_timestamp=row["created_at"],
+                    authoritative_payload={
+                        **row,
+                        "document_id": document_id,
+                    },
+                )
+            )
+    except Exception:
+        pass
+    try:
         from services.operational_evidence.producers import emit_evidence_review_transition
 
         await emit_evidence_review_transition(

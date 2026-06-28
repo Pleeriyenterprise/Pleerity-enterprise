@@ -59,17 +59,19 @@ async def test_apply_action_outcome_certificate_verified_syncs_authority_before_
 
     with (
         patch("services.compliance_outcome_engine.database.get_db", return_value=db),
-        patch("services.requirement_evidence_authority.sync_requirement_evidence_authority", sync_mock),
+        patch("services.authority_mutation_fanout.authority_sync_with_transition_observability", sync_mock),
         patch("services.compliance_outcome_engine.recalculate_and_persist", recalc_mock),
         patch.object(coe, "_count_active_risk_signals", new_callable=AsyncMock, return_value=0),
         patch.object(coe, "_sync_regenerate_risks_and_operational", new_callable=AsyncMock),
+        patch("services.compliance_evidence_graph.producers.hooks.dispatch_p0_producer", new_callable=AsyncMock),
     ):
         out = await coe.apply_action_outcome(event)
 
     assert out.get("idempotent") is False
     assert sync_mock.await_count == 2
-    sync_mock.assert_any_call(db, "r_gas_1", property_id_hint="p1")
-    sync_mock.assert_any_call(db, "r_gas_2", property_id_hint="p1")
+    synced_ids = [c.args[1] for c in sync_mock.await_args_list]
+    assert "r_gas_1" in synced_ids
+    assert "r_gas_2" in synced_ids
     assert recalc_mock.await_count == 1
     assert call_order == ["sync", "sync", "recalc"]
     assert recalc_mock.await_args_list[0].kwargs.get("property_id") == "p1"

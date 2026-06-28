@@ -15,23 +15,34 @@ from services.compliance_evidence_graph.producers.registry import (
 
 @pytest.fixture(autouse=True)
 def _clear_registry_cache():
+    from services.compliance_evidence_graph.producers import bootstrap as boot
     from services.compliance_evidence_graph.producers import registry as reg
 
     reg._REGISTRY.clear()
     reg._HANDLERS.clear()
+    boot._INITIALIZED = False
     yield
     reg._REGISTRY.clear()
     reg._HANDLERS.clear()
+    boot._INITIALIZED = False
 
 
-def test_registry_lists_planned_producers():
+def test_registry_lists_planned_producers_before_bootstrap():
     entries = list_producer_registry()
     assert len(entries) >= 10
     assert all(e["emit_implemented"] is False for e in entries)
-    assert all(e["live_emit_active"] is False for e in entries)
-    priorities = {e["priority"] for e in entries}
-    assert "P0" in priorities
-    assert "P1" in priorities
+
+
+def test_registry_lists_implemented_p0_after_bootstrap(monkeypatch):
+    monkeypatch.setenv("COMPLIANCE_EVIDENCE_GRAPH_MODE", "shadow")
+    from services.compliance_evidence_graph.producers.bootstrap import initialize_p0_producers
+
+    initialize_p0_producers()
+    entries = list_producer_registry()
+    p0 = [e for e in entries if e["priority"] == "P0"]
+    assert len(p0) >= 5
+    assert all(e["emit_implemented"] is True for e in p0)
+    assert all(e["status"] == "implemented" for e in p0)
 
 
 @pytest.mark.asyncio

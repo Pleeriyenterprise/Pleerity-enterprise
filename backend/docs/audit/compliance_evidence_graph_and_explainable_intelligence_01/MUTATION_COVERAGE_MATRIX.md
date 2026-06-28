@@ -31,25 +31,27 @@ Any row not meeting threshold at acceptance requires an entry in **Deferral Regi
 
 ## P0 — Closed-loop compliance spine (100% required)
 
-| ID | Mutation | Authoritative writer | Producer | Stream E row | Status |
-|----|----------|---------------------|----------|--------------|--------|
-| P0-01 | Evidence authority sync | `sync_requirement_evidence_authority` | `authority_sync.py` | 9 | planned |
-| P0-02 | Compliance score recalc | `recalculate_and_persist` | `score.py` | — | planned |
-| P0-03 | Score ledger write | `log_score_change` | `score.py` (decision_id stamp) | — | planned |
-| P0-04 | Evidence review transition | `append_evidence_review_event` | `review.py` | 6–8 | planned |
-| P0-05 | Document verify (admin) | `evidence_review_verify` / `documents.py` | `review.py` | 6–7 | planned |
-| P0-06 | Document reject | `documents.py` reject paths | `review.py` | 8 | planned |
-| P0-07 | Outcome engine events | `apply_action_outcome` | `outcome.py` | Appendix | planned |
-| P0-08 | Recalc queue enqueue | `enqueue_compliance_recalc` | operational link only | — | planned |
-| P0-09 | Recalc worker completion | `run_compliance_recalc_worker` → P0-02 | `score.py` | — | planned |
-| P0-10 | Document upload (linked) | upload → authority sync | `authority_sync.py` | 1, 3–4 | planned |
-| P0-11 | Document delete (linked) | delete → authority sync | `authority_sync.py` | 5 | planned |
-| P0-12 | Requirement PATCH | `patch_requirement` | `authority_sync.py` | 10 | planned |
-| P0-13 | Mark N/A / reopen workflow | `api_compliance_workflow.py` | `authority_sync.py` | 21–22 | planned |
-| P0-14 | Certificate verified outcome | `apply_action_outcome` EVENT_CERTIFICATE_VERIFIED | `outcome.py` | Appendix | planned |
-| P0-15 | Requirement completed outcome | `apply_action_outcome` EVENT_REQUIREMENT_COMPLETED | `outcome.py` | Appendix | planned |
+| ID | Mutation | Authoritative writer | Producer | Stream E row | Hook | Status |
+|----|----------|---------------------|----------|--------------|------|--------|
+| P0-01 | Evidence authority sync | `sync_requirement_evidence_authority` | `authority_sync.py` | 9 | ✓ | validated |
+| P0-02 | Compliance score recalc | `recalculate_and_persist` | `score.py` | — | ✓ | validated |
+| P0-03 | Score ledger write | `log_score_change` | `score.py` | — | ✓ | validated |
+| P0-04 | Evidence review transition | `append_evidence_review_event` | `review.py` | 6–8 | ✓ | validated |
+| P0-05 | Document verify (admin) | `evidence_review_verify` / `documents.py` | `review.py` | 6–7 | via P0-04 | implemented |
+| P0-06 | Document reject | `documents.py` reject paths | `review.py` | 8 | via P0-04 | implemented |
+| P0-07 | Outcome engine events | `apply_action_outcome` | `outcome.py` | Appendix | ✓ | validated |
+| P0-08 | Recalc queue enqueue | `enqueue_compliance_recalc` | — | — | deferred 2B | deferred |
+| P0-09 | Recalc worker completion | worker → P0-02 | `score.py` | — | via P0-02 | validated |
+| P0-10 | Document upload (linked) | upload → authority sync | `authority_sync.py` | 1, 3–4 | via P0-01 | implemented |
+| P0-11 | Document delete (linked) | delete → authority sync | `authority_sync.py` | 5 | via P0-01 | implemented |
+| P0-12 | Requirement PATCH | `patch_requirement` | `authority_sync.py` | 10 | via P0-01 | implemented |
+| P0-13 | Mark N/A / reopen workflow | `api_compliance_workflow.py` | `authority_sync.py` | 21–22 | via P0-01 | implemented |
+| P0-14 | Certificate verified outcome | `apply_action_outcome` | `outcome.py` | Appendix | via P0-07 | validated |
+| P0-15 | Requirement completed outcome | `apply_action_outcome` | `outcome.py` | Appendix | via P0-07 | validated |
 
-**P0 count:** 15 rows — **target validated: 15/15**
+**P0 producer hooks (Phase 2B):** 5 direct instrumentation points cover all 15 rows (queue enqueue P0-08 deferred — operational link only, no decision authority).
+
+**P0 count:** 15 rows — **14/15 implemented; 1 deferred (P0-08 queue enqueue metadata-only)**
 
 ---
 
@@ -113,6 +115,7 @@ Rows marked `deferred` must include all four fields before Phase 2E acceptance.
 
 | ID | Reason | Impact | Implementation plan | Expected phase |
 |----|--------|--------|---------------------|----------------|
+| P0-08 | Queue enqueue is scheduling only; decision occurs at recalc (P0-02) | Low — no separate compliance decision at enqueue | Optional OE correlation link only | Phase 2.5 |
 | P2-18 | Batch gap backfill is ops tooling; not customer mutation path | Low — gaps refreshed by runtime sync elsewhere | Emit on `sync_compliance_gaps_for_requirement` when called from backfill with audit flag | Phase 2.5 or Phase 7 |
 | P2-19 | Policy reconciliation patches inference only; not full authority sync | Low — no new compliance decisions | Observer on reconciliation checkpoint events | Phase 7 |
 

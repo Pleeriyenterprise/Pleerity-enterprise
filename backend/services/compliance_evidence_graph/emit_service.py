@@ -98,6 +98,7 @@ async def emit_compliance_decision(
     scope: Optional[Dict[str, Any]] = None,
     metadata: Optional[Dict[str, Any]] = None,
     evidence_edges: Optional[List[Dict[str, Any]]] = None,
+    decision_quality: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
     """
     Atomically emit compliance decision + snapshot + graph nodes/edges.
@@ -141,6 +142,8 @@ async def emit_compliance_decision(
         snap_body.setdefault("property_id", property_id)
     if requirement_id:
         snap_body.setdefault("requirement_id", requirement_id)
+    if decision_quality:
+        snap_body.setdefault("decision_quality", decision_quality)
     snap_body["snapshot_hash"] = _canonical_hash(snap_body)
 
     decision_doc: Dict[str, Any] = {
@@ -179,6 +182,8 @@ async def emit_compliance_decision(
         "build_sha": _resolve_build_sha(),
         "metadata": metadata or {},
     }
+    if decision_quality:
+        decision_doc["decision_quality"] = decision_quality
 
     decision_node = {
         "node_id": decision_node_id,

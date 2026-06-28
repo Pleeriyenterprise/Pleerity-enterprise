@@ -384,6 +384,34 @@ async def recalculate_and_persist(
                 regen_err,
             )
 
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p0_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        await dispatch_p0_producer(
+            ProducerContext(
+                mutation_kind="compliance_score_recalc",
+                client_id=client_id,
+                source_collection="properties",
+                source_id=property_id,
+                property_id=property_id,
+                correlation_id=str(_cid).strip() if _cid else None,
+                mutation_timestamp=now.isoformat(),
+                authoritative_payload={
+                    "previous_score": previous_score,
+                    "new_score": new_score,
+                    "delta": delta,
+                    "reason": reason,
+                    "changed_requirements": changed_requirements,
+                    "history_created_at": history_doc["created_at"],
+                    "score_change_log_created_at": score_change_log_doc["created_at"],
+                    "actor_id": (actor or {}).get("id") or (actor or {}).get("portal_user_id"),
+                },
+            )
+        )
+    except Exception as ceg_err:
+        logger.debug("ceg compliance_score_recalc producer skipped: %s", ceg_err)
+
     return result
 
 
