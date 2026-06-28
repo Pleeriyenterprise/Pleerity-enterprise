@@ -1083,6 +1083,16 @@ export const adminAPI = {
     apiClient.get(`/admin/observability/evidence/views/job-run/${jobRunId}`),
   getOperationalEvidenceIntelligence: (params = {}) =>
     apiClient.get('/admin/observability/evidence/intelligence/shortcuts', { params }),
+  getOperationalEvidencePortfolioView: (clientId, params = {}) =>
+    apiClient.get(`/admin/observability/evidence/views/portfolio/${clientId}`, { params }),
+  getOperationalEvidenceAnnotations: (params = {}) =>
+    apiClient.get('/admin/observability/evidence/annotations', { params }),
+  createOperationalEvidenceAnnotation: (body) =>
+    apiClient.post('/admin/observability/evidence/annotations', body),
+  getOperationalEvidenceRetentionStats: () =>
+    apiClient.get('/admin/observability/evidence/retention/stats'),
+  applyOperationalEvidenceRetention: (body = {}) =>
+    apiClient.post('/admin/observability/evidence/retention/apply', body),
   runOperationalEvidenceBackfill: (body = {}) =>
     apiClient.post('/admin/observability/evidence/backfill', body),
   getIncident: (incidentId) => apiClient.get(`/admin/observability/incidents/${incidentId}`),

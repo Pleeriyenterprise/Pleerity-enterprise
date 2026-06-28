@@ -208,3 +208,10 @@ CONFIDENCE_LABELS = {
 COLLECTION_EVENTS = "operational_evidence_events"
 COLLECTION_ANNOTATIONS = "operational_evidence_annotations"
 COLLECTION_EXECUTIONS = "operational_evidence_executions"
+
+# Retention tiers (Phase 4) — append-only; warm tier hides from default reads
+RETENTION_TIER_HOT = "hot"
+RETENTION_TIER_WARM = "warm"
+RETENTION_TIER_COLD = "cold"
+RETENTION_WARM_AFTER_DAYS = 90
+ARCHIVED_RETENTION_TIERS = frozenset({RETENTION_TIER_WARM, RETENTION_TIER_COLD})

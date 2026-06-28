@@ -24,6 +24,8 @@ from services.operational_evidence.query_service import (
 )
 from services.operational_evidence.story_service import get_operational_story
 from services.operational_evidence.backfill_service import run_operational_evidence_backfill
+from services.operational_evidence.portfolio_service import get_portfolio_evidence_view
+from services.operational_evidence.retention_service import apply_warm_retention_tier, get_retention_stats
 
 router = APIRouter(
     prefix="/api/admin/observability/evidence",
@@ -43,6 +45,11 @@ class BackfillRequest(BaseModel):
     days: int = Field(7, ge=1, le=90)
     limit_per_source: int = Field(500, ge=1, le=2000)
     sources: Optional[list[str]] = None
+
+
+class RetentionApplyRequest(BaseModel):
+    warm_after_days: int = Field(90, ge=1, le=365)
+    batch_limit: int = Field(2000, ge=1, le=10000)
 
 
 def _filter_kwargs(**kwargs: Any) -> Dict[str, Any]:
@@ -74,12 +81,14 @@ async def list_events(
     since: Optional[str] = None,
     until: Optional[str] = None,
     search: Optional[str] = None,
+    include_archived: bool = False,
 ):
     await admin_route_guard(request)
     return await list_evidence_events(
         limit=limit,
         cursor_occurred_at=cursor_occurred_at,
         cursor_event_id=cursor_event_id,
+        include_archived=include_archived,
         **_filter_kwargs(
             category=category,
             event_type=event_type,
@@ -171,9 +180,31 @@ async def view_global(
 
 
 @router.get("/views/tenant/{client_id}")
-async def view_tenant(request: Request, client_id: str, limit: int = Query(50, ge=1, le=200)):
+async def view_tenant(
+    request: Request,
+    client_id: str,
+    limit: int = Query(50, ge=1, le=200),
+    include_archived: bool = False,
+):
     await admin_route_guard(request)
-    return await list_evidence_events(limit=limit, client_id=client_id)
+    return await list_evidence_events(limit=limit, client_id=client_id, include_archived=include_archived)
+
+
+@router.get("/views/portfolio/{client_id}")
+async def view_portfolio(
+    request: Request,
+    client_id: str,
+    hours: int = Query(168, ge=1, le=720),
+    limit: int = Query(50, ge=1, le=200),
+    include_archived: bool = False,
+):
+    await admin_route_guard(request)
+    return await get_portfolio_evidence_view(
+        client_id,
+        hours=hours,
+        limit=limit,
+        include_archived=include_archived,
+    )
 
 
 @router.get("/views/property/{property_id}")
@@ -232,6 +263,22 @@ async def trigger_backfill(request: Request, body: BackfillRequest):
         days=body.days,
         limit_per_source=body.limit_per_source,
         sources=body.sources,
+    )
+
+
+@router.get("/retention/stats")
+async def retention_stats(request: Request):
+    await admin_route_guard(request)
+    return await get_retention_stats()
+
+
+@router.post("/retention/apply")
+async def retention_apply(request: Request, body: RetentionApplyRequest):
+    """Admin-triggered warm-tier retention pass (bounded batch)."""
+    await admin_route_guard(request)
+    return await apply_warm_retention_tier(
+        warm_after_days=body.warm_after_days,
+        batch_limit=body.batch_limit,
     )
 
 

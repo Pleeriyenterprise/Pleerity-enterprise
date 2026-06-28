@@ -1150,6 +1150,13 @@ async def run_predictive_insights_job():
     return {"message": f"Predictive insights precomputed for {count} client(s)", "count": count}
 
 
+async def run_operational_evidence_maintenance_job():
+    """Daily bounded backfill + warm retention tiering for operational evidence index."""
+    from services.operational_evidence.maintenance_service import run_operational_evidence_maintenance
+
+    return await run_operational_evidence_maintenance()
+
+
 async def run_risk_signal_regen_worker():
     """Process debounced risk_signal_regen_queue: regenerate heuristic signals + operational automation."""
     try:
@@ -1772,6 +1779,7 @@ JOB_RUNNERS = {
     "predictive_insights_job": run_predictive_insights_job,
     "risk_signals_job": run_risk_signals_job,
     "rent_operations_daily_job": run_rent_operations_daily_job,
+    "operational_evidence_maintenance_job": run_operational_evidence_maintenance_job,
     "risk_signal_regen_worker": run_risk_signal_regen_worker,
     "risk_signal_regen_alert_monitor": run_risk_signal_regen_alert_monitor,
     "work_order_sla_breach_job": run_work_order_sla_breach_job,

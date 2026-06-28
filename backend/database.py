@@ -436,6 +436,7 @@ class Database:
                 await self.db.operational_evidence_events.create_index([("relationships.caused_by_event_id", 1)])
                 await self.db.operational_evidence_executions.create_index("root_execution_id", unique=True)
                 await self.db.operational_evidence_executions.create_index([("correlation_id", 1), ("started_at", -1)])
+                await self.db.operational_evidence_events.create_index([("retention.tier", 1), ("occurred_at", -1)])
                 await self.db.operational_evidence_annotations.create_index([("event_id", 1), ("created_at", -1)])
                 await self.db.operational_evidence_annotations.create_index([("root_execution_id", 1), ("created_at", -1)])
                 await self.db.operational_evidence_annotations.create_index([("correlation_id", 1), ("created_at", -1)])

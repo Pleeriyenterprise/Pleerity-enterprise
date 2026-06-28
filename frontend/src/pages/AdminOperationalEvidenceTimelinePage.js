@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../api/client';
 import UnifiedAdminLayout from '../components/admin/UnifiedAdminLayout';
+import OperationalEvidenceAnnotations from '../components/admin/OperationalEvidenceAnnotations';
 import { GitBranch, RefreshCw, ChevronDown, ChevronRight, Copy, ExternalLink } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
 
@@ -34,6 +35,11 @@ export default function AdminOperationalEvidenceTimelinePage() {
   const [story, setStory] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [expandedChain, setExpandedChain] = useState(true);
+  const [includeArchived, setIncludeArchived] = useState(searchParams.get('include_archived') === '1');
+  const [portfolio, setPortfolio] = useState(null);
+  const [intelligence, setIntelligence] = useState(null);
+  const [retentionStats, setRetentionStats] = useState(null);
+  const [maintenanceBusy, setMaintenanceBusy] = useState(false);
   const [filters, setFilters] = useState({
     search: searchParams.get('search') || '',
     correlation_id: searchParams.get('correlation_id') || '',
@@ -41,13 +47,14 @@ export default function AdminOperationalEvidenceTimelinePage() {
     incident_id: searchParams.get('incident_id') || '',
     job_run_id: searchParams.get('job_run_id') || '',
     property_id: searchParams.get('property_id') || '',
+    client_id: searchParams.get('client_id') || '',
     category: searchParams.get('category') || '',
   });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { limit: 50 };
+      const params = { limit: 50, include_archived: includeArchived };
       Object.entries(filters).forEach(([k, v]) => {
         if (v) params[k] = v;
       });
@@ -56,18 +63,35 @@ export default function AdminOperationalEvidenceTimelinePage() {
           root_execution_id: filters.root_execution_id || undefined,
           correlation_id: filters.correlation_id || undefined,
         });
+        setPortfolio(null);
         setStory(storyRes.data);
         setEvents({ items: storyRes.data.items || [], total: storyRes.data.event_count || 0 });
       } else if (filters.incident_id) {
         const res = await adminAPI.getOperationalEvidenceIncidentView(filters.incident_id);
+        setPortfolio(null);
         setStory(res.data.story);
         setEvents(res.data.timeline || { items: [] });
       } else if (filters.job_run_id) {
         const res = await adminAPI.getOperationalEvidenceJobRunView(filters.job_run_id);
+        setPortfolio(null);
         setStory(res.data.story);
         setEvents(res.data.timeline || { items: [] });
+      } else if (
+        filters.client_id
+        && !filters.incident_id
+        && !filters.job_run_id
+        && !filters.correlation_id
+        && !filters.root_execution_id
+      ) {
+        const res = await adminAPI.getOperationalEvidencePortfolioView(filters.client_id, {
+          include_archived: includeArchived,
+        });
+        setPortfolio(res.data);
+        setStory(res.data.story);
+        setEvents(res.data.timeline || { items: [], total: 0 });
       } else {
         const res = await adminAPI.getOperationalEvidenceEvents(params);
+        setPortfolio(null);
         setEvents(res.data);
         setStory(null);
       }
@@ -76,7 +100,25 @@ export default function AdminOperationalEvidenceTimelinePage() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, includeArchived]);
+
+  const loadSidebarMeta = useCallback(async () => {
+    try {
+      const [intelRes, retentionRes] = await Promise.all([
+        adminAPI.getOperationalEvidenceIntelligence({ hours: 24 }),
+        adminAPI.getOperationalEvidenceRetentionStats(),
+      ]);
+      setIntelligence(intelRes.data);
+      setRetentionStats(retentionRes.data);
+    } catch {
+      setIntelligence(null);
+      setRetentionStats(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSidebarMeta();
+  }, [loadSidebarMeta]);
 
   useEffect(() => {
     load();
@@ -89,8 +131,23 @@ export default function AdminOperationalEvidenceTimelinePage() {
       if (v) next[k] = v;
     });
     if (viewMode !== 'story') next.view = viewMode;
+    if (includeArchived) next.include_archived = '1';
     setSearchParams(next, { replace: true });
     load();
+  };
+
+  const runBackfill = async () => {
+    setMaintenanceBusy(true);
+    try {
+      const res = await adminAPI.runOperationalEvidenceBackfill({ days: 7, limit_per_source: 200 });
+      toast.success(`Backfill complete: ${res.data?.totals?.emitted ?? 0} emitted`);
+      load();
+      loadSidebarMeta();
+    } catch {
+      toast.error('Backfill failed');
+    } finally {
+      setMaintenanceBusy(false);
+    }
   };
 
   const formatTime = (iso) => (iso ? new Date(iso).toLocaleString() : '—');
@@ -240,6 +297,12 @@ export default function AdminOperationalEvidenceTimelinePage() {
             onChange={(e) => setFilters((f) => ({ ...f, property_id: e.target.value }))}
             className="border rounded px-2 py-1.5 text-sm"
           />
+          <input
+            placeholder="Client ID (portfolio view)"
+            value={filters.client_id}
+            onChange={(e) => setFilters((f) => ({ ...f, client_id: e.target.value }))}
+            className="border rounded px-2 py-1.5 text-sm font-mono"
+          />
           <select
             value={filters.category}
             onChange={(e) => setFilters((f) => ({ ...f, category: e.target.value }))}
@@ -250,12 +313,36 @@ export default function AdminOperationalEvidenceTimelinePage() {
             <option value="queue">Queue</option>
             <option value="incident">Incident</option>
             <option value="compliance">Compliance</option>
-            <option value="notification">Notification</option>
+            <option value="risk">Risk</option>
           </select>
+          <label className="flex items-center gap-2 text-sm text-gray-700 px-1">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              onChange={(e) => setIncludeArchived(e.target.checked)}
+            />
+            Include archived (warm tier)
+          </label>
           <button type="submit" className="bg-teal-700 text-white rounded px-4 py-1.5 text-sm hover:bg-teal-800">
             Apply filters
           </button>
         </form>
+
+        {portfolio && (
+          <div className="mb-6 p-4 rounded-lg border border-indigo-200 bg-indigo-50/50">
+            <h2 className="text-sm font-semibold text-indigo-900">Portfolio evidence — {portfolio.client_id}</h2>
+            <p className="text-sm text-indigo-800 mt-1">
+              {portfolio.summary?.event_count ?? 0} events · {portfolio.summary?.properties_with_evidence ?? 0} properties ·{' '}
+              {portfolio.summary?.high_impact_count ?? 0} high-impact
+            </p>
+            {portfolio.by_category?.length > 0 && (
+              <p className="text-xs text-indigo-700 mt-2">
+                Top categories:{' '}
+                {portfolio.by_category.slice(0, 5).map((c) => `${c.category} (${c.count})`).join(', ')}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -286,29 +373,92 @@ export default function AdminOperationalEvidenceTimelinePage() {
             )}
           </div>
 
-          <div className="border rounded-lg bg-white p-4 h-fit">
-            <h3 className="font-semibold text-gray-900 mb-3">Event detail</h3>
-            {selectedEvent ? (
-              <div className="text-sm space-y-2">
-                <p><strong>Type:</strong> {selectedEvent.event_type}</p>
-                <p><strong>When:</strong> {formatTime(selectedEvent.occurred_at)}</p>
-                <p><strong>Summary:</strong> {(selectedEvent.evidence || {}).summary}</p>
-                <p><strong>Impact:</strong> {(selectedEvent.customer_impact || {}).summary}</p>
-                <p><strong>Confidence:</strong> {(selectedEvent.confidence || {}).score}% — {(selectedEvent.confidence || {}).reason}</p>
-                {selectedEvent.correlation_id && (
-                  <button type="button" onClick={() => copyText(selectedEvent.correlation_id)} className="text-teal-700 flex items-center gap-1">
-                    <Copy className="w-3 h-3" /> Correlation ID
-                  </button>
-                )}
-                {(selectedEvent.evidence || {}).deep_link && (
-                  <Link to={(selectedEvent.evidence || {}).deep_link} className="text-teal-700 flex items-center gap-1">
-                    <ExternalLink className="w-3 h-3" /> Source record
-                  </Link>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">Select an event to inspect evidence and correlation.</p>
-            )}
+          <div className="space-y-4">
+            <div className="border rounded-lg bg-white p-4 h-fit">
+              <h3 className="font-semibold text-gray-900 mb-3">Intelligence (24h)</h3>
+              {!intelligence ? (
+                <p className="text-sm text-gray-500">No intelligence data.</p>
+              ) : (
+                <div className="text-sm space-y-3">
+                  {intelligence.top_failure_event_types?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Top failures</p>
+                      <ul className="mt-1 space-y-0.5">
+                        {intelligence.top_failure_event_types.slice(0, 5).map((r) => (
+                          <li key={r.event_type} className="text-gray-700">
+                            {r.event_type} <span className="text-gray-400">({r.count})</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {intelligence.retry_loop_correlations?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase">Retry loops</p>
+                      <ul className="mt-1 space-y-0.5">
+                        {intelligence.retry_loop_correlations.slice(0, 3).map((r) => (
+                          <li key={r.correlation_id} className="text-xs font-mono text-gray-600 truncate">
+                            {r.correlation_id} ({r.count})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="border rounded-lg bg-white p-4 h-fit">
+              <h3 className="font-semibold text-gray-900 mb-3">Retention & maintenance</h3>
+              {retentionStats && (
+                <p className="text-sm text-gray-600 mb-2">
+                  {retentionStats.total_events} total · {retentionStats.warm_count} warm · hot default window{' '}
+                  {retentionStats.warm_after_days}d
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={maintenanceBusy}
+                onClick={runBackfill}
+                className="text-sm px-3 py-1.5 border border-teal-300 rounded text-teal-800 hover:bg-teal-50 disabled:opacity-50"
+              >
+                Run 7-day backfill
+              </button>
+            </div>
+
+            <div className="border rounded-lg bg-white p-4 h-fit">
+              <h3 className="font-semibold text-gray-900 mb-3">Event detail</h3>
+              {selectedEvent ? (
+                <div className="text-sm space-y-2">
+                  <p><strong>Type:</strong> {selectedEvent.event_type}</p>
+                  <p><strong>When:</strong> {formatTime(selectedEvent.occurred_at)}</p>
+                  <p><strong>Summary:</strong> {(selectedEvent.evidence || {}).summary}</p>
+                  <p><strong>Impact:</strong> {(selectedEvent.customer_impact || {}).summary}</p>
+                  <p><strong>Confidence:</strong> {(selectedEvent.confidence || {}).score}% — {(selectedEvent.confidence || {}).reason}</p>
+                  {selectedEvent.retention?.tier && (
+                    <p><strong>Retention:</strong> {selectedEvent.retention.tier}</p>
+                  )}
+                  {selectedEvent.correlation_id && (
+                    <button type="button" onClick={() => copyText(selectedEvent.correlation_id)} className="text-teal-700 flex items-center gap-1">
+                      <Copy className="w-3 h-3" /> Correlation ID
+                    </button>
+                  )}
+                  {(selectedEvent.evidence || {}).deep_link && (
+                    <Link to={(selectedEvent.evidence || {}).deep_link} className="text-teal-700 flex items-center gap-1">
+                      <ExternalLink className="w-3 h-3" /> Source record
+                    </Link>
+                  )}
+                  <OperationalEvidenceAnnotations
+                    eventId={selectedEvent.event_id}
+                    rootExecutionId={selectedEvent.root_execution_id}
+                    correlationId={selectedEvent.correlation_id}
+                    compact
+                  />
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Select an event to inspect evidence and correlation.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

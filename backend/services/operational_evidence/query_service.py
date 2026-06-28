@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from database import database
 
-from services.operational_evidence.constants import COLLECTION_EVENTS
+from services.operational_evidence.constants import ARCHIVED_RETENTION_TIERS, COLLECTION_EVENTS
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 200
@@ -42,6 +42,7 @@ def _build_filter_query(
     since: Optional[str] = None,
     until: Optional[str] = None,
     search: Optional[str] = None,
+    include_archived: bool = False,
 ) -> Dict[str, Any]:
     q: Dict[str, Any] = {}
     if category:
@@ -89,6 +90,8 @@ def _build_filter_query(
             {"correlation_id": search},
             {"root_execution_id": search},
         ]
+    if not include_archived:
+        q["retention.tier"] = {"$nin": list(ARCHIVED_RETENTION_TIERS)}
     return q
 
 
@@ -237,10 +240,11 @@ async def get_intelligence_shortcuts(hours: int = 24) -> Dict[str, Any]:
 
     since_dt = datetime.now(timezone.utc) - timedelta(hours=hours)
     since_iso = since_dt.isoformat()
+    active_retention = {"retention.tier": {"$nin": list(ARCHIVED_RETENTION_TIERS)}}
 
     failed_by_type = await db[COLLECTION_EVENTS].aggregate(
         [
-            {"$match": {"occurred_at": {"$gte": since_iso}, "status": "failed"}},
+            {"$match": {"occurred_at": {"$gte": since_iso}, "status": "failed", **active_retention}},
             {"$group": {"_id": "$event_type", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
             {"$limit": 10},
@@ -253,6 +257,7 @@ async def get_intelligence_shortcuts(hours: int = 24) -> Dict[str, Any]:
                 "$match": {
                     "occurred_at": {"$gte": since_iso},
                     "event_type": {"$in": ["NOTIFICATION_RETRY_SCHEDULED", "QUEUE_ITEM_FAILED"]},
+                    **active_retention,
                 }
             },
             {"$group": {"_id": "$correlation_id", "count": {"$sum": 1}}},
@@ -268,6 +273,7 @@ async def get_intelligence_shortcuts(hours: int = 24) -> Dict[str, Any]:
                 "$match": {
                     "occurred_at": {"$gte": since_iso},
                     "customer_impact.classification": {"$nin": ["no_impact", "operational_only"]},
+                    **active_retention,
                 }
             },
             {"$group": {"_id": "$customer_impact.classification", "count": {"$sum": 1}}},

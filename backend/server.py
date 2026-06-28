@@ -1135,6 +1135,15 @@ async def lifespan(app: FastAPI):
         )
         scheduler.add_job(
             "job_runner:run_scheduled_job",
+            CronTrigger(hour=3, minute=30, timezone=SCHEDULER_TIMEZONE),
+            id="operational_evidence_maintenance_job",
+            name="Operational Evidence Maintenance (backfill + retention)",
+            replace_existing=True,
+            args=["operational_evidence_maintenance_job"],
+            kwargs={"run_type": "schedule"},
+        )
+        scheduler.add_job(
+            "job_runner:run_scheduled_job",
             CronTrigger(minute=35, timezone=SCHEDULER_TIMEZONE),
             id="operational_recovery_processing",
             name="Operational Recovery Orchestration (Phase 2A)",

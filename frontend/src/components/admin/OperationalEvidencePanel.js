@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { adminAPI } from '../../api/client';
+import OperationalEvidenceAnnotations from './OperationalEvidenceAnnotations';
 import { ChevronDown, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
 
 const STATUS_CLASS = {
@@ -127,6 +128,12 @@ export default function OperationalEvidencePanel({
               ))}
             </ul>
           )}
+          <OperationalEvidenceAnnotations
+            eventId={story?.steps?.[0]?.event_id}
+            rootExecutionId={story?.root_execution_id || events[0]?.root_execution_id}
+            correlationId={story?.correlation_id || events[0]?.correlation_id}
+            compact
+          />
         </div>
       )}
     </div>

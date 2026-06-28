@@ -192,3 +192,58 @@ async def test_risk_regen_queue_created_emit():
         assert kwargs["category"] == CATEGORY_RISK
         assert kwargs["event_type"] == EVT_QUEUE_ITEM_CREATED
         assert kwargs["evidence"]["source_collection"] == "risk_signal_regen_queue"
+
+
+@pytest.mark.asyncio
+async def test_retention_filter_excludes_warm_by_default():
+    from services.operational_evidence.query_service import _build_filter_query
+
+    q = _build_filter_query()
+    assert q["retention.tier"]["$nin"] == ["warm", "cold"]
+
+    q_archived = _build_filter_query(include_archived=True)
+    assert "retention.tier" not in q_archived
+
+
+@pytest.mark.asyncio
+async def test_apply_warm_retention_tier():
+    from services.operational_evidence.retention_service import apply_warm_retention_tier
+
+    mock_col = AsyncMock()
+    mock_col.count_documents = AsyncMock(return_value=5)
+    mock_col.find = MagicMock(
+        return_value=MagicMock(
+            sort=MagicMock(
+                return_value=MagicMock(
+                    limit=MagicMock(return_value=MagicMock(to_list=AsyncMock(return_value=[{"_id": "a"}])))
+                )
+            )
+        )
+    )
+    mock_col.update_many = AsyncMock(return_value=MagicMock(modified_count=1))
+    mock_db = MagicMock()
+    mock_db.__getitem__ = MagicMock(return_value=mock_col)
+
+    with patch("services.operational_evidence.retention_service.database") as db_mod:
+        db_mod.get_db.return_value = mock_db
+        result = await apply_warm_retention_tier(batch_limit=10)
+    assert result["modified"] == 1
+
+
+@pytest.mark.asyncio
+async def test_maintenance_job_orchestrates_backfill_and_retention():
+    from services.operational_evidence.maintenance_service import run_operational_evidence_maintenance
+
+    with patch(
+        "services.operational_evidence.maintenance_service.run_operational_evidence_backfill",
+        new_callable=AsyncMock,
+    ) as backfill:
+        with patch(
+            "services.operational_evidence.maintenance_service.apply_warm_retention_tier",
+            new_callable=AsyncMock,
+        ) as retention:
+            backfill.return_value = {"totals": {"emitted": 3}}
+            retention.return_value = {"modified": 2}
+            result = await run_operational_evidence_maintenance()
+    assert result["count"] == 5
+    assert "backfill" in result and "retention" in result
