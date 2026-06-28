@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { adminAPI } from '../api/client';
+import { adminAPI } from '../../api/client';
 import { ChevronDown, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
 
 const STATUS_CLASS = {
