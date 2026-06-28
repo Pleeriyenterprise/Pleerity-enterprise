@@ -397,12 +397,42 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
     await update_provisioning_status_for_property(user["client_id"], property_id)
 
     materialization_ok = False
+    prev_jurisdiction = prop.get("jurisdiction")
     if jurisdiction_changed or applicability_changed:
         try:
             from services.requirement_materialization_service import materialize_requirements_for_property
 
-            await materialize_requirements_for_property(user["client_id"], property_id, reconcile_obsolete=True)
+            trigger = "property_jurisdiction_patch" if jurisdiction_changed else "property_applicability_patch"
+            await materialize_requirements_for_property(
+                user["client_id"],
+                property_id,
+                reconcile_obsolete=True,
+                materialization_trigger=trigger,
+            )
             materialization_ok = True
+            if jurisdiction_changed:
+                try:
+                    from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+                    from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+                    await dispatch_p1_producer(
+                        ProducerContext(
+                            mutation_kind="property_jurisdiction_materialization",
+                            client_id=str(user["client_id"]),
+                            source_collection="properties",
+                            source_id=property_id,
+                            property_id=property_id,
+                            mutation_timestamp=now.isoformat(),
+                            authoritative_payload={
+                                "previous_jurisdiction": prev_jurisdiction,
+                                "new_jurisdiction": update.get("jurisdiction"),
+                                "applicability_fields_changed": applicability_changed,
+                                "jurisdiction": update.get("jurisdiction"),
+                            },
+                        )
+                    )
+                except Exception:
+                    pass
         except Exception as mat_err:
             logger.exception(
                 "patch_property: requirement materialisation failed property_id=%s: %s",

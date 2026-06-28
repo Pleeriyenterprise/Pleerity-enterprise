@@ -310,6 +310,28 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                 property_id,
                 out.get("generated"),
             )
+            try:
+                from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+                from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+                await dispatch_p1_producer(
+                    ProducerContext(
+                        mutation_kind="risk_signal_regen_worker",
+                        client_id=client_id,
+                        source_collection="risk_signal_regen_queue",
+                        source_id=queue_item_id,
+                        property_id=property_id,
+                        correlation_id=f"risk-regen:{property_id}",
+                        mutation_timestamp=now_iso,
+                        authoritative_payload={
+                            "generated": out.get("generated"),
+                            "previous_active_removed": out.get("previous_active_removed"),
+                            "trigger_reasons": job.get("trigger_reasons") or [],
+                        },
+                    )
+                )
+            except Exception:
+                pass
             regenerated_count += 1
         except Exception as e:
             failed_count += 1

@@ -20,11 +20,13 @@ def _clear_registry_cache():
 
     reg._REGISTRY.clear()
     reg._HANDLERS.clear()
-    boot._INITIALIZED = False
+    boot._P0_INITIALIZED = False
+    boot._P1_INITIALIZED = False
     yield
     reg._REGISTRY.clear()
     reg._HANDLERS.clear()
-    boot._INITIALIZED = False
+    boot._P0_INITIALIZED = False
+    boot._P1_INITIALIZED = False
 
 
 def test_registry_lists_planned_producers_before_bootstrap():

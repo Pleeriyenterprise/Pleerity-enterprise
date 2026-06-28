@@ -841,13 +841,32 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     except Exception as e:
         logger.debug("automation_status risk refresh stamp skipped: %s", e)
 
-    return {
+    out = {
         "generated": len(inserted),
         "signals": inserted,
         "previous_active_removed": previous_active_removed,
         "merged_in_place": merged_count,
         "operational_debt_signal_count": len(operational_debt_ids),
     }
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        await dispatch_p1_producer(
+            ProducerContext(
+                mutation_kind="risk_signal_generation",
+                client_id=client_id,
+                source_collection="risk_signals",
+                source_id=property_id,
+                property_id=property_id,
+                correlation_id=f"RISK_GEN:{property_id}:{now_iso}",
+                mutation_timestamp=now_iso,
+                authoritative_payload=out,
+            )
+        )
+    except Exception:
+        pass
+    return out
 
 
 async def generate_risk_signals_for_org(client_id: str) -> Dict[str, Any]:

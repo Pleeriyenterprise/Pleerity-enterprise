@@ -18,6 +18,24 @@ _AUTHORITY = {
 }
 
 _APPROVE_STATES = frozenset({"APPROVED", "VERIFIED", "ACCEPTED", "ACCEPTED_UNVERIFIED"})
+_EXPIRED_STATES = frozenset({"EXPIRED", "MARK_EXPIRED"})
+_SUPERSEDE_HINTS = frozenset({"SUPERSEDED", "SUPERSEDE"})
+_EXTERNAL_VERIFY_HINTS = frozenset({"EXTERNALLY_VERIFIED", "EXTERNAL_VERIFICATION", "VERIFY_EXTERNAL"})
+
+
+def _p1_transition_category(from_state: str, to_state: str) -> Optional[str]:
+    """Map review transitions to P1 matrix rows when applicable."""
+    fs = (from_state or "").upper()
+    ts = (to_state or "").upper()
+    if ts in _EXPIRED_STATES or "EXPIRED" in ts:
+        return "P1-12"
+    if ts in _SUPERSEDE_HINTS or "SUPERSEDE" in ts:
+        return "P1-13"
+    if ts in _EXTERNAL_VERIFY_HINTS or "EXTERNAL" in ts:
+        return "P1-09"
+    if ts in _APPROVE_STATES and fs not in _APPROVE_STATES:
+        return "P1-08"
+    return None
 
 
 async def handle_evidence_review_transition(ctx: ProducerContext) -> Optional[str]:
@@ -52,6 +70,7 @@ async def handle_evidence_review_transition(ctx: ProducerContext) -> Optional[st
         "decision_reasoning_inputs": {
             "decision_reason": payload.get("decision_reason"),
             "validation_snapshot": payload.get("validation_snapshot"),
+            "p1_transition_category": _p1_transition_category(from_state, to_state),
         },
     }
 

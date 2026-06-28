@@ -180,6 +180,15 @@ async def execute_applicability_operator_command(
         resolution_reason_code=str(resolution_reason_code).strip().upper(),
         notes=str(notes).strip() if notes else None,
     )
+    await _dispatch_applicability_operator_producer(
+        client_id=cid_s,
+        requirement_id=rid_s,
+        command=cmd,
+        patch=patch,
+        resolution_reason_code=str(resolution_reason_code).strip().upper(),
+        actor=actor,
+        requirement=req,
+    )
     return {
         "ok": True,
         "client_id": client_id,
@@ -189,6 +198,45 @@ async def execute_applicability_operator_command(
         "effective_applicability_state": patch["effective_applicability_state"],
         "applicability_resolution_source": patch["applicability_resolution_source"],
     }
+
+
+async def _dispatch_applicability_operator_producer(
+    *,
+    client_id: str,
+    requirement_id: str,
+    command: str,
+    patch: Dict[str, Any],
+    resolution_reason_code: str,
+    actor: Mapping[str, Any],
+    requirement: Dict[str, Any],
+) -> None:
+    try:
+        from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+        from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+        await dispatch_p1_producer(
+            ProducerContext(
+                mutation_kind="applicability_operator",
+                client_id=str(client_id).strip(),
+                source_collection="requirements",
+                source_id=str(requirement_id).strip(),
+                property_id=requirement.get("property_id"),
+                requirement_id=str(requirement_id).strip(),
+                authoritative_payload={
+                    "command": command,
+                    "pipeline_applicability_state": patch.get("pipeline_applicability_state"),
+                    "effective_applicability_state": patch.get("effective_applicability_state"),
+                    "resolution_reason_code": resolution_reason_code,
+                    "requirement": requirement,
+                    "actor_type": str(actor.get("type") or "user"),
+                    "actor_id": str(actor.get("id") or ""),
+                    "authority_service": "applicability_operator_actions",
+                    "authority_component": "execute_applicability_operator_command",
+                },
+            )
+        )
+    except Exception:
+        pass
 
 
 __all__ = [

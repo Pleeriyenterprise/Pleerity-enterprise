@@ -17,13 +17,15 @@ def _reset_registry(monkeypatch):
 
     reg._REGISTRY.clear()
     reg._HANDLERS.clear()
-    boot._INITIALIZED = False
+    boot._P0_INITIALIZED = False
+    boot._P1_INITIALIZED = False
     monkeypatch.setenv("COMPLIANCE_EVIDENCE_GRAPH_MODE", "shadow")
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     yield
     reg._REGISTRY.clear()
     reg._HANDLERS.clear()
-    boot._INITIALIZED = False
+    boot._P0_INITIALIZED = False
+    boot._P1_INITIALIZED = False
 
 
 @pytest.mark.asyncio

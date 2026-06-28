@@ -187,3 +187,68 @@ async def handle_score_ledger_write(ctx: ProducerContext) -> Optional[str]:
         operational_correlation_id=correlation_id,
     )
     return decision_id
+
+
+async def handle_admin_score_repair(ctx: ProducerContext) -> Optional[str]:
+    """P1 — admin validate-compliance-score fix=true repair path."""
+    payload = ctx.authoritative_payload or {}
+    client_id = ctx.client_id
+    property_id = ctx.property_id or ctx.source_id
+    correlation_id = ctx.correlation_id or payload.get("correlation_id")
+    previous_score = payload.get("previous_score")
+    new_score = payload.get("new_score")
+
+    dedupe_key = build_dedupe_key(
+        mutation_kind="admin_score_repair",
+        client_id=client_id,
+        entity_id=property_id,
+        fact_signature=fact_hash(
+            {
+                "previous_score": previous_score,
+                "new_score": new_score,
+                "correlation_id": correlation_id,
+            }
+        ),
+    )
+
+    snapshot_payload = {
+        "compliance_score": {
+            "property_id": property_id,
+            "score_before": previous_score,
+            "score_after": new_score,
+            "repair_reason": payload.get("reason"),
+        },
+        "decision_reasoning_inputs": {
+            "admin_validator_repair": True,
+            "breakdown_diffs": payload.get("breakdown_diffs"),
+        },
+        "rule_lineage": {"lineage_complete": False, "lineage_incomplete": True, "lineage_incomplete_reason": "score_repair"},
+    }
+
+    result = await emit_p0_decision(
+        decision_type=DECISION_COMPLIANCE_SCORE_CHANGE,
+        decision_outcome="ADMIN_REPAIR",
+        summary=f"Admin compliance score repair for property {property_id}: {previous_score} → {new_score}",
+        source_collection="properties",
+        source_id=property_id,
+        dedupe_key=dedupe_key,
+        client_id=client_id,
+        property_id=property_id,
+        correlation_id=correlation_id,
+        mutation_timestamp=ctx.mutation_timestamp,
+        decision_authority={
+            "service": "routes.admin",
+            "component": "validate_compliance_score",
+            "actor_type": "admin",
+            "actor_id": payload.get("actor_id") or "admin_validator",
+        },
+        snapshot_payload=snapshot_payload,
+        quality_inputs={
+            "evidence_completeness": "complete",
+            "evidence_confidence_score": 100,
+            "human_verification_status": "approved",
+            "rule_certainty_score": 100,
+        },
+        metadata={"mutation_kind": "admin_score_repair", "producer": "p1"},
+    )
+    return result[0] if result else None

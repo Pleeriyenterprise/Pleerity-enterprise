@@ -59,24 +59,24 @@ Any row not meeting threshold at acceptance requires an entry in **Deferral Regi
 
 | ID | Mutation | Authoritative writer | Producer | Stream E row | Status |
 |----|----------|---------------------|----------|--------------|--------|
-| P1-01 | Applicability operator | `execute_applicability_operator_command` | `applicability.py` | 12 | planned |
-| P1-02 | Property jurisdiction PATCH | `patch_property` → materialize | `applicability.py` | 11 | planned |
-| P1-03 | Requirement materialization | `materialize_requirements_for_property` | `applicability.py` | 11 | planned |
-| P1-04 | Risk signal generation | `generate_risk_signals_for_property` | `risk.py` | — | planned |
-| P1-05 | Risk regen worker | `run_risk_signal_regen_worker` | `risk.py` | — | planned |
-| P1-06 | AI extraction apply | `apply-extraction` / evidence review AI | `document.py` | — | planned |
-| P1-07 | Extraction reject | reject-extraction paths | `document.py` | — | planned |
-| P1-08 | Human review complete | evidence review state transitions | `review.py` | — | planned |
-| P1-09 | External verification record | evidence review verify-external | `review.py` | — | planned |
-| P1-10 | CER write / linkage | `compliance_evidence_record_service` | `evidence.py` | — | planned |
-| P1-11 | Supporting document linkage | `supporting_evidence_linkage` | `evidence.py` | — | planned |
-| P1-12 | Evidence mark expired | evidence review mark-expired | `review.py` | — | planned |
-| P1-13 | Evidence supersede | evidence review supersede | `review.py` | — | planned |
-| P1-14 | Admin score repair | `validate_compliance_score` fix=true | `score.py` | 19 | planned |
-| P1-15 | Registry publish downstream | `compliance_registry_publish_service` | `applicability.py` | — | planned |
-| P1-16 | Rule lineage emit | all P0/P1 producers | `_base` + lineage | — | planned |
+| P1-01 | Applicability operator | `execute_applicability_operator_command` | `applicability.py` | 12 | implemented |
+| P1-02 | Property jurisdiction PATCH | `patch_property` → materialize | `applicability.py` | 11 | implemented |
+| P1-03 | Requirement materialization | `materialize_requirements_for_property` | `applicability.py` | 11 | implemented |
+| P1-04 | Risk signal generation | `generate_risk_signals_for_property` | `risk.py` | — | implemented |
+| P1-05 | Risk regen worker | `run_risk_signal_regen_worker` | `risk.py` | — | implemented |
+| P1-06 | AI extraction apply | `apply-extraction` / evidence review AI | `document.py` | — | implemented |
+| P1-07 | Extraction reject | reject-extraction paths | `document.py` | — | implemented |
+| P1-08 | Human review complete | evidence review state transitions | `review.py` | — | via P0-04 |
+| P1-09 | External verification record | evidence review verify-external | `review.py` | — | via P0-04 |
+| P1-10 | CER write / linkage | `compliance_evidence_record_service` | `evidence.py` | — | implemented |
+| P1-11 | Supporting document linkage | `supporting_evidence_linkage` | `evidence.py` | — | implemented |
+| P1-12 | Evidence mark expired | evidence review mark-expired | `review.py` | — | via P0-04 |
+| P1-13 | Evidence supersede | evidence review supersede | `review.py` | — | via P0-04 |
+| P1-14 | Admin score repair | `validate_compliance_score` fix=true | `score.py` | 19 | implemented |
+| P1-15 | Registry publish downstream | `compliance_registry_publish_service` | `applicability.py` | — | implemented |
+| P1-16 | Rule lineage emit | all P0/P1 producers | `_emit` + `lineage.py` | — | implemented |
 
-**P1 count:** 16 rows — **target validated: 16/16**
+**P1 count:** 16 rows — **16/16 implemented (staging validation pending)**
 
 ---
 

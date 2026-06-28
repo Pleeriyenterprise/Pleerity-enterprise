@@ -3767,6 +3767,33 @@ async def apply_ai_extraction(
         )
         
         logger.info(f"AI extraction applied for document {document_id}: {changes_made}")
+
+        try:
+            from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+            from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+            await dispatch_p1_producer(
+                ProducerContext(
+                    mutation_kind="document_extraction_apply",
+                    client_id=str(document["client_id"]),
+                    source_collection="documents",
+                    source_id=document_id,
+                    property_id=document.get("property_id"),
+                    requirement_id=requirement_id,
+                    correlation_id=f"AI_APPLIED:{document_id}",
+                    mutation_timestamp=now_iso,
+                    authoritative_payload={
+                        "changes_made": changes_made,
+                        "user_confirmed": confirmed_data is not None,
+                        "expiry_date_set": expiry_date,
+                        "confidence_score": document_update.get("confidence_score"),
+                        "requirement": requirement,
+                        "actor_id": user.get("portal_user_id"),
+                    },
+                )
+            )
+        except Exception:
+            pass
         
         property_id = document.get("property_id")
         if property_id:
@@ -4025,6 +4052,29 @@ async def reject_ai_extraction(request: Request, document_id: str, reason: str =
             }
         )
         
+        try:
+            from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+            from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+            await dispatch_p1_producer(
+                ProducerContext(
+                    mutation_kind="document_extraction_reject",
+                    client_id=str(document["client_id"]),
+                    source_collection="documents",
+                    source_id=document_id,
+                    property_id=document.get("property_id"),
+                    requirement_id=document.get("requirement_id"),
+                    correlation_id=f"AI_REJECTED:{document_id}",
+                    mutation_timestamp=now_iso,
+                    authoritative_payload={
+                        "reason": reason,
+                        "actor_id": user.get("portal_user_id"),
+                    },
+                )
+            )
+        except Exception:
+            pass
+
         return {"message": "Extraction marked as rejected"}
     
     except HTTPException:
@@ -4237,6 +4287,30 @@ async def reconcile_document_linkage(
             {"document_id": document_id},
             {"$set": link_persist},
         )
+        if skip_primary_pipeline:
+            try:
+                from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+                from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+                await dispatch_p1_producer(
+                    ProducerContext(
+                        mutation_kind="supporting_document_linkage",
+                        client_id=user["client_id"],
+                        source_collection="documents",
+                        source_id=document_id,
+                        property_id=str(req.get("property_id") or property_id),
+                        requirement_id=rid,
+                        correlation_id=f"CLIENT_LINK_RECONCILE:{document_id}",
+                        authoritative_payload={
+                            "supporting_only": True,
+                            "reason": body.reason,
+                            "requirement": req,
+                            "actor_id": user.get("portal_user_id"),
+                        },
+                    )
+                )
+            except Exception:
+                pass
         if not skip_primary_pipeline:
             await safe_upsert_document_upload_evidence_for_linked_document(
                 db,

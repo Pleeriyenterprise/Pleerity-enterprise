@@ -412,6 +412,32 @@ async def recalculate_and_persist(
     except Exception as ceg_err:
         logger.debug("ceg compliance_score_recalc producer skipped: %s", ceg_err)
 
+    if reason == REASON_ADMIN_VALIDATOR_REPAIR:
+        try:
+            from services.compliance_evidence_graph.producers.hooks import dispatch_p1_producer
+            from services.compliance_evidence_graph.producers.registry import ProducerContext
+
+            await dispatch_p1_producer(
+                ProducerContext(
+                    mutation_kind="admin_score_repair",
+                    client_id=client_id,
+                    source_collection="properties",
+                    source_id=property_id,
+                    property_id=property_id,
+                    correlation_id=str(_cid).strip() if _cid else None,
+                    mutation_timestamp=now.isoformat(),
+                    authoritative_payload={
+                        "previous_score": previous_score,
+                        "new_score": new_score,
+                        "reason": reason,
+                        "actor_id": (actor or {}).get("id") or (actor or {}).get("portal_user_id"),
+                        "breakdown_diffs": (context or {}).get("breakdown_diffs"),
+                    },
+                )
+            )
+        except Exception as ceg_p1_err:
+            logger.debug("ceg admin_score_repair producer skipped: %s", ceg_p1_err)
+
     return result
 
 
