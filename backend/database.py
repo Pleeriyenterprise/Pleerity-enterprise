@@ -492,6 +492,55 @@ class Database:
                 await self.db.compliance_ai_narrations.create_index([("decision_id", 1), ("created_at", -1)])
             except Exception as e:
                 logger.warning("compliance_ai_narrations indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_artefacts.create_index("artefact_id", unique=True)
+                await self.db.compliance_intelligence_artefacts.create_index(
+                    [("client_id", 1), ("artefact_type", 1), ("lifecycle_state", 1)]
+                )
+                await self.db.compliance_intelligence_artefacts.create_index(
+                    [("client_id", 1), ("generated_at", -1)]
+                )
+                await self.db.compliance_intelligence_artefacts.create_index("inputs_hash")
+                await self.db.compliance_intelligence_artefacts.create_index("dedupe_key", sparse=True)
+            except Exception as e:
+                logger.warning("compliance_intelligence_artefacts indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_transitions.create_index("transition_id", unique=True)
+                await self.db.compliance_intelligence_transitions.create_index(
+                    [("artefact_id", 1), ("transitioned_at", -1)]
+                )
+                await self.db.compliance_intelligence_transitions.create_index(
+                    [("client_id", 1), ("transitioned_at", -1)]
+                )
+            except Exception as e:
+                logger.warning("compliance_intelligence_transitions indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_provenance.create_index("provenance_id", unique=True)
+                await self.db.compliance_intelligence_provenance.create_index("artefact_id", unique=True)
+                await self.db.compliance_intelligence_provenance.create_index(
+                    [("client_id", 1), ("generated_at", -1)]
+                )
+                await self.db.compliance_intelligence_provenance.create_index("inputs_hash")
+                await self.db.compliance_intelligence_provenance.create_index("generation_decision_id", sparse=True)
+            except Exception as e:
+                logger.warning("compliance_intelligence_provenance indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_strategy_registry.create_index("strategy_id", unique=True)
+                await self.db.compliance_intelligence_strategy_registry.create_index(
+                    [("strategy_family", 1), ("semantic_version", -1)]
+                )
+            except Exception as e:
+                logger.warning("compliance_intelligence_strategy_registry indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_weight_registry.create_index("weight_set_id", unique=True)
+            except Exception as e:
+                logger.warning("compliance_intelligence_weight_registry indexes: %s", e)
+            try:
+                await self.db.compliance_intelligence_constraint_registry.create_index(
+                    "constraint_set_id", unique=True
+                )
+            except Exception as e:
+                logger.warning("compliance_intelligence_constraint_registry indexes: %s", e)
             await self.db.incidents.create_index([("status", 1), ("created_at", -1)])
             await self.db.incidents.create_index([("severity", 1), ("status", 1)])
             await self.db.incidents.create_index("created_at")

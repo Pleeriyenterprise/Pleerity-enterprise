@@ -1,0 +1,41 @@
+"""Intelligence Service Layer — public API for Compliance Intelligence Artefacts."""
+
+from services.compliance_intelligence_service.service import (
+    compare_intelligence,
+    explain_intelligence,
+    generate_decision_impact,
+    generate_dependency_chain,
+    generate_forecast,
+    generate_intelligence,
+    generate_portfolio_insights,
+    generate_readiness,
+    generate_recommendations,
+    generate_regulatory_impact,
+    generate_remediation_strategy,
+    get_intelligence,
+    get_intelligence_lifecycle,
+    get_intelligence_provenance,
+    list_intelligence,
+    replay_intelligence,
+    transition_intelligence,
+)
+
+__all__ = [
+    "compare_intelligence",
+    "explain_intelligence",
+    "generate_decision_impact",
+    "generate_dependency_chain",
+    "generate_forecast",
+    "generate_intelligence",
+    "generate_portfolio_insights",
+    "generate_readiness",
+    "generate_recommendations",
+    "generate_regulatory_impact",
+    "generate_remediation_strategy",
+    "get_intelligence",
+    "get_intelligence_lifecycle",
+    "get_intelligence_provenance",
+    "list_intelligence",
+    "replay_intelligence",
+    "transition_intelligence",
+]
