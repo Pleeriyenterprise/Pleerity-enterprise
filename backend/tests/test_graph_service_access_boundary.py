@@ -8,6 +8,7 @@ BACKEND = Path(__file__).resolve().parent.parent
 ALLOWED_PREFIXES = (
     "services/compliance_evidence_graph/",
     "services/compliance_graph_service/",
+    "services/compliance_intelligence/",
     "tests/",
 )
 
@@ -49,8 +50,27 @@ def test_graph_service_does_not_expose_storage_in_public_init():
 def test_no_unauthorized_storage_imports_in_routes():
     violations = []
     for py in (BACKEND / "routes").glob("*.py"):
-        if py.name == "compliance_graph.py":
+        if py.name in ("compliance_graph.py", "compliance_intelligence.py"):
             continue
         if _imports_storage_module(py):
             violations.append(str(py.relative_to(BACKEND)))
     assert violations == [], f"Unauthorized graph storage imports: {violations}"
+
+
+def test_intelligence_package_no_storage_imports():
+    pkg = BACKEND / "services" / "compliance_intelligence"
+    violations = []
+    for py in pkg.glob("*.py"):
+        rel = str(py.relative_to(BACKEND)).replace("\\", "/")
+        if rel.startswith("services/compliance_intelligence/"):
+            content = py.read_text(encoding="utf-8")
+            if "compliance_evidence_graph.storage" in content:
+                violations.append(rel)
+    assert violations == [], f"Intelligence package must not import graph storage: {violations}"
+
+
+def test_compliance_intelligence_route_no_storage_imports():
+    routes_file = BACKEND / "routes" / "compliance_intelligence.py"
+    content = routes_file.read_text(encoding="utf-8")
+    assert "compliance_evidence_graph.storage" not in content
+    assert "compliance_intelligence" in content

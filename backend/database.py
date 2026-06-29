@@ -484,7 +484,14 @@ class Database:
                 )
             except Exception as e:
                 logger.warning("compliance_evidence_graph indexes: %s", e)
-            await self.db.score_ledger_events.create_index([("correlation_id", 1), ("created_at", -1)])
+            # Compliance AI narrations — intelligence audit trail (Phase 5)
+            try:
+                await self.db.compliance_ai_narrations.create_index("narration_id", unique=True)
+                await self.db.compliance_ai_narrations.create_index([("client_id", 1), ("created_at", -1)])
+                await self.db.compliance_ai_narrations.create_index("graph_service_response_hash")
+                await self.db.compliance_ai_narrations.create_index([("decision_id", 1), ("created_at", -1)])
+            except Exception as e:
+                logger.warning("compliance_ai_narrations indexes: %s", e)
             await self.db.incidents.create_index([("status", 1), ("created_at", -1)])
             await self.db.incidents.create_index([("severity", 1), ("status", 1)])
             await self.db.incidents.create_index("created_at")

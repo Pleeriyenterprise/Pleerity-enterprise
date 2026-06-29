@@ -1,0 +1,651 @@
+{
+  "programme": "CEG-PHASE-5-AI-INTELLIGENCE-PRE-COMMIT-VALIDATION-GATE",
+  "run_tag": "20260629T011944Z",
+  "validated_at": "2026-06-29T01:19:44.722332+00:00",
+  "checks": [
+    {
+      "name": "intelligence_no_storage_imports",
+      "passed": true,
+      "violations": []
+    },
+    {
+      "name": "graph_dispatch_graph_service_only",
+      "passed": true
+    },
+    {
+      "name": "graph_dispatch_approved_methods_only",
+      "passed": true,
+      "methods": [
+        "compare_decision",
+        "compare_decision_snapshots",
+        "explain_decision",
+        "find_affected_properties",
+        "find_affected_requirements",
+        "find_decision_dependencies",
+        "find_historical_decision",
+        "find_missing_evidence",
+        "find_superseded_evidence",
+        "list_decisions",
+        "replay_decision",
+        "trace_evidence",
+        "trace_operational_impact",
+        "trace_requirement"
+      ]
+    },
+    {
+      "name": "admin_intelligence_route_guarded",
+      "passed": true
+    },
+    {
+      "name": "no_customer_intelligence_ui",
+      "passed": true
+    },
+    {
+      "name": "feature_flag_disabled_tier1_off",
+      "passed": true
+    },
+    {
+      "name": "feature_flag_shadow_tier1_off",
+      "passed": true
+    },
+    {
+      "name": "feature_flag_enabled_tier1_on",
+      "passed": true
+    },
+    {
+      "name": "feature_flag_tier2_requires_both_flags",
+      "passed": true
+    },
+    {
+      "name": "investigate_disabled_safe_response",
+      "passed": true
+    },
+    {
+      "name": "tier2_blocked_on_insufficient_tier1",
+      "passed": true
+    },
+    {
+      "name": "tier1_unchanged_by_tier2",
+      "passed": true
+    },
+    {
+      "name": "citation_strips_uncited_paragraphs",
+      "passed": true
+    },
+    {
+      "name": "citation_prefers_empty_over_unsupported",
+      "passed": true
+    },
+    {
+      "name": "citation_node_ids_validated_against_envelope",
+      "passed": true
+    },
+    {
+      "name": "narration_no_authority_mutations",
+      "passed": true
+    },
+    {
+      "name": "prompt_safety_contract",
+      "passed": true
+    },
+    {
+      "name": "storage_record_fields",
+      "passed": true,
+      "required_fields": [
+        "narration_id",
+        "client_id",
+        "graph_service_response_hash",
+        "citation_references",
+        "prompt_version",
+        "model_id",
+        "actor_portal_user_id"
+      ],
+      "params": [
+        "client_id",
+        "graph_method",
+        "graph_service_response_hash",
+        "envelope",
+        "narration",
+        "question",
+        "model_id",
+        "actor_admin",
+        "actor_portal_user_id"
+      ]
+    },
+    {
+      "name": "storage_no_secrets_in_record",
+      "passed": true
+    },
+    {
+      "name": "tenant_cross_client_blocked",
+      "passed": true
+    },
+    {
+      "name": "regression_pytest_suite",
+      "passed": true,
+      "tests_passed": 92,
+      "tests_failed": 0
+    },
+    {
+      "name": "runtime_tier1_investigate_smoke",
+      "passed": true,
+      "connected": true,
+      "checks": 6
+    },
+    {
+      "name": "runtime_narration_controlled",
+      "passed": true,
+      "narration_id": "nar_e5149666837f4759bb07e46914a6136b",
+      "paragraphs_kept": 1
+    }
+  ],
+  "sections": {
+    "feature_flag_matrix": {
+      "disabled": {
+        "graph_mode": "disabled",
+        "tier1": false,
+        "tier2": false
+      },
+      "shadow": {
+        "graph_mode": "shadow",
+        "tier1": false,
+        "tier2": false
+      },
+      "enabled": {
+        "graph_mode": "enabled",
+        "tier1": true,
+        "tier2": true
+      },
+      "enabled_no_ai": {
+        "tier1": true,
+        "tier2": false
+      }
+    },
+    "prompt_safety": {
+      "uses_envelope_only": true,
+      "no_invent_legislation": true,
+      "no_invent_timelines": true,
+      "no_invent_customer_actions": true,
+      "no_invent_operational_causes": true,
+      "insufficient_evidence_instruction": true,
+      "no_legal_advice_beyond_platform": true,
+      "distinguish_missing_evidence": true
+    },
+    "regression_pytest": {
+      "exit_code": 0,
+      "passed": 92,
+      "failed": 0,
+      "output_tail": "........................................................................ [ 78%]\n....................                                                     [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n92 passed, 4 warnings in 2.08s\n"
+    },
+    "runtime": {
+      "connected": true,
+      "checks": [
+        {
+          "name": "investigate_explain_decision",
+          "passed": {
+            "service": "explain_decision",
+            "service_version": "1.0.0",
+            "generated_at": "2026-06-29T01:20:49.563989+00:00",
+            "request": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e"
+            },
+            "authoritative_references": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+              "decision_ids": [
+                "dec_ff2f261110674dd0bad0f33597cb206e"
+              ],
+              "node_ids": [],
+              "edge_ids": [],
+              "source_pointers": [
+                {
+                  "collection": "reminders",
+                  "id": "accept-20260629T000018Z"
+                }
+              ]
+            },
+            "evidence_lineage": [
+              {
+                "type": "snapshot",
+                "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d"
+              }
+            ],
+            "decision_lineage": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "previous_decision_id": null,
+              "superseding_decision_id": null,
+              "chain": [
+                "dec_ff2f261110674dd0bad0f33597cb206e"
+              ]
+            },
+            "confidence_metadata": {
+              "score": 100,
+              "label": "runtime_confirmed",
+              "reason": "Indexed from authoritative source"
+            },
+            "applicable_legislation": [],
+            "applicable_rules": [],
+            "historical_references": {
+              "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+              "snapshot_timestamp": "2026-06-29T00:01:21.906415+00:00"
+            },
+            "operational_references": {
+              "correlation_id": "ACC:20260629T000018Z",
+              "operational_event_ids": []
+            },
+            "insufficient_evidence": false,
+            "payload": {
+              "executive_summary": "Daily compliance reminders dispatched (1 success)",
+              "decision": {
+                "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+                "decision_type": "reminder_generation",
+                "decision_outcome": "DAILY_SENT",
+                "decision_timestamp": "2026-06-29T00:01:21.906415+00:00",
+                "decision_authority": {
+                  "service": "jobs",
+                  "component": "daily_reminder",
+                  "actor_type": "system",
+                  "actor_id": "reminder_job"
+                }
+              },
+              "decision_reasoning": [
+                {
+                  "step": 1,
+                  "statement": "Daily compliance reminders dispatched (1 success)",
+                  "authoritative_references": {
+                    "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+                    "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d"
+                  },
+                  "confidence": 100
+                },
+                {
+                  "step": 2,
+                  "statement": "Decision reasoning inputs preserved at decision time",
+                  "authoritative_references": {
+                    "snapshot_fields": [
+                      "decision_reasoning_inputs"
+                    ]
+                  },
+                  "confidence": 100
+                }
+              ],
+              "snapshot_summary": {
+                "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+                "snapshot_timestamp": "2026-06-29T00:01:21.906415+00:00",
+                "snapshot_hash": "75a46d2eb4cd5d23e60096d602a87c6fae8ae38e14048c003b6da3bff5e95887"
+              },
+              "evidence_used": {},
+              "applicable_legislation": [],
+              "applicable_local_rules": [],
+              "timeline": [],
+              "operational_history": {
+                "correlation_id": "ACC:20260629T000018Z",
+                "execution_id": null,
+                "root_execution_id": null,
+                "job_run_id": null,
+                "incident_id": null,
+                "queue_item_id": null,
+                "worker": null,
+                "queue": null,
+                "recovery_event": null
+              },
+              "confidence_assessment": {
+                "score": 100,
+                "label": "runtime_confirmed",
+                "reason": "Indexed from authoritative source"
+              },
+              "outstanding_uncertainty": [],
+              "recommended_actions": []
+            }
+          },
+          "insufficient": false,
+          "hash": "sha256:b0ccc14892fb36fdb59dd257645925c052bb130fa73e82f1f2ce20919af160de"
+        },
+        {
+          "name": "investigate_replay_decision",
+          "passed": {
+            "service": "replay_decision",
+            "service_version": "1.0.0",
+            "generated_at": "2026-06-29T01:20:49.804464+00:00",
+            "request": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e"
+            },
+            "authoritative_references": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+              "decision_ids": [
+                "dec_ff2f261110674dd0bad0f33597cb206e"
+              ],
+              "node_ids": [],
+              "edge_ids": [],
+              "source_pointers": [
+                {
+                  "collection": "reminders",
+                  "id": "accept-20260629T000018Z"
+                }
+              ]
+            },
+            "evidence_lineage": [],
+            "decision_lineage": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "previous_decision_id": null,
+              "superseding_decision_id": null,
+              "chain": [
+                "dec_ff2f261110674dd0bad0f33597cb206e"
+              ]
+            },
+            "confidence_metadata": {},
+            "applicable_legislation": [],
+            "applicable_rules": [],
+            "historical_references": {
+              "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+              "snapshot_timestamp": "2026-06-29T00:01:21.906415+00:00"
+            },
+            "operational_references": {},
+            "insufficient_evidence": false,
+            "payload": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+              "phases": [
+                {
+                  "phase": "authority_sync",
+                  "source": "snapshot"
+                },
+                {
+                  "phase": "decision_recorded",
+                  "source": "compliance_decisions",
+                  "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e"
+                }
+              ],
+              "timeline": [
+                {
+                  "occurred_at": "2026-06-29T00:01:21.906415+00:00",
+                  "node_id": "ceg_7fa249b92e934a65ae6f2a2fb00732bb",
+                  "summary": "Daily compliance reminders dispatched (1 success)"
+                },
+                {
+                  "occurred_at": "2026-06-29T00:01:21.906415+00:00",
+                  "node_id": "ceg_7ca9435d677e43459b42c1b24866f328",
+                  "summary": "Decision snapshot for dec_ff2f261110674dd0bad0f33597cb206e"
+                }
+              ],
+              "graph_nodes": [
+                {
+                  "node_id": "ceg_7fa249b92e934a65ae6f2a2fb00732bb",
+                  "node_type": "compliance_decision",
+                  "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+                  "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+                  "dedupe_key": "node:decision:dec_ff2f261110674dd0bad0f33597cb206e",
+                  "occurred_at": "2026-06-29T00:01:21.906415+00:00",
+                  "recorded_at": "2026-06-29T00:01:21.906415+00:00",
+                  "client_id": "ceg-2e-20260629T000018Z",
+                  "property_id": null,
+                  "requirement_id": null,
+                  "correlation_id": "ACC:20260629T000018Z",
+                  "environment": "development",
+                  "build_sha": "unknown",
+                  "source": {
+                    "collection": "reminders",
+                    "id": "accept-20260629T000018Z"
+                  },
+                  "summary": "Daily compliance reminders dispatched (1 success)",
+                  "status": "success",
+                  "severity": "info"
+                },
+                {
+                  "node_id": "ceg_7ca9435d677e43459b42c1b24866f328",
+                  "node_type": "decision_snapshot",
+                  "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+                  "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+                  "dedupe_key": "node:snapshot:snap_fe310d1caf0942d883277ee55075c33d",
+                  "occurred_at": "2026-06-29T00:01:21.906415+00:00",
+                  "recorded_at": "2026-06-29T00:01:21.906415+00:00",
+                  "client_id": "ceg-2e-20260629T000018Z",
+                  "property_id": null,
+                  "requirement_id": null,
+                  "source": {
+                    "collection": "compliance_decisions",
+                    "id": "dec_ff2f261110674dd0bad0f33597cb206e"
+                  },
+                  "summary": "Decision snapshot for dec_ff2f261110674dd0bad0f33597cb206e",
+                  "status": "success",
+                  "severity": "info"
+                }
+              ],
+              "graph_edges": [
+                {
+                  "edge_id": "ceg_edge_4202e466afae44b29571271a8e57d208",
+                  "from_node_id": "ceg_7fa249b92e934a65ae6f2a2fb00732bb",
+                  "to_node_id": "ceg_7ca9435d677e43459b42c1b24866f328",
+                  "edge_type": "snapshot_of",
+                  "relationship_strength": "authoritative",
+                  "occurred_at": "2026-06-29T00:01:21.906415+00:00",
+                  "recorded_at": "2026-06-29T00:01:21.906415+00:00",
+                  "dedupe_key": "snapshot_of:dec_ff2f261110674dd0bad0f33597cb206e:snap_fe310d1caf0942d883277ee55075c33d",
+                  "provenance": {
+                    "why_exists": "Decision dec_ff2f261110674dd0bad0f33597cb206e frozen knowledge state at decision time",
+                    "created_by_component": "daily_reminder",
+                    "created_by_authority": "jobs",
+                    "created_at": "2026-06-29T00:01:21.906415+00:00",
+                    "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+                    "runtime_event_id": null,
+                    "operational_event_id": null,
+                    "correlation_id": "ACC:20260629T000018Z",
+                    "is_active": true,
+                    "superseded_by_edge_id": null
+                  },
+                  "metadata": {}
+                }
+              ]
+            }
+          },
+          "insufficient": false,
+          "hash": "sha256:e91c72987c349168c31d28da9dc0aacb4090ae513525dd769d48f47f93514d46"
+        },
+        {
+          "name": "investigate_compare_decision",
+          "passed": {
+            "service": "compare_decision",
+            "service_version": "1.0.0",
+            "generated_at": "2026-06-29T01:20:50.153744+00:00",
+            "request": {
+              "left_decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "right_decision_id": "dec_ff2f261110674dd0bad0f33597cb206e"
+            },
+            "authoritative_references": {
+              "decision_ids": [
+                "dec_ff2f261110674dd0bad0f33597cb206e",
+                "dec_ff2f261110674dd0bad0f33597cb206e"
+              ],
+              "snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d"
+            },
+            "evidence_lineage": [],
+            "decision_lineage": {},
+            "confidence_metadata": {},
+            "applicable_legislation": [],
+            "applicable_rules": [],
+            "historical_references": {
+              "left_snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+              "right_snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d"
+            },
+            "operational_references": {},
+            "insufficient_evidence": false,
+            "payload": {
+              "left_decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "right_decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "left_snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+              "right_snapshot_id": "snap_fe310d1caf0942d883277ee55075c33d",
+              "outcome_changed": false,
+              "diff": {},
+              "decision_chain": [
+                "dec_ff2f261110674dd0bad0f33597cb206e",
+                "dec_ff2f261110674dd0bad0f33597cb206e"
+              ]
+            }
+          },
+          "insufficient": false,
+          "hash": "sha256:638e25c38a20450b233bb76149340b09b9d122943b02225ab608676cd3df5f3a"
+        },
+        {
+          "name": "investigate_trace_evidence",
+          "passed": {
+            "service": "trace_evidence",
+            "service_version": "1.0.0",
+            "generated_at": "2026-06-29T01:20:50.338495+00:00",
+            "request": {
+              "anchor_type": "decision",
+              "anchor_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "client_id": "ceg-2e-20260629T000018Z"
+            },
+            "authoritative_references": {
+              "decision_ids": [
+                "dec_ff2f261110674dd0bad0f33597cb206e"
+              ]
+            },
+            "evidence_lineage": [],
+            "decision_lineage": {},
+            "confidence_metadata": {},
+            "applicable_legislation": [],
+            "applicable_rules": [],
+            "historical_references": {},
+            "operational_references": {},
+            "insufficient_evidence": false,
+            "payload": {
+              "anchor_type": "decision",
+              "anchor_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "matches": [
+                {
+                  "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+                  "decision_type": "reminder_generation",
+                  "summary": "Daily compliance reminders dispatched (1 success)",
+                  "decision_timestamp": "2026-06-29T00:01:21.906415+00:00"
+                }
+              ],
+              "traversal_edges": []
+            }
+          },
+          "insufficient": false,
+          "hash": "sha256:be0362cd8d717e1b32777f76d288e899e785f5d9a67e921961df7c44c31e7993"
+        },
+        {
+          "name": "investigate_trace_operational_impact",
+          "passed": {
+            "service": "trace_operational_impact",
+            "service_version": "1.0.0",
+            "generated_at": "2026-06-29T01:20:50.470698+00:00",
+            "request": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e"
+            },
+            "authoritative_references": {},
+            "evidence_lineage": [],
+            "decision_lineage": {},
+            "confidence_metadata": {},
+            "applicable_legislation": [],
+            "applicable_rules": [],
+            "historical_references": {},
+            "operational_references": {
+              "correlation_id": "ACC:20260629T000018Z",
+              "operational_event_ids": []
+            },
+            "insufficient_evidence": false,
+            "payload": {
+              "decision_id": "dec_ff2f261110674dd0bad0f33597cb206e",
+              "correlation_id": "ACC:20260629T000018Z",
+              "operational_context": {
+                "correlation_id": "ACC:20260629T000018Z",
+                "execution_id": null,
+                "root_execution_id": null,
+                "job_run_id": null,
+                "incident_id": null,
+                "queue_item_id": null,
+                "worker": null,
+                "queue": null,
+                "recovery_event": null
+              }
+            }
+          },
+          "insufficient": false,
+          "hash": "sha256:d8970f45e3d34988af83c76a1b1550b0cd582edcba0d72bec3c7c900a74b1dd6"
+        },
+        {
+          "name": "runtime_cross_tenant_blocked",
+          "passed": true
+        }
+      ],
+      "narration_runtime": {
+        "passed": true,
+        "narration_id": "nar_e5149666837f4759bb07e46914a6136b",
+        "paragraphs_kept": 1
+      }
+    },
+    "access_boundary": {
+      "storage_import_violations": [],
+      "dispatch_methods": [
+        "compare_decision",
+        "compare_decision_snapshots",
+        "explain_decision",
+        "find_affected_properties",
+        "find_affected_requirements",
+        "find_decision_dependencies",
+        "find_historical_decision",
+        "find_missing_evidence",
+        "find_superseded_evidence",
+        "list_decisions",
+        "replay_decision",
+        "trace_evidence",
+        "trace_operational_impact",
+        "trace_requirement"
+      ],
+      "tenant_cross_client_blocked": true
+    },
+    "citation_gating": {
+      "strips_uncited": true,
+      "prefers_empty": true,
+      "node_validation": true
+    },
+    "narration_safety": {
+      "tier2_blocked_on_insufficient": true,
+      "tier1_immutable": true,
+      "no_authority_keys": true
+    },
+    "storage_validation": {
+      "record_fields": true,
+      "no_secrets": true
+    },
+    "remaining_risks": [
+      "Tier 2 narration quality depends on LLM adherence; post-validator is the safety backstop.",
+      "Runtime validation uses staging/local DB decisions when connected.",
+      "Frontend intelligence UI intentionally not implemented (Phase 5 slice).",
+      "Customer-facing intelligence remains Phase 7 \u2014 not enabled.",
+      "Production COMPLIANCE_EVIDENCE_GRAPH_MODE and narration flags must remain unchanged until staging sign-off."
+    ]
+  },
+  "elapsed_ms": 66002,
+  "critical_checks": [
+    "intelligence_no_storage_imports",
+    "graph_dispatch_graph_service_only",
+    "graph_dispatch_approved_methods_only",
+    "admin_intelligence_route_guarded",
+    "no_customer_intelligence_ui",
+    "feature_flag_disabled_tier1_off",
+    "feature_flag_shadow_tier1_off",
+    "feature_flag_enabled_tier1_on",
+    "feature_flag_tier2_requires_both_flags",
+    "investigate_disabled_safe_response",
+    "tier2_blocked_on_insufficient_tier1",
+    "tier1_unchanged_by_tier2",
+    "citation_strips_uncited_paragraphs",
+    "citation_prefers_empty_over_unsupported",
+    "citation_node_ids_validated_against_envelope",
+    "narration_no_authority_mutations",
+    "prompt_safety_contract",
+    "storage_record_fields",
+    "storage_no_secrets_in_record",
+    "tenant_cross_client_blocked",
+    "regression_pytest_suite",
+    "runtime_tier1_investigate_smoke",
+    "runtime_narration_controlled"
+  ],
+  "failed_critical": [],
+  "acceptance": "PHASE_5_COMMIT_READY"
+}
