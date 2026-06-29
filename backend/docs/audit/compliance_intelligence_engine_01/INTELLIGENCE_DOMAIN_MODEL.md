@@ -1,12 +1,15 @@
 # Intelligence Domain Model
 
-**Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01
+**Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01
 
 ---
 
 ## Purpose
 
-Define shared vocabulary, bounded contexts, and cross-domain contracts for the seven deterministic intelligence engines.
+Define shared vocabulary, bounded contexts, and cross-domain contracts for deterministic intelligence engines.
+
+**Primary entity:** Compliance Intelligence Artefact (`INTELLIGENCE_ARTEFACT_MODEL.md`). All domain engines emit typed artefacts.
 
 ---
 
@@ -28,9 +31,12 @@ Define shared vocabulary, bounded contexts, and cross-domain contracts for the s
                             │
                             ▼
                    Graph Emit Adapter
+                            │
+                            ▼
+              Intelligence Service Layer (public)
 ```
 
-Each engine:
+Each engine emits **Compliance Intelligence Artefacts** — never standalone legacy records.
 
 - Accepts a **scoped context** (`client_id`, optional `property_id`, `requirement_id`, `as_of`)
 - Returns a **deterministic envelope** with `response_hash`

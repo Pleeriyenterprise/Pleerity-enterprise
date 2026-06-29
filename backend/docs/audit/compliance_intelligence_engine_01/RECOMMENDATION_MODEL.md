@@ -6,23 +6,27 @@
 
 ## Purpose
 
-Define immutable **Recommendation** entities — deterministic, evidence-backed operational actions derived from authoritative compliance history.
+Define the **Recommendation** subtype of **Compliance Intelligence Artefact** — deterministic, evidence-backed operational actions derived from authoritative compliance history.
 
-Recommendations are **not** compliance decisions. They are **intelligence artefacts** that cite the compliance decisions and evidence that justify them.
+Recommendations are **not** compliance decisions. They are `artefact_type=recommendation` records extending the base CIA schema in `INTELLIGENCE_ARTEFACT_MODEL.md`.
 
 ---
 
-## Recommendation as first-class entity
+## Recommendation as artefact subtype
 
-**Collection:** `compliance_intelligence_recommendations`  
-**Access:** CIE internal + Graph Service indexed traversal  
-**Mutability:** Append-only. Content changes → new recommendation superseding prior.
+**Canonical storage:** `compliance_intelligence_artefacts` where `artefact_type=recommendation`  
+**Legacy alias:** `recommendation_id` = `artefact_id` for backward-compatible integrations  
+**Mutability:** Append-only. Content changes → new artefact with `supersedes_artefact_id`.
 
-### Schema
+### Base fields (inherited)
+
+All fields from `INTELLIGENCE_ARTEFACT_MODEL.md` base schema apply, including `artefact_id`, `inputs_hash`, `response_hash`, `source_decision_ids`, `lifecycle_state`, `commercial`, `explainability`.
+
+### Payload schema (`payload` when `artefact_type=recommendation`)
 
 ```json
 {
-  "recommendation_id": "rec_<uuid>",
+  "recommendation_id": "cia_<uuid>",
   "recommendation_type": "renew_eicr",
   "recommendation_version": 1,
   "status": "generated",
@@ -96,26 +100,36 @@ Recommendations are **not** compliance decisions. They are **intelligence artefa
     "score_delta_estimate": 4,
     "risk_delta_estimate": -12
   },
-  "confidence": {
-    "score": 92,
-    "label": "high",
-    "factors": [
-      { "factor": "verified_evidence", "weight": 0.4 },
-      { "factor": "stable_decision", "weight": 0.3 },
-      { "factor": "clear_rule_lineage", "weight": 0.3 }
-    ]
-  },
+  "implementation_complexity": "low | medium | high",
+  "business_impact": { "score": 75, "band": "high" },
+  "regulatory_impact": { "exposure": "statutory", "severity": "high" },
+  "customer_impact": { "tenant_disruption": "low", "visibility": "high" },
   "operational_correlation_id": "corr_uuid | null",
   "work_order_id": null,
   "reminder_id": null,
   "inputs_hash": "sha256:…",
-  "response_hash": "sha256:…",
-  "engine_version": "cie-1.0.0",
-  "dedupe_key": "renew_eicr:req_abc:2026-06-02:expiry_window",
-  "environment": "staging",
-  "build_sha": "b6edbb27…"
+  "response_hash": "sha256:…"
 }
 ```
+
+`confidence` lives on base artefact. `estimated_cost`, `estimated_duration` denormalised from `commercial` block — see `COMMERCIAL_INTELLIGENCE_MODEL.md`.
+
+---
+
+## Recommendation-specific attributes (summary)
+
+| Attribute | Location |
+|-----------|----------|
+| Recommendation Type | `payload.recommendation_type` |
+| Priority | `payload.priority_band`, `priority_score`, `priority_rank` |
+| Expected Outcome | `payload.expected_outcome` |
+| Expected Improvement | impact assessment artefact ref + score deltas |
+| Estimated Cost / Duration | `commercial` + payload denormalised fields |
+| Dependencies | `payload.dependencies` |
+| Implementation Complexity | `payload.implementation_complexity` |
+| Business / Regulatory / Customer Impact | `payload.business_impact`, etc. |
+
+Lifecycle: `RECOMMENDATION_LIFECYCLE.md` extends `INTELLIGENCE_LIFECYCLE_MODEL.md`.
 
 ---
 
@@ -172,7 +186,7 @@ FOR each candidate in scope (requirements with gap signals):
   7. COMPUTE dependencies via Dependency Engine
   8. COMPUTE expected_outcome via Decision Impact Engine
   9. ASSIGN priority via Priority Engine
-  10. EMIT recommendation record + generation decision to CEG
+  10. EMIT artefact (`artefact_type=recommendation`) + generation decision to CEG
   11. HASH inputs → inputs_hash; HASH output → response_hash
 ```
 

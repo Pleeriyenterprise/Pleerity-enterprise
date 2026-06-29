@@ -1,67 +1,87 @@
 # Graph Integration Model
 
-**Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01
+**Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01
 
 ---
 
 ## Purpose
 
-Define how CIE intelligence artefacts integrate with the Compliance Evidence Graph as first-class indexed entities — extending CEG without breaking access boundaries.
+Define how **Compliance Intelligence Artefacts** integrate with the Compliance Evidence Graph — extending CEG without breaking access boundaries.
 
 ---
 
-## Intelligence backbone relationship
+## Intelligence relationship chain
 
 ```
 Compliance Decision (assessment)
         │
         ▼ generates
-Recommendation (CIE)
+Compliance Intelligence Artefact (cia_*)
         │
-        ├──► Expected Outcome (impact projection)
-        ├──► Dependencies (edges)
-        ├──► Affected Evidence (refs)
-        ├──► Affected Rules / Legislation (refs)
-        ├──► Affected Portfolio (snapshot link)
-        ├──► Operational Tasks (WO / reminder refs)
-        └──► Completion Outcome (lifecycle transition → assessment decision)
+        ├──► recommendation (subtype payload)
+        │         │
+        │         ├──► Expected Outcome (decision_impact_assessment artefact)
+        │         ├──► Operational Tasks (work_order / reminder refs)
+        │         └──► Completion → assessment decision (authority)
+        │
+        ├──► priority_assessment
+        ├──► dependency_chain
+        ├──► portfolio_insight / risk / readiness / trend
+        ├──► regulatory_impact_assessment
+        └──► forecast / workload_forecast / operational_insight
+                │
+                ├──► Evidence (refs)
+                ├──► Reports (consumer refs)
+                ├──► Portfolio (scope)
+                ├──► Customer Impact (payload fields)
+                ├──► Operational Impact (OE correlation)
+                └──► Historical Outcomes (supersession chain)
 ```
 
-The graph becomes the **intelligence backbone** — traversal from any compliance decision to recommended actions and outcomes.
+Every edge is traceable with full provenance.
 
 ---
 
-## New node types (CEG taxonomy extension)
+## Node types (CEG taxonomy extension)
 
-| Node type | Collection | Emitted by |
-|-----------|------------|------------|
-| `intelligence_recommendation` | `compliance_intelligence_recommendations` | CIE Recommendation Engine |
-| `intelligence_impact_projection` | `compliance_intelligence_impact_projections` | Decision Impact Engine |
-| `intelligence_priority_snapshot` | `compliance_intelligence_portfolio_snapshots` / priority snapshots | Priority / Portfolio Engine |
-| `intelligence_dependency_chain` | computed / materialised | Dependency Engine |
-| `intelligence_regulatory_impact` | `compliance_intelligence_regulatory_impact_reports` | Regulatory Impact Engine |
-| `recommendation_lifecycle_transition` | `compliance_intelligence_recommendation_transitions` | Lifecycle Engine |
+| Node type | Maps to | `artefact_type` |
+|-----------|---------|-----------------|
+| `compliance_intelligence_artefact` | `compliance_intelligence_artefacts` | any |
+| `intelligence_recommendation` | payload view | `recommendation` |
+| `intelligence_impact` | payload view | `decision_impact_assessment` |
+| `intelligence_priority` | payload view | `priority_assessment` |
+| `intelligence_dependency` | payload view | `dependency_chain` |
+| `intelligence_portfolio` | payload view | portfolio types |
+| `intelligence_regulatory` | payload view | `regulatory_impact_assessment` |
+| `intelligence_lifecycle_transition` | `compliance_intelligence_artefact_transitions` | — |
 
-Registered in `compliance_evidence_graph/constants.py` at implementation time.
+**Canonical graph node:** `compliance_intelligence_artefact` with `artefact_type` attribute. Subtype-specific node types optional for traversal ergonomics.
 
 ---
 
-## New edge types
+## Edge types
 
-| Edge type | From | To | Provenance |
-|-----------|------|-----|------------|
-| `generated_recommendation` | `compliance_decision` | `intelligence_recommendation` | assessment gap decision |
-| `recommends_action_for` | `intelligence_recommendation` | `requirement` | template rule |
-| `depends_on` | `intelligence_recommendation` | `requirement \| document \| recommendation` | Dependency Engine |
-| `projects_impact` | `intelligence_recommendation` | `intelligence_impact_projection` | Impact Engine |
-| `prioritised_in` | `intelligence_recommendation` | `intelligence_priority_snapshot` | Priority Engine |
-| `affects_portfolio` | `intelligence_recommendation` | `organisation` | scope |
-| `operational_task` | `intelligence_recommendation` | `work_order \| reminder` | lifecycle transition |
-| `completed_by` | `intelligence_recommendation` | `compliance_decision` | verification assessment |
-| `supersedes` | `intelligence_recommendation` | `intelligence_recommendation` | regeneration |
-| `regulatory_impact_on` | `intelligence_regulatory_impact` | `property \| decision \| report` | rule change |
+| Edge type | From | To |
+|-----------|------|-----|
+| `generated_intelligence` | `compliance_decision` | `compliance_intelligence_artefact` |
+| `artefact_subtype` | `compliance_intelligence_artefact` | typed view / payload role |
+| `recommends_action_for` | artefact (`recommendation`) | `requirement` |
+| `depends_on` | artefact | `requirement \| document \| artefact` |
+| `projects_impact` | artefact | `decision_impact_assessment` artefact |
+| `prioritised_in` | artefact | `priority_assessment` artefact |
+| `affects_portfolio` | artefact | `organisation` |
+| `operational_task` | artefact | `work_order \| reminder` |
+| `completed_by` | artefact | `compliance_decision` |
+| `supersedes` | artefact | artefact |
+| `regulatory_impact_on` | `regulatory_impact_assessment` | `property \| decision \| report` |
+| `references_evidence` | artefact | `document \| cer \| node` |
+| `consumed_by` | artefact | consumer registry id |
+| `customer_impact` | artefact | `property` (tenant scope) |
+| `operational_impact` | artefact | OE correlation node |
+| `historical_outcome` | artefact | superseded / completed artefact chain |
 
-All edges require `provenance` block per `GRAPH_DATA_MODEL.md`.
+All edges require provenance per `GRAPH_DATA_MODEL.md`.
 
 ---
 
@@ -69,47 +89,34 @@ All edges require `provenance` block per `GRAPH_DATA_MODEL.md`.
 
 | decision_type | When |
 |---------------|------|
-| `recommendation` | CIE generates new recommendation |
-| `recommendation_lifecycle` | Status transition |
-| `priority_snapshot` | Portfolio prioritisation run |
-| `regulatory_impact` | Regulatory impact report generated |
-| `impact_projection` | Standalone impact calculation |
-
-Aligns with existing `DECISION_RECOMMENDATION` constant in `constants.py`.
+| `intelligence_artefact` | CIE emits any CIA |
+| `intelligence_lifecycle` | Any lifecycle transition |
+| `recommendation` | Alias for intelligence_artefact where type=recommendation (backward compat) |
+| `recommendation_lifecycle` | Alias for recommendation transitions |
 
 ---
 
 ## Producer architecture
 
-CIE registers as **CEG producer** (Phase 2 pattern):
+CIE `graph_emit.py` emits atomic:
 
-```text
-services/compliance_intelligence_engine/graph_emit.py
-  → compliance_evidence_graph.emit_service.emit_intelligence_decision(...)
-```
+1. `compliance_decisions` (`intelligence_artefact`)
+2. `compliance_decision_snapshots` (frozen artefact JSON)
+3. Graph nodes + provenanced edges
 
-Producer rules:
-
-- Gated by `COMPLIANCE_INTELLIGENCE_ENGINE_MODE=shadow|enabled`
-- Gated by `COMPLIANCE_EVIDENCE_GRAPH_MODE=shadow|enabled`
-- Atomic: decision + snapshot + nodes + edges in one emit
-- Dedupe via `dedupe_key` on recommendations
-- Never emit on `insufficient_evidence`
+Gated by `COMPLIANCE_INTELLIGENCE_ENGINE_MODE` + `COMPLIANCE_EVIDENCE_GRAPH_MODE`.
 
 ---
 
 ## Graph Service extensions (future)
 
-New Graph Service methods (consumer-facing):
-
 | Method | Purpose |
 |--------|---------|
-| `explain_recommendation(recommendation_id)` | Compose recommendation + generation decision |
-| `trace_recommendation_dependencies(recommendation_id)` | Dependency chain |
-| `find_open_recommendations(scope)` | Query indexed recommendations |
-| `find_regulatory_impact(report_id)` | Regulatory blast radius |
+| `explain_intelligence(artefact_id)` | Delegates to ISL / reads snapshot |
+| `trace_intelligence_lineage(artefact_id)` | Supersession + source decisions |
+| `find_open_intelligence(scope, artefact_type?)` | Indexed query |
 
-CIE **implements** calculation; Graph Service **implements** traversal/explain — same split as today.
+Consumers use **ISL first**; Graph Service provides decision-lineage join.
 
 ---
 
@@ -117,41 +124,26 @@ CIE **implements** calculation; Graph Service **implements** traversal/explain �
 
 | Allowed | Forbidden |
 |---------|-----------|
-| CIE → Graph Service (read) | CIE → `compliance_evidence_graph.storage` direct |
-| CIE → graph_emit adapter (write via emit_service) | CIE → mutate `requirements` / scores |
-| Consumers → Graph Service | Consumers → `compliance_intelligence_recommendations` direct |
+| CIE → Graph Service (read) | Consumers → `compliance_intelligence_artefacts` direct |
+| CIE → emit_service (write) | CIE → mutate compliance authority |
+| Consumers → ISL | Consumers → CIE storage |
 
 ---
 
-## AI layer consumption path
+## Integrity validation extensions
 
-```
-Graph Service.explain_recommendation()
-        OR
-CIE envelope passed to AI with graph_service_response_hash
-```
-
-AI never reads `compliance_intelligence_recommendations` collection directly.
+- Every CIA node has `generation_decision_id`
+- Orphan impact / dependency artefacts linked to parent CIA
+- Lifecycle transitions form valid DAG
+- `response_hash` on snapshot matches artefact record
 
 ---
 
-## Integrity validation
+## Legacy migration
 
-Graph Integrity Validator extended with:
+| Legacy | Target |
+|--------|--------|
+| `maintenance_service.recommendation_id` | `artefact_id` where type=recommendation |
+| Per-type collections (CIE-0) | Unified `compliance_intelligence_artefacts` at implementation |
 
-- Every `intelligence_recommendation` node has `generation_decision_id`
-- Every recommendation edge has provenance
-- No orphan impact projections
-- Lifecycle transitions form valid DAG (no cycles except supersession)
-
----
-
-## Migration from legacy recommendation fields
-
-| Legacy | Migration |
-|--------|-----------|
-| `maintenance_service.recommendation_id` | Populate from CIE `recommendation_id` when WO created from rec |
-| Digest `top_next_actions` | Source from `prioritise_actions()` snapshot |
-| Report executive recommendations | Cite `recommendation_id` + `generation_decision_id` |
-
-No big-bang — shadow mode dual-write comparison during migration slice.
+Shadow dual-write optional during CIE-2 migration slice.

@@ -2,7 +2,7 @@
 
 **Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01
 
----
+**Output artefact types:** `dependency_chain`, `operational_insight` — see `INTELLIGENCE_ARTEFACT_MODEL.md`.
 
 ## Purpose
 

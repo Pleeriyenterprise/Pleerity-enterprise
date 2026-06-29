@@ -2,7 +2,7 @@
 
 **Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01
 
----
+**Output artefact types:** `portfolio_insight`, `portfolio_risk_assessment`, `portfolio_readiness_assessment`, `compliance_trend`, `workload_forecast` — see `INTELLIGENCE_ARTEFACT_MODEL.md`.
 
 ## Purpose
 

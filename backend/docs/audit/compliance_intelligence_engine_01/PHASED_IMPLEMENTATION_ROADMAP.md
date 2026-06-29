@@ -16,42 +16,44 @@ Estimated implementation phases: **CIE-0 through CIE-6**.
 
 ## CIE-0 — Architecture ✓
 
-**Deliverables:**
-
-- `COMPLIANCE_INTELLIGENCE_ENGINE_ARCHITECTURE.md`
-- `INTELLIGENCE_DOMAIN_MODEL.md`
-- `RECOMMENDATION_MODEL.md`
-- `RECOMMENDATION_LIFECYCLE.md`
-- `DEPENDENCY_MODEL.md`
-- `PRIORITY_MODEL.md`
-- `DECISION_IMPACT_MODEL.md`
-- `PORTFOLIO_INTELLIGENCE_MODEL.md`
-- `REGULATORY_IMPACT_MODEL.md`
-- `GRAPH_INTEGRATION_MODEL.md`
-- `API_DESIGN.md`
-- `RUNTIME_VALIDATION_PLAN.md`
-- `PHASED_IMPLEMENTATION_ROADMAP.md` (this document)
+**Deliverables:** CIE-0 docs (committed `f8da4fe5`)
 
 **Exit criteria:** Architecture approved. **No code.**
 
 ---
 
+## CIE-0-R1 — Architecture refinement ✓
+
+**Deliverables:**
+
+- `ARCHITECTURE_REFINEMENT_01.md`
+- `INTELLIGENCE_ARTEFACT_MODEL.md`
+- `INTELLIGENCE_SERVICE_LAYER.md`
+- `INTELLIGENCE_LIFECYCLE_MODEL.md`
+- `INTELLIGENCE_CONSUMERS.md`
+- `COMMERCIAL_INTELLIGENCE_MODEL.md`
+- Updates to CIE-0 documents
+
+**Exit criteria:** Refinement-01 approved. **No code.**
+
+---
+
 ## CIE-1 — Foundation
 
-**Scope:**
+**Scope (refined):**
 
-- `services/compliance_intelligence_engine/` package skeleton
-- `config.py` — `COMPLIANCE_INTELLIGENCE_ENGINE_MODE`
-- `hashing.py` — `inputs_hash`, `response_hash`
-- `read_adapter.py` — Graph Service client wrapper
-- `orchestrator.py` — scope resolution, flag gating
-- `database.py` indexes for new collections (stubs)
-- Unit tests: hashing, config, access boundary (no graph storage imports)
-- Feature flag default: `disabled`
+- `services/compliance_intelligence_engine/` — config, hashing, orchestrator stub, artefact schema
+- `services/compliance_intelligence_service/` — ISL skeleton, access boundary, envelope types
+- `artefact_type` registry (constants)
+- `compliance_intelligence_artefacts` + `compliance_intelligence_artefact_transitions` index stubs in `database.py`
+- Unit tests: hashing, config, dual access boundary (ISL + CIE vs graph storage)
+- Feature flag: `COMPLIANCE_INTELLIGENCE_ENGINE_MODE=disabled`
 
-**Not in CIE-1:** Recommendation logic, HTTP routes, producers.
+**Not in CIE-1:** Domain engines, graph producers, HTTP routes, commercial calculations.
 
-**Exit criteria:** Package imports cleanly; access boundary tests pass; flag gating verified.
+**Exit criteria:** Packages import cleanly; artefact base schema validated; ISL stub returns structured envelopes; access boundary tests pass.
+
+**Readiness:** See `ARCHITECTURE_REFINEMENT_01.md` § CIE-1 readiness — **READY FOR AUTHORISATION**.
 
 ---
 
@@ -61,9 +63,8 @@ Estimated implementation phases: **CIE-0 through CIE-6**.
 
 - `recommendation/` — template registry v1, `generate_recommendations()`
 - `priority/` — weights v1, `prioritise_actions()`
-- Collections: `compliance_intelligence_recommendations`
-- `explain_recommendation()` — static field composition
-- `compare_recommendations()` — structural diff
+- Collections: `compliance_intelligence_artefacts` (`artefact_type=recommendation`)
+- ISL: `generate_recommendations()`, `explain_intelligence()`
 - Unit tests: template matching, dedupe, priority ordering stability
 - Integration tests with mocked Graph Service fixtures
 
@@ -105,8 +106,8 @@ Estimated implementation phases: **CIE-0 through CIE-6**.
 - `graph_emit.py` — CEG producer for intelligence artefacts
 - CEG constants extension (node/edge types)
 - `lifecycle/` — transitions, validation matrix
-- Graph Service method stubs: `explain_recommendation`, `find_open_recommendations`
-- `transition_recommendation()`, `get_recommendation_lifecycle()`
+- Graph Service + ISL method stubs: `explain_intelligence`, `list_intelligence`
+- `transition_intelligence()` for recommendations
 - Admin HTTP routes (read-heavy first)
 
 **Flag:** `shadow` on staging — graph emit without operational effects.
@@ -159,9 +160,9 @@ Production: all CIE flags `disabled` until promotion authorisation.
 
 | Risk | Mitigation |
 |------|------------|
-| CIE confused with AI `compliance_intelligence` | Separate package name; docs; access boundaries |
+| CIE confused with AI `compliance_intelligence` | Separate packages: `compliance_intelligence_engine` + `compliance_intelligence_service` vs `compliance_intelligence` |
 | Recommendations perceived as compliance authority | Disclaimers; never write score_ledger; UI labelling |
-| Duplicate recommendation sources (digest, reports) | Migration plan in `GRAPH_INTEGRATION_MODEL.md` |
+| Recommendation-centric storage refactor later | Refinement-01 unified CIA — CIE-1 implements base first |
 | Non-determinism from datetime | Explicit `as_of`; versioned weights |
 | Graph producer volume | Dedupe keys; batch prioritisation snapshots |
 
@@ -171,12 +172,13 @@ Production: all CIE flags `disabled` until promotion authorisation.
 
 Architecture slice complete when:
 
-- [x] All 13 deliverable documents produced
-- [x] Determinism contract defined
-- [x] Non-authority contract explicit
-- [x] AI consumption path defined without redesign
-- [x] CEG integration model extends existing graph
+- [x] CIE-0 deliverables committed
+- [x] Refinement-01 artefact generalisation documented
+- [x] Intelligence Service Layer boundary defined
+- [x] Determinism + non-authority contracts explicit
+- [x] AI consumption path via ISL
+- [x] CEG integration artefact-centric
 - [x] Runtime validation plan defined
-- [x] Phased roadmap with explicit stop before production
+- [x] CIE-1 readiness recommendation documented
 
-**Implementation authorisation:** Await explicit `CIE-1` authorisation per slice.
+**Implementation authorisation:** Await explicit `CIE-1` authorisation.

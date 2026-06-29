@@ -10,6 +10,8 @@ Define staging validation for CIE without AI — proving deterministic, reproduc
 
 **Prerequisite:** `COMPLIANCE_EVIDENCE_GRAPH_MODE=enabled`, `COMPLIANCE_INTELLIGENCE_ENGINE_MODE=shadow|enabled`, `AI_ENABLED=false`.
 
+Validate **Compliance Intelligence Artefacts** (CIA) via Intelligence Service Layer — not legacy per-type collections.
+
 ---
 
 ## Validation harness (future)
@@ -77,13 +79,13 @@ Pattern mirrors `tmp_compliance_evidence_graph_phase5_staging_smoke.py`.
 | `affected_properties` | ⊆ portfolio properties |
 | `scoring_recalc_recommended` | Boolean only — no auto recalc |
 
-### V7 — Recommendation explanations reproducible
+### V7 — Intelligence explanations reproducible
 
 | Step | Assertion |
 |------|-----------|
-| `explain_recommendation(rec_id)` × 2 | Identical envelope |
-| Answers: why generated, why priority, why now, evidence, regulation | All fields populated or `insufficient_evidence` |
-| No LLM calls | `compliance_ai_narrations` count unchanged |
+| `explain_intelligence(cia_id)` × 2 | Identical envelope |
+| All explainability fields populated or `insufficient_evidence` | |
+| `compliance_ai_narrations` count delta | 0 |
 
 ### V8 — Lifecycle transitions
 

@@ -2,7 +2,7 @@
 
 **Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01
 
----
+**Output artefact type:** `priority_assessment` — see `INTELLIGENCE_ARTEFACT_MODEL.md`.
 
 ## Purpose
 

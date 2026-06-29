@@ -1,12 +1,15 @@
 # Recommendation Lifecycle
 
-**Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01
+**Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01
 
 ---
 
 ## Purpose
 
-Define immutable lifecycle progression for recommendations. Every transition is a **new graph event** — never an in-place status update.
+Define recommendation-specific lifecycle states extending the base **Intelligence Lifecycle** (`INTELLIGENCE_LIFECYCLE_MODEL.md`).
+
+Recommendation lifecycle is unchanged in behaviour; artefact IDs use `cia_*` (alias `recommendation_id`).
 
 ---
 
@@ -71,12 +74,12 @@ Define immutable lifecycle progression for recommendations. Every transition is 
 
 ## Transition record schema
 
-**Collection:** `compliance_intelligence_recommendation_transitions`
+**Collection:** `compliance_intelligence_artefact_transitions` (filter by `artefact_type=recommendation`)
 
 ```json
 {
-  "transition_id": "rect_<uuid>",
-  "recommendation_id": "rec_<uuid>",
+  "transition_id": "ciat_<uuid>",
+  "artefact_id": "cia_<uuid>",
   "from_status": "generated",
   "to_status": "accepted",
   "transitioned_at": "2026-06-02T14:00:00+00:00",

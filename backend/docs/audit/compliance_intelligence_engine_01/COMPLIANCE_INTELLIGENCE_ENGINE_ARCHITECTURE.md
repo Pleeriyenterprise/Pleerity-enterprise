@@ -1,17 +1,18 @@
 # Compliance Intelligence Engine — Architecture
 
 **Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
-**Status:** Architecture approved for planning — **no implementation in this slice**  
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01  
+**Status:** Architecture refined — **no implementation**  
 **Date:** 2026-06-02  
-**Prerequisite:** Compliance Evidence Graph Phases 1–5 Tier 1 accepted on staging (`PHASE_5_TIER1_STAGING_ACCEPTED`)
+**Prerequisite:** CIE-0 committed (`f8da4fe5`); CEG Phase 5 Tier 1 accepted
 
 ---
 
 ## Executive summary
 
-The **Compliance Intelligence Engine (CIE)** transforms authoritative compliance history into **prioritised, evidence-backed, deterministic operational intelligence**.
+The **Compliance Intelligence Engine (CIE)** transforms authoritative compliance history into **prioritised, evidence-backed, deterministic operational intelligence**, represented as immutable **Compliance Intelligence Artefacts (CIA)**.
 
-This is **not an AI programme**. It is a **business intelligence and decision-support** programme. The existing **AI Intelligence Layer** (`services/compliance_intelligence/`, Phase 5) becomes a **consumer** of CIE outputs — explaining deterministic intelligence, never creating it.
+This is **not an AI programme**. It is a **Compliance Operations Intelligence Platform** programme. Recommendations are one artefact subtype among many (portfolio insights, impact assessments, forecasts, readiness, regulatory blast radius). The **Intelligence Service Layer** is the sole consumer interface. The **AI Intelligence Layer** explains artefact envelopes — never creating them.
 
 CIE answers **"What should happen next?"** while remaining:
 
@@ -45,7 +46,7 @@ CIE **must never**:
 CIE **may**:
 
 - Read authoritative projections via **Graph Service** and governed read adapters
-- Emit **immutable intelligence artefacts** (recommendations, priorities, impact projections) as graph-indexed entities
+- Emit **immutable Compliance Intelligence Artefacts** indexed in CEG
 - Propose operational follow-ups (work orders, reminders) **only through existing operational integration contracts** — never bypassing authority
 
 ---
@@ -68,22 +69,18 @@ CIE **may**:
                                 │ read-only consumption
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ COMPLIANCE INTELLIGENCE ENGINE (CIE) — THIS PROGRAMME               │
-│ Priority · Recommendation · Decision Impact · Dependency              │
-│ Portfolio · Regulatory Impact · Lifecycle                           │
+│ COMPLIANCE INTELLIGENCE ENGINE (CIE) — calculation                  │
+│ Domain engines → Compliance Intelligence Artefacts                  │
 └───────────────────────────────┬─────────────────────────────────────┘
-                                │ intelligence artefacts indexed in CEG
+                                │ internal storage
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ OPERATIONAL INTEGRATION (existing contracts)                        │
-│ Work Orders · Reminders · Notifications · Digest · Reports        │
-│ Operational Evidence Timeline · Decision Explorer                   │
+│ INTELLIGENCE SERVICE LAYER — sole consumer API                      │
 └───────────────────────────────┬─────────────────────────────────────┘
-                                │ optional narration
+                                │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│ AI INTELLIGENCE LAYER (Phase 5+) — consumer only                    │
-│ Explains CIE + Graph Service envelopes · never calculates intel     │
+│ OPERATIONAL INTEGRATION · Dashboards · Reports · Digest · AI       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -98,7 +95,7 @@ CIE **may**:
 | Purpose | Grounded narration of Graph Service envelopes | Deterministic intelligence calculation |
 | LLM | Optional Tier 2 when explicitly enabled | **Never** |
 | Inputs | Graph Service methods | Graph Service + governed read projections |
-| Outputs | `compliance_ai_narrations` audit trail | Recommendations, priorities, impact, dependencies |
+| Outputs | `compliance_ai_narrations` audit trail | **Compliance Intelligence Artefacts** via ISL |
 | Authority | Never authoritative | Never authoritative — operational suggestions only |
 
 Phase 5 `compliance_advisor` / `portfolio_intelligence` names in `AI_INTELLIGENCE_LAYER_ARCHITECTURE.md` are **renamed at consumption time**: those capabilities move to **CIE**; AI services **explain** their outputs.
@@ -107,19 +104,24 @@ Phase 5 `compliance_advisor` / `portfolio_intelligence` names in `AI_INTELLIGENC
 
 ## Core intelligence domains
 
-Seven independent deterministic engines. Each is a bounded context with its own model document.
+Seven deterministic engines plus commercial extension. Each emits **typed Compliance Intelligence Artefacts**.
 
-| # | Domain | Document | Primary question |
+| # | Domain | Document | Artefact type(s) |
 |---|--------|----------|------------------|
-| 1 | Priority Engine | `PRIORITY_MODEL.md` | What matters most, and why? |
-| 2 | Recommendation Engine | `RECOMMENDATION_MODEL.md` | What action should be taken? |
-| 3 | Decision Impact Engine | `DECISION_IMPACT_MODEL.md` | What changes if this action completes? |
-| 4 | Dependency Engine | `DEPENDENCY_MODEL.md` | What blocks this, and what is the critical path? |
-| 5 | Portfolio Intelligence Engine | `PORTFOLIO_INTELLIGENCE_MODEL.md` | How healthy is the portfolio overall? |
-| 6 | Regulatory Impact Engine | `REGULATORY_IMPACT_MODEL.md` | What breaks when rules change? |
-| 7 | Recommendation Lifecycle | `RECOMMENDATION_LIFECYCLE.md` | How do recommendations progress immutably? |
+| 1 | Priority Engine | `PRIORITY_MODEL.md` | `priority_assessment` |
+| 2 | Recommendation Engine | `RECOMMENDATION_MODEL.md` | `recommendation` |
+| 3 | Decision Impact Engine | `DECISION_IMPACT_MODEL.md` | `decision_impact_assessment` |
+| 4 | Dependency Engine | `DEPENDENCY_MODEL.md` | `dependency_chain`, `operational_insight` |
+| 5 | Portfolio Intelligence Engine | `PORTFOLIO_INTELLIGENCE_MODEL.md` | `portfolio_insight`, `portfolio_risk_assessment`, `portfolio_readiness_assessment`, `compliance_trend`, `workload_forecast` |
+| 6 | Regulatory Impact Engine | `REGULATORY_IMPACT_MODEL.md` | `regulatory_impact_assessment` |
+| 7 | Lifecycle | `INTELLIGENCE_LIFECYCLE_MODEL.md` | transitions on all types |
+| — | Commercial | `COMMERCIAL_INTELLIGENCE_MODEL.md` | `commercial` block on artefacts |
 
-Cross-cutting: `INTELLIGENCE_DOMAIN_MODEL.md` (shared vocabulary), `GRAPH_INTEGRATION_MODEL.md` (CEG indexing), `API_DESIGN.md` (public service surface).
+**Parent entity:** `INTELLIGENCE_ARTEFACT_MODEL.md`  
+**Consumer API:** `INTELLIGENCE_SERVICE_LAYER.md`  
+**Consumers:** `INTELLIGENCE_CONSUMERS.md`
+
+Cross-cutting: `INTELLIGENCE_DOMAIN_MODEL.md`, `GRAPH_INTEGRATION_MODEL.md`, `API_DESIGN.md`.
 
 ---
 
@@ -138,44 +140,43 @@ CIE **does not** import `services/compliance_evidence_graph.storage` directly (s
 
 ---
 
-## Outputs (immutable intelligence artefacts)
+## Outputs (Compliance Intelligence Artefacts)
 
-| Artefact | Nature | Graph role |
-|----------|--------|------------|
-| `compliance_intelligence_recommendations` | Immutable recommendation records | First-class graph entity |
-| `compliance_intelligence_priorities` | Ranked action sets (versioned) | Derived view / snapshot |
-| `compliance_intelligence_impact_projections` | Deterministic what-if deltas | Linked to recommendation |
-| `compliance_intelligence_dependency_chains` | Materialised or computed chains | Traversal index |
-| `compliance_intelligence_portfolio_snapshots` | Portfolio KPI bundles | Point-in-time intelligence |
-| `compliance_intelligence_regulatory_impact_reports` | Rule-change blast radius | Event-triggered |
+**Canonical collection:** `compliance_intelligence_artefacts`  
+See `INTELLIGENCE_ARTEFACT_MODEL.md` for base schema and type registry.
 
-Every output record includes:
+| Artefact type | Domain |
+|---------------|--------|
+| `recommendation` | Recommendation Engine |
+| `priority_assessment` | Priority Engine |
+| `decision_impact_assessment` | Decision Impact Engine |
+| `dependency_chain` | Dependency Engine |
+| `portfolio_insight`, `portfolio_risk_assessment`, `portfolio_readiness_assessment`, `compliance_trend`, `workload_forecast` | Portfolio Engine |
+| `regulatory_impact_assessment` | Regulatory Impact Engine |
+| `audit_readiness_assessment`, `insurance_readiness_assessment` | Readiness |
+| `forecast`, `operational_insight`, `remediation_strategy` | Composite / future slices |
 
-- `intelligence_engine_version`
-- `inputs_hash` (canonical hash of upstream references)
-- `response_hash` (deterministic output fingerprint)
-- `source_decision_ids[]`
-- `insufficient_evidence` when applicable
+Every artefact includes: `engine_version`, `template_version`, `deterministic_version`, `inputs_hash`, `response_hash`, `source_decision_ids`, `source_snapshot_ids`, `source_graph_references`, `confidence`, `lifecycle_state`, `operational_correlation_ids`.
 
-Lifecycle transitions emit **new** `compliance_decisions` with `decision_type=recommendation_lifecycle` (see `RECOMMENDATION_LIFECYCLE.md`).
+Lifecycle transitions emit `decision_type=intelligence_lifecycle` (see `INTELLIGENCE_LIFECYCLE_MODEL.md`).
 
 ---
 
 ## Explainability (no AI required)
 
-Every recommendation and priority must answer deterministically:
+`explain_intelligence(artefact_id)` answers for **any artefact type**:
 
 | Question | Mechanism |
 |----------|-----------|
-| Why generated? | `generation_reason` + `source_decision_ids` + Graph `explain_decision` |
-| Why highest priority? | `priority_score_breakdown` (weighted factors, all cited) |
-| Why now? | `urgency_factors` (expiry proximity, risk delta, regulatory deadline) |
-| What evidence supports it? | `evidence_set` pointers — same schema as decisions |
-| Which regulation applies? | `applicable_legislation` from snapshot refs |
-| If ignored? | `impact_if_ignored` projection (Decision Impact Engine) |
-| If completed? | `impact_if_completed` projection |
+| Why does it exist? | `explainability.why_exists` + `source_decision_ids` |
+| Which decisions generated it? | `source_decision_ids`, `generation_decision_id` |
+| What evidence supports it? | `payload.evidence` or linked refs |
+| Which legislation / rules apply? | `applicable_legislation`, `applicable_rules` in payload |
+| What dependencies exist? | Linked `dependency_chain` artefact refs |
+| What outcomes are calculated? | Linked `decision_impact_assessment` refs |
+| What assumptions are deterministic? | `explainability.assumptions[]` |
 
-`explain_recommendation()` composes these fields — no LLM.
+Subtype shortcuts: `explain_recommendation()` → `explain_intelligence` filter.
 
 ---
 
@@ -216,22 +217,14 @@ Independent of:
 ## Package layout (future implementation)
 
 ```text
-services/compliance_intelligence_engine/
-  config.py                 # feature flags, version
-  orchestrator.py           # dispatch to domain engines
-  priority/
-  recommendation/
-  decision_impact/
-  dependency/
-  portfolio/
-  regulatory_impact/
-  lifecycle/
-  hashing.py                # inputs_hash, response_hash
-  explain.py                # explain_recommendation composition
-  graph_emit.py             # CEG producer adapter (intelligence artefacts)
-  read_adapter.py           # governed reads + Graph Service client
+services/compliance_intelligence_engine/   # calculation + storage write
+services/compliance_intelligence_service/  # Intelligence Service Layer (consumer API)
+  artefact_registry.py
+  service.py              # generate_*, list_*, explain_*, compare_*
+  envelopes.py
+  access.py               # tenant boundary
 
-routes/compliance_intelligence_engine.py   # admin HTTP (future)
+routes/compliance_intelligence_engine.py   # admin HTTP (future; ISL wrapper)
 ```
 
 **Not implemented in this programme slice.**
@@ -240,21 +233,23 @@ routes/compliance_intelligence_engine.py   # admin HTTP (future)
 
 ## Document index
 
-| # | Deliverable | Path |
-|---|-------------|------|
-| 1 | Architecture (this document) | `COMPLIANCE_INTELLIGENCE_ENGINE_ARCHITECTURE.md` |
-| 2 | Intelligence domain model | `INTELLIGENCE_DOMAIN_MODEL.md` |
-| 3 | Recommendation model | `RECOMMENDATION_MODEL.md` |
-| 4 | Recommendation lifecycle | `RECOMMENDATION_LIFECYCLE.md` |
-| 5 | Dependency model | `DEPENDENCY_MODEL.md` |
-| 6 | Priority model | `PRIORITY_MODEL.md` |
-| 7 | Decision impact model | `DECISION_IMPACT_MODEL.md` |
-| 8 | Portfolio intelligence model | `PORTFOLIO_INTELLIGENCE_MODEL.md` |
-| 9 | Regulatory impact model | `REGULATORY_IMPACT_MODEL.md` |
-| 10 | Graph integration model | `GRAPH_INTEGRATION_MODEL.md` |
-| 11 | API design | `API_DESIGN.md` |
-| 12 | Runtime validation plan | `RUNTIME_VALIDATION_PLAN.md` |
-| 13 | Phased implementation roadmap | `PHASED_IMPLEMENTATION_ROADMAP.md` |
+| Document | Path |
+|----------|------|
+| Architecture (this document) | `COMPLIANCE_INTELLIGENCE_ENGINE_ARCHITECTURE.md` |
+| Refinement summary | `ARCHITECTURE_REFINEMENT_01.md` |
+| Intelligence artefact model | `INTELLIGENCE_ARTEFACT_MODEL.md` |
+| Intelligence Service Layer | `INTELLIGENCE_SERVICE_LAYER.md` |
+| Intelligence lifecycle | `INTELLIGENCE_LIFECYCLE_MODEL.md` |
+| Intelligence consumers | `INTELLIGENCE_CONSUMERS.md` |
+| Commercial intelligence | `COMMERCIAL_INTELLIGENCE_MODEL.md` |
+| Intelligence domain model | `INTELLIGENCE_DOMAIN_MODEL.md` |
+| Recommendation model (subtype) | `RECOMMENDATION_MODEL.md` |
+| Recommendation lifecycle (extension) | `RECOMMENDATION_LIFECYCLE.md` |
+| Dependency / Priority / Impact / Portfolio / Regulatory | respective `*_MODEL.md` |
+| Graph integration | `GRAPH_INTEGRATION_MODEL.md` |
+| API design | `API_DESIGN.md` |
+| Runtime validation | `RUNTIME_VALIDATION_PLAN.md` |
+| Implementation roadmap | `PHASED_IMPLEMENTATION_ROADMAP.md` |
 
 ---
 
@@ -262,16 +257,16 @@ routes/compliance_intelligence_engine.py   # admin HTTP (future)
 
 | Criterion | Validation |
 |-----------|------------|
+| Compliance Intelligence Artefacts are primary entity | `INTELLIGENCE_ARTEFACT_MODEL.md` |
+| Recommendations are one subtype | `RECOMMENDATION_MODEL.md` |
+| Future types addable without redesign | Artefact type registry |
 | Intelligence is deterministic | Same `inputs_hash` → same `response_hash` |
-| Recommendations reproducible | Replay from snapshot refs |
-| Every recommendation evidence-backed | `evidence_set` + `insufficient_evidence` gate |
-| Every recommendation explainable | `explain_recommendation()` without LLM |
-| Recommendations are immutable graph entities | CEG emit + `decision_type=recommendation` |
-| Decision impact deterministic | Impact projection hash stable |
-| Portfolio intelligence deterministic | Portfolio snapshot hash stable |
-| Regulatory impact deterministic | Regulatory report hash stable |
-| AI not required for any calculation | All runtime validation passes with `AI_ENABLED=false` |
-| AI layer can consume without redesign | CIE envelopes match AI input contract in `AI_INTELLIGENCE_LAYER_ARCHITECTURE.md` |
+| Intelligence reproducible | Replay from snapshot refs |
+| Evidence-backed | `source_decision_ids` + insufficient gate |
+| Explainable without AI | `explain_intelligence()` |
+| CEG integration | `GRAPH_INTEGRATION_MODEL.md` |
+| AI is consumer not producer | `INTELLIGENCE_CONSUMERS.md` |
+| Future operational/commercial intel without redesign | ISL + artefact extension protocol |
 
 ---
 

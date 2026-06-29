@@ -1,275 +1,214 @@
 # Compliance Intelligence Engine — API Design
 
-**Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01
+**Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01
 
 ---
 
 ## Principles
 
-1. **Service-first** — Python service API is canonical; HTTP is admin wrapper
-2. **Deterministic envelopes** — every method returns `IntelligenceEnvelope` + `response_hash`
-3. **Graph Service read boundary** — no direct graph storage access
-4. **Tenant scoped** — `client_id` enforced server-side; portal actors cannot cross-tenant
-5. **Admin vs portal** — portfolio methods available to both; cross-portfolio admin only for admin actors
-6. **AI-ready** — envelopes include `authoritative_references` for future narration consumers
+1. **Intelligence Service Layer is canonical** — HTTP routes wrap ISL only
+2. **Deterministic envelopes** — every method returns artefact envelope + `response_hash`
+3. **Graph Service read boundary** — CIE/ISL use Graph Service for decision lineage; consumers never touch graph storage
+4. **No direct intelligence storage access** — same rule as CEG
+5. **Tenant scoped** — `client_id` enforced server-side
+6. **AI-ready** — envelopes include `authoritative_references` + optional `graph_service_response_hash`
+
+See `INTELLIGENCE_SERVICE_LAYER.md` for architecture.
 
 ---
 
-## Package API (canonical)
+## Intelligence Service Layer API (canonical)
 
-**Package:** `services/compliance_intelligence_engine/` (future)
+**Package:** `services/compliance_intelligence_service/` (future)
 
-### Core methods
+### Generation
 
 ```python
+async def generate_intelligence(
+    *,
+    artefact_type: str,
+    scope: IntelligenceScope,
+    actor: ActorContext,
+    params: dict | None = None,
+) -> IntelligenceEnvelope:
+    """Generic dispatcher to CIE orchestrator."""
+
+
 async def generate_recommendations(
-    *,
-    scope: IntelligenceScope,
-    actor: ActorContext,
+    *, scope: IntelligenceScope, actor: ActorContext
 ) -> IntelligenceEnvelope:
-    """Pipeline A: recommendations + dependencies + impact + priority."""
+    """artefact_type=recommendation pipeline."""
 
 
-async def prioritise_actions(
-    *,
-    scope: IntelligenceScope,
-    actor: ActorContext,
-    recommendation_ids: list[str] | None = None,
+async def generate_portfolio_insights(
+    *, client_id: str, actor: ActorContext, as_of: str | None = None
 ) -> IntelligenceEnvelope:
-    """Rank recommendations and/or open gaps."""
+    """portfolio_insight + related types."""
 
 
-async def calculate_decision_impact(
-    *,
-    recommendation_id: str,
-    actor: ActorContext,
-    projection_types: list[str] = ("if_completed", "if_ignored"),
+async def generate_decision_impact(
+    *, artefact_id: str | None, scope: IntelligenceScope, actor: ActorContext
 ) -> IntelligenceEnvelope:
-    """Impact projections for a recommendation."""
+    """decision_impact_assessment."""
 
 
-async def calculate_portfolio_impact(
-    *,
-    client_id: str,
-    recommendation_ids: list[str],
-    actor: ActorContext,
+async def generate_regulatory_impact(
+    *, rule_change_event: dict, actor: ActorContext
 ) -> IntelligenceEnvelope:
-    """Aggregate impact if recommendation set completed."""
+    """regulatory_impact_assessment."""
 
 
-async def find_dependency_chain(
-    *,
-    anchor_type: str,
-    anchor_id: str,
-    client_id: str,
-    actor: ActorContext,
+async def generate_forecast(
+    *, client_id: str, window_days: int, actor: ActorContext
 ) -> IntelligenceEnvelope:
-    """Dependency chain + root cause + critical path."""
+    """forecast | workload_forecast (deterministic)."""
 
 
-async def calculate_regulatory_impact(
-    *,
-    rule_change_event: dict,
-    actor: ActorContext,
+async def generate_readiness(
+    *, scope: IntelligenceScope, kind: str, actor: ActorContext
 ) -> IntelligenceEnvelope:
-    """Blast radius report for rule version change."""
+    """audit_readiness_assessment | insurance_readiness_assessment."""
 
 
-async def explain_recommendation(
-    *,
-    recommendation_id: str,
-    actor: ActorContext,
+async def generate_dependency_chain(
+    *, anchor_type: str, anchor_id: str, client_id: str, actor: ActorContext
 ) -> IntelligenceEnvelope:
-    """Deterministic explanation — no LLM."""
+    """dependency_chain."""
 
 
-async def compare_recommendations(
-    *,
-    left_id: str,
-    right_id: str,
-    actor: ActorContext,
+async def generate_remediation_strategy(
+    *, scope: IntelligenceScope, actor: ActorContext
 ) -> IntelligenceEnvelope:
-    """Structural diff between recommendations."""
-
-
-async def forecast_workload(
-    *,
-    client_id: str,
-    window_days: int,
-    actor: ActorContext,
-) -> IntelligenceEnvelope:
-    """Deterministic workload forecast."""
-
-
-async def calculate_readiness(
-    *,
-    scope: IntelligenceScope,
-    actor: ActorContext,
-) -> IntelligenceEnvelope:
-    """Evidence / insurance / audit readiness bundle."""
-
-
-async def calculate_portfolio_intelligence(
-    *,
-    client_id: str,
-    actor: ActorContext,
-    as_of: str | None = None,
-) -> IntelligenceEnvelope:
-    """Full portfolio snapshot."""
+    """remediation_strategy composite."""
 ```
 
-### Lifecycle methods
+### Query and explain
 
 ```python
-async def transition_recommendation(
+async def list_intelligence(
     *,
-    recommendation_id: str,
-    to_status: str,
+    scope: IntelligenceScope,
+    actor: ActorContext,
+    artefact_type: str | None = None,
+    lifecycle_state: str | None = None,
+    active_only: bool = True,
+) -> IntelligenceEnvelope:
+    """Filtered artefact list."""
+
+
+async def get_intelligence(
+    *, artefact_id: str, actor: ActorContext
+) -> IntelligenceEnvelope:
+    """Single artefact."""
+
+
+async def compare_intelligence(
+    *, left_id: str, right_id: str, actor: ActorContext
+) -> IntelligenceEnvelope:
+    """Structural diff."""
+
+
+async def explain_intelligence(
+    *, artefact_id: str, actor: ActorContext
+) -> IntelligenceEnvelope:
+    """Deterministic explanation — any artefact type."""
+
+
+async def get_intelligence_lifecycle(
+    *, artefact_id: str, actor: ActorContext
+) -> IntelligenceEnvelope:
+    """Transition history."""
+
+
+async def transition_intelligence(
+    *,
+    artefact_id: str,
+    to_state: str,
     actor: ActorContext,
     reason_code: str,
     reason_summary: str | None = None,
-    linked_artefacts: dict | None = None,
 ) -> IntelligenceEnvelope:
     """Immutable lifecycle transition."""
-
-
-async def get_recommendation_lifecycle(
-    *,
-    recommendation_id: str,
-    actor: ActorContext,
-) -> IntelligenceEnvelope:
-    """Ordered transition history."""
 ```
+
+### Backward-compatible aliases (CIE-0 names)
+
+| CIE-0 name | ISL equivalent |
+|------------|----------------|
+| `prioritise_actions()` | `generate_intelligence(artefact_type=priority_assessment)` or `list` + sort |
+| `calculate_decision_impact()` | `generate_decision_impact()` |
+| `find_dependency_chain()` | `generate_dependency_chain()` |
+| `explain_recommendation()` | `explain_intelligence(artefact_id)` |
+| `compare_recommendations()` | `compare_intelligence()` |
+| `forecast_workload()` | `generate_forecast()` |
+| `calculate_readiness()` | `generate_readiness()` |
+| `calculate_portfolio_intelligence()` | `generate_portfolio_insights()` |
 
 ---
 
 ## HTTP API (admin — future)
 
 **Router:** `routes/compliance_intelligence_engine.py`  
-**Prefix:** `/api/admin/compliance/intelligence-engine/`
+**Prefix:** `/api/admin/compliance/intelligence-engine/` (distinct from Phase 5 `/intelligence/investigate`)
 
-| Method | Path | Maps to |
-|--------|------|---------|
+| Method | Path | ISL method |
+|--------|------|------------|
+| POST | `/generate` | `generate_intelligence` |
 | POST | `/recommendations/generate` | `generate_recommendations` |
-| POST | `/actions/prioritise` | `prioritise_actions` |
-| GET | `/recommendations/{id}` | load + `explain_recommendation` |
-| GET | `/recommendations/{id}/lifecycle` | `get_recommendation_lifecycle` |
-| POST | `/recommendations/{id}/transition` | `transition_recommendation` |
-| POST | `/impact/decision` | `calculate_decision_impact` |
-| POST | `/impact/portfolio` | `calculate_portfolio_impact` |
-| POST | `/dependencies/chain` | `find_dependency_chain` |
-| POST | `/regulatory/impact` | `calculate_regulatory_impact` |
-| POST | `/recommendations/compare` | `compare_recommendations` |
-| GET | `/portfolio/snapshot` | `calculate_portfolio_intelligence` |
-| GET | `/portfolio/workload` | `forecast_workload` |
-| GET | `/readiness` | `calculate_readiness` |
-| GET | `/health` | engine version, flag mode, last run metadata |
-
-All routes: `admin_route_guard` + tenant enforcement.
-
-**No customer-facing routes in initial slices.**
+| GET | `/artefacts` | `list_intelligence` |
+| GET | `/artefacts/{id}` | `get_intelligence` |
+| GET | `/artefacts/{id}/explain` | `explain_intelligence` |
+| GET | `/artefacts/{id}/lifecycle` | `get_intelligence_lifecycle` |
+| POST | `/artefacts/{id}/transition` | `transition_intelligence` |
+| POST | `/compare` | `compare_intelligence` |
+| GET | `/portfolio/insights` | `generate_portfolio_insights` |
+| GET | `/portfolio/workload` | `generate_forecast` |
+| GET | `/readiness` | `generate_readiness` |
 
 ---
 
-## Request / response envelope
-
-### Example: generate_recommendations
-
-**Request:**
+## Response envelope
 
 ```json
 {
-  "client_id": "uuid",
-  "property_id": "uuid | null",
-  "as_of": "2026-06-02T12:00:00+00:00 | null"
-}
-```
-
-**Response:**
-
-```json
-{
+  "service": "explain_intelligence",
   "enabled": true,
-  "service": "generate_recommendations",
-  "engine_version": "cie-1.0.0",
   "insufficient_evidence": false,
-  "inputs_hash": "sha256:…",
+  "artefact_id": "cia_…",
+  "artefact_type": "recommendation",
   "response_hash": "sha256:…",
-  "tier1": {
-    "recommendations": [ ],
-    "priority_snapshot_id": "pri_snap_…",
-    "generation_decision_ids": ["dec_…"]
-  },
+  "inputs_hash": "sha256:…",
+  "artefacts": [],
+  "tier1": { },
   "authoritative_references": {
-    "decision_ids": [],
-    "recommendation_ids": []
-  }
+    "artefact_ids": ["cia_…"],
+    "decision_ids": ["dec_…"],
+    "snapshot_ids": ["snap_…"]
+  },
+  "graph_service_response_hash": null,
+  "tier2": null
 }
 ```
 
-Note: `tier1` key aligns with Phase 5 AI envelope convention — CIE output is always Tier-1 deterministic; AI narration is separate consumer.
-
 ---
 
-## Error model
+## Feature flag
 
-| Code | When |
-|------|------|
-| 403 | Tenant access denied |
-| 404 | Recommendation / anchor not found |
-| 422 | Invalid lifecycle transition |
-| 503 | Engine disabled or graph unavailable |
-| 200 + `insufficient_evidence: true` | Valid request but cannot compute |
-
-Never 500 for insufficient evidence — structured response preferred.
-
----
-
-## Feature flag behaviour
-
-```python
-def intelligence_engine_enabled() -> bool:
-    return mode in ("shadow", "enabled")
-
-def intelligence_engine_operational_effects() -> bool:
-    return mode == "enabled"
+```text
+COMPLIANCE_INTELLIGENCE_ENGINE_MODE=disabled|shadow|enabled
 ```
 
 ---
 
-## AI consumer mapping (future)
+## AI consumer mapping
 
-| AI service (Phase 5+) | CIE method to call first |
-|-----------------------|--------------------------|
-| `compliance_advisor` | `prioritise_actions` + `explain_recommendation` |
-| `portfolio_intelligence` | `calculate_portfolio_intelligence` |
-| `regulation_interpreter` | `explain_recommendation` + rule refs |
-| `operations_ai` | `find_dependency_chain` + OE bridge |
-| `predictive_intelligence` | **Not CIE** — requires separate labelled programme |
-| `scenario_intelligence` | `compare_recommendations` + impact diffs (deterministic scenario) |
+AI calls **ISL** `explain_intelligence` / `list_intelligence` — never `generate_*` except via explicit audited admin regeneration.
 
-AI receives CIE `response_hash` + optional Graph `graph_service_response_hash` — dual hash lineage in `compliance_ai_narrations`.
+See `INTELLIGENCE_CONSUMERS.md` for advisor mapping.
 
 ---
 
-## Caching
+## CIE internal package
 
-Optional deterministic cache keyed by `inputs_hash`:
-
-- TTL configurable
-- Invalidated on new assessment decision for scoped requirements
-- Cache hits must return identical `response_hash`
-
----
-
-## Versioning
-
-| Version field | Bumps when |
-|---------------|------------|
-| `engine_version` | Any calculation logic change |
-| `priority_weights_version` | Weight matrix change |
-| `recommendation_templates_version` | New recommendation type |
-| `impact_rules_version` | Impact template change |
-| `regulatory_impact_rules_version` | Regulatory scan logic change |
-
-Runtime validation asserts version pins in test fixtures.
+`services/compliance_intelligence_engine/` — domain engines, orchestrator, storage write, graph_emit. **Not imported by routes or AI.**
