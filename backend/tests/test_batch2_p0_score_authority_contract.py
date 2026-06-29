@@ -83,6 +83,22 @@ async def test_portfolio_compliance_summary_headline_not_catalog_matrix():
             }
         ],
     }
+    _eff = {
+        "base_portfolio_risk_state": "Moderate Risk",
+        "effective_portfolio_risk_state": "Moderate Risk",
+        "risk_override_reasons": [],
+        "critical_property_count": 0,
+        "high_risk_gap_count": 0,
+        "unknown_or_stale_property_count": 0,
+        "attention_required": False,
+        "critical_property_escalation": False,
+        "suppress_positive_headline": False,
+    }
+    _override_bundle = {
+        "legacy_override_output": _eff,
+        "policy_override_output": _eff,
+        "effective_override_output": _eff,
+    }
 
     async def _guard(_req: Request):
         return {"client_id": "c1"}
@@ -95,6 +111,14 @@ async def test_portfolio_compliance_summary_headline_not_catalog_matrix():
         "routes.portfolio.get_portfolio_compliance_from_catalog",
         new_callable=AsyncMock,
         return_value=catalog,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={"by_kind": {}, "by_severity": {}, "total_open": 0, "policy": {}},
+    ), patch(
+        "routes.portfolio.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=_override_bundle,
     ):
         scope = {
             "type": "http",

@@ -215,3 +215,5 @@ RETENTION_TIER_WARM = "warm"
 RETENTION_TIER_COLD = "cold"
 RETENTION_WARM_AFTER_DAYS = 90
 ARCHIVED_RETENTION_TIERS = frozenset({RETENTION_TIER_WARM, RETENTION_TIER_COLD})
+# Stable exclusion order for $nin filters (set membership is authoritative; order is diagnostic only).
+ARCHIVED_RETENTION_TIER_EXCLUSION = (RETENTION_TIER_WARM, RETENTION_TIER_COLD)

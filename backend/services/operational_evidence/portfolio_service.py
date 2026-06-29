@@ -8,7 +8,10 @@ from typing import Any, Dict, Optional
 
 from database import database
 
-from services.operational_evidence.constants import ARCHIVED_RETENTION_TIERS, COLLECTION_EVENTS
+from services.operational_evidence.constants import (
+    ARCHIVED_RETENTION_TIER_EXCLUSION,
+    COLLECTION_EVENTS,
+)
 from services.operational_evidence.query_service import list_evidence_events
 from services.operational_evidence.story_service import build_operational_story
 
@@ -29,7 +32,7 @@ async def get_portfolio_evidence_view(
         "occurred_at": {"$gte": since_iso},
     }
     if not include_archived:
-        match["retention.tier"] = {"$nin": list(ARCHIVED_RETENTION_TIERS)}
+        match["retention.tier"] = {"$nin": list(ARCHIVED_RETENTION_TIER_EXCLUSION)}
 
     by_category = await db[COLLECTION_EVENTS].aggregate(
         [
