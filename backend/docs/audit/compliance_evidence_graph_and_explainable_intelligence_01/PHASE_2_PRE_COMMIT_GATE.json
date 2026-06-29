@@ -1,0 +1,248 @@
+{
+  "programme": "CEG-PHASE-2D-2E-PRE-COMMIT-GATE",
+  "run_tag": "20260628T235830Z",
+  "validated_at": "2026-06-28T23:58:31.170049+00:00",
+  "checks": [
+    {
+      "name": "registry_p0_100",
+      "passed": true,
+      "count": 5,
+      "implemented": 5
+    },
+    {
+      "name": "registry_p1_100",
+      "passed": true,
+      "count": 11,
+      "implemented": 11
+    },
+    {
+      "name": "registry_p2_95",
+      "passed": true,
+      "count": 14,
+      "implemented": 14,
+      "rate": 1.0
+    },
+    {
+      "name": "hook_p2_95_threshold",
+      "passed": true,
+      "in_scope_rows": 13,
+      "fully_hooked": 9,
+      "partially_hooked": 4,
+      "not_hooked": 0,
+      "effective_covered": 13,
+      "full_hook_rate": 0.6923,
+      "effective_hook_rate": 1.0,
+      "passed_95_threshold": true,
+      "deferred_ids": [
+        "P2-02",
+        "P2-11",
+        "P2-12",
+        "P2-15",
+        "P2-18",
+        "P2-19",
+        "P2-20"
+      ]
+    },
+    {
+      "name": "graph_health",
+      "passed": true,
+      "overall": "healthy"
+    },
+    {
+      "name": "integrity_validator",
+      "passed": true,
+      "valid": true,
+      "failures": 0,
+      "warnings": 3,
+      "stats": {
+        "decisions_examined": 8,
+        "nodes_examined": 16,
+        "edges_examined": 8
+      }
+    },
+    {
+      "name": "backfill_dry_run_idempotent",
+      "passed": true,
+      "run1": {
+        "ok": true,
+        "dry_run": true,
+        "candidates": 3,
+        "backfilled": 3,
+        "skipped": 0,
+        "errors": [],
+        "completed_at": "2026-06-28T23:59:31.548492+00:00"
+      },
+      "run2": {
+        "ok": true,
+        "dry_run": true,
+        "candidates": 3,
+        "backfilled": 3,
+        "skipped": 0,
+        "errors": [],
+        "completed_at": "2026-06-28T23:59:31.629557+00:00"
+      }
+    },
+    {
+      "name": "p2_emit_idempotent_duplicate",
+      "passed": true,
+      "decision_id": "dec_09585c4775b24a7f9510c2fd9032e893"
+    },
+    {
+      "name": "graph_service_explain_replay",
+      "passed": true,
+      "explain_status": null,
+      "replay_phases": 2
+    }
+  ],
+  "hook_matrix": {
+    "P2-01": {
+      "hooked": true,
+      "via": "jobs.send_daily_reminders"
+    },
+    "P2-02": {
+      "hooked": false,
+      "via": "deferred"
+    },
+    "P2-03": {
+      "hooked": true,
+      "via": "jobs.send_monthly_digests"
+    },
+    "P2-04": {
+      "hooked": true,
+      "via": "notification_orchestrator._operational_evidence_notification_queued"
+    },
+    "P2-05": {
+      "hooked": true,
+      "via": "notification_orchestrator._operational_evidence_notification_result"
+    },
+    "P2-06": {
+      "hooked": true,
+      "via": "maintenance_service.create_work_order"
+    },
+    "P2-07": {
+      "hooked": true,
+      "via": "maintenance_service.update_work_order"
+    },
+    "P2-08": {
+      "hooked": true,
+      "via": "maintenance_issues_service.create_issue + update_issue"
+    },
+    "P2-09": {
+      "hooked": "partial",
+      "via": "check_compliance_status_changes \u2192 notification_sent (P2-05)"
+    },
+    "P2-10": {
+      "hooked": true,
+      "via": "ScheduledReportJob.process_scheduled_reports"
+    },
+    "P2-11": {
+      "hooked": false,
+      "via": "deferred"
+    },
+    "P2-12": {
+      "hooked": false,
+      "via": "deferred"
+    },
+    "P2-13": {
+      "hooked": true,
+      "via": "tenant_delivery_proof_service"
+    },
+    "P2-14": {
+      "hooked": "partial",
+      "via": "webhook metadata link only"
+    },
+    "P2-15": {
+      "hooked": false,
+      "via": "deferred"
+    },
+    "P2-16": {
+      "hooked": "partial",
+      "via": "risk_signal update \u2192 outcome_engine_event (P0-07)"
+    },
+    "P2-17": {
+      "hooked": "partial",
+      "via": "OE operational link only"
+    },
+    "P2-18": {
+      "hooked": false,
+      "via": "deferred"
+    },
+    "P2-19": {
+      "hooked": false,
+      "via": "deferred"
+    },
+    "P2-20": {
+      "hooked": false,
+      "via": "deferred"
+    }
+  },
+  "registry_coverage": {
+    "p0": {
+      "count": 5,
+      "implemented": 5,
+      "passed": true
+    },
+    "p1": {
+      "count": 11,
+      "implemented": 11,
+      "passed": true
+    },
+    "p2": {
+      "count": 14,
+      "implemented": 14,
+      "rate": 1.0,
+      "passed": true,
+      "deferred_ids": [
+        "P2-02",
+        "P2-11",
+        "P2-12",
+        "P2-15",
+        "P2-18",
+        "P2-19",
+        "P2-20"
+      ]
+    },
+    "all_passed": true
+  },
+  "hook_coverage": {
+    "in_scope_rows": 13,
+    "fully_hooked": 9,
+    "partially_hooked": 4,
+    "not_hooked": 0,
+    "effective_covered": 13,
+    "full_hook_rate": 0.6923,
+    "effective_hook_rate": 1.0,
+    "passed_95_threshold": true,
+    "deferred_ids": [
+      "P2-02",
+      "P2-11",
+      "P2-12",
+      "P2-15",
+      "P2-18",
+      "P2-19",
+      "P2-20"
+    ]
+  },
+  "graph_health": {
+    "overall_status": "healthy",
+    "summary": {
+      "decisions_examined": 8,
+      "checks_passed": 17,
+      "checks_failed": 0,
+      "warnings": 3,
+      "integrity_failure_count": 0
+    }
+  },
+  "integrity": {
+    "valid": true,
+    "failures": 0,
+    "warnings": 3,
+    "stats": {
+      "decisions_examined": 8,
+      "nodes_examined": 16,
+      "edges_examined": 8
+    }
+  },
+  "elapsed_ms": 61881,
+  "acceptance": "COMMIT_READY"
+}

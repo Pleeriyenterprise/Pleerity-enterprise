@@ -72,10 +72,19 @@ def _seed_registry() -> None:
         ("supporting_document_linkage", "P1", "evidence.py", "Supporting document linkage", None),
         ("admin_score_repair", "P1", "score.py", "Admin score repair", "19"),
         ("daily_reminder", "P2", "reminder.py", "Daily reminder", None),
+        ("reminder_cancelled", "P2", "reminder.py", "Reminder cancelled", None),
+        ("monthly_digest", "P2", "reminder.py", "Monthly digest", None),
+        ("notification_queued", "P2", "notification.py", "Notification queued", None),
         ("notification_sent", "P2", "notification.py", "Notification sent", None),
+        ("compliance_status_alert", "P2", "notification.py", "Compliance status alert", None),
         ("work_order_lifecycle", "P2", "work_order.py", "Work order lifecycle", "17"),
+        ("maintenance_issue_lifecycle", "P2", "work_order.py", "Maintenance issue lifecycle", "18"),
+        ("work_order_sla_reminder", "P2", "work_order.py", "Work order SLA reminder", None),
         ("report_generation", "P2", "score.py", "Report generation", None),
+        ("portfolio_recalc", "P2", "score.py", "Portfolio recalc", None),
         ("knowledge_reference", "P2", "knowledge.py", "Knowledge reference attach", None),
+        ("tenant_delivery_proof", "P2", "operational_bridge.py", "Tenant delivery proof", "13-14"),
+        ("operational_incident_bridge", "P2", "operational_bridge.py", "Operational incident bridge", None),
     ]
     stage_map = {"P0": "2B", "P1": "2C", "P2": "2D"}
     for kind, priority, module, desc, ref in entries:

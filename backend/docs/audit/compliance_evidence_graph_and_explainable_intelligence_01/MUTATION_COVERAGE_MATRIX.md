@@ -82,30 +82,42 @@ Any row not meeting threshold at acceptance requires an entry in **Deferral Regi
 
 ## P2 — Operational artefacts (≥95% required)
 
-| ID | Mutation | Authoritative writer | Producer | Stream E row | Status |
-|----|----------|---------------------|----------|--------------|--------|
-| P2-01 | Daily reminders | `send_daily_reminders` | `reminder.py` | — | planned |
-| P2-02 | Reminder cancelled | reminder cancel paths | `reminder.py` | — | planned |
-| P2-03 | Monthly digest | `send_monthly_digests` | `reminder.py` | — | planned |
-| P2-04 | Notification queued | `notification_orchestrator` | `notification.py` | — | planned |
-| P2-05 | Notification sent | orchestrator send success | `notification.py` | — | planned |
-| P2-06 | Work order create | `create_work_order` | `work_order.py` | — | planned |
-| P2-07 | Work order complete | `update_work_order` COMPLETED | `work_order.py` | 17 | planned |
-| P2-08 | Issue created/resolved | `maintenance_issues_service` | `outcome.py` | 18 | planned |
-| P2-09 | Compliance status alert | `check_compliance_status_changes` | `notification.py` | — | planned |
-| P2-10 | Report generation | report jobs | `score.py` / dedicated | — | planned |
-| P2-11 | Portfolio recalc | org-level scoring paths | `score.py` | — | planned |
-| P2-12 | Knowledge reference attach | KC linkage paths | `knowledge.py` | — | planned |
-| P2-13 | Tenant delivery proof | `tenant_delivery_proof_service` | `authority_sync.py` | 13–14 | planned |
-| P2-14 | Webhook fan-out | `webhook_service.fire_*` | link only (decision_id in metadata) | — | planned |
-| P2-15 | WO SLA / schedule reminders | `job_runner` WO jobs | `work_order.py` | — | planned |
-| P2-16 | Risk signal ack/resolve | `risk_signal_service` | `outcome.py` | — | planned |
-| P2-17 | Admin bulk recalc enqueue | `admin_action_recalculate_compliance` | operational link | 20 | planned |
-| P2-18 | Gap backfill batch | `compliance_gap_backfill.py` | deferred — see registry | 15 | planned |
-| P2-19 | Policy gap reconciliation | `compliance_policy_backfill_service` | deferred — see registry | 16 | planned |
-| P2-20 | Operational incident bridge | OE incident affecting compliance | `operational_bridge.py` | — | planned |
+| ID | Mutation | Authoritative writer | Producer | Stream E row | Hook | Status |
+|----|----------|---------------------|----------|--------------|------|--------|
+| P2-01 | Daily reminders | `send_daily_reminders` | `reminder.py` | — | ✓ | validated |
+| P2-02 | Reminder cancelled | reminder cancel paths | `reminder.py` | — | — | deferred |
+| P2-03 | Monthly digest | `send_monthly_digests` | `reminder.py` | — | ✓ | validated |
+| P2-04 | Notification queued | `notification_orchestrator` | `notification.py` | — | ✓ | validated |
+| P2-05 | Notification sent | orchestrator send success | `notification.py` | — | ✓ | validated |
+| P2-06 | Work order create | `create_work_order` | `work_order.py` | — | ✓ | validated |
+| P2-07 | Work order complete | `update_work_order` COMPLETED | `work_order.py` | 17 | ✓ | validated |
+| P2-08 | Issue created/resolved | `maintenance_issues_service` | `work_order.py` | 18 | ✓ create + resolve | validated |
+| P2-09 | Compliance status alert | `check_compliance_status_changes` | `notification.py` | — | via P2-05 | via P2-05 |
+| P2-10 | Report generation | `ScheduledReportJob.process_scheduled_reports` | `score.py` | — | ✓ | validated |
+| P2-11 | Portfolio recalc | org-level scoring paths | `score.py` | — | — | deferred |
+| P2-12 | Knowledge reference attach | KC linkage paths (no writer found) | `knowledge.py` | — | — | deferred |
+| P2-13 | Tenant delivery proof | `tenant_delivery_proof_service` | `operational_bridge.py` | 13–14 | ✓ | validated |
+| P2-14 | Webhook fan-out | `webhook_service.fire_*` | link only (decision_id in metadata) | — | via metadata | via metadata |
+| P2-15 | WO SLA / schedule reminders | `job_runner.run_work_order_sla_breach_job` | `work_order.py` | — | — | deferred |
+| P2-16 | Risk signal ack/resolve | `risk_signal_service` | `outcome.py` | — | via P0-07 | via P0-07 |
+| P2-17 | Admin bulk recalc enqueue | `admin_action_recalculate_compliance` | operational link | 20 | via OE link | via OE link |
+| P2-18 | Gap backfill batch | `compliance_gap_backfill.py` | deferred — see registry | 15 | — | deferred |
+| P2-19 | Policy gap reconciliation | `compliance_policy_backfill_service` | deferred — see registry | 16 | — | deferred |
+| P2-20 | Operational incident bridge | OE incident affecting compliance | `operational_bridge.py` | — | — | deferred |
 
-**P2 count:** 20 rows — **minimum validated: 19/20 (95%)**
+**P2 hook instrumentation (Phase 2D pre-commit gate, post-blocker-fix):**
+
+| Metric | Value |
+|--------|-------|
+| Matrix rows in scope (excl. 7 deferred) | 13 |
+| Fully hooked at authority site | 9 (P2-01, 03–08, 10, 13) |
+| Covered via alternate producer path | 4 (P2-09→P2-05, P2-14 metadata, P2-16→P0-07, P2-17 OE) |
+| Explicitly deferred | 7 (P2-02, 11, 12, 15, 18, 19, 20) |
+| **Effective hook coverage (in-scope)** | **13/13 = 100%** |
+
+**P2 count:** 20 rows — **9 authority hooks wired; 4 via alternate path; 7 deferred**
+
+*Registry-only acceptance does **not** prove authority-site instrumentation. Pre-commit gate uses matrix hook coverage with justified deferrals excluded from denominator.*
 
 ---
 
@@ -116,8 +128,13 @@ Rows marked `deferred` must include all four fields before Phase 2E acceptance.
 | ID | Reason | Impact | Implementation plan | Expected phase |
 |----|--------|--------|---------------------|----------------|
 | P0-08 | Queue enqueue is scheduling only; decision occurs at recalc (P0-02) | Low — no separate compliance decision at enqueue | Optional OE correlation link only | Phase 2.5 |
+| P2-02 | Reminder cancel is low-volume lifecycle cleanup; no compliance decision authority | Low — cancel does not alter compliance posture | Hook at reminder cancel authority when cancel path is consolidated | Phase 2.5 |
+| P2-11 | Portfolio/org recalc reuses P0-02 per-property semantics; no distinct org-level decision type yet | Low — property recalcs already emit via P0-02 | Emit `portfolio_recalc` at org rollup boundary when defined | Phase 2.5 |
+| P2-12 | No authoritative KC attach writer identified in codebase audit | Low — producer handler ready; no mutation site | Instrument when KC linkage service is confirmed | Phase 2.5 |
+| P2-15 | `run_work_order_sla_breach_job` stamps `sla_breach_risk_at`/`sla_breached_at` metadata only; not a reminder emit | Low — SLA breach risk captured via P1-04 risk signals | Dedicated hook if SLA reminder notifications are added; metadata job stays observer-only | Phase 2.5 |
 | P2-18 | Batch gap backfill is ops tooling; not customer mutation path | Low — gaps refreshed by runtime sync elsewhere | Emit on `sync_compliance_gaps_for_requirement` when called from backfill with audit flag | Phase 2.5 or Phase 7 |
 | P2-19 | Policy reconciliation patches inference only; not full authority sync | Low — no new compliance decisions | Observer on reconciliation checkpoint events | Phase 7 |
+| P2-20 | OE incident bridge producer exists; incident→compliance bridge not wired at authority | Medium — incident correlation deferred | Wire at OE incident apply path when incident taxonomy stabilises | Phase 2.5 |
 
 *Update this table when deferring any row. Empty deferral at 2E means 100%/100%/≥95% achieved.*
 

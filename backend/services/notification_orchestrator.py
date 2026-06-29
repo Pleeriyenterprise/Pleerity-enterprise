@@ -125,6 +125,20 @@ async def _operational_evidence_notification_queued(
         )
     except Exception:
         pass
+    if message_id and client_id:
+        try:
+            from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+            await try_dispatch_p2(
+                mutation_kind="notification_queued",
+                client_id=str(client_id),
+                source_collection="message_logs",
+                source_id=str(message_id),
+                correlation_id=f"NOTIF_Q:{message_id}",
+                authoritative_payload={"template_key": template_key, "channel": channel},
+            )
+        except Exception:
+            pass
 
 
 async def _operational_evidence_notification_result(
@@ -151,6 +165,25 @@ async def _operational_evidence_notification_result(
         )
     except Exception:
         pass
+    if result.outcome == "sent" and message_id and client_id:
+        try:
+            from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+            await try_dispatch_p2(
+                mutation_kind="notification_sent",
+                client_id=str(client_id),
+                source_collection="message_logs",
+                source_id=str(message_id),
+                correlation_id=f"NOTIF:{message_id}",
+                authoritative_payload={
+                    "template_key": template_key,
+                    "channel": channel,
+                    "message_id": message_id,
+                    "authority_service": "notification_orchestrator",
+                },
+            )
+        except Exception:
+            pass
 
 
 def _is_transient_error(exc: Exception) -> bool:

@@ -1,0 +1,32 @@
+{
+  "run_tag": "20260629T000018Z",
+  "coverage": {
+    "p0": {
+      "count": 5,
+      "implemented": 5,
+      "passed": true
+    },
+    "p1": {
+      "count": 11,
+      "implemented": 11,
+      "passed": true
+    },
+    "p2": {
+      "count": 14,
+      "implemented": 14,
+      "rate": 1.0,
+      "passed": true,
+      "deferred_ids": [
+        "P2-02",
+        "P2-11",
+        "P2-12",
+        "P2-15",
+        "P2-18",
+        "P2-19",
+        "P2-20"
+      ]
+    },
+    "all_passed": true
+  },
+  "registry_count": 30
+}

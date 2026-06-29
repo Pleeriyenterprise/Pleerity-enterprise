@@ -252,3 +252,114 @@ async def handle_admin_score_repair(ctx: ProducerContext) -> Optional[str]:
         metadata={"mutation_kind": "admin_score_repair", "producer": "p1"},
     )
     return result[0] if result else None
+
+
+async def handle_report_generation(ctx: ProducerContext) -> Optional[str]:
+    payload = ctx.authoritative_payload or {}
+    client_id = ctx.client_id
+    report_artifact_id = payload.get("report_artifact_id") or ctx.source_id
+    correlation_id = ctx.correlation_id or payload.get("correlation_id")
+    generated_at = payload.get("generated_at") or ctx.mutation_timestamp
+
+    dedupe_key = build_dedupe_key(
+        mutation_kind="report_generation",
+        client_id=client_id,
+        entity_id=report_artifact_id,
+        fact_signature=fact_hash(
+            {
+                "report_type": payload.get("report_type"),
+                "generated_at": generated_at,
+                "report_artifact_id": report_artifact_id,
+            }
+        ),
+    )
+    snapshot_payload = {
+        "decision_reasoning_inputs": {
+            "report_generation": {
+                "report_artifact_id": report_artifact_id,
+                "report_type": payload.get("report_type"),
+                "client_id": client_id,
+                "property_id": payload.get("property_id"),
+                "portfolio_scope": payload.get("portfolio_scope"),
+                "generated_at": generated_at,
+                "delivery_context": payload.get("delivery_context"),
+                "schedule_id": payload.get("schedule_id"),
+                "filename": payload.get("filename"),
+            }
+        },
+        "rule_lineage": {"lineage_complete": False, "lineage_incomplete": True, "lineage_optional": True},
+    }
+    result = await emit_p0_decision(
+        decision_type=DECISION_COMPLIANCE_SCORE_CHANGE,
+        decision_outcome="REPORT_GENERATED",
+        summary=f"Compliance report generated: {payload.get('report_type', report_artifact_id)}",
+        source_collection=ctx.source_collection,
+        source_id=report_artifact_id,
+        dedupe_key=dedupe_key,
+        client_id=client_id,
+        property_id=ctx.property_id or payload.get("property_id"),
+        correlation_id=correlation_id,
+        mutation_timestamp=generated_at or ctx.mutation_timestamp,
+        decision_authority={
+            "service": payload.get("authority_service") or "jobs",
+            "component": payload.get("authority_component") or "ScheduledReportJob.process_scheduled_reports",
+            "actor_type": "system",
+            "actor_id": "report_generator",
+        },
+        snapshot_payload=snapshot_payload,
+        quality_inputs={
+            "evidence_completeness": "complete",
+            "evidence_confidence_score": 95,
+            "rule_certainty_score": 90,
+            "decision_stability": "stable",
+        },
+        metadata={
+            "mutation_kind": "report_generation",
+            "producer": "p2",
+            "report_artifact_id": report_artifact_id,
+        },
+    )
+    return result[0] if result else None
+
+
+async def handle_portfolio_recalc(ctx: ProducerContext) -> Optional[str]:
+    payload = ctx.authoritative_payload or {}
+    client_id = ctx.client_id
+    correlation_id = ctx.correlation_id or payload.get("correlation_id")
+
+    dedupe_key = build_dedupe_key(
+        mutation_kind="portfolio_recalc",
+        client_id=client_id,
+        entity_id=client_id,
+        fact_signature=fact_hash(
+            {
+                "properties_processed": payload.get("properties_processed"),
+                "correlation_id": correlation_id,
+            }
+        ),
+    )
+    snapshot_payload = {
+        "decision_reasoning_inputs": {"portfolio_recalc": payload},
+        "rule_lineage": {"lineage_complete": False, "lineage_incomplete": True, "lineage_optional": True},
+    }
+    result = await emit_p0_decision(
+        decision_type=DECISION_COMPLIANCE_SCORE_CHANGE,
+        decision_outcome="PORTFOLIO_RECALC",
+        summary=f"Portfolio compliance recalc for client {client_id}",
+        source_collection="clients",
+        source_id=client_id,
+        dedupe_key=dedupe_key,
+        client_id=client_id,
+        correlation_id=correlation_id,
+        mutation_timestamp=ctx.mutation_timestamp,
+        decision_authority={
+            "service": "compliance_scoring_service",
+            "component": "portfolio_recalc",
+            "actor_type": "system",
+            "actor_id": "portfolio_recalc",
+        },
+        snapshot_payload=snapshot_payload,
+        quality_inputs={"evidence_completeness": "complete", "rule_certainty_score": 95},
+        metadata={"mutation_kind": "portfolio_recalc", "producer": "p2"},
+    )
+    return result[0] if result else None

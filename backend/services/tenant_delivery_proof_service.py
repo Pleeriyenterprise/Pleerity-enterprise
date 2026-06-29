@@ -182,6 +182,20 @@ async def initiate_tenant_compliance_delivery(
         "audit_log_ids": [],
     }
     await db.tenant_delivery_proofs.insert_one(base_doc)
+    try:
+        from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+        await try_dispatch_p2(
+            mutation_kind="tenant_delivery_proof",
+            client_id=client_id,
+            source_collection="tenant_delivery_proofs",
+            source_id=delivery_id,
+            property_id=property_id,
+            mutation_timestamp=now_iso,
+            authoritative_payload={"status": "PENDING_SEND", "purpose": purpose},
+        )
+    except Exception:
+        pass
 
     actor_role = _parse_actor_role(initiated_by_role)
     init_audit = await create_audit_log(

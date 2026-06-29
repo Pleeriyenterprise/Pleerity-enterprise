@@ -542,6 +542,23 @@ class JobScheduler:
                     "error_message": f"All {attempted_count} reminder send(s) failed",
                     "outcome_metrics": {"expected_count": attempted_count, "attempted_count": attempted_count, "success_count": 0, "failed_count": failed_count, "skipped_count": skipped_count, "evaluated_items_count": evaluated_items_count, "suppressed_items_count": suppressed_items_count, "suppressed_by_reason": suppressed_by_reason},
                 }
+            try:
+                from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+                await try_dispatch_p2(
+                    mutation_kind="daily_reminder",
+                    client_id=str(client_id or "platform"),
+                    source_collection="reminders",
+                    source_id=f"daily-{datetime.now(timezone.utc).date().isoformat()}",
+                    authoritative_payload={
+                        "success_count": success_count,
+                        "attempted_count": attempted_count,
+                        "authority_service": "jobs",
+                        "authority_component": "send_daily_reminders",
+                    },
+                )
+            except Exception:
+                pass
             return {
                 "message": f"Daily reminders sent: {success_count}",
                 "count": success_count,
@@ -966,6 +983,22 @@ class JobScheduler:
                     "error_message": f"All {attempted_digests} digest send(s) failed",
                     "outcome_metrics": {"expected_count": attempted_digests, "attempted_count": attempted_digests, "success_count": 0, "failed_count": failed_digests, "skipped_count": 0},
                 }
+            try:
+                from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+                await try_dispatch_p2(
+                    mutation_kind="monthly_digest",
+                    client_id="platform",
+                    source_collection="monthly_digests",
+                    source_id=f"digest-{datetime.now(timezone.utc).strftime('%Y-%m')}",
+                    authoritative_payload={
+                        "digest_count": digest_count,
+                        "attempted_digests": attempted_digests,
+                        "authority_component": "send_monthly_digests",
+                    },
+                )
+            except Exception:
+                pass
             return {
                 "message": f"Monthly digests sent: {digest_count}",
                 "count": digest_count,
@@ -2122,7 +2155,50 @@ class ScheduledReportJob:
                     else:
                         logger.warning(f"Unknown report type: {report_type}")
                         continue
-                    
+
+                    generated_at = now.isoformat()
+                    schedule_id = str(schedule.get("schedule_id") or schedule["client_id"])
+                    report_artifact_id = f"{schedule_id}:{generated_at}"
+                    report_summary = report_data.get("report_summary") or {}
+                    props_snap = report_data.get("properties_snapshot") or []
+                    obligation_rows = report_data.get("rows") or report_data.get("csv_rows") or []
+                    portfolio_scope = {
+                        "scope": "property" if schedule.get("property_id") else "portfolio",
+                        "total_properties": report_summary.get("total_properties"),
+                        "property_count": len(props_snap) if props_snap else report_summary.get("total_properties"),
+                        "obligation_rows": len(obligation_rows) if obligation_rows else None,
+                    }
+                    try:
+                        from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+                        await try_dispatch_p2(
+                            mutation_kind="report_generation",
+                            client_id=schedule["client_id"],
+                            source_collection="report_schedules",
+                            source_id=report_artifact_id,
+                            property_id=schedule.get("property_id"),
+                            mutation_timestamp=generated_at,
+                            correlation_id=f"REPORT:{report_artifact_id}",
+                            authoritative_payload={
+                                "report_artifact_id": report_artifact_id,
+                                "report_type": report_type,
+                                "generated_at": generated_at,
+                                "schedule_id": schedule_id,
+                                "portfolio_scope": portfolio_scope,
+                                "property_id": schedule.get("property_id"),
+                                "filename": report_data.get("filename"),
+                                "content_type": report_data.get("content_type"),
+                                "delivery_context": {
+                                    "frequency": schedule.get("frequency", "weekly"),
+                                    "schedule_id": schedule_id,
+                                },
+                                "authority_service": "jobs",
+                                "authority_component": "ScheduledReportJob.process_scheduled_reports",
+                            },
+                        )
+                    except Exception:
+                        pass
+
                     # Prepare email; ensure recipients is always a list (may be stored as string)
                     raw_recipients = schedule.get("recipients", [client.get("email")])
                     if isinstance(raw_recipients, str):

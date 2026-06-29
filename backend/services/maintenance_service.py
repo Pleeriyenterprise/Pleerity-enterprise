@@ -511,6 +511,20 @@ async def create_work_order(
     from services.compliance_workflow_service import client_job_sla_policy
 
     doc["sla_policy"] = client_job_sla_policy(doc)
+    try:
+        from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+        await try_dispatch_p2(
+            mutation_kind="work_order_lifecycle",
+            client_id=client_id,
+            source_collection="work_orders",
+            source_id=work_order_id,
+            property_id=property_id,
+            mutation_timestamp=now,
+            authoritative_payload={"lifecycle": "created", "status": status, "work_order_kind": kind},
+        )
+    except Exception:
+        pass
     return doc
 
 
@@ -1265,6 +1279,29 @@ async def update_work_order(
                         logger.warning("Completion proof workflow transition failed: %s", tr_e)
     if result:
         result.update(derive_work_order_evidence_semantics(result))
+        if status is not None and prev_status and result.get("client_id"):
+            ns = str(result.get("status") or "").upper()
+            ps = str(prev_status or "").upper()
+            if ns != ps:
+                lifecycle = "completed" if ns == STATUS_COMPLETED else "updated"
+                try:
+                    from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+                    await try_dispatch_p2(
+                        mutation_kind="work_order_lifecycle",
+                        client_id=str(result["client_id"]),
+                        source_collection="work_orders",
+                        source_id=work_order_id,
+                        property_id=result.get("property_id"),
+                        mutation_timestamp=now,
+                        authoritative_payload={
+                            "lifecycle": lifecycle,
+                            "status": ns,
+                            "previous_status": ps,
+                        },
+                    )
+                except Exception:
+                    pass
     return result
 
 

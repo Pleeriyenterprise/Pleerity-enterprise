@@ -31,3 +31,8 @@ async def dispatch_p0_producer(ctx: ProducerContext) -> Optional[str]:
 async def dispatch_p1_producer(ctx: ProducerContext) -> Optional[str]:
     """P1 instrumentation sites (same dispatch path as P0)."""
     return await dispatch_producer(ctx)
+
+
+async def dispatch_p2_producer(ctx: ProducerContext) -> Optional[str]:
+    """P2 instrumentation sites."""
+    return await dispatch_producer(ctx)
