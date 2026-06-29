@@ -1,7 +1,7 @@
 # Compliance Intelligence Engine — API Design
 
 **Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
-**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-02 (provenance methods)
 
 ---
 
@@ -104,15 +104,36 @@ async def get_intelligence(
 
 
 async def compare_intelligence(
-    *, left_id: str, right_id: str, actor: ActorContext
+    *, left_id: str, right_id: str, actor: ActorContext,
+    compare_mode: str = "full",
 ) -> IntelligenceEnvelope:
-    """Structural diff."""
+    """Structural diff — artefact + provenance (Refinement-02)."""
 
 
 async def explain_intelligence(
     *, artefact_id: str, actor: ActorContext
 ) -> IntelligenceEnvelope:
-    """Deterministic explanation — any artefact type."""
+    """Deterministic explanation — artefact + provenance trace."""
+
+
+async def get_intelligence_provenance(
+    *, artefact_id: str, actor: ActorContext
+) -> IntelligenceEnvelope:
+    """Full provenance record for artefact."""
+
+
+async def replay_intelligence(
+    *,
+    actor: ActorContext,
+    replay_type: str,
+    provenance_id: str | None = None,
+    as_of: str | None = None,
+    artefact_type: str | None = None,
+    engine_version: str | None = None,
+    scope: IntelligenceScope | None = None,
+    persist_result: bool = False,
+) -> IntelligenceEnvelope:
+    """Exact or point-in-time replay (Refinement-02)."""
 
 
 async def get_intelligence_lifecycle(
@@ -156,6 +177,8 @@ async def transition_intelligence(
 |--------|------|------------|
 | POST | `/generate` | `generate_intelligence` |
 | POST | `/recommendations/generate` | `generate_recommendations` |
+| GET | `/artefacts/{id}/provenance` | `get_intelligence_provenance` |
+| POST | `/replay` | `replay_intelligence` |
 | GET | `/artefacts` | `list_intelligence` |
 | GET | `/artefacts/{id}` | `get_intelligence` |
 | GET | `/artefacts/{id}/explain` | `explain_intelligence` |
@@ -176,6 +199,7 @@ async def transition_intelligence(
   "enabled": true,
   "insufficient_evidence": false,
   "artefact_id": "cia_…",
+  "provenance_id": "cip_…",
   "artefact_type": "recommendation",
   "response_hash": "sha256:…",
   "inputs_hash": "sha256:…",

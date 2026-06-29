@@ -1,9 +1,8 @@
 # Compliance Intelligence Engine — Architecture
 
 **Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
-**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01  
-**Status:** Architecture refined — **no implementation**  
-**Date:** 2026-06-02  
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-02 (provenance)  
+**Status:** Architecture refined — CIE-1 implemented; provenance refinement documented  
 **Prerequisite:** CIE-0 committed (`f8da4fe5`); CEG Phase 5 Tier 1 accepted
 
 ---
@@ -19,7 +18,7 @@ CIE answers **"What should happen next?"** while remaining:
 - **Deterministic** — same inputs + engine version → same outputs (hashable)
 - **Explainable** — every output cites decisions, evidence, rules, legislation
 - **Auditable** — immutable records + graph lineage
-- **Reproducible** — replay from snapshots, not mutable state
+- **Reproducible** — replay from snapshots, registries, and provenance — not mutable state
 - **Independent of any language model**
 
 ---
@@ -156,7 +155,9 @@ See `INTELLIGENCE_ARTEFACT_MODEL.md` for base schema and type registry.
 | `audit_readiness_assessment`, `insurance_readiness_assessment` | Readiness |
 | `forecast`, `operational_insight`, `remediation_strategy` | Composite / future slices |
 
-Every artefact includes: `engine_version`, `template_version`, `deterministic_version`, `inputs_hash`, `response_hash`, `source_decision_ids`, `source_snapshot_ids`, `source_graph_references`, `confidence`, `lifecycle_state`, `operational_correlation_ids`.
+Every artefact includes: `provenance_id`, `engine_version`, `template_version`, `deterministic_version`, `inputs_hash`, `response_hash`, `source_decision_ids`, `source_snapshot_ids`, `source_graph_references`, `confidence`, `lifecycle_state`, `operational_correlation_ids`.
+
+**Provenance (Refinement-02):** Every artefact references exactly one immutable `compliance_intelligence_provenance` record (`cip_*`) — see `INTELLIGENCE_PROVENANCE_ARCHITECTURE.md`.
 
 Lifecycle transitions emit `decision_type=intelligence_lifecycle` (see `INTELLIGENCE_LIFECYCLE_MODEL.md`).
 
@@ -175,6 +176,8 @@ Lifecycle transitions emit `decision_type=intelligence_lifecycle` (see `INTELLIG
 | What dependencies exist? | Linked `dependency_chain` artefact refs |
 | What outcomes are calculated? | Linked `decision_impact_assessment` refs |
 | What assumptions are deterministic? | `explainability.assumptions[]` |
+| How was it calculated? | `provenance_id` → full calculation trace (Refinement-02) |
+| Why did it change vs predecessor? | `compare_intelligence()` provenance diff |
 
 Subtype shortcuts: `explain_recommendation()` → `explain_intelligence` filter.
 

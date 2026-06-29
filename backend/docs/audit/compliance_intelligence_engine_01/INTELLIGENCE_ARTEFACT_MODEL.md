@@ -1,7 +1,7 @@
 # Compliance Intelligence Artefact Model
 
 **Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
-**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-02 (provenance)
 
 ---
 
@@ -24,6 +24,7 @@ All domain engines (priority, recommendation, impact, dependency, portfolio, reg
 ```json
 {
   "artefact_id": "cia_<uuid>",
+  "provenance_id": "cip_<uuid>",
   "artefact_type": "recommendation",
   "artefact_version": 1,
   "generated_at": "2026-06-02T12:00:00+00:00",
@@ -75,6 +76,7 @@ All domain engines (priority, recommendation, impact, dependency, portfolio, reg
 | Field | Rule |
 |-------|------|
 | `artefact_id` | Server-generated; immutable |
+| `provenance_id` | Server-generated; immutable; 1:1 link to `compliance_intelligence_provenance` (Refinement-02) |
 | `artefact_type` | Registered enum (see § Types) |
 | `engine_version` | CIE package version |
 | `template_version` | Domain template registry version |

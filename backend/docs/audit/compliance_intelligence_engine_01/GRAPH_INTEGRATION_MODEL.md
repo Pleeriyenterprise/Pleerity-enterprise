@@ -1,7 +1,7 @@
 # Graph Integration Model
 
 **Programme:** COMPLIANCE-INTELLIGENCE-ENGINE-01  
-**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-01
+**Refinement:** COMPLIANCE-INTELLIGENCE-ENGINE-ARCHITECTURE-REFINEMENT-02 (provenance chain)
 
 ---
 
@@ -18,6 +18,14 @@ Compliance Decision (assessment)
         │
         ▼ generates
 Compliance Intelligence Artefact (cia_*)
+        │
+        ├──► Intelligence Provenance (cip_*) — Refinement-02
+        │         │
+        │         ├──► Strategy Versions (registry refs)
+        │         ├──► Weight Set Version
+        │         ├──► Constraint Set Version
+        │         ├──► Calculation Trace (stages)
+        │         └──► Historical Inputs / Outputs (hashes)
         │
         ├──► recommendation (subtype payload)
         │         │
@@ -48,6 +56,10 @@ Every edge is traceable with full provenance.
 | Node type | Maps to | `artefact_type` |
 |-----------|---------|-----------------|
 | `compliance_intelligence_artefact` | `compliance_intelligence_artefacts` | any |
+| `compliance_intelligence_provenance` | `compliance_intelligence_provenance` | — |
+| `intelligence_strategy_version` | strategy registry entry | — |
+| `intelligence_weight_set` | weight registry entry | — |
+| `intelligence_constraint_set` | constraint registry entry | — |
 | `intelligence_recommendation` | payload view | `recommendation` |
 | `intelligence_impact` | payload view | `decision_impact_assessment` |
 | `intelligence_priority` | payload view | `priority_assessment` |
@@ -65,6 +77,11 @@ Every edge is traceable with full provenance.
 | Edge type | From | To |
 |-----------|------|-----|
 | `generated_intelligence` | `compliance_decision` | `compliance_intelligence_artefact` |
+| `has_provenance` | `compliance_intelligence_artefact` | `compliance_intelligence_provenance` |
+| `used_strategy` | `compliance_intelligence_provenance` | `intelligence_strategy_version` |
+| `used_weight_set` | `compliance_intelligence_provenance` | `intelligence_weight_set` |
+| `used_constraint_set` | `compliance_intelligence_provenance` | `intelligence_constraint_set` |
+| `calculated_from` | `compliance_intelligence_provenance` | `compliance_decision` (inputs) |
 | `artefact_subtype` | `compliance_intelligence_artefact` | typed view / payload role |
 | `recommends_action_for` | artefact (`recommendation`) | `requirement` |
 | `depends_on` | artefact | `requirement \| document \| artefact` |
@@ -113,7 +130,8 @@ Gated by `COMPLIANCE_INTELLIGENCE_ENGINE_MODE` + `COMPLIANCE_EVIDENCE_GRAPH_MODE
 | Method | Purpose |
 |--------|---------|
 | `explain_intelligence(artefact_id)` | Delegates to ISL / reads snapshot |
-| `trace_intelligence_lineage(artefact_id)` | Supersession + source decisions |
+| `trace_intelligence_lineage(artefact_id)` | Supersession + source decisions + provenance |
+| `trace_intelligence_provenance(artefact_id)` | Provenance chain + registry versions |
 | `find_open_intelligence(scope, artefact_type?)` | Indexed query |
 
 Consumers use **ISL first**; Graph Service provides decision-lineage join.
@@ -133,6 +151,8 @@ Consumers use **ISL first**; Graph Service provides decision-lineage join.
 ## Integrity validation extensions
 
 - Every CIA node has `generation_decision_id`
+- Every CIA node has `provenance_id` with matching `cip_*` node (Refinement-02)
+- Provenance `inputs_hash` / `response_hash` match artefact
 - Orphan impact / dependency artefacts linked to parent CIA
 - Lifecycle transitions form valid DAG
 - `response_hash` on snapshot matches artefact record

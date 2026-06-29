@@ -103,7 +103,34 @@ Pattern mirrors `tmp_compliance_evidence_graph_phase5_staging_smoke.py`.
 | Scope with no assessment decisions | `insufficient_evidence: true` |
 | No speculative recommendations in response | `recommendations[]` empty |
 
-### V10 — Regression guard
+### V10 — Provenance integrity (Refinement-02)
+
+| Step | Assertion |
+|------|-----------|
+| Every generated CIA has `provenance_id` | Non-null, `cip_*` format |
+| `get_intelligence_provenance(cia_id)` | `inputs_hash` / `response_hash` match artefact |
+| `calculation_trace` | Non-empty ordered stages |
+| Registry pins | `weight_set_version`, `constraint_set_version` present when applicable |
+| Provenance immutability | No update API; second write with same `artefact_id` rejected |
+
+### V11 — Replay (Refinement-02)
+
+| Step | Assertion |
+|------|-----------|
+| Exact replay of V1 artefact | `response_hash` match |
+| Point-in-time replay at fixed `as_of` | Identical to original provenance hashes |
+| Replay with current weights on historical `as_of` | **Differs** from original (no substitution) |
+
+### V12 — Comparison (Refinement-02)
+
+| Step | Assertion |
+|------|-----------|
+| Compare superseded recommendation pair | `diff.registry_versions` populated when weights changed |
+| Compare identical artefacts | `response_hash_changed: false` |
+| Comparison envelope × 2 | Identical `response_hash` |
+| No AI imports in comparison path | Static analysis pass |
+
+### V13 — Regression guard
 
 | Surface | Expected |
 |---------|----------|
@@ -122,7 +149,7 @@ Pattern mirrors `tmp_compliance_evidence_graph_phase5_staging_smoke.py`.
 
 | Mode | Validate |
 |------|----------|
-| `shadow` | V1–V10 + no operational side-effects (no WO/reminder creation) |
+| `shadow` | V1–V13 + no operational side-effects (no WO/reminder creation) |
 | `enabled` | Above + controlled lifecycle → WO link on staging test client only |
 
 ---
@@ -145,7 +172,7 @@ Run at fixed `as_of` timestamp passed explicitly to eliminate clock drift in fac
 
 | Verdict | Meaning |
 |---------|---------|
-| `CIE_STAGING_VALIDATION_ACCEPTED` | All V1–V10 pass in `shadow` |
+| `CIE_STAGING_VALIDATION_ACCEPTED` | All V1–V13 pass in `shadow` |
 | `CIE_STAGING_ENABLED_ACCEPTED` | Operational integration slice pass in `enabled` |
 | `CIE_STAGING_NOT_ACCEPTED` | Any critical failure |
 
