@@ -45,9 +45,11 @@ def base_envelope(
 
 
 def insufficient(service: str, request: Dict[str, Any], reason: str = "Insufficient evidence available.") -> Dict[str, Any]:
-    return base_envelope(
+    env = base_envelope(
         service=service,
         request=request,
         insufficient_evidence=True,
-        payload={"executive_summary": reason, "reason": reason},
+        payload={"executive_summary": reason, "reason": reason, "status": "insufficient"},
     )
+    env["status"] = "insufficient"
+    return env

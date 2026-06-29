@@ -52,10 +52,16 @@ async def admin_graph_validate(
 
 @router.get("/api/admin/compliance/graph/producers/registry")
 async def admin_producer_registry(request: Request):
-    """Phase 2A — producer metadata catalogue (no live emit)."""
+    """Phase 2A+ — producer metadata catalogue."""
     await admin_route_guard(request)
+    from services.compliance_evidence_graph.producers.bootstrap import ensure_producers_initialized
+
+    ensure_producers_initialized()
+    entries = list_producer_registry()
+    live_count = sum(1 for e in entries if e.get("live_emit_active"))
     return {
         "service": "compliance_evidence_graph.producers",
-        "entries": list_producer_registry(),
-        "live_emit_active": False,
+        "entries": entries,
+        "live_emit_active": live_count > 0,
+        "live_emit_active_count": live_count,
     }

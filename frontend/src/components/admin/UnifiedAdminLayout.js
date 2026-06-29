@@ -79,6 +79,7 @@ const navSections = [
       { href: '/admin/compliance/registry', label: 'Policy Registry', icon: ListChecks },
       { href: '/admin/compliance/registry/preview', label: 'Registry Preview & Simulation', icon: GitCompare },
       { href: '/admin/compliance/registry/publish-queue', label: 'Registry Publish Queue', icon: Rocket },
+      { href: '/admin/compliance/decisions', label: 'Decision Explorer', icon: GitBranch },
       { href: '/admin/ops/action-links', label: 'Action Links', icon: Link2 },
     ],
   },

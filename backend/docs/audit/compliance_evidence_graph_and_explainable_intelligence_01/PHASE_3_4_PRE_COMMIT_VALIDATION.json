@@ -1,0 +1,277 @@
+{
+  "programme": "CEG-PHASE-3-4-PRE-COMMIT-VALIDATION-GATE",
+  "run_tag": "20260629T005242Z",
+  "validated_at": "2026-06-29T00:52:43.681558+00:00",
+  "checks": [
+    {
+      "name": "routes_admin_use_admin_guard",
+      "passed": true,
+      "admin_actor_refs": 16,
+      "admin_routes": 16,
+      "tenant_routes": 14,
+      "guard_pattern": "_admin_actor \u2192 admin_route_guard"
+    },
+    {
+      "name": "routes_no_raw_storage_exposure",
+      "passed": true,
+      "note": "storage-debug gated by COMPLIANCE_EVIDENCE_GRAPH_DEBUG"
+    },
+    {
+      "name": "frontend_phase4_files_present",
+      "passed": true,
+      "missing": []
+    },
+    {
+      "name": "frontend_admin_route_protected",
+      "passed": true
+    },
+    {
+      "name": "frontend_no_customer_graph_routes",
+      "passed": true
+    },
+    {
+      "name": "frontend_no_ai_wording",
+      "passed": true,
+      "hits": []
+    },
+    {
+      "name": "frontend_empty_and_error_states",
+      "passed": true
+    },
+    {
+      "name": "feature_flag_shadow",
+      "passed": true,
+      "graph_mode": "shadow",
+      "admin_consumers": true,
+      "customer_consumers": false
+    },
+    {
+      "name": "feature_flag_enabled",
+      "passed": true,
+      "graph_mode": "enabled",
+      "admin_consumers": true,
+      "customer_consumers": true
+    },
+    {
+      "name": "feature_flag_disabled",
+      "passed": true,
+      "graph_mode": "disabled",
+      "admin_consumers": false,
+      "customer_consumers": false
+    },
+    {
+      "name": "consumer_adapter_disabled_insufficient",
+      "passed": true
+    },
+    {
+      "name": "consumer_adapter_routes_through_graph_service",
+      "passed": true
+    },
+    {
+      "name": "admin_explain_fallback_when_disabled",
+      "passed": true
+    },
+    {
+      "name": "admin_explain_enrichment_when_enabled",
+      "passed": true
+    },
+    {
+      "name": "tenant_isolation_decision_methods",
+      "passed": true
+    },
+    {
+      "name": "tenant_isolation_scope_methods",
+      "passed": true
+    },
+    {
+      "name": "find_missing_evidence_snapshot_only",
+      "passed": true
+    },
+    {
+      "name": "find_superseded_evidence_graph_only",
+      "passed": true
+    },
+    {
+      "name": "trace_operational_impact_references_only",
+      "passed": true
+    },
+    {
+      "name": "compare_no_fabricated_diff_when_outcomes_match",
+      "passed": true
+    },
+    {
+      "name": "regression_pytest_suite",
+      "passed": true,
+      "tests_passed": 82,
+      "tests_failed": 0
+    },
+    {
+      "name": "runtime_graph_service_smoke",
+      "passed": true,
+      "connected": true,
+      "checks": 7
+    }
+  ],
+  "sections": {
+    "feature_flags": {
+      "disabled": {
+        "graph_mode": "disabled",
+        "admin_consumers": false,
+        "customer_consumers": false
+      },
+      "shadow": {
+        "graph_mode": "shadow",
+        "admin_consumers": true,
+        "customer_consumers": false
+      },
+      "enabled": {
+        "graph_mode": "enabled",
+        "admin_consumers": true,
+        "customer_consumers": true
+      }
+    },
+    "regression_pytest": {
+      "exit_code": 0,
+      "passed": 82,
+      "failed": 0,
+      "output_tail": "........................................................................ [ 87%]\n..........                                                               [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n82 passed, 4 warnings in 3.08s\n"
+    },
+    "runtime": {
+      "connected": true,
+      "checks": [
+        {
+          "name": "list_decisions",
+          "passed": true,
+          "insufficient": false,
+          "service": "list_decisions"
+        },
+        {
+          "name": "explain_decision",
+          "passed": true,
+          "insufficient": false,
+          "service": "explain_decision"
+        },
+        {
+          "name": "replay_decision",
+          "passed": true,
+          "insufficient": false,
+          "service": "replay_decision"
+        },
+        {
+          "name": "compare_decision_self",
+          "passed": true,
+          "insufficient": false,
+          "service": "compare_decision"
+        },
+        {
+          "name": "trace_evidence_decision",
+          "passed": true,
+          "insufficient": false,
+          "service": "trace_evidence"
+        },
+        {
+          "name": "trace_operational_impact",
+          "passed": true,
+          "insufficient": false,
+          "service": "trace_operational_impact"
+        },
+        {
+          "name": "cross_tenant_blocked",
+          "passed": true
+        }
+      ]
+    },
+    "backend_route_validation": {
+      "admin_routes": [
+        "/api/admin/compliance/graph/decisions/{decision_id}/explain",
+        "/api/admin/compliance/graph/decisions/{decision_id}/replay",
+        "/api/admin/compliance/graph/decisions/compare",
+        "/api/admin/compliance/graph/snapshots/compare",
+        "/api/admin/compliance/graph/historical",
+        "/api/admin/compliance/graph/decisions/{decision_id}/dependencies",
+        "/api/admin/compliance/graph/decisions/{decision_id}/affected-properties",
+        "/api/admin/compliance/graph/decisions/{decision_id}/affected-requirements",
+        "/api/admin/compliance/graph/decisions",
+        "/api/admin/compliance/graph/evidence/trace",
+        "/api/admin/compliance/graph/requirements/{requirement_id}/trace",
+        "/api/admin/compliance/graph/scope/missing-evidence",
+        "/api/admin/compliance/graph/scope/superseded-evidence",
+        "/api/admin/compliance/graph/explain-scope",
+        "/api/admin/compliance/graph/decisions/{decision_id}/operational-impact",
+        "/api/admin/compliance/graph/fixtures/seed"
+      ],
+      "tenant_routes": [
+        "/api/compliance/graph/decisions/{decision_id}/explain",
+        "/api/compliance/graph/decisions/{decision_id}/replay",
+        "/api/compliance/graph/decisions/compare",
+        "/api/compliance/graph/historical",
+        "/api/compliance/graph/requirements/{requirement_id}/trace",
+        "/api/compliance/graph/evidence/trace",
+        "/api/compliance/graph/decisions/{decision_id}/dependencies",
+        "/api/compliance/graph/decisions/{decision_id}/affected-properties",
+        "/api/compliance/graph/decisions/{decision_id}/affected-requirements",
+        "/api/compliance/graph/decisions/{decision_id}/operational-impact",
+        "/api/compliance/graph/snapshots/compare",
+        "/api/compliance/graph/scope/missing-evidence",
+        "/api/compliance/graph/scope/superseded-evidence",
+        "/api/compliance/graph/internal/storage-debug"
+      ],
+      "admin_guard_pattern": "_admin_actor \u2192 admin_route_guard",
+      "raw_storage_blocked": true
+    },
+    "frontend_ui_validation": {
+      "explorer_path": "/admin/compliance/decisions",
+      "admin_only": true,
+      "components": [
+        "AdminComplianceDecisionExplorerPage.js",
+        "ExplainThisPanel.js",
+        "ComplianceReplayDrawer.js",
+        "DecisionDiffPanel.js",
+        "complianceGraphApi.js"
+      ],
+      "empty_states": true,
+      "error_states": true,
+      "no_ai_wording": true
+    },
+    "access_boundary": {
+      "tenant_isolation_decision_methods": true,
+      "tenant_isolation_scope_methods": true,
+      "cross_tenant_runtime": {
+        "name": "cross_tenant_blocked",
+        "passed": true
+      }
+    },
+    "remaining_risks": [
+      "Legacy decisions may lack decision_quality metadata (warning-only in health).",
+      "Runtime validation depends on existing CEG decisions in connected DB.",
+      "Frontend UI not browser-tested in this gate \u2014 static + API contract checks only.",
+      "Customer-facing graph consumers intentionally disabled until Phase 7.",
+      "Production COMPLIANCE_EVIDENCE_GRAPH_MODE must remain unchanged until staging sign-off."
+    ]
+  },
+  "elapsed_ms": 67039,
+  "critical_checks": [
+    "routes_admin_use_admin_guard",
+    "routes_no_raw_storage_exposure",
+    "frontend_phase4_files_present",
+    "frontend_admin_route_protected",
+    "frontend_no_customer_graph_routes",
+    "frontend_no_ai_wording",
+    "feature_flag_shadow",
+    "feature_flag_enabled",
+    "feature_flag_disabled",
+    "consumer_adapter_disabled_insufficient",
+    "consumer_adapter_routes_through_graph_service",
+    "admin_explain_fallback_when_disabled",
+    "tenant_isolation_decision_methods",
+    "tenant_isolation_scope_methods",
+    "find_missing_evidence_snapshot_only",
+    "find_superseded_evidence_graph_only",
+    "trace_operational_impact_references_only",
+    "compare_no_fabricated_diff_when_outcomes_match",
+    "regression_pytest_suite",
+    "runtime_graph_service_smoke"
+  ],
+  "failed_critical": [],
+  "acceptance": "PHASE_3_4_COMMIT_READY"
+}

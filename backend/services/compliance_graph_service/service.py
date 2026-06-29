@@ -342,26 +342,58 @@ async def trace_evidence(
 ) -> Dict[str, Any]:
     request = {"anchor_type": anchor_type, "anchor_id": anchor_id, "client_id": client_id}
     enforce_tenant_access(actor, client_id=client_id)
-    decisions = await decision_storage.list_decisions_for_scope(client_id=client_id, limit=limit)
-    matched = [
-        d
-        for d in decisions
-        if (d.get("evidence_set") or {}).get("document_ids")
-        and anchor_id in ((d.get("evidence_set") or {}).get("document_ids") or [])
-    ]
-    if not matched and anchor_type == "decision":
+    matched: List[Dict[str, Any]] = []
+    traversal_edges: List[Dict[str, Any]] = []
+
+    if anchor_type == "decision":
         d = await decision_storage.get_decision(anchor_id)
         if d:
+            enforce_decision_tenant(actor, d)
             matched = [d]
+    elif anchor_type == "document":
+        decisions = await decision_storage.list_decisions_for_scope(client_id=client_id, limit=limit)
+        matched = [
+            d
+            for d in decisions
+            if anchor_id in ((d.get("evidence_set") or {}).get("document_ids") or [])
+        ]
+    elif anchor_type == "node":
+        edges = await edge_storage.list_edges_from_node(anchor_id, limit=limit)
+        traversal_edges.extend(edges)
+        for e in edges:
+            did = (e.get("provenance") or {}).get("decision_id")
+            if did:
+                d = await decision_storage.get_decision(did)
+                if d and d.get("client_id") == client_id:
+                    matched.append(d)
+    else:
+        decisions = await decision_storage.list_decisions_for_scope(client_id=client_id, limit=limit)
+        matched = [d for d in decisions if anchor_id in str(d.get("source", {}).get("id", ""))]
+
     if not matched:
         return insufficient("trace_evidence", request)
 
-    payload = {"matches": [{"decision_id": d.get("decision_id"), "summary": d.get("summary")} for d in matched]}
+    unique: Dict[str, Dict[str, Any]] = {d["decision_id"]: d for d in matched if d.get("decision_id")}
+    payload = {
+        "anchor_type": anchor_type,
+        "anchor_id": anchor_id,
+        "matches": [
+            {
+                "decision_id": d.get("decision_id"),
+                "decision_type": d.get("decision_type"),
+                "summary": d.get("summary"),
+                "decision_timestamp": d.get("decision_timestamp"),
+            }
+            for d in unique.values()
+        ],
+        "traversal_edges": traversal_edges[:limit],
+    }
     return base_envelope(
         service="trace_evidence",
         request=request,
         payload=payload,
-        authoritative_references={"decision_ids": [d.get("decision_id") for d in matched]},
+        authoritative_references={"decision_ids": list(unique.keys())},
+        evidence_lineage=[{"type": "edge", "edge_id": e.get("edge_id")} for e in traversal_edges[:20]],
     )
 
 
@@ -443,9 +475,28 @@ async def find_affected_requirements(decision_id: str, *, actor: ActorContext) -
     if not decision:
         return insufficient("find_affected_requirements", request)
     enforce_decision_tenant(actor, decision)
+    requirement_ids: List[str] = []
     rid = decision.get("requirement_id")
-    payload = {"decision_id": decision_id, "requirement_ids": [rid] if rid else []}
-    return base_envelope(service="find_affected_requirements", request=request, payload=payload)
+    if rid:
+        requirement_ids.append(rid)
+    snapshot = await snapshot_storage.get_snapshot_by_decision(decision_id)
+    if snapshot:
+        inputs = snapshot.get("decision_reasoning_inputs") or {}
+        for key in ("changed_requirements", "affected_requirement_ids", "requirement_ids"):
+            for item in inputs.get(key) or []:
+                if isinstance(item, str) and item not in requirement_ids:
+                    requirement_ids.append(item)
+                elif isinstance(item, dict) and item.get("requirement_id"):
+                    req = str(item["requirement_id"])
+                    if req not in requirement_ids:
+                        requirement_ids.append(req)
+    payload = {"decision_id": decision_id, "requirement_ids": requirement_ids}
+    return base_envelope(
+        service="find_affected_requirements",
+        request=request,
+        payload=payload,
+        authoritative_references=_refs_from_decision(decision, snapshot),
+    )
 
 
 async def find_missing_evidence(
@@ -517,4 +568,60 @@ async def trace_operational_impact(decision_id: str, *, actor: ActorContext) -> 
             "correlation_id": decision.get("operational_correlation_id"),
             "operational_event_ids": op.get("operational_event_ids") or [],
         },
+    )
+
+
+async def list_decisions(
+    *,
+    actor: ActorContext,
+    client_id: str,
+    property_id: Optional[str] = None,
+    requirement_id: Optional[str] = None,
+    decision_type: Optional[str] = None,
+    since: Optional[str] = None,
+    until: Optional[str] = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    """Bounded decision listing for admin explorer and consumer adapters."""
+    request = {
+        "client_id": client_id,
+        "property_id": property_id,
+        "requirement_id": requirement_id,
+        "decision_type": decision_type,
+        "since": since,
+        "until": until,
+        "limit": limit,
+    }
+    enforce_tenant_access(actor, client_id=client_id)
+    capped = max(1, min(limit, 200))
+    decisions = await decision_storage.list_decisions_for_scope(
+        client_id=client_id,
+        property_id=property_id,
+        requirement_id=requirement_id,
+        decision_type=decision_type,
+        since=since,
+        until=until,
+        limit=capped,
+    )
+    payload = {
+        "decisions": [
+            {
+                "decision_id": d.get("decision_id"),
+                "decision_type": d.get("decision_type"),
+                "decision_outcome": d.get("decision_outcome"),
+                "decision_timestamp": d.get("decision_timestamp"),
+                "summary": d.get("summary"),
+                "property_id": d.get("property_id"),
+                "requirement_id": d.get("requirement_id"),
+                "snapshot_id": d.get("snapshot_id"),
+            }
+            for d in decisions
+        ],
+        "count": len(decisions),
+    }
+    return base_envelope(
+        service="list_decisions",
+        request=request,
+        payload=payload,
+        authoritative_references={"decision_ids": [d.get("decision_id") for d in decisions if d.get("decision_id")]},
     )

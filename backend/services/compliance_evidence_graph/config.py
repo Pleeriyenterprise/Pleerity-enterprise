@@ -13,6 +13,16 @@ def graph_producers_enabled() -> bool:
     return graph_mode() in ("shadow", "enabled")
 
 
+def graph_admin_consumers_enabled() -> bool:
+    """Admin Graph Service UI (Phase 4) — available in shadow for validation."""
+    return graph_mode() in ("shadow", "enabled")
+
+
+def graph_consumers_enabled() -> bool:
+    """Customer-facing graph consumers (Phase 4+) — enabled mode only."""
+    return graph_mode() == "enabled"
+
+
 def graph_emit_allowed() -> bool:
     """Internal emit for tests, fixtures, and shadow/enabled producers."""
     mode = graph_mode()

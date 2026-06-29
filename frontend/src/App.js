@@ -183,6 +183,7 @@ import AdminSystemHealthPage from './pages/AdminSystemHealthPage';
 import AdminAutomationCentrePage from './pages/AdminAutomationCentrePage';
 import AdminIncidentsPage from './pages/AdminIncidentsPage';
 import AdminOperationalEvidenceTimelinePage from './pages/AdminOperationalEvidenceTimelinePage';
+import AdminComplianceDecisionExplorerPage from './pages/AdminComplianceDecisionExplorerPage';
 import AdminSecurityDashboardPage from './pages/AdminSecurityDashboardPage';
 import AdminControlCentrePage from './pages/AdminControlCentrePage';
 import AdminOpsOverviewPage from './pages/admin/AdminOpsOverviewPage';
@@ -795,6 +796,7 @@ function App() {
             <Route path="/admin/automation" element={<ProtectedRoute requireAdmin><AdminAutomationCentrePage /></ProtectedRoute>} />
             <Route path="/admin/incidents" element={<ProtectedRoute requireAdmin><AdminIncidentsPage /></ProtectedRoute>} />
             <Route path="/admin/ops/evidence-timeline" element={<ProtectedRoute requireAdmin><AdminOperationalEvidenceTimelinePage /></ProtectedRoute>} />
+            <Route path="/admin/compliance/decisions" element={<ProtectedRoute requireAdmin><AdminComplianceDecisionExplorerPage /></ProtectedRoute>} />
             {/* Operations & Compliance */}
             <Route path="/admin/ops" element={<ProtectedRoute requireAdmin><AdminOpsOverviewPage /></ProtectedRoute>} />
             <Route path="/admin/ops/compliance" element={<ProtectedRoute requireAdmin><AdminOpsCompliancePage /></ProtectedRoute>} />
