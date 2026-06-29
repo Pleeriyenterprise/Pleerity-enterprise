@@ -22,6 +22,16 @@
 | Admin HTTP route | `routes/compliance_intelligence.py` |
 | Unit tests | `tests/test_compliance_intelligence_phase5.py` |
 | Access boundary | `tests/test_graph_service_access_boundary.py` (extended) |
+| Staging smoke runner | `tmp_compliance_evidence_graph_phase5_staging_smoke.py` |
+| Tier 1 staging acceptance | `PHASE_5_STAGING_SMOKE.json`, `PHASE_5_STAGING_SMOKE_REPORT.md` |
+
+## Staging acceptance (Tier 1)
+
+**Verdict:** `PHASE_5_TIER1_STAGING_ACCEPTED`  
+**Staging deploy SHA:** `b6edbb27` (Phase 5 code at `4de21932`)  
+**Flags:** `COMPLIANCE_EVIDENCE_GRAPH_MODE=enabled`; narration and AI disabled on staging.
+
+Tier 2 HTTP, customer-facing intelligence, and production flags remain out of scope until explicitly approved.
 
 ## Two-tier model
 
@@ -58,4 +68,4 @@ POST /api/admin/compliance/intelligence/investigate
 }
 ```
 
-Set `COMPLIANCE_EVIDENCE_GRAPH_MODE=enabled` on staging before exercising Tier 1.
+Set `COMPLIANCE_EVIDENCE_GRAPH_MODE=enabled` on staging before exercising Tier 1. Staging Tier 1 acceptance recorded in `PHASE_5_STAGING_SMOKE.json` / `PHASE_5_STAGING_SMOKE_REPORT.md`.
