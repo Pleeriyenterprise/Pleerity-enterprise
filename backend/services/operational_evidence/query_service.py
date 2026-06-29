@@ -8,7 +8,10 @@ from typing import Any, Dict, List, Optional
 
 from database import database
 
-from services.operational_evidence.constants import ARCHIVED_RETENTION_TIERS, COLLECTION_EVENTS
+from services.operational_evidence.constants import (
+    ARCHIVED_RETENTION_TIER_EXCLUSION,
+    COLLECTION_EVENTS,
+)
 
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 200
@@ -91,7 +94,7 @@ def _build_filter_query(
             {"root_execution_id": search},
         ]
     if not include_archived:
-        q["retention.tier"] = {"$nin": list(ARCHIVED_RETENTION_TIERS)}
+        q["retention.tier"] = {"$nin": list(ARCHIVED_RETENTION_TIER_EXCLUSION)}
     return q
 
 
@@ -240,7 +243,7 @@ async def get_intelligence_shortcuts(hours: int = 24) -> Dict[str, Any]:
 
     since_dt = datetime.now(timezone.utc) - timedelta(hours=hours)
     since_iso = since_dt.isoformat()
-    active_retention = {"retention.tier": {"$nin": list(ARCHIVED_RETENTION_TIERS)}}
+    active_retention = {"retention.tier": {"$nin": list(ARCHIVED_RETENTION_TIER_EXCLUSION)}}
 
     failed_by_type = await db[COLLECTION_EVENTS].aggregate(
         [
