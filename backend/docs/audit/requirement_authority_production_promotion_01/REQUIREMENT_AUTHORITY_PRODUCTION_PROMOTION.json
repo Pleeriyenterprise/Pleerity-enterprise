@@ -1,0 +1,106 @@
+{
+  "programme": "REQUIREMENT-AUTHORITY-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260630T153435Z",
+  "source_develop_sha": "5063280b",
+  "main_sha_before_promotion": "9755ccfa09d444821d0fee38dcf8e35248da187c",
+  "promotion_strategy": "cherry-pick (scoped; full develop merge rejected \u2014 20 out-of-scope commits)",
+  "promoted_commits": [
+    {
+      "develop_sha": "0b1887a2",
+      "main_sha": "bdda2c8d",
+      "message": "fix(requirements): align onboarding authority and runtime risk semantics"
+    },
+    {
+      "develop_sha": "6f20d5cc",
+      "main_sha": "18fa6a22",
+      "message": "docs(requirements): add post-deploy staging validation evidence"
+    },
+    {
+      "develop_sha": "c93a014b",
+      "main_sha": "54ef956b",
+      "message": "fix(requirements): add authority reconciliation for alias duplicates"
+    },
+    {
+      "develop_sha": "5063280b",
+      "main_sha": "3c87941c",
+      "message": "docs(requirements): add post-reconciliation staging validation evidence"
+    }
+  ],
+  "smoke": {
+    "health": {
+      "status": 200,
+      "body": {
+        "status": "healthy",
+        "environment": "production",
+        "readiness": {
+          "stage": "post_db_initialization",
+          "degraded": false,
+          "last_error": null
+        }
+      }
+    },
+    "version": {
+      "status": 200,
+      "body": {
+        "commit_sha": "3c87941ceb87d5830a3e356bc98aeef311b70628",
+        "environment": "production"
+      }
+    },
+    "homepage": {
+      "status": 200
+    },
+    "frontend": {
+      "bundle": "/static/js/main.846a2480.js",
+      "sha256": "08f5fb7f6c4d6b3dd32d058eda5212d190b9964c41d45dde9a1d72aa2de3daa7",
+      "has_prod_api": true,
+      "has_staging_api": false
+    },
+    "setup_status_unauthenticated": {
+      "status": 400,
+      "body_sample": "{\"detail\":\"client_id required (or authenticate with portal JWT)\"}"
+    },
+    "unauth__client_dashboard": {
+      "status": 401
+    },
+    "unauth__client_requirements": {
+      "status": 401
+    }
+  },
+  "environment_verification": {
+    "production_api_environment": "production",
+    "local_operator_db_name": "pleerity_staging",
+    "local_operator_points_to_staging": true,
+    "render_production_db_name_expected": "pleerity_production",
+    "render_production_stripe_mode_expected": "live",
+    "render_manifests_changed_in_promotion": false,
+    "staging_api_not_used_by_production_frontend": true
+  },
+  "dry_run_reconciliation": {
+    "status": "SKIPPED",
+    "reason": "Local operator credentials resolve to pleerity_staging; production Mongo unavailable locally",
+    "recommendation": "Run dry-run from secure production operator shell before any execute approval"
+  },
+  "checks": {
+    "api_health_ok": true,
+    "version_reports_expected_sha": true,
+    "production_environment_label": true,
+    "no_staging_api_in_frontend_bundle": true,
+    "prod_api_in_frontend_bundle": true,
+    "setup_status_reachable": true,
+    "requirements_api_protected": true,
+    "dashboard_api_protected": true,
+    "local_db_not_production_confused_with_staging": true,
+    "lifecycle_kpi_files_not_in_promotion": true,
+    "dry_run_no_execute": true,
+    "local_raod_pytest_pass": true
+  },
+  "main_sha_after_promotion": "3c87941ceb87d5830a3e356bc98aeef311b70628",
+  "production_deployed_sha": "3c87941ceb87d5830a3e356bc98aeef311b70628",
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "output_tail": "========================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n17 passed, 4 warnings in 0.29s\n"
+  },
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL",
+  "reconcile_execute_recommendation": "Defer execute until production dry-run completed with pleerity_production credentials"
+}
