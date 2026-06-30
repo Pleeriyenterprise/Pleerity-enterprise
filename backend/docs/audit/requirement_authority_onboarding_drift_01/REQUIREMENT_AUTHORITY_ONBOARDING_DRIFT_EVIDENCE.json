@@ -1,0 +1,186 @@
+{
+  "programme": "REQUIREMENT-AUTHORITY-ONBOARDING-DRIFT-AUDIT-01",
+  "audit_date": "2026-06-30",
+  "branch": "develop",
+  "verdict": "B",
+  "verdict_summary": "Defective behaviour confirmed (occupation duplicate, premature electrical risk, onboarding count authority drift). Fixes implemented on develop with 5 passing regression tests.",
+  "production_touched": false,
+  "merged_to_main": false,
+  "governance_documents": [
+    {
+      "path": "backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md",
+      "role": "Canonical KPI authority chain: filter → project → visible → stats"
+    },
+    {
+      "path": "backend/docs/audit/dashboard_score_widget_semantic_convergence_01/governance_model_runtime.json",
+      "role": "Explicit: do not equate widget counts vs Requirements tracked counts"
+    },
+    {
+      "path": "backend/services/reporting_semantics_v1.py",
+      "role": "requirement_row_in_tracked_attention_views — DOCUMENT/JOB only"
+    },
+    {
+      "path": "backend/services/requirement_materialization_service.py",
+      "role": "Idempotency per (client_id, property_id, requirement_type)"
+    },
+    {
+      "path": "backend/services/provisioning.py",
+      "role": "Dual-path: catalog materialisation + supplemental DB rules"
+    }
+  ],
+  "canonical_authority": {
+    "applicable_requirement": {
+      "source": "build_requirement_plan_for_property + materialize_requirements_for_property",
+      "supplemental": "requirement_rules via provisioning._apply_db_rules"
+    },
+    "tracked_requirement": {
+      "source": "filter_requirement_rows_for_client_runtime_surfaces then requirement_row_in_tracked_attention_views",
+      "frontend_mirror": "frontend/src/utils/portalRequirementAttention.js"
+    },
+    "generated_equals_tracked": false,
+    "documented_exclusions": [
+      "compliance_requirement_class OBLIGATION",
+      "compliance_requirement_class SYSTEM",
+      "is_tracked false",
+      "client_surface_visible false",
+      "NOT_APPLICABLE lifecycle"
+    ]
+  },
+  "observed_symptoms": [
+    {
+      "symptom": "Onboarding 12 generated vs Requirements 10 tracked",
+      "example_client": "PLE-CVP-2026-000003 / Pure Haven Wales",
+      "mechanism": "Raw Mongo count vs tracked-attention DOCUMENT/JOB count",
+      "classification": "intentional_semantics_mismatch_undisclosed"
+    },
+    {
+      "symptom": "Duplicate Occupation Contract cards",
+      "mechanism": "occupation_contract DB rule + wales_occupation_contract catalog row; no alias family",
+      "classification": "defect_fixed"
+    },
+    {
+      "symptom": "Electrical safety concern on new user",
+      "mechanism": "risk_signal_service included PENDING/MISSING EICR in electrical rule",
+      "classification": "defect_fixed"
+    },
+    {
+      "symptom": "Action required for Document Not uploaded",
+      "mechanism": "KPI PENDING/MISSING maps to missing_evidence; UI chip copy urgent",
+      "classification": "presentation_gap_not_fixed"
+    }
+  ],
+  "investigation_answers": {
+    "q01_canonical_applicable": "catalog plan + materialisation (+ supplemental DB rules)",
+    "q02_canonical_tracked": "runtime filter + requirement_row_in_tracked_attention_views",
+    "q03_generated_equals_tracked": false,
+    "q04_documented_transition": "class/is_tracked/reporting_semantics; dashboard convergence audit for widget vs registry",
+    "q05_why_count_mismatch": "OBLIGATION rows materialised but excluded from tracked headline",
+    "q06_intentional_filters": true,
+    "q07_filter_visible_to_user": "partial — setup-status now exposes semantics",
+    "q08_occupation_duplicate_cause": "legacy slug + missing alias + DB rule guard gap",
+    "q09_db_unique_constraint": false,
+    "q10_idempotency": "per requirement_type yes; alias collisions were not prevented before fix",
+    "q11_frontend_backend_count_alignment": "Requirements page mirrors backend semantics; onboarding used raw count",
+    "q12_do_this_next_source": "backend unified_tasks / client_priority_stream",
+    "q13_risk_signal_basis": "was PENDING/MISSING for electrical — fixed to OVERDUE/EXPIRED",
+    "q14_new_user_missing_evidence": "should be pending verification per governance",
+    "q15_lifecycle_separation": "client_lifecycle_state exists; UI chips not fully migrated",
+    "q16_governance_requires_unknown_vs_breach": true,
+    "q17_surfaces_aligned": "KPI surfaces yes; onboarding counter was not",
+    "q18_pagination_hiding": "not primary cause for reported 12/10 case",
+    "q19_background_partial_jobs": "no evidence for single-property case",
+    "q20_conflicting_rules": "supplemental requirement_rules can duplicate when alias not recognised"
+  },
+  "fixes_implemented": [
+    {
+      "id": "FIX-01",
+      "file": "backend/services/requirement_client_runtime_surface.py",
+      "change": "wales_occupation_contract_alias_family for occupation_contract + wales_occupation_contract"
+    },
+    {
+      "id": "FIX-02",
+      "file": "backend/services/provisioning.py",
+      "change": "skip DB occupation_contract when wales_occupation_contract in planned_registry_types"
+    },
+    {
+      "id": "FIX-03",
+      "file": "backend/services/risk_signal_service.py",
+      "change": "_fetch_requirements_confirmed_calendar_risk; EICR status guard in _rule_electrical"
+    },
+    {
+      "id": "FIX-04",
+      "file": "backend/routes/portal.py",
+      "change": "requirements_tracked_attention_count and semantics on setup-status"
+    }
+  ],
+  "changed_files": [
+    "backend/services/requirement_client_runtime_surface.py",
+    "backend/services/provisioning.py",
+    "backend/services/risk_signal_service.py",
+    "backend/routes/portal.py",
+    "backend/tests/test_requirement_authority_onboarding_drift_01.py",
+    "backend/docs/audit/requirement_authority_onboarding_drift_01/REQUIREMENT_AUTHORITY_ONBOARDING_DRIFT_AUDIT.md",
+    "backend/docs/audit/requirement_authority_onboarding_drift_01/REQUIREMENT_AUTHORITY_ONBOARDING_DRIFT_EVIDENCE.json"
+  ],
+  "tests": {
+    "file": "backend/tests/test_requirement_authority_onboarding_drift_01.py",
+    "command": "python -m pytest tests/test_requirement_authority_onboarding_drift_01.py -v --tb=short",
+    "run_date": "2026-06-30",
+    "result": "5 passed, 0 failed",
+    "cases": [
+      "test_wales_occupation_contract_alias_family_dedupes_duplicate_slugs",
+      "test_provisioning_skips_db_occupation_contract_when_wales_catalog_planned",
+      "test_electrical_risk_does_not_fire_on_pending_eicr_only",
+      "test_electrical_risk_fires_on_overdue_eicr",
+      "test_portal_setup_status_exposes_tracked_attention_semantics"
+    ]
+  },
+  "before_after": {
+    "occupation_contract_duplicate": {
+      "before": "Two active rows occupation_contract + wales_occupation_contract visible",
+      "after": "Runtime alias dedupe to one; new provisions skip legacy DB insert"
+    },
+    "electrical_risk_new_user": {
+      "before": "PENDING EICR triggered Electrical Risk signal",
+      "after": "Only OVERDUE/EXPIRED EICR or operational history triggers"
+    },
+    "onboarding_count": {
+      "before": "requirements_count raw Mongo only",
+      "after": "requirements_tracked_attention_count + semantics fields added"
+    }
+  },
+  "remaining_risks": [
+    "Existing duplicate Mongo rows not deleted — runtime dedupe only",
+    "No composite unique index on requirements collection",
+    "UI Action required chip for PENDING not lifecycle-migrated",
+    "Frontend onboarding must adopt new setup-status semantic fields",
+    "Large portfolio 45 vs half tracked needs per-client admin explain diagnostic"
+  ],
+  "production_promotion_recommendation": {
+    "ready": false,
+    "blockers": [
+      "Staging validation on Wales fixture",
+      "Frontend onboarding semantic count display",
+      "Optional historical duplicate reconcile job"
+    ],
+    "safe_after_staging": [
+      "alias dedupe",
+      "provision guard",
+      "risk signal narrowing",
+      "setup-status semantic fields"
+    ]
+  },
+  "acceptance_criteria_met": "B — defects fixed on develop with tests proving dedupe, provision guard, risk signal authority, and semantic onboarding counts",
+  "staging_validation": {
+    "verdict": "SHADOW_ACCEPTED_PRE_DEPLOY_HTTP_BASELINE",
+    "report": "backend/docs/audit/requirement_authority_onboarding_drift_01/REQUIREMENT_AUTHORITY_STAGING_VALIDATION_REPORT.md",
+    "evidence": "backend/docs/audit/requirement_authority_onboarding_drift_01/REQUIREMENT_AUTHORITY_STAGING_VALIDATION.json",
+    "run_date": "2026-06-30",
+    "commit_ready": true,
+    "post_commit_required": [
+      "Deploy develop fixes to staging (current SHA 817977e4 lacks RAOD fixes)",
+      "Re-run tmp_requirement_authority_staging_validation_01.py for full HTTP acceptance",
+      "Run occupation reconcile job before production"
+    ]
+  }
+}

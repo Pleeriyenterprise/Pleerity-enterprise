@@ -317,6 +317,9 @@ class ProvisioningService:
             rc = (rule.get("rule_type") or "").strip().lower()
             if planned_registry_types and rc in planned_registry_types:
                 continue
+            # Legacy DB rule slug ``occupation_contract`` must not duplicate catalog ``wales_occupation_contract``.
+            if rc == "occupation_contract" and planned_registry_types and "wales_occupation_contract" in planned_registry_types:
+                continue
             eng = resolve_engine_payload_from_code(rc) if rc else {}
             cls_override = (rule.get("compliance_requirement_class") or "").strip().upper() or None
             cls_eff = cls_override or eng.get("compliance_requirement_class")

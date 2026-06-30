@@ -212,6 +212,39 @@ async def _fetch_requirements_overdue(db, property_id: str, client_id: str) -> L
     return out
 
 
+async def _fetch_requirements_confirmed_calendar_risk(
+    db, property_id: str, client_id: str
+) -> List[Dict[str, Any]]:
+    """Calendar-confirmed risk rows only — excludes PENDING/MISSING (pending verification)."""
+    cursor = db.requirements.find(
+        {"property_id": property_id, "client_id": client_id, "status": {"$in": ["OVERDUE", "EXPIRED"]}},
+        {"_id": 0},
+    )
+    rows = await cursor.to_list(100)
+    client_row = await db.clients.find_one({"client_id": client_id}, {"_id": 0}) or {}
+    prop = await db.properties.find_one({"property_id": property_id, "client_id": client_id}, {"_id": 0})
+    if not prop:
+        return []
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+
+    rows = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=rows,
+        client_doc=client_row,
+        properties=[prop],
+    )
+    return [
+        {
+            "requirement_id": r.get("requirement_id"),
+            "requirement_code": r.get("requirement_code"),
+            "requirement_type": r.get("requirement_type"),
+            "status": r.get("status"),
+        }
+        for r in rows
+    ]
+
+
 async def _fetch_requirements_expiring_soon(db, property_id: str, client_id: str) -> List[Dict[str, Any]]:
     """Requirements with status EXPIRING_SOON (certificate expiring within configured window)."""
     cursor = db.requirements.find(
@@ -341,6 +374,9 @@ async def _rule_damp_moisture(
 
 
 # ---------- Rule: Electrical Risk ----------
+_CONFIRMED_CALENDAR_EICR_STATUSES = frozenset({"OVERDUE", "EXPIRED"})
+
+
 async def _rule_electrical(
     db, property_id: str, client_id: str,
     property_doc: Optional[Dict], assets: List[Dict],
@@ -352,7 +388,11 @@ async def _rule_electrical(
     elec_issues = [i for i in issues if _normalize_category(i.get("category")) in elec_cats]
     total = len(elec_wo) + len(elec_issues)
     eicr_overdue = any(
-        (r.get("requirement_code") or "").lower().find("eicr") >= 0 or (r.get("requirement_type") or "").lower().find("eicr") >= 0
+        (
+            (r.get("requirement_code") or "").lower().find("eicr") >= 0
+            or (r.get("requirement_type") or "").lower().find("eicr") >= 0
+        )
+        and str(r.get("status") or "").strip().upper() in _CONFIRMED_CALENDAR_EICR_STATUSES
         for r in requirements
     )
     if total < 2 and not eicr_overdue:
@@ -361,7 +401,7 @@ async def _rule_electrical(
     if total >= 2:
         reasons.append(f"{total} electrical issues or work orders in the last 12 months")
     if eicr_overdue:
-        reasons.append("EICR overdue or missing")
+        reasons.append("EICR overdue (calendar-confirmed)")
     level = RISK_LEVEL_HIGH if (total >= 2 and eicr_overdue) else (RISK_LEVEL_MEDIUM if reasons else RISK_LEVEL_LOW)
     return [{
         "signal_category": SIGNAL_CATEGORY_ASSET,
@@ -658,7 +698,7 @@ async def generate_risk_signals_for_property(property_id: str, client_id: str) -
     work_orders_breached_30 = await _fetch_work_orders_with_breach_in_window(db, property_id, client_id, ROLLING_30_DAYS)
     work_orders_breached_60 = await _fetch_work_orders_with_breach_in_window(db, property_id, client_id, ROLLING_60_DAYS)
     issues_12 = await _fetch_issues(db, property_id, client_id, ROLLING_12_MONTHS_DAYS)
-    requirements = await _fetch_requirements_overdue(db, property_id, client_id)
+    requirements = await _fetch_requirements_confirmed_calendar_risk(db, property_id, client_id)
     requirements_expiring = await _fetch_requirements_expiring_soon(db, property_id, client_id)
 
     from services.risk_signal_operational_history_governance import (
