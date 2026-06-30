@@ -3,8 +3,11 @@
 **Programme:** CIE-2-RECOMMENDATION-AND-PRIORITY-ENGINE-AUTHORISATION  
 **Branch:** `develop` (local)  
 **Verdict:** `CIE_2_FOUNDATION_VALIDATED`  
+**Staging verdict:** `CIE_2_STAGING_VALIDATION_ACCEPTED`  
 **Runtime evidence:** `CIE_2_RUNTIME_VALIDATION.json`  
-**Gate script:** `backend/tmp_cie_phase2_foundation_gate.py`
+**Staging evidence:** `CIE_2_STAGING_VALIDATION.json`, `CIE_2_STAGING_VALIDATION_REPORT.md`  
+**Gate scripts:** `backend/tmp_cie_phase2_foundation_gate.py`, `backend/tmp_cie_phase2_pre_commit_gate.py`  
+**Staging validation:** `backend/tmp_cie_phase2_staging_validation.py`
 
 ## Summary
 
