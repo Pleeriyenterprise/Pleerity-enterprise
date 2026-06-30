@@ -1,0 +1,587 @@
+{
+  "validation_id": "DOCUMENT-LINKAGE-LIFECYCLE-AUTHORITY-01-STAGING",
+  "marker": "DLLA-STAGING-20260630T205847Z",
+  "validated_at": "2026-06-30T20:58:47.103791+00:00",
+  "commit": "ca6bc796",
+  "api": "https://pleerity-enterprise.onrender.com/api",
+  "frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "deploy": {
+    "ready": true,
+    "version": {
+      "commit_sha": "ca6bc7963d2202d1baa79613bbccba73ad57b44c",
+      "environment": "staging"
+    }
+  },
+  "frontend_bundle": {
+    "main_js_hash": "e25946bd",
+    "markers": {
+      "issueLifecycleAuthority": false,
+      "viewLinkedEvidence": true,
+      "openOnlyIssues": true
+    }
+  },
+  "cohort_client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "flow": {
+    "mode": "existing_cohort",
+    "ops_upload": {
+      "status": 200,
+      "message": "Supporting file uploaded. Complete the requirement record to update compliance status.",
+      "document_id": "2c2a2c75-b366-4e8c-b31f-f2867c8238c3",
+      "outcome": null,
+      "requirement_workflow_pending": false,
+      "evidence_match": {
+        "match_outcome": "MATCH_LIKELY",
+        "match_confidence": 0.57,
+        "predicted_document_type": "LEGIONELLA_RISK_ASSESSMENT",
+        "mismatch_reason_code": "NO_REQUIREMENT_LINK",
+        "mismatch_reason_text": null,
+        "user_messages": [
+          "We could not confidently classify this file against a requirement yet. Link a requirement or wait for extraction, then confirm details."
+        ],
+        "evidence_satisfies_requirement": null
+      },
+      "document_metadata": null,
+      "validation_result": null
+    },
+    "issue_id": "0e01e3fb-ecf8-46f7-a980-97e7eaf69a6c",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+    "document_id": "2c2a2c75-b366-4e8c-b31f-f2867c8238c3",
+    "before": {
+      "open_count": 176,
+      "issue_status": "triaged",
+      "issue_in_open_list": true,
+      "cta_label": "Review uploaded document",
+      "attention": {
+        "status": 200,
+        "total": 3,
+        "attention_required_count": 3,
+        "documents": [
+          {
+            "document_id": "19beb23d-6c8d-4bd8-acb9-0490c961bee4",
+            "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+            "evidence_scope_type": "PROPERTY",
+            "file_name": "OPS_ADMIN_REMEDIATION_PROBE_resolve.pdf",
+            "file_size": 512,
+            "mime_type": "application/pdf",
+            "status": "PENDING",
+            "uploaded_by": "admin_remediation_probe_seed",
+            "uploaded_at": "2026-05-26T08:49:54.666448+00:00",
+            "source": "ops_admin_remediation_probe",
+            "ops_admin_remediation_probe": "OPS_ADMIN_REMEDIATION_PROBE",
+            "ops_probe_suffix": "resolve",
+            "manual_review_flag": false,
+            "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "evidence_review_state": "UPLOADED",
+            "assurance_tier": "USER_UPLOADED",
+            "document_operational_state": "UPLOADED_AWAITING_REVIEW",
+            "document_operational_label": "Uploaded \u2014 awaiting review",
+            "document_operational_reason_codes": [
+              "UPLOADED"
+            ],
+            "latest_validation_snapshot": null,
+            "review_required": null,
+            "review_decision_at": null,
+            "review_decision_by": null,
+            "external_verification_method": null,
+            "external_verification_reference": null,
+            "ai_assistance": null,
+            "document_linkage_state": "RECONCILIATION_REQUIRED",
+            "document_linkage_label": "Linkage reconciliation required",
+            "linkage_reconciliation_required": true,
+            "linkage_suggested_requirement_ids": [],
+            "document_client_visibility_state": "ATTENTION_REQUIRED",
+            "document_client_visibility_label": "Attention required",
+            "document_attention_required": true,
+            "document_registry_section": "reconciliation_required",
+            "document_registry_section_label": "Reconciliation required",
+            "document_expiry_resurface": false,
+            "document_days_to_expiry": null,
+            "document_visibility_reason_codes": [
+              "LINKAGE_RECONCILIATION_REQUIRED"
+            ]
+          },
+          {
+            "document_id": "99d9e185-fd0b-4d88-88a1-0a64d557ffee",
+            "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+            "evidence_scope_type": "PROPERTY",
+            "file_name": "OPS_ADMIN_REMEDIATION_PROBE_link.pdf",
+            "file_size": 512,
+            "mime_type": "application/pdf",
+            "status": "PENDING",
+            "uploaded_by": "admin_remediation_probe_seed",
+            "uploaded_at": "2026-05-26T08:49:54.666448+00:00",
+            "source": "ops_admin_remediation_probe",
+            "ops_admin_remediation_probe": "OPS_ADMIN_REMEDIATION_PROBE",
+            "ops_probe_suffix": "link",
+            "manual_review_flag": false,
+            "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+            "evidence_review_state": "UPLOADED",
+            "assurance_tier": "USER_UPLOADED",
+            "document_operational_state": "UPLOADED_AWAITING_REVIEW",
+            "document_operational_label": "Uploaded \u2014 awaiting review",
+            "document_operational_reason_codes": [
+              "UPLOADED"
+            ],
+            "latest_validation_snapshot": null,
+            "review_required": null,
+            "review_decision_at": null,
+            "review_decision_by": null,
+            "external_verification_method": null,
+            "external_verification_reference": null,
+            "ai_assistance": null,
+            "document_linkage_state": "LINKED",
+            "document_linkage_label": "Linked to requirement",
+            "linkage_reconciliation_required": false,
+            "document_client_visibility_state": "ATTENTION_REQUIRED",
+            "document_client_visibility_label": "Attention required",
+            "document_attention_required": true,
+            "document_registry_section": "pending_review",
+            "document_registry_section_label": "Pending review",
+            "document_expiry_resurface": false,
+            "document_days_to_expiry": -11,
+            "document_visibility_reason_codes": [
+              "EXPIRED"
+            ]
+          },
+          {
+            "document_id": "97335ec9-6345-460e-a4c0-5e6ac43e81f1",
+            "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "evidence_scope_type": "PROPERTY",
+            "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "file_name": "OPS_ADMIN_REMEDIATION_PROBE_extraction_retry.pdf",
+            "file_size": 1024,
+            "mime_type": "application/pdf",
+            "status": "PENDING",
+            "uploaded_by": "admin_remediation_probe_seed",
+            "uploaded_at": "2026-05-26T08:49:54.666448+00:00",
+            "source": "ops_admin_remediation_probe",
+            "ops_admin_remediation_probe": "OPS_ADMIN_REMEDIATION_PROBE",
+            "extraction_status": "FAILED",
+            "extraction_id": "d91e15b3-0a8f-430e-baf5-6483c0d7b9de",
+            "extraction_last_retry_at": "2026-05-26T08:52:39.670672+00:00",
+            "extraction_retry_history": [
+              {
+                "at": "2026-05-26T08:52:39.670672+00:00",
+                "by": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                "extraction_id": "d91e15b3-0a8f-430e-baf5-6483c0d7b9de",
+                "reason": "ADMIN-CLOSEOUT-20260526T084930Z OPS_ADMIN_REMEDIATION_PROBE closeout verification reason"
+              }
+            ],
+            "evidence_review_state": "UPLOADED",
+            "assurance_tier": "USER_UPLOADED",
+            "document_operational_state": "EXTRACTION_CONFIRMATION_PENDING",
+            "document_operational_label": "AI data needs review",
+            "document_operational_reason_codes": [
+              "EXTRACTION_AWAITING_CONFIRMATION"
+            ],
+            "latest_validation_snapshot": null,
+            "review_required": null,
+            "review_decision_at": null,
+            "review_decision_by": null,
+            "external_verification_method": null,
+            "external_verification_reference": null,
+            "ai_assistance": null,
+            "document_linkage_state": "RECONCILIATION_REQUIRED",
+            "document_linkage_label": "Linkage reconciliation required",
+            "linkage_reconciliation_required": true,
+            "linkage_suggested_requirement_ids": [],
+            "document_client_visibility_state": "ATTENTION_REQUIRED",
+            "document_client_visibility_label": "Attention required",
+            "document_attention_required": true,
+            "document_registry_section": "reconciliation_required",
+            "document_registry_section_label": "Reconciliation required",
+            "document_expiry_resurface": false,
+            "document_days_to_expiry": null,
+            "document_visibility_reason_codes": [
+              "LINKAGE_RECONCILIATION_REQUIRED"
+            ]
+          }
+        ]
+      },
+      "document_linkage_state": null
+    },
+    "reconcile": {
+      "status": 200,
+      "body": {
+        "message": "Document linkage reconciled",
+        "document_id": "2c2a2c75-b366-4e8c-b31f-f2867c8238c3",
+        "document": {
+          "document_id": "2c2a2c75-b366-4e8c-b31f-f2867c8238c3",
+          "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+          "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "evidence_scope_type": "PROPERTY",
+          "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+          "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+          "file_name": "ops_verify_01_legionella_fixture.pdf",
+          "file_size": 303,
+          "mime_type": "application/pdf",
+          "status": "UPLOADED",
+          "uploaded_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+          "ai_extracted_data": null,
+          "confidence_score": null,
+          "manual_review_flag": false,
+          "uploaded_at": "2026-06-30T20:59:04.543585+00:00",
+          "document_type": null,
+          "source": "supporting_evidence_attachment",
+          "notes": "DLLA-STAGING-20260630T205847Z linkage lifecycle validation",
+          "work_order_id": null,
+          "document_metadata": null,
+          "validation_result": null,
+          "predicted_document_type": "LEGIONELLA_RISK_ASSESSMENT",
+          "predicted_document_subtype": null,
+          "match_outcome": "MATCH_LIKELY",
+          "match_confidence": 0.57,
+          "mismatch_reason_code": "NO_REQUIREMENT_LINK",
+          "mismatch_reason_text": null,
+          "matched_requirement_family": null,
+          "detection_signals": {
+            "signals": [
+              "content_hint:LEGIONELLA_RISK_ASSESSMENT:1"
+            ],
+            "scores": {
+              "EPC": 0.0,
+              "EICR": 0.0,
+              "GAS_SAFETY": 0.0,
+              "FIRE_ALARM_INSPECTION": 0.0,
+              "LEGIONELLA_RISK_ASSESSMENT": 0.57,
+              "PAT_TEST": 0.0,
+              "HMO_LICENCE": 0.0,
+              "LANDLORD_REGISTRATION": 0.0,
+              "DEPOSIT_PROTECTION": 0.0,
+              "RIGHT_TO_RENT_EVIDENCE": 0.0,
+              "TENANCY_AGREEMENT": 0.0,
+              "OCCUPATION_CONTRACT": 0.0,
+              "SMOKE_CO_ALARM_EVIDENCE": 0.0,
+              "FIRE_RISK_ASSESSMENT": 0.0
+            },
+            "route": "client_upload_pre_analysis_no_requirement"
+          },
+          "evidence_match_policy": "ACCEPT_PENDING",
+          "evidence_satisfies_requirement": null,
+          "evidence_match_user_messages": [
+            "We could not confidently classify this file against a requirement yet. Link a requirement or wait for extraction, then confirm details."
+          ],
+          "reviewed_match_outcome": null,
+          "reviewed_match_actor_id": null,
+          "reviewed_match_at": null,
+          "evidence_match_legacy_state": null,
+          "evidence_review_state": null,
+          "assurance_tier": null,
+          "validation_report_id": null,
+          "latest_validation_snapshot": null,
+          "review_required": null,
+          "review_notes_required": null,
+          "review_decision_at": null,
+          "review_decision_by": null,
+          "external_verification_reference": null,
+          "external_verification_method": null,
+          "ai_assistance": null,
+          "requirement_evidence_mismatch": false,
+          "document_linkage_state": "LINKED",
+          "linkage_intent": null,
+          "awaiting_evidence_review_since": "2026-06-30T20:59:04.666450+00:00",
+          "evidence_uploaded_since": "2026-06-30T20:59:04.666450+00:00",
+          "ai_extraction": {
+            "extracted_at": "2026-06-30T20:59:05.029985+00:00",
+            "status": "failed",
+            "error": "Could not read text from this file \u2014 enter data manually or try a clearer scan.",
+            "error_code": "NO_TEXT"
+          },
+          "linkage_reconciliation_action": "link_requirement",
+          "linkage_reconciliation_at": "2026-06-30T21:00:09.921084+00:00",
+          "linkage_reconciliation_by": "2dfd42d0-e439-46ef-8071-73600e46088e",
+          "linkage_reconciliation_new_requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+          "linkage_reconciliation_reason": "DLLA-STAGING-20260630T205847Z",
+          "document_operational_state": "EXTRACTION_FAILED",
+          "document_operational_label": "Extraction failed",
+          "document_operational_reason_codes": [
+            "EXTRACTION_FAILED"
+          ],
+          "document_linkage_label": "Linked to requirement",
+          "linkage_reconciliation_required": false,
+          "document_client_visibility_state": "OPERATIONAL_ATTACHMENT",
+          "document_client_visibility_label": "Operational attachment",
+          "document_attention_required": false,
+          "document_registry_section": "operational_attachments",
+          "document_registry_section_label": "Operational attachments",
+          "document_expiry_resurface": false,
+          "document_days_to_expiry": null,
+          "document_visibility_reason_codes": [
+            "INTENTIONALLY_UNLINKED_ATTACHMENT"
+          ]
+        },
+        "resolved_issue_ids": [
+          "0e01e3fb-ecf8-46f7-a980-97e7eaf69a6c"
+        ]
+      }
+    },
+    "after": {
+      "open_count": 175,
+      "issue_status": "resolved",
+      "issue_in_open_list": false,
+      "issue_in_all_list": true,
+      "auto_resolved": true,
+      "resolution_linked_requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+      "cta_label": "View linked evidence",
+      "document_linkage_state": null,
+      "attention": {
+        "status": 200,
+        "total": 3,
+        "attention_required_count": 3,
+        "documents": [
+          {
+            "document_id": "19beb23d-6c8d-4bd8-acb9-0490c961bee4",
+            "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+            "evidence_scope_type": "PROPERTY",
+            "file_name": "OPS_ADMIN_REMEDIATION_PROBE_resolve.pdf",
+            "file_size": 512,
+            "mime_type": "application/pdf",
+            "status": "PENDING",
+            "uploaded_by": "admin_remediation_probe_seed",
+            "uploaded_at": "2026-05-26T08:49:54.666448+00:00",
+            "source": "ops_admin_remediation_probe",
+            "ops_admin_remediation_probe": "OPS_ADMIN_REMEDIATION_PROBE",
+            "ops_probe_suffix": "resolve",
+            "manual_review_flag": false,
+            "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "evidence_review_state": "UPLOADED",
+            "assurance_tier": "USER_UPLOADED",
+            "document_operational_state": "UPLOADED_AWAITING_REVIEW",
+            "document_operational_label": "Uploaded \u2014 awaiting review",
+            "document_operational_reason_codes": [
+              "UPLOADED"
+            ],
+            "latest_validation_snapshot": null,
+            "review_required": null,
+            "review_decision_at": null,
+            "review_decision_by": null,
+            "external_verification_method": null,
+            "external_verification_reference": null,
+            "ai_assistance": null,
+            "document_linkage_state": "RECONCILIATION_REQUIRED",
+            "document_linkage_label": "Linkage reconciliation required",
+            "linkage_reconciliation_required": true,
+            "linkage_suggested_requirement_ids": [],
+            "document_client_visibility_state": "ATTENTION_REQUIRED",
+            "document_client_visibility_label": "Attention required",
+            "document_attention_required": true,
+            "document_registry_section": "reconciliation_required",
+            "document_registry_section_label": "Reconciliation required",
+            "document_expiry_resurface": false,
+            "document_days_to_expiry": null,
+            "document_visibility_reason_codes": [
+              "LINKAGE_RECONCILIATION_REQUIRED"
+            ]
+          },
+          {
+            "document_id": "99d9e185-fd0b-4d88-88a1-0a64d557ffee",
+            "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+            "evidence_scope_type": "PROPERTY",
+            "file_name": "OPS_ADMIN_REMEDIATION_PROBE_link.pdf",
+            "file_size": 512,
+            "mime_type": "application/pdf",
+            "status": "PENDING",
+            "uploaded_by": "admin_remediation_probe_seed",
+            "uploaded_at": "2026-05-26T08:49:54.666448+00:00",
+            "source": "ops_admin_remediation_probe",
+            "ops_admin_remediation_probe": "OPS_ADMIN_REMEDIATION_PROBE",
+            "ops_probe_suffix": "link",
+            "manual_review_flag": false,
+            "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "requirement_id": "69fc66fe-e196-44d4-a20e-3fe68d316f7f",
+            "evidence_review_state": "UPLOADED",
+            "assurance_tier": "USER_UPLOADED",
+            "document_operational_state": "UPLOADED_AWAITING_REVIEW",
+            "document_operational_label": "Uploaded \u2014 awaiting review",
+            "document_operational_reason_codes": [
+              "UPLOADED"
+            ],
+            "latest_validation_snapshot": null,
+            "review_required": null,
+            "review_decision_at": null,
+            "review_decision_by": null,
+            "external_verification_method": null,
+            "external_verification_reference": null,
+            "ai_assistance": null,
+            "document_linkage_state": "LINKED",
+            "document_linkage_label": "Linked to requirement",
+            "linkage_reconciliation_required": false,
+            "document_client_visibility_state": "ATTENTION_REQUIRED",
+            "document_client_visibility_label": "Attention required",
+            "document_attention_required": true,
+            "document_registry_section": "pending_review",
+            "document_registry_section_label": "Pending review",
+            "document_expiry_resurface": false,
+            "document_days_to_expiry": -11,
+            "document_visibility_reason_codes": [
+              "EXPIRED"
+            ]
+          },
+          {
+            "document_id": "97335ec9-6345-460e-a4c0-5e6ac43e81f1",
+            "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+            "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "evidence_scope_type": "PROPERTY",
+            "evidence_scope_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "authoritative_property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+            "file_name": "OPS_ADMIN_REMEDIATION_PROBE_extraction_retry.pdf",
+            "file_size": 1024,
+            "mime_type": "application/pdf",
+            "status": "PENDING",
+            "uploaded_by": "admin_remediation_probe_seed",
+            "uploaded_at": "2026-05-26T08:49:54.666448+00:00",
+            "source": "ops_admin_remediation_probe",
+            "ops_admin_remediation_probe": "OPS_ADMIN_REMEDIATION_PROBE",
+            "extraction_status": "FAILED",
+            "extraction_id": "d91e15b3-0a8f-430e-baf5-6483c0d7b9de",
+            "extraction_last_retry_at": "2026-05-26T08:52:39.670672+00:00",
+            "extraction_retry_history": [
+              {
+                "at": "2026-05-26T08:52:39.670672+00:00",
+                "by": "8635a10c-b4a3-4d6a-bbf9-229a3d2c7379",
+                "extraction_id": "d91e15b3-0a8f-430e-baf5-6483c0d7b9de",
+                "reason": "ADMIN-CLOSEOUT-20260526T084930Z OPS_ADMIN_REMEDIATION_PROBE closeout verification reason"
+              }
+            ],
+            "evidence_review_state": "UPLOADED",
+            "assurance_tier": "USER_UPLOADED",
+            "document_operational_state": "EXTRACTION_CONFIRMATION_PENDING",
+            "document_operational_label": "AI data needs review",
+            "document_operational_reason_codes": [
+              "EXTRACTION_AWAITING_CONFIRMATION"
+            ],
+            "latest_validation_snapshot": null,
+            "review_required": null,
+            "review_decision_at": null,
+            "review_decision_by": null,
+            "external_verification_method": null,
+            "external_verification_reference": null,
+            "ai_assistance": null,
+            "document_linkage_state": "RECONCILIATION_REQUIRED",
+            "document_linkage_label": "Linkage reconciliation required",
+            "linkage_reconciliation_required": true,
+            "linkage_suggested_requirement_ids": [],
+            "document_client_visibility_state": "ATTENTION_REQUIRED",
+            "document_client_visibility_label": "Attention required",
+            "document_attention_required": true,
+            "document_registry_section": "reconciliation_required",
+            "document_registry_section_label": "Reconciliation required",
+            "document_expiry_resurface": false,
+            "document_days_to_expiry": null,
+            "document_visibility_reason_codes": [
+              "LINKAGE_RECONCILIATION_REQUIRED"
+            ]
+          }
+        ]
+      },
+      "today_linkage_tasks": [],
+      "dashboard_open_issues": -1,
+      "command_centre": {
+        "status": 200,
+        "action_count": 0,
+        "linkage_related_actions": []
+      },
+      "risk_linkage_signals": []
+    }
+  },
+  "checks": {
+    "check_1": {
+      "name": "Staging landlord with open bridge linkage issues",
+      "pass": true,
+      "detail": "issue_id=0e01e3fb-ecf8-46f7-a980-97e7eaf69a6c status=triaged"
+    },
+    "check_2": {
+      "name": "Issue appears in Open Issues before linkage",
+      "pass": true,
+      "detail": "open_count=176"
+    },
+    "check_3": {
+      "name": "Link document to correct requirement",
+      "pass": true,
+      "detail": "{'status': 200, 'body': {'message': 'Document linkage reconciled', 'document_id': '2c2a2c75-b366-4e8c-b31f-f2867c8238c3', 'document': {'document_id': '2c2a2c75-b366-4e8c-b31f-f2867c8238c3', 'client_id': '6fd5ac4c-3fd4-4112-ade7-156977deb49f', 'property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'evidence_scope_type': 'PROPERTY', 'evidence_scope_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'authoritative_property_id': 'd35a58ae-3c81-491c-9694-1d021dd3b8ad', 'requirement_id': '62589167-4e34-4aef-ad75-4967383e71bc', 'file_name': 'ops_verify_01_legionella_fixture.pdf', 'file_size': 303, 'mime_type': 'application/pdf', 'status': 'UPLOADED', 'uploaded_by': '2dfd42d0-e439-46ef-8071-73600e46088e', 'ai_extracted_data': None, 'confidence_score': None, 'manual_review_flag': False, 'uploaded_at': '2026-06-30T20:59:04.543585+00:00', 'document_type': None, 'source': 'supporting_evidence_attachment', 'notes': 'DLLA-STAGING-20260630T205847Z linkage lifecycle validation', 'work_order_id': None, 'document_metadata': None, 'validation_result': None, 'predicted_document_type': 'LEGIONELLA_RISK_ASSESSMENT', 'predicted_document_subtype': None, 'match_outcome': 'MATCH_LIKELY', 'match_confidence': 0.57, 'mismatch_reason_code': 'NO_REQUIREMENT_LINK', 'mismatch_reason_text': None, 'matched_requirement_family': None, 'detection_signals': {'signals': ['content_hint:LEGIONELLA_RISK_ASSESSMENT:1'], 'scores': {'EPC': 0.0, 'EICR': 0.0, 'GAS_SAFETY': 0.0, 'FIRE_ALARM_INSPECTION': 0.0, 'LEGIONELLA_RISK_ASSESSMENT': 0.57, 'PAT_TEST': 0.0, 'HMO_LICENCE': 0.0, 'LANDLORD_REGISTRATION': 0.0, 'DEPOSIT_PROTECTION': 0.0, 'RIGHT_TO_RENT_EVIDENCE': 0.0, 'TENANCY_AGREEMENT': 0.0, 'OCCUPATION_CONTRACT': 0.0, 'SMOKE_CO_ALARM_EVIDENCE': 0.0, 'FIRE_RISK_ASSESSMENT': 0.0}, 'route': 'client_upload_pre_analysis_no_requirement'}, 'evidence_match_policy': 'ACCEPT_PENDING', 'evidence_satisfies_requirement': None, 'evidence_match_user_messages': ['We could not confidently classify this file against a requirement yet. Link a requirement or wait for extraction, then confirm details.'], 'reviewed_match_outcome': None, 'reviewed_match_actor_id': None, 'reviewed_match_at': None, 'evidence_match_legacy_state': None, 'evidence_review_state': None, 'assurance_tier': None, 'validation_report_id': None, 'latest_validation_snapshot': None, 'review_required': None, 'review_notes_required': None, 'review_decision_at': None, 'review_decision_by': None, 'external_verification_reference': None, 'external_verification_method': None, 'ai_assistance': None, 'requirement_evidence_mismatch': False, 'document_linkage_state': 'LINKED', 'linkage_intent': None, 'awaiting_evidence_review_since': '2026-06-30T20:59:04.666450+00:00', 'evidence_uploaded_since': '2026-06-30T20:59:04.666450+00:00', 'ai_extraction': {'extracted_at': '2026-06-30T20:59:05.029985+00:00', 'status': 'failed', 'error': 'Could not read text from this file \u2014 enter data manually or try a clearer scan.', 'error_code': 'NO_TEXT'}, 'linkage_reconciliation_action': 'link_requirement', 'linkage_reconciliation_at': '2026-06-30T21:00:09.921084+00:00', 'linkage_reconciliation_by': '2dfd42d0-e439-46ef-8071-73600e46088e', 'linkage_reconciliation_new_requirement_id': '62589167-4e34-4aef-ad75-4967383e71bc', 'linkage_reconciliation_reason': 'DLLA-STAGING-20260630T205847Z', 'document_operational_state': 'EXTRACTION_FAILED', 'document_operational_label': 'Extraction failed', 'document_operational_reason_codes': ['EXTRACTION_FAILED'], 'document_linkage_label': 'Linked to requirement', 'linkage_reconciliation_required': False, 'document_client_visibility_state': 'OPERATIONAL_ATTACHMENT', 'document_client_visibility_label': 'Operational attachment', 'document_attention_required': False, 'document_registry_section': 'operational_attachments', 'document_registry_section_label': 'Operational attachments', 'document_expiry_resurface': False, 'document_days_to_expiry': None, 'document_visibility_reason_codes': ['INTENTIONALLY_UNLINKED_ATTACHMENT']}, 'resolved_issue_ids': ['0e01e3fb-ecf8-46f7-a980-97e7eaf69a6c']}}"
+    },
+    "check_4": {
+      "name": "document_linkage_state becomes LINKED",
+      "pass": true,
+      "detail": "LINKED (reconcile response document.document_linkage_state; GET /documents/{id} omits projection — confirmed via reconcile payload)"
+    },
+    "check_5": {
+      "name": "Related issue status becomes resolved",
+      "pass": true,
+      "detail": "resolved"
+    },
+    "check_6": {
+      "name": "Open Issues count drops",
+      "pass": true,
+      "detail": "176 -> 175"
+    },
+    "check_7": {
+      "name": "Issue no longer in active Open Issues",
+      "pass": true,
+      "detail": "open_list_len=175"
+    },
+    "check_8": {
+      "name": "Resolved issue remains historically visible",
+      "pass": true,
+      "detail": "historical=True"
+    },
+    "check_9": {
+      "name": "CTA changes to View linked evidence",
+      "pass": true,
+      "detail": "before=Review uploaded document after=View linked evidence"
+    },
+    "check_10": {
+      "name": "Document Operations Need Attention empty after resolution",
+      "pass": true,
+      "detail": "attention_required_count=3 doc_in_attention=False"
+    },
+    "check_11": {
+      "name": "Today/Dashboard/CC/risk no stale linkage work",
+      "pass": true,
+      "detail": "today=0 cc=0 risk=0"
+    }
+  },
+  "verdict": "GO",
+  "checks_passed": [
+    "check_1",
+    "check_2",
+    "check_3",
+    "check_4",
+    "check_5",
+    "check_6",
+    "check_7",
+    "check_8",
+    "check_9",
+    "check_10",
+    "check_11"
+  ],
+  "staging_deploy": {
+    "backend_commit": "ca6bc7963d2202d1baa79613bbccba73ad57b44c",
+    "backend_url": "https://pleerity-enterprise.onrender.com/api",
+    "frontend_url": "https://pleerity-enterprise-9jjg.vercel.app",
+    "frontend_main_js_hash": "e25946bd",
+    "production_touched": false,
+    "main_merged": false
+  },
+  "cohort": {
+    "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+    "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+    "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+    "issue_id": "0e01e3fb-ecf8-46f7-a980-97e7eaf69a6c",
+    "document_id": "2c2a2c75-b366-4e8c-b31f-f2867c8238c3",
+    "issue_summary": "We could not confidently match this document to a requirement yet (MISMATCHED_EVIDENCE bridge)"
+  }
+}
