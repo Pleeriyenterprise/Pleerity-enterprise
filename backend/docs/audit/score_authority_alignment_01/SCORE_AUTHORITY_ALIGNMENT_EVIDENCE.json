@@ -1,0 +1,82 @@
+{
+  "programme_id": "SCORE-AUTHORITY-ALIGNMENT-01",
+  "branch": "develop",
+  "date": "2026-06-30",
+  "verdict": "ALIGNMENT_COMPLETE",
+  "canonical_module": "backend/utils/risk_bands.py",
+  "thresholds": {
+    "low_min": 80,
+    "moderate_min": 60,
+    "high_min": 40,
+    "grade_a_min": 90
+  },
+  "governed_terminology": {
+    "moderate_risk_phrase": "Moderate risk",
+    "rejected_phrase": "Medium risk"
+  },
+  "boundary_regression_scores": [0, 40, 41, 59, 60, 79, 80, 89, 90, 100],
+  "boundary_expectations": {
+    "0": {"grade": "F", "color": "red", "risk_level": "Critical Risk"},
+    "40": {"grade": "D", "color": "amber", "risk_level": "High Risk"},
+    "41": {"grade": "D", "color": "amber", "risk_level": "High Risk"},
+    "59": {"grade": "D", "color": "amber", "risk_level": "High Risk"},
+    "60": {"grade": "C", "color": "amber", "risk_level": "Moderate Risk"},
+    "79": {"grade": "C", "color": "amber", "risk_level": "Moderate Risk"},
+    "80": {"grade": "B", "color": "green", "risk_level": "Low Risk"},
+    "89": {"grade": "B", "color": "green", "risk_level": "Low Risk"},
+    "90": {"grade": "A", "color": "green", "risk_level": "Low Risk"},
+    "100": {"grade": "A", "color": "green", "risk_level": "Low Risk"}
+  },
+  "drift_remediated": [
+    {
+      "id": "DRIFT-01",
+      "before": "ClientDashboard.scoreToGradeColorMessage local 80/60/40",
+      "after": "resolveScorePresentationFields from API",
+      "file": "frontend/src/pages/ClientDashboard.js"
+    },
+    {
+      "id": "DRIFT-02",
+      "before": "riskLabel.js score threshold inference + Medium risk",
+      "after": "API pass-through; Moderate risk",
+      "file": "frontend/src/utils/riskLabel.js"
+    },
+    {
+      "id": "DRIFT-03",
+      "before": "ComplianceScorePage propertyColor from score >= 80/40",
+      "after": "row.color from API property_breakdown",
+      "file": "frontend/src/pages/ComplianceScorePage.js"
+    },
+    {
+      "id": "DRIFT-04",
+      "before": "compliance_scoring_service risk_level 90/70/50",
+      "after": "score_to_risk_level (80/60/40)",
+      "file": "backend/services/compliance_scoring_service.py"
+    }
+  ],
+  "api_fields_added": ["band_explanation"],
+  "api_surfaces_updated": [
+    "GET /client/compliance-score",
+    "GET /api/portfolio/compliance-summary",
+    "GET /api/portfolio/properties/{id}/compliance-detail",
+    "compliance_scoring_service.compute_property_score",
+    "compliance_scoring_service.authoritative_property_headline"
+  ],
+  "tests": {
+    "backend": "backend/tests/test_risk_bands_score_authority.py",
+    "frontend": [
+      "frontend/src/utils/riskLabel.test.js",
+      "frontend/src/utils/scoreAuthorityConstants.test.js"
+    ],
+    "backend_result": "42 passed",
+    "frontend_result": "5 passed"
+  },
+  "governance": "backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md#score-authority-presentation-bands",
+  "explicit_non_changes": [
+    "compliance_scoring_v2 mathematics",
+    "weighting",
+    "RAOD",
+    "Today authority",
+    "requirement presentation authority",
+    "production/main"
+  ]
+}

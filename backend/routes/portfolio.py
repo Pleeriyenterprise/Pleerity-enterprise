@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request, Depends, status, HTTPException
 from fastapi import Query
 from database import database
 from middleware import client_route_guard
-from utils.risk_bands import score_to_risk_level
+from utils.risk_bands import score_to_risk_level, score_authority_fields, risk_level_to_band_explanation
 from services.catalog_compliance import (
     get_property_compliance_detail,
     get_portfolio_compliance_from_catalog,
@@ -111,6 +111,29 @@ async def get_compliance_summary(request: Request):
         merged["trust_surface_operational_metadata"] = portfolio_trust_meta
         return merged
 
+    def _portfolio_score_presentation(portfolio_score, effective_risk_level: Optional[str] = None) -> Dict[str, Any]:
+        if portfolio_score is None:
+            return {}
+        try:
+            fields = score_authority_fields(int(round(float(portfolio_score))))
+        except (TypeError, ValueError):
+            return {}
+        if effective_risk_level:
+            fields["risk_level"] = effective_risk_level
+            fields["band_explanation"] = risk_level_to_band_explanation(effective_risk_level)
+        return fields
+
+    def _property_row_score_presentation(persisted_score, risk_level: Optional[str]) -> Dict[str, Any]:
+        if persisted_score is None:
+            return {}
+        try:
+            fields = score_authority_fields(int(round(float(persisted_score))))
+        except (TypeError, ValueError):
+            return {}
+        if risk_level:
+            fields["risk_level"] = risk_level
+        return fields
+
     catalog_result = await get_portfolio_compliance_from_catalog(client_id)
     if catalog_result:
         merged_props = []
@@ -149,6 +172,7 @@ async def get_compliance_summary(request: Request):
                     "expiring_soon_count": p.get("expiring_30_count", 0),
                     "expiring_30_count": p.get("expiring_30_count", 0),
                     "missing_count": p.get("missing_count", 0),
+                    **_property_row_score_presentation(persisted, risk_out),
                     **portfolio_property_cognition_fields(
                         row,
                         {
@@ -175,6 +199,10 @@ async def get_compliance_summary(request: Request):
                     "portfolio_score": headline.get("portfolio_score"),
                     "risk_level": risk_override.get("effective_portfolio_risk_state"),
                     "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+                    **_portfolio_score_presentation(
+                        headline.get("portfolio_score"),
+                        risk_override.get("effective_portfolio_risk_state"),
+                    ),
                     "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
                     "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
                     "risk_override_reasons": risk_override.get("risk_override_reasons"),
@@ -226,6 +254,10 @@ async def get_compliance_summary(request: Request):
                     "portfolio_score": headline.get("portfolio_score"),
                     "risk_level": risk_override.get("effective_portfolio_risk_state"),
                     "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+                    **_portfolio_score_presentation(
+                        headline.get("portfolio_score"),
+                        risk_override.get("effective_portfolio_risk_state"),
+                    ),
                     "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
                     "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
                     "risk_override_reasons": risk_override.get("risk_override_reasons"),
@@ -360,6 +392,10 @@ async def get_compliance_summary(request: Request):
                 "portfolio_score": headline.get("portfolio_score"),
                 "risk_level": risk_override.get("effective_portfolio_risk_state"),
                 "portfolio_risk_level": risk_override.get("effective_portfolio_risk_state"),
+                **_portfolio_score_presentation(
+                    headline.get("portfolio_score"),
+                    risk_override.get("effective_portfolio_risk_state"),
+                ),
                 "base_portfolio_risk_state": risk_override.get("base_portfolio_risk_state"),
                 "effective_portfolio_risk_state": risk_override.get("effective_portfolio_risk_state"),
                 "risk_override_reasons": risk_override.get("risk_override_reasons"),
@@ -591,6 +627,12 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
     response["city"] = prop.get("city")
     response["postcode"] = prop.get("postcode")
     response["property_name"] = get_property_display_name(prop)
+    score_val = response.get("score")
+    if score_val is not None:
+        try:
+            response.update(score_authority_fields(int(round(float(score_val)))))
+        except (TypeError, ValueError):
+            pass
     return attach_semantics_contract(response)
 
 

@@ -1,50 +1,54 @@
 /**
- * Risk label for UI: Low / Medium / High / Critical risk (no legal verdict).
- * Backend may return "Moderate Risk"; we display "Medium risk" per spec.
+ * Presentation helpers for score authority fields returned by the backend API.
+ * Do not infer grade, colour, message, or band thresholds locally.
  */
+
+/** Governed display label for backend risk_level strings (Moderate risk — not Medium risk). */
 export function formatRiskLabel(riskLevel) {
   if (!riskLevel || typeof riskLevel !== 'string') return riskLevel || '—';
   const s = riskLevel.trim();
-  const lower = s.toLowerCase().replace(/\s+/g, ' ');
-  if (lower === 'critical' || lower === 'critical risk') return 'Critical risk';
-  if (lower === 'high' || lower === 'high risk') return 'High risk';
-  if (lower === 'medium' || lower === 'moderate' || lower === 'moderate risk') return 'Medium risk';
-  if (lower === 'low' || lower === 'low risk') return 'Low risk';
-  if (s === 'Moderate Risk') return 'Medium risk';
   if (s === 'Low Risk') return 'Low risk';
+  if (s === 'Moderate Risk') return 'Moderate risk';
   if (s === 'High Risk') return 'High risk';
   if (s === 'Critical Risk') return 'Critical risk';
+  const lower = s.toLowerCase().replace(/\s+/g, ' ');
+  if (lower === 'low risk' || lower === 'low') return 'Low risk';
+  if (lower === 'moderate risk' || lower === 'moderate' || lower === 'medium risk' || lower === 'medium') {
+    return 'Moderate risk';
+  }
+  if (lower === 'high risk' || lower === 'high' || lower === 'elevated risk') return 'High risk';
+  if (lower === 'critical risk' || lower === 'critical') return 'Critical risk';
   return s;
 }
 
-/** Map backend risk_level to grade + color + message so dashboard card matches "Risk level" line and tables. */
-export function riskLevelToGradeColorMessage(riskLevel) {
-  if (!riskLevel || typeof riskLevel !== 'string') return { grade: '—', color: 'gray', message: '' };
-  const s = riskLevel.trim();
-  const lower = s.toLowerCase().replace(/\s+/g, ' ');
-  if (s === 'Low Risk' || lower === 'low' || lower === 'low risk') return { grade: 'B', color: 'green', message: 'Low risk - good standing' };
-  if (s === 'Moderate Risk' || lower === 'medium' || lower === 'moderate' || lower === 'moderate risk') return { grade: 'C', color: 'amber', message: 'Moderate risk - action required' };
-  if (s === 'High Risk' || lower === 'high' || lower === 'high risk') return { grade: 'D', color: 'amber', message: 'High risk - action required' };
-  if (s === 'Critical Risk' || lower === 'critical' || lower === 'critical risk') return { grade: 'F', color: 'red', message: 'High urgency: overdue items detected' };
+/** Merge score presentation fields from API payloads (primary wins over fallback). */
+export function resolveScorePresentationFields(primary = {}, fallback = {}) {
+  return {
+    grade: primary.grade ?? fallback.grade ?? null,
+    color: primary.color ?? fallback.color ?? 'gray',
+    message: primary.message ?? fallback.message ?? '',
+    band_explanation: primary.band_explanation ?? fallback.band_explanation ?? '',
+    risk_level: primary.risk_level ?? fallback.risk_level ?? null,
+  };
+}
+
+/** Band explanation from API authority only. */
+export function getRiskBandExplanation(apiSource) {
+  if (!apiSource || typeof apiSource !== 'object') return '';
+  const text = apiSource.band_explanation;
+  return typeof text === 'string' ? text : '';
+}
+
+/** @deprecated Prefer resolveScorePresentationFields — never derive thresholds locally. */
+export function riskLevelToGradeColorMessage(riskLevel, apiFields = {}) {
+  const merged = resolveScorePresentationFields(apiFields);
+  if (merged.grade != null || merged.message) {
+    return { grade: merged.grade ?? '—', color: merged.color, message: merged.message };
+  }
   return { grade: '—', color: 'gray', message: formatRiskLabel(riskLevel) };
 }
 
-/** Inline risk band explanation for display under grade (matches backend risk_bands). */
-export function getRiskBandExplanation(riskLevel) {
-  if (!riskLevel || typeof riskLevel !== 'string') return '';
-  const s = riskLevel.trim();
-  if (s === 'Low Risk') return 'Low risk (80–100): Good standing.';
-  if (s === 'Moderate Risk') return 'Medium risk (60–79): Action required to maintain compliance.';
-  if (s === 'High Risk') return 'High risk (40–59): Action required to reduce exposure.';
-  if (s === 'Critical Risk') return 'Critical risk (0–39): Immediate action required.';
-  return '';
-}
-
-/** Risk band explanation when only score is available (e.g. from compliance score API). */
-export function getRiskBandExplanationFromScore(score) {
-  if (score == null || typeof score !== 'number') return '';
-  if (score >= 80) return 'Low risk (80–100): Good standing.';
-  if (score >= 60) return 'Medium risk (60–79): Action required to maintain compliance.';
-  if (score >= 40) return 'High risk (40–59): Action required to reduce exposure.';
-  return 'Critical risk (0–39): Immediate action required.';
+/** @deprecated Use getRiskBandExplanation with API payload — score-based inference removed. */
+export function getRiskBandExplanationFromScore(_score, apiSource = {}) {
+  return getRiskBandExplanation(apiSource);
 }

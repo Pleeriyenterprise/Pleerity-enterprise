@@ -105,3 +105,22 @@ Catalog mark (`POST /api/client/properties/{property_id}/requirements/mark-not-a
 `PATCH /api/properties/{property_id}/requirements/{requirement_id}` with `applicability: NOT_REQUIRED` requires the same preset plus `not_applicable_audit_reason`. When applicability is set to **`REQUIRED`** or **`UNKNOWN`**, stale N/A row metadata (`not_required_reason`, `not_applicable_audit_reason`) is cleared with **`$unset`** on the requirement document; historical audit log rows are not deleted.
 
 `POST /api/requirements/{requirement_id}/reopen` restores tracked participation with the same authority sync + enqueue pattern; audit metadata includes `prior_applicability` for operational review.
+
+## Score authority (presentation bands)
+
+All **client-facing** score presentation — **grade**, **colour**, **risk message**, **band explanation**, and **risk_level** labels derived from numeric score — MUST originate from `backend/utils/risk_bands.py`.
+
+| Field | Authority |
+|-------|-----------|
+| Thresholds (80 / 60 / 40) | `risk_bands.py` only |
+| `grade`, `color`, `message` | `score_to_grade_color_message` / `score_authority_fields` |
+| `band_explanation` | `score_to_band_explanation` |
+| `risk_level` from score | `score_to_risk_level` (governed phrase: **Moderate risk**, not Medium risk) |
+
+**API surfaces** that MUST attach score authority fields: `GET /client/compliance-score`, `GET /api/portfolio/compliance-summary`, `GET /api/portfolio/properties/{id}/compliance-detail`, persisted property scoring (`compliance_scoring_service`).
+
+**Frontend rule:** consume API `grade`, `color`, `message`, `band_explanation` only. Do not infer bands locally. Chart/static copy may mirror thresholds via `frontend/src/utils/scoreAuthorityConstants.js` (display-only, no grade inference).
+
+**Unchanged by this authority:** score mathematics, weighting, compliance recalc (`compliance_scoring_v2`), RAOD, Today authority, presentation authority for requirement lifecycle labels.
+
+**Regression boundary scores:** 0, 40, 41, 59, 60, 79, 80, 89, 90, 100 — see `backend/tests/test_risk_bands_score_authority.py`.

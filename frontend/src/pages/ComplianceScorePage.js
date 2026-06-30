@@ -1093,8 +1093,7 @@ const ComplianceScorePage = () => {
                   const valid = row.valid ?? counts.compliant;
                   const expiring = row.expiring ?? counts.expiring;
                   const overdue = row.overdue ?? counts.overdue;
-                  const propertyColor =
-                    score == null ? 'gray' : score >= 80 ? 'green' : score >= 40 ? 'amber' : 'red';
+                  const propertyColor = row.color || (score == null ? 'gray' : 'gray');
                   const rowPropertyId = row.property_id != null && String(row.property_id).trim() !== '' && String(row.property_id) !== 'undefined'
                     ? String(row.property_id).trim()
                     : null;
