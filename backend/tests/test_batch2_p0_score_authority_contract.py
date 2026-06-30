@@ -87,6 +87,42 @@ async def test_portfolio_compliance_summary_headline_not_catalog_matrix():
     async def _guard(_req: Request):
         return {"client_id": "c1"}
 
+    override_outputs = {
+        "legacy_override_output": {
+            "effective_portfolio_risk_state": "Moderate Risk",
+            "base_portfolio_risk_state": "Moderate Risk",
+            "risk_override_reasons": [],
+            "critical_property_count": 0,
+            "high_risk_gap_count": 0,
+            "unknown_or_stale_property_count": 0,
+            "attention_required": False,
+            "critical_property_escalation": False,
+            "suppress_positive_headline": False,
+        },
+        "policy_override_output": {
+            "effective_portfolio_risk_state": "Moderate Risk",
+            "base_portfolio_risk_state": "Moderate Risk",
+            "risk_override_reasons": [],
+            "critical_property_count": 0,
+            "high_risk_gap_count": 0,
+            "unknown_or_stale_property_count": 0,
+            "attention_required": False,
+            "critical_property_escalation": False,
+            "suppress_positive_headline": False,
+        },
+        "effective_override_output": {
+            "effective_portfolio_risk_state": "Moderate Risk",
+            "base_portfolio_risk_state": "Moderate Risk",
+            "risk_override_reasons": [],
+            "critical_property_count": 0,
+            "high_risk_gap_count": 0,
+            "unknown_or_stale_property_count": 0,
+            "attention_required": False,
+            "critical_property_escalation": False,
+            "suppress_positive_headline": False,
+        },
+    }
+
     with patch("routes.portfolio.client_route_guard", _guard), patch(
         "routes.portfolio.get_persisted_portfolio_headline_for_summary",
         new_callable=AsyncMock,
@@ -95,6 +131,29 @@ async def test_portfolio_compliance_summary_headline_not_catalog_matrix():
         "routes.portfolio.get_portfolio_compliance_from_catalog",
         new_callable=AsyncMock,
         return_value=catalog,
+    ), patch(
+        "routes.portfolio.build_portfolio_override_outputs",
+        new_callable=AsyncMock,
+        return_value=override_outputs,
+    ), patch(
+        "services.compliance_gap_sync.aggregate_gap_counts_for_client",
+        new_callable=AsyncMock,
+        return_value={
+            "by_kind": {},
+            "by_severity": {},
+            "total_open": 0,
+            "policy": {
+                "critical_mandatory_breach_count": 0,
+                "high_risk_gap_count": 0,
+                "attention_only_gap_count": 0,
+                "unknown_or_stale_signal_count": 0,
+                "policy_fields_present_count": 0,
+                "policy_coverage_percent": 100.0,
+                "top_reason_codes": {},
+                "policy_versions": {},
+                "total_open": 0,
+            },
+        },
     ):
         scope = {
             "type": "http",

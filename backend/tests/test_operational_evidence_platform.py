@@ -196,10 +196,13 @@ async def test_risk_regen_queue_created_emit():
 
 @pytest.mark.asyncio
 async def test_retention_filter_excludes_warm_by_default():
+    from services.operational_evidence.constants import ARCHIVED_RETENTION_TIERS
     from services.operational_evidence.query_service import _build_filter_query
 
     q = _build_filter_query()
-    assert q["retention.tier"]["$nin"] == ["warm", "cold"]
+    assert set(q["retention.tier"]["$nin"]) == set(ARCHIVED_RETENTION_TIERS)
+    assert "warm" in q["retention.tier"]["$nin"]
+    assert "cold" in q["retention.tier"]["$nin"]
 
     q_archived = _build_filter_query(include_archived=True)
     assert "retention.tier" not in q_archived

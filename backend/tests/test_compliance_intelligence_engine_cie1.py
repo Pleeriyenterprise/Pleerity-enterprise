@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi import HTTPException
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from services.compliance_graph_service.access import ActorContext
 from services.compliance_intelligence_engine.artefact_types import ALL_ARTEFACT_TYPES, is_registered_artefact_type
@@ -234,15 +235,15 @@ def test_not_implemented_envelope_shape():
 
 
 @pytest.mark.asyncio
-async def test_artefact_storage_stub_raises():
-    with pytest.raises(NotImplementedError, match="CIE-1"):
-        await artefact_storage.insert_artefact(None, {})
+async def test_artefact_storage_insert_requires_dict():
+    with pytest.raises(TypeError):
+        await artefact_storage.insert_artefact(None)  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio
-async def test_transition_storage_stub_raises():
-    with pytest.raises(NotImplementedError, match="CIE-1"):
-        await transition_storage.insert_transition(None, {})
+async def test_transition_storage_insert_requires_dict():
+    with pytest.raises(TypeError):
+        await transition_storage.insert_transition(None)  # type: ignore[arg-type]
 
 
 def test_collection_names():
@@ -276,12 +277,97 @@ async def test_isl_returns_unavailable_when_disabled(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_isl_returns_not_implemented_when_enabled(monkeypatch):
+async def test_isl_generates_recommendations_when_enabled(monkeypatch):
     monkeypatch.setenv("COMPLIANCE_INTELLIGENCE_ENGINE_MODE", "enabled")
-    result = await generate_recommendations(actor=_tenant_actor())
+    graph_env = {
+        "insufficient_evidence": False,
+        "payload": {
+            "gaps": [
+                {
+                    "decision_id": "dec_cie2_1",
+                    "missing": [{"code": "missing_evidence", "document_id": "doc_1"}],
+                }
+            ]
+        },
+    }
+
+    class _FakeCollection:
+        def __init__(self):
+            self.docs: list = []
+            self.find_one = AsyncMock(side_effect=self._find_one)
+            self.insert_one = AsyncMock(side_effect=self._insert_one)
+            self.find = MagicMock(side_effect=self._find)
+
+        async def _insert_one(self, doc):
+            self.docs.append(dict(doc))
+
+        async def _find_one(self, query, projection=None, sort=None):
+            for doc in reversed(self.docs):
+                if self._matches(doc, query):
+                    out = dict(doc)
+                    out.pop("_id", None)
+                    return out
+            return None
+
+        def _matches(self, doc, query):
+            for k, v in query.items():
+                if k == "lifecycle_state" and isinstance(v, dict) and "$nin" in v:
+                    if doc.get(k) in v["$nin"]:
+                        return False
+                elif doc.get(k) != v:
+                    return False
+            return True
+
+        def _find(self, query, projection=None):
+            matches = [dict(d) for d in self.docs if self._matches(d, query)]
+
+            class _Cursor:
+                def __init__(self, items):
+                    self._items = items
+
+                def sort(self, *args, **kwargs):
+                    if args:
+                        if len(args) == 2 and isinstance(args[0], str):
+                            key, direction = args[0], args[1]
+                        else:
+                            key, direction = args[0]
+                        self._items = sorted(
+                            self._items,
+                            key=lambda d: d.get(key) or "",
+                            reverse=direction < 0,
+                        )
+                    return self
+
+                def limit(self, n):
+                    self._items = self._items[:n]
+                    return self
+
+                async def to_list(self, length):
+                    return self._items[:length]
+
+            return _Cursor(matches)
+
+    artefacts = _FakeCollection()
+    provenance = _FakeCollection()
+    db = MagicMock()
+    db.__getitem__ = MagicMock(side_effect=lambda name: artefacts if "artefacts" in name else provenance)
+
+    with (
+        patch(
+            "services.compliance_intelligence_engine.engines.recommendation.engine.fetch_graph_envelope",
+            new_callable=AsyncMock,
+            return_value=graph_env,
+        ),
+        patch("services.compliance_intelligence_engine.storage.artefacts.database.get_db", return_value=db),
+        patch("services.compliance_intelligence_engine.storage.provenance.database.get_db", return_value=db),
+    ):
+        result = await generate_recommendations(actor=_tenant_actor())
     assert result["enabled"] is True
-    assert result["reason"] == "CIE_DOMAIN_ENGINE_NOT_IMPLEMENTED"
-    assert result["artefacts"] == []
+    assert result["insufficient_evidence"] is False
+    assert len(result["artefacts"]) == 1
+    assert result["artefacts"][0]["artefact_type"] == "recommendation"
+    assert result["artefacts"][0]["provenance_id"].startswith("cip_")
+    assert result["response_hash"].startswith("sha256:")
 
 
 @pytest.mark.asyncio

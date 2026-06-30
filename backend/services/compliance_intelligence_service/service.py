@@ -1,4 +1,4 @@
-"""Intelligence Service Layer — public consumer API (CIE-1 stubs)."""
+"""Intelligence Service Layer — public consumer API."""
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -6,7 +6,13 @@ from typing import Any, Dict, Optional
 from services.compliance_graph_service.access import ActorContext
 from services.compliance_intelligence_engine.comparison import dispatch_compare
 from services.compliance_intelligence_engine.config import intelligence_engine_enabled
-from services.compliance_intelligence_engine.orchestrator import dispatch_generate
+from services.compliance_intelligence_engine.orchestrator import (
+    dispatch_explain,
+    dispatch_generate,
+    dispatch_get,
+    dispatch_get_provenance,
+    dispatch_list,
+)
 from services.compliance_intelligence_engine.replay import dispatch_replay
 from services.compliance_intelligence_engine.schema import IntelligenceScope
 from services.compliance_intelligence_service.access import resolve_client_id
@@ -23,7 +29,7 @@ async def _stub_dispatch(
 ) -> Dict[str, Any]:
     cid = resolve_client_id(actor, client_id)
     scope = IntelligenceScope(client_id=cid, **(scope_kwargs or {}))
-    return await dispatch_generate(service=service, artefact_type=artefact_type, scope=scope)
+    return await dispatch_generate(service=service, artefact_type=artefact_type, scope=scope, actor=actor)
 
 
 async def generate_intelligence(
@@ -50,6 +56,18 @@ async def generate_recommendations(
         actor,
         client_id=client_id,
         artefact_type="recommendation",
+        scope_kwargs=params,
+    )
+
+
+async def generate_priority_assessment(
+    *, actor: ActorContext, client_id: Optional[str] = None, params: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    return await _stub_dispatch(
+        "generate_priority_assessment",
+        actor,
+        client_id=client_id,
+        artefact_type="priority_assessment",
         scope_kwargs=params,
     )
 
@@ -142,18 +160,22 @@ async def list_intelligence(
     lifecycle_state: Optional[str] = None,
     active_only: bool = True,
 ) -> Dict[str, Any]:
-    return await _stub_dispatch(
-        "list_intelligence",
-        actor,
-        client_id=client_id,
+    if not intelligence_engine_enabled():
+        return unavailable_envelope("list_intelligence", artefact_type=artefact_type)
+    cid = resolve_client_id(actor, client_id)
+    return await dispatch_list(
+        client_id=cid,
         artefact_type=artefact_type,
+        lifecycle_state=lifecycle_state,
+        active_only=active_only,
     )
 
 
 async def get_intelligence(*, artefact_id: str, actor: ActorContext) -> Dict[str, Any]:
     if not intelligence_engine_enabled():
         return unavailable_envelope("get_intelligence")
-    return not_implemented_envelope("get_intelligence")
+    cid = resolve_client_id(actor, None) if not actor.is_admin else None
+    return await dispatch_get(artefact_id=artefact_id, client_id=cid)
 
 
 async def compare_intelligence(
@@ -166,7 +188,8 @@ async def compare_intelligence(
 async def explain_intelligence(*, artefact_id: str, actor: ActorContext) -> Dict[str, Any]:
     if not intelligence_engine_enabled():
         return unavailable_envelope("explain_intelligence")
-    return not_implemented_envelope("explain_intelligence")
+    cid = resolve_client_id(actor, None) if not actor.is_admin else None
+    return await dispatch_explain(artefact_id=artefact_id, client_id=cid)
 
 
 async def get_intelligence_lifecycle(*, artefact_id: str, actor: ActorContext) -> Dict[str, Any]:
@@ -192,7 +215,8 @@ async def get_intelligence_provenance(*, artefact_id: str, actor: ActorContext) 
     resolve_client_id(actor, None)
     if not intelligence_engine_enabled():
         return unavailable_envelope("get_intelligence_provenance")
-    return not_implemented_envelope("get_intelligence_provenance")
+    cid = resolve_client_id(actor, None) if not actor.is_admin else None
+    return await dispatch_get_provenance(artefact_id=artefact_id, client_id=cid)
 
 
 async def replay_intelligence(

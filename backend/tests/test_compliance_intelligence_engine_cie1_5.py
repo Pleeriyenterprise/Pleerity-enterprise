@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from services.compliance_graph_service.access import ActorContext
 from services.compliance_intelligence_engine.constants import (
@@ -163,9 +164,9 @@ def test_all_registry_seeds_v1_bundle():
 
 
 @pytest.mark.asyncio
-async def test_provenance_storage_insert_stub_raises():
-    with pytest.raises(NotImplementedError, match="CIE-1.5"):
-        await provenance_storage.insert_provenance(None, {})
+async def test_provenance_storage_insert_requires_dict():
+    with pytest.raises(TypeError):
+        await provenance_storage.insert_provenance(None)  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio
@@ -264,7 +265,12 @@ async def test_isl_compare_stub(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_get_intelligence_provenance_stub(monkeypatch):
+async def test_get_intelligence_provenance_not_found_when_missing(monkeypatch):
     monkeypatch.setenv("COMPLIANCE_INTELLIGENCE_ENGINE_MODE", "enabled")
-    result = await get_intelligence_provenance(artefact_id="cia_x", actor=_tenant_actor())
-    assert result["reason"] == "CIE_DOMAIN_ENGINE_NOT_IMPLEMENTED"
+    db = MagicMock()
+    col = MagicMock()
+    col.find_one = AsyncMock(return_value=None)
+    db.__getitem__ = MagicMock(return_value=col)
+    with patch("services.compliance_intelligence_engine.storage.artefacts.database.get_db", return_value=db):
+        result = await get_intelligence_provenance(artefact_id="cia_x", actor=_tenant_actor())
+    assert result["reason"] == "ARTEFACT_NOT_FOUND"
