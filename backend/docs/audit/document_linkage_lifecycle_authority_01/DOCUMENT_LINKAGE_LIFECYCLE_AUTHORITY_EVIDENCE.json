@@ -1,0 +1,95 @@
+{
+  "audit_id": "DOCUMENT-LINKAGE-LIFECYCLE-AUTHORITY-01",
+  "run_at": "2026-06-30T00:00:00Z",
+  "branch": "develop",
+  "verdict": "AUTHORITY_IMPLEMENTED_DEVELOP_ONLY",
+  "production_touched": false,
+  "main_merged": false,
+  "semantic_decision": {
+    "authority_id": "DOCUMENT_LINKAGE_LIFECYCLE_AUTHORITY",
+    "question": "Is there still an unresolved document linkage problem?",
+    "auto_resolve_on": ["requirement_linked", "gap_resolved"]
+  },
+  "root_cause": {
+    "summary": "Compliance gap bridge created maintenance issues but had no resolve path when document linkage or gaps cleared",
+    "document_track": "document_linkage_governance + document_visibility_governance",
+    "issue_track": "maintenance_issues via compliance_gap_operational_bridge (create-only)"
+  },
+  "authority_chain": [
+    "document_linkage_governance",
+    "compliance_gap_sync",
+    "compliance_gap_operational_bridge (create + resolve)",
+    "document_linkage_lifecycle_authority",
+    "maintenance_issues_service.auto_resolve_issues_by_operational_root_keys",
+    "operational_cognition_service / issueLifecycleAuthority (CTAs)",
+    "count_open_issues / ClientIssuesPage open_only"
+  ],
+  "issue_types_audited": [
+    {"source": "manual_client", "auto_resolve_on_linkage": false},
+    {"source": "tenant_request", "auto_resolve_on_linkage": false},
+    {"source": "compliance_gap_bridge", "auto_resolve_on_linkage": true},
+    {"source": "risk_signal", "auto_resolve_on_linkage": false},
+    {"source": "legacy_compliance_automation", "auto_resolve_on_linkage": "if_gap_closes"},
+    {"source": "document_attention_queue", "type": "document_not_issue", "clears_on_LINKED": true}
+  ],
+  "matrices": {
+    "issue_state": {
+      "open_statuses": ["open", "new", "triaged", "monitoring", "investigating", "ready_for_work_order", "in_progress"],
+      "terminal_statuses": ["resolved", "closed", "cancelled"]
+    },
+    "cta": {
+      "open_compliance": {"label": "Review uploaded document", "destination": "/documents?property_id&requirement_id"},
+      "resolved_compliance": {"label": "View linked evidence", "destination": "/documents?property_id&requirement_id"}
+    },
+    "risk": {"behaviour": "independent lifecycle; not auto-deleted"},
+    "today": {"behaviour": "open issue tasks only; resolved issues drop from feed"},
+    "dashboard": {"behaviour": "count_open_issues uses OPEN_ISSUE_STATUSES"},
+    "notifications": {"behaviour": "no linkage-specific change"}
+  },
+  "before_after": {
+    "issues_open_count": {"before": 3, "after": 0, "note": "when linkage exception cleared"},
+    "document_operations_queue": {"before": "clear after link", "after": "unchanged"},
+    "review_document_cta": {"before": "empty Need Attention queue", "after": "View linked evidence or filtered documents"}
+  },
+  "screenshot_references": [
+    "assets/c__Users_aigbo_AppData_Roaming_Cursor_User_workspaceStorage_3dec4d7d6e57443d8630cf800acd9307_images_image-8f9e399c-114d-46ec-9a21-264b8feee9cb.png",
+    "assets/c__Users_aigbo_AppData_Roaming_Cursor_User_workspaceStorage_3dec4d7d6e57443d8630cf800acd9307_images_image-face225e-1efb-4d85-b125-5cb0570796fa.png"
+  ],
+  "changed_files": [
+    "backend/services/document_linkage_lifecycle_authority.py",
+    "backend/services/compliance_gap_operational_bridge.py",
+    "backend/services/compliance_gap_sync.py",
+    "backend/services/maintenance_issues_service.py",
+    "backend/routes/documents.py",
+    "backend/routes/client_maintenance.py",
+    "backend/services/operational_cognition_service.py",
+    "backend/docs/DOCUMENT_LINKAGE_LIFECYCLE_AUTHORITY.md",
+    "backend/tests/test_document_linkage_lifecycle_authority_01.py",
+    "frontend/src/utils/issueLifecycleAuthority.js",
+    "frontend/src/utils/issueLifecycleAuthority.test.js",
+    "frontend/src/utils/primaryActionResolver.js",
+    "frontend/src/pages/ClientIssuesPage.js"
+  ],
+  "unchanged_authorities": [
+    "RAOD requirement authority",
+    "PAA lifecycle presentation",
+    "Today presentation authority",
+    "Compliance risk scoring semantics"
+  ],
+  "tests": {
+    "backend": {"command": "PYTHONPATH=. python -m pytest tests/test_document_linkage_lifecycle_authority_01.py -q", "passed": 11},
+    "frontend": {"command": "npm test -- --testPathPattern=issueLifecycleAuthority --watchAll=false", "passed": 3}
+  },
+  "staging_validation_recommendation": [
+    "Impersonate landlord with MISMATCHED_EVIDENCE bridge issues",
+    "Link document via reconcile-linkage",
+    "Confirm issue status=resolved, auto_resolved=true",
+    "Confirm Issues OPEN count drops, Document Operations remains clear",
+    "Confirm resolved issue CTA opens linked evidence not empty queue"
+  ],
+  "remaining_risks": [
+    "Risk signal rows may remain open after issue auto-resolve",
+    "Production promotion requires staging cohort validation"
+  ],
+  "production_recommendation": "Staging sign-off required before cherry-pick to main"
+}

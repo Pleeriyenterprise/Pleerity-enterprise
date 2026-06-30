@@ -110,6 +110,21 @@ export function resolveIssuePrimaryAction(issue) {
     };
   }
   const st = String(issue?.status || '').toLowerCase();
+  if (st === 'resolved' || st === 'closed') {
+    const rid = issue?.resolution_linked_requirement_id;
+    const pid = issue?.resolution_linked_property_id || issue?.property_id;
+    if (rid && pid) {
+      return {
+        key: 'view_linked_evidence',
+        label: 'View linked evidence',
+        url: `/documents?property_id=${pid}&requirement_id=${rid}`,
+      };
+    }
+    if (issue?.issue_id) {
+      return { key: 'view_resolution', label: 'View resolution', url: `/operations/issues/${issue.issue_id}` };
+    }
+    return null;
+  }
   const linkedWo =
     issue?.linked_work_order_id ||
     issue?.operational_continuation?.existing_work_order_id;

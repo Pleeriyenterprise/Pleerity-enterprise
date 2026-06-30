@@ -97,3 +97,46 @@ async def apply_gap_operational_bridge(
             )
         except Exception as e:
             logger.warning("gap bridge create_issue failed gap_key=%s: %s", gk, e)
+
+
+async def resolve_issues_for_resolved_gaps(
+    db,
+    client_id: str,
+    resolved_gap_rows: List[Dict[str, Any]],
+    *,
+    requirement: Optional[Dict[str, Any]] = None,
+    actor_id: str = "system",
+) -> List[str]:
+    """Auto-close bridge issues when compliance gaps transition to resolved."""
+    from services.document_linkage_lifecycle_authority import (
+        AUTO_RESOLVE_GAP_KINDS,
+        RESOLUTION_SOURCE_GAP_RESOLVED,
+        resolve_operational_issues_for_gap_keys,
+    )
+
+    gap_keys: List[str] = []
+    meta_base: Dict[str, Any] = {}
+    if requirement:
+        meta_base["requirement_id"] = requirement.get("requirement_id")
+        meta_base["property_id"] = requirement.get("property_id")
+
+    for row in resolved_gap_rows or []:
+        gk = str(row.get("gap_key") or "").strip()
+        gk_kind = str(row.get("gap_kind") or "").strip().upper()
+        if not gk:
+            continue
+        if gk_kind and gk_kind not in AUTO_RESOLVE_GAP_KINDS:
+            continue
+        gap_keys.append(gk)
+
+    if not gap_keys:
+        return []
+
+    return await resolve_operational_issues_for_gap_keys(
+        db,
+        client_id,
+        gap_keys,
+        resolution_source=RESOLUTION_SOURCE_GAP_RESOLVED,
+        resolution_metadata={**meta_base, "gap_kind": resolved_gap_rows[0].get("gap_kind") if resolved_gap_rows else None},
+        actor_id=actor_id,
+    )
