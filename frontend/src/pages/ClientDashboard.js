@@ -14,7 +14,7 @@ import api, { API_URL, parseApiError } from '../api/client';
 import { SUPPORT_EMAIL } from '../config';
 import Sparkline from '../components/Sparkline';
 import ScoreTrendChart from '../components/ScoreTrendChart';
-import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
+import { formatRiskLabel, getRiskBandExplanation, resolveScorePresentationFields } from '../utils/riskLabel';
 import { humanScoreStatusLabel } from '../utils/reportHumanLanguage';
 import { UrgencyRow, timingLabelFromDueAtIso } from '../components/client/UrgencyDisplay';
 import { riskTypeLabelClient, slaStateLabel } from '../domain/presentDomain';
@@ -176,15 +176,6 @@ function formatDashboardGradeShort(grade) {
 
 const SETUP_CHECKLIST_DONE_KEY = 'pleerity_setup_checklist_done';
 const SETUP_INCOMPLETE_KEY = 'pleerity_setup_incomplete';
-
-/** Map 0-100 score to grade/color/message (matches backend risk_bands). Use when displaying portfolio score for single-property consistency. */
-function scoreToGradeColorMessage(score) {
-  if (score == null || typeof score !== 'number') return { grade: null, color: 'gray', message: '' };
-  if (score >= 80) return { grade: score >= 90 ? 'A' : 'B', color: 'green', message: 'Low risk - good standing' };
-  if (score >= 60) return { grade: 'C', color: 'amber', message: 'Moderate risk - action required' };
-  if (score >= 40) return { grade: 'D', color: 'amber', message: 'High risk - action required' };
-  return { grade: 'F', color: 'red', message: 'High urgency: overdue items detected' };
-}
 
 /** Customer-friendly property label: nickname, else address + postcode, else address/postcode/name/id. */
 function getPropertyDisplayLabel(p) {
@@ -901,44 +892,36 @@ const ClientDashboard = () => {
   };
 
   // Single property: use portfolio summary score so main card and portfolio table show the same number.
-  // Use backend risk_level for grade/message when present; for Low Risk derive grade from score (90+ → A, 80–89 → B) so 100/100 shows Grade A.
+  // Grade, colour, message, and band explanation come from backend score authority (API fields only).
   const displayScoreInfo = useMemo(() => {
     const portfolioStatus = portfolioSummary?.score_status;
     const singleProperty =
       portfolioSummary?.properties?.length === 1 && portfolioSummary?.portfolio_score != null;
+    const blockedStatus = ['unavailable', 'reconciliation_required', 'unknown', 'calculating'];
+    const presentation = resolveScorePresentationFields(
+      singleProperty ? portfolioSummary : {},
+      complianceScore || {},
+    );
+
     if (singleProperty) {
       const score = portfolioSummary.portfolio_score;
-      const riskLevel = portfolioSummary.risk_level || portfolioSummary.portfolio_risk_level;
-      if (['unavailable', 'reconciliation_required', 'unknown', 'calculating'].includes(portfolioStatus || '')) {
+      if (blockedStatus.includes(portfolioStatus || '')) {
         return {
           score: null,
           grade: null,
           color: 'gray',
           message: portfolioSummary?.score_status_message || complianceScore?.message || 'Compliance score is not available for this view.',
+          band_explanation: '',
           scoreStatus: portfolioStatus,
           scoreStatusMessage: portfolioSummary?.score_status_message ?? complianceScore?.score_status_message,
         };
       }
-      if (riskLevel) {
-        const s = (riskLevel || '').trim();
-        const { grade, color, message } = s === 'Low Risk'
-          ? scoreToGradeColorMessage(score)
-          : riskLevelToGradeColorMessage(riskLevel);
-        return {
-          score,
-          grade,
-          color,
-          message,
-          scoreStatus: portfolioStatus,
-          scoreStatusMessage: portfolioSummary?.score_status_message ?? complianceScore?.score_status_message,
-        };
-      }
-      const { grade, color, message } = scoreToGradeColorMessage(score);
       return {
         score,
-        grade,
-        color,
-        message,
+        grade: presentation.grade,
+        color: presentation.color,
+        message: presentation.message,
+        band_explanation: presentation.band_explanation,
         scoreStatus: portfolioStatus,
         scoreStatusMessage: portfolioSummary?.score_status_message ?? complianceScore?.score_status_message,
       };
@@ -947,9 +930,10 @@ const ClientDashboard = () => {
       const st = complianceScore.score_status;
       return {
         score: complianceScore.score,
-        grade: complianceScore.grade,
-        color: complianceScore.color,
-        message: complianceScore.message,
+        grade: presentation.grade,
+        color: presentation.color,
+        message: presentation.message,
+        band_explanation: presentation.band_explanation,
         scoreStatus: st,
         scoreStatusMessage: complianceScore.score_status_message,
         scoreCoverage: complianceScore.score_coverage,
@@ -1027,13 +1011,12 @@ const ClientDashboard = () => {
     return portfolioSummary?.kpis?.missing ?? 0;
   }, [complianceScore, portfolioSummary]);
 
-  // Inline risk band explanation under grade (single source: portfolio risk_level or score)
+  // Inline risk band explanation under grade (backend score authority only).
   const riskBandExplanation = useMemo(() => {
-    const level = portfolioSummary?.risk_level || portfolioSummary?.portfolio_risk_level;
-    if (level) return getRiskBandExplanation(level);
-    const score = displayScoreInfo?.score ?? complianceScore?.score;
-    return getRiskBandExplanationFromScore(score);
-  }, [portfolioSummary?.risk_level, portfolioSummary?.portfolio_risk_level, displayScoreInfo?.score, complianceScore?.score]);
+    const fromDisplay = displayScoreInfo?.band_explanation;
+    if (fromDisplay) return fromDisplay;
+    return getRiskBandExplanation(complianceScore) || getRiskBandExplanation(portfolioSummary);
+  }, [displayScoreInfo?.band_explanation, complianceScore, portfolioSummary]);
 
   // Audit readiness: Low / Moderate / High from overdue, missing %, expiring (single canonical snapshot)
   const auditReadiness = useMemo(() => {

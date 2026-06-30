@@ -15,7 +15,11 @@ from typing import Dict, Any, Optional, List
 import logging
 
 from services.compliance_scoring_v2 import compute_property_score_v2
-from utils.risk_bands import score_to_grade_color_message, score_to_risk_level
+from utils.risk_bands import (
+    score_to_band_explanation,
+    score_to_grade_color_message,
+    score_to_risk_level,
+)
 from services.scoring_semantics_v1 import (
     attach_semantics_contract,
     resolve_property_score_status,
@@ -148,10 +152,10 @@ async def calculate_property_compliance(
         as_of=now,
     )
     score = result.get("score_0_100", 0)
-    risk_level = "Low risk" if score >= 90 else ("Moderate risk" if score >= 70 else ("Elevated risk" if score >= 50 else "High risk"))
+    risk_level = score_to_risk_level(int(round(score)))
     requirement_breakdown = result.get("requirement_breakdown", [])
 
-    grade, color, _ = score_to_grade_color_message(score)
+    grade, color, message = score_to_grade_color_message(score)
     status_score = score
     bucket_breakdown = result.get("bucket_breakdown") or {}
     breakdown_legacy = {
@@ -177,6 +181,8 @@ async def calculate_property_compliance(
         "score": score,
         "grade": grade,
         "color": color,
+        "message": message,
+        "band_explanation": score_to_band_explanation(int(round(score))),
         "risk_level": risk_level,
         "score_breakdown": requirement_breakdown,
         "bucket_breakdown": bucket_breakdown,
@@ -481,6 +487,7 @@ def _merge_live_compliance_with_persisted_headline(
                 authoritative["grade"] = g
                 authoritative["color"] = c
                 authoritative["message"] = m
+                authoritative["band_explanation"] = score_to_band_explanation(score_int)
                 msg = resolve_property_score_status_message(prop, score_status=st)
                 if msg:
                     authoritative["score_status_message"] = msg
@@ -503,10 +510,12 @@ def _merge_live_compliance_with_persisted_headline(
             if st == "calculating"
             else "Compliance score is not yet available; reconciliation may be required."
         )
-    if prop.get("risk_level") is not None and authoritative.get("score_status") != SCORE_STATUS_CALCULATING:
+    if authoritative.get("score") is not None and authoritative.get("score_status") != SCORE_STATUS_CALCULATING:
+        score_int = int(authoritative["score"])
+        authoritative["risk_level"] = score_to_risk_level(score_int)
+        authoritative["band_explanation"] = score_to_band_explanation(score_int)
+    elif prop.get("risk_level") is not None and authoritative.get("score_status") != SCORE_STATUS_CALCULATING:
         authoritative["risk_level"] = prop.get("risk_level")
-    elif authoritative.get("score") is not None and authoritative.get("score_status") != SCORE_STATUS_CALCULATING:
-        authoritative["risk_level"] = score_to_risk_level(int(authoritative["score"]))
     if prop.get("compliance_bucket_breakdown"):
         authoritative["bucket_breakdown"] = prop.get("compliance_bucket_breakdown")
     if prop.get("score_breakdown") is not None:

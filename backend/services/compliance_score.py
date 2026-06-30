@@ -34,9 +34,11 @@ from database import database
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List
 from utils.risk_bands import (
+    score_to_band_explanation,
     score_to_grade_color_message,
     risk_level_to_grade_color_message,
     score_to_risk_level,
+    score_authority_fields,
 )
 from services.evidence_review_scoring_adapter import evidence_review_contributes_positive_credit
 from services.scoring_semantics_v1 import (
@@ -469,6 +471,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         else:
             breakdown = {}
         grade, color, message = score_to_grade_color_message(client_score)
+        band_explanation = score_to_band_explanation(client_score)
         client_row = await db.clients.find_one(
             {"client_id": client_id},
             {"_id": 0, "default_jurisdiction": 1, "jurisdiction_fallback_acknowledged_at": 1},
@@ -635,7 +638,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 _lc_out = _lc.isoformat()
             else:
                 _lc_out = _lc if isinstance(_lc, str) else None
-            property_breakdown.append({
+            row = {
                 "property_id": pid,
                 "name": p.get("nickname") or p.get("address_line_1") or "Property",
                 "postcode": p.get("postcode") or "",
@@ -649,7 +652,14 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
                 "effective_jurisdiction_label": jr.effective_label if jr else None,
                 "jurisdiction_required": jf["jurisdiction_required"],
                 "compliance_confidence": jf["compliance_confidence"],
-            })
+            }
+            _ps = p.get("compliance_score")
+            if _ps is not None:
+                try:
+                    row.update(score_authority_fields(int(round(float(_ps)))))
+                except (TypeError, ValueError):
+                    pass
+            property_breakdown.append(row)
         stats["properties_at_risk_count"] = sum(
             1
             for row in property_breakdown
@@ -1022,6 +1032,7 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
             "grade": grade,
             "color": color,
             "message": message,
+            "band_explanation": band_explanation,
             "base_portfolio_risk_state": risk_override["base_portfolio_risk_state"],
             "effective_portfolio_risk_state": risk_override["effective_portfolio_risk_state"],
             "risk_override_reasons": risk_override["risk_override_reasons"],
@@ -1099,13 +1110,15 @@ async def calculate_compliance_score(client_id: str) -> Dict[str, Any]:
         result["properties_missing_persisted_score"] = _head_agg.get("properties_missing_score", 0)
         if result.get("suppress_positive_headline"):
             _rg, _rc, _rm = risk_level_to_grade_color_message(
-                result.get("effective_portfolio_risk_state")
+                result.get("effective_portfolio_risk_state"),
+                score=client_score,
             )
             result["color"] = _rc
             result["message"] = _override_portfolio_message(
                 result.get("effective_portfolio_risk_state"),
                 result.get("risk_override_reasons") or [],
             )
+            result["band_explanation"] = score_to_band_explanation(client_score)
         result = attach_semantics_contract(result)
         # Catalog matrix: optional alternate view only — headline score/grade stay persisted-scoring average.
         try:

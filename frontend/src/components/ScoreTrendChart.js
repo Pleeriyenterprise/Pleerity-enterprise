@@ -24,12 +24,7 @@ import {
 } from 'recharts';
 import branding from '../config/branding';
 
-const RISK_BANDS = [
-  { yMin: 0, yMax: 39, fill: 'rgba(185, 28, 28, 0.08)', label: 'Critical (0-39)' },
-  { yMin: 40, yMax: 59, fill: 'rgba(180, 83, 9, 0.08)', label: 'At Risk (40-59)' },
-  { yMin: 60, yMax: 79, fill: 'rgba(21, 128, 61, 0.08)', label: 'Moderate (60-79)' },
-  { yMin: 80, yMax: 100, fill: 'rgba(21, 128, 61, 0.05)', label: 'Healthy (80-100)' },
-];
+import { SCORE_CHART_RISK_BANDS } from '../utils/scoreAuthorityConstants';
 
 const LINE_COLOR = branding.colors.secondary;
 const CHART_HEIGHT = 220;
@@ -102,7 +97,7 @@ export default function ScoreTrendChart({ points = [], summary = {}, className =
                 tickLine={false}
                 width={28}
               />
-              {RISK_BANDS.map((band, i) => (
+              {SCORE_CHART_RISK_BANDS.map((band, i) => (
                 <ReferenceArea
                   key={i}
                   y1={band.yMin}
@@ -143,7 +138,7 @@ export default function ScoreTrendChart({ points = [], summary = {}, className =
       {/* Legend */}
       {hasData && (
         <div className="flex flex-wrap gap-4 mt-2 pt-2 border-t border-gray-100">
-          {RISK_BANDS.map((band, i) => (
+          {SCORE_CHART_RISK_BANDS.map((band, i) => (
             <span key={i} className="flex items-center gap-1.5 text-xs text-gray-500">
               <span
                 className="w-3 h-3 rounded-sm shrink-0"
