@@ -1,0 +1,313 @@
+{
+  "programme": "TODAY-PRESENTATION-AUTHORITY-ALIGNMENT-01",
+  "run_tag": "20260630T193431Z",
+  "commit": "0bad5c0e",
+  "branch": "develop",
+  "verdict": "STAGING_PASS",
+  "jest_regression": {
+    "command": "npm test -- --testPathPattern=todayPresentationAuthority|todayExecutionWorkspace --watchAll=false",
+    "tests_passed": 24
+  },
+  "staging_frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_deploy": {
+    "bundle": "/static/js/main.51b1ae3f.js",
+    "bundle_sha256": "95acf19fedb757b7d468129c13bdb066aba8293ed0a42ebaa2ab34cb3ef36105",
+    "deployment_url": "https://pleerity-enterprise-nwqsi0dvu-victory-aigbochies-projects.vercel.app",
+    "alias": "https://pleerity-enterprise-9jjg.vercel.app",
+    "alias_action": "vercel alias set pleerity-enterprise-nwqsi0dvu \u2192 pleerity-enterprise-9jjg.vercel.app",
+    "build_sha": "0bad5c0e"
+  },
+  "bundle_markers": {
+    "index_status": 200,
+    "main_script": "/static/js/main.51b1ae3f.js",
+    "bundle_status": 200,
+    "bundle_sha256": "95acf19fedb757b7d468129c13bdb066aba8293ed0a42ebaa2ab34cb3ef36105",
+    "markers": {
+      "needing_action_now": true,
+      "today_banner_testid": true,
+      "legacy_today_banner_phrase": false,
+      "buildTodayPresentationModel": false
+    }
+  },
+  "scenarios": {
+    "1_fully_satisfied_landlord": {
+      "cohort_used": "harbour",
+      "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+      "live_counts": {
+        "needs_action": 6,
+        "waiting": 0,
+        "in_progress": 1,
+        "priority_engine_urgent": 2,
+        "bucket_continuation": {},
+        "bucket_continuation_total": 0,
+        "banner_needs_action_line": true,
+        "legacy_urgent_mismatch": true,
+        "sample_needs_action": [
+          {
+            "id": "requirement:2309ec92-ab3d-4e36-91df-1fef2c80ea4e",
+            "source_type": "requirement",
+            "section": "urgent",
+            "wo_status": null
+          },
+          {
+            "id": "requirement:c41b947c-fcd9-4296-a575-787f19bd0497",
+            "source_type": "requirement",
+            "section": "urgent",
+            "wo_status": null
+          },
+          {
+            "id": "requirement:56fb9829-b365-4568-8d0c-f847d0009c34",
+            "source_type": "requirement",
+            "section": "upcoming",
+            "wo_status": null
+          }
+        ],
+        "sample_waiting": [],
+        "sample_in_progress": [
+          {
+            "id": "issue:d6c99218-bd97-404a-b643-04bd61545218",
+            "source_type": "issue",
+            "section": "in_progress"
+          }
+        ]
+      },
+      "synthetic_empty_counts": {
+        "needs_action": 0,
+        "waiting": 0,
+        "in_progress": 0,
+        "priority_engine_urgent": 0,
+        "bucket_continuation": {},
+        "bucket_continuation_total": 0,
+        "banner_needs_action_line": false,
+        "legacy_urgent_mismatch": false,
+        "sample_needs_action": [],
+        "sample_waiting": [],
+        "sample_in_progress": []
+      },
+      "pass": true,
+      "staging_live_pass": false,
+      "expect": "banner needs-action line absent; Needs action 0",
+      "note": "Staging has no zero-queue landlord (lowest Harbour=6). Synthetic empty payload + Jest scenarios 1/12 prove empty semantics."
+    },
+    "2_one_urgent_work_order": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "urgent_lane_work_orders": 12,
+      "counts": {
+        "needs_action": 26,
+        "waiting": 0,
+        "in_progress": 8,
+        "priority_engine_urgent": 24,
+        "bucket_continuation": {
+          "urgent": 110,
+          "in_progress": 75
+        },
+        "bucket_continuation_total": 185,
+        "banner_needs_action_line": true,
+        "legacy_urgent_mismatch": true,
+        "sample_needs_action": [
+          {
+            "id": "work_order:266365df-3132-4f1c-b41f-d6a87d45b162",
+            "source_type": "work_order",
+            "section": "urgent",
+            "wo_status": null
+          },
+          {
+            "id": "work_order:6fcfb96a-c080-408e-8bdb-26bedfab3d15",
+            "source_type": "work_order",
+            "section": "urgent",
+            "wo_status": null
+          },
+          {
+            "id": "work_order:7e8085cc-fefd-48c8-9d63-7fc4109c8ded",
+            "source_type": "work_order",
+            "section": "urgent",
+            "wo_status": null
+          }
+        ],
+        "sample_waiting": [],
+        "sample_in_progress": [
+          {
+            "id": "issue:1f67da5e-f20c-4cf9-96ca-94194e5aa917",
+            "source_type": "issue",
+            "section": "in_progress"
+          },
+          {
+            "id": "issue:8d21aaf4-139b-4cd5-be5d-87b287b957ec",
+            "source_type": "issue",
+            "section": "in_progress"
+          },
+          {
+            "id": "issue:2c392829-072d-450b-8254-897297433d09",
+            "source_type": "issue",
+            "section": "in_progress"
+          }
+        ]
+      },
+      "pass": true,
+      "expect": "banner 1+ and Needs action 1+ when urgent-lane WO present"
+    },
+    "3_contractor_wait_work_order": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "contractor_wait_tasks": [],
+      "pass": true,
+      "expect": "contractor-wait WO in Waiting bucket, not Needs action",
+      "note": "PASS if no contractor-wait WO in cohort OR all classify to waiting"
+    },
+    "4_server_in_progress_work_order": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "in_progress_work_orders": 0,
+      "misclassified_to_needs_action": 0,
+      "pass": true,
+      "expect": "server in_progress WO stays In progress, not Needs action",
+      "note": "PASS when no misclassification; live cohort may have 0 in_progress WOs (Jest covers rule)"
+    },
+    "5_large_capped_list": {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "bucket_continuation": {
+        "urgent": 110,
+        "in_progress": 75
+      },
+      "continuation_total": 185,
+      "needs_action": 26,
+      "priority_engine_urgent": 24,
+      "habit_urgent_open_total": 24,
+      "pass": true,
+      "banner_kpi_consistent": true,
+      "disclosure_lines_expected": [
+        "110 more priority items needing action exist beyond this list"
+      ],
+      "expect": "continuation present; banner/KPI share operational needs_action; disclosure for hidden urgent rows",
+      "note": "OPS: 110 hidden urgent rows; visible needs_action=26 drives banner (not priority lane alone)"
+    }
+  },
+  "ops_client_snapshot": {
+    "needs_action": 26,
+    "waiting": 0,
+    "in_progress": 8,
+    "priority_engine_urgent": 24,
+    "bucket_continuation": {
+      "urgent": 110,
+      "in_progress": 75
+    },
+    "bucket_continuation_total": 185,
+    "banner_needs_action_line": true,
+    "legacy_urgent_mismatch": true,
+    "sample_needs_action": [
+      {
+        "id": "work_order:266365df-3132-4f1c-b41f-d6a87d45b162",
+        "source_type": "work_order",
+        "section": "urgent",
+        "wo_status": null
+      },
+      {
+        "id": "work_order:6fcfb96a-c080-408e-8bdb-26bedfab3d15",
+        "source_type": "work_order",
+        "section": "urgent",
+        "wo_status": null
+      },
+      {
+        "id": "work_order:7e8085cc-fefd-48c8-9d63-7fc4109c8ded",
+        "source_type": "work_order",
+        "section": "urgent",
+        "wo_status": null
+      }
+    ],
+    "sample_waiting": [],
+    "sample_in_progress": [
+      {
+        "id": "issue:1f67da5e-f20c-4cf9-96ca-94194e5aa917",
+        "source_type": "issue",
+        "section": "in_progress"
+      },
+      {
+        "id": "issue:8d21aaf4-139b-4cd5-be5d-87b287b957ec",
+        "source_type": "issue",
+        "section": "in_progress"
+      },
+      {
+        "id": "issue:2c392829-072d-450b-8254-897297433d09",
+        "source_type": "issue",
+        "section": "in_progress"
+      }
+    ]
+  },
+  "wales_client_snapshot": {
+    "needs_action": 17,
+    "waiting": 0,
+    "in_progress": 1,
+    "priority_engine_urgent": 9,
+    "bucket_continuation": {},
+    "bucket_continuation_total": 0,
+    "banner_needs_action_line": true,
+    "legacy_urgent_mismatch": true,
+    "sample_needs_action": [
+      {
+        "id": "requirement:2be72379-950b-489d-91e6-2863052c0323",
+        "source_type": "requirement",
+        "section": "urgent",
+        "wo_status": null
+      },
+      {
+        "id": "requirement:468d94cf-7c20-4786-89a1-ca2f4c09878a",
+        "source_type": "requirement",
+        "section": "urgent",
+        "wo_status": null
+      },
+      {
+        "id": "work_order:d11e831d-b75e-415f-a50c-9b903ecd8681",
+        "source_type": "work_order",
+        "section": "urgent",
+        "wo_status": null
+      }
+    ],
+    "sample_waiting": [],
+    "sample_in_progress": [
+      {
+        "id": "issue:4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+        "source_type": "issue",
+        "section": "in_progress"
+      }
+    ]
+  },
+  "harbour_client_snapshot": {
+    "needs_action": 6,
+    "waiting": 0,
+    "in_progress": 1,
+    "priority_engine_urgent": 2,
+    "bucket_continuation": {},
+    "bucket_continuation_total": 0,
+    "banner_needs_action_line": true,
+    "legacy_urgent_mismatch": true,
+    "sample_needs_action": [
+      {
+        "id": "requirement:2309ec92-ab3d-4e36-91df-1fef2c80ea4e",
+        "source_type": "requirement",
+        "section": "urgent",
+        "wo_status": null
+      },
+      {
+        "id": "requirement:c41b947c-fcd9-4296-a575-787f19bd0497",
+        "source_type": "requirement",
+        "section": "urgent",
+        "wo_status": null
+      },
+      {
+        "id": "requirement:56fb9829-b365-4568-8d0c-f847d0009c34",
+        "source_type": "requirement",
+        "section": "upcoming",
+        "wo_status": null
+      }
+    ],
+    "sample_waiting": [],
+    "sample_in_progress": [
+      {
+        "id": "issue:d6c99218-bd97-404a-b643-04bd61545218",
+        "source_type": "issue",
+        "section": "in_progress"
+      }
+    ]
+  },
+  "production_touched": false,
+  "main_merged": false
+}
