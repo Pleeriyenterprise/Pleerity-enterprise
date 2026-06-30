@@ -1,0 +1,174 @@
+{
+  "programme": "PRESENTATION-AUTHORITY-STAGING-UI-VALIDATION-01-RERUN",
+  "run_tag": "20260630T173318Z",
+  "staging_frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "frontend_commit_expected": "aa8bf7b7",
+  "backend_commit_expected": "8a830365",
+  "frontend_bundle": {
+    "bundle": "main.5adb0544.js",
+    "url": "https://pleerity-enterprise-9jjg.vercel.app",
+    "js_bytes": 5148406,
+    "legacy_overdue_affecting_compliance": false,
+    "has_legal_verdict_copy": true,
+    "has_nothing_removed": true,
+    "has_triage_lens": true,
+    "has_setup_presentation": true,
+    "has_actively_tracked": true,
+    "has_staging_api": true,
+    "baked_sha_hint": "aa8bf7b7"
+  },
+  "frontend_bundle_contains_paa": true,
+  "fresh_digest_trigger": {
+    "status": 200,
+    "body": {
+      "success": true,
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "message": "Monthly digest sent",
+      "count": 1,
+      "outcome_status": "success",
+      "outcome_metrics": {
+        "expected_count": 1,
+        "attempted_count": 1,
+        "success_count": 1,
+        "failed_count": 0
+      }
+    }
+  },
+  "api_baseline": {
+    "backend_sha": "aa8bf7b7ce0527e402f3f2839ddc3e4cdd374412",
+    "setup_status": {
+      "requirements_count": 79,
+      "requirements_tracked_attention_count": 20,
+      "requirements_runtime_visible_count": 20,
+      "requirements_count_semantics": "tracked_attention_document_job_excludes_obligation"
+    },
+    "checklist_setup_presentation": {
+      "documents_step_recommended": false,
+      "documents_step_item_id": "upload_or_compliance_action",
+      "documents_step_label": "Upload your first document or start a compliance / maintenance job",
+      "authority": "onboarding_checklist"
+    },
+    "occupation_rows": 1,
+    "occupation_types": [
+      "occupation_contract"
+    ],
+    "overdue_count": 0,
+    "digest_count": 1,
+    "first_digest_id": "c69fbdb1-6ffb-438d-8b81-ee19f6ded355",
+    "command_center_keys": []
+  },
+  "digest_wording": {
+    "status": 200,
+    "digest_id": "87bccbc5-c75e-4fef-b392-3de1c824b6fe",
+    "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+    "property_label": "Harbour Apartment",
+    "programme": "PAA-MONTHLY-DIGEST-SUFFIX-VALIDATION-01",
+    "generated_at": "June 2026 (report_month_key 2026-05)",
+    "has_evidence_required": true,
+    "legacy_missing_evidence_suffix": false,
+    "has_calendar_overdue": true,
+    "work_order_only_urgent": false,
+    "sample_lines": [
+      "Expired: Gas Safety \u2014 calendar overdue (Harbour Apartment)",
+      "Evidence needed (legacy read): Smoke, Heat & CO Alarms \u2014 calendar overdue (Harbour Apartment)",
+      "Evidence needed (legacy read): EICR \u2014 evidence required (Harbour Apartment)",
+      "Evidence needed (legacy read): HMO Fire Safety \u2014 due soon (Harbour Apartment)",
+      "Evidence needed (legacy read): Legionella \u2014 due soon (Harbour Apartment)"
+    ],
+    "rejected_ops_digest": {
+      "digest_id": "c69fbdb1-6ffb-438d-8b81-ee19f6ded355",
+      "reason": "work_order_only_urgent_lines"
+    },
+    "evidence_report": "PAA_MONTHLY_DIGEST_SUFFIX_VALIDATION_REPORT.md"
+  },
+  "browser_walkthrough": {
+    "screens": [
+      {
+        "route": "/onboarding-status?client_id=6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+        "screenshot": "docs/audit/presentation_authority_alignment_01/screenshots/01_onboarding_status.png",
+        "body_text_sample": "Sign In\nEnter your credentials to access your compliance portal\nEmail\nPassword\nForgot password?\nSign In\n\nNeed an account? Get Started\n\n\u2190 Back\n\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All"
+      },
+      {
+        "route": "/dashboard",
+        "screenshot": "docs/audit/presentation_authority_alignment_01/screenshots/02_dashboard.png",
+        "body_text_sample": "Session expired.\nPlease sign in again.\nCompliance Vault Pro Secure Access\n\nOne secure entry for clients, internal staff, and contractors. Pick the option that matches your role.\n\nClient Portal\n\nFor landlords and portfolio users.\n\nStaff / Admin\n\nInternal team access only.\n\nContractor portal\n\nFor vetted contractors with an activated account. Use the link in your invite email to set your password first, then sign in here.\n\nSecure encrypted access\nRole-based authentication\nAudit logging enabled\n\nNeed help accessing your account? Contact support\n\n\u2190 Back to Website\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All"
+      },
+      {
+        "route": "/command-center",
+        "screenshot": "docs/audit/presentation_authority_alignment_01/screenshots/03_command_center.png",
+        "body_text_sample": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nAsk Assistant\nnancy@yopmail.com\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nOperations\nMore\nUnable to sync portal status. Retrying\u2026\nCommand center\n\nSingle-screen portfolio triage \u2014 verdict, drivers, and ranked next steps. Execution stays in Today, Requirements, Documents, and Jobs. Use the status block below to pick your next step.\n\nCounts here reflect compliance and jobs across the portfolio\u2014they refresh when you return after acting elsewhere.\n\nOpen Today inbox\nCompliance report\n\u00b7\nDashboard\nNetwork error \u2014 check your connection and try again.\n\nPORTFOLIO STATUS\n\nOn track\n\nLow pressure right now \u2014 check Today when you want the full list.\n\nWHAT TO DO NEXT\n\nNothing critical in this snapshot \u2014 use Today when you are ready for the next task.\n\nOpen Today inbox\n\nYou're on track.\n\nCompliance & issues\n\nCompliance snapshot could not be loaded in this bundle. Other sections may still be current; refresh or open Dashboard for the full score.\n\n0 open issues (issue insights not enabled)\nWhere to focus first\n\nPortfolio triage lens \u2014 ranked from the priority engine. Execution stays in Today. Compliance counts above use score-tracked semantics.\n\nNo property-level priorities in this snapshot. Continue in Today for scheduled or lower-priority inbox work.\n\nPortfolio snapshot\nProperties\n\nPortfolio summary is not available.\n\nJobs that need attention\n\nBelow the property list \u2014 same jobs, short headlines, ranked by urgency.\n\nJob tracking is not enabled for your plan. Upgrade to see maintenance workflows.\n\nCompliance Vault Pro\ninfo@pleerityenterprise.co.uk\nAudit log\nHelp Centre\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All"
+      },
+      {
+        "route": "/requirements",
+        "screenshot": "docs/audit/presentation_authority_alignment_01/screenshots/04_requirements.png",
+        "body_text_sample": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nAsk Assistant\nnancy@yopmail.com\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nOperations\nMore\nUnable to sync portal status. Retrying\u2026\nBack to Dashboard\nAll Requirements\n\nTracked legal and safety obligations per property. Dates and evidence here feed overdue counts and scoring rules; upload files on Documents, then confirm status here.\n\nRow statuses reflect what the portal knows about each obligation \u2014 uploads may not count until evidence is accepted.\n\nSHOWING\n\n0\n\nAll requirements\n\n0\n\nTracked requirements\n\n0\n\nLifecycle valid\n\n0\n\nExpiring Soon\n\n0\n\nAction required\n\n30\n\nDay Window\n\nRefresh\nBy property\nBy requirement\nCould not load requirements.Network Error\nThis is not an empty portfolio \u2014 check your connection, sign-in, and that the app can reach the API (local dev: use localhost or 127.0.0.1 consistently with CORS).\nRetry\nRequirements could not be loaded. Use Retry above or refresh the page.\nCompliance Vault Pro\ninfo@pleerityenterprise.co.uk\nAudit log\nHelp Centre\nFailed to load requirements\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All"
+      },
+      {
+        "route": "/reports",
+        "screenshot": "docs/audit/presentation_authority_alignment_01/screenshots/05_reports_digests.png",
+        "body_text_sample": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nAsk Assistant\nnancy@yopmail.com\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nOperations\nMore\nUnable to sync portal status. Retrying\u2026\nReports\n\nCoherent compliance reporting \u2014 choose the right export for your audience\n\nScheduling & digests \u2014 Billing\n\nEach report serves a distinct purpose \u2014 executive posture, operational management, audit preparedness, portfolio intelligence, or evidentiary archive.\n\nHow reports work together\n\nMonthly Digest surfaces trends \u00b7 Evidence Readiness identifies remediation \u00b7 Requirements Report tracks obligations \u00b7 Compliance Summary explains posture \u00b7 Audit Evidence Pack preserves evidence.\n\nExternal review: Audit Evidence Pack\nExecutive briefing: Compliance Summary Report\nDay-to-day obligations: Requirements Report\nRemediation prep: Evidence Readiness Report\nMonthly oversight: Monthly Operations Intelligence Digest\nStructured data: CSV exports where available\nAudit Evidence Packs\nAdvanced Reports\n\nIncluded with the Portfolio tier for portfolio-scale workflows and optional automation.\n\nDownload compliance reports as PDF and CSV documents. Schedule automated reports to be sent to your email.\n\nView plans in Billing\nCompliance Reports\nPortal activity (first-party)\n\nAggregated counts of allowlisted portal events for your account (not a full analytics warehouse).\n\nPeriod\n7d\n30d\n90d\n\nSummary unavailable.\n\nScheduled Reports\nMonthly Operations Intelligence Digests\n\nPast monthly portfolio briefings sent to your email. View summary or download the digest PDF.\n\nNo digests yet. Enable Monthly Operations Intelligence Digest in Notification Preferences to receive them.\n\nRegulatory/System Exports\n\nRegulatory/System Exports require the regulatory export entitlement. Audit Evidence Pack remains available via Reports when PDF reports are enabled.\n\nExport trust and scope\n\nServer-generated PDFs are authoritative for external sharing. CSV exports are point-in-time operational data. Evidence Readiness history preserves immutable snapshots \u2014 re-download returns the same file. Audit Evidence Pack is the governed evidentiary archive; other reports support monitoring and management.\n\nCompliance Vault Pro\ninfo@pleerityenterprise.co.uk\nAudit log\nHelp Centre\nFailed to load reports\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All"
+      },
+      {
+        "route": "/dashboard#tasks-digest",
+        "skipped": "Locator.click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for get_by_test_id(\"tasks-digest-card\")\n"
+      },
+      {
+        "route": "/reports#digest-preview",
+        "screenshot": "docs/audit/presentation_authority_alignment_01/screenshots/07_monthly_digest_preview.png",
+        "body_text_sample": "Compliance Vault Pro\nAI-Driven Solutions & Compliance\nAsk Assistant\nnancy@yopmail.com\nLogout\nToday\nCommand center\nDashboard\nProperties\nRequirements\nDocuments\nOperations\nMore\nUnable to sync portal status. Retrying\u2026\nSettings\n\nProfile, compliance jurisdiction, notifications, and plan.\n\nProfile\nJurisdiction\nNotifications\nBilling\nBranding\nBilling\n\nSubscription summary, billing history, and payment details\n\nBilling & history\nPlans & upgrades\nPortfolio usage syncs with your account. Refresh to pull the latest property count and limits.\nRefresh usage\nSubscription summary\nYour Compliance Vault Pro subscription status\n\nCurrent plan\n\n\u2014\n\nPlan status\n\nNo active subscription\n\nBilling status\n\nNo active subscription\n\nNext renewal date\n\nNo active subscription\n\nMonthly price\n\n\u2014\n\nProperties\n\n\u2014\n\nPayment method\nCard and billing details are managed securely in Stripe. We only show a masked summary here when available.\n\nSubscribe to a plan to add a payment method.\n\nBilling history\nStripe invoices (paid charges) and Pleerity PDF receipts generated from subscription checkouts.\n\nNo active subscription \u2014 billing history appears after you subscribe and pay.\n\nBilling support\nWe're here if something doesn't look right.\n\nEmail info@pleerityenterprise.co.uk\n\nInclude your account email and any invoice numbers if you need help with a charge.\n\nPaid service orders (one-off) have receipts in Orders.\n\nCompliance Vault Pro\ninfo@pleerityenterprise.co.uk\nAudit log\nHelp Centre\nFailed to load plan information\nFailed to load reports\nWe value your privacy\n\nWe use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies. Read our Privacy Policy and Cookie Policy.\n\nManage Preferences\nReject Non-Essential\nAccept All"
+      }
+    ],
+    "browser_checks": {
+      "onboarding_semantic_counts": false,
+      "onboarding_footnote_when_raw_gt_tracked": false,
+      "onboarding_identified_label": false,
+      "dashboard_loads_without_error_boundary": true,
+      "dashboard_no_legacy_overdue_subline": true,
+      "dashboard_checklist_authority_respected": true,
+      "command_centre_triage_lens": true,
+      "command_centre_score_semantics": true,
+      "requirements_semantic_labels": true,
+      "requirements_no_legacy_overdue": true,
+      "risk_no_premature_breach": true,
+      "raod_no_duplicate_occupation_label": true,
+      "raod_tracked_counts_api": true
+    }
+  },
+  "browser_checks": {
+    "onboarding_semantic_counts": false,
+    "onboarding_footnote_when_raw_gt_tracked": false,
+    "onboarding_identified_label": false,
+    "dashboard_loads_without_error_boundary": true,
+    "dashboard_no_legacy_overdue_subline": true,
+    "dashboard_checklist_authority_respected": true,
+    "command_centre_triage_lens": true,
+    "command_centre_score_semantics": true,
+    "requirements_semantic_labels": true,
+    "requirements_no_legacy_overdue": true,
+    "risk_no_premature_breach": true,
+    "raod_no_duplicate_occupation_label": true,
+    "raod_tracked_counts_api": true,
+    "monthly_digest_governed_wording": true
+  },
+  "verdict": "STAGING_UI_VALIDATION_PARTIAL_PASS",
+  "deployment": {
+    "alias_repair": "vercel alias set pleerity-enterprise-9jjg-e9q7y3tr5 \u2192 pleerity-enterprise-9jjg.vercel.app",
+    "frontend_deployed_sha": "aa8bf7b7",
+    "backend_deployed_sha": "aa8bf7b7ce0527e402f3f2839ddc3e4cdd374412",
+    "bundle_file": "main.5adb0544.js"
+  },
+  "remaining_defects": [
+    "onboarding_semantic_counts",
+    "onboarding_footnote_when_raw_gt_tracked",
+    "onboarding_identified_label"
+  ],
+  "monthly_digest_suffix_validation": {
+    "programme": "PAA-MONTHLY-DIGEST-SUFFIX-VALIDATION-01",
+    "verdict": "PAA_MONTHLY_DIGEST_SUFFIX_VALIDATION_PASSED",
+    "digest_id": "87bccbc5-c75e-4fef-b392-3de1c824b6fe",
+    "evidence": "PAA_MONTHLY_DIGEST_SUFFIX_VALIDATION.json"
+  },
+  "production_recommendation": "Monthly digest governed suffixes validated. Review remaining onboarding browser walkthrough items before production promotion."
+}

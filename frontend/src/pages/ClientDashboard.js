@@ -17,7 +17,7 @@ import ScoreTrendChart from '../components/ScoreTrendChart';
 import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
 import { humanScoreStatusLabel } from '../utils/reportHumanLanguage';
 import { UrgencyRow, timingLabelFromDueAtIso } from '../components/client/UrgencyDisplay';
-import { riskTypeLabelClient } from '../domain/presentDomain';
+import { riskTypeLabelClient, slaStateLabel } from '../domain/presentDomain';
 import { riskSignalPresentationHeadline } from '../utils/lifecycleAuthorityCopy';
 import {
   buildEntityRoute,

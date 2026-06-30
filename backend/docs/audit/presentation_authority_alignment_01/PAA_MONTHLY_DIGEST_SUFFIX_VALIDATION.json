@@ -1,0 +1,94 @@
+{
+  "programme": "PAA-MONTHLY-DIGEST-SUFFIX-VALIDATION-01",
+  "run_tag": "20260630T181500Z",
+  "verdict": "PAA_MONTHLY_DIGEST_SUFFIX_VALIDATION_PASSED",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_backend_sha": "aa8bf7b7ce0527e402f3f2839ddc3e4cdd374412",
+  "validation_method": {
+    "cohort_selection": "staging_mongo_scan (pleerity_staging)",
+    "digest_generation": "JobScheduler.send_monthly_digest_for_client(force=true, property_ids=[Harbour Apartment]) against staging Mongo with develop PAA code",
+    "content_verification": "GET /api/portal/digests/{digest_id} via admin impersonation",
+    "notes": {
+      "http_admin_trigger": "blocked_429_suspicious_activity during prior session",
+      "email_pdf_delivery": "failed_pdf (local STRIPE_TEST_PRICE_* unset); digest content persisted in digest_logs with governed suffix lines"
+    }
+  },
+  "cohort": {
+    "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+    "customer_reference": "PLE-CVP-2026-000042",
+    "portal_user": "felix@yopmail.com",
+    "property_id": "7b76f35d-39f5-45b6-8f36-07628e67bc91",
+    "property_label": "Harbour Apartment",
+    "selection_criteria": {
+      "requirements_on_property": 17,
+      "overdue_requirements": 1,
+      "open_work_orders_on_property": 0,
+      "score": 39
+    },
+    "fixture_created": false,
+    "note": "Existing staging client/property; no new fixture data inserted"
+  },
+  "fresh_digest": {
+    "digest_id": "87bccbc5-c75e-4fef-b392-3de1c824b6fe",
+    "report_month_key": "2026-05",
+    "delivery_status": "failed_pdf",
+    "manual_trigger": true,
+    "triggered_by_admin_id": "paa-monthly-digest-suffix-validation-01",
+    "property_scoped": true
+  },
+  "requirement_based_lines": [
+    {
+      "line": "Expired: Gas Safety — calendar overdue (Harbour Apartment)",
+      "primary_action_type": "upload_evidence",
+      "section": "urgent",
+      "suffix": "calendar overdue"
+    },
+    {
+      "line": "Evidence needed (legacy read): Smoke, Heat & CO Alarms — calendar overdue (Harbour Apartment)",
+      "primary_action_type": "guided_evidence_resolution",
+      "section": "urgent",
+      "suffix": "calendar overdue"
+    },
+    {
+      "line": "Evidence needed (legacy read): EICR — evidence required (Harbour Apartment)",
+      "primary_action_type": "upload_evidence",
+      "section": "upcoming",
+      "suffix": "evidence required"
+    }
+  ],
+  "portal_api_verification": {
+    "endpoint": "GET /api/portal/digests/87bccbc5-c75e-4fef-b392-3de1c824b6fe",
+    "status": 200,
+    "has_evidence_required": true,
+    "has_calendar_overdue": true,
+    "legacy_missing_evidence_suffix": false,
+    "legacy_affecting_compliance": false,
+    "legacy_compliance_breach": false,
+    "work_order_only_urgent": false
+  },
+  "checks": {
+    "governed_calendar_overdue_suffix": true,
+    "governed_evidence_required_suffix": true,
+    "legacy_missing_evidence_suffix_absent": true,
+    "legacy_affecting_compliance_absent": true,
+    "legacy_compliance_breach_absent": true,
+    "not_work_order_only_urgent": true,
+    "requirement_based_urgent_actions": true,
+    "fresh_post_paa_digest_persisted": true,
+    "portal_api_content_matches": true
+  },
+  "rejected_cohorts": [
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "label": "ops_nancy",
+      "digest_id": "c69fbdb1-6ffb-438d-8b81-ee19f6ded355",
+      "rejected_reason": "urgent lines work-order-only ( — urgent); no requirement suffixes"
+    }
+  ],
+  "evidence_files": [
+    "PAA_MONTHLY_DIGEST_SUFFIX_COHORT_PROBE.json",
+    "PAA_MONTHLY_DIGEST_SUFFIX_VALIDATION_DIGEST.json",
+    "PAA_MONTHLY_DIGEST_SUFFIX_VALIDATION_REPORT.md"
+  ],
+  "production_recommendation": "Monthly digest governed suffix validation PASSED. Requirement-based urgent/upcoming lines use calendar overdue and evidence required suffixes. PDF/email delivery failure is environmental (local Stripe price config) and does not affect suffix authority proof."
+}
