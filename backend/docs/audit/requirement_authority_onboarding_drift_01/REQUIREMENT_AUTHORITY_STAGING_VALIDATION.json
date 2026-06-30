@@ -1,7 +1,7 @@
 {
   "programme": "REQUIREMENT-AUTHORITY-ONBOARDING-DRIFT-STAGING-VALIDATION-01",
-  "run_tag": "20260630T143844Z",
-  "validated_at": "2026-06-30T14:39:54.975711+00:00",
+  "run_tag": "20260630T151457Z",
+  "validated_at": "2026-06-30T15:16:14.585204+00:00",
   "branch": "develop",
   "staging_api": "https://pleerity-enterprise.onrender.com/api",
   "mode": "shadow_local_code_plus_http_baseline",
@@ -10,12 +10,12 @@
     "exit_code": 0,
     "passed": true,
     "command": "python -m pytest tests/test_requirement_authority_onboarding_drift_01.py -v --tb=line",
-    "output_tail": "============================= test session starts =============================\nplatform win32 -- Python 3.12.7, pytest-9.0.2, pluggy-1.6.0 -- C:\\Program Files\\Python312\\python.exe\ncachedir: .pytest_cache\nrootdir: C:\\pleerity-workspace\\Pleerity-enterprise\\backend\nconfigfile: pytest.ini\nplugins: anyio-4.12.0, postmarker-1.0, asyncio-1.3.0\nasyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function\ncollecting ... collected 5 items\n\ntests/test_requirement_authority_onboarding_drift_01.py::test_wales_occupation_contract_alias_family_dedupes_duplicate_slugs PASSED [ 20%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_provisioning_skips_db_occupation_contract_when_wales_catalog_planned PASSED [ 40%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_electrical_risk_does_not_fire_on_pending_eicr_only PASSED [ 60%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_electrical_risk_fires_on_overdue_eicr PASSED [ 80%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_portal_setup_status_exposes_tracked_attention_semantics PASSED [100%]\n\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================== 5 passed, 4 warnings in 0.14s ========================\n"
+    "output_tail": "============================= test session starts =============================\nplatform win32 -- Python 3.12.7, pytest-9.0.2, pluggy-1.6.0 -- C:\\Program Files\\Python312\\python.exe\ncachedir: .pytest_cache\nrootdir: C:\\pleerity-workspace\\Pleerity-enterprise\\backend\nconfigfile: pytest.ini\nplugins: anyio-4.12.0, postmarker-1.0, asyncio-1.3.0\nasyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function\ncollecting ... collected 5 items\n\ntests/test_requirement_authority_onboarding_drift_01.py::test_wales_occupation_contract_alias_family_dedupes_duplicate_slugs PASSED [ 20%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_provisioning_skips_db_occupation_contract_when_wales_catalog_planned PASSED [ 40%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_electrical_risk_does_not_fire_on_pending_eicr_only PASSED [ 60%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_electrical_risk_fires_on_overdue_eicr PASSED [ 80%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_portal_setup_status_exposes_tracked_attention_semantics PASSED [100%]\n\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================== 5 passed, 4 warnings in 0.18s ========================\n"
   },
   "staging_version": {
     "status": 200,
     "body": {
-      "commit_sha": "0b1887a2c49c220015d834103f65bb821e9c3525",
+      "commit_sha": "c93a014b7da2f724900a72c5ef9e6e10eec760d2",
       "environment": "staging"
     }
   },
@@ -63,8 +63,21 @@
     ],
     "eicr_electrical_pass": true,
     "reconcile_assessment": {
-      "clients_with_raw_occupation_duplicate_pairs": 0,
-      "properties_needing_reconcile": []
+      "duplicate_active_groups": 0,
+      "authority_superseded_rows": 1,
+      "clients_with_active_occupation_duplicate_pairs": 0,
+      "clients_with_historical_raw_occupation_duplicate_pairs": 0,
+      "properties_needing_reconcile": [],
+      "historical_properties_with_superseded_duplicates": []
+    }
+  },
+  "authority_reconciliation_staging": {
+    "scope": "pleerity_staging",
+    "metrics": {
+      "total_rows": 613,
+      "active_alias_family_rows": 134,
+      "authority_superseded_rows": 27,
+      "duplicate_active_groups": 0
     }
   },
   "duplicate_occupation_client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
@@ -86,22 +99,32 @@
         "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
         "property_name": "3a69dcbd-74fd-4291-839b-3d52750598a1",
         "raw_occupation_row_count": 2,
+        "active_occupation_row_count": 1,
         "raw_occupation_types": [
           "occupation_contract",
           "wales_occupation_contract"
         ],
+        "active_occupation_types": [
+          "wales_occupation_contract"
+        ],
         "runtime_visible_occupation_count": 1,
         "runtime_visible_occupation_types": [
-          "occupation_contract"
+          "wales_occupation_contract"
         ],
         "pass_one_visible": true,
-        "raw_duplicate_pair": true
+        "historical_raw_duplicate_pair": true,
+        "active_duplicate_pair": false,
+        "authority_superseded_in_pair": true
       },
       {
         "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
         "property_name": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
         "raw_occupation_row_count": 1,
+        "active_occupation_row_count": 1,
         "raw_occupation_types": [
+          "occupation_contract"
+        ],
+        "active_occupation_types": [
           "occupation_contract"
         ],
         "runtime_visible_occupation_count": 1,
@@ -109,13 +132,19 @@
           "occupation_contract"
         ],
         "pass_one_visible": true,
-        "raw_duplicate_pair": false
+        "historical_raw_duplicate_pair": false,
+        "active_duplicate_pair": false,
+        "authority_superseded_in_pair": false
       },
       {
         "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5",
         "property_name": "73cad925-c2bd-481f-8026-a38ea3e212d5",
         "raw_occupation_row_count": 1,
+        "active_occupation_row_count": 1,
         "raw_occupation_types": [
+          "occupation_contract"
+        ],
+        "active_occupation_types": [
           "occupation_contract"
         ],
         "runtime_visible_occupation_count": 1,
@@ -123,7 +152,9 @@
           "occupation_contract"
         ],
         "pass_one_visible": true,
-        "raw_duplicate_pair": false
+        "historical_raw_duplicate_pair": false,
+        "active_duplicate_pair": false,
+        "authority_superseded_in_pair": false
       }
     ],
     "wales_occupation_pass": true,
@@ -149,18 +180,23 @@
     ],
     "eicr_electrical_pass": true,
     "reconcile_assessment": {
-      "clients_with_raw_occupation_duplicate_pairs": 1,
-      "properties_needing_reconcile": [
+      "duplicate_active_groups": 0,
+      "authority_superseded_rows": 3,
+      "clients_with_active_occupation_duplicate_pairs": 0,
+      "clients_with_historical_raw_occupation_duplicate_pairs": 1,
+      "properties_needing_reconcile": [],
+      "historical_properties_with_superseded_duplicates": [
         {
           "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
           "property_name": "3a69dcbd-74fd-4291-839b-3d52750598a1",
-          "raw_types": [
+          "historical_raw_types": [
             "occupation_contract",
             "wales_occupation_contract"
           ],
-          "runtime_deduped_to": 1,
-          "reconcile_recommended": true,
-          "reason": "Raw Mongo retains duplicate rows; runtime dedupe hides in client surfaces"
+          "active_occupation_types": [
+            "wales_occupation_contract"
+          ],
+          "authority_superseded_in_pair": true
         }
       ]
     }
@@ -179,7 +215,7 @@
     "samples": {
       "setup_status": {
         "status": 200,
-        "elapsed_ms": 3569.3,
+        "elapsed_ms": 3486.9,
         "body": {
           "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
           "customer_reference": "PLE-CVP-2026-000040",
@@ -222,13 +258,13 @@
       },
       "requirements": {
         "status": 200,
-        "elapsed_ms": 4224.55,
+        "elapsed_ms": 5544.63,
         "row_count": 64,
         "http_tracked_attention_count": 64,
         "occupation_visible": [
           {
-            "requirement_id": "14678d6e-f00f-4c43-88fe-5ecf59fb4b23",
-            "requirement_type": "occupation_contract",
+            "requirement_id": "a9bf3fb6-6911-482f-928f-6dfd77b17005",
+            "requirement_type": "wales_occupation_contract",
             "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1"
           },
           {
@@ -246,12 +282,12 @@
       },
       "dashboard": {
         "status": 200,
-        "elapsed_ms": 5106.51,
+        "elapsed_ms": 5007.68,
         "stats": {}
       },
       "command_center": {
         "status": 200,
-        "elapsed_ms": 43525.63,
+        "elapsed_ms": 29779.1,
         "compliance_status_summary": {
           "score": 78,
           "grade": "C",
@@ -274,9 +310,9 @@
           "compliance_counts_authority": "calculate_compliance_score.stats",
           "requirements_overdue": 0,
           "requirements_expiring_soon": 0,
-          "requirements_pending": 25,
+          "requirements_pending": 24,
           "requirements_missing_evidence": 3,
-          "requirements_total": 41,
+          "requirements_total": 40,
           "properties_at_risk_count": 1,
           "gap_engine": {
             "by_kind": {
@@ -285,9 +321,9 @@
               "EVIDENCE_UPLOADED_UNCONFIRMED": 4
             },
             "by_severity": {
+              "LOW": 35,
               "MEDIUM": 5,
-              "HIGH": 1,
-              "LOW": 35
+              "HIGH": 1
             },
             "total_open": 41,
             "policy": {
@@ -398,6 +434,8 @@
     "http_occupation_pre_deploy_duplicate_visible": true,
     "http_setup_status_semantic_fields_absent_pre_deploy": false
   },
-  "reconcile_required_before_production": true,
+  "duplicate_active_groups_staging": 0,
+  "authority_superseded_rows_staging": 27,
+  "reconcile_required_before_production": false,
   "verdict": "STAGING_VALIDATION_ACCEPTED"
 }
