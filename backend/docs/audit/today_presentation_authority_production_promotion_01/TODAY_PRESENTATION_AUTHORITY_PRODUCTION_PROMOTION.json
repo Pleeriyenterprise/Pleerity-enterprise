@@ -1,0 +1,73 @@
+{
+  "programme": "TODAY-PRESENTATION-AUTHORITY-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260630T200112Z",
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL",
+  "source_develop_shas": [
+    "0bad5c0e",
+    "e4f7d1dc"
+  ],
+  "main_sha_before": "1c71e271",
+  "main_sha_after_promotion": "c1b6b06d",
+  "main_commits_on_main": {
+    "0bad5c0e": "a3151899",
+    "e4f7d1dc": "c1b6b06d"
+  },
+  "production_deployed_sha": "c1b6b06d",
+  "backend_deploy_required": false,
+  "backend_version_observed": "c1b6b06d22e73e92fe5b65f7265b3769edf20bea",
+  "frontend": {
+    "url": "https://pleerityenterprise.co.uk",
+    "deployment_id": "dpl_CBvFpUw1baJMB1g7ffXAqmg9DBum",
+    "deployment_url": "https://pleerity-enterprise-842fqgt6o-victory-aigbochies-projects.vercel.app",
+    "bundle": "/static/js/main.d179ba06.js",
+    "bundle_sha256": "66ba49bcc402ed6e46d1eaf13fe4e56e8023ffe270fbc52704af299c0737f101",
+    "build_sha_embedded": "c1b6b06d"
+  },
+  "smoke": {
+    "homepage_status": 200,
+    "api_health": "healthy",
+    "api_environment": "production",
+    "api_version_sha": "c1b6b06d22e73e92fe5b65f7265b3769edf20bea",
+    "bundle": {
+      "index_status": 200,
+      "main_script": "/static/js/main.d179ba06.js",
+      "bundle_status": 200,
+      "bundle_sha256": "66ba49bcc402ed6e46d1eaf13fe4e56e8023ffe270fbc52704af299c0737f101",
+      "markers": {
+        "needing_action_now": true,
+        "today_banner_testid": true,
+        "legacy_today_banner_phrase": false,
+        "prod_api_url": true,
+        "staging_api_url": false
+      }
+    },
+    "frontend_prod_api_embedded": true,
+    "frontend_staging_api_embedded": false,
+    "today_authority_markers": true,
+    "legacy_banner_absent": true,
+    "today_presentation_consistent": null,
+    "today_auth_error": "Client error '401 Unauthorized' for url 'https://api.pleerityenterprise.co.uk/api/auth/admin/login'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401",
+    "dashboard_unauth": 401,
+    "requirements_unauth": 401,
+    "command_center_unauth": 401
+  },
+  "today_semantics": null,
+  "files_included": [
+    "frontend/src/utils/todayPresentationAuthority.js",
+    "frontend/src/utils/todayPresentationAuthority.test.js",
+    "frontend/src/pages/ClientTasksPage.js",
+    "frontend/src/utils/todayExecutionWorkspace.js",
+    "frontend/src/utils/todayExecutionWorkspace.test.js",
+    "frontend/src/pages/ClientCommandCenterPage.js",
+    "backend/docs/audit/today_presentation_authority_alignment_01/*"
+  ],
+  "files_excluded": [
+    "lifecycle_kpi_gates.py",
+    "All other develop commits not cherry-picked",
+    "All tmp scripts",
+    "render.production.yaml",
+    "Production reconciliation scripts"
+  ],
+  "production_reconciliation_executed": false,
+  "production_config_modified": false
+}
