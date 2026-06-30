@@ -1,0 +1,102 @@
+{
+  "programme": "PROPERTY-DETAIL-PRESENTATION-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260630T225910Z",
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL",
+  "source_develop_shas": [
+    "6c3d2190",
+    "f16209fe"
+  ],
+  "main_sha_before": "594f5727e3679f46fb58839c6f3c492ddddc7176",
+  "main_sha_after_promotion": "9572933a",
+  "main_commits_cherry_picked": {
+    "6c3d2190": "e835ef5b",
+    "f16209fe": "9572933a"
+  },
+  "production_deployed_sha": "9572933ac906dfc2d4ad9b9714e6f00ef3c3ff9a",
+  "frontend": {
+    "url": "https://pleerityenterprise.co.uk",
+    "deployment_id": "dpl_8NqhCghuWBQ2F4UXY1CZ9xhJgLCB",
+    "deployment_url": "https://pleerity-enterprise-me00z6f9f-victory-aigbochies-projects.vercel.app",
+    "bundle": "/static/js/main.60c90c58.js",
+    "bundle_sha256": "2638e7b13ed858e54bbc92c08069c601a1244467127bbea737345fe8ad90e3d4",
+    "markers": {
+      "valid_for_scoring": true,
+      "requirements_satisfied": true,
+      "may_legitimately_differ": true,
+      "old_valid_tile_only": false,
+      "prod_api_url": true,
+      "staging_api_url": false
+    }
+  },
+  "smoke": {
+    "homepage_status": 200,
+    "api_health": "healthy",
+    "api_environment": "production",
+    "api_version_sha": "9572933ac906dfc2d4ad9b9714e6f00ef3c3ff9a",
+    "backend_deploy_ready": true,
+    "bundle": {
+      "index_status": 200,
+      "main_script": "/static/js/main.60c90c58.js",
+      "bundle_status": 200,
+      "bundle_sha256": "2638e7b13ed858e54bbc92c08069c601a1244467127bbea737345fe8ad90e3d4",
+      "markers": {
+        "valid_for_scoring": true,
+        "requirements_satisfied": true,
+        "may_legitimately_differ": true,
+        "old_valid_tile_only": false,
+        "prod_api_url": true,
+        "staging_api_url": false
+      }
+    },
+    "frontend_prod_api": true,
+    "frontend_no_staging_api": true,
+    "property_detail_markers": true,
+    "unauth_probes": {
+      "compliance_detail": 401,
+      "dashboard": 401,
+      "requirements": 401,
+      "today": 401,
+      "command_center": 401
+    },
+    "compliance_detail_probe": {
+      "status": null,
+      "note": "Production client login unavailable for ops cohort; KPI field validated on staging and via backend deploy SHA."
+    },
+    "authenticated_compliance_detail": false,
+    "authenticated_kpi_validation": null,
+    "regression_unauth_protected": {
+      "dashboard": 401,
+      "requirements": 401,
+      "today": 401,
+      "command_center": 401,
+      "compliance_detail": 401
+    }
+  },
+  "files_promoted": [
+    "backend/services/catalog_compliance.py",
+    "backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md",
+    "backend/docs/audit/property_detail_presentation_authority_alignment_01/*",
+    "frontend/src/utils/propertyDetailComplianceKpiPresentation.js",
+    "frontend/src/utils/propertyDetailComplianceKpiPresentation.test.js",
+    "frontend/src/pages/PropertyDetailPage.js",
+    "frontend/src/pages/PropertyDetailPage.validKpiParity.test.js",
+    "frontend/src/pages/PropertyDetailPage.presentationAuthority.test.js",
+    "frontend/src/components/property/PropertyOperatingHub.jsx",
+    "backend/tests/test_catalog_compliance_kpi_status_valid.py"
+  ],
+  "files_excluded": [
+    "backend/routes/portfolio.py (local develop-only fallback)",
+    "frontend/src/utils/reportingSemanticsLabels.js (local tooltip tweak not in scope)",
+    "lifecycle-kpi-wip",
+    "All other develop commits",
+    "All tmp scripts",
+    "render.production.yaml"
+  ],
+  "production_config_modified": false,
+  "develop_merge_performed": false,
+  "remaining_risks": [
+    "Authenticated production compliance-detail probe skipped — ops cohort client login returned 401 on production MongoDB; staging validated lifecycle_satisfied_count at STAGING_VALIDATION_GO.",
+    "Manual Property Detail browser walkthrough on pilot landlord account recommended within 24h."
+  ],
+  "production_recommendation": "GO — Property Detail presentation promoted; monitor Operating + Compliance KPI tiles for 24h. Roll back to 594f5727 if label regression reported."
+}
