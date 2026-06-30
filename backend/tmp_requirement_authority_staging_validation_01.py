@@ -33,6 +33,10 @@ STAGING_API = os.environ.get("STAGING_API", "https://pleerity-enterprise.onrende
 STAGING_ROOT = os.environ.get("STAGING_ROOT", "https://pleerity-enterprise.onrender.com").rstrip("/")
 TARGET_CRN = os.environ.get("RAOD_STAGING_CRN", "PLE-CVP-2026-000003").strip()
 TARGET_CLIENT_ID = os.environ.get("RAOD_STAGING_CLIENT_ID", "").strip()
+# Post-reconcile shadow proof client (PLE-CVP-2026-000040) when no active duplicate pair remains.
+DUP_OCCUPATION_PROOF_CLIENT_ID = os.environ.get(
+    "RAOD_DUPLICATE_OCCUPATION_CLIENT_ID", "6bcc43c0-16f4-46a5-adf4-26693a0919d0"
+).strip()
 
 
 def _utc() -> str:
@@ -150,11 +154,50 @@ def _occupation_rows(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 
+def _authority_reconciliation_metrics(rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    from collections import defaultdict
+
+    from services.requirement_authority_reconciliation_governance import (
+        duplicate_group_key,
+        is_active_for_alias_reconciliation,
+        is_authority_reconciled_superseded,
+    )
+
+    active_alias = 0
+    archived = 0
+    by_group: Dict[tuple, int] = defaultdict(int)
+    for row in rows:
+        if is_authority_reconciled_superseded(row):
+            archived += 1
+        key = duplicate_group_key(row)
+        if not key:
+            continue
+        if is_active_for_alias_reconciliation(row):
+            active_alias += 1
+            by_group[key] += 1
+    duplicate_active_groups = sum(1 for c in by_group.values() if c > 1)
+    return {
+        "total_rows": len(rows),
+        "active_alias_family_rows": active_alias,
+        "authority_superseded_rows": archived,
+        "duplicate_active_groups": duplicate_active_groups,
+    }
+
+
+async def _staging_authority_reconciliation_metrics(db) -> Dict[str, Any]:
+    rows = await db.requirements.find({}, {"_id": 0}).to_list(100000)
+    metrics = _authority_reconciliation_metrics(rows)
+    return {"scope": "pleerity_staging", "metrics": metrics}
+
+
 async def _shadow_validate(client_id: str) -> Dict[str, Any]:
     from database import database
     from routes.portal import _portal_requirement_count_semantics
     from services.reporting_semantics_v1 import requirement_row_in_tracked_attention_views
-    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+    from services.requirement_client_runtime_surface import (
+        filter_requirement_rows_for_client_runtime_surfaces,
+        requirement_row_is_registry_archived,
+    )
     from services.requirement_truth import enrich_requirements_for_client
     from services.risk_signal_service import (
         RISK_TYPE_ELECTRICAL,
@@ -202,19 +245,36 @@ async def _shadow_validate(client_id: str) -> Dict[str, Any]:
         pid = p["property_id"]
         pname = p.get("name") or p.get("property_name") or pid
         raw_occ = occ_by_prop_raw.get(pid, [])
+        active_raw_occ = [r for r in raw_occ if not requirement_row_is_registry_archived(r)]
         vis_occ = occ_by_prop_visible.get(pid, [])
+        raw_types = [r.get("requirement_type") for r in raw_occ]
+        active_types = [r.get("requirement_type") for r in active_raw_occ]
+        raw_type_set = {str(t).lower() for t in raw_types}
+        active_type_set = {str(t).lower() for t in active_types}
+        historical_pair = (
+            len(raw_occ) >= 2
+            and "occupation_contract" in raw_type_set
+            and "wales_occupation_contract" in raw_type_set
+        )
+        active_pair = (
+            len(active_raw_occ) >= 2
+            and "occupation_contract" in active_type_set
+            and "wales_occupation_contract" in active_type_set
+        )
         occupation_checks.append(
             {
                 "property_id": pid,
                 "property_name": pname,
                 "raw_occupation_row_count": len(raw_occ),
-                "raw_occupation_types": [r.get("requirement_type") for r in raw_occ],
+                "active_occupation_row_count": len(active_raw_occ),
+                "raw_occupation_types": raw_types,
+                "active_occupation_types": active_types,
                 "runtime_visible_occupation_count": len(vis_occ),
                 "runtime_visible_occupation_types": [r.get("requirement_type") for r in vis_occ],
                 "pass_one_visible": len(vis_occ) <= 1,
-                "raw_duplicate_pair": len(raw_occ) >= 2
-                and "occupation_contract" in [str(x.get("requirement_type")).lower() for x in raw_occ]
-                and "wales_occupation_contract" in [str(x.get("requirement_type")).lower() for x in raw_occ],
+                "historical_raw_duplicate_pair": historical_pair,
+                "active_duplicate_pair": active_pair,
+                "authority_superseded_in_pair": historical_pair and not active_pair,
             }
         )
 
@@ -258,21 +318,41 @@ async def _shadow_validate(client_id: str) -> Dict[str, Any]:
             }
         )
 
+    client_metrics = _authority_reconciliation_metrics(raw_reqs)
     reconcile_assessment = {
-        "clients_with_raw_occupation_duplicate_pairs": 0,
+        "duplicate_active_groups": client_metrics["duplicate_active_groups"],
+        "authority_superseded_rows": client_metrics["authority_superseded_rows"],
+        "clients_with_active_occupation_duplicate_pairs": 0,
+        "clients_with_historical_raw_occupation_duplicate_pairs": 0,
         "properties_needing_reconcile": [],
+        "historical_properties_with_superseded_duplicates": [],
     }
     for chk in occupation_checks:
-        if chk.get("raw_duplicate_pair"):
-            reconcile_assessment["clients_with_raw_occupation_duplicate_pairs"] += 1
+        raw_types = chk.get("raw_occupation_types") or []
+        active_types = chk.get("active_occupation_types") or []
+        has_historical_pair = chk.get("historical_raw_duplicate_pair")
+        has_active_pair = chk.get("active_duplicate_pair")
+        if has_historical_pair:
+            reconcile_assessment["clients_with_historical_raw_occupation_duplicate_pairs"] += 1
+            reconcile_assessment["historical_properties_with_superseded_duplicates"].append(
+                {
+                    "property_id": chk["property_id"],
+                    "property_name": chk["property_name"],
+                    "historical_raw_types": raw_types,
+                    "active_occupation_types": active_types,
+                    "authority_superseded_in_pair": chk.get("authority_superseded_in_pair"),
+                }
+            )
+        if has_active_pair:
+            reconcile_assessment["clients_with_active_occupation_duplicate_pairs"] += 1
             reconcile_assessment["properties_needing_reconcile"].append(
                 {
                     "property_id": chk["property_id"],
                     "property_name": chk["property_name"],
-                    "raw_types": chk["raw_occupation_types"],
+                    "active_types": active_types,
                     "runtime_deduped_to": chk["runtime_visible_occupation_count"],
                     "reconcile_recommended": True,
-                    "reason": "Raw Mongo retains duplicate rows; runtime dedupe hides in client surfaces",
+                    "reason": "Active alias duplicate rows remain in Mongo authority",
                 }
             )
 
@@ -390,14 +470,18 @@ def _http_validate(client_id: str, portal_token: str) -> Dict[str, Any]:
 async def _find_duplicate_occupation_client(db) -> Optional[str]:
     from collections import defaultdict
 
+    from services.requirement_client_runtime_surface import requirement_row_is_registry_archived
+
     types = ["wales_occupation_contract", "occupation_contract"]
     rows = await db.requirements.find(
         {"requirement_type": {"$in": types}},
-        {"_id": 0, "client_id": 1, "property_id": 1, "requirement_type": 1},
+        {"_id": 0, "client_id": 1, "property_id": 1, "requirement_type": 1, "registry_metadata": 1},
     ).to_list(500)
     by: Dict[str, Dict[str, set]] = defaultdict(lambda: defaultdict(set))
     for r in rows:
-        by[r["client_id"]][r["property_id"]].add(r["requirement_type"])
+        if requirement_row_is_registry_archived(r):
+            continue
+        by[r["client_id"]][r["property_id"]].add(str(r["requirement_type"]).lower())
     for cid, ps in by.items():
         for ts in ps.values():
             if "occupation_contract" in ts and "wales_occupation_contract" in ts:
@@ -486,6 +570,12 @@ async def main() -> int:
     report["shadow_validation"] = await _shadow_validate(client_id)
 
     dup_client = await _find_duplicate_occupation_client(database.get_db())
+    if not dup_client and DUP_OCCUPATION_PROOF_CLIENT_ID:
+        dup_client = DUP_OCCUPATION_PROOF_CLIENT_ID
+        report["duplicate_occupation_client_resolution"] = "proof_client_fallback_post_reconcile"
+    report["authority_reconciliation_staging"] = await _staging_authority_reconciliation_metrics(
+        database.get_db()
+    )
     if dup_client and dup_client != client_id:
         report["duplicate_occupation_client_id"] = dup_client
         report["duplicate_occupation_shadow"] = await _shadow_validate(dup_client)
@@ -562,11 +652,11 @@ async def main() -> int:
 
     report["checks"] = checks
 
-    reconcile = shadow.get("reconcile_assessment") or {}
-    dup_reconcile = (dup_shadow.get("reconcile_assessment") or {}) if dup_shadow else {}
-    report["reconcile_required_before_production"] = bool(
-        reconcile.get("properties_needing_reconcile") or dup_reconcile.get("properties_needing_reconcile")
-    )
+    staging_auth = report.get("authority_reconciliation_staging") or {}
+    staging_metrics = staging_auth.get("metrics") or {}
+    report["duplicate_active_groups_staging"] = staging_metrics.get("duplicate_active_groups", 0)
+    report["authority_superseded_rows_staging"] = staging_metrics.get("authority_superseded_rows", 0)
+    report["reconcile_required_before_production"] = report["duplicate_active_groups_staging"] > 0
 
     shadow_ok = all(
         checks.get(k)
@@ -607,6 +697,11 @@ def _write_outputs(report: Dict[str, Any]) -> None:
     dup_shadow = report.get("duplicate_occupation_shadow") or {}
     http = report.get("http_validation") or {}
     primary_ss = report.get("http_setup_status_primary_crn") or {}
+    primary_body = primary_ss.get("body")
+    if isinstance(primary_body, str):
+        primary_req_count = primary_body[:120]
+    else:
+        primary_req_count = (primary_body or {}).get("requirements_count")
     lines = [
         f"# {PROGRAMME}",
         "",
@@ -625,6 +720,8 @@ def _write_outputs(report: Dict[str, Any]) -> None:
         f"| Shadow count semantics (000003) | {'PASS' if shadow.get('count_semantics_pass') else 'FAIL'} |",
         f"| Shadow EICR no premature risk | {'PASS' if shadow.get('eicr_electrical_pass') else 'FAIL'} |",
         f"| HTTP fixes deployed on staging | {'NO — pre-deploy baseline' if not http.get('deployed_fixes_detected_on_http') else 'YES'} |",
+        f"| Duplicate active groups (staging) | {report.get('duplicate_active_groups_staging', 'unknown')} |",
+        f"| Authority-superseded rows (staging) | {report.get('authority_superseded_rows_staging', 'unknown')} |",
         f"| Reconcile job required before prod | **{'YES' if report.get('reconcile_required_before_production') else 'NO'}** |",
         "",
         "## Commands",
@@ -652,40 +749,28 @@ def _write_outputs(report: Dict[str, Any]) -> None:
         "### Primary CRN PLE-CVP-2026-000003",
         "",
         f"- Raw Mongo: {shadow.get('raw_requirement_count')} | Shadow tracked: {shadow.get('shadow_tracked_attention_count')} | Shadow visible: {shadow.get('shadow_runtime_visible_count')}",
-        f"- Setup-status HTTP (pre-deploy): raw `requirements_count` only = {(primary_ss.get('body') or {}).get('requirements_count')}",
+        f"- Setup-status HTTP: raw `requirements_count` = {primary_req_count}",
         f"- Semantic fields on HTTP: {primary_ss.get('has_semantic_fields')}",
         "",
         "### Duplicate occupation client PLE-CVP-2026-000040 (shadow dedupe proof)",
         "",
         f"- Raw Mongo: {dup_shadow.get('raw_requirement_count')} | Shadow tracked: {dup_shadow.get('shadow_tracked_attention_count')}",
-        f"- HTTP requirements rows (pre-deploy, **still shows duplicate**): occupation count = {http.get('http_occupation_visible_count')}",
-        f"- Legacy active electrical risk in Mongo (pre-deploy): see `duplicate_occupation_shadow.eicr_electrical_risk_checks`",
+        f"- HTTP occupation visible count: {http.get('http_occupation_visible_count')}",
         "",
-        "### Wales occupation checks (000040)",
-        "",
-        "```json",
-        json.dumps(shadow.get("wales_occupation_checks"), indent=2, default=str),
-        "```",
+        "### Authority reconciliation (staging Mongo)",
         "",
         "```json",
-        json.dumps(dup_shadow.get("wales_occupation_checks"), indent=2, default=str),
+        json.dumps(report.get("authority_reconciliation_staging"), indent=2, default=str),
         "```",
         "",
-        "### Reconcile assessment",
+        "### Reconcile assessment (active duplicates only)",
         "",
         f"**Production reconcile required:** {report.get('reconcile_required_before_production')}",
-        "",
-        "```json",
-        json.dumps(shadow.get("reconcile_assessment"), indent=2, default=str),
-        "```",
-        "",
-        "Duplicate-client reconcile:",
+        f" (duplicate_active_groups={report.get('duplicate_active_groups_staging')})",
         "",
         "```json",
         json.dumps(dup_shadow.get("reconcile_assessment"), indent=2, default=str),
         "```",
-        "",
-        "**Production recommendation:** Run a reconcile job to archive superseded `occupation_contract` rows where `wales_occupation_contract` exists for the same property. Runtime dedupe is sufficient for client surfaces but Mongo authority remains duplicated until reconcile.",
         "",
         "## HTTP validation (live staging API)",
         "",
@@ -694,7 +779,12 @@ def _write_outputs(report: Dict[str, Any]) -> None:
         lines.append(f"- Skipped: {http.get('reason')}")
     else:
         lines.append(f"- Deployed fixes on HTTP: {http.get('deployed_fixes_detected_on_http')}")
-        lines.append(f"- Setup-status sample: `{json.dumps(http.get('samples', {}).get('setup_status', {}).get('body'), default=str)[:800]}`")
+        setup_body = http.get("samples", {}).get("setup_status", {}).get("body")
+        if isinstance(setup_body, str):
+            setup_sample = setup_body[:800]
+        else:
+            setup_sample = json.dumps(setup_body, default=str)[:800]
+        lines.append(f"- Setup-status sample: `{setup_sample}`")
         lines.append(f"- HTTP occupation visible count: {http.get('http_occupation_visible_count')}")
         lines.append(f"- HTTP tracked attention: {http.get('samples', {}).get('requirements', {}).get('http_tracked_attention_count')}")
     lines.extend(["", "## Checks", "", "```json", json.dumps(report.get("checks"), indent=2), "```", ""])

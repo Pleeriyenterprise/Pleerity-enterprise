@@ -1,10 +1,10 @@
 # REQUIREMENT-AUTHORITY-ONBOARDING-DRIFT-STAGING-VALIDATION-01
 
 **Verdict:** `STAGING_VALIDATION_ACCEPTED`
-**Run:** 20260630T143844Z
+**Run:** 20260630T151457Z
 **Primary client:** 2c972bea-2e87-494a-9853-b2d9d38e88e3 (PLE-CVP-2026-000003)
 **Duplicate occupation client:** 6bcc43c0-16f4-46a5-adf4-26693a0919d0 (PLE-CVP-2026-000040)
-**Staging deploy SHA:** 0b1887a2c49c220015d834103f65bb821e9c3525
+**Staging deploy SHA:** c93a014b7da2f724900a72c5ef9e6e10eec760d2
 
 ## Summary
 
@@ -15,7 +15,9 @@
 | Shadow count semantics (000003) | PASS |
 | Shadow EICR no premature risk | PASS |
 | HTTP fixes deployed on staging | YES |
-| Reconcile job required before prod | **YES** |
+| Duplicate active groups (staging) | 0 |
+| Authority-superseded rows (staging) | 27 |
+| Reconcile job required before prod | **NO** |
 
 ## Commands
 
@@ -42,102 +44,56 @@ python tmp_requirement_authority_staging_validation_01.py
 ### Primary CRN PLE-CVP-2026-000003
 
 - Raw Mongo: 18 | Shadow tracked: 12 | Shadow visible: 12
-- Setup-status HTTP (pre-deploy): raw `requirements_count` only = 18
+- Setup-status HTTP: raw `requirements_count` = 18
 - Semantic fields on HTTP: True
 
 ### Duplicate occupation client PLE-CVP-2026-000040 (shadow dedupe proof)
 
 - Raw Mongo: 107 | Shadow tracked: 64
-- HTTP requirements rows (pre-deploy, **still shows duplicate**): occupation count = 3
-- Legacy active electrical risk in Mongo (pre-deploy): see `duplicate_occupation_shadow.eicr_electrical_risk_checks`
+- HTTP occupation visible count: 3
 
-### Wales occupation checks (000040)
-
-```json
-[]
-```
-
-```json
-[
-  {
-    "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
-    "property_name": "3a69dcbd-74fd-4291-839b-3d52750598a1",
-    "raw_occupation_row_count": 2,
-    "raw_occupation_types": [
-      "occupation_contract",
-      "wales_occupation_contract"
-    ],
-    "runtime_visible_occupation_count": 1,
-    "runtime_visible_occupation_types": [
-      "occupation_contract"
-    ],
-    "pass_one_visible": true,
-    "raw_duplicate_pair": true
-  },
-  {
-    "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
-    "property_name": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
-    "raw_occupation_row_count": 1,
-    "raw_occupation_types": [
-      "occupation_contract"
-    ],
-    "runtime_visible_occupation_count": 1,
-    "runtime_visible_occupation_types": [
-      "occupation_contract"
-    ],
-    "pass_one_visible": true,
-    "raw_duplicate_pair": false
-  },
-  {
-    "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5",
-    "property_name": "73cad925-c2bd-481f-8026-a38ea3e212d5",
-    "raw_occupation_row_count": 1,
-    "raw_occupation_types": [
-      "occupation_contract"
-    ],
-    "runtime_visible_occupation_count": 1,
-    "runtime_visible_occupation_types": [
-      "occupation_contract"
-    ],
-    "pass_one_visible": true,
-    "raw_duplicate_pair": false
-  }
-]
-```
-
-### Reconcile assessment
-
-**Production reconcile required:** True
+### Authority reconciliation (staging Mongo)
 
 ```json
 {
-  "clients_with_raw_occupation_duplicate_pairs": 0,
-  "properties_needing_reconcile": []
+  "scope": "pleerity_staging",
+  "metrics": {
+    "total_rows": 613,
+    "active_alias_family_rows": 134,
+    "authority_superseded_rows": 27,
+    "duplicate_active_groups": 0
+  }
 }
 ```
 
-Duplicate-client reconcile:
+### Reconcile assessment (active duplicates only)
+
+**Production reconcile required:** False
+ (duplicate_active_groups=0)
 
 ```json
 {
-  "clients_with_raw_occupation_duplicate_pairs": 1,
-  "properties_needing_reconcile": [
+  "duplicate_active_groups": 0,
+  "authority_superseded_rows": 3,
+  "clients_with_active_occupation_duplicate_pairs": 0,
+  "clients_with_historical_raw_occupation_duplicate_pairs": 1,
+  "properties_needing_reconcile": [],
+  "historical_properties_with_superseded_duplicates": [
     {
       "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
       "property_name": "3a69dcbd-74fd-4291-839b-3d52750598a1",
-      "raw_types": [
+      "historical_raw_types": [
         "occupation_contract",
         "wales_occupation_contract"
       ],
-      "runtime_deduped_to": 1,
-      "reconcile_recommended": true,
-      "reason": "Raw Mongo retains duplicate rows; runtime dedupe hides in client surfaces"
+      "active_occupation_types": [
+        "wales_occupation_contract"
+      ],
+      "authority_superseded_in_pair": true
     }
   ]
 }
 ```
-
-**Production recommendation:** Run a reconcile job to archive superseded `occupation_contract` rows where `wales_occupation_contract` exists for the same property. Runtime dedupe is sufficient for client surfaces but Mongo authority remains duplicated until reconcile.
 
 ## HTTP validation (live staging API)
 

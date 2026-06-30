@@ -1,10 +1,10 @@
 # REQUIREMENT-RECONCILIATION-AUTHORITY-01
 
-**Mode:** dry-run
-**Duration:** 1108.63 ms
+**Mode:** execute
+**Duration:** 6015.46 ms
 **Duplicate families found:** 26
 **Records to archive:** 27
-**Records archived:** 0
+**Records archived:** 27
 
 ## Metrics before
 
@@ -28,4 +28,16 @@
 }
 ```
 
-Evidence: `REQUIREMENT_RECONCILIATION_dry_run_20260630T145644Z.json`
+## Idempotency verification
+
+**Pass:** True
+
+```json
+{
+  "second_run_archived": 0,
+  "second_run_to_archive": 0,
+  "pass": true
+}
+```
+
+Evidence: `REQUIREMENT_RECONCILIATION_execute_20260630T150334Z.json`
