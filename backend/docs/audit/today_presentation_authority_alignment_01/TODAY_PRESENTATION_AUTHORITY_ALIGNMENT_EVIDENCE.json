@@ -1,0 +1,104 @@
+{
+  "audit_id": "TODAY-PRESENTATION-AUTHORITY-ALIGNMENT-01",
+  "run_at": "2026-06-30T00:00:00Z",
+  "branch": "develop",
+  "environment": "local_development",
+  "production_touched": false,
+  "main_merged": false,
+  "predecessor_audit": "TODAY-AUTHORITY-CONSISTENCY-AUDIT-01",
+  "final_semantic_decision": {
+    "option": "A",
+    "code": "OPERATIONAL_NEEDS_ACTION",
+    "banner_count_source": "operational_needs_action_count",
+    "banner_copy": "You have {n} item(s) needing action now.",
+    "priority_lane_usage": "continuation_disclosure_only"
+  },
+  "work_order_global_rule": {
+    "urgent_lane_landlord_action": "needs_action_now",
+    "contractor_wait_statuses": ["ASSIGNED", "SCHEDULED", "AWAITING_VISIT"],
+    "contractor_wait_bucket": "waiting_on_others",
+    "server_in_progress_lane": "in_progress"
+  },
+  "authority_chain": [
+    "GET /api/today/items",
+    "alignTodayPayloadTaskSections",
+    "buildTodayPresentationModel (todayPresentationAuthority.js)",
+    "ClientTasksPage banner / KPIs / lanes"
+  ],
+  "before_after_examples": [
+    {
+      "scenario": "urgent_lane_work_order",
+      "before": { "banner": 1, "banner_wording": "urgent item right now", "needs_action": 0, "in_progress_includes_wo": true },
+      "after": { "banner": 1, "banner_wording": "item(s) needing action now", "needs_action": 1, "in_progress_excludes_wo": true }
+    },
+    {
+      "scenario": "server_in_progress_work_order",
+      "before": { "banner_may_show_urgent": true, "needs_action": 0 },
+      "after": { "banner_needs_action_line": false, "needs_action": 0, "in_progress": 1 }
+    },
+    {
+      "scenario": "bucket_continuation",
+      "before": { "disclosure": "Some inbox rows are capped in this view." },
+      "after": { "disclosure": "N more priority items needing action exist beyond this list" }
+    }
+  ],
+  "changed_files": [
+    "frontend/src/utils/todayPresentationAuthority.js",
+    "frontend/src/utils/todayPresentationAuthority.test.js",
+    "frontend/src/utils/todayExecutionWorkspace.js",
+    "frontend/src/utils/todayExecutionWorkspace.test.js",
+    "frontend/src/pages/ClientTasksPage.js",
+    "frontend/src/pages/ClientCommandCenterPage.js",
+    "backend/docs/audit/today_presentation_authority_alignment_01/TODAY_PRESENTATION_AUTHORITY_ALIGNMENT_REPORT.md",
+    "backend/docs/audit/today_presentation_authority_alignment_01/TODAY_PRESENTATION_AUTHORITY_ALIGNMENT_EVIDENCE.json"
+  ],
+  "unchanged_authorities": [
+    "RAOD requirement authority",
+    "PAA lifecycle authority",
+    "compliance risk semantics",
+    "backend unified_tasks_service priority engine"
+  ],
+  "tests": {
+    "command": "npm test -- --testPathPattern=todayPresentationAuthority|todayExecutionWorkspace --watchAll=false",
+    "cwd": "frontend",
+    "suites_passed": 2,
+    "tests_passed": 24,
+    "regression_scenarios": [
+      "zero_urgent_items",
+      "one_urgent_in_needs_action",
+      "urgent_wo_in_server_in_progress_lane",
+      "multiple_urgent_split_needs_action_and_in_progress",
+      "large_urgent_list_bucket_continuation",
+      "property_filter_applied",
+      "category_filter_applied",
+      "requirements_only_urgent",
+      "work_orders_only_urgent",
+      "mixed_requirements_and_work_orders",
+      "fully_satisfied_landlord",
+      "fresh_onboarding_landlord"
+    ]
+  },
+  "staging_validation_recommendation": [
+    "Deploy develop frontend to staging",
+    "Validate urgent-lane WO landlord: banner = Needs action KPI",
+    "Validate in_progress-only WO: no Needs action banner line",
+    "Validate property and category filters align counts with lists",
+    "Validate list-cap disclosure when bucket_continuation present"
+  ],
+  "remaining_risks": [
+    "Command Centre portfolio urgentCount still server-derived",
+    "Dashboard today bucket counts not yet on presentation authority",
+    "New WO status enums may need classifier extension"
+  ],
+  "production_recommendation": "Staging sign-off required; frontend-only deploy; do not merge to main as part of this task",
+  "acceptance_criteria": {
+    "banner_lane_consistency": true,
+    "work_order_global_rule_documented": true,
+    "needs_action_count_list_agree": true,
+    "in_progress_count_list_agree": true,
+    "banner_wording_accurate": true,
+    "continuation_disclosed": true,
+    "regression_tests_pass": true,
+    "audit_evidence_written": true
+  }
+}

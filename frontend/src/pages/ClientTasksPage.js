@@ -110,13 +110,10 @@ import TodayExecutionHero from '../components/client/TodayExecutionHero';
 import RequirementIntelligenceModal from '../components/client/RequirementIntelligenceModal';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
 import {
-  buildOperationalSections,
   buildPropertyByIdMap,
-  buildFalseEmptyStateDisclosure,
   enrichTaskForExecution,
-  pickPrimaryExecutionTask,
-  visibleOpenCount,
-} from '../utils/todayExecutionWorkspace';
+  buildTodayPresentationModel,
+} from '../utils/todayPresentationAuthority';
 
 const FILTER_CHIPS = [
   { id: 'all', label: 'All' },
@@ -1108,49 +1105,40 @@ export default function ClientTasksPage() {
     [payload, inboxRequirementById],
   );
 
-  const operationalSections = useMemo(
-    () => buildOperationalSections(sections, applyFilter, inboxRequirementById),
-    [sections, applyFilter, inboxRequirementById],
-  );
-
-  const allOpenTasks = useMemo(
-    () => [...(sections.urgent || []), ...(sections.upcoming || []), ...(sections.in_progress || [])],
-    [sections],
-  );
-
-  const urgentHeroTasks = useMemo(() => applyFilter(sections.urgent || []), [sections.urgent, applyFilter]);
-
-  const primaryExecutionTask = useMemo(() => {
-    const apiUrgent = Number(payload?.summary?.urgent_count ?? 0);
-    if (apiUrgent === 0 && urgentHeroTasks.length === 0) return null;
-    return pickPrimaryExecutionTask(urgentHeroTasks, inboxRequirementById, propertyById);
-  }, [payload?.summary?.urgent_count, urgentHeroTasks, inboxRequirementById, propertyById]);
-
-  const primaryExecutionId = primaryExecutionTask?.id;
-
-  const needsActionNow = useMemo(
-    () => operationalSections.needsActionNow.filter((t) => t.id !== primaryExecutionId),
-    [operationalSections.needsActionNow, primaryExecutionId],
-  );
-
-  const falseEmptyDisclosure = useMemo(
+  const todayPresentation = useMemo(
     () =>
-      buildFalseEmptyStateDisclosure({
-        visibleOpenCount:
-          visibleOpenCount(operationalSections) + (primaryExecutionTask ? 1 : 0),
-        bucketContinuation: payload?.bucket_continuation,
-        commandCenterUrgentCount: commandCenterDepth?.urgent,
-        commandCenterPrimaryCount: commandCenterDepth?.primary,
+      buildTodayPresentationModel({
+        payload,
+        sections,
+        applyFilter,
+        requirementsById: inboxRequirementById,
+        propertyById,
+        commandCenterDepth,
         propertyFilter,
+        categoryFilter: filter,
       }),
-    [operationalSections, primaryExecutionTask, payload, commandCenterDepth, propertyFilter],
+    [
+      payload,
+      sections,
+      applyFilter,
+      inboxRequirementById,
+      propertyById,
+      commandCenterDepth,
+      propertyFilter,
+      filter,
+    ],
   );
 
-  const snoozed = applyFilter(sections.snoozed || []);
-  const recent = applyFilter(sections.recently_completed);
-  const waitingOnOthers = operationalSections.waitingOnOthers;
-  const inProgress = operationalSections.inProgress;
-  const hidden = sections.hidden || [];
+  const primaryExecutionTask = todayPresentation.lanes.primaryExecutionTask;
+  const needsActionNow = todayPresentation.lanes.needsActionNow;
+  const waitingOnOthers = todayPresentation.lanes.waitingOnOthers;
+  const inProgress = todayPresentation.lanes.inProgress;
+  const snoozed = todayPresentation.lanes.snoozed;
+  const recent = todayPresentation.lanes.recentlyCompleted;
+  const hidden = todayPresentation.lanes.hidden;
+  const falseEmptyDisclosure = todayPresentation.falseEmptyDisclosure;
+  const listCapDisclosure = todayPresentation.listCap;
+  const inProgressDisclosure = todayPresentation.inProgressDisclosure;
 
   const summary = payload?.summary;
   const freshness = payload?.freshness;
@@ -1510,30 +1498,32 @@ export default function ClientTasksPage() {
         </Alert>
       )}
 
-      {summary?.habit &&
-        (summary.habit.urgent_open_total > 0 ||
-          summary.habit.items_due_or_expiring_in_7_days > 0 ||
-          (summary.habit.tasks_acknowledged_last_7_days ?? 0) > 0) && (
-        <Alert className="mb-4 border-teal-200 bg-teal-50/80">
+      {todayPresentation.banner.show && (
+        <Alert className="mb-4 border-teal-200 bg-teal-50/80" data-testid="today-habit-banner">
           <Info className="h-4 w-4 text-teal-700" />
           <AlertDescription className="text-teal-900 text-sm">
-            {summary.habit.urgent_open_total > 0 && (
-              <span className="block">
-                You have <strong>{summary.habit.urgent_open_total}</strong> urgent item
-                {summary.habit.urgent_open_total !== 1 ? 's' : ''} right now.
+            {todayPresentation.banner.needsAction && (
+              <span className="block" data-testid="today-banner-needs-action">
+                You have <strong>{todayPresentation.banner.needsAction.count}</strong> item
+                {todayPresentation.banner.needsAction.count !== 1 ? 's' : ''} needing action now.
               </span>
             )}
-            {summary.habit.items_due_or_expiring_in_7_days > 0 && (
+            {todayPresentation.banner.dueInSevenDays > 0 && (
               <span className="block mt-1">
-                <strong>{summary.habit.items_due_or_expiring_in_7_days}</strong> open item
-                {summary.habit.items_due_or_expiring_in_7_days !== 1 ? 's' : ''} with a due date in the next 7 days.
+                <strong>{todayPresentation.banner.dueInSevenDays}</strong> open item
+                {todayPresentation.banner.dueInSevenDays !== 1 ? 's' : ''} with a due date in the next 7 days.
               </span>
             )}
-            {(summary.habit.tasks_acknowledged_last_7_days ?? 0) > 0 && (
+            {todayPresentation.banner.acknowledgedLastSevenDays > 0 && (
               <span className="block mt-1 text-teal-800">
                 This week you cleared{' '}
-                <strong>{summary.habit.tasks_acknowledged_last_7_days}</strong> inbox item
-                {summary.habit.tasks_acknowledged_last_7_days !== 1 ? 's' : ''} (visibility only).
+                <strong>{todayPresentation.banner.acknowledgedLastSevenDays}</strong> inbox item
+                {todayPresentation.banner.acknowledgedLastSevenDays !== 1 ? 's' : ''} (visibility only).
+              </span>
+            )}
+            {listCapDisclosure.show && (
+              <span className="block mt-1 text-teal-800" data-testid="today-banner-list-cap">
+                {listCapDisclosure.lines.join(' · ')}
               </span>
             )}
           </AlertDescription>
@@ -1542,25 +1532,38 @@ export default function ClientTasksPage() {
 
       <Card className="mb-4 border-gray-200 bg-gray-50/50">
         <CardContent className="p-3 flex flex-wrap gap-3 text-sm">
-          <div className="min-w-[5rem]">
+          <div className="min-w-[5rem]" data-testid="today-kpi-needs-action">
             <span className="text-gray-500 text-xs">Needs action</span>
             <p className="text-lg font-bold text-midnight-blue tabular-nums">
-              {(primaryExecutionTask ? 1 : 0) + needsActionNow.length}
+              {todayPresentation.counters.needsAction}
             </p>
           </div>
-          <div className="min-w-[5rem]">
+          <div className="min-w-[5rem]" data-testid="today-kpi-waiting">
             <span className="text-gray-500 text-xs">Waiting</span>
-            <p className="text-lg font-bold text-midnight-blue tabular-nums">{waitingOnOthers.length}</p>
+            <p className="text-lg font-bold text-midnight-blue tabular-nums">
+              {todayPresentation.counters.waiting}
+            </p>
           </div>
-          <div className="min-w-[5rem]">
+          <div className="min-w-[5rem]" data-testid="today-kpi-in-progress">
             <span className="text-gray-500 text-xs">In progress</span>
-            <p className="text-lg font-bold text-midnight-blue tabular-nums">{inProgress.length}</p>
+            <p className="text-lg font-bold text-midnight-blue tabular-nums">
+              {todayPresentation.counters.inProgress}
+            </p>
           </div>
-          <div className="min-w-[5rem]">
+          <div className="min-w-[5rem]" data-testid="today-kpi-snoozed">
             <span className="text-gray-500 text-xs">Snoozed</span>
-            <p className="text-lg font-bold text-midnight-blue tabular-nums">{snoozed.length}</p>
+            <p className="text-lg font-bold text-midnight-blue tabular-nums">
+              {todayPresentation.counters.snoozed}
+            </p>
           </div>
-          {falseEmptyDisclosure.continuationOverflow ? (
+          {listCapDisclosure.show ? (
+            <p
+              className="text-xs text-gray-600 w-full border-t border-gray-200 pt-2"
+              data-testid="today-kpi-list-cap"
+            >
+              {listCapDisclosure.summary}
+            </p>
+          ) : falseEmptyDisclosure.continuationOverflow ? (
             <p className="text-xs text-gray-600 w-full border-t border-gray-200 pt-2">
               {falseEmptyDisclosure.continuationOverflow} more items prioritised in Command Centre — open there for the full queue.
             </p>
@@ -1593,16 +1596,17 @@ export default function ClientTasksPage() {
       {filter !== 'all' && (
         <Alert className="mb-4 border-sky-200 bg-sky-50" data-testid="today-category-filter-notice">
           <AlertDescription className="text-sm text-sky-950">
-            Category filter active — summary counts include all categories; section lists below show only{' '}
+            Category filter active — banner, counters, and section lists below show only{' '}
             <strong>{FILTER_CHIPS.find((c) => c.id === filter)?.label || filter}</strong> items.
           </AlertDescription>
         </Alert>
       )}
 
-      {payload?.bucket_continuation && Object.keys(payload.bucket_continuation).length > 0 && (
+      {listCapDisclosure.show && (
         <Alert className="mb-4 border-gray-200 bg-gray-50" data-testid="today-bucket-continuation-notice">
           <AlertDescription className="text-sm text-gray-700">
-            Some inbox rows are capped in this view. Open Command Center for the full prioritised queue.
+            {listCapDisclosure.lines.join(' ')}{' '}
+            Open Command Centre for the full prioritised queue.
           </AlertDescription>
         </Alert>
       )}
@@ -1790,7 +1794,7 @@ export default function ClientTasksPage() {
             inboxRequirementById={inboxRequirementById}
             propertyById={propertyById}
             defaultCollapsed
-            emptyHint="No active jobs or workflows in progress."
+            emptyHint={inProgressDisclosure.hint || 'No active jobs or workflows in progress.'}
           />
           {snoozed.length > 0 && (
             <div className="mb-8">
