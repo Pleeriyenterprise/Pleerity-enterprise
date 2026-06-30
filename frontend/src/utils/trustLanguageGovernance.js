@@ -72,6 +72,8 @@ export const COPY_AUTHORITY_REGISTRY = {
   portal_confidence: 'frontend/src/utils/confidenceUxCopy.js',
   portal_freshness: 'frontend/src/utils/scoreFreshnessUi.js',
   portal_workspace: 'frontend/src/utils/workspaceOrientationCopy.js',
+  portal_presentation_authority: 'frontend/src/utils/presentationAuthority.js',
+  portal_lifecycle_copy: 'frontend/src/utils/lifecycleAuthorityCopy.js',
   portal_jurisdiction: 'frontend/src/utils/jurisdictionComplianceCopy.js',
   portal_presentation: 'frontend/src/utils/presentationLanguage.js',
   backend_scoring_copy: 'backend/services/scoring_explanation_copy.py',

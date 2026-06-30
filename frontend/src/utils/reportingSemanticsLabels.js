@@ -9,6 +9,15 @@ export const REPORTING_SEMANTICS_LABELS = {
     tooltip:
       'Items in scope on this page (registry attention view). May differ from score-tracked obligations on the dashboard.',
   },
+  setup_status_tracked_count: {
+    label: 'Actively tracked',
+    tooltip:
+      'Document and job obligations in active operational tracking. Informational or conditional items may appear in the identified total but not here.',
+  },
+  setup_status_identified_count: {
+    label: 'Requirements identified',
+    tooltip: 'All materialised requirement rows for your portfolio, including items outside active tracking.',
+  },
   score_tracked_requirement_count: {
     label: 'Score-tracked obligation groups',
     tooltip:

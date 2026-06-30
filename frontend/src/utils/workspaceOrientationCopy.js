@@ -19,6 +19,14 @@ export const WORKSPACE_TODAY_VS_DASHBOARD =
 export const WORKSPACE_COMMAND_CENTER_PRIMARY =
   'Single-screen portfolio triage — verdict, drivers, and ranked next steps. Execution stays in Today, Requirements, Documents, and Jobs.';
 
+/** Recommendation hierarchy — multiple lenses are intentional; label them for landlords. */
+export const WORKSPACE_RECOMMENDATION_HIERARCHY = [
+  'Onboarding checklist — finish account setup (properties, jurisdictions, first upload).',
+  'Today — operational inbox: do the next task the priority engine surfaced.',
+  'Command Centre — portfolio triage lens: where to focus first across properties (not the full task list).',
+  'Compliance score — KPI recommendations based on tracked requirement status (stored score context).',
+];
+
 export const WORKSPACE_DOCUMENTS_SUBTITLE =
   'Document operations queue — items needing review, linkage, or expiry action appear here first. Settled evidence lives in each property’s Evidence Registry; upload still starts here.';
 

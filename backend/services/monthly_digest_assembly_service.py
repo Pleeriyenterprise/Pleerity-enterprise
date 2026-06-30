@@ -26,6 +26,7 @@ from services.scoring_semantics_v1 import (
     attach_semantics_contract,
     headline_score_display_for_export,
 )
+from services.lifecycle_authority_copy import digest_action_line_suffix
 from utils.expiry_utils import get_effective_expiry_date
 
 from services.monthly_digest_limits import (
@@ -436,16 +437,11 @@ async def assemble_monthly_digest_payload(
             title = (t.get("title") or "Action item").strip()
             section = (t.get("section") or "").lower()
             p_label = (t.get("property_label") or "").strip()
-            suffix = ""
-            if section == "urgent":
-                if (t.get("overdue_days") or 0) > 0:
-                    suffix = " — overdue"
-                else:
-                    suffix = " — urgent"
-            elif t.get("primary_action_type") == "upload_evidence":
-                suffix = " — missing evidence"
-            else:
-                suffix = " — due soon" if section == "upcoming" else ""
+            suffix = digest_action_line_suffix(
+                section=section,
+                overdue_days=int(t.get("overdue_days") or 0),
+                primary_action_type=t.get("primary_action_type"),
+            )
             line = f"{title}{suffix}"
             if p_label:
                 line = f"{line} ({p_label})"

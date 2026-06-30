@@ -21,6 +21,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { buildClientLoginUrlWithNext } from '../utils/clientLoginRedirect';
 import { SUPPORT_EMAIL } from '../config';
 import { toast } from '@/utils/portalNotifications';
+import {
+  parsePortalRequirementCounts,
+  requirementCountHeadlineLines,
+} from '../utils/presentationAuthority';
 
 const POLL_INTERVAL_MS = 5000;
 const POLL_DURATION_MS = 180000;
@@ -283,6 +287,8 @@ const OnboardingStatusPage = () => {
   const provisioningFailed = String(status?.provisioning_status || status?.provisioning_state || '').toUpperCase() === 'FAILED';
   const activationEmailFailed = (status?.activation_email_status || '').toUpperCase() === 'FAILED';
   const nextActionMsg = NEXT_ACTION_MESSAGES[status?.next_action] || status?.next_action;
+  const requirementCounts = parsePortalRequirementCounts(status);
+  const countLines = requirementCountHeadlineLines(requirementCounts);
 
   if (loading && !status) {
     return (
@@ -392,11 +398,19 @@ const OnboardingStatusPage = () => {
                 <p className="text-xs text-gray-500">Properties Registered</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg" data-testid="onboarding-requirement-counts">
               <FileText className="w-5 h-5 text-gray-400" />
               <div>
-                <p className="text-lg font-semibold text-midnight-blue">{status?.requirements_count ?? 0}</p>
-                <p className="text-xs text-gray-500">Requirements Created</p>
+                <p className="text-lg font-semibold text-midnight-blue">{countLines.primary}</p>
+                <p className="text-xs text-gray-500">{countLines.primaryLabel}</p>
+                {countLines.secondary != null && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {countLines.secondary} {countLines.secondaryLabel?.toLowerCase()}
+                  </p>
+                )}
+                {countLines.footnote && (
+                  <p className="text-xs text-slate-600 mt-2 leading-relaxed">{countLines.footnote}</p>
+                )}
               </div>
             </div>
           </div>

@@ -728,8 +728,8 @@ export function buildPortfolioVerdictBlock({
       key: 'missing',
       label:
         missingDisplay === 1
-          ? '1 requirement counted as missing evidence in your latest compliance score'
-          : `${missingDisplay} requirements counted as missing evidence in your latest compliance score`,
+          ? '1 requirement needs evidence in your latest compliance score'
+          : `${missingDisplay} requirements need evidence in your latest compliance score`,
       navTo: '/requirements?status=OVERDUE_OR_MISSING',
     });
   }
