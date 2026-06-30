@@ -1,0 +1,132 @@
+{
+  "programme": "DOCUMENT-LINKAGE-LIFECYCLE-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260630T213224Z",
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL",
+  "source_develop_shas": [
+    "ca6bc796",
+    "611c96f3"
+  ],
+  "main_sha_before": "6799b4e824ab48b9098d342f36f67e70e0567300",
+  "main_sha_after_promotion": "64539c30",
+  "main_commits_cherry_picked": {
+    "ca6bc796": "368234fe",
+    "611c96f3": "64539c30"
+  },
+  "production_deployed_sha": "64539c30e9cea988f9afdb407229e3ce137e2813",
+  "backend_deploy_required": true,
+  "backend_deploy": {
+    "ready": true,
+    "version": {
+      "commit_sha": "64539c30e9cea988f9afdb407229e3ce137e2813",
+      "environment": "production"
+    }
+  },
+  "frontend": {
+    "url": "https://pleerityenterprise.co.uk",
+    "deployment_id": "dpl_2sS2cGTyGyq5oaggSLtiduUyAnJz",
+    "deployment_url": "https://pleerity-enterprise-k6t57pun1-victory-aigbochies-projects.vercel.app",
+    "bundle": "/static/js/main.e2de8183.js",
+    "bundle_sha256": "c1ab132a6909b7a8b265cd13b7b369b6ea22ce862c384d4bb460edbca42331c1",
+    "markers": {
+      "viewLinkedEvidence": true,
+      "openOnlyIssues": true,
+      "issueLifecycleAuthority": false,
+      "prod_api_url": true,
+      "staging_api_url": false
+    }
+  },
+  "smoke": {
+    "homepage_status": 200,
+    "api_health": "healthy",
+    "api_environment": "production",
+    "api_version_sha": "64539c30e9cea988f9afdb407229e3ce137e2813",
+    "backend_deploy_ready": true,
+    "bundle": {
+      "index_status": 200,
+      "main_script": "/static/js/main.e2de8183.js",
+      "bundle_status": 200,
+      "bundle_sha256": "c1ab132a6909b7a8b265cd13b7b369b6ea22ce862c384d4bb460edbca42331c1",
+      "markers": {
+        "viewLinkedEvidence": true,
+        "openOnlyIssues": true,
+        "issueLifecycleAuthority": false,
+        "prod_api_url": true,
+        "staging_api_url": false
+      }
+    },
+    "frontend_prod_api": true,
+    "frontend_no_staging_api": true,
+    "linkage_lifecycle_markers": true,
+    "unauth_probes": {
+      "dashboard": 401,
+      "requirements": 401,
+      "issues": 401,
+      "documents": 401
+    },
+    "authenticated": {
+      "error": "Client error '401 Unauthorized' for url 'https://api.pleerityenterprise.co.uk/api/auth/login'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401",
+      "authenticated_smoke_skipped": true
+    },
+    "authenticated_smoke_skipped": true,
+    "auth_error": "Client error '401 Unauthorized' for url 'https://api.pleerityenterprise.co.uk/api/auth/login'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401"
+  },
+  "checks": {
+    "issues_page_loads": false,
+    "document_operations_loads": false,
+    "issue_drawer_loads": false,
+    "resolved_not_in_open_issues": false,
+    "open_kpi_excludes_resolved": false,
+    "resolved_historically_visible": false,
+    "cta_view_linked_evidence": false,
+    "need_attention_no_linked_docs": false,
+    "today_no_stale_linkage": true,
+    "dashboard_no_stale": false,
+    "command_centre_no_stale": true,
+    "backend_deployed": true,
+    "frontend_markers": true,
+    "prod_api_embedded": true,
+    "no_staging_api": true,
+    "requirements_regression": false,
+    "today_regression": false,
+    "dashboard_api_protected": true,
+    "issues_api_protected": true,
+    "api_health_ok": true,
+    "production_environment": true
+  },
+  "commits_included": [
+    "368234fe fix(documents): auto-resolve linkage issues after evidence linking",
+    "64539c30 docs(documents): add linkage lifecycle staging validation evidence"
+  ],
+  "files_included": [
+    "backend/services/document_linkage_lifecycle_authority.py",
+    "backend/services/compliance_gap_sync.py",
+    "backend/services/compliance_gap_operational_bridge.py",
+    "backend/routes/documents.py",
+    "backend/routes/client_maintenance.py",
+    "backend/services/maintenance_issues_service.py",
+    "backend/tests/test_document_linkage_lifecycle_authority_01.py",
+    "backend/docs/DOCUMENT_LINKAGE_LIFECYCLE_AUTHORITY.md",
+    "backend/docs/audit/document_linkage_lifecycle_authority_01/*",
+    "frontend/src/utils/issueLifecycleAuthority.js",
+    "frontend/src/utils/issueLifecycleAuthority.test.js",
+    "frontend/src/utils/primaryActionResolver.js",
+    "frontend/src/pages/ClientIssuesPage.js"
+  ],
+  "files_excluded": [
+    "backend/services/operational_cognition_service.py",
+    "lifecycle-kpi-wip",
+    "All other develop commits",
+    "All tmp scripts",
+    "render.production.yaml",
+    "Production reconciliation scripts"
+  ],
+  "production_reconciliation_executed": false,
+  "production_config_modified": false,
+  "develop_merged_to_main": false,
+  "remaining_risks": [
+    "Authenticated production smoke skipped \u2014 staging OPS credentials not valid on production MongoDB (401). Manual landlord walkthrough recommended within 24h.",
+    "Backend unit test test_auto_resolve_issues_by_operational_root_keys requires CEG module absent on main branch (10/11 pass locally)."
+  ],
+  "production_recommendation": "GO \u2014 monitor Open Issues KPI for linkage bridge issues over next 24h.",
+  "rollback_recommendation": "Revert main to 6799b4e824ab48b9098d342f36f67e70e0567300; Vercel production rollback; no DB migration."
+}
