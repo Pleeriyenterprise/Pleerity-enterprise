@@ -41,23 +41,27 @@ function matrixRow(id, code, status) {
   };
 }
 
+function stubApis() {
+  jest.spyOn(clientAPI, 'getMaintenanceWorkOrders').mockResolvedValue({ data: { jobs: [] } });
+  jest.spyOn(clientAPI, 'getMaintenanceIssues').mockResolvedValue({ data: { issues: [] } });
+  jest.spyOn(clientAPI, 'getPredictiveInsights').mockResolvedValue({ data: { items: [] } });
+  jest.spyOn(clientAPI, 'getPropertyRiskSignals').mockResolvedValue({ data: { items: [] } });
+  jest.spyOn(clientAPI, 'getCommandCenter').mockResolvedValue({ data: { tasks: [] } });
+  jest.spyOn(clientAPI, 'getPropertyAssets').mockResolvedValue({ data: { assets: [] } });
+  jest.spyOn(clientAPI, 'getDocuments').mockResolvedValue({ data: { documents: [] } });
+  jest.spyOn(clientAPI, 'getPropertyEvidence').mockResolvedValue({ data: { records: [] } });
+  jest.spyOn(clientAPI, 'getPropertyComplianceScoreExplanation').mockResolvedValue({ data: {} });
+  jest.spyOn(clientAPI, 'getPropertyTimeline').mockResolvedValue({ data: { items: [] } });
+}
+
 describe('PropertyDetailPage Valid KPI parity', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
     mockNavigate.mockReset();
-    jest.spyOn(clientAPI, 'getMaintenanceWorkOrders').mockResolvedValue({ data: { jobs: [] } });
-    jest.spyOn(clientAPI, 'getMaintenanceIssues').mockResolvedValue({ data: { issues: [] } });
-    jest.spyOn(clientAPI, 'getPredictiveInsights').mockResolvedValue({ data: { items: [] } });
-    jest.spyOn(clientAPI, 'getPropertyRiskSignals').mockResolvedValue({ data: { items: [] } });
-    jest.spyOn(clientAPI, 'getCommandCenter').mockResolvedValue({ data: { tasks: [] } });
-    jest.spyOn(clientAPI, 'getPropertyAssets').mockResolvedValue({ data: { assets: [] } });
-    jest.spyOn(clientAPI, 'getDocuments').mockResolvedValue({ data: { documents: [] } });
-    jest.spyOn(clientAPI, 'getPropertyEvidence').mockResolvedValue({ data: { records: [] } });
-    jest.spyOn(clientAPI, 'getPropertyComplianceScoreExplanation').mockResolvedValue({ data: {} });
-    jest.spyOn(clientAPI, 'getPropertyTimeline').mockResolvedValue({ data: { items: [] } });
+    stubApis();
   });
 
-  it('Valid tile uses kpis.status_valid and matches VALID filter count (Property A pattern)', async () => {
+  it('Valid for scoring uses kpis.status_valid and matches VALID filter count (Property A pattern)', async () => {
     const matrix = [
       matrixRow('r-gas', 'gas_safety', 'PENDING'),
       matrixRow('r-leg', 'legionella', 'PENDING'),
@@ -67,7 +71,14 @@ describe('PropertyDetailPage Valid KPI parity', () => {
       data: {
         property_name: 'Cottage',
         matrix,
-        kpis: { compliant: 2, status_valid: 0, missing: 1, overdue: 0, expiring_30: 0 },
+        kpis: {
+          compliant: 2,
+          status_valid: 0,
+          lifecycle_satisfied_count: 2,
+          missing: 1,
+          overdue: 0,
+          expiring_30: 0,
+        },
       },
     });
 
@@ -76,17 +87,17 @@ describe('PropertyDetailPage Valid KPI parity', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Compliance' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Valid \(0\)/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Valid for scoring \(0\)/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Valid \(0\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Valid for scoring \(0\)/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/No requirements match what you are viewing/i)).toBeInTheDocument();
     });
   });
 
-  it('Valid tile and filter both show COMPLIANT rows (Property B pattern)', async () => {
+  it('Valid for scoring filter shows COMPLIANT rows (Property B pattern)', async () => {
     const matrix = [
       matrixRow('r-eicr', 'eicr', 'COMPLIANT'),
       matrixRow('r-epc', 'epc', 'COMPLIANT'),
@@ -96,7 +107,14 @@ describe('PropertyDetailPage Valid KPI parity', () => {
       data: {
         property_name: 'Flat',
         matrix,
-        kpis: { compliant: 3, status_valid: 3, missing: 0, overdue: 0, expiring_30: 0 },
+        kpis: {
+          compliant: 3,
+          status_valid: 3,
+          lifecycle_satisfied_count: 3,
+          missing: 0,
+          overdue: 0,
+          expiring_30: 0,
+        },
       },
     });
 
@@ -105,10 +123,10 @@ describe('PropertyDetailPage Valid KPI parity', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Compliance' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Valid \(3\)/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Valid for scoring \(3\)/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Valid \(3\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Valid for scoring \(3\)/i }));
 
     await waitFor(() => {
       expect(screen.getAllByText(/eicr|epc|legionella/i).length).toBeGreaterThanOrEqual(3);

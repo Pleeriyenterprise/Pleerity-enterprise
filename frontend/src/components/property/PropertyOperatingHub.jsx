@@ -37,6 +37,9 @@ import {
   getRequirementLifecycleCardShellClass,
 } from '../../utils/requirementLifecyclePresentation';
 import {
+  propertyDetailComplianceKpiLabels,
+} from '../../utils/propertyDetailComplianceKpiPresentation';
+import {
   PortalLoadingPanel,
   portalPrimaryButtonClass,
   portalSecondaryButtonClass,
@@ -421,19 +424,38 @@ export default function PropertyOperatingHub({
         </h2>
         {(() => {
           const sum = getComplianceSummary();
+          const kpiLabels = propertyDetailComplianceKpiLabels();
           return (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-4 text-center">
               {[
-                { label: 'Overdue', count: sum.overdue, filter: 'OVERDUE', tone: 'text-red-600' },
-                { label: 'Expiring', count: sum.expiringSoon, filter: 'EXPIRING_SOON', tone: 'text-amber-600' },
-                { label: 'Missing documents', count: sum.missingDocuments, filter: 'MISSING', tone: 'text-midnight-blue' },
-                { label: 'Valid', count: sum.valid, filter: 'VALID', tone: 'text-green-700' },
+                { label: 'Overdue', count: sum.overdue, filter: 'OVERDUE', tone: 'text-red-600', tooltip: null },
+                { label: 'Expiring', count: sum.expiringSoon, filter: 'EXPIRING_SOON', tone: 'text-amber-600', tooltip: null },
+                { label: 'Missing documents', count: sum.missingDocuments, filter: 'MISSING', tone: 'text-midnight-blue', tooltip: null },
+                {
+                  label: kpiLabels.requirementsSatisfied.label,
+                  count: sum.requirementsSatisfied ?? '—',
+                  filter: null,
+                  tone: 'text-teal-700',
+                  tooltip: kpiLabels.requirementsSatisfied.tooltip,
+                },
+                {
+                  label: kpiLabels.validForScoring.label,
+                  count: sum.validForScoring ?? '—',
+                  filter: 'VALID',
+                  tone: 'text-green-700',
+                  tooltip: kpiLabels.validForScoring.tooltip,
+                },
               ].map((p) => (
                 <button
-                  key={p.filter}
+                  key={p.label}
                   type="button"
+                  title={p.tooltip || undefined}
                   onClick={() => {
-                    setComplianceStatusFilter(p.filter === 'VALID' ? 'VALID' : p.filter);
+                    if (p.filter) {
+                      setComplianceStatusFilter(p.filter === 'VALID' ? 'VALID' : p.filter);
+                    } else {
+                      setComplianceStatusFilter('');
+                    }
                     onSelectTab(TAB_COMPLIANCE);
                   }}
                   className="rounded-lg border border-gray-200 bg-white px-2 py-3 text-left hover:bg-gray-50 min-h-[4.5rem]"

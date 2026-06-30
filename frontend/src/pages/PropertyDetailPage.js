@@ -163,6 +163,11 @@ import { PROPERTY_DETAIL_STORED_VS_PREVIEW_NOTE } from '../utils/scoreFreshnessU
 import { SCORE_AREA_SHORT_LABELS } from '../utils/scoringExplanationCopy';
 import { WORKSPACE_PROPERTY_SCORE_STRIP_FOOTNOTE } from '../utils/workspaceOrientationCopy';
 import { NotApplicableGovernedNotice } from '../utils/notApplicableGovernedCopy';
+import {
+  PROPERTY_DETAIL_COMPLIANCE_KPI_EXPLANATION,
+  propertyDetailComplianceKpiCountsFromApi,
+  propertyDetailComplianceKpiLabels,
+} from '../utils/propertyDetailComplianceKpiPresentation';
 
 const NOT_REQUIRED_REASONS = [
   { value: 'no_gas_supply', label: 'No gas supply' },
@@ -1419,9 +1424,13 @@ export default function PropertyDetailPage() {
     const kpis = complianceDetail?.kpis || {};
     const total = requirements.length;
     const missingFromRequirements = requirements.filter(isRequirementMissingDocument).length;
+    const apiCounts = propertyDetailComplianceKpiCountsFromApi(complianceDetail?.kpis);
     return {
       totalApplicable: total,
-      valid: kpis.status_valid ?? requirements.filter((r) => ['COMPLIANT', 'VALID'].includes((r.status || '').toUpperCase())).length,
+      validForScoring: apiCounts.validForScoring,
+      requirementsSatisfied: apiCounts.requirementsSatisfied,
+      /** @deprecated use validForScoring — kept for legacy test stubs */
+      valid: apiCounts.validForScoring,
       expiringSoon: kpis.expiring_30 ?? requirements.filter((r) => (r.status || '').toUpperCase() === 'EXPIRING_SOON').length,
       overdue: kpis.overdue ?? requirements.filter((r) => ['OVERDUE', 'EXPIRED'].includes((r.status || '').toUpperCase())).length,
       missingDocuments: requirements.length ? missingFromRequirements : (kpis.missing ?? 0),
@@ -1992,15 +2001,24 @@ export default function PropertyDetailPage() {
           <Card className="border border-electric-teal/25 bg-electric-teal/[0.06]">
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-midnight-blue">Compliance priority for this property</CardTitle>
-              <CardDescription>Counts follow the requirements table below — one list, same definitions.</CardDescription>
+              <CardDescription>{PROPERTY_DETAIL_COMPLIANCE_KPI_EXPLANATION}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               {(() => {
                 const sum = getComplianceSummary();
+                const kpiLabels = propertyDetailComplianceKpiLabels();
                 const nextDue = getNextDueDate();
                 return (
                   <>
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-midnight-blue">
+                      <span title={kpiLabels.requirementsSatisfied.tooltip}>
+                        <strong className="tabular-nums">{sum.requirementsSatisfied ?? '—'}</strong>{' '}
+                        {kpiLabels.requirementsSatisfied.label.toLowerCase()}
+                      </span>
+                      <span title={kpiLabels.validForScoring.tooltip}>
+                        <strong className="tabular-nums">{sum.validForScoring ?? '—'}</strong>{' '}
+                        {kpiLabels.validForScoring.label.toLowerCase()}
+                      </span>
                       <span>
                         <strong className="tabular-nums">{sum.missingDocuments}</strong> missing documents
                       </span>
@@ -2021,8 +2039,8 @@ export default function PropertyDetailPage() {
                       <Button type="button" variant={complianceStatusFilter === '' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === '' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('')}>
                         All requirements ({sum.totalApplicable})
                       </Button>
-                      <Button type="button" variant={complianceStatusFilter === 'VALID' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'VALID' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('VALID')}>
-                        Valid ({sum.valid})
+                      <Button type="button" variant={complianceStatusFilter === 'VALID' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'VALID' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('VALID')} title={kpiLabels.validForScoring.tooltip}>
+                        {kpiLabels.validForScoring.label} ({sum.validForScoring ?? 0})
                       </Button>
                       <Button type="button" variant={complianceStatusFilter === 'EXPIRING_SOON' ? 'default' : 'outline'} size="sm" className={complianceStatusFilter === 'EXPIRING_SOON' ? 'bg-electric-teal text-white' : 'border-gray-200'} onClick={() => setComplianceStatusFilter('EXPIRING_SOON')}>
                         Expiring ({sum.expiringSoon})

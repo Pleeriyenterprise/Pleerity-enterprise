@@ -1,0 +1,82 @@
+{
+  "task_id": "PROPERTY-DETAIL-PRESENTATION-AUTHORITY-ALIGNMENT-01",
+  "completed_at": "2026-06-30T23:00:00Z",
+  "branch": "develop",
+  "production_touched": false,
+  "authority_changed": false,
+  "presentation_changed": true,
+  "before_after": {
+    "before": {
+      "operating_hub_valid_label": "Valid",
+      "compliance_filter_valid_label": "Valid",
+      "requirements_satisfied_shown": false,
+      "card_description": "Counts follow the requirements table below — one list, same definitions."
+    },
+    "after": {
+      "operating_hub_valid_label": "Valid for scoring",
+      "operating_hub_satisfied_label": "Requirements satisfied",
+      "compliance_filter_valid_label": "Valid for scoring",
+      "requirements_satisfied_shown": true,
+      "card_description": "PROPERTY_DETAIL_COMPLIANCE_KPI_EXPLANATION — dual-metric governed copy"
+    }
+  },
+  "label_mapping": {
+    "requirements_satisfied": {
+      "label_source": "REPORTING_SEMANTICS_LABELS.lifecycle_satisfied_count.label",
+      "tooltip_source": "REPORTING_SEMANTICS_LABELS.lifecycle_satisfied_count.tooltip",
+      "api_field": "kpis.lifecycle_satisfied_count",
+      "backend_authority": "is_requirement_satisfied"
+    },
+    "valid_for_scoring": {
+      "label_source": "REPORTING_SEMANTICS_LABELS.compliant_requirement_count.label",
+      "tooltip_source": "REPORTING_SEMANTICS_LABELS.compliant_requirement_count.tooltip",
+      "api_field": "kpis.status_valid",
+      "backend_authority": "projected status COMPLIANT or VALID"
+    }
+  },
+  "api_mapping": {
+    "endpoint": "GET /api/portfolio/properties/{property_id}/compliance-detail",
+    "new_field": "kpis.lifecycle_satisfied_count",
+    "unchanged_fields": ["kpis.status_valid", "kpis.overdue", "kpis.expiring_30", "kpis.missing", "kpis.compliant"]
+  },
+  "presentation_mapping": {
+    "helper": "frontend/src/utils/propertyDetailComplianceKpiPresentation.js",
+    "consumers": [
+      "PropertyDetailPage.js",
+      "PropertyOperatingHub.jsx"
+    ],
+    "frontend_inference": false
+  },
+  "changed_files": [
+    "backend/services/catalog_compliance.py",
+    "backend/routes/portfolio.py",
+    "backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md",
+    "frontend/src/utils/propertyDetailComplianceKpiPresentation.js",
+    "frontend/src/utils/reportingSemanticsLabels.js",
+    "frontend/src/pages/PropertyDetailPage.js",
+    "frontend/src/components/property/PropertyOperatingHub.jsx",
+    "backend/tests/test_catalog_compliance_kpi_status_valid.py",
+    "frontend/src/utils/propertyDetailComplianceKpiPresentation.test.js",
+    "frontend/src/pages/PropertyDetailPage.validKpiParity.test.js",
+    "frontend/src/pages/PropertyDetailPage.presentationAuthority.test.js"
+  ],
+  "tests": {
+    "backend": {
+      "file": "tests/test_catalog_compliance_kpi_status_valid.py",
+      "passed": 4
+    },
+    "frontend": {
+      "files": [
+        "propertyDetailComplianceKpiPresentation.test.js",
+        "PropertyDetailPage.validKpiParity.test.js",
+        "PropertyDetailPage.presentationAuthority.test.js"
+      ],
+      "passed": 12
+    }
+  },
+  "remaining_risks": [
+    "Deploy backend before frontend to avoid em-dash for lifecycle_satisfied_count",
+    "Satisfied tile navigates to all requirements — no new filter (by design)"
+  ],
+  "production_recommendation": "Deploy backend and frontend together; presentation-only — no RAOD/score migration required"
+}
