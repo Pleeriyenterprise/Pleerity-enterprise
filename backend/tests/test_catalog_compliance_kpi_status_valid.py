@@ -67,8 +67,8 @@ async def test_status_valid_zero_when_pending_non_missing_evidence_but_compliant
     db = _base_db()
     enriched = [
         _row(rid="r-gas", code="gas_safety", status="PENDING", missing_evidence=True),
-        _row(rid="r-leg", code="legionella", status="PENDING", missing_evidence=False),
-        _row(rid="r-hmo", code="hmo_fire_risk", status="PENDING", missing_evidence=False),
+        _row(rid="r-leg", code="legionella", status="PENDING", missing_evidence=False, satisfied=True),
+        _row(rid="r-hmo", code="hmo_fire_risk", status="PENDING", missing_evidence=False, satisfied=True),
     ]
     with ExitStack() as stack:
         _apply_catalog_patches(stack, db, enriched)
@@ -78,6 +78,26 @@ async def test_status_valid_zero_when_pending_non_missing_evidence_but_compliant
     assert result["kpis"]["compliant"] == 2
     assert result["kpis"]["status_valid"] == 0
     assert result["kpis"]["missing"] == 1
+    assert result["kpis"]["lifecycle_satisfied_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_lifecycle_satisfied_counts_satisfied_rows_independent_of_status_valid():
+    """Mixed evidence: PENDING satisfied rows count toward lifecycle_satisfied, not status_valid."""
+    db = _base_db()
+    enriched = [
+        _row(rid="r-eicr", code="eicr", status="COMPLIANT", missing_evidence=False, satisfied=True),
+        _row(rid="r-epc", code="epc", status="COMPLIANT", missing_evidence=False, satisfied=True),
+        _row(rid="r-leg", code="legionella", status="PENDING", missing_evidence=False, satisfied=True),
+        _row(rid="r-fire", code="fire_risk", status="PENDING", missing_evidence=False, satisfied=True),
+        _row(rid="r-hmo", code="hmo_fire_risk", status="PENDING", missing_evidence=False, satisfied=True),
+    ]
+    with ExitStack() as stack:
+        _apply_catalog_patches(stack, db, enriched)
+        result = await get_property_compliance_detail("client-1", "prop-mixed")
+
+    assert result["kpis"]["status_valid"] == 2
+    assert result["kpis"]["lifecycle_satisfied_count"] == 5
 
 
 @pytest.mark.asyncio
@@ -97,6 +117,7 @@ async def test_status_valid_matches_compliant_status_rows():
     assert result["kpis"]["compliant"] == 3
     assert result["kpis"]["status_valid"] == 3
     assert result["kpis"]["missing"] == 0
+    assert result["kpis"]["lifecycle_satisfied_count"] == 3
 
 
 @pytest.mark.asyncio

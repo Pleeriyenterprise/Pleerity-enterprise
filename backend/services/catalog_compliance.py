@@ -238,7 +238,14 @@ async def get_property_compliance_detail(
     high_missing = 0
     high_expiring = 0
     high_total = 0
-    kpis = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0}
+    kpis = {
+        "overdue": 0,
+        "expiring_30": 0,
+        "missing": 0,
+        "compliant": 0,
+        "status_valid": 0,
+        "lifecycle_satisfied_count": 0,
+    }
 
     for row in enriched:
         code = str(row.get("canonical_code") or row.get("requirement_code") or row.get("requirement_type") or "").strip().lower()
@@ -254,6 +261,10 @@ async def get_property_compliance_detail(
             high_total += 1
         if (row.get("applicability") or "").strip().upper() == "NOT_REQUIRED":
             continue
+        from services.requirement_satisfaction_service import is_requirement_satisfied
+
+        if is_requirement_satisfied(row):
+            kpis["lifecycle_satisfied_count"] += 1
         proj = project_requirement_row_client_runtime(dict(row))
         status = str(proj.get("status") or "PENDING").strip().upper()
         due_date = proj.get("due_date")
@@ -400,13 +411,27 @@ async def get_portfolio_compliance_from_catalog(
             "portfolio_risk_level": None,
             "risk_level": None,
             "updated_at": datetime.now(timezone.utc).isoformat(),
-            "kpis": {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0},
+            "kpis": {
+                "overdue": 0,
+                "expiring_30": 0,
+                "missing": 0,
+                "compliant": 0,
+                "status_valid": 0,
+                "lifecycle_satisfied_count": 0,
+            },
             "properties": [],
         }
     total_weighted = 0.0
     total_weights = 0.0
     portfolio_risk_level = "Low Risk"
-    kpis_agg = {"overdue": 0, "expiring_30": 0, "missing": 0, "compliant": 0, "status_valid": 0}
+    kpis_agg = {
+        "overdue": 0,
+        "expiring_30": 0,
+        "missing": 0,
+        "compliant": 0,
+        "status_valid": 0,
+        "lifecycle_satisfied_count": 0,
+    }
     property_list = []
     for prop in properties:
         detail = await get_property_compliance_detail(client_id, prop["property_id"])
