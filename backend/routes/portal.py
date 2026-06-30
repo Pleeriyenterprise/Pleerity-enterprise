@@ -92,6 +92,47 @@ def _password_state(portal_user: dict | None) -> str:
     return "set" if ps == "SET" else "not_sent"
 
 
+async def _portal_requirement_count_semantics(
+    db,
+    client_id: str,
+    client_doc: dict,
+    property_ids: list[str],
+) -> dict:
+    """
+    Semantic requirement counts for onboarding/setup-status polling.
+
+    ``requirements_count`` (legacy) remains raw Mongo materialised rows per property.
+    Tracked-attention count mirrors Requirements page / reporting_semantics_v1 parity.
+    """
+    if not property_ids:
+        return {
+            "requirements_runtime_visible_count": 0,
+            "requirements_tracked_attention_count": 0,
+            "requirements_count_semantics": "tracked_attention_document_job_excludes_obligation",
+        }
+    from services.reporting_semantics_v1 import requirement_row_in_tracked_attention_views
+    from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
+    from services.requirement_truth import enrich_requirements_for_client
+
+    requirements = await db.requirements.find({"client_id": client_id}, {"_id": 0}).to_list(10000)
+    properties = await db.properties.find({"client_id": client_id}, {"_id": 0}).to_list(1000)
+    filtered = await filter_requirement_rows_for_client_runtime_surfaces(
+        db,
+        client_id=client_id,
+        requirements=requirements,
+        client_doc=client_doc,
+        properties=properties,
+    )
+    enriched, _ = await enrich_requirements_for_client(db, client_id, list(filtered))
+    visible = [r for r in enriched if r.get("client_surface_visible") is not False]
+    tracked = [r for r in visible if requirement_row_in_tracked_attention_views(r)]
+    return {
+        "requirements_runtime_visible_count": len(visible),
+        "requirements_tracked_attention_count": len(tracked),
+        "requirements_count_semantics": "tracked_attention_document_job_excludes_obligation",
+    }
+
+
 def _next_action(payment_state: str, provisioning_state: str, password_state: str) -> str:
     """Returns: pay | wait_provisioning | set_password | go_to_dashboard."""
     if payment_state == "unpaid":
@@ -175,6 +216,9 @@ async def get_setup_status(
         {"client_id": resolved_client_id}, {"property_id": 1})]
     requirements_count = await db.requirements.count_documents(
         {"property_id": {"$in": property_ids}}) if property_ids else 0
+    requirement_count_semantics = await _portal_requirement_count_semantics(
+        db, resolved_client_id, client, property_ids
+    )
 
     # Over-limit (downgrade): active count vs plan limit; no data deletion
     over_limit = False
@@ -286,6 +330,7 @@ async def get_setup_status(
         "last_error": last_error,
         "properties_count": properties_count,
         "requirements_count": requirements_count,
+        **requirement_count_semantics,
         "support_email": SUPPORT_EMAIL,
         "over_limit": over_limit,
         "over_limit_details": over_limit_details,

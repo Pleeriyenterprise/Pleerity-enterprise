@@ -1,0 +1,403 @@
+{
+  "programme": "REQUIREMENT-AUTHORITY-ONBOARDING-DRIFT-STAGING-VALIDATION-01",
+  "run_tag": "20260630T142001Z",
+  "validated_at": "2026-06-30T14:21:18.402402+00:00",
+  "branch": "develop",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "mode": "shadow_local_code_plus_http_baseline",
+  "production_touched": false,
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "command": "python -m pytest tests/test_requirement_authority_onboarding_drift_01.py -v --tb=line",
+    "output_tail": "============================= test session starts =============================\nplatform win32 -- Python 3.12.7, pytest-9.0.2, pluggy-1.6.0 -- C:\\Program Files\\Python312\\python.exe\ncachedir: .pytest_cache\nrootdir: C:\\pleerity-workspace\\Pleerity-enterprise\\backend\nconfigfile: pytest.ini\nplugins: anyio-4.12.0, postmarker-1.0, asyncio-1.3.0\nasyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function\ncollecting ... collected 5 items\n\ntests/test_requirement_authority_onboarding_drift_01.py::test_wales_occupation_contract_alias_family_dedupes_duplicate_slugs PASSED [ 20%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_provisioning_skips_db_occupation_contract_when_wales_catalog_planned PASSED [ 40%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_electrical_risk_does_not_fire_on_pending_eicr_only PASSED [ 60%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_electrical_risk_fires_on_overdue_eicr PASSED [ 80%]\ntests/test_requirement_authority_onboarding_drift_01.py::test_portal_setup_status_exposes_tracked_attention_semantics PASSED [100%]\n\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================== 5 passed, 4 warnings in 0.20s ========================\n"
+  },
+  "staging_version": {
+    "status": 200,
+    "body": {
+      "commit_sha": "817977e46638184b90bb465ffaac2db5992c6cde",
+      "environment": "staging"
+    }
+  },
+  "client_resolution": {
+    "search_crn": "PLE-CVP-2026-000003",
+    "resolved_via": "customer_reference"
+  },
+  "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+  "shadow_validation": {
+    "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+    "customer_reference": "PLE-CVP-2026-000003",
+    "property_count": 2,
+    "raw_requirement_count": 18,
+    "semantics": {
+      "requirements_runtime_visible_count": 12,
+      "requirements_tracked_attention_count": 12,
+      "requirements_count_semantics": "tracked_attention_document_job_excludes_obligation"
+    },
+    "shadow_tracked_attention_count": 12,
+    "shadow_runtime_visible_count": 12,
+    "count_semantics_pass": true,
+    "wales_occupation_checks": [],
+    "wales_occupation_pass": null,
+    "eicr_electrical_risk_checks": [
+      {
+        "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+        "eicr_statuses": [
+          "PENDING"
+        ],
+        "shadow_generated_electrical_count": 0,
+        "shadow_pass_no_electrical_on_pending": true,
+        "mongo_active_electrical_legacy_deploy": 0,
+        "mongo_active_electrical_sample": []
+      },
+      {
+        "property_id": "5afab08d-ae91-4648-b3e4-cfd041bf06dc",
+        "eicr_statuses": [
+          "PENDING"
+        ],
+        "shadow_generated_electrical_count": 0,
+        "shadow_pass_no_electrical_on_pending": true,
+        "mongo_active_electrical_legacy_deploy": 0,
+        "mongo_active_electrical_sample": []
+      }
+    ],
+    "eicr_electrical_pass": true,
+    "reconcile_assessment": {
+      "clients_with_raw_occupation_duplicate_pairs": 0,
+      "properties_needing_reconcile": []
+    }
+  },
+  "duplicate_occupation_client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "duplicate_occupation_shadow": {
+    "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+    "customer_reference": "PLE-CVP-2026-000040",
+    "property_count": 8,
+    "raw_requirement_count": 107,
+    "semantics": {
+      "requirements_runtime_visible_count": 64,
+      "requirements_tracked_attention_count": 64,
+      "requirements_count_semantics": "tracked_attention_document_job_excludes_obligation"
+    },
+    "shadow_tracked_attention_count": 64,
+    "shadow_runtime_visible_count": 64,
+    "count_semantics_pass": true,
+    "wales_occupation_checks": [
+      {
+        "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "property_name": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+        "raw_occupation_row_count": 2,
+        "raw_occupation_types": [
+          "occupation_contract",
+          "wales_occupation_contract"
+        ],
+        "runtime_visible_occupation_count": 1,
+        "runtime_visible_occupation_types": [
+          "occupation_contract"
+        ],
+        "pass_one_visible": true,
+        "raw_duplicate_pair": true
+      },
+      {
+        "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
+        "property_name": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
+        "raw_occupation_row_count": 1,
+        "raw_occupation_types": [
+          "occupation_contract"
+        ],
+        "runtime_visible_occupation_count": 1,
+        "runtime_visible_occupation_types": [
+          "occupation_contract"
+        ],
+        "pass_one_visible": true,
+        "raw_duplicate_pair": false
+      },
+      {
+        "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5",
+        "property_name": "73cad925-c2bd-481f-8026-a38ea3e212d5",
+        "raw_occupation_row_count": 1,
+        "raw_occupation_types": [
+          "occupation_contract"
+        ],
+        "runtime_visible_occupation_count": 1,
+        "runtime_visible_occupation_types": [
+          "occupation_contract"
+        ],
+        "pass_one_visible": true,
+        "raw_duplicate_pair": false
+      }
+    ],
+    "wales_occupation_pass": true,
+    "eicr_electrical_risk_checks": [
+      {
+        "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c",
+        "eicr_statuses": [
+          "PENDING"
+        ],
+        "shadow_generated_electrical_count": 0,
+        "shadow_pass_no_electrical_on_pending": true,
+        "mongo_active_electrical_legacy_deploy": 1,
+        "mongo_active_electrical_sample": [
+          {
+            "signal_id": "rs_8c9617573392",
+            "status": "active",
+            "reasons": [
+              "EICR overdue or missing"
+            ]
+          }
+        ]
+      }
+    ],
+    "eicr_electrical_pass": true,
+    "reconcile_assessment": {
+      "clients_with_raw_occupation_duplicate_pairs": 1,
+      "properties_needing_reconcile": [
+        {
+          "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "property_name": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+          "raw_types": [
+            "occupation_contract",
+            "wales_occupation_contract"
+          ],
+          "runtime_deduped_to": 1,
+          "reconcile_recommended": true,
+          "reason": "Raw Mongo retains duplicate rows; runtime dedupe hides in client surfaces"
+        }
+      ]
+    }
+  },
+  "impersonation": {
+    "admin_login": true,
+    "impersonation_status": 403,
+    "impersonation_detail": "{\"detail\":\"Target user is not active\"}"
+  },
+  "impersonation_duplicate_client": {
+    "admin_login": true,
+    "impersonation_status": 200
+  },
+  "http_client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "http_validation": {
+    "samples": {
+      "setup_status": {
+        "status": 200,
+        "elapsed_ms": 1693.19,
+        "body": {
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "customer_reference": "PLE-CVP-2026-000040",
+          "crn": "PLE-CVP-2026-000040",
+          "client_name": "David Miller",
+          "billing_plan": "PLAN_2_PORTFOLIO",
+          "intake_submitted": true,
+          "payment_state": "paid",
+          "subscription_status": "ACTIVE",
+          "provisioning_status": "COMPLETED",
+          "provisioning_state": "completed",
+          "portal_user_exists": true,
+          "portal_user_created": true,
+          "portal_user_created_at": "2026-05-15T20:43:12.807000",
+          "activation_email_status": "SENT",
+          "activation_email_sent_at": "2026-05-15T20:43:18.427000",
+          "activation_email_last_sent_at": "2026-05-15T20:43:18.427000",
+          "activation_email_to_masked": "dav***@yo***",
+          "masked_email": "dav***@yo***",
+          "activation_email_error": null,
+          "password_set": true,
+          "password_reset_sent": true,
+          "password_state": "set",
+          "next_action": "go_to_dashboard",
+          "last_error": null,
+          "properties_count": 8,
+          "requirements_count": 107,
+          "support_email": "info@pleerityenterprise.co.uk",
+          "over_limit": false,
+          "over_limit_details": {
+            "properties": {
+              "active": 8,
+              "allowed": 10
+            }
+          }
+        }
+      },
+      "requirements": {
+        "status": 200,
+        "elapsed_ms": 4227.38,
+        "row_count": 65,
+        "http_tracked_attention_count": 65,
+        "occupation_visible": [
+          {
+            "requirement_id": "14678d6e-f00f-4c43-88fe-5ecf59fb4b23",
+            "requirement_type": "occupation_contract",
+            "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1"
+          },
+          {
+            "requirement_id": "a9bf3fb6-6911-482f-928f-6dfd77b17005",
+            "requirement_type": "wales_occupation_contract",
+            "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1"
+          },
+          {
+            "requirement_id": "c7ac9d01-ce62-45b1-91a2-9bb67daca285",
+            "requirement_type": "occupation_contract",
+            "property_id": "68f8755a-e7d8-4572-b7fc-6f79ad5b430c"
+          },
+          {
+            "requirement_id": "f8cfb4b3-e3f4-4205-8da6-9630203c15b0",
+            "requirement_type": "occupation_contract",
+            "property_id": "73cad925-c2bd-481f-8026-a38ea3e212d5"
+          }
+        ],
+        "occupation_visible_count": 4
+      },
+      "dashboard": {
+        "status": 200,
+        "elapsed_ms": 5035.76,
+        "stats": {}
+      },
+      "command_center": {
+        "status": 200,
+        "elapsed_ms": 29578.72,
+        "compliance_status_summary": {
+          "score": 78,
+          "grade": "C",
+          "message": "High unresolved compliance risks require prompt operational action.",
+          "color": "amber",
+          "properties_count": 8,
+          "score_authority": "persisted_portfolio_aggregate",
+          "score_status": "ok",
+          "last_calculated_at": "2026-06-30T03:42:36.677286+00:00",
+          "score_coverage": {
+            "properties_total": 8,
+            "properties_with_score": 8,
+            "properties_missing_score": 0,
+            "properties_with_stale_persisted_score": 0
+          },
+          "score_status_message": null,
+          "scoring_semantics_version": "v1",
+          "properties_pending_score_recalc_count": 0,
+          "portfolio_score_recalc_pending_note": null,
+          "compliance_counts_authority": "calculate_compliance_score.stats",
+          "requirements_overdue": 0,
+          "requirements_expiring_soon": 0,
+          "requirements_pending": 25,
+          "requirements_missing_evidence": 3,
+          "requirements_total": 41,
+          "properties_at_risk_count": 1,
+          "gap_engine": {
+            "by_kind": {
+              "MISSING_EVIDENCE": 36,
+              "MISMATCHED_EVIDENCE": 1,
+              "EVIDENCE_UPLOADED_UNCONFIRMED": 4
+            },
+            "by_severity": {
+              "LOW": 35,
+              "MEDIUM": 5,
+              "HIGH": 1
+            },
+            "total_open": 41,
+            "policy": {
+              "critical_mandatory_breach_count": 0,
+              "high_risk_gap_count": 0,
+              "attention_only_gap_count": 4,
+              "unknown_or_stale_signal_count": 0,
+              "policy_fields_present_count": 41,
+              "policy_coverage_percent": 100.0,
+              "top_reason_codes": {
+                "ATTENTION_ONLY_GAP": 4
+              },
+              "policy_versions": {
+                "v1": 41
+              },
+              "total_open": 41
+            }
+          },
+          "hiua_operational_uncertainty": {
+            "hiua_active": false,
+            "hiua_open_gap_count": 0,
+            "hiua_reason_codes": [],
+            "hiua_gap_details": [],
+            "hiua_command_centre_message": null,
+            "hiua_command_centre_tooltip": null,
+            "hiua_command_centre_filter_label": null,
+            "hiua_digest_line": null,
+            "hiua_report_framing_notice": null,
+            "_deferred": true
+          },
+          "jurisdiction_compliance_notice": {
+            "active": false,
+            "compliance_basis": null,
+            "affected_property_ids": [],
+            "affected_property_count": 0
+          },
+          "jurisdiction_required": false,
+          "compliance_confidence": "explicit",
+          "jurisdiction_fallback_acknowledged": false,
+          "client_default_jurisdiction": "Scotland"
+        },
+        "electrical_risk_in_stream_count": 0,
+        "electrical_risk_sample": []
+      }
+    },
+    "setup_status_has_semantic_fields": false,
+    "requirements_tracked_matches_http_derived": true,
+    "http_occupation_visible_count": 4,
+    "http_occupation_pass_one_or_zero": false,
+    "deployed_fixes_detected_on_http": false
+  },
+  "http_setup_status_primary_crn": {
+    "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+    "customer_reference": "PLE-CVP-2026-000003",
+    "status": 200,
+    "body": {
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "customer_reference": "PLE-CVP-2026-000003",
+      "crn": "PLE-CVP-2026-000003",
+      "client_name": "Olivia Chen",
+      "billing_plan": "PLAN_1_SOLO",
+      "intake_submitted": true,
+      "payment_state": "paid",
+      "subscription_status": "ACTIVE",
+      "provisioning_status": "COMPLETED",
+      "provisioning_state": "completed",
+      "portal_user_exists": true,
+      "portal_user_created": true,
+      "portal_user_created_at": "2026-02-21T15:16:53.831000",
+      "activation_email_status": "FAILED",
+      "activation_email_sent_at": null,
+      "activation_email_last_sent_at": null,
+      "activation_email_to_masked": null,
+      "masked_email": null,
+      "activation_email_error": "[406] You tried to send to recipient(s) that have been marked as inactive. Found inactive addresses: olivia.chen@oxfordlets.co.uk. Inactive recipients are ones that have generated a hard bounce, a spam complaint, or a manual suppression.",
+      "password_set": false,
+      "password_reset_sent": false,
+      "password_state": "not_sent",
+      "next_action": "set_password",
+      "last_error": {
+        "code": "PROVISIONING_FAILED",
+        "message": "[406] You tried to send to recipient(s) that have been marked as inactive. Found inactive addresses: olivia.chen@oxfordlets.co.uk. Inactive recipients are ones that have generated a hard bounce, a spam complaint, or a manual suppression."
+      },
+      "properties_count": 2,
+      "requirements_count": 18,
+      "support_email": "info@pleerityenterprise.co.uk",
+      "over_limit": false,
+      "over_limit_details": {
+        "properties": {
+          "active": 2,
+          "allowed": 2
+        }
+      }
+    },
+    "has_semantic_fields": false
+  },
+  "checks": {
+    "local_pytest": true,
+    "shadow_wales_one_occupation": true,
+    "shadow_duplicate_client_dedupe": true,
+    "shadow_count_semantics": true,
+    "shadow_eicr_no_premature_risk": true,
+    "http_tracked_aligns_shadow": false,
+    "http_dashboard_stats_present": true,
+    "http_occupation_pre_deploy_duplicate_visible": true,
+    "http_setup_status_semantic_fields_absent_pre_deploy": true
+  },
+  "reconcile_required_before_production": true,
+  "verdict": "SHADOW_ACCEPTED_PRE_DEPLOY_HTTP_BASELINE",
+  "post_commit_action": "Deploy develop to staging; re-run HTTP probes for setup-status semantic fields"
+}

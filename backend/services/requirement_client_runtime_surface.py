@@ -67,6 +67,9 @@ _ALIAS_FAMILY_BY_CANONICAL: Dict[str, str] = {
     # True alias family: right-to-rent check slugs.
     "right_to_rent": "right_to_rent_alias_family",
     "right_to_rent_checks": "right_to_rent_alias_family",
+    # Wales occupation contract: legacy ``occupation_contract`` slug vs catalog ``wales_occupation_contract``.
+    "occupation_contract": "wales_occupation_contract_alias_family",
+    "wales_occupation_contract": "wales_occupation_contract_alias_family",
 }
 
 
