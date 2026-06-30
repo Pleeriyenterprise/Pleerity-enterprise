@@ -1,0 +1,66 @@
+{
+  "programme": "PRESENTATION-AUTHORITY-ALIGNMENT-01-STAGING-VALIDATION-01",
+  "run_tag": "20260630T162517Z",
+  "branch": "develop",
+  "commit_under_test": "8a830365",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_frontend_canonical": "https://pleerity-enterprise-9jjg.vercel.app",
+  "checks": {
+    "local_raod_and_paa_pytest": true,
+    "staging_deployed_expected_sha": true,
+    "setup_status_semantic_fields_present": true,
+    "onboarding_count_explanation_applicable": true,
+    "frontend_bundle_deployed_paa_copy": false,
+    "command_centre_triage_lens_in_bundle": false,
+    "monthly_digest_uses_lifecycle_copy": true,
+    "monthly_digest_no_missing_evidence_suffix": true,
+    "checklist_setup_presentation_backend": true,
+    "lifecycle_copy_module_present": true
+  },
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "output_tail": "9 passed, 4 warnings in 0.29s"
+  },
+  "staging_version": {
+    "commit_sha": "8a83036543afea5a4a3e7ceb8e47964f2643ac3f",
+    "environment": "staging"
+  },
+  "setup_status_probe": {
+    "status": 200,
+    "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+    "requirements_count": 18,
+    "requirements_tracked_attention_count": 12,
+    "requirements_runtime_visible_count": 12,
+    "requirements_count_semantics": "tracked_attention_document_job_excludes_obligation"
+  },
+  "frontend_probe": {
+    "initial_probe_url": "https://pleerity-enterprise.onrender.com",
+    "initial_probe_result": {
+      "homepage_status": 200,
+      "content_type": "application/json",
+      "bundle": null,
+      "reason": "Render staging web service is API-only; root returns JSON service descriptor, not SPA HTML"
+    }
+  },
+  "frontend_investigation": {
+    "root_cause": "Validation harness probed API origin instead of Vercel staging frontend",
+    "api_root_url": "https://pleerity-enterprise.onrender.com",
+    "api_root_response_sample": "{\"service\":\"Compliance Vault Pro\",\"api\":\"/api\",...}",
+    "canonical_staging_frontend_url": "https://pleerity-enterprise-9jjg.vercel.app",
+    "canonical_source": "render.staging.yaml APP_BASE_URL",
+    "vercel_probe": {
+      "homepage_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "bundle": "/static/js/main.bef35a51.js",
+      "has_tracked_copy": false,
+      "has_footnote_removed": false,
+      "has_affecting_compliance_phrase": true,
+      "has_calendar_verdict_copy": false,
+      "has_triage_lens_copy": false
+    },
+    "conclusion": "Frontend bundle is probeable at Vercel URL but predates commit 8a830365; UI walkthrough blocked until Vercel preview deploy from develop"
+  },
+  "verdict": "STAGING_BACKEND_ACCEPTED_FRONTEND_PENDING",
+  "production_recommendation": "Do not promote until browser/UI walkthrough passes on Vercel staging frontend after PAA deploy"
+}
