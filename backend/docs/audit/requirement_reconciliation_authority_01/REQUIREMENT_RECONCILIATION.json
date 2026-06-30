@@ -1,0 +1,693 @@
+{
+  "programme": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+  "dry_run": true,
+  "client_id": null,
+  "reconciled_by": "system:requirement_authority_reconciliation_01",
+  "duration_ms": 1108.63,
+  "metrics_before": {
+    "total_rows": 613,
+    "active_alias_family_rows": 161,
+    "authority_superseded_rows": 0,
+    "duplicate_active_groups": 26
+  },
+  "metrics_after": {
+    "total_rows": 613,
+    "active_alias_family_rows": 134,
+    "authority_superseded_rows": 27,
+    "duplicate_active_groups": 0
+  },
+  "duplicate_families_found": 26,
+  "records_to_archive": 27,
+  "records_archived": 0,
+  "records_skipped": 0,
+  "canonical_selections": [
+    {
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "property_id": "1291bef2-58e2-4275-9152-be68d0c0ab77",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "4f2c076f-f7e5-4328-9b10-2a35d73ad090",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "4f2c076f-f7e5-4328-9b10-2a35d73ad090",
+        "622d64de-f365-4762-bfae-ca96dffe970c"
+      ]
+    },
+    {
+      "client_id": "1e15cd2f-ee89-4905-aa96-1735f3ff99cc",
+      "property_id": "630ba80b-e776-4881-87a5-f781420fd032",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "0d03733d-2b8b-4809-8694-c33e92465f36",
+      "canonical_requirement_type": "hmo_fire_risk_evidence",
+      "candidate_ids": [
+        "df2c6260-ae31-455c-bc56-9f0da3489473",
+        "0d03733d-2b8b-4809-8694-c33e92465f36"
+      ]
+    },
+    {
+      "client_id": "1e15cd2f-ee89-4905-aa96-1735f3ff99cc",
+      "property_id": "630ba80b-e776-4881-87a5-f781420fd032",
+      "alias_family": "wales_occupation_contract_alias_family",
+      "canonical_requirement_id": "16dbc6ae-602d-474a-ab74-ec77e16f5aad",
+      "canonical_requirement_type": "wales_occupation_contract",
+      "candidate_ids": [
+        "bd0097ac-c662-4baf-a9f4-f600e2ab2b97",
+        "16dbc6ae-602d-474a-ab74-ec77e16f5aad"
+      ]
+    },
+    {
+      "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+      "property_id": "9ea56cb2-8fa6-4309-86db-361696aab6b8",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "a6f48229-6ed9-4ee4-9cb8-f882888272f6",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "a6f48229-6ed9-4ee4-9cb8-f882888272f6",
+        "cc23043f-b66c-4970-8424-08a443a13eba"
+      ]
+    },
+    {
+      "client_id": "26fbbc0b-7422-45f5-8ff6-852270b99721",
+      "property_id": "2cf1aae3-8ae6-43c0-8d11-52c6b8c9ac73",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "b6243e33-ad79-477b-ad1f-a63e5e56f13b",
+      "canonical_requirement_type": "hmo_fire_risk_evidence",
+      "candidate_ids": [
+        "dc6c7153-a96f-407a-a271-a0fdaf7a5cac",
+        "b6243e33-ad79-477b-ad1f-a63e5e56f13b"
+      ]
+    },
+    {
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "18bec910-58ea-4e8f-923f-95ba9e2aaf9a",
+      "canonical_requirement_type": "hmo_fire_risk_evidence",
+      "candidate_ids": [
+        "2d547320-fee2-4f7c-b768-05f6a17ef038",
+        "18bec910-58ea-4e8f-923f-95ba9e2aaf9a"
+      ]
+    },
+    {
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+      "alias_family": "fire_detection_alias_family",
+      "canonical_requirement_id": "9e6af7ca-4b85-4167-8ac4-c948b4198994",
+      "canonical_requirement_type": "fire_alarm",
+      "candidate_ids": [
+        "9e6af7ca-4b85-4167-8ac4-c948b4198994",
+        "6d1c3d99-a22c-47cb-9c81-ddbc8efa454d"
+      ]
+    },
+    {
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "c5a69d20-9cbf-4470-a100-586dcdd5b6c5",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "f67cd9b3-9db0-4f52-b995-60cbc10f0394",
+        "c5a69d20-9cbf-4470-a100-586dcdd5b6c5"
+      ]
+    },
+    {
+      "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+      "property_id": "bed64161-a263-4cea-86ec-a630a8645c6a",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "848a7a3b-92e4-4ce0-b19b-4a7b302889c4",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "d09d300f-d9d1-40bf-9927-852beec0b649",
+        "848a7a3b-92e4-4ce0-b19b-4a7b302889c4"
+      ]
+    },
+    {
+      "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+      "property_id": "91f541b5-6c9f-483a-a4d5-14b283c44540",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "aadd592a-4647-4588-ae95-1f3d6a9acb7b",
+      "canonical_requirement_type": "hmo_fire_risk_evidence",
+      "candidate_ids": [
+        "aadd592a-4647-4588-ae95-1f3d6a9acb7b",
+        "918b8374-6daa-4fde-a836-cdbb82e707bd"
+      ]
+    },
+    {
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+      "alias_family": "fire_detection_alias_family",
+      "canonical_requirement_id": "4b72c19f-dc54-44f8-b189-49ee583b3972",
+      "canonical_requirement_type": "fire_alarm",
+      "candidate_ids": [
+        "26bbd755-a8eb-45f1-98cc-9dfcae73c7bf",
+        "0954fde5-dea5-4cfd-8338-a0f1cadf93c4",
+        "4b72c19f-dc54-44f8-b189-49ee583b3972"
+      ]
+    },
+    {
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "fb5a6b91-8603-4ad5-83f5-7db7ae923801",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "fb5a6b91-8603-4ad5-83f5-7db7ae923801",
+        "ebb1fcec-a3e8-45e6-ada5-8ee5e11d0200"
+      ]
+    },
+    {
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "property_id": "989adf3c-44c3-4ada-bdbc-af5eb060a560",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "8b0f1d81-800a-4e87-b8a7-8c27e5ee957d",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "8b0f1d81-800a-4e87-b8a7-8c27e5ee957d",
+        "c54c3ff9-5a2b-4b39-92d1-d8fae3c44ef7"
+      ]
+    },
+    {
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "alias_family": "wales_occupation_contract_alias_family",
+      "canonical_requirement_id": "a9bf3fb6-6911-482f-928f-6dfd77b17005",
+      "canonical_requirement_type": "wales_occupation_contract",
+      "candidate_ids": [
+        "14678d6e-f00f-4c43-88fe-5ecf59fb4b23",
+        "a9bf3fb6-6911-482f-928f-6dfd77b17005"
+      ]
+    },
+    {
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "459121aa-2caa-4689-8614-885334603b23",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "459121aa-2caa-4689-8614-885334603b23",
+        "31df374e-b51f-44e5-9292-a22ed4a8bd47"
+      ]
+    },
+    {
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "6bd80ee4-6baf-4338-9778-8bd028993839",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "6bd80ee4-6baf-4338-9778-8bd028993839",
+        "c3e199fc-7272-496d-abdb-30128cadf1d4"
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "23e41bf3-2839-4644-8e16-7e574ccacf25",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "23e41bf3-2839-4644-8e16-7e574ccacf25",
+        "84954d53-09fd-4d49-9e69-3285b7c644f5"
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "68622908-cd2f-4d4a-a681-d6e058ed4ad1",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "524648e3-60e0-4888-985a-d014f0bb7a94",
+        "68622908-cd2f-4d4a-a681-d6e058ed4ad1"
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "33338b85-c5c3-45c9-a575-d04e0f278729",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "33338b85-c5c3-45c9-a575-d04e0f278729",
+        "27981630-213a-4210-8b0c-5061a4a08e7b"
+      ]
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+        "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6"
+      ]
+    },
+    {
+      "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+      "property_id": "e95c5b5a-d901-4cbf-9f3e-ac0ed8c9433a",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "d76f0eec-feb9-4707-9a1a-9a46d947f1af",
+      "canonical_requirement_type": "hmo_fire_risk_evidence",
+      "candidate_ids": [
+        "87d95b32-9a93-4dd8-ba9f-5b827590c381",
+        "d76f0eec-feb9-4707-9a1a-9a46d947f1af"
+      ]
+    },
+    {
+      "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+      "property_id": "b8016cb8-5a4c-4416-9e9c-7a49d0f727e7",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "63318c63-2b90-4425-a4ae-029a45a71e9d",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "42d89b65-c4d9-496f-85cd-b5f977993c36",
+        "63318c63-2b90-4425-a4ae-029a45a71e9d"
+      ]
+    },
+    {
+      "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+      "property_id": "7b76f35d-39f5-45b6-8f36-07628e67bc91",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "afc564da-0db6-43b2-87c8-6884dc016007",
+      "canonical_requirement_type": "hmo_fire_risk_evidence",
+      "candidate_ids": [
+        "250e066e-40b0-4990-a685-53e0243548d6",
+        "afc564da-0db6-43b2-87c8-6884dc016007"
+      ]
+    },
+    {
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "252b82af-06d1-4c83-9861-92c4dff7b322",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "252b82af-06d1-4c83-9861-92c4dff7b322",
+        "bc383db8-86d9-4f92-a129-48e7ecd78cc2"
+      ]
+    },
+    {
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "b1bec8aa-e86b-400b-980d-a6b0ac247d88",
+      "canonical_requirement_type": "hmo_fire_risk",
+      "candidate_ids": [
+        "888166c2-6986-45df-ab78-85fe7e23aec8",
+        "b1bec8aa-e86b-400b-980d-a6b0ac247d88"
+      ]
+    },
+    {
+      "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+      "property_id": "b3b74120-b343-4ca3-b6e8-0f3626af747c",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "6ebabc5f-7e5a-4059-b6ab-c003d6bd4310",
+      "canonical_requirement_type": "hmo_fire_risk_evidence",
+      "candidate_ids": [
+        "e29e5c3f-ba84-4c5d-b1cb-3f626be68e0e",
+        "6ebabc5f-7e5a-4059-b6ab-c003d6bd4310"
+      ]
+    }
+  ],
+  "archive_actions": [
+    {
+      "requirement_id": "622d64de-f365-4762-bfae-ca96dffe970c",
+      "client_id": "10b2ddba-e952-4484-91d1-a8f0299d0824",
+      "property_id": "1291bef2-58e2-4275-9152-be68d0c0ab77",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "4f2c076f-f7e5-4328-9b10-2a35d73ad090",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "df2c6260-ae31-455c-bc56-9f0da3489473",
+      "client_id": "1e15cd2f-ee89-4905-aa96-1735f3ff99cc",
+      "property_id": "630ba80b-e776-4881-87a5-f781420fd032",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "0d03733d-2b8b-4809-8694-c33e92465f36",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "bd0097ac-c662-4baf-a9f4-f600e2ab2b97",
+      "client_id": "1e15cd2f-ee89-4905-aa96-1735f3ff99cc",
+      "property_id": "630ba80b-e776-4881-87a5-f781420fd032",
+      "alias_family": "wales_occupation_contract_alias_family",
+      "canonical_requirement_id": "16dbc6ae-602d-474a-ab74-ec77e16f5aad",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "occupation_contract",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "cc23043f-b66c-4970-8424-08a443a13eba",
+      "client_id": "24e15552-df1e-4b1e-943d-82832554e1a8",
+      "property_id": "9ea56cb2-8fa6-4309-86db-361696aab6b8",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "a6f48229-6ed9-4ee4-9cb8-f882888272f6",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "dc6c7153-a96f-407a-a271-a0fdaf7a5cac",
+      "client_id": "26fbbc0b-7422-45f5-8ff6-852270b99721",
+      "property_id": "2cf1aae3-8ae6-43c0-8d11-52c6b8c9ac73",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "b6243e33-ad79-477b-ad1f-a63e5e56f13b",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "2d547320-fee2-4f7c-b768-05f6a17ef038",
+      "client_id": "2c972bea-2e87-494a-9853-b2d9d38e88e3",
+      "property_id": "13b370bd-5364-46a7-88de-96eec2570341",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "18bec910-58ea-4e8f-923f-95ba9e2aaf9a",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "6d1c3d99-a22c-47cb-9c81-ddbc8efa454d",
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+      "alias_family": "fire_detection_alias_family",
+      "canonical_requirement_id": "9e6af7ca-4b85-4167-8ac4-c948b4198994",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "smoke_heat_alarms",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "f67cd9b3-9db0-4f52-b995-60cbc10f0394",
+      "client_id": "33017032-afec-48cc-8102-30761bf49f75",
+      "property_id": "96810f95-bf5d-4b2e-934e-53816e21da03",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "c5a69d20-9cbf-4470-a100-586dcdd5b6c5",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "d09d300f-d9d1-40bf-9927-852beec0b649",
+      "client_id": "35401744-6cd6-4c80-9bd6-f6131e8c05a2",
+      "property_id": "bed64161-a263-4cea-86ec-a630a8645c6a",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "848a7a3b-92e4-4ce0-b19b-4a7b302889c4",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "918b8374-6daa-4fde-a836-cdbb82e707bd",
+      "client_id": "38907123-9ab9-49b0-8316-2d5b6e0a2803",
+      "property_id": "91f541b5-6c9f-483a-a4d5-14b283c44540",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "aadd592a-4647-4588-ae95-1f3d6a9acb7b",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "26bbd755-a8eb-45f1-98cc-9dfcae73c7bf",
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+      "alias_family": "fire_detection_alias_family",
+      "canonical_requirement_id": "4b72c19f-dc54-44f8-b189-49ee583b3972",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "co_alarms",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "0954fde5-dea5-4cfd-8338-a0f1cadf93c4",
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+      "alias_family": "fire_detection_alias_family",
+      "canonical_requirement_id": "4b72c19f-dc54-44f8-b189-49ee583b3972",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "smoke_alarms",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "ebb1fcec-a3e8-45e6-ada5-8ee5e11d0200",
+      "client_id": "43805332-b09e-44e6-a34a-773c89be79e5",
+      "property_id": "f6dc5ca2-6285-4aca-bf8b-0f77d8b67898",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "fb5a6b91-8603-4ad5-83f5-7db7ae923801",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "c54c3ff9-5a2b-4b39-92d1-d8fae3c44ef7",
+      "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+      "property_id": "989adf3c-44c3-4ada-bdbc-af5eb060a560",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "8b0f1d81-800a-4e87-b8a7-8c27e5ee957d",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "14678d6e-f00f-4c43-88fe-5ecf59fb4b23",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+      "alias_family": "wales_occupation_contract_alias_family",
+      "canonical_requirement_id": "a9bf3fb6-6911-482f-928f-6dfd77b17005",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "occupation_contract",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "31df374e-b51f-44e5-9292-a22ed4a8bd47",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "property_id": "acb49424-17dd-4500-9da3-78b765d00a59",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "459121aa-2caa-4689-8614-885334603b23",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "c3e199fc-7272-496d-abdb-30128cadf1d4",
+      "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+      "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "6bd80ee4-6baf-4338-9778-8bd028993839",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "84954d53-09fd-4d49-9e69-3285b7c644f5",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "23e41bf3-2839-4644-8e16-7e574ccacf25",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "524648e3-60e0-4888-985a-d014f0bb7a94",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "68622908-cd2f-4d4a-a681-d6e058ed4ad1",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "27981630-213a-4210-8b0c-5061a4a08e7b",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "33338b85-c5c3-45c9-a575-d04e0f278729",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "8c4d9635-bce5-4a06-b3ac-eccd59ed9a23",
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "d2066cd2-bcbd-4b7c-8e98-95412a5ccdd6",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "COMPLIANT",
+      "previous_lifecycle": "COMPLIANT",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "87d95b32-9a93-4dd8-ba9f-5b827590c381",
+      "client_id": "94fd6021-30d2-40af-8b2c-b1b5a61398f8",
+      "property_id": "e95c5b5a-d901-4cbf-9f3e-ac0ed8c9433a",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "d76f0eec-feb9-4707-9a1a-9a46d947f1af",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "42d89b65-c4d9-496f-85cd-b5f977993c36",
+      "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+      "property_id": "b8016cb8-5a4c-4416-9e9c-7a49d0f727e7",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "63318c63-2b90-4425-a4ae-029a45a71e9d",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "250e066e-40b0-4990-a685-53e0243548d6",
+      "client_id": "e1eeb81d-70b4-4c6b-8265-9f9f80d02cd8",
+      "property_id": "7b76f35d-39f5-45b6-8f36-07628e67bc91",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "afc564da-0db6-43b2-87c8-6884dc016007",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "bc383db8-86d9-4f92-a129-48e7ecd78cc2",
+      "client_id": "eaa14a69-9d02-4f74-9730-c85bce959126",
+      "property_id": "76c5b548-f4e4-4481-880c-c2b4d5f03335",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "252b82af-06d1-4c83-9861-92c4dff7b322",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "888166c2-6986-45df-ab78-85fe7e23aec8",
+      "client_id": "ec0b091b-105d-4b78-9711-7ab143999cef",
+      "property_id": "def23b30-efa5-41f9-a9cc-7fb69f9e9024",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "b1bec8aa-e86b-400b-980d-a6b0ac247d88",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk_evidence",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    },
+    {
+      "requirement_id": "e29e5c3f-ba84-4c5d-b1cb-3f626be68e0e",
+      "client_id": "fc635d44-8d90-41e5-af4c-00866e31b412",
+      "property_id": "b3b74120-b343-4ca3-b6e8-0f3626af747c",
+      "alias_family": "hmo_fire_risk_alias_family",
+      "canonical_requirement_id": "6ebabc5f-7e5a-4059-b6ab-c003d6bd4310",
+      "archive_reason": "superseded_alias_duplicate",
+      "archive_source": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+      "previous_requirement_type": "hmo_fire_risk",
+      "previous_status": "PENDING",
+      "previous_lifecycle": "PENDING",
+      "evidence_doc_id_preserved": null,
+      "dry_run": true
+    }
+  ],
+  "skipped": []
+}

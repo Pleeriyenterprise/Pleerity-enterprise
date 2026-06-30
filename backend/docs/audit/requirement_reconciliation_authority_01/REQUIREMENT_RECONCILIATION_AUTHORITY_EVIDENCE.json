@@ -1,0 +1,64 @@
+{
+  "programme": "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+  "audit_date": "2026-06-30",
+  "branch": "develop",
+  "verdict": "IMPLEMENTATION_COMPLETE_STAGING_DRY_RUN_VALIDATED",
+  "production_touched": false,
+  "merged_to_main": false,
+  "governance_sources": [
+    "backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md",
+    "backend/docs/audit/requirement_authority_onboarding_drift_01/REQUIREMENT_AUTHORITY_ONBOARDING_DRIFT_AUDIT.md",
+    "backend/services/requirement_client_runtime_surface.py",
+    "backend/services/requirement_action_resolver.py"
+  ],
+  "implementation_files": [
+    "backend/services/requirement_authority_reconciliation_governance.py",
+    "backend/services/requirement_authority_reconciliation_service.py",
+    "backend/scripts/requirement_authority_reconciliation_01.py",
+    "backend/tests/test_requirement_authority_reconciliation_01.py",
+    "backend/services/requirement_client_runtime_surface.py"
+  ],
+  "staging_dry_run": {
+    "database": "pleerity_staging",
+    "command": "python scripts/requirement_authority_reconciliation_01.py --dry-run",
+    "duration_ms": 1108.63,
+    "metrics_before": {
+      "total_rows": 613,
+      "active_alias_family_rows": 161,
+      "authority_superseded_rows": 0,
+      "duplicate_active_groups": 26
+    },
+    "metrics_after_simulated": {
+      "total_rows": 613,
+      "active_alias_family_rows": 134,
+      "authority_superseded_rows": 27,
+      "duplicate_active_groups": 0
+    },
+    "records_to_archive": 27,
+    "duplicate_families_found": 26
+  },
+  "tests": {
+    "command": "python -m pytest tests/test_requirement_authority_reconciliation_01.py tests/test_requirement_authority_onboarding_drift_01.py -v",
+    "result": "16 passed",
+    "run_date": "2026-06-30"
+  },
+  "idempotency": {
+    "mechanism": "registry_metadata.authority_reconciliation.archive_source + canonical_requirement_id; lifecycle superseded",
+    "verified_in_unit_tests": true,
+    "staging_execute_pending": true
+  },
+  "production_readiness": {
+    "ready": false,
+    "required_before_production": [
+      "python scripts/requirement_authority_reconciliation_01.py --execute --idempotency-check (staging)",
+      "Re-run RAOD staging validation harness",
+      "Sign-off on REQUIREMENT_RECONCILIATION.json archive_actions"
+    ]
+  },
+  "evidence_files": [
+    "backend/docs/audit/requirement_reconciliation_authority_01/REQUIREMENT_RECONCILIATION.json",
+    "backend/docs/audit/requirement_reconciliation_authority_01/REQUIREMENT_RECONCILIATION_REPORT.md",
+    "backend/docs/audit/requirement_reconciliation_authority_01/REQUIREMENT_RECONCILIATION_AUTHORITY_AUDIT.md",
+    "backend/docs/audit/requirement_reconciliation_authority_01/REQUIREMENT_RECONCILIATION_AUTHORITY_EVIDENCE.json"
+  ]
+}
