@@ -1,0 +1,77 @@
+{
+  "programme": "DASHBOARD-PAA-STAGING-CRASH-FIX-01",
+  "run_tag": "20260630T174500Z",
+  "branch": "develop",
+  "verdict": "STAGING_CRASH_FIX_ACCEPTED_PAA_RERUN_PARTIAL",
+  "root_cause": {
+    "symptom": "TypeError: slaStateLabel is not a function on /dashboard",
+    "component": "frontend/src/pages/ClientDashboard.js",
+    "lines": [1773, 1776],
+    "cause": "ClientDashboard called slaStateLabel('breached') and slaStateLabel('near_breach') without importing the helper from ../domain/presentDomain.js",
+    "paa_regression": false,
+    "introduced_when": "SLA KPI cards reference presentDomain helper; import omitted while riskTypeLabelClient was imported from same module"
+  },
+  "fix": {
+    "files_changed": [
+      "frontend/src/pages/ClientDashboard.js",
+      "frontend/src/pages/ClientDashboard.slaKpi.test.js",
+      "frontend/src/domain/presentDomain.requirementDisplay.test.js"
+    ],
+    "change_summary": "Add slaStateLabel to presentDomain import in ClientDashboard.js; add Jest regression for SLA KPI render and presentDomain.slaStateLabel labels",
+    "paa_semantics_touched": false,
+    "needsDocumentsStep_reintroduced": false
+  },
+  "tests": {
+    "frontend_jest": {
+      "command": "npm test -- --testPathPattern=ClientDashboard.slaKpi|presentDomain.requirementDisplay|presentationAuthority|lifecycleAuthorityCopy|evidenceStatus --watchAll=false",
+      "result": "23 passed"
+    },
+    "backend_pytest": {
+      "command": "python -m pytest tests/test_presentation_authority_alignment_01.py tests/test_requirement_authority_onboarding_drift_01.py -q",
+      "result": "9 passed"
+    }
+  },
+  "staging_deploy": {
+    "bundle_before": "main.55db8672.js",
+    "bundle_after": "main.5adb0544.js",
+    "deployment_url": "https://pleerity-enterprise-9jjg-e9q7y3tr5-victory-aigbochies-projects.vercel.app",
+    "alias": "https://pleerity-enterprise-9jjg.vercel.app",
+    "alias_action": "vercel alias set pleerity-enterprise-9jjg-e9q7y3tr5 → pleerity-enterprise-9jjg.vercel.app",
+    "deploy_method": "vercel deploy from repo root with REACT_APP_BACKEND_URL staging target"
+  },
+  "browser_verification": {
+    "dashboard_error_boundary_before": true,
+    "dashboard_error_boundary_after": false,
+    "dashboard_console_error_before": "slaStateLabel is not a function",
+    "dashboard_console_log": "docs/audit/presentation_authority_alignment_01/dashboard_console.log",
+    "dashboard_retry_screenshot": "docs/audit/presentation_authority_alignment_01/screenshots/02_dashboard_retry.png",
+    "checklist_setup_presentation_api": {
+      "documents_step_recommended": false,
+      "authority": "onboarding_checklist"
+    }
+  },
+  "paa_rerun": {
+    "programme": "PRESENTATION-AUTHORITY-STAGING-UI-VALIDATION-01-RERUN",
+    "bundle_legacy_overdue_phrase": false,
+    "onboarding_semantic_counts": "PASS (earlier unauthenticated probe: 20 actively tracked / 79 identified + footnote)",
+    "dashboard_loads": "PASS (no ErrorBoundary; SLA KPI path renders)",
+    "command_centre": "PASS (triage lens + score-tracked semantics)",
+    "requirements": "PASS when API reachable (tracked labels; no legacy overdue subline)",
+    "raod_regression": "PASS",
+    "fresh_monthly_digest": {
+      "trigger_status": 200,
+      "digest_id": "c69fbdb1-6ffb-438d-8b81-ee19f6ded355",
+      "generated_at": "30 June 2026 17:33 UTC",
+      "legacy_missing_evidence_suffix_in_lines": false,
+      "governed_urgent_suffix_observed": " — urgent",
+      "evidence_required_suffix_in_top_urgent": false,
+      "calendar_overdue_suffix_in_top_urgent": false,
+      "note": "Top urgent digest lines for OPS pilot are work-order SLA items; governed evidence-required/calendar-overdue suffixes apply when upload_evidence or overdue_days>0 tasks rank in top items"
+    }
+  },
+  "remaining_before_production": [
+    "Confirm monthly digest preview UI shows fresh digest c69fbdb1 with governed suffixes when requirement upload tasks appear in urgent section",
+    "Resolve intermittent headless browser API/CORS noise on long validation harness runs (does not reproduce dashboard crash)"
+  ],
+  "production_recommendation": "Dashboard crash fix accepted on staging. Do not promote until full PAA walkthrough PASS including monthly digest preview with governed requirement suffixes, or explicit cohort selection with upload_evidence urgent tasks."
+}

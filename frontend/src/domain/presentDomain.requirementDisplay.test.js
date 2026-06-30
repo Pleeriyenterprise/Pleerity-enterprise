@@ -1,4 +1,4 @@
-import { requirementTitleFromRow } from './presentDomain';
+import { requirementTitleFromRow, slaStateLabel } from './presentDomain';
 
 describe('requirementTitleFromRow', () => {
   const row = {
@@ -21,6 +21,17 @@ describe('requirementTitleFromRow', () => {
 
   it('uses canonical_name for detail surfaces', () => {
     expect(requirementTitleFromRow(row, 'detail')).toBe('HMO / Selective / Additional Licensing');
+  });
+});
+
+describe('slaStateLabel', () => {
+  it('returns governed client labels for SLA states', () => {
+    expect(slaStateLabel('breached')).toBe('SLA deadline missed');
+    expect(slaStateLabel('near_breach')).toBe('Near SLA deadline');
+  });
+
+  it('returns em dash for unknown states', () => {
+    expect(slaStateLabel('unknown_state')).toBe('—');
   });
 });
 
