@@ -261,6 +261,26 @@ def _runtime_source_for_row(
     return "baseline"
 
 
+def requirement_row_alias_family_key(row: Dict[str, Any]) -> Optional[str]:
+    """Public alias-family key for authority reconciliation (mirrors runtime dedupe families)."""
+    return _alias_family_key_for_row(row)
+
+
+def requirement_row_authority_dedupe_rank(row: Dict[str, Any]) -> Tuple[int, int, datetime]:
+    """Published/evidence/recency precedence used by runtime alias dedupe."""
+    return _dedupe_rank_for_row(row)
+
+
+def requirement_row_is_registry_archived(row: Dict[str, Any]) -> bool:
+    """True when registry metadata marks the row archived/superseded for runtime surfaces."""
+    return _registry_metadata_archived(row)
+
+
+def requirement_alias_family_catalog() -> Dict[str, str]:
+    """Canonical slug → alias family id (for reconciliation detection)."""
+    return dict(_ALIAS_FAMILY_BY_CANONICAL)
+
+
 def _alias_family_key_for_row(row: Dict[str, Any]) -> Optional[str]:
     raw = str(row.get("requirement_code") or row.get("requirement_type") or "").strip()
     canon = normalize_requirement_code(raw) or _norm_requirement_type(row)
