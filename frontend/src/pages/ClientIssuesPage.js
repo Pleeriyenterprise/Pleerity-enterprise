@@ -23,6 +23,7 @@ import { operationalLabelForToken } from '../utils/presentationLanguage';
 import ListCognitionChip from '../components/operational/ListCognitionChip';
 import NextActionHero from '../components/operational/NextActionHero';
 import { resolveIssuePrimaryAction, normalizeOperationalPrimaryKey } from '../utils/primaryActionResolver';
+import { isOpenIssueStatus } from '../utils/issueLifecycleAuthority';
 
 function ClientIssuesPageInner() {
   const navigate = useNavigate();
@@ -59,7 +60,7 @@ function ClientIssuesPageInner() {
   const loadIssues = useCallback(() => {
     setIssuesLoading(true);
     setError(null);
-    const params = { skip: 0, limit: 200 };
+    const params = { skip: 0, limit: 200, open_only: !filterStatus };
     if (filterProperty) params.property_id = filterProperty;
     if (filterCategory) params.category = filterCategory;
     if (filterSeverity) params.severity = filterSeverity;
@@ -139,9 +140,13 @@ function ClientIssuesPageInner() {
     iss?.source_display || (iss?.source === 'system' ? 'Compliance follow-up' : (iss?.source || '—'));
 
   const summary = useMemo(() => {
-    const open = issues.filter((i) => (i.status || '').toLowerCase() !== 'closed');
+    const open = issues.filter((i) => isOpenIssueStatus(i.status));
     const newCount = issues.filter((i) => (i.status || '').toLowerCase() === 'new').length;
-    const highSeverity = issues.filter((i) => ['high', 'urgent', 'critical'].includes((i.severity || '').toLowerCase()) && (i.status || '').toLowerCase() !== 'closed').length;
+    const highSeverity = issues.filter(
+      (i) =>
+        ['high', 'urgent', 'critical'].includes((i.severity || '').toLowerCase()) &&
+        isOpenIssueStatus(i.status),
+    ).length;
     const readyForWo = issues.filter((i) => (i.status || '').toLowerCase() === 'ready_for_work_order').length;
     const monitoring = issues.filter((i) => (i.status || '').toLowerCase() === 'monitoring').length;
     const recurring = issues.filter((i) => i.recurrence_flag === true).length;

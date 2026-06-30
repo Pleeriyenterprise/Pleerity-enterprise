@@ -4312,10 +4312,27 @@ async def reconcile_document_linkage(
             "reason": (body.reason or "")[:200] or None,
         },
     )
+    try:
+        from services.document_linkage_lifecycle_authority import (
+            resolve_linkage_issues_after_document_reconcile,
+        )
+
+        resolved_issue_ids = await resolve_linkage_issues_after_document_reconcile(
+            db,
+            client_id=user["client_id"],
+            document=updated,
+            requirement_id=updated.get("requirement_id"),
+            actor_id=user.get("portal_user_id"),
+            action=action,
+        )
+    except Exception as link_res_e:
+        logger.warning("document linkage issue auto-resolve failed doc=%s: %s", document_id, link_res_e)
+        resolved_issue_ids = []
     return {
         "message": "Document linkage reconciled",
         "document_id": document_id,
         "document": updated,
+        "resolved_issue_ids": resolved_issue_ids,
     }
 
 

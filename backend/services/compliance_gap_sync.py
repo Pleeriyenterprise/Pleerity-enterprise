@@ -11,7 +11,7 @@ from models import AuditAction
 from utils.audit import create_audit_log
 
 from services.compliance_gap_engine import infer_compliance_gaps_for_requirement
-from services.compliance_gap_operational_bridge import apply_gap_operational_bridge
+from services.compliance_gap_operational_bridge import apply_gap_operational_bridge, resolve_issues_for_resolved_gaps
 from services.compliance_gap_policy_aggregate import aggregate_policy_gap_counts_for_client
 
 logger = logging.getLogger(__name__)
@@ -140,6 +140,27 @@ async def sync_compliance_gaps_for_requirement(
             )
             if audit_lifecycle and res.modified_count and stale:
                 logger.debug("Resolved %s stale compliance gaps for requirement %s", res.modified_count, rid)
+                try:
+                    await resolve_issues_for_resolved_gaps(
+                        db,
+                        str(cid),
+                        stale,
+                        requirement=requirement,
+                    )
+                except Exception as bridge_res_e:
+                    sync_errors.append(
+                        {
+                            "stage": "operational_bridge_resolve",
+                            "requirement_id": str(rid),
+                            "client_id": str(cid),
+                            "error": str(bridge_res_e),
+                        }
+                    )
+                    logger.warning(
+                        "gap bridge resolve issues failed requirement_id=%s: %s",
+                        rid,
+                        bridge_res_e,
+                    )
                 try:
                     await create_audit_log(
                         action=AuditAction.COMPLIANCE_GAP_RESOLVED,

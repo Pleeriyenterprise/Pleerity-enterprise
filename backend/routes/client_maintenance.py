@@ -386,6 +386,7 @@ async def list_my_issues(
     asset_id: Optional[str] = Query(None),
     from_date: Optional[str] = Query(None, description="Filter by created_at >= (YYYY-MM-DD)"),
     to_date: Optional[str] = Query(None, description="Filter by created_at <= (YYYY-MM-DD)"),
+    open_only: bool = Query(False, description="When true, exclude resolved/closed/cancelled issues"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ):
@@ -409,6 +410,7 @@ async def list_my_issues(
         to_date=to_date,
         skip=skip,
         limit=limit,
+        open_only=open_only,
     )
     from services.operational_continuation_service import enrich_issue_with_continuation
     from services.operational_cognition_service import attach_cognition_to_issue_sync

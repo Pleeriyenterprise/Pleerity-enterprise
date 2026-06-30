@@ -192,14 +192,17 @@ async def list_issues(
     to_date: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
+    open_only: bool = False,
 ) -> Dict[str, Any]:
     """List issues for a client with optional filters."""
     db = database.get_db()
     q = {"client_id": client_id}
+    if open_only and status is None:
+        q["status"] = {"$in": list(OPEN_ISSUE_STATUSES)}
+    elif status is not None:
+        q["status"] = status
     if property_id is not None:
         q["property_id"] = property_id
-    if status is not None:
-        q["status"] = status
     if category is not None:
         q["category"] = category
     if severity is not None:
@@ -350,6 +353,113 @@ async def update_issue(
         except Exception as outcome_err:
             logger.debug("Action outcome issue_resolved skip: %s", outcome_err)
     return updated
+
+
+async def auto_resolve_issues_by_operational_root_keys(
+    client_id: str,
+    operational_root_keys: List[str],
+    *,
+    resolution_note: str,
+    resolution_source: str,
+    resolution_authority: str,
+    actor_id: str = "system",
+    resolution_metadata: Optional[Dict[str, Any]] = None,
+) -> List[str]:
+    """
+    Authority-driven auto-resolve for bridge issues when underlying exception clears.
+    Bypasses work-order / manual resolution-note gate; preserves audit trail.
+    """
+    db = database.get_db()
+    keys = [str(k).strip() for k in operational_root_keys if k and str(k).strip()]
+    if not keys:
+        return []
+
+    meta = dict(resolution_metadata or {})
+    now_iso = datetime.now(timezone.utc).isoformat()
+    resolved_ids: List[str] = []
+
+    issues = await db.maintenance_issues.find(
+        {
+            "client_id": client_id,
+            "operational_root_key": {"$in": keys},
+            "status": {"$in": list(OPEN_ISSUE_STATUSES)},
+        },
+        {"_id": 0, "issue_id": 1, "status": 1, "risk_signal_id": 1, "operational_root_key": 1},
+    ).to_list(200)
+
+    for issue in issues:
+        issue_id = str(issue.get("issue_id") or "")
+        if not issue_id:
+            continue
+        old_status = issue.get("status")
+        updates: Dict[str, Any] = {
+            "status": STATUS_RESOLVED,
+            "updated_at": now_iso,
+            "resolved_at": now_iso,
+            "resolution_note": (resolution_note or "")[:4000],
+            "resolution_authority": resolution_authority,
+            "resolution_authority_source": resolution_source,
+            "auto_resolved": True,
+            "closed_by": actor_id,
+        }
+        if meta.get("requirement_id"):
+            updates["resolution_linked_requirement_id"] = str(meta["requirement_id"])
+        if meta.get("document_id"):
+            updates["resolution_linked_document_id"] = str(meta["document_id"])
+        if meta.get("property_id"):
+            updates["resolution_linked_property_id"] = str(meta["property_id"])
+        if meta.get("gap_kind"):
+            updates["resolution_gap_kind"] = str(meta["gap_kind"])
+
+        await db.maintenance_issues.update_one(
+            {"issue_id": issue_id, "client_id": client_id},
+            {"$set": updates},
+        )
+        resolved_ids.append(issue_id)
+        try:
+            from models import AuditAction
+            from utils.audit import create_audit_log
+
+            await create_audit_log(
+                action=AuditAction.ISSUE_CLOSED,
+                actor_id=actor_id,
+                client_id=client_id,
+                resource_type="maintenance_issue",
+                resource_id=issue_id,
+                metadata={
+                    "old_status": old_status,
+                    "new_status": STATUS_RESOLVED,
+                    "auto_resolved": True,
+                    "resolution_authority": resolution_authority,
+                    "resolution_authority_source": resolution_source,
+                    "operational_root_key": issue.get("operational_root_key"),
+                    **{k: v for k, v in meta.items() if v is not None},
+                },
+            )
+        except Exception as aud_e:
+            logger.warning("auto_resolve issue audit failed issue_id=%s: %s", issue_id, aud_e)
+        try:
+            from services.compliance_evidence_graph.producers.ceg_dispatch import try_dispatch_p2
+
+            await try_dispatch_p2(
+                mutation_kind="maintenance_issue_lifecycle",
+                client_id=client_id,
+                source_collection="maintenance_issues",
+                source_id=issue_id,
+                property_id=meta.get("property_id"),
+                mutation_timestamp=now_iso,
+                correlation_id=f"ISSUE:AUTO_RESOLVE:{issue_id}:{now_iso}",
+                authoritative_payload={
+                    "lifecycle": "resolved",
+                    "status": STATUS_RESOLVED,
+                    "auto_resolved": True,
+                    "resolution_authority": resolution_authority,
+                },
+            )
+        except Exception:
+            pass
+
+    return resolved_ids
 
 
 async def create_work_order_from_issue(
