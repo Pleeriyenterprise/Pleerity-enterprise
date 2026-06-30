@@ -1,0 +1,56 @@
+{
+  "programme": "PRESENTATION-AUTHORITY-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260630T184227Z",
+  "expected_sha": "7b99a80e8309302e0d47b7aaf2f4319dc898be08",
+  "health": {
+    "status": 200,
+    "body": {
+      "status": "healthy",
+      "environment": "production",
+      "readiness": {
+        "stage": "ready",
+        "degraded": false,
+        "last_error": null
+      }
+    }
+  },
+  "version": {
+    "status": 200,
+    "body": {
+      "commit_sha": "7b99a80e8309302e0d47b7aaf2f4319dc898be08",
+      "environment": "production"
+    }
+  },
+  "version_sha_ok": true,
+  "homepage_status": 200,
+  "frontend": {
+    "bundle": "main.c00f6d82.js",
+    "sha256_prefix": "9f145c85004ac14e",
+    "has_prod_api": true,
+    "has_staging_api": false,
+    "has_triage_lens": true,
+    "baked_sha_7b99a80e": true,
+    "legacy_overdue_affecting_compliance": false,
+    "preexisting_lifecycle_kpi_strip": true,
+    "note": "lifecycle-kpi-attention-strip pre-dates PAA promotion; not in cherry-pick diff"
+  },
+  "unauth_probes": {
+    "dashboard": 401,
+    "requirements": 401,
+    "setup_status_no_client": 400,
+    "invalid_login": 401
+  },
+  "checks": {
+    "api_health_ok": true,
+    "version_reports_expected_sha": true,
+    "production_environment_label": true,
+    "no_staging_api_in_frontend_bundle": true,
+    "prod_api_in_frontend_bundle": true,
+    "frontend_paa_bundle_markers": true,
+    "dashboard_api_protected": true,
+    "requirements_api_protected": true,
+    "reconcile_execute_not_run": true,
+    "lifecycle_kpi_wip_not_in_promotion_diff": true
+  },
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL"
+}

@@ -1,0 +1,88 @@
+{
+  "programme": "PRESENTATION-AUTHORITY-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260630T184500Z",
+  "status": "EXECUTED",
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL",
+  "source_develop_sha": "7474362a24f023cfdedb083e9e92607836432d24",
+  "main_sha_before_promotion": "75230a31082962aa898df40ac16c7c3376018671",
+  "main_sha_after_promotion": "7b99a80e8309302e0d47b7aaf2f4319dc898be08",
+  "production_deployed_sha": "7b99a80e8309302e0d47b7aaf2f4319dc898be08",
+  "promotion_strategy": "cherry-pick (scoped; full develop merge rejected)",
+  "promoted_commits": [
+    {
+      "develop_sha": "8a83036543afea5a4a3e7ceb8e47964f2643ac3f",
+      "main_sha": "1280ac18",
+      "message": "fix(presentation): align lifecycle authority across onboarding and counts"
+    },
+    {
+      "develop_sha": "aa8bf7b7ce0527e402f3f2839ddc3e4cdd374412",
+      "main_sha": "0686c888",
+      "message": "docs(presentation): add staging backend validation evidence"
+    },
+    {
+      "develop_sha": "7474362a24f023cfdedb083e9e92607836432d24",
+      "main_sha": "7b99a80e",
+      "message": "fix(presentation): validate dashboard and digest lifecycle wording"
+    }
+  ],
+  "staging_post_deploy": {
+    "verdict": "STAGING_POST_DEPLOY_SMOKE_PASSED",
+    "staging_api_sha": "7474362a24f023cfdedb083e9e92607836432d24",
+    "frontend_bundle": "main.5adb0544.js",
+    "evidence_file": "STAGING_POST_DEPLOY_SMOKE.json"
+  },
+  "local_tests": {
+    "frontend_jest": {"suites": 5, "tests": 23, "passed": true},
+    "backend_pytest": {"tests": 21, "passed": true, "files": ["test_presentation_authority_alignment_01.py", "test_requirement_authority_onboarding_drift_01.py", "test_requirement_authority_reconciliation_01.py"]}
+  },
+  "scope_verification": {
+    "files_changed_on_main": 33,
+    "lifecycle_kpi_wip_restored": false,
+    "tmp_scripts_included": false,
+    "unrelated_develop_commits_included": false,
+    "reconcile_execute_run": false
+  },
+  "deployment": {
+    "backend": {
+      "url": "https://api.pleerityenterprise.co.uk",
+      "trigger": "main push (Render deploy completed)",
+      "commit_sha": "7b99a80e8309302e0d47b7aaf2f4319dc898be08"
+    },
+    "frontend": {
+      "url": "https://pleerityenterprise.co.uk",
+      "deployment_id": "dpl_ECKhZJVSSi6s81vTnvwvAs3ZcJy8",
+      "bundle": "main.c00f6d82.js",
+      "baked_sha": "7b99a80e",
+      "trigger": "vercel deploy --prod from main"
+    }
+  },
+  "production_smoke": {
+    "api_health": {"status": "healthy", "environment": "production"},
+    "api_version": "7b99a80e8309302e0d47b7aaf2f4319dc898be08",
+    "homepage": 200,
+    "frontend_has_prod_api": true,
+    "frontend_has_staging_api": false,
+    "frontend_has_triage_lens": true,
+    "frontend_baked_sha_match": true,
+    "legacy_overdue_affecting_compliance_in_bundle": false,
+    "dashboard_unauth": 401,
+    "requirements_unauth": 401,
+    "preexisting_lifecycle_kpi_strip_in_bundle": true,
+    "note_preexisting_kpi_strip": "Bundle contains lifecycle-kpi-attention-strip from prior production baseline; not introduced by PAA cherry-pick (no lifecycle_kpi files in promotion diff)"
+  },
+  "checks": {
+    "staging_gate_passed": true,
+    "scoped_cherry_pick_only": true,
+    "production_version_matches_main": true,
+    "production_environment_label": true,
+    "no_staging_api_in_production_frontend": true,
+    "reconcile_execute_not_run": true,
+    "lifecycle_kpi_wip_not_restored": true
+  },
+  "production_recommendation": "PAA scoped promotion complete. Production dry-run reconciliation remains deferred per policy.",
+  "evidence_files": [
+    "STAGING_POST_DEPLOY_SMOKE.json",
+    "PRODUCTION_SMOKE.json",
+    "PRESENTATION_AUTHORITY_PRODUCTION_PROMOTION_REPORT.md"
+  ]
+}

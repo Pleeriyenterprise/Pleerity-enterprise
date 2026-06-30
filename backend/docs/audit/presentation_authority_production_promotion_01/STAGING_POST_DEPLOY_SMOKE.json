@@ -1,0 +1,56 @@
+{
+  "programme": "PAA-POST-DEPLOY-STAGING-SMOKE-01",
+  "target_sha": "7474362a",
+  "staging_api": {
+    "commit_sha": "7474362a24f023cfdedb083e9e92607836432d24",
+    "environment": "staging"
+  },
+  "staging_api_ok": true,
+  "frontend_bundle": {
+    "path": "/static/js/main.5adb0544.js",
+    "has_triage_lens": true
+  },
+  "onboarding_setup_status": {
+    "status": 200,
+    "requirements_count": 79,
+    "requirements_tracked_attention_count": 20,
+    "requirements_count_semantics": "tracked_attention_document_job_excludes_obligation",
+    "semantics_ok": true
+  },
+  "command_center": {
+    "status": 200,
+    "has_triage_lens_in_bundle": true,
+    "legacy_overdue_subline": false,
+    "api_ok": true
+  },
+  "requirements": {
+    "status": 200,
+    "legacy_overdue_subline": false,
+    "row_count": 47
+  },
+  "digest_suffix": {
+    "status": 200,
+    "digest_id": "87bccbc5-c75e-4fef-b392-3de1c824b6fe",
+    "has_calendar_overdue": true,
+    "has_evidence_required": true,
+    "legacy_missing_evidence": false,
+    "sample_lines": [
+      "Expired: Gas Safety \u2014 calendar overdue (Harbour Apartment)",
+      "Evidence needed (legacy read): Smoke, Heat & CO Alarms \u2014 calendar overdue (Harbour Apartment)",
+      "Evidence needed (legacy read): EICR \u2014 evidence required (Harbour Apartment)"
+    ]
+  },
+  "dashboard": {
+    "error_boundary": false,
+    "legacy_overdue_subline": false
+  },
+  "checks": {
+    "staging_api_ok": true,
+    "dashboard_no_error_boundary": true,
+    "onboarding_semantics_ok": true,
+    "command_center_ok": true,
+    "requirements_ok": true,
+    "digest_suffix_ok": true
+  },
+  "verdict": "STAGING_POST_DEPLOY_SMOKE_PASSED"
+}
