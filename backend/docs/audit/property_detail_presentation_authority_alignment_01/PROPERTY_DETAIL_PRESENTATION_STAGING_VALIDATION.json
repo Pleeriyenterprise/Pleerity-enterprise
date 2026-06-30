@@ -1,0 +1,51 @@
+{
+  "programme": "PROPERTY-DETAIL-PRESENTATION-AUTHORITY-ALIGNMENT-01-STAGING-VALIDATION",
+  "run_tag": "20260630T224033Z",
+  "branch": "develop",
+  "commit_under_test": "6c3d2190",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "checks": {
+    "local_catalog_kpi_pytest": true,
+    "staging_backend_deployed": true,
+    "staging_frontend_deployed": true,
+    "api_lifecycle_satisfied_field": true,
+    "api_status_valid_unchanged": true,
+    "api_dual_kpi_numeric": true,
+    "frontend_valid_for_scoring_copy": true,
+    "frontend_requirements_satisfied_copy": true
+  },
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "output_tail": "=========================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n4 passed, 4 warnings in 0.16s\n"
+  },
+  "backend_deploy_wait": {
+    "ready": true,
+    "version": {
+      "commit_sha": "6c3d219049b0124fe21260ec93e16354803eff2c",
+      "environment": "staging"
+    }
+  },
+  "frontend_deploy_wait": {
+    "ready": true,
+    "bundle": "/static/js/main.bdd977a7.js",
+    "has_valid_for_scoring": true,
+    "has_requirements_satisfied": true,
+    "has_kpi_helper": true,
+    "has_old_valid_tile_only": false
+  },
+  "compliance_detail_probe": {
+    "status": 200,
+    "kpis": {
+      "overdue": 0,
+      "expiring_30": 0,
+      "missing": 3,
+      "compliant": 5,
+      "status_valid": 3,
+      "lifecycle_satisfied_count": 3
+    },
+    "matrix_len": 8
+  },
+  "verdict": "STAGING_VALIDATION_GO"
+}
