@@ -606,7 +606,7 @@ export default function ClientCommandCenterPage() {
           Operational snapshot loaded
           {primaryFreshness?.cache_hit ? ' (cached)' : ''}
           {bundle?.tasks_digest_summary?.urgent_continuation
-            ? ` · ${bundle.tasks_digest_summary.urgent_continuation} more urgent items on Today`
+            ? ` · ${bundle.tasks_digest_summary.urgent_continuation} more items on Today (list capped)`
             : ''}
         </p>
       ) : null}

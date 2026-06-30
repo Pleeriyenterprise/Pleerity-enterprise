@@ -87,6 +87,32 @@ describe('todayExecutionWorkspace', () => {
     expect(pickPrimaryExecutionTask(tasks, reqMap, new Map())).toBeNull();
   });
 
+  it('classifies urgent-lane work orders as needs action (not in_progress)', () => {
+    const bucket = classifyTaskOperationalBucket(
+      {
+        id: 'wo:1',
+        source_type: 'work_order',
+        section: 'urgent',
+        metadata: { work_order_status: 'OPEN' },
+      },
+      new Map(),
+    );
+    expect(bucket).toBe('needs_action_now');
+  });
+
+  it('classifies server in_progress work orders as in_progress', () => {
+    const bucket = classifyTaskOperationalBucket(
+      {
+        id: 'wo:2',
+        source_type: 'work_order',
+        section: 'in_progress',
+        metadata: { work_order_status: 'IN_PROGRESS' },
+      },
+      new Map(),
+    );
+    expect(bucket).toBe('in_progress');
+  });
+
   it('sums visible open operational sections', () => {
     expect(
       visibleOpenCount({
