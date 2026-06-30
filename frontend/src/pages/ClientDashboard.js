@@ -17,7 +17,8 @@ import ScoreTrendChart from '../components/ScoreTrendChart';
 import { formatRiskLabel, riskLevelToGradeColorMessage, getRiskBandExplanation, getRiskBandExplanationFromScore } from '../utils/riskLabel';
 import { humanScoreStatusLabel } from '../utils/reportHumanLanguage';
 import { UrgencyRow, timingLabelFromDueAtIso } from '../components/client/UrgencyDisplay';
-import { requirementLabel, slaStateLabel, riskTypeLabelClient } from '../domain/presentDomain';
+import { riskTypeLabelClient } from '../domain/presentDomain';
+import { riskSignalPresentationHeadline } from '../utils/lifecycleAuthorityCopy';
 import {
   buildEntityRoute,
   normalizeRouteId,
@@ -75,6 +76,7 @@ import {
   requirementMapFromList,
 } from '../utils/portalRequirementAttention';
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
+import { shouldShowDocumentsSetupStep } from '../utils/presentationAuthority';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
 import {
   SCORE_AREA_DESCRIPTIONS,
@@ -875,16 +877,11 @@ const ClientDashboard = () => {
     );
   }, [commandCenter]);
 
-  // Whether to show the "documents missing" step: requirements that may need docs/confirmation (REQUIRED/UNKNOWN without confirmed expiry)
-  const needsDocumentsStep = useMemo(() => {
-    if (!requirementsList.length) return false;
-    return requirementsList.some((r) => {
-      if (resolveClientRequirementLifecycle(r).state === 'NOT_APPLICABLE') return false;
-      return (
-        (r.applicability === 'REQUIRED' || (r.applicability || 'UNKNOWN') === 'UNKNOWN') && !r.confirmed_expiry_date
-      );
-    });
-  }, [requirementsList]);
+  // Documents setup wizard — backend checklist authority (upload_or_compliance_action item)
+  const needsDocumentsStep = useMemo(
+    () => shouldShowDocumentsSetupStep(onboardingChecklist),
+    [onboardingChecklist],
+  );
 
   // Count requirements with a document uploaded but expiry not yet confirmed (for "X documents awaiting confirmation" banner)
   const documentsAwaitingConfirmationCount = useMemo(() => {
@@ -2187,7 +2184,7 @@ const ClientDashboard = () => {
                                 navigate(target);
                               }}
                             >
-                              {r.description || r.risk_type_label_client || riskTypeLabelClient(r.risk_type) || 'Issue'}
+                              {r.description || riskSignalPresentationHeadline(r) || riskTypeLabelClient(r.risk_type) || 'Review suggested'}
                             </button>
                             <span className="text-xs text-gray-500 shrink-0">{formatRiskLabel(r.risk_level)}</span>
                           </li>

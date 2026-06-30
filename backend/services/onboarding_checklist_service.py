@@ -313,6 +313,23 @@ def _derive_onboarding_status(items: List[Dict[str, Any]], completed_at: Optiona
     return "in_progress"
 
 
+def _derive_setup_presentation(items: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Backend authority for post-checklist documents wizard (PRESENTATION-AUTHORITY-ALIGNMENT-01)."""
+    upload_item = next((i for i in items if i.get("id") == ITEM_UPLOAD_OR_COMPLIANCE_ACTION), None)
+    if not upload_item:
+        return {
+            "documents_step_recommended": False,
+            "documents_step_item_id": None,
+            "authority": "onboarding_checklist",
+        }
+    return {
+        "documents_step_recommended": not bool(upload_item.get("completed_at")),
+        "documents_step_item_id": ITEM_UPLOAD_OR_COMPLIANCE_ACTION,
+        "documents_step_label": upload_item.get("label"),
+        "authority": "onboarding_checklist",
+    }
+
+
 async def get_checklist_state(client_id: str, *, portal_user_id: Optional[str] = None) -> Dict[str, Any]:
     """Full checklist state: items, completed_at, progress, onboarding_status. Auto-syncs validated steps first."""
     db = database.get_db()
@@ -326,6 +343,7 @@ async def get_checklist_state(client_id: str, *, portal_user_id: Optional[str] =
             "phase_status": "not_started",
             "onboarding_progress": None,
             "jurisdiction_onboarding": None,
+            "setup_presentation": {"documents_step_recommended": False, "authority": "onboarding_checklist"},
         }
     await sync_auto_completed_items(client_id, portal_user_id=portal_user_id)
     client = await db.clients.find_one(
@@ -358,6 +376,7 @@ async def get_checklist_state(client_id: str, *, portal_user_id: Optional[str] =
         **att,
         "jurisdiction_fallback_acknowledged": bool((client or {}).get("jurisdiction_fallback_acknowledged_at")),
     }
+    setup_presentation = _derive_setup_presentation(items)
     return {
         "items": items,
         "completed_at": completed_at,
@@ -371,6 +390,7 @@ async def get_checklist_state(client_id: str, *, portal_user_id: Optional[str] =
         "next_step": next_step,
         "phase_status": (o or {}).get("phase_status") or status,
         "jurisdiction_onboarding": jurisdiction_onboarding,
+        "setup_presentation": setup_presentation,
     }
 
 

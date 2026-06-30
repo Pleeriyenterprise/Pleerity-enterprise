@@ -82,6 +82,12 @@ describe('getEvidenceStatus', () => {
     expect(s.subline).toBe('Declaration not recorded — action required');
   });
 
+  it('uses governed calendar overdue subline without legal breach implication', () => {
+    const s = getEvidenceStatus('OVERDUE', { workflow_class: 'DOCUMENT_UPLOAD' });
+    expect(s.subline).toMatch(/not a legal compliance verdict/);
+    expect(s.subline).not.toMatch(/affecting compliance/);
+  });
+
   it('shows tenancy status subline for compliant tenancy rows', () => {
     const s = getEvidenceStatus('COMPLIANT', {
       requirement_code: 'tenancy_agreement',

@@ -1,0 +1,95 @@
+{
+  "programme": "PRESENTATION-AUTHORITY-ALIGNMENT-01",
+  "run_tag": "20260630T170000Z",
+  "branch": "develop",
+  "production_touched": false,
+  "verdict": "IMPLEMENTATION_COMPLETE_DEVELOP",
+  "upstream_audits": [
+    "REQUIREMENT-AUTHORITY-ONBOARDING-DRIFT-01",
+    "REQUIREMENT-RECONCILIATION-AUTHORITY-01",
+    "ONBOARDING-EXPERIENCE-LIFECYCLE-AUTHORITY-AUDIT-01"
+  ],
+  "acceptance_criteria": {
+    "canonical_count_semantics_onboarding": true,
+    "checklist_documents_wizard_backend_authority": true,
+    "overdue_subline_no_legal_breach_conflation": true,
+    "digest_evidence_required_wording": true,
+    "recommendation_lens_labelled_command_centre": true,
+    "risk_dashboard_governed_headlines": true,
+    "no_lifecycle_state_fe_inference_documents_step": true,
+    "regression_tests_pass": true
+  },
+  "changed_files": {
+    "backend_new": [
+      "backend/services/lifecycle_authority_copy.py",
+      "backend/tests/test_presentation_authority_alignment_01.py"
+    ],
+    "backend_modified": [
+      "backend/services/onboarding_checklist_service.py",
+      "backend/services/monthly_digest_assembly_service.py"
+    ],
+    "frontend_new": [
+      "frontend/src/utils/lifecycleAuthorityCopy.js",
+      "frontend/src/utils/presentationAuthority.js",
+      "frontend/src/utils/lifecycleAuthorityCopy.test.js",
+      "frontend/src/utils/presentationAuthority.test.js"
+    ],
+    "frontend_modified": [
+      "frontend/src/pages/OnboardingStatusPage.js",
+      "frontend/src/pages/ClientDashboard.js",
+      "frontend/src/pages/ClientCommandCenterPage.js",
+      "frontend/src/utils/evidenceStatus.js",
+      "frontend/src/utils/evidenceStatus.test.js",
+      "frontend/src/utils/workspaceOrientationCopy.js",
+      "frontend/src/utils/trustLanguageGovernance.js",
+      "frontend/src/utils/clientCommandCenter.js",
+      "frontend/src/utils/reportingSemanticsLabels.js"
+    ],
+    "governance": [
+      "docs/governance/PRESENTATION_AUTHORITY_CHAIN.md",
+      "docs/governance/PRESENTATION_LANGUAGE_GOVERNANCE.md"
+    ]
+  },
+  "presentation_matrix": [
+    {"surface": "Onboarding status", "before": "legacy requirements_count only", "after": "tracked + identified + footnote from semantic API fields", "authority": "portal setup-status semantics"},
+    {"surface": "Dashboard documents wizard", "before": "needsDocumentsStep FE inference", "after": "setup_presentation.documents_step_recommended from checklist API", "authority": "onboarding_checklist_service"},
+    {"surface": "Requirement card OVERDUE", "before": "Overdue — affecting compliance", "after": "calendar overdue subline without legal verdict", "authority": "lifecycleAuthorityCopy.js"},
+    {"surface": "Monthly digest urgent lines", "before": "— missing evidence", "after": "— evidence required / calendar overdue", "authority": "lifecycle_authority_copy.py"},
+    {"surface": "Command Centre urgent header", "before": "generic property action copy", "after": "portfolio triage lens + score-tracked semantics note", "authority": "workspaceOrientationCopy + command centre"},
+    {"surface": "Dashboard risk snippets", "before": "generic Issue fallback", "after": "riskSignalPresentationHeadline governed fallback", "authority": "API label first"}
+  ],
+  "count_semantics_matrix": {
+    "primary_headline": "requirements_tracked_attention_count",
+    "secondary_when_divergent": "requirements_count (identified)",
+    "footnote": "COUNT_SEMANTICS_EXPLANATION",
+    "legacy_fallback": "requirements_count when semantic fields absent"
+  },
+  "recommendation_hierarchy": [
+    {"lens": "onboarding", "authority": "onboarding_checklist_service.next_step"},
+    {"lens": "operational", "authority": "client_priority_stream / today_projection_service"},
+    {"lens": "triage", "authority": "command_center_service urgent slice"},
+    {"lens": "kpi", "authority": "calculate_compliance_score recommendations"}
+  ],
+  "risk_wording_matrix": [
+    {"context": "Calendar OVERDUE chip", "wording": "Past effective expiry — not legal verdict"},
+    {"context": "Risk signal fallback", "wording": "Review suggested / operational follow-up — not Safety concern"},
+    {"context": "Electrical risk backend", "wording": "unchanged RAOD — OVERDUE/EXPIRED EICR only"}
+  ],
+  "notification_authority_matrix": [
+    {"channel": "Daily reminders", "authority": "reminder_truth_service + lifecycle_reminder_gates", "changed_in_paa01": false},
+    {"channel": "Monthly digest", "authority": "monthly_digest_assembly_service + lifecycle_authority_copy", "changed_in_paa01": true},
+    {"channel": "In-app Today/CC", "authority": "unified tasks + lens labels", "changed_in_paa01": true}
+  ],
+  "tests": {
+    "backend_pytest": "9 passed (test_presentation_authority_alignment_01 + RAOD onboarding drift)",
+    "frontend_jest": "18 passed (presentationAuthority, lifecycleAuthorityCopy, evidenceStatus)"
+  },
+  "remaining_risks": [
+    {"id": "R1", "priority": 2, "surface": "AdminSupportPage portfolio_snapshot", "issue": "Still displays raw requirements_count if API unchanged"},
+    {"id": "R2", "priority": 2, "surface": "clientTopPriorityRanking.js", "issue": "Presentation re-rank within urgent lane — documented, not removed"},
+    {"id": "R3", "priority": 3, "surface": "PropertyDetailPage risk cards", "issue": "May not yet use riskSignalPresentationHeadline everywhere"},
+    {"id": "R4", "priority": 3, "surface": "PDF exports", "issue": "Professional report templates not individually re-audited in this pass"}
+  ],
+  "production_recommendation": "Deploy develop to staging; run onboarding status + first-login checklist walkthrough; verify 18/12 count footnote and documents wizard gating; then promote with existing RAOD production gate.",
+  "raod_regression": "No changes to filter_requirement_rows, reconciliation, or risk_signal_service calendar rules"
+}

@@ -9,6 +9,7 @@ import { CheckCircle, Clock, AlertTriangle, XCircle, FileText, HelpCircle } from
 import { documentVerificationAwaitingSubline } from '../domain/presentDomain';
 import { isConditionStandardWorkflowHint, isMultiEvidenceStyleWorkflow } from './workflowSemantics';
 import { mergeGovernanceUxPilotChip } from './governanceUxPilotAdapter';
+import { calendarOverdueSubline } from './lifecycleAuthorityCopy';
 import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
 import {
   isRightToRentMixedEvidencePendingReview,
@@ -215,7 +216,7 @@ export function getEvidenceStatus(status, row) {
     out = { ...cfg, subline: awaitingVerificationSubline() };
   } else if (key === 'OVERDUE' || key === 'EXPIRED' || key === 'FAILED') {
     const cfg = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.OVERDUE;
-    out = { ...cfg, subline: 'Overdue — affecting compliance.' };
+    out = { ...cfg, subline: calendarOverdueSubline(row) };
   } else {
     const base = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.PENDING;
     out = tenancyStatus && (key === 'VALID' || key === 'COMPLIANT') ? { ...base, subline: tenancyStatus } : { ...base };

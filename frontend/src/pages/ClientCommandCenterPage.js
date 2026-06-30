@@ -849,7 +849,7 @@ export default function ClientCommandCenterPage() {
               Where to focus first
             </CardTitle>
             <p className="text-xs text-gray-500 mt-1 font-normal">
-              One primary action per property; Open property and the extra link are for context only.
+              Portfolio triage lens — ranked from the priority engine. Execution stays in Today. Compliance counts above use score-tracked semantics.
             </p>
           </div>
         </CardHeader>
