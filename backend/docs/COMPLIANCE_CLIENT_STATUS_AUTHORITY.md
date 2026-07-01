@@ -65,6 +65,20 @@ Do **not** re-interpret overdue via ad hoc calendar on raw `PENDING` for KPI tot
 | Portfolio compliance summary (`GET /api/portfolio/compliance-summary`) | `routes/portfolio.py`, `services/catalog_compliance.py:get_portfolio_compliance_from_catalog` | `audit/reporting view` (client-visible portfolio lens) | Legacy path uses projected status; catalog path uses projected row status for matrix/KPIs | Yes (headline score lens) | Catalog portfolio score is an alternate lens (`catalog_portfolio_view` pattern), not the canonical headline score source |
 | Value insights card metrics | `services/client_value_insights_service.py:get_value_insights` | `audit/reporting view` (advisory) | Pulls compliance counts from `calculate_compliance_score.stats` | Yes | Advisory/upgrade narrative may combine KPI counts with commercial heuristics |
 
+## Score recommendation presentation authority
+
+**Backend owns:** recommendation selection, `impact_points` ranking, `partition_score_recommendations`, `top_next_actions` generation, operational vs assurance split.
+
+**Frontend owns:** card layout, property/requirement identity, operational reason copy, expected outcome copy, conditional grouping (4+ same requirement code), and routing CTAs.
+
+**Frontend must NOT:** re-rank, re-score, deduplicate, suppress, merge, or infer priority beyond API fields.
+
+Canonical presentation module: `frontend/src/utils/scoreRecommendationPresentation.js` + `frontend/src/components/score/ScoreRecommendationPresentation.jsx`.
+
+**Today authority remains independent** — score recommendations use `RECOMMENDATION_LENS.kpi`; Today uses operational inbox ranking.
+
+**Conditional grouping:** default individual cards; group only when 4+ recommendations share the same `requirement_code` grouping key; expanded groups preserve property identity and backend order.
+
 ## Interpretation Rules
 
 - `KPI-authoritative` surfaces MUST compute compliance counts/status from:

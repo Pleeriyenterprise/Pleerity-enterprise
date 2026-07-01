@@ -1,0 +1,123 @@
+{
+  "programme_id": "SCORE-RECOMMENDATION-PRESENTATION-AUTHORITY-01",
+  "branch": "develop",
+  "date": "2026-07-01",
+  "verdict": "PRESENTATION_ALIGNMENT_COMPLETE",
+  "authority_chain": [
+    "compliance_scoring_v2.compute_property_score_v2 → top_next_actions",
+    "compliance_scoring_service → compliance_top_next_actions",
+    "compliance_score.calculate_compliance_score → partition_score_recommendations",
+    "Frontend consumes API order only"
+  ],
+  "presentation_chain": [
+    "scoreRecommendationPresentation.js",
+    "ScoreRecommendationPresentation.jsx"
+  ],
+  "recommendation_identity_model": {
+    "fields": [
+      "title",
+      "propertyName",
+      "requirementName",
+      "jurisdiction",
+      "operationalReason",
+      "expectedOutcome",
+      "priority",
+      "primaryCta",
+      "propertyCta"
+    ],
+    "identity_key": "propertyId|requirement_code|requirementId"
+  },
+  "property_context_model": {
+    "lookup_sources": [
+      "score_breakdown_by_property",
+      "portfolioSummary.properties",
+      "dashboard.properties"
+    ],
+    "mandatory": ["propertyName"],
+    "optional": ["jurisdiction", "propertyType"]
+  },
+  "grouping_rules": {
+    "default": "individual_cards",
+    "group_threshold": 4,
+    "group_key": "requirement_code",
+    "preserve_order": true,
+    "expandable": true
+  },
+  "routing_matrix": {
+    "fix_now": {
+      "label": "Fix now",
+      "applies_to": "operational",
+      "resolver": "buildEntityRoute(mode=upload)"
+    },
+    "view_primary": {
+      "label": "View",
+      "applies_to": "assurance",
+      "resolver": "buildEntityRoute(mode=view)"
+    },
+    "view_property": {
+      "label": "View property",
+      "resolver": "resolvePropertyPath"
+    }
+  },
+  "screens_affected": [
+    "ClientDashboard Quick Actions",
+    "ComplianceScorePage operational actions",
+    "ComplianceScorePage assurance opportunities",
+    "PropertyDetailPage suggested next steps"
+  ],
+  "screens_unchanged_by_design": [
+    "Reports compliance summary",
+    "Monthly digest",
+    "Command Centre",
+    "Today",
+    "Portfolio compliance summary"
+  ],
+  "changed_files": [
+    "frontend/src/utils/scoreRecommendationPresentation.js",
+    "frontend/src/components/score/ScoreRecommendationPresentation.jsx",
+    "frontend/src/pages/ClientDashboard.js",
+    "frontend/src/pages/ComplianceScorePage.js",
+    "frontend/src/pages/PropertyDetailPage.js",
+    "frontend/src/utils/scoreRecommendationPresentation.test.js",
+    "frontend/src/pages/ClientDashboard.scoreWidgetLabels.test.js",
+    "backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md"
+  ],
+  "tests": {
+    "suites": [
+      "frontend/src/utils/scoreRecommendationPresentation.test.js",
+      "frontend/src/pages/ClientDashboard.scoreWidgetLabels.test.js"
+    ],
+    "coverage": [
+      "single_property",
+      "multiple_properties",
+      "duplicate_requirement_types",
+      "grouped_recommendations_threshold",
+      "property_context_rendering",
+      "jurisdiction_rendering",
+      "identity_preservation",
+      "backend_order_preservation",
+      "no_frontend_ranking",
+      "assurance_cta_routing"
+    ]
+  },
+  "before_after": {
+    "dashboard": "action text only → property + requirement + reason + outcome on card face",
+    "compliance_score_page": "plain list → ScoreRecommendationList cards",
+    "property_detail": "bullet actions → ScoreRecommendationList cards"
+  },
+  "explicit_non_changes": [
+    "impact_points ranking",
+    "partition_score_recommendations",
+    "compliance_scoring_v2",
+    "Today authority",
+    "Command Centre ranking",
+    "recommendation generation",
+    "recommendation persistence"
+  ],
+  "remaining_risks": [
+    "Dashboard display cap slice(0,3) unchanged",
+    "No browser screenshots in evidence",
+    "Digest/Reports humanization paths separate"
+  ],
+  "production_recommendation": "Staging validation of multi-property Quick Actions before production promotion; frontend-only deploy"
+}
