@@ -6,10 +6,7 @@ import { resolveClientRequirementLifecycle } from './clientRequirementLifecycle'
 import { resolveClientRequirementLifecycleForPresentation } from './clientPersistedSubmissionPresentation';
 import { labelsDuplicateSemantics } from './cerGovernancePresentation';
 import { normalizeRouteId, resolvePropertyPath } from './clientPortalNavigation';
-import {
-  requirementAuthoritativeEvidenceIsRecordPrimary,
-  resolveAuthoritativeEvidenceViewPath,
-} from './authoritativeEvidenceView';
+import { resolveEvidenceNavigationTarget } from './resolveEvidenceNavigationTarget';
 
 export function propertyIdsMatch(a, b) {
   const left = normalizeRouteId(a);
@@ -122,32 +119,14 @@ export function isViewSettledEvidenceCta(requirement, ta) {
 export function resolveSettledEvidenceNavigationTarget(requirement, ta, pagePropertyId = null) {
   if (!requirement || !ta) return null;
   if (!isViewSettledEvidenceCta(requirement, ta)) return null;
-
-  const authPath = resolveAuthoritativeEvidenceViewPath(requirement, null, pagePropertyId);
-  if (authPath) return authPath;
-
   if (String(ta.primary_action_handler || '') === 'guided_evidence') return null;
-
-  const pid = normalizeRouteId(pagePropertyId || requirement.property_id);
-  const rid = normalizeRouteId(requirement.requirement_id || requirement.id);
-  if (!pid || !rid) return null;
 
   const { state } = resolveClientRequirementLifecycleForPresentation(requirement);
   if (state === 'ACTION_REQUIRED' && String(ta.primary_intent || '') === 'upload_evidence') {
     return null;
   }
 
-  if (requirementAuthoritativeEvidenceIsRecordPrimary(requirement)) {
-    return resolvePropertyEvidenceRegistryPath(pid, rid, {
-      openIntel: true,
-      focusSubmission: true,
-    });
-  }
-
-  return resolvePropertyEvidenceRegistryPath(pid, rid, {
-    openIntel: state === 'PENDING_REVIEW' || state === 'SATISFIED_UNVERIFIED',
-    focusSubmission: state === 'PENDING_REVIEW',
-  });
+  return resolveEvidenceNavigationTarget(requirement, { ta, pagePropertyId });
 }
 
 /**

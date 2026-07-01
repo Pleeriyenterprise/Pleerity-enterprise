@@ -23,10 +23,11 @@ import {
 } from '../../utils/requirementIntelligenceLabels';
 import { formatRiskLabel } from '../../utils/riskLabel';
 import { resolveDocumentsPath } from '../../utils/clientPortalNavigation';
+import { resolvePropertyEvidenceRegistryPath } from '../../utils/documentEvidenceAuthority';
 import {
-  resolvePropertyEvidenceRegistryPath,
-  resolveSettledEvidenceNavigationTarget,
-} from '../../utils/documentEvidenceAuthority';
+  resolveEvidenceNavigationTarget,
+  EVIDENCE_NAV_INTENT,
+} from '../../utils/resolveEvidenceNavigationTarget';
 import { useGuidedEvidenceModal } from '../../context/GuidedEvidenceModalContext';
 import { projectResolvedRequirementSemantics } from '../../utils/resolvedRequirementViewModel';
 import { NotApplicableGovernedDisclosure } from '../../utils/notApplicableGovernedCopy';
@@ -43,7 +44,6 @@ import {
   shouldSuppressViewSubmissionLink,
 } from '../../utils/requirementSubmissionModalContext';
 import {
-  resolveAuthoritativeEvidenceViewPath,
   shouldViewEvidenceInModalInspectPanel,
 } from '../../utils/authoritativeEvidenceView';
 import { applyLifecycleAwareCtaPresentation } from '../../utils/requirementLifecyclePresentation';
@@ -281,13 +281,18 @@ export default function RequirementIntelligenceModal({
       scrollToSubmissionPanel();
       return;
     }
-    const path = resolveAuthoritativeEvidenceViewPath(merged, latestCer, pid);
+    const path = resolveEvidenceNavigationTarget(merged, {
+      ta: resolved,
+      pagePropertyId: pid,
+      latestCer,
+      intent: EVIDENCE_NAV_INTENT.VIEW_SETTLED_EVIDENCE,
+    });
     if (path) {
       onNavigate(path);
       return;
     }
     scrollToSubmissionPanel();
-  }, [merged, latestCer, pid, onNavigate, scrollToSubmissionPanel]);
+  }, [merged, latestCer, pid, resolved, onNavigate, scrollToSubmissionPanel]);
   const suppressViewSubmissionLink = shouldSuppressViewSubmissionLink(modalContext, initialFocusSubmission);
 
   const displayTitle = useMemo(() => {
@@ -312,7 +317,11 @@ export default function RequirementIntelligenceModal({
   }, [merged]);
 
 
-  const settledEvidencePath = resolveSettledEvidenceNavigationTarget(merged, resolved, pid);
+  const settledEvidencePath = resolveEvidenceNavigationTarget(merged, {
+    ta: resolved,
+    pagePropertyId: pid,
+    latestCer,
+  });
   const docsView =
     settledEvidencePath ||
     (pid && rid ? resolvePropertyEvidenceRegistryPath(pid, rid) : pid ? resolvePropertyEvidenceRegistryPath(pid) : '/documents');

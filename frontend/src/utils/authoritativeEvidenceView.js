@@ -6,6 +6,8 @@
 import { normalizeRouteId } from './clientPortalNavigation';
 import { resolvePropertyEvidenceRegistryPath } from './documentEvidenceAuthority';
 
+export { resolveAuthoritativeEvidenceViewPath } from './resolveEvidenceNavigationTarget';
+
 export const NON_DOCUMENT_EVIDENCE_MODES = new Set([
   'STRUCTURED_DECLARATION',
   'INSPECTION_CHECKLIST',
@@ -71,34 +73,6 @@ export function resolveAuthoritativeSubmissionInspectPath(propertyId, requiremen
   const rid = normalizeRouteId(requirementId);
   if (!pid || !rid) return null;
   return resolvePropertyEvidenceRegistryPath(pid, rid, { openIntel: true, focusSubmission: true });
-}
-
-/**
- * Best navigation target for "View evidence" when not already inside the intel modal.
- * @param {Record<string, unknown>|null|undefined} requirement
- * @param {Record<string, unknown>|null|undefined} [latestCer]
- * @param {string|null|undefined} [pagePropertyId]
- * @returns {string|null}
- */
-export function resolveAuthoritativeEvidenceViewPath(requirement, latestCer = null, pagePropertyId = null) {
-  if (!requirement || typeof requirement !== 'object') return null;
-  const pid = normalizeRouteId(pagePropertyId || requirement.property_id);
-  const rid = normalizeRouteId(requirement.requirement_id || requirement.id);
-  if (!pid || !rid) return null;
-
-  if (requirementAuthoritativeEvidenceIsRecordPrimary(requirement, latestCer)) {
-    return resolveAuthoritativeSubmissionInspectPath(pid, rid);
-  }
-
-  if (requirementHasLinkedAuthoritativeDocument(requirement)) {
-    return `/documents?property_id=${encodeURIComponent(pid)}&requirement_id=${encodeURIComponent(rid)}`;
-  }
-
-  if (latestCer || requirement.primary_evidence_record_id) {
-    return resolveAuthoritativeSubmissionInspectPath(pid, rid);
-  }
-
-  return null;
 }
 
 /**

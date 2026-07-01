@@ -40,6 +40,9 @@ ACTION_OBLIGATION = "OBLIGATION"
 # Stable primary CTA intent for client/API parity (Requirements, Today, exports).
 INTENT_UPLOAD_EVIDENCE = "upload_evidence"
 INTENT_VIEW_GUIDANCE = "view_guidance"
+INTENT_VIEW_SETTLED_EVIDENCE = "view_settled_evidence"
+INTENT_REVIEW_UPLOADED_DOCUMENT = "review_uploaded_document"
+INTENT_VIEW_SUBMISSION = "view_submission"
 INTENT_MAINTENANCE = "maintenance"
 # Stable intent: external inspection arranged by landlord/professional; platform coordinates + evidence.
 INTENT_COORDINATE_INSPECTION_EVIDENCE = "coordinate_inspection_evidence"
