@@ -1,0 +1,161 @@
+{
+  "programme": "REQUIREMENT-EVIDENCE-NAVIGATION-AUTHORITY-IMPLEMENTATION-01-STAGING-VALIDATION",
+  "run_tag": "20260701T114948Z",
+  "branch": "develop",
+  "commit_under_test": "028547b4",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+  "verdict": "STAGING_VALIDATION_GO",
+  "deploy": {
+    "ready": true,
+    "backend_sha": "028547b487b4fc7ad9017482ad226de965ce94e6",
+    "backend_sha_matches": true,
+    "bundle": "/static/js/main.43ce3d9b.js",
+    "build_sha_present": true,
+    "has_view_settled_intent": true,
+    "has_review_uploaded_intent": true,
+    "has_registry_tab": true,
+    "has_upload_focus": true,
+    "has_view_evidence_label": true,
+    "marker_hits": 4,
+    "frontend_deployment_url": "https://pleerity-enterprise-ez8hxwvys-victory-aigbochies-projects.vercel.app",
+    "frontend_bundle": "/static/js/main.43ce3d9b.js",
+    "alias": "https://pleerity-enterprise-9jjg.vercel.app",
+    "alias_action": "npx vercel alias set pleerity-enterprise-ez8hxwvys \u2192 pleerity-enterprise-9jjg.vercel.app"
+  },
+  "local_frontend_tests": {
+    "exit_code": 0,
+    "passed": true,
+    "tests_passed": 37,
+    "output_tail": "\n> frontend@0.1.0 test\n> craco test --watchAll=false --testPathPattern=resolveEvidenceNavigationTarget|authoritativeEvidenceView|documentEvidenceAuthority|requirementCtaParity\n\nnpm warn Unknown env config \"devdir\". This will stop working in the next major version of npm.\n(node:22788) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nPASS src/utils/authoritativeEvidenceView.test.js\n(node:28164) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nPASS src/utils/documentEvidenceAuthority.phase1.test.js\n(node:31016) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nPASS src/utils/resolveEvidenceNavigationTarget.test.js\n(node:2200) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nPASS src/utils/documentEvidenceAuthority.test.js\n(node:17476) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nPASS src/utils/requirementCtaParity.test.js\n  \u25cf Console\n\n    console.warn\n      [requirementTakeActionResolver] evidence modal primary missing property_id or requirement_id \u2014 showing safe error CTA (no silent document fallback).\n\n      199 |     if (isClientBrokenGuided && process.env.NODE_ENV !== 'production') {\n      200 |       // eslint-disable-next-line no-console\n    > 201 |       console.warn(\n          |               ^\n      202 |         '[requirementTakeActionResolver] evidence modal primary missing property_id or requirement_id \u2014 showing safe error CTA (no silent document fallback).',\n      203 |       );\n      204 |     }\n\n      at resolveRequirementAction (src/utils/requirementTakeActionResolver.js:201:15)\n      at Object.<anonymous> (src/utils/requirementCtaParity.test.js:22:48)\n\n\nTest Suites: 5 passed, 5 total\nTests:       37 passed, 37 total\nSnapshots:   0 total\nTime:        2.352 s\nRan all test suites matching /resolveEvidenceNavigationTarget|authoritativeEvidenceView|documentEvidenceAuthority|requirementCtaParity/i.\n"
+  },
+  "bundle_probe": {
+    "bundle": "/static/js/main.43ce3d9b.js",
+    "view_settled_evidence_in_bundle": true,
+    "view_evidence_label_in_bundle": true,
+    "canonical_resolver_wired": true,
+    "build_sha_present": true
+  },
+  "api_matrix": {
+    "requirements_count": 47,
+    "verified_linked_samples": [
+      {
+        "requirement_id": "c5abaeba-348f-4843-b734-1644bdfb791f",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_code": "gas_safety",
+        "client_lifecycle_state": "VERIFIED",
+        "cognition_url": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?tab=evidence&requirement_id=c5abaeba-348f-4843-b734-1644bdfb791f",
+        "take_action_route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=c5abaeba-348f-4843-b734-1644bdfb791f",
+        "expected_kind": "registry",
+        "expected_url": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?tab=evidence&requirement_id=c5abaeba-348f-4843-b734-1644bdfb791f",
+        "pass": true
+      }
+    ],
+    "missing_samples": [
+      {
+        "requirement_id": "216ed196-883b-42a2-9011-39918534d32d",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_code": "eicr",
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "cognition_url": "",
+        "take_action_route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=216ed196-883b-42a2-9011-39918534d32d",
+        "expected_kind": "documents_upload",
+        "expected_url": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=216ed196-883b-42a2-9011-39918534d32d&focus=upload",
+        "pass": true
+      },
+      {
+        "requirement_id": "62589167-4e34-4aef-ad75-4967383e71bc",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_code": "epc",
+        "client_lifecycle_state": "ACTION_REQUIRED",
+        "cognition_url": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=62589167-4e34-4aef-ad75-4967383e71bc",
+        "take_action_route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=62589167-4e34-4aef-ad75-4967383e71bc",
+        "expected_kind": "documents_upload",
+        "expected_url": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=62589167-4e34-4aef-ad75-4967383e71bc&focus=upload",
+        "pass": true
+      }
+    ],
+    "pending_samples": [
+      {
+        "requirement_id": "71e89158-5de0-422a-970c-5a2163fcc823",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_code": "hmo_license",
+        "client_lifecycle_state": "PENDING_REVIEW",
+        "cognition_url": "",
+        "take_action_route": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=71e89158-5de0-422a-970c-5a2163fcc823",
+        "expected_kind": "documents_queue",
+        "expected_url": "/documents?property_id=d35a58ae-3c81-491c-9694-1d021dd3b8ad&requirement_id=71e89158-5de0-422a-970c-5a2163fcc823",
+        "pass": true
+      }
+    ],
+    "structured_samples": [
+      {
+        "requirement_id": "537da91b-d80c-49b2-bc92-f32514b00a2a",
+        "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+        "requirement_code": "legionella",
+        "client_lifecycle_state": "VERIFIED",
+        "cognition_url": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?tab=evidence&requirement_id=537da91b-d80c-49b2-bc92-f32514b00a2a&open=intel&focus=submission",
+        "take_action_route": "",
+        "expected_kind": "registry_inspect",
+        "expected_url": "/properties/d35a58ae-3c81-491c-9694-1d021dd3b8ad?tab=evidence&requirement_id=537da91b-d80c-49b2-bc92-f32514b00a2a&open=intel&focus=submission",
+        "pass": true
+      }
+    ],
+    "linkage_samples": [],
+    "ops_property_requirement_count": 8,
+    "checks": {
+      "verified_linked_registry_not_documents": true,
+      "missing_routes_upload_or_documents": true,
+      "pending_review_operational": true,
+      "structured_inspect_when_applicable": true,
+      "linkage_operational": null,
+      "requirements_api_reachable": true,
+      "property_requirements_reachable": true,
+      "compliance_score_reachable": true,
+      "ops_property_has_requirements": true
+    }
+  },
+  "backend_cognition_fixtures": {
+    "fixtures": [
+      {
+        "name": "verified_linked_document",
+        "url": "/properties/p1?tab=evidence&requirement_id=r1",
+        "intent": "view_settled_evidence",
+        "pass": true
+      },
+      {
+        "name": "verified_structured_cer",
+        "url": "/properties/p1?tab=evidence&requirement_id=r1&open=intel&focus=submission",
+        "intent": "view_submission",
+        "pass": true
+      }
+    ],
+    "all_pass": true
+  },
+  "checks": {
+    "local_frontend_tests": true,
+    "staging_backend_deployed": true,
+    "staging_frontend_deployed": true,
+    "bundle_registry_routing": true,
+    "bundle_upload_focus": true,
+    "surface_parity_executor": true,
+    "api_requirements_reachable": true,
+    "verified_linked_registry_not_documents": true,
+    "missing_routes_operational": true,
+    "pending_review_operational": true,
+    "structured_inspect_when_present": true,
+    "no_empty_queue_risk_for_verified": true,
+    "backend_cognition_fixtures": true
+  },
+  "failures": [],
+  "acceptance_mapping": {
+    "1_verified_linked_document_registry": true,
+    "2_missing_evidence_upload": true,
+    "3_linkage_pending_documents_queue": true,
+    "4_structured_self_cert_inspect": true,
+    "5_surface_parity": true,
+    "6_no_empty_queue_verified": true
+  }
+}
