@@ -1,0 +1,128 @@
+{
+  "programme": "SCORE-RECOMMENDATION-PRESENTATION-AUTHORITY-01-STAGING-VALIDATION",
+  "run_tag": "20260701T102800Z",
+  "branch": "develop",
+  "commit_under_test": "b43cebc5",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "verdict": "STAGING_VALIDATION_GO",
+  "deploy": {
+    "backend": {
+      "url": "https://pleerity-enterprise.onrender.com/api",
+      "commit_sha": "b43cebc520731e4b77241dfa480fa446154f501e",
+      "note": "Docs-only delta in commit; API recommendation payloads unchanged"
+    },
+    "frontend": {
+      "deployment_url": "https://pleerity-enterprise-3maoiezbu-victory-aigbochies-projects.vercel.app",
+      "alias": "https://pleerity-enterprise-9jjg.vercel.app",
+      "bundle": "main.7c01727a.js",
+      "build_sha_in_bundle": true,
+      "alias_action": "npx vercel alias set pleerity-enterprise-3maoiezbu → pleerity-enterprise-9jjg.vercel.app"
+    }
+  },
+  "checks": {
+    "local_frontend_tests": true,
+    "staging_backend_deployed": true,
+    "staging_frontend_deployed": true,
+    "frontend_presentation_bundle": true,
+    "api_compliance_score_reachable": true,
+    "api_has_recommendations": true,
+    "api_multi_property_recommendations": true,
+    "api_recommendation_order_unchanged": true,
+    "api_recommendation_ranking_unchanged": true,
+    "api_score_unchanged": true,
+    "browser_property_context_visible": true,
+    "browser_three_similar_remain_three": true,
+    "browser_dashboard_display_cap": true,
+    "browser_compliance_score_grouping": true,
+    "browser_group_expandable": true,
+    "browser_today_unchanged": true,
+    "browser_command_centre_unchanged": true
+  },
+  "local_frontend_tests": {
+    "suites": 2,
+    "tests_passed": 13,
+    "command": "npm test -- --testPathPattern=scoreRecommendationPresentation|ClientDashboard.scoreWidgetLabels"
+  },
+  "bundle_probe": {
+    "bundle": "main.7c01727a.js",
+    "build_sha": true,
+    "identity_attr": true,
+    "group_copy": true,
+    "view_property": true
+  },
+  "api_probe": {
+    "status": 200,
+    "score": 40,
+    "recommendations_count": 5,
+    "assurance_count": 2,
+    "distinct_operational_properties": 5,
+    "operational_requirement_code": "EICR",
+    "recommendation_order_property_ids": [
+      "cd7c9bbc-f100-42e9-b5b1-69384898c75f",
+      "0a6f0874-19b4-4344-b2af-f423585a5b94",
+      "51d71a27-94c3-4ff6-be9b-febd7d5ae796",
+      "08dd5b1f-d963-4827-aa8a-a3daddd144cf",
+      "0a5b4497-a1ba-4ee9-87e1-ae2bb9d4cc68"
+    ],
+    "priorities": ["high", "high", "high", "high", "high"],
+    "impacts": ["+15 points", "+15 points", "+15 points", "+15 points", "+15 points"]
+  },
+  "browser_walkthrough": {
+    "dashboard": {
+      "identity_cards_shown": 3,
+      "display_cap_respected": true,
+      "property_names_visible": ["Altrincham Townhouse", "Leamington Spa Victorian"],
+      "distinct_property_context": true,
+      "primary_ctas": 3
+    },
+    "compliance_score": {
+      "operational_group_visible": true,
+      "group_label": "5 properties require attention",
+      "review_all_expandable": true,
+      "expanded_identity_cards": 7,
+      "assurance_section_present": true
+    },
+    "today": {
+      "no_quick_action_recommendation_cards": true
+    },
+    "command_centre": {
+      "loaded": true
+    },
+    "api_fingerprint_matches_live_session": true
+  },
+  "grouping_probe": {
+    "group_visible": true,
+    "review_all": true,
+    "expanded_identity_cards": 7
+  },
+  "acceptance_criteria": {
+    "recommendation_ranking_unchanged": true,
+    "recommendation_order_unchanged": true,
+    "recommendation_scoring_unchanged": true,
+    "property_name_on_every_card": true,
+    "requirement_identified": true,
+    "jurisdiction_where_applicable": true,
+    "operational_reason_displayed": true,
+    "expected_outcome_displayed": true,
+    "priority_matches_api": true,
+    "fix_now_routes": true,
+    "view_property_routes": true,
+    "three_similar_three_distinct": true,
+    "four_plus_grouped": true,
+    "group_expandable": true,
+    "property_identity_in_group": true,
+    "dashboard_cap_correct": true,
+    "today_unchanged": true,
+    "command_centre_unchanged": true,
+    "no_recommendation_removed": true,
+    "no_duplicate_created": true,
+    "no_score_change": true,
+    "no_backend_payload_semantic_change": true
+  },
+  "remaining_risks": [
+    "Property Detail suggested steps depend on top_next_actions in compliance-detail payload (0 for OPS_PROPERTY probe property; presentation layer wired correctly)",
+    "Dashboard locator testid view-property suffix can match View property button in automated probes"
+  ]
+}
