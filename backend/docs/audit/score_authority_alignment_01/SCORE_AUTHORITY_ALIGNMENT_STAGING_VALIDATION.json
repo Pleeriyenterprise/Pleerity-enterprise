@@ -1,0 +1,281 @@
+{
+  "programme": "SCORE-AUTHORITY-ALIGNMENT-01-STAGING-VALIDATION",
+  "run_tag": "20260630T235555Z",
+  "branch": "develop",
+  "commit_under_test": "6855f297",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_frontend": "https://pleerity-enterprise-9jjg.vercel.app",
+  "checks": {
+    "local_risk_bands_pytest": true,
+    "score_62_canonical": true,
+    "boundary_scores_local": true,
+    "score_maths_unchanged": true,
+    "staging_backend_deployed": true,
+    "staging_frontend_deployed": true,
+    "frontend_no_old_threshold_fn": true,
+    "frontend_no_old_explanation_fn": true,
+    "frontend_build_sha": true,
+    "frontend_moderate_risk_wording": true,
+    "api_compliance_score_authority_fields": true,
+    "api_portfolio_summary_authority_fields": true,
+    "api_property_detail_authority_fields": true,
+    "api_surfaces_consistent": true
+  },
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "output_tail": "..........................................                               [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n42 passed, 4 warnings in 0.15s\n"
+  },
+  "local_boundary": {
+    "passed": true,
+    "score_62": {
+      "grade": "C",
+      "color": "amber",
+      "message": "Moderate risk - action required",
+      "risk_level": "Moderate Risk",
+      "band_explanation": "Moderate risk (60\u201379): Action required to maintain compliance."
+    },
+    "boundaries": {
+      "62": {
+        "grade": "C",
+        "color": "amber",
+        "message": "Moderate risk - action required",
+        "risk_level": "Moderate Risk",
+        "band_explanation": "Moderate risk (60\u201379): Action required to maintain compliance."
+      },
+      "40": {
+        "grade": "D",
+        "color": "amber",
+        "message": "High risk - action required",
+        "risk_level": "High Risk",
+        "band_explanation": "High risk (40\u201359): Action required to reduce exposure."
+      },
+      "41": {
+        "grade": "D",
+        "color": "amber",
+        "message": "High risk - action required",
+        "risk_level": "High Risk",
+        "band_explanation": "High risk (40\u201359): Action required to reduce exposure."
+      },
+      "59": {
+        "grade": "D",
+        "color": "amber",
+        "message": "High risk - action required",
+        "risk_level": "High Risk",
+        "band_explanation": "High risk (40\u201359): Action required to reduce exposure."
+      },
+      "60": {
+        "grade": "C",
+        "color": "amber",
+        "message": "Moderate risk - action required",
+        "risk_level": "Moderate Risk",
+        "band_explanation": "Moderate risk (60\u201379): Action required to maintain compliance."
+      },
+      "79": {
+        "grade": "C",
+        "color": "amber",
+        "message": "Moderate risk - action required",
+        "risk_level": "Moderate Risk",
+        "band_explanation": "Moderate risk (60\u201379): Action required to maintain compliance."
+      },
+      "80": {
+        "grade": "B",
+        "color": "green",
+        "message": "Low risk - good standing",
+        "risk_level": "Low Risk",
+        "band_explanation": "Low risk (80\u2013100): Good standing."
+      },
+      "89": {
+        "grade": "B",
+        "color": "green",
+        "message": "Low risk - good standing",
+        "risk_level": "Low Risk",
+        "band_explanation": "Low risk (80\u2013100): Good standing."
+      },
+      "90": {
+        "grade": "A",
+        "color": "green",
+        "message": "Low risk - good standing",
+        "risk_level": "Low Risk",
+        "band_explanation": "Low risk (80\u2013100): Good standing."
+      }
+    }
+  },
+  "maths_unchanged": {
+    "passed": true,
+    "commit_files": [
+      "backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md",
+      "backend/docs/audit/score_authority_alignment_01/SCORE_AUTHORITY_ALIGNMENT_EVIDENCE.json",
+      "backend/docs/audit/score_authority_alignment_01/SCORE_AUTHORITY_ALIGNMENT_REPORT.md",
+      "backend/routes/portfolio.py",
+      "backend/services/compliance_score.py",
+      "backend/services/compliance_scoring_service.py",
+      "backend/tests/test_risk_bands_score_authority.py",
+      "backend/utils/risk_bands.py",
+      "frontend/src/components/ScoreTrendChart.js",
+      "frontend/src/pages/ClientDashboard.js",
+      "frontend/src/pages/ComplianceScorePage.js",
+      "frontend/src/utils/riskLabel.js",
+      "frontend/src/utils/riskLabel.test.js",
+      "frontend/src/utils/scoreAuthorityConstants.js",
+      "frontend/src/utils/scoreAuthorityConstants.test.js"
+    ],
+    "forbidden_touched": []
+  },
+  "backend_deploy_wait": {
+    "ready": true,
+    "version": {
+      "commit_sha": "6855f297736f00bcc36ea75cd0ed01da1d91eede",
+      "environment": "staging"
+    }
+  },
+  "frontend_deploy_wait": {
+    "ready": true,
+    "bundle": "/static/js/main.1ad618dc.js",
+    "build_sha_present": true,
+    "has_band_explanation_field": true,
+    "has_moderate_risk": true,
+    "has_medium_risk_label": false,
+    "has_old_score_to_grade": false,
+    "has_old_score_explanation_fn": false
+  },
+  "api_probes": {
+    "compliance_score": {
+      "status": 200,
+      "body_keys": [
+        "score",
+        "grade",
+        "color",
+        "message",
+        "band_explanation",
+        "base_portfolio_risk_state",
+        "effective_portfolio_risk_state",
+        "risk_override_reasons",
+        "critical_property_count",
+        "high_risk_gap_count",
+        "unknown_or_stale_property_count",
+        "attention_required",
+        "critical_property_escalation",
+        "suppress_positive_headline",
+        "legacy_override_output",
+        "policy_override_output",
+        "effective_override_output",
+        "risk_level",
+        "portfolio_risk_level",
+        "enhanced_model",
+        "breakdown",
+        "weights",
+        "stats",
+        "reporting_semantics",
+        "recommendations",
+        "assurance_opportunities",
+        "score_confidence",
+        "properties_count",
+        "score_last_calculated_at",
+        "score_model_version"
+      ],
+      "presentation": {
+        "score": 39,
+        "grade": "F",
+        "color": "red",
+        "message": "Critical unresolved compliance risks require immediate operational action.",
+        "band_explanation": "Critical risk (0\u201339): Immediate action required.",
+        "risk_level": "Critical Risk"
+      },
+      "consistent": true
+    },
+    "portfolio_summary": {
+      "status": 200,
+      "body_keys": [
+        "portfolio_score",
+        "risk_level",
+        "portfolio_risk_level",
+        "grade",
+        "color",
+        "message",
+        "band_explanation",
+        "base_portfolio_risk_state",
+        "effective_portfolio_risk_state",
+        "risk_override_reasons",
+        "critical_property_count",
+        "high_risk_gap_count",
+        "unknown_or_stale_property_count",
+        "attention_required",
+        "critical_property_escalation",
+        "suppress_positive_headline",
+        "legacy_override_output",
+        "policy_override_output",
+        "effective_override_output",
+        "score_status",
+        "score_status_message",
+        "score_authority",
+        "last_calculated_at",
+        "score_coverage",
+        "updated_at",
+        "kpis",
+        "gap_engine_diagnostics",
+        "properties",
+        "catalog_matrix_portfolio_preview",
+        "trust_surface_operational_metadata"
+      ],
+      "presentation": {
+        "portfolio_score": 39,
+        "grade": "F",
+        "color": "red",
+        "message": "High urgency: overdue items detected",
+        "band_explanation": "Critical risk (0\u201339): Immediate action required.",
+        "risk_level": "Critical Risk"
+      },
+      "consistent": true
+    },
+    "property_detail": {
+      "status": 200,
+      "body_keys": [
+        "property_id",
+        "property_name",
+        "matrix",
+        "risk_index",
+        "risk_level",
+        "kpis",
+        "compliance_basis",
+        "effective_jurisdiction_label",
+        "jurisdiction_source",
+        "jurisdiction_required",
+        "compliance_confidence",
+        "preview_matrix_score",
+        "score",
+        "score_status",
+        "score_authority",
+        "last_calculated_at",
+        "last_updated_at",
+        "score_delta",
+        "score_change_summary",
+        "client_default_jurisdiction",
+        "nickname",
+        "name",
+        "address_line_1",
+        "address_line_2",
+        "city",
+        "postcode",
+        "grade",
+        "color",
+        "message",
+        "band_explanation"
+      ],
+      "presentation": {
+        "score": 53,
+        "grade": "D",
+        "color": "amber",
+        "message": "High risk - action required",
+        "band_explanation": "High risk (40\u201359): Action required to reduce exposure.",
+        "risk_level": "High Risk"
+      },
+      "consistent": true
+    },
+    "reports": {
+      "status": 404,
+      "body_keys": []
+    }
+  },
+  "verdict": "STAGING_VALIDATION_GO"
+}
