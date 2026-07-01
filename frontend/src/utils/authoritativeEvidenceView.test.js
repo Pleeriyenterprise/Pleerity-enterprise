@@ -24,16 +24,17 @@ describe('authoritativeEvidenceView', () => {
     );
   });
 
-  it('routes document-primary verified evidence to documents', () => {
+  it('routes document-primary verified evidence to property evidence registry', () => {
     const req = {
       property_id: 'p1',
       requirement_id: 'r1',
+      client_lifecycle_state: 'VERIFIED',
       document_id: 'doc_1',
       evidence_authority: { effective_verified_document_id: 'doc_1' },
     };
     expect(requirementAuthoritativeEvidenceIsRecordPrimary(req)).toBe(false);
     expect(resolveAuthoritativeEvidenceViewPath(req)).toBe(
-      '/documents?property_id=p1&requirement_id=r1',
+      '/properties/p1?tab=evidence&requirement_id=r1',
     );
   });
 

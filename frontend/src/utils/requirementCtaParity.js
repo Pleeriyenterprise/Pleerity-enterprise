@@ -9,8 +9,7 @@ import { applyLifecycleAwareCtaPresentation } from './requirementLifecyclePresen
 import {
   guidedMixedEvidenceInitialMode,
 } from './rightToRentTrustPresentation';
-import { resolveSettledEvidenceNavigationTarget } from './documentEvidenceAuthority';
-import { resolveAuthoritativeEvidenceViewPath } from './authoritativeEvidenceView';
+import { resolveEvidenceNavigationTarget } from './resolveEvidenceNavigationTarget';
 
 export const GUIDED_CTA_UNAVAILABLE_TITLE =
   'This obligation is configured for guided resolution but required property or requirement context is missing. Use supporting links or contact support if this persists.';
@@ -130,13 +129,11 @@ export function executeRequirementPrimaryCta(ctx) {
     return { handled: true, ta };
   }
   if (ta.primary_route && navigate) {
-    const authPath = resolveAuthoritativeEvidenceViewPath(
-      requirement,
-      null,
-      effectivePid || pagePropertyId,
-    );
-    const settledTarget = resolveSettledEvidenceNavigationTarget(requirement, ta, effectivePid || pagePropertyId);
-    navigate(authPath || settledTarget || ta.primary_route);
+    const navTarget = resolveEvidenceNavigationTarget(requirement, {
+      ta,
+      pagePropertyId: effectivePid || pagePropertyId,
+    });
+    navigate(navTarget || ta.primary_route);
     return { handled: true, ta };
   }
   return { handled: false, ta };

@@ -1,0 +1,127 @@
+{
+  "programme": "REQUIREMENT-EVIDENCE-NAVIGATION-AUTHORITY-IMPLEMENTATION-01",
+  "branch": "develop",
+  "date": "2026-06-30",
+  "verdict": "IMPLEMENTATION_COMPLETE",
+  "scope": {
+    "presentation_routing_only": true,
+    "production_touched": false,
+    "main_touched": false,
+    "lifecycle_authority_changed": false,
+    "scoring_changed": false
+  },
+  "canonical_resolver": {
+    "module": "frontend/src/utils/resolveEvidenceNavigationTarget.js",
+    "entrypoint": "resolveEvidenceNavigationTarget",
+    "intents": {
+      "upload_evidence": "Document Operations upload route",
+      "review_uploaded_document": "Document Operations review queue",
+      "view_settled_evidence": "Property Evidence Registry",
+      "view_submission": "Registry + intel submission inspect"
+    }
+  },
+  "defect_fixed": {
+    "symptom": "Verified + linked document → View evidence → empty Document Operations Needs Action queue",
+    "root_cause": "authPath precedence routed document-primary verified evidence to /documents before registry rewrite",
+    "fix": "Single resolver; registry wins for VERIFIED + ACTIVE_EVIDENCE linked documents"
+  },
+  "routing_matrix": [
+    {
+      "lifecycle": "ACTION_REQUIRED",
+      "intent": "upload_evidence",
+      "destination": "/documents?property_id={pid}&requirement_id={rid}&focus=upload",
+      "test": "resolveEvidenceNavigationTarget.test.js — routes missing evidence"
+    },
+    {
+      "lifecycle": "PENDING_REVIEW",
+      "condition": "document_linkage_state=RECONCILIATION_REQUIRED",
+      "destination": "/documents?property_id={pid}&requirement_id={rid}",
+      "test": "resolveEvidenceNavigationTarget.test.js — routes needs linkage"
+    },
+    {
+      "lifecycle": "PENDING_REVIEW",
+      "intent": "review_uploaded_document",
+      "destination": "/documents?property_id={pid}&requirement_id={rid}",
+      "test": "resolveEvidenceNavigationTarget.test.js — routes pending review document"
+    },
+    {
+      "lifecycle": "VERIFIED",
+      "condition": "linked document + ACTIVE_EVIDENCE",
+      "destination": "/properties/{pid}?tab=evidence&requirement_id={rid}",
+      "test": "requirementCtaParity.test.js — verified linked document"
+    },
+    {
+      "lifecycle": "VERIFIED",
+      "condition": "multiple linked documents",
+      "destination": "/properties/{pid}?tab=evidence&requirement_id={rid}",
+      "test": "resolveEvidenceNavigationTarget.test.js — verified multiple documents"
+    },
+    {
+      "lifecycle": "VERIFIED",
+      "condition": "structured declaration CER",
+      "destination": "/properties/{pid}?tab=evidence&requirement_id={rid}&open=intel&focus=submission",
+      "test": "resolveEvidenceNavigationTarget.test.js — verified structured declaration"
+    },
+    {
+      "lifecycle": "VERIFIED",
+      "condition": "self-certified record",
+      "destination": "/properties/{pid}?tab=evidence&requirement_id={rid}&open=intel&focus=submission",
+      "test": "resolveEvidenceNavigationTarget.test.js — verified self-certified record"
+    },
+    {
+      "lifecycle": "VERIFIED",
+      "condition": "HISTORICAL_OR_SUPERSEDED visibility",
+      "destination": "/properties/{pid}?tab=evidence&requirement_id={rid}",
+      "test": "resolveEvidenceNavigationTarget.test.js — archived evidence"
+    }
+  ],
+  "surfaces_wired": [
+    "RequirementsPage.js → executeRequirementPrimaryCta",
+    "PropertyDetailPage.js → executeRequirementPrimaryCta",
+    "RequirementIntelligenceModal.js → resolveEvidenceNavigationTarget",
+    "PropertyOperatingHub.jsx → executeRequirementPrimaryCta",
+    "ClientCommandCenterPage.js → executeRequirementPrimaryCta",
+    "ComplianceScorePage.js → executeRequirementPrimaryCta (tier A); tier B already registry"
+  ],
+  "backend_intent_alignment": {
+    "requirement_action_resolver.py": [
+      "INTENT_VIEW_SETTLED_EVIDENCE",
+      "INTENT_REVIEW_UPLOADED_DOCUMENT",
+      "INTENT_VIEW_SUBMISSION"
+    ],
+    "operational_cognition_service.py": {
+      "_verified_view_primary_action": {
+        "document_url_before": "/documents?property_id={pid}&requirement_id={rid}",
+        "document_url_after": "/properties/{pid}?tab=evidence&requirement_id={rid}",
+        "intent_field_added": true
+      }
+    }
+  },
+  "tests": {
+    "frontend": {
+      "suites": [
+        "resolveEvidenceNavigationTarget.test.js",
+        "authoritativeEvidenceView.test.js",
+        "documentEvidenceAuthority.test.js",
+        "requirementCtaParity.test.js"
+      ],
+      "passed": 37,
+      "failed": 0
+    },
+    "backend": {
+      "suites": [
+        "tests/test_post_submission_evidence_ux_fix_p0.py"
+      ],
+      "passed": 7,
+      "failed": 0
+    }
+  },
+  "acceptance": {
+    "verified_linked_document_opens_registry": true,
+    "missing_unresolved_opens_operational_workflow": true,
+    "cta_wording_destination_agree": true,
+    "no_lifecycle_authority_changes": true,
+    "no_production_changes": true,
+    "no_empty_queue_for_settled_evidence": true
+  }
+}

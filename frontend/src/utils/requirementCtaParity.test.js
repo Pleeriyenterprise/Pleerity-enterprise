@@ -209,6 +209,30 @@ describe('executeRequirementPrimaryCta condition-standard', () => {
     expect(result.handled).toBe(true);
     expect(navigate).toHaveBeenCalledWith('/properties/p-ver?tab=evidence&requirement_id=r-ver');
   });
+
+  it('routes verified linked document view evidence to registry not empty documents queue', () => {
+    const navigate = jest.fn();
+    const requirement = {
+      requirement_id: 'r-gas',
+      property_id: 'p-gas',
+      client_lifecycle_state: 'VERIFIED',
+      status: 'COMPLIANT',
+      document_id: 'doc-gas-1',
+      document_client_visibility_state: 'ACTIVE_EVIDENCE',
+      evidence_authority: { effective_verified_document_id: 'doc-gas-1', state: 'VERIFIED_CURRENT' },
+      take_action: {
+        primary: {
+          label: 'View evidence',
+          route: '/documents?property_id=p-gas&requirement_id=r-gas',
+          handler: 'navigate',
+          intent: 'upload_evidence',
+        },
+      },
+    };
+    const result = executeRequirementPrimaryCta({ requirement, navigate });
+    expect(result.handled).toBe(true);
+    expect(navigate).toHaveBeenCalledWith('/properties/p-gas?tab=evidence&requirement_id=r-gas');
+  });
 });
 
 describe('buildPropertyComplianceResolveQueryLink', () => {

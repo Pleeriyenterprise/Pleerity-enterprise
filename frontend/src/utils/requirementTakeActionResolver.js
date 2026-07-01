@@ -106,10 +106,15 @@ function guidedPrimaryLooksIncomplete(primary) {
 
 function primaryIntentFromTakeActionPrimary(primary) {
   if (!primary || typeof primary !== 'object') return null;
-  const ex = String(primary.intent || '').trim();
+  const ex = String(primary.intent || primary.key || '').trim().toLowerCase();
+  if (ex === 'view_verified_evidence' || ex === 'view_settled_evidence') return 'view_settled_evidence';
+  if (ex === 'view_submission') return 'view_submission';
+  if (ex === 'review_uploaded_document' || ex === 'review_evidence') return 'review_uploaded_document';
   if (ex) return ex;
   const r = String(primary.route || '');
-  if (r.includes('/documents')) return 'upload_evidence';
+  if (r.includes('/documents') && !r.includes('tab=evidence')) return 'upload_evidence';
+  if (r.includes('open=intel') && r.includes('focus=submission')) return 'view_submission';
+  if (r.includes('tab=evidence') && !r.includes('focus=upload')) return 'view_settled_evidence';
   if (r.includes('/operations/issues/new')) return 'maintenance';
   if (r.includes('#compliance')) return 'view_guidance';
   if (/#req=/.test(r) || r.includes('/properties/')) return 'coordinate_inspection_evidence';

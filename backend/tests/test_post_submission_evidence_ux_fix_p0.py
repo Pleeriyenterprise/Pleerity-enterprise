@@ -53,7 +53,7 @@ def test_verified_structured_routes_to_intel_submission_not_documents():
     assert env["operational_truth_flags"]["uploaded_not_verified"] is False
 
 
-def test_verified_document_routes_to_documents():
+def test_verified_document_routes_to_evidence_registry():
     req = {
         "property_id": "prop_1",
         "requirement_id": "req_1",
@@ -66,7 +66,8 @@ def test_verified_document_routes_to_documents():
         "take_action": {"primary": {"label": "Upload Gas Safety Certificate"}},
     }
     env = build_envelope_for_requirement(req)
-    assert env["primary_action"]["url"] == "/documents?property_id=prop_1&requirement_id=req_1"
+    assert env["primary_action"]["url"] == "/properties/prop_1?tab=evidence&requirement_id=req_1"
+    assert env["primary_action"]["intent"] == "view_settled_evidence"
 
 
 def test_reopen_prefill_accepts_scalar_structured_fields():

@@ -114,20 +114,29 @@ def _intel_submission_view_url(req: Dict[str, Any]) -> Optional[str]:
 
 
 def _verified_view_primary_action(req: Dict[str, Any]) -> Dict[str, Any]:
+    from services.requirement_action_resolver import (
+        INTENT_VIEW_SETTLED_EVIDENCE,
+        INTENT_VIEW_SUBMISSION,
+    )
+
     ea = _ea_blob(req)
     doc_id = ea.get("effective_verified_document_id") or req.get("document_id") or req.get("evidence_doc_id")
     pid = str(req.get("property_id") or "").strip()
     rid = str(req.get("requirement_id") or "").strip()
     cer_id = str(ea.get("primary_evidence_record_id") or req.get("primary_evidence_record_id") or "").strip()
     url = None
+    intent = INTENT_VIEW_SETTLED_EVIDENCE
     if doc_id and pid and rid:
-        url = f"/documents?property_id={pid}&requirement_id={rid}"
+        url = f"/properties/{pid}?tab=evidence&requirement_id={rid}"
+        intent = INTENT_VIEW_SETTLED_EVIDENCE
     elif pid and rid and (cer_id or not doc_id):
         url = _intel_submission_view_url(req)
+        intent = INTENT_VIEW_SUBMISSION
     return {
         "key": "view_verified_evidence",
         "label": "View evidence",
         "url": url,
+        "intent": intent,
         "hint": "Evidence is verified for this obligation.",
         "source": "operational_cognition_service.verified_authority",
     }
