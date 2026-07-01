@@ -1,0 +1,130 @@
+{
+  "programme": "SCORE-AUTHORITY-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260701T093743Z",
+  "develop_sha": "0931c9ba6c322998f56deef200f38e982d2d3025",
+  "main_sha_before_promotion": "91ffa3f3abfd2c230469277d3c64fea49523c91a",
+  "main_sha_after_promotion": "71350447",
+  "promoted_commits": [
+    {
+      "source": "6855f297736f00bcc36ea75cd0ed01da1d91eede",
+      "main_cherry_pick": "e6373d01",
+      "message": "fix(score): centralise score band authority"
+    },
+    {
+      "source": "0931c9ba6c322998f56deef200f38e982d2d3025",
+      "main_cherry_pick": "71350447",
+      "message": "docs(score): add score authority staging validation evidence"
+    }
+  ],
+  "excluded_commits_on_develop": [
+    "f16209fe docs(properties): add property detail presentation staging validation evidence",
+    "6c3d2190 fix(properties): clarify satisfied versus scoring-valid requirements",
+    "611c96f3 docs(documents): add linkage lifecycle staging validation evidence",
+    "ca6bc796 fix(documents): auto-resolve linkage issues after evidence linking",
+    "e4f7d1dc docs(today): add staging presentation authority validation evidence",
+    "0bad5c0e fix(today): align banner and lane presentation authority",
+    "7474362a fix(presentation): validate dashboard and digest lifecycle wording",
+    "aa8bf7b7 docs(presentation): add staging backend validation evidence",
+    "8a830365 fix(presentation): align lifecycle authority across onboarding and counts",
+    "d6cac6be docs(requirements): add production promotion evidence",
+    "5063280b docs(requirements): add post-reconciliation staging validation evidence",
+    "c93a014b fix(requirements): add authority reconciliation for alias duplicates",
+    "6f20d5cc docs(requirements): add post-deploy staging validation evidence",
+    "0b1887a2 fix(requirements): align onboarding authority and runtime risk semantics",
+    "678f3b92 docs(compliance): add CIE-2 staging validation evidence",
+    "817977e4 feat(compliance): add CIE recommendation and priority engines",
+    "52907eb0 docs(compliance): add CIE-1/1.5 staging foundation acceptance evidence",
+    "935cf3f4 feat(compliance): add CIE foundation and provenance infrastructure",
+    "fdebb8af docs(compliance): add CIE Architecture Refinement-02 intelligence provenance",
+    "40e7cdb3 docs(compliance): refine CIE architecture with intelligence artefact model",
+    "f8da4fe5 docs(compliance): add Compliance Intelligence Engine architecture (CIE-0)",
+    "f70ea4f6 docs(compliance): add CEG Phase 5 Tier 1 staging acceptance evidence",
+    "b6edbb27 chore(staging): enable CEG graph mode for Phase 5 Tier 1 validation",
+    "4de21932 feat(compliance): add grounded CEG intelligence layer",
+    "516b27bd feat(compliance): add CEG decision explorer and graph service routes",
+    "f8207336 feat(compliance): complete CEG Phase 2D and Phase 2E acceptance",
+    "f75da4fd feat(compliance): wire CEG Phase 2C P1 producers and rule lineage",
+    "7940bfe0 feat(compliance): wire CEG Phase 2B P0 authority producers in shadow mode",
+    "eb502862 feat(compliance): add CEG Phase 2A graph health and producer infrastructure",
+    "4ae01702 docs(compliance): Refinement-02 architecture for CEG Phase 2",
+    "ae1d8ae1 feat(compliance): Compliance Evidence Graph Phase 1 on develop",
+    "49eb7978 feat(ops): Operational Evidence Platform phase 4 on develop",
+    "bf1ba15c fix(frontend): correct OperationalEvidencePanel api client import path",
+    "1aed4b64 feat(ops): Operational Evidence Platform phase 3 on develop",
+    "bdd68477 feat(ops): Operational Evidence Platform phases 1 and 2 on develop"
+  ],
+  "checks": {
+    "production_backend_sha": true,
+    "production_frontend_bundle": true,
+    "bundle_no_legacy_threshold_fn": true,
+    "bundle_no_old_explanation_fn": true,
+    "bundle_has_band_explanation": true,
+    "bundle_moderate_risk_wording": true,
+    "no_staging_api_url": true,
+    "no_staging_frontend_url": true,
+    "prod_api_url_present": true,
+    "requirement_authority_preserved": true,
+    "presentation_authority_preserved": true,
+    "regression_unauth_protected": true,
+    "dashboard_compliance_score_authority": true,
+    "portfolio_summary_authority": true,
+    "property_detail_authority": true,
+    "score_maths_unchanged": true
+  },
+  "backend_deploy_wait": {
+    "ready": true,
+    "version": {
+      "commit_sha": "7135044778a440ec61745b2adbfbba9857997b2a",
+      "environment": "production"
+    }
+  },
+  "production_deployed_backend_sha": "7135044778a440ec61745b2adbfbba9857997b2a",
+  "frontend_deployment": {
+    "url": "https://pleerityenterprise.co.uk",
+    "deployment_url": "https://pleerity-enterprise-3qw3yj5pv-victory-aigbochies-projects.vercel.app",
+    "bundle": "/static/js/main.fae27963.js",
+    "bundle_sha256": "eb87df9f51d09466419d6b7b5b6bcb3edbee8d51875af5f45e1f35147f252d6f"
+  },
+  "staging_validation_reference": {
+    "verdict": "STAGING_VALIDATION_GO",
+    "commit": "6855f297736f00bcc36ea75cd0ed01da1d91eede",
+    "evidence": "backend/docs/audit/score_authority_alignment_01/SCORE_AUTHORITY_ALIGNMENT_STAGING_VALIDATION.json"
+  },
+  "frontend_bundle": {
+    "index_status": 200,
+    "main_script": "/static/js/main.fae27963.js",
+    "bundle_status": 200,
+    "bundle_sha256": "eb87df9f51d09466419d6b7b5b6bcb3edbee8d51875af5f45e1f35147f252d6f",
+    "markers": {
+      "build_sha_promoted": true,
+      "band_explanation": true,
+      "moderate_risk": true,
+      "medium_risk_label": false,
+      "scoreToGradeColorMessage": false,
+      "getRiskBandExplanationFromScore": false,
+      "prod_api_url": true,
+      "staging_api_url": false,
+      "staging_frontend_url": false,
+      "valid_for_scoring": true,
+      "requirements_satisfied": true
+    }
+  },
+  "unauth_probes": {
+    "compliance_score": 401,
+    "portfolio_summary": 401,
+    "property_detail": 401,
+    "dashboard": 401,
+    "reports": 401
+  },
+  "api_probes": {},
+  "authenticated_api_validation": false,
+  "api_authority_note": "Authenticated production portal probes unavailable (admin/client login 401). Score authority API fields validated at STAGING_VALIDATION_GO on develop; production backend SHA and frontend bundle confirm promoted artefacts.",
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL",
+  "production_recommendation": "Score Authority programme complete on production. Monitor portfolio override messages separately from band authority.",
+  "remaining_risks": [
+    "Authenticated production API probes skipped \u2014 portal login unavailable in promotion runner; staging STAGING_VALIDATION_GO covers API authority fields.",
+    "Portfolio risk override may replace headline message while grade/colour/band remain score-authoritative.",
+    "Legacy persisted Property.risk_level values reconcile on read when score is present."
+  ],
+  "rollback_recommendation": "Cherry-pick revert of e6373d01 and 71350447 on main if regression detected."
+}
