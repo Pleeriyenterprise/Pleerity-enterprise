@@ -1,0 +1,231 @@
+{
+  "programme_id": "REQUIREMENT-EVIDENCE-NAVIGATION-AUTHORITY-01",
+  "branch": "develop",
+  "date": "2026-07-01",
+  "verdict": "D_lifecycle_aware_navigation_required",
+  "secondary_verdict": "C_violates_navigation_authority_for_verified_document_primary",
+  "observed_defect": {
+    "surface": "Requirements page",
+    "state": "VERIFIED + 1 document (Gas Safety, EICR, EPC pattern)",
+    "cta": "View evidence",
+    "actual_destination": "/documents (Document Operations)",
+    "user_experience": "Operations queue clear — no documents need operator action",
+    "user_expectation": "See the evidence that satisfied the requirement"
+  },
+  "governance_intent": {
+    "document_operations": "Operator workspace — attention, linkage, review, upload intake",
+    "evidence_registry": "Landlord/auditor workspace — settled evidence per property",
+    "view_evidence_meaning": "Show authoritative satisfied evidence (document, declaration, or record)",
+    "empty_queue_for_verified": false
+  },
+  "authority_chain": [
+    "Requirement Authority → evidence_authority on enriched requirement row",
+    "requirement_action_resolver → take_action.primary.route",
+    "operational_cognition_service → verified view URL",
+    "resolveRequirementAction → applyLifecycleAwareCtaPresentation",
+    "executeRequirementPrimaryCta / RequirementIntelligenceModal",
+    "CONFLICT: authoritativeEvidenceView vs documentEvidenceAuthority settled rewrite"
+  ],
+  "presentation_chain": [
+    "documentEvidenceAuthority.js",
+    "authoritativeEvidenceView.js",
+    "requirementCtaParity.js",
+    "requirementLifecyclePresentation.js",
+    "workspaceOrientationCopy.js"
+  ],
+  "root_cause": {
+    "summary": "executeRequirementPrimaryCta navigates resolveAuthoritativeEvidenceViewPath before resolveSettledEvidenceNavigationTarget; document-primary verified paths return /documents; attention queue excludes ACTIVE_EVIDENCE documents",
+    "code_precedence": "navigate(authPath || settledTarget || ta.primary_route)",
+    "backend_emit": "operational_cognition_service._verified_view_primary_action and requirement_action_resolver doc_route → /documents when document_id present"
+  },
+  "evidence_lifecycle_matrix": {
+    "MISSING": { "cta": "Upload document / Record", "destination": "upload_or_guided_resolve" },
+    "NEEDS_LINKAGE": { "cta": "Review / Reconcile", "destination": "document_operations" },
+    "PENDING_REVIEW": { "cta": "Review evidence", "destination": "document_operations_or_review" },
+    "SATISFIED_UNVERIFIED_RECORD": { "cta": "View submission", "destination": "intel_inspect_or_registry" },
+    "VERIFIED_DOCUMENT_PRIMARY": { "cta": "View evidence", "destination_governed": "property_evidence_registry", "destination_actual": "document_operations_empty_queue" },
+    "VERIFIED_RECORD_PRIMARY": { "cta": "View evidence", "destination_governed": "intel_inspect", "destination_actual": "intel_inspect_or_registry_mostly_aligned" }
+  },
+  "cta_matrix": [
+    {
+      "surface": "Requirements",
+      "label": "View evidence",
+      "lifecycle": "VERIFIED",
+      "evidence_model": "document_primary",
+      "route_actual": "/documents?property_id&requirement_id",
+      "route_governed": "/properties/{pid}?tab=evidence&requirement_id={rid}",
+      "aligned": false
+    },
+    {
+      "surface": "Requirements",
+      "label": "View evidence",
+      "lifecycle": "VERIFIED",
+      "evidence_model": "structured_declaration",
+      "route_actual": "/properties/...?open=intel&focus=submission",
+      "route_governed": "intel_inspect",
+      "aligned": true
+    },
+    {
+      "surface": "Property Detail compliance",
+      "label": "View evidence",
+      "lifecycle": "VERIFIED",
+      "evidence_model": "document_primary",
+      "route_actual": "/documents?...",
+      "route_governed": "property_evidence_registry",
+      "aligned": false
+    },
+    {
+      "surface": "Compliance Score drivers",
+      "label": "Open requirement",
+      "lifecycle": "any",
+      "evidence_model": "fallback_tier_b",
+      "route_actual": "property_evidence_registry",
+      "route_governed": "property_evidence_registry",
+      "aligned": true
+    },
+    {
+      "surface": "Requirement Intel modal",
+      "label": "View evidence",
+      "lifecycle": "VERIFIED",
+      "evidence_model": "document_primary",
+      "route_actual": "/documents?...",
+      "route_governed": "registry_or_in_modal_preview",
+      "aligned": false
+    },
+    {
+      "surface": "Document Operations",
+      "label": "N/A",
+      "lifecycle": "ATTENTION_REQUIRED",
+      "evidence_model": "queue_item",
+      "route_actual": "/documents",
+      "route_governed": "/documents",
+      "aligned": true
+    },
+    {
+      "surface": "Evidence Registry",
+      "label": "Preview / Download",
+      "lifecycle": "ACTIVE_EVIDENCE",
+      "evidence_model": "settled_document",
+      "route_actual": "in_tab_registry",
+      "route_governed": "in_tab_registry",
+      "aligned": true
+    }
+  ],
+  "destination_matrix": {
+    "/documents": {
+      "role": "Document Operations — attention queue + upload",
+      "governed_for": ["upload", "linkage_reconciliation", "pending_review_attention"],
+      "not_governed_for": ["view_settled_verified_evidence"]
+    },
+    "/properties/{id}?tab=evidence": {
+      "role": "Property Evidence Registry",
+      "governed_for": ["view_settled_evidence", "requirement_scoped_document_row"],
+      "deep_link_params": ["requirement_id", "open=intel", "focus=submission"]
+    },
+    "intel_modal_inspect": {
+      "role": "In-modal read-only submission panel",
+      "governed_for": ["structured_declaration", "CER_record_primary"]
+    }
+  },
+  "routing_matrix": {
+    "resolveAuthoritativeEvidenceViewPath_document_primary": "/documents?property_id&requirement_id",
+    "resolveSettledEvidenceNavigationTarget_verified": "/properties/{pid}?tab=evidence&requirement_id={rid}",
+    "executeRequirementPrimaryCta_precedence": "authPath before settledTarget",
+    "RequirementIntelligenceModal_primaryHandler_precedence": "settledEvidencePath before primary_route",
+    "backend_take_action_default_doc_route": "/documents?property_id&requirement_id"
+  },
+  "requirement_lifecycle_states": [
+    "ACTION_REQUIRED",
+    "PENDING_REVIEW",
+    "SATISFIED_UNVERIFIED",
+    "VERIFIED",
+    "NOT_APPLICABLE"
+  ],
+  "document_visibility_states": [
+    "ATTENTION_REQUIRED",
+    "ACTIVE_EVIDENCE",
+    "HISTORICAL_OR_SUPERSEDED",
+    "OPERATIONAL_ATTACHMENT"
+  ],
+  "evidence_authority_fields": [
+    "evidence_authority.state",
+    "evidence_authority.effective_verified_document_id",
+    "evidence_authority.primary_evidence_record_id",
+    "evidence_authority.state_reason",
+    "document_id",
+    "document_client_visibility_state"
+  ],
+  "evidence_registry_analysis": {
+    "exists": true,
+    "location": "Property Detail → Documents tab",
+    "component": "PropertyEvidenceRegistrySections.jsx",
+    "deep_link_helper": "resolvePropertyEvidenceRegistryPath",
+    "capable_of_showing_linked_verified_document": true
+  },
+  "document_operations_analysis": {
+    "default_queue_filter": "attention",
+    "empty_state_directs_to_registry": true,
+    "verified_active_evidence_in_default_queue": false,
+    "deep_link_preselects_upload_form": true
+  },
+  "deep_link_analysis": {
+    "/documents?property_id&requirement_id": "Pre-fills upload; does not show settled doc in queue",
+    "/properties/{pid}?tab=evidence&requirement_id={rid}": "Registry focus — governed view target",
+    "/properties/{pid}?tab=evidence&requirement_id={rid}&open=intel&focus=submission": "Record-primary inspect"
+  },
+  "screens_affected": [
+    "Requirements",
+    "Property Detail compliance",
+    "Requirement Intelligence modal",
+    "Documents (misrouted arrivals)",
+    "Operating hub requirement cards"
+  ],
+  "screens_mostly_aligned": [
+    "Property Evidence Registry",
+    "Compliance Score driver tier B fallback",
+    "Document Operations (when attention required)",
+    "Intel modal record-primary inspect"
+  ],
+  "conflicting_authority_documents": [
+    "post_submission_evidence_ux_audit_01/FIX_P0.md — document-primary → /documents",
+    "document_operational_visibility_verify — settled evidence not in attention queue",
+    "workspaceOrientationCopy — settled evidence in registry"
+  ],
+  "recommended_global_implementation": [
+    "Single resolveEvidenceNavigationTarget(requirement, ctaIntent, lifecycle)",
+    "Lifecycle-aware destination matrix enforced backend + frontend",
+    "Fix CTA execution precedence: view intents use registry/inspect before raw /documents",
+    "Align backend take_action intent field (view_settled_evidence vs upload_evidence)",
+    "Reconcile contradictory unit tests",
+    "Reserve View evidence label for read surfaces only"
+  ],
+  "production_impact": {
+    "routing_logic_shared": true,
+    "data_authority_changed": false,
+    "landlord_confusion_risk": "high"
+  },
+  "risk_assessment": {
+    "trust": "high",
+    "authority_drift": "medium",
+    "global_requirement_types": "high — all document-primary certificates"
+  },
+  "acceptance": {
+    "A_current_behaviour_correct": false,
+    "B_wording_only": false,
+    "C_violates_authority": true,
+    "D_lifecycle_aware_required": true
+  },
+  "explicit_non_actions": [
+    "no routing changes",
+    "no button renames",
+    "no new pages",
+    "no production deploy",
+    "no merge to main"
+  ],
+  "changed_files_in_audit": [],
+  "tests_highlighting_conflict": [
+    "authoritativeEvidenceView.test.js — document-primary → /documents",
+    "documentEvidenceAuthority.test.js — view evidence → registry",
+    "requirementCtaParity.test.js — verified without document_id → registry"
+  ]
+}
