@@ -1,0 +1,108 @@
+{
+  "programme": "SCORE-RECOMMENDATION-PRESENTATION-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260701T105000Z",
+  "main_sha_before_promotion": "cc77efdc",
+  "main_sha_after_promotion": "272c2cc1",
+  "promoted_commits": [
+    {
+      "source": "b43cebc5",
+      "main_cherry_pick": "a0c43f32",
+      "message": "fix(score): improve recommendation presentation authority"
+    },
+    {
+      "source": "9daa2a78",
+      "main_cherry_pick": "272c2cc1",
+      "message": "docs(score): add recommendation presentation staging validation evidence"
+    }
+  ],
+  "promotion_diff": {
+    "passed": true,
+    "files": [
+      "backend/docs/COMPLIANCE_CLIENT_STATUS_AUTHORITY.md",
+      "backend/docs/audit/score_recommendation_presentation_authority_01/SCORE_RECOMMENDATION_PRESENTATION_AUTHORITY_EVIDENCE.json",
+      "backend/docs/audit/score_recommendation_presentation_authority_01/SCORE_RECOMMENDATION_PRESENTATION_AUTHORITY_REPORT.md",
+      "backend/docs/audit/score_recommendation_presentation_authority_01/SCORE_RECOMMENDATION_PRESENTATION_STAGING_VALIDATION.json",
+      "backend/docs/audit/score_recommendation_presentation_authority_01/SCORE_RECOMMENDATION_PRESENTATION_STAGING_VALIDATION_REPORT.md",
+      "frontend/src/components/score/ScoreRecommendationPresentation.jsx",
+      "frontend/src/pages/ClientDashboard.js",
+      "frontend/src/pages/ClientDashboard.scoreWidgetLabels.test.js",
+      "frontend/src/pages/ComplianceScorePage.js",
+      "frontend/src/pages/PropertyDetailPage.js",
+      "frontend/src/utils/scoreRecommendationPresentation.js",
+      "frontend/src/utils/scoreRecommendationPresentation.test.js"
+    ],
+    "unexpected": []
+  },
+  "checks": {
+    "promotion_diff_clean": true,
+    "production_backend_sha": true,
+    "production_frontend_bundle": true,
+    "bundle_presentation_markers": true,
+    "bundle_grouping_copy": true,
+    "bundle_view_property_cta": true,
+    "prod_api_url_present": true,
+    "no_staging_api_url": true,
+    "no_staging_frontend_url": true,
+    "regression_unauth_protected": true,
+    "presentation_only_no_score_maths_change": true,
+    "staging_validation_reference": true
+  },
+  "backend_deploy": {
+    "url": "https://api.pleerityenterprise.co.uk/api",
+    "commit_sha": "272c2cc1e59042648c627a5698c72ef9bf74d48a",
+    "environment": "production"
+  },
+  "frontend_deployment": {
+    "url": "https://pleerityenterprise.co.uk",
+    "deployment_url": "https://pleerity-enterprise-e1309ub7k-victory-aigbochies-projects.vercel.app",
+    "bundle": "/static/js/main.feee4114.js",
+    "bundle_sha256": "fc14a0f3ac7d84ecbc669d1545b0c5296acdd5d2dc0e16258166770b70d5a803",
+    "build_env_sha": "272c2cc1"
+  },
+  "frontend_bundle_markers": {
+    "data_recommendation_identity": true,
+    "properties_require_attention": true,
+    "view_property": true,
+    "prod_api_url": true,
+    "staging_api_url": false,
+    "staging_frontend_url": false
+  },
+  "unauth_probes": {
+    "compliance_score": 401,
+    "admin_login": 401,
+    "client_login_nancy": 401
+  },
+  "authenticated_api_validation": false,
+  "authenticated_browser_validation": false,
+  "api_authority_note": "Authenticated production portal probes unavailable (admin and client login 401). Recommendation presentation validated at STAGING_VALIDATION_GO on develop; production backend SHA and frontend bundle confirm promoted artefacts.",
+  "staging_validation_reference": {
+    "verdict": "STAGING_VALIDATION_GO",
+    "commit": "b43cebc5",
+    "evidence": "backend/docs/audit/score_recommendation_presentation_authority_01/SCORE_RECOMMENDATION_PRESENTATION_STAGING_VALIDATION.json",
+    "browser_confirmed": [
+      "dashboard_property_context_visible",
+      "three_similar_recommendations_distinct_by_property",
+      "compliance_score_five_eicr_grouped_expandable",
+      "today_unchanged",
+      "command_centre_unchanged",
+      "api_recommendation_order_ranking_unchanged"
+    ]
+  },
+  "smoke_validation_matrix": {
+    "frontend_bundle_presentation_markers": "PASS",
+    "production_api_not_staging": "PASS",
+    "dashboard_property_context": "PASS (bundle markers + staging browser)",
+    "compliance_score_grouping": "PASS (bundle grouping copy + staging browser)",
+    "today_unchanged": "PASS (staging browser; no quick-action testids on Today)",
+    "command_centre_unchanged": "PASS (staging browser)",
+    "no_recommendation_authority_change": "PASS (presentation-only diff; staging API fingerprint)",
+    "no_error_boundary": "PASS (Vercel build compiled; staging browser walkthrough)"
+  },
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL",
+  "production_recommendation": "Recommendation presentation authority live on production. Monitor multi-property Quick Actions in first landlord sessions.",
+  "remaining_risks": [
+    "Authenticated production API/browser probes skipped — portal login unavailable in promotion runner; staging STAGING_VALIDATION_GO covers presentation behaviour.",
+    "Dashboard display cap slice(0,3) unchanged by design."
+  ],
+  "rollback_recommendation": "Cherry-pick revert of a0c43f32 and 272c2cc1 on main; redeploy prior frontend bundle if regression detected."
+}
