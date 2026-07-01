@@ -78,6 +78,7 @@ import {
 import { resolveClientRequirementLifecycle } from '../utils/clientRequirementLifecycle';
 import { shouldShowDocumentsSetupStep } from '../utils/presentationAuthority';
 import { portfolioHasV2BucketBreakdown } from '../utils/complianceScoreBuckets';
+import { workspaceDashboardWelcomeLead } from '../utils/workspaceOrientationCopy';
 import {
   SCORE_AREA_DESCRIPTIONS,
   SCORE_AREA_LABELS,
@@ -116,7 +117,8 @@ import {
   portfolioScoreRecalcPendingNote as resolvePortfolioScoreRecalcPendingNote,
   resolveDashboardFreshnessExplanation,
 } from '../utils/scoreFreshnessUi';
-import { workspaceDashboardWelcomeLead } from '../utils/workspaceOrientationCopy';
+import ScoreRecommendationList from '../components/score/ScoreRecommendationPresentation';
+import { buildPropertyLookup } from '../utils/scoreRecommendationPresentation';
 const KPI_NO_DATA = 'No data yet';
 
 /** Compact (i) hint for dashboard KPIs — must sit under TooltipProvider. */
@@ -994,6 +996,25 @@ const ClientDashboard = () => {
         complianceScore?.stats?.nearest_expiry_type,
       ),
     [complianceScore?.stats?.days_until_next_expiry, complianceScore?.stats?.nearest_expiry_type, requirementsList],
+  );
+
+  const scoreRecommendationPropertyLookup = useMemo(
+    () =>
+      buildPropertyLookup({
+        scoreBreakdownByProperty: complianceScore?.score_breakdown_by_property,
+        portfolioProperties: portfolioSummary?.properties,
+        properties: data?.properties,
+      }),
+    [complianceScore?.score_breakdown_by_property, portfolioSummary?.properties, data?.properties],
+  );
+
+  const dashboardQuickActionRecommendations = useMemo(
+    () =>
+      [
+        ...(complianceScore?.recommendations ?? []),
+        ...(complianceScore?.assurance_opportunities ?? []),
+      ].slice(0, 3),
+    [complianceScore?.recommendations, complianceScore?.assurance_opportunities],
   );
 
   const registryTrackedCount = useMemo(
@@ -2818,87 +2839,13 @@ const ClientDashboard = () => {
               </div>
               
               {(complianceScore?.recommendations?.length > 0 || complianceScore?.assurance_opportunities?.length > 0) ? (
-                <div className="space-y-3">
-                  {[
-                    ...(complianceScore?.recommendations ?? []),
-                    ...(complianceScore?.assurance_opportunities ?? []),
-                  ].slice(0, 3).map((rec, idx) => {
-                    let actionDisplay = rec.action || '';
-                    const code = rec.requirement_code;
-                    const displayLbl = rec.display_label || (code ? requirementLabel(code) : '');
-                    if (code && actionDisplay.includes(code)) {
-                      actionDisplay = actionDisplay.split(code).join(displayLbl);
-                    }
-                    const codeLower = (code || '').toString().trim().toLowerCase();
-                    const recPropertyId = normalizeRouteId(rec.property_id || rec.related_property_id);
-                    const recReqId = normalizeRouteId(rec.requirement_id || rec.related_requirement_id);
-                    const candidates = requirementsList.filter((r) => {
-                      const rCode = String(r.requirement_code || r.requirement_type || '').trim().toLowerCase();
-                      const propOk = recPropertyId ? String(r.property_id || '') === recPropertyId : true;
-                      const codeOk = codeLower ? rCode === codeLower : true;
-                      return propOk && codeOk;
-                    });
-                    const sorted = [...candidates].sort((a, b) => {
-                      const wa =
-                        (String(a.status || '').toUpperCase() === 'OVERDUE' ? 0 : String(a.status || '').toUpperCase() === 'EXPIRING_SOON' ? 1 : 2);
-                      const wb =
-                        (String(b.status || '').toUpperCase() === 'OVERDUE' ? 0 : String(b.status || '').toUpperCase() === 'EXPIRING_SOON' ? 1 : 2);
-                      if (wa !== wb) return wa - wb;
-                      return 0;
-                    });
-                    const bestReq = sorted[0] || null;
-                    const bestRequirementId = recReqId || normalizeRouteId(bestReq?.requirement_id);
-                    const bestPropertyId = recPropertyId || normalizeRouteId(bestReq?.property_id);
-                    actionDisplay = resolveQuickActionDisplayText(actionDisplay, bestReq, displayLbl, sorted);
-                    const isAssuranceAction =
-                      rec.action_kind === 'ASSURANCE_CONFIDENCE_OPPORTUNITY' ||
-                      rec.priority === 'info' ||
-                      isAssuranceQuickAction(actionDisplay, bestReq) ||
-                      sorted.some((r) => isAssuranceQuickAction(actionDisplay, r));
-                    const fixNowPath = buildEntityRoute(
-                      {
-                        requirement_id: bestRequirementId,
-                        property_id: bestPropertyId,
-                        work_order_id: normalizeRouteId(rec.work_order_id || rec.related_work_order_id),
-                        mode: isAssuranceAction ? 'view' : 'upload',
-                      },
-                      '/today'
-                    );
-                    const hasEntityRoute = fixNowPath !== '/today';
-                    return (
-                    <div 
-                      key={idx}
-                      className={`flex items-start gap-3 p-3 rounded-lg ${
-                          !isAssuranceAction && (rec.priority === 'high' || rec.priority === 'critical') ? 'bg-red-50 border border-red-100' :
-                        !isAssuranceAction && rec.priority === 'medium' ? 'bg-amber-50 border border-amber-100' :
-                        'bg-gray-50 border border-gray-100'
-                      }`}
-                    >
-                        <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
-                          !isAssuranceAction && (rec.priority === 'high' || rec.priority === 'critical') ? 'bg-red-500' :
-                        !isAssuranceAction && rec.priority === 'medium' ? 'bg-amber-500' :
-                        'bg-gray-400'
-                      }`} />
-                        <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800">{actionDisplay}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {quickActionSupportingCopy(isAssuranceAction)}
-                        </p>
-                      </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          disabled={!hasEntityRoute}
-                          onClick={(e) => { e.stopPropagation(); if (hasEntityRoute) navigate(fixNowPath); }}
-                          data-testid={`quick-action-fix-${idx}`}
-                        >
-                          {isAssuranceAction ? 'View' : 'Fix now'}
-                        </Button>
-                    </div>
-                    );
-                  })}
-                </div>
+                <ScoreRecommendationList
+                  recommendations={dashboardQuickActionRecommendations}
+                  requirementsList={requirementsList}
+                  propertyLookup={scoreRecommendationPropertyLookup}
+                  testIdPrefix="quick-action"
+                  onNavigate={(path) => navigate(path)}
+                />
               ) : (() => {
                 const total = complianceScore?.stats?.total_requirements ?? 0;
                 const valid = complianceScore?.stats?.compliant ?? 0;

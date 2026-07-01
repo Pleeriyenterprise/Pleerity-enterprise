@@ -48,6 +48,8 @@ import { getFeatureDisplayInfo } from '../components/UpgradePrompt';
 import { DiscoverabilityHint } from '../components/client/PlanGatingDiscoverability';
 import { getPropertyDisplayName } from '../utils/propertyDisplayName';
 import { formatRiskLabel } from '../utils/riskLabel';
+import ScoreRecommendationList from '../components/score/ScoreRecommendationPresentation';
+import { buildPropertyLookup } from '../utils/scoreRecommendationPresentation';
 import { humanRiskType, humanSeverity, humanAction, humanizeRiskReasonBullet } from '../utils/riskPresentation';
 import { presentPropertyTimelineItem, presentScoreChangeReason } from '../utils/timelinePresent';
 import {
@@ -2214,12 +2216,17 @@ export default function PropertyDetailPage() {
                   {Array.isArray((complianceExplainability?.authoritative || complianceExplainability)?.top_next_actions) &&
                     (complianceExplainability?.authoritative || complianceExplainability).top_next_actions.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-midnight-blue mb-1">Suggested next steps</p>
-                      <ul className="space-y-1 text-sm text-gray-700">
-                        {(complianceExplainability?.authoritative || complianceExplainability).top_next_actions.slice(0, 5).map((a, idx) => (
-                          <li key={`${a.requirement_code || 'req'}-${idx}`}>• {a.action}</li>
-                        ))}
-                      </ul>
+                      <p className="text-sm font-medium text-midnight-blue mb-2">Suggested next steps</p>
+                      <ScoreRecommendationList
+                        recommendations={(complianceExplainability?.authoritative || complianceExplainability).top_next_actions.slice(0, 5)}
+                        requirementsList={requirements}
+                        defaultPropertyId={propertyId}
+                        propertyLookup={buildPropertyLookup({
+                          properties: property ? [property] : [],
+                        })}
+                        testIdPrefix="property-score-action"
+                        onNavigate={(path) => navigate(path)}
+                      />
                     </div>
                   )}
                 </div>

@@ -159,6 +159,67 @@ describe('ClientDashboard score widget labels', () => {
     );
   });
 
+  it('shows distinct property names for similar recommendations on dashboard', async () => {
+    setupMocks({
+      complianceScore: {
+        score: 55,
+        grade: 'D',
+        color: 'red',
+        message: 'High risk',
+        score_status: 'ok',
+        properties_count: 2,
+        stats: { total_requirements: 4, compliant: 1, days_until_next_expiry: 18 },
+        score_breakdown_by_property: [
+          { property_id: 'p1', nickname: 'Harbour Apartment', jurisdiction: 'England' },
+          { property_id: 'p2', nickname: 'Cathedral View Apartment', jurisdiction: 'Wales' },
+        ],
+        recommendations: [
+          {
+            priority: 'high',
+            action: 'Renew EICR before expiry',
+            requirement_code: 'EICR',
+            display_label: 'Electrical Installation Condition Report (EICR)',
+            property_id: 'p1',
+            impact: '+12 points',
+          },
+          {
+            priority: 'high',
+            action: 'Renew EICR before expiry',
+            requirement_code: 'EICR',
+            display_label: 'Electrical Installation Condition Report (EICR)',
+            property_id: 'p2',
+            impact: '+10 points',
+          },
+        ],
+      },
+      requirements: [
+        {
+          requirement_id: 'req-eicr-1',
+          property_id: 'p1',
+          requirement_code: 'eicr',
+          status: 'EXPIRING_SOON',
+          due_date: new Date(Date.now() + 18 * 86400000).toISOString(),
+        },
+        {
+          requirement_id: 'req-eicr-2',
+          property_id: 'p2',
+          requirement_code: 'eicr',
+          status: 'EXPIRING_SOON',
+          due_date: new Date(Date.now() + 20 * 86400000).toISOString(),
+        },
+      ],
+    });
+    render(
+      <MemoryRouter>
+        <ClientDashboard />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('quick-action-0-property')).toBeInTheDocument());
+    expect(screen.getByTestId('quick-action-0-property')).toHaveTextContent('Harbour Apartment');
+    expect(screen.getByTestId('quick-action-1-property')).toHaveTextContent('Cathedral View Apartment');
+    expect(screen.getByTestId('quick-action-0-primary-cta')).toHaveTextContent('Fix now');
+  });
+
   it('rewrites stale upload-and-verify quick action for assurance lifecycle', async () => {
     setupMocks({
       complianceScore: {
@@ -197,9 +258,9 @@ describe('ClientDashboard score widget labels', () => {
         <ClientDashboard />
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByTestId('quick-action-fix-0')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('quick-action-0-primary-cta')).toBeInTheDocument());
     await waitFor(() => expect(screen.getByText(/Review assurance status/i)).toBeInTheDocument());
     expect(screen.queryByText(/Upload and verify/i)).not.toBeInTheDocument();
-    expect(screen.getByTestId('quick-action-fix-0')).toHaveTextContent('View');
+    expect(screen.getByTestId('quick-action-0-primary-cta')).toHaveTextContent('View');
   });
 });

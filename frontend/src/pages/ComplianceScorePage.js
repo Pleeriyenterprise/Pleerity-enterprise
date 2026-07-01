@@ -84,6 +84,8 @@ import {
   SCORE_WIDGET_LABEL_VALID,
   SCORE_WIDGET_TOOLTIP_VALID,
 } from '../utils/dashboardScoreWidgetLabels';
+import ScoreRecommendationList from '../components/score/ScoreRecommendationPresentation';
+import { buildPropertyLookup } from '../utils/scoreRecommendationPresentation';
 
 function scoreDriverStatusLabel(raw) {
   const s = String(raw || '').trim().toUpperCase();
@@ -382,6 +384,16 @@ const ComplianceScorePage = () => {
   const portfolioRecalcPendingLine = useMemo(
     () => resolvePortfolioScoreRecalcPendingNote(scoreData),
     [scoreData],
+  );
+
+  const scoreRecommendationPropertyLookup = useMemo(
+    () =>
+      buildPropertyLookup({
+        scoreBreakdownByProperty: scoreData?.score_breakdown_by_property,
+        portfolioProperties: scoreData?.property_breakdown,
+        properties,
+      }),
+    [scoreData?.score_breakdown_by_property, scoreData?.property_breakdown, properties],
   );
 
   const getPropertyRequirementCounts = (propertyId) => {
@@ -985,38 +997,13 @@ const ComplianceScorePage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {scoreData.recommendations.map((rec, idx) => {
-                  const pri = (rec.priority != null && rec.priority !== '') ? String(rec.priority).toLowerCase() : 'low';
-                  return (
-                  <div
-                    key={idx}
-                    className={`flex items-start gap-3 p-4 rounded-lg border ${
-                      pri === 'high' || pri === 'critical' ? 'bg-red-50 border-red-200' :
-                      pri === 'medium' ? 'bg-amber-50 border-amber-200' :
-                      'bg-gray-50 border-gray-200'
-                    }`}
-                  >
-                    <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                      pri === 'high' || pri === 'critical' ? 'bg-red-500' :
-                      pri === 'medium' ? 'bg-amber-500' :
-                      'bg-gray-400'
-                    }`} />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">{rec.action || '—'}</p>
-                      <p className="text-sm text-gray-500 mt-1">Completing this addresses an active compliance obligation.</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      pri === 'high' || pri === 'critical' ? 'bg-red-100 text-red-700' :
-                      pri === 'medium' ? 'bg-amber-100 text-amber-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {pri.toUpperCase()}
-                    </span>
-                  </div>
-                  );
-                })}
-              </div>
+              <ScoreRecommendationList
+                recommendations={scoreData.recommendations}
+                requirementsList={requirements}
+                propertyLookup={scoreRecommendationPropertyLookup}
+                testIdPrefix="compliance-score-rec"
+                onNavigate={(path) => navigate(path)}
+              />
             </CardContent>
           </Card>
         )}
@@ -1032,24 +1019,13 @@ const ComplianceScorePage = () => {
               <p className="text-sm text-gray-600 mb-3">
                 Optional steps to improve score confidence. Your obligations are recorded on file — these are not urgent operational actions.
               </p>
-              <div className="space-y-3">
-                {scoreData.assurance_opportunities.map((rec, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-3 p-4 rounded-lg border bg-gray-50 border-gray-200"
-                    data-testid={`assurance-opportunity-${idx}`}
-                  >
-                    <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-gray-400" />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">{rec.action || '—'}</p>
-                      <p className="text-sm text-gray-500 mt-1">{quickActionSupportingCopy(true)}</p>
-                    </div>
-                    <span className="px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700">
-                      OPTIONAL
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <ScoreRecommendationList
+                recommendations={scoreData.assurance_opportunities}
+                requirementsList={requirements}
+                propertyLookup={scoreRecommendationPropertyLookup}
+                testIdPrefix="compliance-score-assurance"
+                onNavigate={(path) => navigate(path)}
+              />
             </CardContent>
           </Card>
         )}
