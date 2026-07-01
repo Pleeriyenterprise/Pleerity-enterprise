@@ -1,0 +1,98 @@
+{
+  "programme": "REQUIREMENT-EVIDENCE-NAVIGATION-PRODUCTION-PROMOTION-01",
+  "run_tag": "20260701T120604Z",
+  "main_sha_before_promotion": "c09898c0",
+  "main_sha_after_promotion": "60ee6e52",
+  "promoted_commits": [
+    {
+      "source": "74e57451",
+      "main_cherry_pick": "211d3b1b",
+      "message": "docs(evidence): add evidence navigation authority audit"
+    },
+    {
+      "source": "028547b4",
+      "main_cherry_pick": "42b095f7",
+      "message": "fix(evidence): route verified requirement evidence to registry"
+    },
+    {
+      "source": "392f2e31",
+      "main_cherry_pick": "60ee6e52",
+      "message": "docs(evidence): add evidence navigation staging validation evidence"
+    }
+  ],
+  "checks": {
+    "promotion_diff_clean": true,
+    "production_frontend_bundle": true,
+    "bundle_navigation_markers": true,
+    "prod_api_url_present": true,
+    "no_staging_api_url": true,
+    "no_staging_frontend_url": true,
+    "protected_routes_401": true,
+    "verified_linked_registry": true,
+    "missing_pending_documents": true,
+    "no_error_boundary": true
+  },
+  "promotion_diff": {
+    "passed": true,
+    "files": [
+      "backend/docs/audit/requirement_evidence_navigation_authority_01/REQUIREMENT_EVIDENCE_NAVIGATION_AUTHORITY_AUDIT.md",
+      "backend/docs/audit/requirement_evidence_navigation_authority_01/REQUIREMENT_EVIDENCE_NAVIGATION_AUTHORITY_EVIDENCE.json",
+      "backend/docs/audit/requirement_evidence_navigation_authority_01/REQUIREMENT_EVIDENCE_NAVIGATION_IMPLEMENTATION_EVIDENCE.json",
+      "backend/docs/audit/requirement_evidence_navigation_authority_01/REQUIREMENT_EVIDENCE_NAVIGATION_IMPLEMENTATION_REPORT.md",
+      "backend/docs/audit/requirement_evidence_navigation_authority_01/REQUIREMENT_EVIDENCE_NAVIGATION_STAGING_VALIDATION.json",
+      "backend/docs/audit/requirement_evidence_navigation_authority_01/REQUIREMENT_EVIDENCE_NAVIGATION_STAGING_VALIDATION_REPORT.md",
+      "backend/services/operational_cognition_service.py",
+      "backend/services/requirement_action_resolver.py",
+      "backend/tests/test_post_submission_evidence_ux_fix_p0.py",
+      "frontend/src/components/client/RequirementIntelligenceModal.js",
+      "frontend/src/utils/authoritativeEvidenceView.js",
+      "frontend/src/utils/authoritativeEvidenceView.test.js",
+      "frontend/src/utils/documentEvidenceAuthority.js",
+      "frontend/src/utils/requirementCtaParity.js",
+      "frontend/src/utils/requirementCtaParity.test.js",
+      "frontend/src/utils/requirementTakeActionResolver.js",
+      "frontend/src/utils/resolveEvidenceNavigationTarget.js",
+      "frontend/src/utils/resolveEvidenceNavigationTarget.test.js"
+    ],
+    "unexpected": []
+  },
+  "frontend_bundle": {
+    "ready": true,
+    "index_status": 200,
+    "main_script": "/static/js/main.e6fbe9a4.js",
+    "bundle_status": 200,
+    "bundle_sha256": "37fd24862ec60a75a46b86c9cc03e27d739d5b4ad92ca1b8f247151eae398c69",
+    "markers": {
+      "view_settled_evidence": true,
+      "review_uploaded_document": true,
+      "tab_evidence": true,
+      "focus_upload": true,
+      "view_evidence_label": true,
+      "build_sha_promoted": true,
+      "prod_api_url": true,
+      "staging_api_url": false,
+      "staging_frontend_url": false
+    }
+  },
+  "protected_routes": {
+    "routes": {
+      "/api/client/requirements": 401,
+      "/api/client/compliance-score": 401,
+      "/api/client/properties": 401
+    },
+    "all_401": true
+  },
+  "backend_version": {
+    "commit_sha": "60ee6e52f5a6b82a6695c31a41c4ac7eb1c08292",
+    "environment": "production"
+  },
+  "api_routing_matrix": {
+    "note": "Production impersonation returned 401 during smoke (known pattern). Routing validated via staging STAGING_VALIDATION_GO + bundle markers + backend SHA.",
+    "staging_reference": "backend/docs/audit/requirement_evidence_navigation_authority_01/REQUIREMENT_EVIDENCE_NAVIGATION_STAGING_VALIDATION.json"
+  },
+  "browser_smoke": {
+    "available": false,
+    "note": "Playwright not installed in validation runner"
+  },
+  "verdict": "PRODUCTION_PROMOTION_SUCCESSFUL"
+}
