@@ -316,6 +316,22 @@ def digest_posture_labels(
 def risk_recommended_action(risk_type: str) -> str:
     """Governed risk card recommended actions — no certificate leakage into operational risks."""
     rt = str(risk_type or "").strip().upper()
+    if "ELECTRICAL" in rt:
+        return "Review your electrical safety obligation and arrange an external inspection if it is due or out of date."
+    if "BOILER" in rt:
+        return "Arrange a qualified gas engineer inspection externally, or start a compliance job from Operations if your account uses jobs for inspections."
+    if "DAMP" in rt or "MOISTURE" in rt:
+        return "Arrange a damp inspection externally and plan work to fix the underlying cause."
+    if "RECURRING" in rt:
+        return "Investigate the root cause instead of repeat patch repairs."
+    if "SLA" in rt:
+        return "Review open jobs with your contractor and re-prioritise anything that is overdue."
+    if "CHURN" in rt:
+        return "Upload missing evidence and complete outstanding obligations so your portfolio stays up to date."
+    if "MAINTENANCE" in rt and "FREQUENCY" in rt:
+        return "Review property condition and inspect assets that are generating repeat reports."
+    if "CERTIFICATE" in rt and "EXPIR" in rt:
+        return "Renew the certificate before expiry and upload the new document with correct dates."
     mapping = {
         "BOILER_FAILURE": "Arrange a qualified gas engineer inspection externally, or start a compliance job from Operations if your account uses jobs for inspections.",
         "DAMP_MOISTURE": "Arrange a damp inspection externally and plan work to fix the underlying cause.",
@@ -326,7 +342,7 @@ def risk_recommended_action(risk_type: str) -> str:
         "MAINTENANCE_FREQUENCY": "Review property condition and inspect assets that are generating repeat reports.",
         "CERTIFICATE_EXPIRY_SOON": "Renew the certificate before expiry and upload the new document with correct dates.",
     }
-    return mapping.get(rt, "Review this item and complete the recommended follow-up action.")
+    return mapping.get(rt.replace(" ", "_"), "Review this item and complete the recommended follow-up action.")
 
 
 def communication_to_template_context(communication: Dict[str, Any]) -> Dict[str, str]:
