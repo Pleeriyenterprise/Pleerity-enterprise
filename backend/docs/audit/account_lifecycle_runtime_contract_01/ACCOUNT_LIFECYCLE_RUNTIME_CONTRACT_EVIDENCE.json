@@ -1,0 +1,307 @@
+{
+  "programme": "ACCOUNT-LIFECYCLE-RUNTIME-CONTRACT-01",
+  "generated_at": "2026-06-30T16:00:00+00:00",
+  "branch": "develop",
+  "outcome": "ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT_COMPLETE",
+  "verdict": "RUNTIME_CONTRACT_ESTABLISHED_PENDING_APPROVAL",
+  "contract_version": "1.0.0",
+  "runtime_authority_id": "account_lifecycle_runtime_v1",
+  "follows_programmes": [
+    "ACCOUNT-LIFECYCLE-AUTHORITY-AUDIT-01",
+    "ACCOUNT-LIFECYCLE-POLICY-AUTHORITY-01",
+    "ACCOUNT-LIFECYCLE-CAPABILITY-AUTHORITY-01"
+  ],
+  "precedes_programmes": [
+    "ILP-1 Lifecycle State Resolver",
+    "ILP-2 Runtime Contract API",
+    "ILP-3 Portal Mode",
+    "ILP-4 Capability Enforcement",
+    "ILP-5 Frontend Lifecycle Shell",
+    "ILP-6 API Responses",
+    "ILP-7 Session Authority",
+    "ILP-8 Background Services",
+    "ILP-9 Lifecycle Events",
+    "ILP-10 Legacy Removal"
+  ],
+  "deliverables": {
+    "ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT.md": "backend/docs/ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT.md",
+    "ACCOUNT_RUNTIME_SCHEMA.md": "backend/docs/ACCOUNT_RUNTIME_SCHEMA.md",
+    "ACCOUNT_RUNTIME_CONSUMERS.md": "backend/docs/ACCOUNT_RUNTIME_CONSUMERS.md",
+    "ACCOUNT_RUNTIME_VERSIONING.md": "backend/docs/ACCOUNT_RUNTIME_VERSIONING.md",
+    "ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT_EVIDENCE.json": "backend/docs/audit/account_lifecycle_runtime_contract_01/ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT_EVIDENCE.json"
+  },
+  "canonical_object": {
+    "type_name": "AccountLifecycleRuntimeContract",
+    "api_endpoint": "GET /api/client/lifecycle-runtime",
+    "api_alias": "GET /api/client/lifecycle-contract",
+    "single_owner": "Runtime Contract Resolver (ILP-1 + ILP-2)",
+    "top_level_fields": [
+      "contract_version",
+      "runtime_version",
+      "client_id",
+      "resolved_at",
+      "policy_pins",
+      "lifecycle_state",
+      "portal_mode",
+      "lifecycle_context",
+      "capabilities",
+      "plan",
+      "customer_experience",
+      "background_policy",
+      "communication_policy",
+      "session_policy",
+      "retention_policy",
+      "reactivation_policy",
+      "polling_policy",
+      "navigation_policy",
+      "audit"
+    ]
+  },
+  "forbidden_behavioural_inputs": [
+    "stripe.subscription.status",
+    "canonical_entitlement_state",
+    "billing_lifecycle_state",
+    "clients.entitlement_status",
+    "clients.subscription_status",
+    "plan_registry.FEATURE_MATRIX alone",
+    "hasFeature(feature_key) alone",
+    "isActive from entitlements",
+    "subscriptionStatus from entitlements"
+  ],
+  "findings": [
+    {
+      "id": "ALRC-001",
+      "classification": "RUNTIME_CONTRACT_GAP",
+      "severity": "CRITICAL",
+      "title": "No unified runtime object exists",
+      "evidence": ["ALC audit fragmented consumers", "no lifecycle-runtime endpoint"],
+      "policy_remedy": "AccountLifecycleRuntimeContract per ACCOUNT_RUNTIME_SCHEMA.md",
+      "implementation_programme": "ILP-2"
+    },
+    {
+      "id": "ALRC-002",
+      "classification": "AUTHORITY_DUPLICATION",
+      "severity": "CRITICAL",
+      "title": "Multiple parallel bands consumed independently",
+      "evidence": ["canonical_entitlement_state", "entitlement_status", "billing_lifecycle_state", "Stripe status"],
+      "policy_remedy": "Single resolver produces contract",
+      "implementation_programme": "ILP-1, ILP-10"
+    },
+    {
+      "id": "ALRC-003",
+      "classification": "CONSUMER_GAP",
+      "severity": "CRITICAL",
+      "title": "Frontend consumes entitlements not lifecycle runtime",
+      "evidence": ["EntitlementsContext.js", "ProtectedRoute JWT-only"],
+      "policy_remedy": "LifecycleRuntimeProvider",
+      "implementation_programme": "ILP-5"
+    },
+    {
+      "id": "ALRC-004",
+      "classification": "CONSUMER_GAP",
+      "severity": "HIGH",
+      "title": "APIs enforce plan features without runtime contract",
+      "evidence": ["enforce_feature in reports.py, client.py, documents.py"],
+      "policy_remedy": "capabilities map check first",
+      "implementation_programme": "ILP-4"
+    },
+    {
+      "id": "ALRC-005",
+      "classification": "CONSUMER_GAP",
+      "severity": "HIGH",
+      "title": "Background jobs read clients mirror subscription fields",
+      "evidence": ["jobs.py filters"],
+      "policy_remedy": "background_policy from contract snapshot",
+      "implementation_programme": "ILP-8"
+    },
+    {
+      "id": "ALRC-006",
+      "classification": "VERSIONING_GAP",
+      "severity": "MEDIUM",
+      "title": "entitlements_version exists but not aligned to runtime_version",
+      "evidence": ["routes/auth.py", "webhook comments"],
+      "policy_remedy": "Align bumps per ACCOUNT_RUNTIME_VERSIONING.md",
+      "implementation_programme": "ILP-7, ILP-9"
+    },
+    {
+      "id": "ALRC-007",
+      "classification": "API_CONTRACT_GAP",
+      "severity": "HIGH",
+      "title": "403 responses leak structured lifecycle detail to frontend",
+      "evidence": ["ALC-001 Error Boundary"],
+      "policy_remedy": "Safe string + lifecycle_redirect + runtime_version",
+      "implementation_programme": "ILP-6"
+    },
+    {
+      "id": "ALRC-008",
+      "classification": "CACHE_GAP",
+      "severity": "MEDIUM",
+      "title": "No cache invalidation contract on lifecycle transition",
+      "evidence": ["portal-context retry", "entitlements refetch"],
+      "policy_remedy": "runtime_version header + polling_policy",
+      "implementation_programme": "ILP-2, ILP-5"
+    },
+    {
+      "id": "ALRC-009",
+      "classification": "NO_CHANGE_REQUIRED",
+      "severity": "INFO",
+      "title": "Stripe remains authoritative payment fact source for resolver input",
+      "policy_remedy": "Write path only; not consumer",
+      "implementation_programme": "none"
+    },
+    {
+      "id": "ALRC-010",
+      "classification": "GOVERNANCE_GAP",
+      "severity": "MEDIUM",
+      "title": "portal-context endpoint does not return lifecycle contract",
+      "evidence": ["audit: returns server time only"],
+      "policy_remedy": "Replace with lifecycle-runtime or deprecate",
+      "implementation_programme": "ILP-2, ILP-10"
+    }
+  ],
+  "consumer_audit_summary": {
+    "total_subsystems_inventoried": 45,
+    "must_migrate_to_contract": 32,
+    "orthogonal_logic_only": 9,
+    "fact_producers_not_consumers": 4,
+    "modules": [
+      "authentication",
+      "authorisation",
+      "frontend_shell",
+      "frontend_pages",
+      "customer_apis",
+      "domain_authorities",
+      "background_workers",
+      "billing_fact_path",
+      "admin",
+      "mobile_future"
+    ]
+  },
+  "migration_plan": [
+    {
+      "order": 1,
+      "programme_id": "ILP-1",
+      "name": "Lifecycle State Resolver",
+      "purpose": "Compute lifecycle_state from facts",
+      "dependencies": ["ALRC approval", "ALPA", "ACA"],
+      "delivers": "lifecycle_state input to resolver",
+      "risk": "HIGH",
+      "complexity": "HIGH"
+    },
+    {
+      "order": 2,
+      "programme_id": "ILP-2",
+      "name": "Runtime Contract API",
+      "purpose": "GET /api/client/lifecycle-runtime",
+      "dependencies": ["ILP-1"],
+      "delivers": "AccountLifecycleRuntimeContract JSON",
+      "risk": "MEDIUM",
+      "complexity": "MEDIUM"
+    },
+    {
+      "order": 3,
+      "programme_id": "ILP-3",
+      "name": "Portal Mode",
+      "purpose": "Shell consumes portal_mode from contract",
+      "dependencies": ["ILP-2"],
+      "delivers": "customer_experience, navigation_policy",
+      "risk": "MEDIUM",
+      "complexity": "MEDIUM"
+    },
+    {
+      "order": 4,
+      "programme_id": "ILP-4",
+      "name": "Capability Enforcement",
+      "purpose": "API checks capabilities map",
+      "dependencies": ["ILP-2"],
+      "delivers": "Two-phase lifecycle + plan checks",
+      "risk": "HIGH",
+      "complexity": "HIGH"
+    },
+    {
+      "order": 5,
+      "programme_id": "ILP-5",
+      "name": "Frontend Lifecycle Shell",
+      "purpose": "LifecycleRuntimeProvider, route guards",
+      "dependencies": ["ILP-2", "ILP-3"],
+      "delivers": "No 403 storms, no Error Boundary",
+      "risk": "HIGH",
+      "complexity": "HIGH"
+    },
+    {
+      "order": 6,
+      "programme_id": "ILP-6",
+      "name": "API Responses",
+      "purpose": "Safe errors, lifecycle_redirect",
+      "dependencies": ["ILP-4"],
+      "delivers": "Governed 403 payloads",
+      "risk": "MEDIUM",
+      "complexity": "MEDIUM"
+    },
+    {
+      "order": 7,
+      "programme_id": "ILP-7",
+      "name": "Session Authority",
+      "purpose": "session_policy enforcement",
+      "dependencies": ["ILP-2"],
+      "delivers": "Deterministic session on transition",
+      "risk": "MEDIUM",
+      "complexity": "MEDIUM"
+    },
+    {
+      "order": 8,
+      "programme_id": "ILP-8",
+      "name": "Background Services",
+      "purpose": "background_policy from contract",
+      "dependencies": ["ILP-2"],
+      "delivers": "Job pause/resume determinism",
+      "risk": "HIGH",
+      "complexity": "MEDIUM"
+    },
+    {
+      "order": 9,
+      "programme_id": "ILP-9",
+      "name": "Lifecycle Events",
+      "purpose": "Invalidation + event bus",
+      "dependencies": ["ILP-1", "ILP-2"],
+      "delivers": "runtime_version bumps on events",
+      "risk": "MEDIUM",
+      "complexity": "HIGH"
+    },
+    {
+      "order": 10,
+      "programme_id": "ILP-10",
+      "name": "Legacy Removal",
+      "purpose": "Remove parallel consumer fields",
+      "dependencies": ["ILP-1 through ILP-9"],
+      "delivers": "Single runtime consumption",
+      "risk": "HIGH",
+      "complexity": "MEDIUM"
+    }
+  ],
+  "classification_summary": {
+    "RUNTIME_CONTRACT_GAP": 1,
+    "AUTHORITY_DUPLICATION": 1,
+    "CONSUMER_GAP": 3,
+    "VERSIONING_GAP": 1,
+    "API_CONTRACT_GAP": 1,
+    "CACHE_GAP": 1,
+    "GOVERNANCE_GAP": 1,
+    "NO_CHANGE_REQUIRED": 1
+  },
+  "acceptance_assessment": {
+    "single_runtime_owner_defined": true,
+    "every_subsystem_consumption_documented": true,
+    "no_direct_stripe_subscription_reads_for_behaviour": true,
+    "portal_mode_from_runtime_contract": true,
+    "capability_enforcement_from_runtime_contract": true,
+    "background_services_from_runtime_contract": true,
+    "frontend_from_runtime_contract": true,
+    "api_responses_governed": true,
+    "runtime_versioning_defined": true,
+    "ilp_migration_path_complete": true,
+    "code_implementation_complete": false,
+    "stakeholder_approval_pending": true
+  },
+  "regression_note": "Governance-only on develop; no code, auth, billing, or API implementation."
+}
