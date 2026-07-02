@@ -1,0 +1,614 @@
+{
+  "programme": "ACCOUNT-LIFECYCLE-POLICY-AUTHORITY-01",
+  "generated_at": "2026-06-30T12:00:00+00:00",
+  "branch": "develop",
+  "outcome": "ACCOUNT_LIFECYCLE_POLICY_AUTHORITY_COMPLETE",
+  "verdict": "POLICY_AUTHORITY_ESTABLISHED_PENDING_APPROVAL",
+  "precedes_programmes": [
+    "ILP-1 Lifecycle State Resolver",
+    "ILP-2 Portal Mode API",
+    "ILP-3 Frontend Lifecycle Shell",
+    "ILP-4 API Lifecycle Responses",
+    "ILP-5 Session Policy",
+    "ILP-6 Background Job Alignment",
+    "ILP-7 Communication Alignment",
+    "ILP-8 Reactivation Orchestrator",
+    "ILP-9 Event Bus + Audit",
+    "ILP-10 Legacy Migration"
+  ],
+  "follows_programme": "ACCOUNT-LIFECYCLE-AUTHORITY-AUDIT-01",
+  "authority_version": "account_lifecycle_policy_v1",
+  "deliverables": {
+    "ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md": "backend/docs/ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md",
+    "ACCOUNT_LIFECYCLE_POLICY_MATRIX.md": "backend/docs/ACCOUNT_LIFECYCLE_POLICY_MATRIX.md",
+    "ACCOUNT_PORTAL_MODE_AUTHORITY.md": "backend/docs/ACCOUNT_PORTAL_MODE_AUTHORITY.md",
+    "ACCOUNT_LIFECYCLE_TRANSITION_MATRIX.md": "backend/docs/ACCOUNT_LIFECYCLE_TRANSITION_MATRIX.md",
+    "ACCOUNT_LIFECYCLE_EVENT_AUTHORITY.md": "backend/docs/ACCOUNT_LIFECYCLE_EVENT_AUTHORITY.md",
+    "ACCOUNT_REACTIVATION_AUTHORITY.md": "backend/docs/ACCOUNT_REACTIVATION_AUTHORITY.md",
+    "ACCOUNT_CUSTOMER_EXPERIENCE_AUTHORITY.md": "backend/docs/ACCOUNT_CUSTOMER_EXPERIENCE_AUTHORITY.md",
+    "ACCOUNT_LIFECYCLE_POLICY_EVIDENCE.json": "backend/docs/audit/account_lifecycle_policy_authority_01/ACCOUNT_LIFECYCLE_POLICY_EVIDENCE.json"
+  },
+  "policy_scope": {
+    "in_scope": [
+      "account lifecycle state business policy",
+      "portal mode authority",
+      "lifecycle transition contracts",
+      "canonical lifecycle events",
+      "customer experience per mode",
+      "session authority policy",
+      "background processing policy",
+      "communication policy cross-reference",
+      "reactivation paths",
+      "distinct lifecycle concepts",
+      "subsystem consumption audit",
+      "implementation roadmap"
+    ],
+    "excluded": [
+      "Stripe integration changes",
+      "billing calculations",
+      "pricing",
+      "subscription charging",
+      "lifecycle determination implementation",
+      "Requirement Authority",
+      "Lifecycle Authority (requirements)",
+      "Evidence Authority",
+      "Navigation Authority",
+      "Score Authority",
+      "Today Authority",
+      "Command Centre Authority",
+      "Communication Authority",
+      "Email Presentation Authority",
+      "Report Presentation Authority",
+      "production modifications",
+      "implementation fixes"
+    ]
+  },
+  "lifecycle_states_governed": [
+    "ACTIVE",
+    "TRIAL",
+    "TRIAL_EXPIRED",
+    "PAYMENT_PENDING",
+    "PAYMENT_FAILED",
+    "GRACE_PERIOD",
+    "CANCELLATION_SCHEDULED",
+    "CANCELLED_IMMEDIATE",
+    "SUBSCRIPTION_EXPIRED",
+    "READ_ONLY",
+    "SUSPENDED",
+    "ARCHIVED",
+    "ACCOUNT_DELETED",
+    "UNKNOWN",
+    "LEGACY"
+  ],
+  "portal_modes_governed": [
+    "FULL_ACCESS",
+    "READ_ONLY",
+    "BILLING_RECOVERY",
+    "PAYMENT_REQUIRED",
+    "GRACE",
+    "SUSPENDED",
+    "ARCHIVED",
+    "ACCOUNT_DELETED"
+  ],
+  "canonical_events_governed": [
+    "ACCOUNT_CREATED",
+    "TRIAL_STARTED",
+    "TRIAL_EXPIRED",
+    "PAYMENT_PENDING",
+    "PAYMENT_FAILED",
+    "GRACE_STARTED",
+    "PAYMENT_RECOVERED",
+    "SUBSCRIPTION_STARTED",
+    "CANCELLATION_REQUESTED",
+    "CANCELLATION_SCHEDULED",
+    "CANCELLATION_REMOVED",
+    "SUBSCRIPTION_CANCELLED",
+    "SUBSCRIPTION_EXPIRED",
+    "ACCOUNT_READ_ONLY",
+    "ACCOUNT_SUSPENDED",
+    "ACCOUNT_ARCHIVED",
+    "ACCOUNT_DELETED",
+    "ACCOUNT_REACTIVATED",
+    "LEGACY_MIGRATED",
+    "ENTITLEMENTS_VERSION_CHANGED"
+  ],
+  "reactivation_paths_governed": [
+    "R-001 trial resumed",
+    "R-002 payment recovered during grace",
+    "R-003 cancellation undone before expiry",
+    "R-004 expired subscription renewed",
+    "R-005 immediately cancelled restored",
+    "R-006 suspended reinstated payment",
+    "R-007 suspended reinstated admin",
+    "R-008 archived reinstated admin",
+    "R-009 manual billing recovery",
+    "R-010 legacy migration",
+    "R-011 trial expired subscribe",
+    "R-012 read-only to active"
+  ],
+  "distinct_lifecycle_concepts": {
+    "cancellation_scheduled": {
+      "policy_state": "CANCELLATION_SCHEDULED",
+      "portal_mode": "FULL_ACCESS",
+      "data_retention": "retained",
+      "recovery": "resume before period end",
+      "authority_owner": "billing + Stripe"
+    },
+    "cancellation_immediate": {
+      "policy_state": "CANCELLED_IMMEDIATE",
+      "portal_mode": "BILLING_RECOVERY",
+      "data_retention": "12 months standard",
+      "recovery": "resubscribe",
+      "authority_owner": "billing + Stripe"
+    },
+    "subscription_expiry": {
+      "policy_state": "SUBSCRIPTION_EXPIRED",
+      "portal_mode": "BILLING_RECOVERY or READ_ONLY",
+      "data_retention": "12 months",
+      "recovery": "renew",
+      "authority_owner": "Stripe webhook + lifecycle sync"
+    },
+    "suspension": {
+      "policy_state": "SUSPENDED",
+      "portal_mode": "SUSPENDED",
+      "data_retention": "retained",
+      "recovery": "payment or admin reinstatement",
+      "authority_owner": "billing or client_lifecycle_service"
+    },
+    "read_only": {
+      "policy_state": "READ_ONLY",
+      "portal_mode": "READ_ONLY",
+      "data_retention": "24 months extended",
+      "recovery": "subscribe",
+      "authority_owner": "future retention scheduler",
+      "current_gap": "POLICY_GAP — no first-class band"
+    },
+    "archiving": {
+      "policy_state": "ARCHIVED",
+      "portal_mode": "ARCHIVED",
+      "data_retention": "until purge eligible",
+      "recovery": "admin reactivation",
+      "authority_owner": "client_lifecycle_service"
+    },
+    "deletion": {
+      "policy_state": "ACCOUNT_DELETED",
+      "portal_mode": "ACCOUNT_DELETED",
+      "data_retention": "purged",
+      "recovery": "none",
+      "authority_owner": "admin purge"
+    },
+    "reactivation": {
+      "policy_state": "transition to ACTIVE",
+      "portal_mode": "FULL_ACCESS",
+      "restoration_scope": "per path in ACCOUNT_REACTIVATION_AUTHORITY.md",
+      "authority_owner": "future reactivation orchestrator"
+    }
+  },
+  "findings": [
+    {
+      "id": "ALPA-001",
+      "maps_to_audit": "ALC-001",
+      "classification": "CUSTOMER_EXPERIENCE_GAP",
+      "severity": "CRITICAL",
+      "title": "No governed lifecycle screen; structured 403 detail crashes React",
+      "policy_remedy": "Portal mode guard + safe string API errors per ACCOUNT_CUSTOMER_EXPERIENCE_AUTHORITY.md",
+      "implementation_programme": "ILP-3, ILP-4"
+    },
+    {
+      "id": "ALPA-002",
+      "maps_to_audit": "ALC-002",
+      "classification": "PORTAL_MODE_GAP",
+      "severity": "CRITICAL",
+      "title": "Frontend does not consume portal mode",
+      "policy_remedy": "LifecycleProtectedRoute + lifecycle-contract API per ACCOUNT_PORTAL_MODE_AUTHORITY.md",
+      "implementation_programme": "ILP-2, ILP-3"
+    },
+    {
+      "id": "ALPA-003",
+      "maps_to_audit": "ALC-003",
+      "classification": "AUTHORITY_DUPLICATION",
+      "severity": "HIGH",
+      "title": "Triple parallel state bands without policy resolver",
+      "policy_remedy": "account_lifecycle_state resolver maps all inputs per ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md",
+      "implementation_programme": "ILP-1"
+    },
+    {
+      "id": "ALPA-004",
+      "maps_to_audit": "ALC-004",
+      "classification": "BACKGROUND_POLICY_GAP",
+      "severity": "HIGH",
+      "title": "Background jobs infer lifecycle from clients mirror",
+      "policy_remedy": "Jobs consume ALPA background matrix from policy snapshot",
+      "implementation_programme": "ILP-6"
+    },
+    {
+      "id": "ALPA-005",
+      "maps_to_audit": "ALC-005",
+      "classification": "CUSTOMER_EXPERIENCE_GAP",
+      "severity": "HIGH",
+      "title": "No polling circuit breaker on terminal lifecycle",
+      "policy_remedy": "polling_policy in lifecycle-contract per ACCOUNT_CUSTOMER_EXPERIENCE_AUTHORITY.md",
+      "implementation_programme": "ILP-3"
+    },
+    {
+      "id": "ALPA-006",
+      "maps_to_audit": "ALC-006",
+      "classification": "COMMUNICATION_POLICY_GAP",
+      "severity": "MEDIUM",
+      "title": "Lifecycle messaging only on billing page",
+      "policy_remedy": "Global lifecycle shell copy per portal mode",
+      "implementation_programme": "ILP-3, ILP-7"
+    },
+    {
+      "id": "ALPA-007",
+      "maps_to_audit": "ALC-007",
+      "classification": "CUSTOMER_EXPERIENCE_GAP",
+      "severity": "MEDIUM",
+      "title": "Cancel modal promises differ from portal behaviour",
+      "policy_remedy": "BILLING_RECOVERY experience per ACCOUNT_CUSTOMER_EXPERIENCE_AUTHORITY.md",
+      "implementation_programme": "ILP-3"
+    },
+    {
+      "id": "ALPA-008",
+      "maps_to_audit": "ALC-008",
+      "classification": "POLICY_GAP",
+      "severity": "MEDIUM",
+      "title": "GRACE per-feature denial not reflected in portal mode",
+      "policy_remedy": "GRACE portal mode with LIMITED capability matrix",
+      "implementation_programme": "ILP-1, ILP-2"
+    },
+    {
+      "id": "ALPA-009",
+      "maps_to_audit": "ALC-009",
+      "classification": "SESSION_POLICY_GAP",
+      "severity": "MEDIUM",
+      "title": "Session not deterministic on lifecycle transition",
+      "policy_remedy": "Session authority table in ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md",
+      "implementation_programme": "ILP-5"
+    },
+    {
+      "id": "ALPA-010",
+      "maps_to_audit": "ALC-010",
+      "classification": "NO_CHANGE_REQUIRED",
+      "severity": "INFO",
+      "title": "Cancel at period end backend behaviour matches policy",
+      "policy_remedy": "CANCELLATION_SCHEDULED → FULL_ACCESS until T-011",
+      "implementation_programme": "none"
+    },
+    {
+      "id": "ALPA-011",
+      "classification": "POLICY_GAP",
+      "severity": "HIGH",
+      "title": "READ_ONLY lifecycle state has no platform band",
+      "policy_remedy": "Introduce READ_ONLY in resolver; map to READ_ONLY portal mode",
+      "implementation_programme": "ILP-1"
+    },
+    {
+      "id": "ALPA-012",
+      "classification": "TRANSITION_GAP",
+      "severity": "MEDIUM",
+      "title": "SUBSCRIPTION_EXPIRED → READ_ONLY retention transition undefined in code",
+      "policy_remedy": "T-014 in ACCOUNT_LIFECYCLE_TRANSITION_MATRIX.md",
+      "implementation_programme": "ILP-1, ILP-9"
+    },
+    {
+      "id": "ALPA-013",
+      "classification": "EVENT_GAP",
+      "severity": "HIGH",
+      "title": "No canonical lifecycle event bus",
+      "policy_remedy": "ACCOUNT_LIFECYCLE_EVENT_AUTHORITY.md event catalogue",
+      "implementation_programme": "ILP-9"
+    },
+    {
+      "id": "ALPA-014",
+      "classification": "REACTIVATION_GAP",
+      "severity": "HIGH",
+      "title": "No reactivation orchestrator or ACCOUNT_REACTIVATED event",
+      "policy_remedy": "ACCOUNT_REACTIVATION_AUTHORITY.md paths R-001–R-012",
+      "implementation_programme": "ILP-8"
+    },
+    {
+      "id": "ALPA-015",
+      "classification": "RETENTION_POLICY_GAP",
+      "severity": "MEDIUM",
+      "title": "Export blocked by API deny while data retained on cancel",
+      "policy_remedy": "BILLING_RECOVERY allows read/export per policy matrix",
+      "implementation_programme": "ILP-1, ILP-4"
+    },
+    {
+      "id": "ALPA-016",
+      "classification": "AUTHORITY_DUPLICATION",
+      "severity": "MEDIUM",
+      "title": "Dual SUSPENDED emitters (billing vs org)",
+      "policy_remedy": "Resolver converges to single account_lifecycle_state",
+      "implementation_programme": "ILP-1"
+    }
+  ],
+  "authority_consumption_audit": [
+    {
+      "subsystem": "middleware.client_route_guard",
+      "module": "backend/middleware/__init__.py",
+      "currently_consumes": ["canonical_entitlement_state"],
+      "must_consume": ["portal_mode", "account_lifecycle_state"],
+      "duplicated_logic": true,
+      "classification": "AUTHORITY_DUPLICATION"
+    },
+    {
+      "subsystem": "entitlement_access.evaluate_subscription_feature_access",
+      "module": "backend/services/entitlement_access.py",
+      "currently_consumes": ["canonical_entitlement_state", "billing_lifecycle_state", "plan_registry"],
+      "must_consume": ["account_lifecycle_state", "portal_mode", "ACCOUNT_LIFECYCLE_POLICY_MATRIX"],
+      "duplicated_logic": true,
+      "classification": "AUTHORITY_DUPLICATION"
+    },
+    {
+      "subsystem": "subscription_lifecycle_service",
+      "module": "backend/services/subscription_lifecycle_service.py",
+      "currently_consumes": ["Stripe facts", "client_billing"],
+      "must_consume": ["writes account_lifecycle_state", "emits lifecycle events"],
+      "duplicated_logic": false,
+      "classification": "POLICY_GAP",
+      "note": "Writer candidate for ILP-1; must not be replaced"
+    },
+    {
+      "subsystem": "plan_registry.get_client_entitlements",
+      "module": "backend/services/plan_registry.py",
+      "currently_consumes": ["billing_lifecycle_state", "canonical_entitlement_state", "entitlement_status"],
+      "must_consume": ["portal_mode", "feature matrix gated by policy matrix"],
+      "duplicated_logic": true,
+      "classification": "AUTHORITY_DUPLICATION"
+    },
+    {
+      "subsystem": "client_lifecycle_service",
+      "module": "backend/services/client_lifecycle_service.py",
+      "currently_consumes": ["ClientLifecycleStatus"],
+      "must_consume": ["account_lifecycle_state for ARCHIVED/SUSPENDED org paths"],
+      "duplicated_logic": true,
+      "classification": "AUTHORITY_DUPLICATION"
+    },
+    {
+      "subsystem": "jobs.py background workers",
+      "module": "backend/services/jobs.py",
+      "currently_consumes": ["clients.subscription_status", "clients.entitlement_status"],
+      "must_consume": ["ALPA background processing matrix"],
+      "duplicated_logic": true,
+      "classification": "BACKGROUND_POLICY_GAP"
+    },
+    {
+      "subsystem": "stripe_webhook_service",
+      "module": "backend/services/stripe_webhook_service.py",
+      "currently_consumes": ["Stripe events", "field writes"],
+      "must_consume": ["emit canonical lifecycle events"],
+      "duplicated_logic": false,
+      "classification": "EVENT_GAP"
+    },
+    {
+      "subsystem": "ProtectedRoute",
+      "module": "frontend ProtectedRoute.js",
+      "currently_consumes": ["JWT only"],
+      "must_consume": ["portal_mode from lifecycle-contract"],
+      "duplicated_logic": true,
+      "classification": "PORTAL_MODE_GAP"
+    },
+    {
+      "subsystem": "EntitlementsContext",
+      "module": "frontend EntitlementsContext.js",
+      "currently_consumes": ["/client/entitlements", "hasFeature"],
+      "must_consume": ["lifecycle-contract", "portal_mode", "polling_policy"],
+      "duplicated_logic": true,
+      "classification": "PORTAL_MODE_GAP",
+      "note": "isActive and subscriptionStatus fetched but unused"
+    },
+    {
+      "subsystem": "ClientPortalLayout",
+      "module": "frontend ClientPortalLayout.jsx",
+      "currently_consumes": ["portal-context polling"],
+      "must_consume": ["portal_mode", "polling_policy"],
+      "duplicated_logic": true,
+      "classification": "CUSTOMER_EXPERIENCE_GAP"
+    },
+    {
+      "subsystem": "BillingPage",
+      "module": "frontend BillingPage.js",
+      "currently_consumes": ["/billing/status", "canonical_entitlement_state"],
+      "must_consume": ["portal_mode subset"],
+      "duplicated_logic": true,
+      "classification": "COMMUNICATION_POLICY_GAP"
+    },
+    {
+      "subsystem": "notification orchestrator",
+      "module": "backend notification services",
+      "currently_consumes": ["entitlement_status"],
+      "must_consume": ["ALPA communication matrix"],
+      "duplicated_logic": true,
+      "classification": "COMMUNICATION_POLICY_GAP"
+    },
+    {
+      "subsystem": "report generation APIs",
+      "module": "backend report routes",
+      "currently_consumes": ["per-feature entitlement_access"],
+      "must_consume": ["policy matrix report columns"],
+      "duplicated_logic": true,
+      "classification": "POLICY_GAP"
+    },
+    {
+      "subsystem": "Navigation Authority",
+      "module": "navigation config",
+      "currently_consumes": ["hasFeature"],
+      "must_consume": ["portal_mode locked_features"],
+      "duplicated_logic": false,
+      "classification": "PORTAL_MODE_GAP",
+      "note": "Authority preserved; visibility input must add portal_mode"
+    },
+    {
+      "subsystem": "Report Presentation Authority",
+      "module": "backend/report_presentation/",
+      "currently_consumes": ["report content only"],
+      "must_consume": ["generation eligibility from ALPA only"],
+      "duplicated_logic": false,
+      "classification": "NO_CHANGE_REQUIRED"
+    }
+  ],
+  "implementation_roadmap": [
+    {
+      "programme_id": "ILP-1",
+      "name": "Lifecycle State Resolver",
+      "purpose": "Map Stripe + billing + org → account_lifecycle_state",
+      "business_objective": "Single policy enum for all subsystems",
+      "dependencies": ["ALPA approval"],
+      "affected_subsystems": ["subscription_lifecycle_service", "client_billing", "clients mirror"],
+      "risk": "HIGH",
+      "complexity": "HIGH",
+      "regression_requirements": ["test_iteration26_billing_webhooks", "billing lifecycle visibility contract tests"],
+      "recommended_order": 1
+    },
+    {
+      "programme_id": "ILP-2",
+      "name": "Portal Mode API",
+      "purpose": "GET /client/lifecycle-contract",
+      "business_objective": "Frontend consumes portal_mode not raw Stripe",
+      "dependencies": ["ILP-1"],
+      "affected_subsystems": ["client API routes", "EntitlementsContext"],
+      "risk": "MEDIUM",
+      "complexity": "MEDIUM",
+      "regression_requirements": ["lifecycle contract integration tests"],
+      "recommended_order": 2
+    },
+    {
+      "programme_id": "ILP-3",
+      "name": "Frontend Lifecycle Shell",
+      "purpose": "LifecycleProtectedRoute, lifecycle screens, polling circuit breaker",
+      "business_objective": "Eliminate Error Boundaries and 403 storms",
+      "dependencies": ["ILP-2"],
+      "affected_subsystems": ["ProtectedRoute", "ClientPortalLayout", "ErrorBanner", "ClientTasksPage"],
+      "risk": "HIGH",
+      "complexity": "HIGH",
+      "regression_requirements": ["E2E cancelled subscription journey", "no Error Boundary on /today"],
+      "recommended_order": 3
+    },
+    {
+      "programme_id": "ILP-4",
+      "name": "API Lifecycle Responses",
+      "purpose": "Safe string messages, lifecycle_redirect, read API tier",
+      "business_objective": "APIs align with policy matrix",
+      "dependencies": ["ILP-1"],
+      "affected_subsystems": ["middleware", "client routes"],
+      "risk": "MEDIUM",
+      "complexity": "MEDIUM",
+      "regression_requirements": ["403 payload contract tests"],
+      "recommended_order": 4
+    },
+    {
+      "programme_id": "ILP-5",
+      "name": "Session Policy",
+      "purpose": "session_version rules per transition",
+      "business_objective": "Deterministic auth after lifecycle change",
+      "dependencies": ["ILP-1"],
+      "affected_subsystems": ["auth routes", "JWT middleware"],
+      "risk": "MEDIUM",
+      "complexity": "MEDIUM",
+      "regression_requirements": ["session matrix tests"],
+      "recommended_order": 5
+    },
+    {
+      "programme_id": "ILP-6",
+      "name": "Background Job Alignment",
+      "purpose": "Jobs read policy snapshot; pause/resume per matrix",
+      "business_objective": "No independent lifecycle inference in workers",
+      "dependencies": ["ILP-1"],
+      "affected_subsystems": ["jobs.py", "reminder scheduler", "digest", "scheduled reports"],
+      "risk": "HIGH",
+      "complexity": "MEDIUM",
+      "regression_requirements": ["job filter tests per lifecycle state"],
+      "recommended_order": 6
+    },
+    {
+      "programme_id": "ILP-7",
+      "name": "Communication Alignment",
+      "purpose": "LCA glossary + ALPA send matrix",
+      "business_objective": "Consistent portal/email/SMS lifecycle copy",
+      "dependencies": ["ILP-1", "Communication Authority"],
+      "affected_subsystems": ["email templates", "notifications", "BillingPage copy"],
+      "risk": "LOW",
+      "complexity": "MEDIUM",
+      "regression_requirements": ["communication matrix snapshot tests"],
+      "recommended_order": 7
+    },
+    {
+      "programme_id": "ILP-8",
+      "name": "Reactivation Orchestrator",
+      "purpose": "Idempotent paths R-001–R-012",
+      "business_objective": "Deterministic restoration scope",
+      "dependencies": ["ILP-1", "ILP-6", "ILP-9"],
+      "affected_subsystems": ["billing", "entitlements", "jobs", "portal"],
+      "risk": "HIGH",
+      "complexity": "HIGH",
+      "regression_requirements": ["reactivation idempotency tests", "job resume tests"],
+      "recommended_order": 8
+    },
+    {
+      "programme_id": "ILP-9",
+      "name": "Event Bus + Audit",
+      "purpose": "Canonical lifecycle events",
+      "business_objective": "Auditable transitions; consumer decoupling",
+      "dependencies": ["ILP-1"],
+      "affected_subsystems": ["webhooks", "timeline", "audit log"],
+      "risk": "MEDIUM",
+      "complexity": "HIGH",
+      "regression_requirements": ["event idempotency tests"],
+      "recommended_order": 9
+    },
+    {
+      "programme_id": "ILP-10",
+      "name": "Legacy Migration",
+      "purpose": "LEGACY → resolved states",
+      "business_objective": "Eliminate parallel lifecycle_status",
+      "dependencies": ["ILP-1"],
+      "affected_subsystems": ["clients collection", "onboarding"],
+      "risk": "MEDIUM",
+      "complexity": "MEDIUM",
+      "regression_requirements": ["legacy mapping tests"],
+      "recommended_order": 10
+    }
+  ],
+  "acceptance_assessment": {
+    "every_lifecycle_state_has_governed_business_policy": true,
+    "every_lifecycle_transition_has_governed_contract": true,
+    "every_lifecycle_event_has_single_authoritative_owner": true,
+    "every_portal_mode_explicitly_defined": true,
+    "every_subsystem_consumption_documented": true,
+    "session_behaviour_deterministic_policy_defined": true,
+    "background_processing_follows_lifecycle_policy_defined": true,
+    "customer_communications_follow_lifecycle_policy_defined": true,
+    "portal_presentation_follows_lifecycle_policy_defined": true,
+    "cancellation_expiry_suspension_readonly_archiving_deletion_reactivation_distinct": true,
+    "every_reactivation_path_explicitly_governed": true,
+    "reactivation_restores_only_policy_defined_capabilities": true,
+    "background_services_resume_deterministically_policy_defined": true,
+    "reminder_schedules_resume_correctly_policy_defined": true,
+    "compliance_monitoring_resume_policy_defined": true,
+    "risk_score_recalculation_policy_defined": true,
+    "duplicate_notifications_prevented_policy_defined": true,
+    "sessions_recover_consistently_policy_defined": true,
+    "reactivation_idempotent_policy_defined": true,
+    "every_reactivation_produces_authoritative_events_policy_defined": true,
+    "every_lifecycle_decision_auditable_policy_defined": true,
+    "implementation_ready_pending_stakeholder_approval": true,
+    "code_implementation_complete": false
+  },
+  "classification_summary": {
+    "NO_CHANGE_REQUIRED": 1,
+    "POLICY_GAP": 3,
+    "AUTHORITY_DUPLICATION": 5,
+    "PORTAL_MODE_GAP": 4,
+    "TRANSITION_GAP": 1,
+    "EVENT_GAP": 2,
+    "SESSION_POLICY_GAP": 1,
+    "BACKGROUND_POLICY_GAP": 2,
+    "COMMUNICATION_POLICY_GAP": 2,
+    "CUSTOMER_EXPERIENCE_GAP": 3,
+    "REACTIVATION_GAP": 1,
+    "RETENTION_POLICY_GAP": 1
+  },
+  "regression_note": "Policy-only on develop; no code changes made. Implementation programmes ILP-1 through ILP-10 must not begin until policy approval."
+}
