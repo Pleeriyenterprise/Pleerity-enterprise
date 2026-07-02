@@ -568,17 +568,22 @@ def finalize_db_email_html(
             _inject_branding_banner_into_full_html(html_body, context),
             _append_plain_text_branding_footer(text_body, context),
         )
-    from email_templates.email_layout import build_customer_email_layout, merge_branding_kwargs
+    from email_presentation.shell import render_customer_email
 
     eb = context.get("_email_branding")
     ht = (eb.get("company_name") if isinstance(eb, dict) else None) or "Pleerity"
-    out_html = build_customer_email_layout(
-        **merge_branding_kwargs(
-            context,
-            greeting="\u00a0",
-            body_html=html_body or "",
-            header_title=ht,
-            show_preferences_link=False,
-        )
+    greeting = resolve_greeting(
+        display_name=context.get("client_name") or context.get("full_name"),
+        first_name=context.get("first_name"),
+        client_name=context.get("client_name"),
+    )
+    body = strip_embedded_greetings(html_body or "")
+    out_html = render_customer_email(
+        context,
+        greeting=greeting,
+        body_html=body,
+        header_title=ht,
+        show_preferences_link=bool(context.get("show_preferences_link")),
+        preferences_url=context.get("preferences_url"),
     )
     return out_html, _append_plain_text_branding_footer(text_body, context)

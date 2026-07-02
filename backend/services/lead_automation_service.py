@@ -391,16 +391,23 @@ async def process_due_sequences(limit: int = 100) -> Dict[str, int]:
         cta_url = f"{app_base}{_default_cta_path(state.get('sequence_key', ''))}"
         track_click_url = f"{api_base}/api/leads/automation/track-click?key={quote(tracking_key)}&url={quote(cta_url, safe='')}"
         track_open_url = f"{api_base}/api/leads/automation/track-open?key={quote(tracking_key)}"
-        body = (
-            "<html><body style='margin:0;padding:0;background:#f8fafc;font-family:Inter,Arial,sans-serif;color:#0f172a;'>"
-            "<div style='max-width:680px;margin:0 auto;padding:24px;'>"
-            "<div style='background:#0f172a;color:#14b8a6;padding:14px 18px;border-radius:10px 10px 0 0;font-family:Montserrat,Inter,sans-serif;font-weight:700'>Pleerity</div>"
-            "<div style='background:#fff;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 10px 10px;padding:18px;white-space:pre-line;line-height:1.55'>"
-            f"{body_txt}"
-            f"<div style='margin-top:14px'><a href='{track_click_url}' style='display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600'>Continue</a></div>"
-            "<div style='margin-top:14px;font-size:12px;color:#64748b'>Pleerity Enterprise Ltd · info@pleerityenterprise.co.uk · https://pleerity.com</div>"
-            f"<img src='{track_open_url}' width='1' height='1' alt='' style='display:block'/>"
-            "</div></div></body></html>"
+        from email_presentation.copy import WHY_RECEIVED_COMPLIANCE_GAP
+        from email_presentation.shell import render_lead_sequence_email
+
+        seq_key = state.get("sequence_key", "")
+        cta_key = "review_issue" if seq_key == SEQUENCE_COMPLIANCE_GAP else "continue"
+        why = WHY_RECEIVED_COMPLIANCE_GAP if seq_key == SEQUENCE_COMPLIANCE_GAP else None
+        header_title = "Compliance gap" if seq_key == SEQUENCE_COMPLIANCE_GAP else "Pleerity"
+        body = render_lead_sequence_email(
+            None,
+            display_name=display_name,
+            body_text=body_txt,
+            header_title=header_title,
+            cta_url=track_click_url,
+            cta_key=cta_key,
+            why_received=why,
+            show_preferences_link=bool(state.get("client_id")),
+            tracking_open_url=track_open_url,
         )
         result = await notification_orchestrator.send(
             template_key="LEAD_FOLLOWUP",

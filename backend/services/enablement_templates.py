@@ -142,7 +142,6 @@ VALUE_CONFIRMATION_TEMPLATES = [
         "email_subject": "Document Verified - Compliance Updated",
         "email_body_html": """
         <h2>Document Verified</h2>
-        <p>Hi {{first_name}},</p>
         <p>Your document has been reviewed and verified:</p>
         <p><strong>Document:</strong> {{document_name}}</p>
         <p><strong>Status:</strong> Verified ✓</p>
@@ -193,7 +192,6 @@ COMPLIANCE_AWARENESS_TEMPLATES = [
         "email_subject": "Compliance Status Update for Your Property",
         "email_body_html": """
         <h2>Compliance Status Update</h2>
-        <p>Hi {{first_name}},</p>
         <p>There has been a change to your compliance status:</p>
         <p><strong>Property:</strong> {{property_address}}</p>
         <p><strong>Previous Status:</strong> {{old_status}}</p>

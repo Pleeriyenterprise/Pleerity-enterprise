@@ -56,26 +56,29 @@ def _risk_level_label(score_val: object) -> Optional[str]:
 
 
 def _operational_footer_html() -> str:
+    from email_presentation.brand import get_brand_profile, support_footer_html
+
+    brand = get_brand_profile()
+    support = support_footer_html(brand.link_color)
+    website_esc = html.escape(brand.website_url, quote=True)
     return (
         '<hr style="border:none;border-top:1px solid #e2e8f0;margin:28px 0 16px 0;">'
         '<div style="font-size:12px;color:#64748b;line-height:1.55;">'
-        "<strong>Pleerity Enterprise Ltd</strong><br/>"
-        "AI-Driven Solutions &amp; Compliance<br/><br/>"
+        f"<strong>{html.escape(brand.company_name, quote=False)}</strong><br/>"
+        f"{html.escape(brand.tagline, quote=False)}<br/><br/>"
         "<strong>Disclaimer:</strong> This communication is informational only and does not constitute legal advice.<br/><br/>"
-        "Support: info@pleerityenterprise.co.uk · "
-        '<a href="https://pleerity.com" style="color:#0f766e;text-decoration:none;">pleerity.com</a><br/>'
-        '<span style="font-size:11px;color:#94a3b8;">Do not share account credentials or payment details by email.</span>'
+        f"{support}<br/>"
+        f'Website: <a href="{website_esc}" style="color:{brand.link_color};text-decoration:none;">'
+        f"{html.escape(brand.website_url, quote=False)}</a><br/>"
+        f'<span style="font-size:11px;color:#94a3b8;">{html.escape(brand.security_note, quote=False)}</span>'
         "</div>"
     )
 
 
 def _cta_button_html(url: str) -> str:
-    return (
-        f'<a href="{html.escape(url, quote=True)}" '
-        'style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;'
-        'padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px;">'
-        "Start Compliance Monitoring</a>"
-    )
+    from email_presentation.cta import CTA_START_MONITORING, render_cta_html
+
+    return render_cta_html(url, CTA_START_MONITORING)
 
 
 def _cvp_operational_document_html(
@@ -142,7 +145,10 @@ def build_compliance_risk_snapshot_email_html(
                 f'<span style="display:inline-block;background:#0f172a;color:#f8fafc;font-size:12px;'
                 f'font-weight:600;padding:5px 12px;border-radius:4px;letter-spacing:0.02em;">{esc_rl}</span></p>'
             )
-    esc_greet = html.escape(greeting_name, quote=False)
+    from email_presentation.greeting import resolve_greeting
+
+    greet_line = resolve_greeting(display_name=greeting_name, first_name=greeting_name)
+    esc_greet_display = html.escape(greet_line, quote=False)
     if score is not None:
         score_line = f'<p style="margin:0;font-size:32px;font-weight:700;color:#0f172a;line-height:1.15;">{int(score)}%</p>'
         score_caption = '<p style="margin:4px 0 0 0;font-size:13px;color:#475569;">Compliance score (indicative)</p>'
@@ -167,7 +173,7 @@ def build_compliance_risk_snapshot_email_html(
             "</p>"
         )
     inner = f"""
-<p style="margin:0 0 16px 0;font-size:15px;line-height:1.55;">Hello {esc_greet},</p>
+<p style="margin:0 0 16px 0;font-size:15px;line-height:1.55;">{esc_greet_display}</p>
 <p style="margin:0 0 22px 0;font-size:13px;color:#475569;line-height:1.55;">
   This snapshot is based on the information currently available from your risk check responses.
 </p>
@@ -217,7 +223,7 @@ def _activate_url(lead: dict, activation_token: Optional[str] = None) -> str:
 
 
 def _body_step1(lead: dict, activation_token: Optional[str] = None) -> str:
-    first_name = (lead.get("first_name") or "there").strip()
+    first_name = (lead.get("first_name") or lead.get("name") or "").strip()
     raw = lead.get("computed_score", 0)
     score: Optional[int] = None
     try:
