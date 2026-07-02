@@ -238,12 +238,10 @@ STATUS_SEVERITY = {
 }
 
 def get_status_color(status):
-    """Get CSS color for compliance status."""
-    return {
-        "GREEN": "#22c55e",
-        "AMBER": "#f59e0b",
-        "RED": "#dc2626"
-    }.get(status, "#64748b")
+    """Get CSS color for compliance status (delegates to Email Presentation Authority)."""
+    from email_presentation.status_colors import color_for_rag
+
+    return color_for_rag(status)
 
 class JobScheduler:
     def __init__(self):

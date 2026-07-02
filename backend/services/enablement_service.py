@@ -312,6 +312,8 @@ async def deliver_email(
             context={
                 "subject": subject,
                 "message": body_html,
+                "client_name": client.get("name") if client else None,
+                "first_name": (client.get("name") or "").split()[0] if client and client.get("name") else None,
             },
             idempotency_key=idempotency_key,
             event_type=f"enablement_{category.value.lower()}",

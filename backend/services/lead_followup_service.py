@@ -224,7 +224,7 @@ We noticed you started setting up Compliance Vault Pro but didn't complete the p
 
 **Need help?** Our team is here to assist:
 - Reply to this email with any questions
-- Chat with us anytime at [pleerity.com]({base_url})
+- Chat with us anytime at [{base_url}]({base_url})
 - Call us at +44 7440 645017
 
 [Continue your setup →]({base_url}/intake?resume={draft_id})

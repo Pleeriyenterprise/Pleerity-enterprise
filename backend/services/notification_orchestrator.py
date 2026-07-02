@@ -909,10 +909,12 @@ class NotificationOrchestrator:
     ) -> Tuple[str, str, str]:
         from models import EmailTemplateAlias
         from services.branding_resolver_service import merge_email_branding_context
+        from email_presentation.context import enrich_presentation_context
 
         if context is None:
             context = {}
         await merge_email_branding_context(context, alias_str, client_id)
+        context = enrich_presentation_context(context)
         alias_map = {a.value: a for a in EmailTemplateAlias}
         alias = alias_map.get(alias_str)
         # scheduled-report: always use code-built layout (job path has report_rows; manual path passes pre-built message).
@@ -934,6 +936,16 @@ class NotificationOrchestrator:
                 text = svc._build_text_body(EmailTemplateAlias.SCHEDULED_REPORT, model)
                 subj = (context.get("subject") or default_subject)
                 return html, text, subj
+        # Compliance status alerts: canonical code-built layout with governed RAG colours.
+        if alias_str == "compliance-alert" and context.get("affected_properties"):
+            from services.email_service import EmailService
+
+            svc = EmailService()
+            model = context or {}
+            html = svc._build_html_body(EmailTemplateAlias.COMPLIANCE_ALERT, model)
+            text = svc._build_text_body(EmailTemplateAlias.COMPLIANCE_ALERT, model)
+            subj = (context.get("subject") or default_subject).strip()
+            return html, text, subj
         if alias_str == "order-intake-confirmation" and context.get("message"):
             html = str(context["message"])
             text = (context.get("text_message") or "").strip() or _strip_html_to_text(html)

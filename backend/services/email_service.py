@@ -24,6 +24,15 @@ from presentation.label_service import (
 from services.scoring_semantics_v1 import headline_score_display_for_export
 from services.scoring_explanation_copy import email_score_delta_line
 from services.lifecycle_reminder_template_registry import lifecycle_reminder_spec
+from email_presentation.greeting import resolve_greeting as _resolve_greeting
+from email_presentation.status_colors import (
+    enrich_affected_properties,
+    rag_legend_html,
+    rag_status_chip_html,
+)
+from email_presentation.copy import PORTAL_AUTHORITY_HTML
+from email_presentation.cta import CTA_OPEN_PORTAL, CTA_OPEN_PORTAL_DETAILS
+from email_presentation.shell import render_fragment_email
 
 logger = logging.getLogger(__name__)
 
@@ -144,12 +153,8 @@ def _customer_email_html(model: Dict[str, Any], **kwargs: Any) -> str:
 
 
 def _format_greeting(client_name: Optional[str]) -> str:
-    """Avoid empty 'Hi ,' — use first name or neutral 'Hello,'."""
-    name = (client_name or "").strip()
-    if not name or name.lower() in ("valued customer", "there", "customer"):
-        return "Hello,"
-    first = name.split()[0]
-    return f"Hello {first},"
+    """Governed greeting via Email Presentation Authority."""
+    return _resolve_greeting(display_name=client_name, client_name=client_name)
 
 
 def _format_currency_amount_for_email(amount: Any, currency: Optional[str]) -> str:
@@ -1030,15 +1035,17 @@ class EmailService:
             customer_ref = model.get('customer_reference', '')
             ref_badge = f'<span style="background-color: #00B8A9; color: white; padding: 4px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-left: 10px;">{customer_ref}</span>' if customer_ref else ""
             properties_html = ""
-            for prop in model.get('affected_properties', []):
+            for prop in enrich_affected_properties(model.get("affected_properties", [])):
+                prev_status = prop.get("previous_status", "GREEN")
+                new_status = prop.get("new_status", "RED")
                 properties_html += f"""
                 <tr>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{prop.get('address', 'N/A')}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
-                        <span style="color: {prop.get('prev_color', '#22c55e')}; font-weight: bold;">{prop.get('previous_status', 'GREEN')}</span>
+                        {rag_status_chip_html(str(prev_status))}
                     </td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
-                        <span style="color: {prop.get('new_color', '#dc2626')}; font-weight: bold;">{prop.get('new_status', 'RED')}</span>
+                        {rag_status_chip_html(str(new_status))}
                     </td>
                     <td style="padding: 10px; border-bottom: 1px solid #eee;">{prop.get('reason', 'Status changed')}</td>
                 </tr>
@@ -1058,21 +1065,16 @@ class EmailService:
                             {properties_html}
                         </tbody>
                     </table>
-                    <p style="color: #64748b; font-size: 14px;">
-                        <strong>How to read this:</strong><br>
-                        • <span style="color: #22c55e;">GREEN</span> = Dashboard indicator: tracked requirements for this property appear satisfied on the last calculation (not a legal guarantee).<br>
-                        • <span style="color: #f59e0b;">AMBER</span> = Some tracked requirements are due soon or need review in the portal<br>
-                        • <span style="color: #dc2626;">RED</span> = One or more tracked requirements need attention — review details in the portal
-                    </p>
-                    <p style="color: #64748b; font-size: 13px;">This email is informational. The portal remains authoritative for obligation state, evidence, and when scores last recalculated.</p>"""
-            greeting = f"Hello {model.get('client_name', 'there')},"
+                    {rag_legend_html()}
+                    {PORTAL_AUTHORITY_HTML}"""
+            greeting = _format_greeting(model.get("client_name"))
             return _customer_email_html(
                 model,
                 greeting=greeting,
                 body_html=body,
                 header_title="Compliance status update",
                 ref_badge=ref_badge,
-                cta_label="Open portal to review",
+                cta_label=CTA_OPEN_PORTAL,
                 cta_url=model.get('portal_link', '#'),
                 why_received="compliance monitoring is enabled for your account and a property dashboard indicator changed.",
                 show_preferences_link=True,
@@ -1094,13 +1096,13 @@ class EmailService:
                 f"{urgency_line}"
                 f"{grouped_block}"
             )
-            greeting = f"Hello {model.get('client_name', 'Valued Customer')},"
+            greeting = _format_greeting(model.get("client_name"))
             return _customer_email_html(
                 model,
                 greeting=greeting,
                 body_html=body,
                 header_title=spec["header_title"],
-                cta_label="Open portal for details",
+                cta_label=CTA_OPEN_PORTAL_DETAILS,
                 cta_url=model.get('portal_link', '#'),
                 why_received=spec["why_received"],
                 show_preferences_link=True,
@@ -1111,7 +1113,7 @@ class EmailService:
             body = "<p>Your landlord has invited you to view the compliance status of your rental property.</p><p>The tenant portal allows you to:</p><ul style=\"color: #64748b;\"><li>View property compliance status (GREEN/AMBER/RED)</li><li>See certificate expiry dates</li><li>Track overall compliance health</li></ul><p style=\"color: #666; font-size: 14px;\">This link expires in 7 days. If you have questions, please contact your landlord.</p>"
             if model.get('login_url'):
                 body += f'<p style="color: #666; font-size: 14px; margin-top: 16px;">After you\'ve set your password, you can log in anytime at: <a href="{model.get("login_url", "#")}" style="color: #00B8A9;">{model.get("login_url", "")}</a></p>'
-            greeting = f"Hello {model.get('tenant_name', 'there')},"
+            greeting = _format_greeting(model.get("tenant_name"))
             return _customer_email_html(
                 model,
                 greeting=greeting,
@@ -1152,7 +1154,7 @@ class EmailService:
             )
         elif template_alias == EmailTemplateAlias.ADMIN_INVITE:
             body = "<p>You have been invited by <strong>" + (model.get('inviter_name') or 'an administrator') + "</strong> to join Compliance Vault Pro as an <strong>Administrator</strong>.</p><p>As an admin, you will have access to:</p><ul style=\"color: #64748b;\"><li>Full system management dashboard</li><li>All client accounts and properties</li><li>Audit logs and compliance reports</li><li>System configuration and settings</li></ul><p style=\"color: #dc2626; font-size: 14px; font-weight: bold;\">⏰ This invitation expires in 24 hours.</p><p style=\"color: #666; font-size: 14px;\">If you did not expect this invitation or have questions, please contact the system administrator.</p>"
-            greeting = f"Hello {model.get('admin_name', 'there')},"
+            greeting = _format_greeting(model.get("admin_name"))
             return _customer_email_html(
                 model,
                 greeting=greeting,
@@ -1183,7 +1185,7 @@ class EmailService:
                         </table>
                     </div>
                     <p style="color: #64748b; font-size: 14px;"><strong>What happens next?</strong><br>• Confirm or correct extracted fields on <strong>Documents</strong> when prompted — scoring and requirement rows catch up after confirmation and any recalculation.<br>• You can still receive reminders based on dates already on record.<br>• This email is informational; the portal remains authoritative for current obligation state.</p>"""
-            greeting = f"Hello {model.get('client_name', 'there')},"
+            greeting = _format_greeting(model.get("client_name"))
             return _customer_email_html(
                 model,
                 greeting=greeting,
@@ -1207,7 +1209,7 @@ class EmailService:
                     docs_html += f"<li style='margin: 5px 0;'>{doc_name}</li>"
                 docs_html += "</ul>"
             body = f"<p>Your <strong>{model.get('service_name', 'order')}</strong> is complete and your documents are ready for download!</p><div style=\"background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 20px; margin: 20px 0;\"><p style=\"margin: 0 0 10px 0; font-weight: bold; color: #166534;\">Included Documents:</p>{docs_html}</div><p style=\"color: #64748b; font-size: 14px;\">Your documents are also available in your <a href=\"{model.get('portal_link', '#')}\" style=\"color: #00B8A9;\">portal dashboard</a>.</p>"
-            greeting = f"Hello {model.get('client_name', 'there')},"
+            greeting = _format_greeting(model.get("client_name"))
             return _customer_email_html(
                 model,
                 greeting=greeting,
@@ -1790,35 +1792,29 @@ class EmailService:
                 customer_reference=model.get("customer_reference"),
             )
         elif template_alias == EmailTemplateAlias.ADMIN_MANUAL:
-            footer = self._build_email_footer(model)
-            customer_ref = model.get("customer_reference", "")
-            ref_line = f"<p>Your Reference: <strong>{customer_ref}</strong></p>" if customer_ref else ""
             if model.get("admin_manual_structured") and str(model.get("admin_manual_summary") or "").strip():
                 from email_templates.admin_manual_structured_layout import build_admin_manual_structured_html
 
+                footer = self._build_email_footer(model)
+                customer_ref = model.get("customer_reference", "")
+                ref_line = f"<p>Your Reference: <strong>{customer_ref}</strong></p>" if customer_ref else ""
                 inner = build_admin_manual_structured_html(
                     model,
                     footer_html="",
                     customer_reference_html=ref_line or "",
                 )
                 return inner.replace("</body>", f"{footer}</body>", 1)
-            # Legacy: single block (message or body).
-            body_content = model.get("message") or model.get("body") or "You have a new notification from Compliance Vault Pro."
-            return f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="background-color: #0B1D3A; padding: 20px; border-radius: 8px 8px 0 0;">
-                    <h1 style="color: #00B8A9; margin: 0;">Compliance Vault Pro</h1>
-                </div>
-                <div style="padding: 20px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
-                    <p>Hello {model.get('client_name', 'there')},</p>
-                    {ref_line}
-                    <p>{body_content}</p>
-                </div>
-                {footer}
-            </body>
-            </html>
-            """
+            body_content = model.get("message") or model.get("body") or (
+                "<p>You have a new notification from Compliance Vault Pro.</p>"
+            )
+            return render_fragment_email(
+                model,
+                body_html=body_content,
+                header_title="Compliance Vault Pro",
+                client_name=model.get("client_name"),
+                first_name=model.get("first_name"),
+                customer_reference=model.get("customer_reference"),
+            )
         elif template_alias == EmailTemplateAlias.INTERNAL_ALERT:
             from email_templates.internal_alert_layout import build_internal_alert_html
             return build_internal_alert_html(model)
@@ -1848,7 +1844,7 @@ class EmailService:
             customer_ref = model.get('customer_reference', '')
             ref_line = f"<p>Your Reference: <strong>{customer_ref}</strong></p>" if customer_ref else ""
             body = f"{ref_line}<p>{model.get('message', 'You have a new notification from Pleerity.')}</p>"
-            greeting = f"Hello {model.get('client_name', 'there')},"
+            greeting = _format_greeting(model.get("client_name"))
             show_prefs = template_alias not in SYSTEM_CRITICAL_ALIASES
             return _customer_email_html(
                 model,
@@ -2019,7 +2015,7 @@ Go to your dashboard: {model.get('portal_link', '#')}
 Compliance status update
 {ref_line}
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get("client_name"))}
 
 The dashboard compliance indicator for one or more of your properties has changed and may need your review.
 
@@ -2051,7 +2047,7 @@ This message is informational; the portal is authoritative for obligation state 
 =========================
 {ref_line}
 
-Hello {model.get('client_name', 'Valued Customer')},
+{_format_greeting(model.get("client_name"))}
 
 {_lifecycle_reminder_intro_text(model, template_alias)}
 
@@ -2065,7 +2061,7 @@ Open portal for details: {model.get('portal_link', '#')}
             return f"""
 🛡️ ADMIN INVITATION - Compliance Vault Pro
 
-Hello {model.get('admin_name', 'there')},
+{_format_greeting(model.get("admin_name"))}
 
 You have been invited by {model.get('inviter_name', 'an administrator')} to join Compliance Vault Pro as an Administrator.
 
@@ -2095,7 +2091,7 @@ If you did not expect this invitation, please contact the system administrator.
 SUGGESTED CERTIFICATE DETAILS (REVIEW)
 {ref_line}
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get("client_name"))}
 
 Assistive extraction produced suggested certificate fields from your upload. They are not statutory verification and may still need your confirmation before they fully apply to scoring.
 
@@ -2128,7 +2124,7 @@ Open portal to review: {model.get('portal_link', '#')}
 ===========================
 Order Reference: {model.get('order_reference', '')}
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get("client_name"))}
 
 Your {model.get('service_name', 'order')} is complete and your documents are ready!
 
@@ -2229,7 +2225,7 @@ Open the admin dashboard pending-verification list to process these documents.
 WELCOME TO CLEARFORM BY PLEERITY
 ================================
 
-Hello {model.get('full_name', 'there')},
+{_format_greeting(model.get("full_name"))}
 
 Welcome to ClearForm. Your account is ready, and we've added some starter credits 
 to help you get going.
@@ -2651,7 +2647,7 @@ Always review the output and seek professional advice for legal matters.
                 c.get("header_title", "Compliance Vault Pro"),
                 ref_line,
                 "",
-                f"Hello {model.get('client_name', 'there')},",
+                f"{_format_greeting(model.get("client_name"))}",
                 "",
                 body_text,
                 "",
@@ -2669,7 +2665,7 @@ Always review the output and seek professional advice for legal matters.
 Compliance Vault Pro
 {ref_line}
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get("client_name"))}
 
 {model.get('message', 'You have a new notification from Compliance Vault Pro.')}
 {footer}
@@ -2683,7 +2679,7 @@ Hello {model.get('client_name', 'there')},
 Compliance Vault Pro
 {ref_line}
 
-Hello {model.get('client_name', 'there')},
+{_format_greeting(model.get("client_name"))}
 
 {model.get('message', 'You have a new notification from Compliance Vault Pro.')}
 {footer}
@@ -2763,8 +2759,7 @@ Hello {model.get('client_name', 'there')},
         
         # Add color info to properties
         for prop in affected_properties:
-            prop['prev_color'] = {'GREEN': '#22c55e', 'AMBER': '#f59e0b', 'RED': '#dc2626'}.get(prop.get('previous_status'), '#64748b')
-            prop['new_color'] = {'GREEN': '#22c55e', 'AMBER': '#f59e0b', 'RED': '#dc2626'}.get(prop.get('new_status'), '#64748b')
+            prop.update(enrich_affected_properties([prop])[0])
         
         await self.send_email(
             recipient=recipient,
@@ -3017,7 +3012,7 @@ Hello {model.get('client_name', 'there')},
         <!-- Main Content -->
         <div style="background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none;">
             <p style="color: #1e293b; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                Hello {model.get('full_name', 'there')},
+                {_format_greeting(model.get("full_name"))}
             </p>
             
             <p style="color: #475569; font-size: 15px; line-height: 1.6; margin: 0 0 20px 0;">
