@@ -1,0 +1,1197 @@
+{
+  "audit_id": "EMAIL-TEMPLATE-AUTHORITY-AUDIT-01",
+  "branch": "develop",
+  "generated_at": "2026-07-01T12:34:07.599827+00:00",
+  "verdict": "C",
+  "verdict_statement": "Domain, colour, and greeting logic are duplicated across canonical shell, DB fragments, enablement templates, and inline lead/risk HTML \u2014 requires a shared Email Presentation Authority.",
+  "canonical_authority": {
+    "layout_module": "email_templates/email_layout.py",
+    "function": "build_customer_email_layout",
+    "brand_constants": {
+      "PRIMARY_COLOR": "#00B8A9",
+      "HEADER_BG": "#0B1D3A",
+      "COMPANY_NAME": "Pleerity Enterprise Ltd"
+    },
+    "url_authority": "utils/app_urls.get_app_base_url(for_email_links=True)",
+    "website_footer_authority": "utils/branding.get_branding_website_url()",
+    "send_path": "services/notification_orchestrator.py",
+    "registry": "notification_template_seed_definitions.py"
+  },
+  "template_inventory": [
+    {
+      "template_key": "ACTIVATION_REMINDER",
+      "email_template_alias": "activation-reminder",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "ADMIN_CLIENT_COMMUNICATION_ANNOUNCEMENT",
+      "email_template_alias": "client-operational-notice",
+      "email_category": "system_announcements",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "ADMIN_CLIENT_COMMUNICATION_CRITICAL",
+      "email_template_alias": "client-operational-notice",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "ADMIN_INVITE",
+      "email_template_alias": "admin-invite",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ADMIN_MANUAL",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "AI_EXTRACTION_APPLIED",
+      "email_template_alias": "ai-extraction-applied",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "AUTH_ACCOUNT_LOCKED",
+      "email_template_alias": "admin-manual",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "AUTH_ADMIN_MFA_CODE",
+      "email_template_alias": "admin-manual",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "AUTH_LOGIN_RECOVERED",
+      "email_template_alias": "admin-manual",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "CLEARFORM_WELCOME",
+      "email_template_alias": "clearform-welcome",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "CLIENT_INVOICE_REVIEW_REQUIRED",
+      "email_template_alias": "client-invoice-review-required",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "CLIENT_PROOF_UPLOADED",
+      "email_template_alias": "client-proof-uploaded",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "CLIENT_QUOTE_REVIEW_REQUIRED",
+      "email_template_alias": "client-quote-review-required",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "COMPLIANCE_ALERT",
+      "email_template_alias": "compliance-alert",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "COMPLIANCE_EXPIRY_REMINDER",
+      "email_template_alias": "reminder",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "COMPLIANCE_SCORE_UPDATE",
+      "email_template_alias": "admin-manual",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "COMPLIANCE_SLA_ALERT",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "CONTRACTOR_ASSIGNED",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "CONTRACTOR_INVOICE_READY",
+      "email_template_alias": "contractor-invoice-ready",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "CONTRACTOR_JOB_ASSIGNMENT_QUOTE_REQUIRED",
+      "email_template_alias": "contractor-job-assignment-quote-required",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "CONTRACTOR_PROOF_REQUIRED",
+      "email_template_alias": "contractor-proof-required",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "CONTRACTOR_QUOTE_APPROVED",
+      "email_template_alias": "contractor-quote-approved",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "CONTRACTOR_VISIT_CONFIRMED",
+      "email_template_alias": "contractor-visit-confirmed",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "CUSTOM_NOTIFICATION",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "DASHBOARD_READY",
+      "email_template_alias": "portal-ready",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "hybrid",
+      "production_facing": true,
+      "runtime_notes": "orchestrator hybrid path"
+    },
+    {
+      "template_key": "DOCUMENT_MISSING_ALERT",
+      "email_template_alias": "admin-manual",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ENABLEMENT_DELIVERY",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "FEATURE_ANNOUNCEMENT",
+      "email_template_alias": "admin-manual",
+      "email_category": "marketing_notifications",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "INTERNAL_ALERT",
+      "email_template_alias": "internal-alert",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "internal_layout",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "INVOICE_AVAILABLE",
+      "email_template_alias": "admin-manual",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "LEAD_FOLLOWUP",
+      "email_template_alias": "admin-manual",
+      "email_category": "lead_nurture",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "LEAD_HIGH_INTENT_ADMIN",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "LEAD_MANUAL_MESSAGE",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "LEAD_SLA_BREACH_ADMIN",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "LEAD_TRANSACTIONAL_RISK_CHECK_COMPLETED",
+      "email_template_alias": "admin-manual",
+      "email_category": "lead_nurture",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "LIFECYCLE_REMINDER_CERTIFICATE_EXPIRING",
+      "email_template_alias": "reminder",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "LIFECYCLE_REMINDER_EVENT_ACTION_REQUIRED",
+      "email_template_alias": "lifecycle-reminder-event-action-required",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "LIFECYCLE_REMINDER_OCCUPANCY_REVIEW_DUE",
+      "email_template_alias": "lifecycle-reminder-occupancy-review-due",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "LIFECYCLE_REMINDER_OPERATIONAL_ACTION_REQUIRED",
+      "email_template_alias": "lifecycle-reminder-operational-action-required",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "LIFECYCLE_REMINDER_REVIEW_DUE",
+      "email_template_alias": "lifecycle-reminder-review-due",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "LIFECYCLE_REMINDER_TENANCY_TERM_ENDING",
+      "email_template_alias": "lifecycle-reminder-tenancy-term-ending",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "MONTHLY_DIGEST",
+      "email_template_alias": "monthly-digest",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "canonical_code_built",
+      "production_facing": true,
+      "runtime_notes": "orchestrator code bypass"
+    },
+    {
+      "template_key": "ONBOARDING_DAY0_WELCOME",
+      "email_template_alias": "onboarding-day0-welcome",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ONBOARDING_DAY1_SETUP_REMINDER",
+      "email_template_alias": "onboarding-day1-setup-reminder",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ONBOARDING_DAY2_COMPLIANCE_EDUCATION",
+      "email_template_alias": "onboarding-day2-compliance-education",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ONBOARDING_DAY3_PRODUCT_VALUE",
+      "email_template_alias": "onboarding-day3-product-value",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ONBOARDING_DAY4_DOCUMENT_PACK_INTRO",
+      "email_template_alias": "onboarding-day4-document-pack-intro",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ONBOARDING_DAY5_RISK_AWARENESS",
+      "email_template_alias": "onboarding-day5-risk-awareness",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ONBOARDING_DAY6_CASE_EXAMPLE",
+      "email_template_alias": "onboarding-day6-case-example",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ONBOARDING_DAY7_ACTIVATION_PUSH",
+      "email_template_alias": "onboarding-day7-activation-push",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "OPS_ALERT_NOTIFICATION_SPIKE",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ORDER_CONFIRMATION",
+      "email_template_alias": "order-intake-confirmation",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "hybrid",
+      "production_facing": true,
+      "runtime_notes": "orchestrator hybrid path"
+    },
+    {
+      "template_key": "ORDER_DELIVERED",
+      "email_template_alias": "order-delivered",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "ORDER_DOCUMENTS_READY",
+      "email_template_alias": "order-intake-confirmation",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "hybrid",
+      "production_facing": true,
+      "runtime_notes": "orchestrator hybrid path"
+    },
+    {
+      "template_key": "ORDER_INFO_REQUEST",
+      "email_template_alias": "order-intake-confirmation",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "hybrid",
+      "production_facing": true,
+      "runtime_notes": "orchestrator hybrid path"
+    },
+    {
+      "template_key": "ORDER_NOTIFICATION",
+      "email_template_alias": "compliance-alert",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "PARTNERSHIP_ACK",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "PASSWORD_CHANGED_CONFIRMATION",
+      "email_template_alias": "password-changed-confirmation",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "PASSWORD_RESET",
+      "email_template_alias": "password-reset",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "PAYMENT_FAILED",
+      "email_template_alias": "payment-failed",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "PENDING_VERIFICATION_DIGEST",
+      "email_template_alias": "pending-verification-digest",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "PILOT_INVITE_SEND",
+      "email_template_alias": "admin-manual",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "PRODUCT_UPDATE",
+      "email_template_alias": "admin-manual",
+      "email_category": "marketing_notifications",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "PROVISIONING_FAILED_ADMIN",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "RENEWAL_REMINDER",
+      "email_template_alias": "renewal-reminder",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "RENT_REMINDER",
+      "email_template_alias": "admin-manual",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SCHEDULED_REPORT",
+      "email_template_alias": "scheduled-report",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "hybrid",
+      "production_facing": true,
+      "runtime_notes": "orchestrator hybrid path"
+    },
+    {
+      "template_key": "STRIPE_WEBHOOK_FAILURE_ADMIN",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SUBSCRIPTION_CANCELED",
+      "email_template_alias": "subscription-canceled",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SUBSCRIPTION_CONFIRMED",
+      "email_template_alias": "payment-receipt",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "hybrid",
+      "production_facing": true,
+      "runtime_notes": "orchestrator hybrid path"
+    },
+    {
+      "template_key": "SUBSCRIPTION_GRACE_REMINDER",
+      "email_template_alias": "admin-manual",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SUBSCRIPTION_RENEWAL_PAID",
+      "email_template_alias": "payment-receipt",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "hybrid",
+      "production_facing": true,
+      "runtime_notes": "orchestrator hybrid path"
+    },
+    {
+      "template_key": "SUBSCRIPTION_RENEWAL_REMINDER_3D",
+      "email_template_alias": "admin-manual",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SUBSCRIPTION_RENEWAL_REMINDER_7D",
+      "email_template_alias": "admin-manual",
+      "email_category": "reporting_notifications",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SUPPORT_INTERNAL_NOTIFICATION",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": false,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SUPPORT_TICKET_CONFIRMATION",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SUPPORT_TICKET_RESOLVED",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "SUPPORT_TICKET_UPDATED",
+      "email_template_alias": "admin-manual",
+      "email_category": "internal",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "TENANT_COMPLIANCE_PACKAGE_DELIVERY",
+      "email_template_alias": "admin-manual",
+      "email_category": "compliance_notifications",
+      "is_active_seed": true,
+      "shell_class": "legacy_or_db_fragment",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "TENANT_INVITE",
+      "email_template_alias": "tenant-invite",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    },
+    {
+      "template_key": "WELCOME_EMAIL",
+      "email_template_alias": "password-setup",
+      "email_category": "system_critical",
+      "is_active_seed": true,
+      "shell_class": "db_first_with_code_fallback",
+      "production_facing": true,
+      "runtime_notes": "DB email_templates row when active, else EmailService fallback"
+    }
+  ],
+  "template_key_count": 81,
+  "alias_count": 44,
+  "source_file_inventory": [
+    {
+      "path": "email_templates/email_layout.py",
+      "role": "Canonical customer email shell (SSOT intent)"
+    },
+    {
+      "path": "services/email_service.py",
+      "role": "Code-built templates, _format_greeting, COMPLIANCE_ALERT colours"
+    },
+    {
+      "path": "services/notification_orchestrator.py",
+      "role": "Production send + render ordering (DB vs code bypass)"
+    },
+    {
+      "path": "services/branding_resolver_service.py",
+      "role": "DB fragment finalize_db_email_html wrapper"
+    },
+    {
+      "path": "services/email_template_runtime_metadata.py",
+      "role": "Admin metadata: runtime_source per alias"
+    },
+    {
+      "path": "notification_template_seed_definitions.py",
+      "role": "template_key \u2194 alias registry"
+    },
+    {
+      "path": "utils/app_urls.py",
+      "role": "APP_BASE_URL / canonical pleerityenterprise.co.uk"
+    },
+    {
+      "path": "utils/branding.py",
+      "role": "Support email, get_branding_website_url()"
+    },
+    {
+      "path": "services/jobs.py",
+      "role": "COMPLIANCE_ALERT trigger, get_status_color"
+    },
+    {
+      "path": "services/enablement_templates.py",
+      "role": "Enablement email_body_html fragments"
+    },
+    {
+      "path": "services/enablement_service.py",
+      "role": "ENABLEMENT_DELIVERY send path"
+    },
+    {
+      "path": "services/lead_automation_service.py",
+      "role": "Compliance gap sequence inline HTML"
+    },
+    {
+      "path": "services/risk_lead_email_service.py",
+      "role": "Risk lead nurture inline HTML"
+    },
+    {
+      "path": "services/lead_followup_service.py",
+      "role": "Lead follow-up markdown references pleerity.com"
+    },
+    {
+      "path": "email_templates/internal_alert_layout.py",
+      "role": "Internal/staff alert layout"
+    },
+    {
+      "path": "email_templates/admin_manual_structured_layout.py",
+      "role": "Structured admin-manual variant"
+    }
+  ],
+  "email_type_matrix": [
+    {
+      "email_type": "Compliance status update",
+      "template_key": "COMPLIANCE_ALERT",
+      "alias": "compliance-alert",
+      "trigger": "jobs.check_compliance_status_changes",
+      "shell": "db_first_with_code_fallback"
+    },
+    {
+      "email_type": "Document verified",
+      "template_key": "ENABLEMENT_DELIVERY",
+      "alias": "admin-manual",
+      "trigger": "enablement DOCUMENT_VERIFIED",
+      "shell": "legacy_or_db_fragment"
+    },
+    {
+      "email_type": "Compliance gap detected",
+      "template_key": "LEAD_FOLLOWUP",
+      "alias": "admin-manual",
+      "trigger": "lead_automation SEQUENCE_COMPLIANCE_GAP step 1",
+      "shell": "legacy inline full HTML"
+    },
+    {
+      "email_type": "Unresolved compliance gap reminder",
+      "template_key": "LEAD_FOLLOWUP",
+      "alias": "admin-manual",
+      "trigger": "lead_automation SEQUENCE_COMPLIANCE_GAP step 2",
+      "shell": "legacy inline full HTML"
+    },
+    {
+      "email_type": "Monthly digest",
+      "template_key": "MONTHLY_DIGEST",
+      "alias": "monthly-digest",
+      "trigger": "jobs monthly digest",
+      "shell": "canonical_code_built"
+    },
+    {
+      "email_type": "Onboarding day 0\u20137",
+      "template_key": "ONBOARDING_DAY*",
+      "alias": "onboarding-day*",
+      "trigger": "onboarding scheduler",
+      "shell": "db_first_with_code_fallback"
+    },
+    {
+      "email_type": "Tenant invite",
+      "template_key": "TENANT_INVITE",
+      "alias": "tenant-invite",
+      "trigger": "client tenant invite",
+      "shell": "db_first_with_code_fallback"
+    },
+    {
+      "email_type": "Pilot invite",
+      "template_key": "PILOT_INVITE_SEND",
+      "alias": "admin-manual",
+      "trigger": "pilot invite flow",
+      "shell": "legacy_or_db_fragment"
+    },
+    {
+      "email_type": "Renewal reminder",
+      "template_key": "RENEWAL_REMINDER",
+      "alias": "renewal-reminder",
+      "trigger": "jobs.send_renewal_reminders",
+      "shell": "db_first_with_code_fallback"
+    },
+    {
+      "email_type": "Risk lead nurture",
+      "template_key": "LEAD_FOLLOWUP",
+      "alias": "admin-manual",
+      "trigger": "risk_lead_email_service",
+      "shell": "legacy inline full HTML"
+    }
+  ],
+  "branding_matrix": [
+    {
+      "shell": "build_customer_email_layout",
+      "header_bg": "#0B1D3A",
+      "primary": "#00B8A9",
+      "tagline": "AI-Driven Solutions & Compliance",
+      "footer": "Governed support + website via get_branding_website_url()"
+    },
+    {
+      "shell": "ADMIN_MANUAL EmailService legacy",
+      "header": "Compliance Vault Pro",
+      "greeting": "Hello there, fallback",
+      "footer": "_build_email_footer"
+    },
+    {
+      "shell": "lead_automation inline",
+      "header": "Pleerity on #0f172a",
+      "cta": "Continue",
+      "footer": "hardcoded pleerity.com"
+    },
+    {
+      "shell": "risk_lead inline",
+      "cta": "Start Compliance Monitoring",
+      "footer": "hardcoded pleerity.com"
+    }
+  ],
+  "color_token_matrix": {
+    "GREEN": {
+      "hex": "#22c55e",
+      "authority": "jobs.get_status_color / duplicated inline in email_service"
+    },
+    "AMBER": {
+      "hex": "#f59e0b",
+      "authority": "jobs.get_status_color / duplicated inline in email_service"
+    },
+    "RED": {
+      "hex": "#dc2626",
+      "authority": "jobs.get_status_color / duplicated inline in email_service"
+    },
+    "neutral": {
+      "hex": "#64748b",
+      "authority": "jobs.get_status_color fallback"
+    }
+  },
+  "salutation_matrix": [
+    {
+      "pattern": "Hello {first},",
+      "authority": "email_service._format_greeting",
+      "fallback": "Hello, when name empty/there/customer"
+    },
+    {
+      "pattern": "Hello {client_name|there},",
+      "authority": "COMPLIANCE_ALERT / ADMIN_MANUAL legacy",
+      "fallback": "there \u2192 Hello there,"
+    },
+    {
+      "pattern": "Hi {{first_name}},",
+      "authority": "enablement_templates email_body_html",
+      "fallback": "empty first_name \u2192 Hi ,"
+    },
+    {
+      "pattern": "Hello {{first_name}},",
+      "authority": "lead_automation SEQUENCE_COMPLIANCE_GAP",
+      "fallback": "from lead/client vars"
+    },
+    {
+      "pattern": "greeting=U+00A0",
+      "authority": "finalize_db_email_html for DB fragments",
+      "fallback": "NBSP in canonical shell only"
+    }
+  ],
+  "domain_link_matrix": [
+    {
+      "location": "utils/app_urls.get_app_base_url(for_email_links=True)",
+      "value": "https://pleerityenterprise.co.uk",
+      "governed": true
+    },
+    {
+      "location": "utils/branding.get_branding_website_url()",
+      "value": "delegates to get_app_base_url",
+      "governed": true
+    },
+    {
+      "location": "email_layout footer",
+      "value": "get_branding_website_url()",
+      "governed": true
+    },
+    {
+      "location": "lead_automation_service.py:401",
+      "value": "https://pleerity.com",
+      "governed": false,
+      "production_email": true
+    },
+    {
+      "location": "risk_lead_email_service.py:66",
+      "value": "https://pleerity.com",
+      "governed": false,
+      "production_email": true
+    },
+    {
+      "location": "lead_followup_service.py:227",
+      "value": "pleerity.com in markdown",
+      "governed": false,
+      "production_email": true
+    }
+  ],
+  "footer_matrix": [
+    {
+      "variant": "canonical",
+      "company": "Pleerity Enterprise Ltd",
+      "support": "info@pleerityenterprise.co.uk",
+      "website": "APP_BASE_URL",
+      "security_note": true
+    },
+    {
+      "variant": "legacy_admin_manual",
+      "header": "Compliance Vault Pro",
+      "website": "mixed via _build_email_footer"
+    },
+    {
+      "variant": "lead_automation",
+      "website": "pleerity.com hardcoded"
+    },
+    {
+      "variant": "risk_lead",
+      "website": "pleerity.com hardcoded",
+      "disclaimer": true
+    }
+  ],
+  "cta_matrix": [
+    {
+      "label": "Open portal to review",
+      "template_key": "COMPLIANCE_ALERT",
+      "shell": "canonical"
+    },
+    {
+      "label": "Open portal for details",
+      "template_key": "LIFECYCLE_REMINDER_*",
+      "shell": "canonical"
+    },
+    {
+      "label": "Continue",
+      "template_key": "LEAD_FOLLOWUP compliance_gap",
+      "shell": "legacy inline"
+    },
+    {
+      "label": "Start Compliance Monitoring",
+      "template_key": "risk lead nurture",
+      "shell": "legacy inline"
+    },
+    {
+      "label": "Go to your dashboard",
+      "template_key": "DASHBOARD_READY",
+      "shell": "canonical"
+    },
+    {
+      "label": "Set Up Your Access",
+      "template_key": "TENANT_INVITE",
+      "shell": "canonical"
+    }
+  ],
+  "observed_issues": [
+    {
+      "id": "ISSUE-AMBER-COLOR",
+      "symptom": "AMBER status text renders red (or GREEN text) in compliance status table",
+      "root_cause": "jobs.check_compliance_status_changes omits prev_color/new_color; EmailService defaults new_color=#dc2626 and prev_color=#22c55e",
+      "evidence_files": [
+        "services/jobs.py:1654-1660",
+        "services/email_service.py:1038-1041"
+      ],
+      "production_reachable": true,
+      "workflow": "COMPLIANCE_ALERT via jobs.check_compliance_status_changes"
+    },
+    {
+      "id": "ISSUE-DOCUMENT-VERIFIED-GREETING",
+      "symptom": "Hello there, then Hi , double greeting",
+      "root_cause": "ENABLEMENT_DELIVERY uses admin-manual; EmailService ADMIN_MANUAL legacy fallback greets Hello {client_name|there} while enablement email_body_html also contains Hi {{first_name}},; client_name/first_name not passed in orchestrator context",
+      "evidence_files": [
+        "services/enablement_templates.py:143-151",
+        "services/enablement_service.py:308-315",
+        "services/email_service.py:1807-1816"
+      ],
+      "production_reachable": true,
+      "workflow": "DOCUMENT_VERIFIED enablement event -> ENABLEMENT_DELIVERY"
+    },
+    {
+      "id": "ISSUE-GAP-EMAIL-LEGACY",
+      "symptom": "Compliance gap emails use older inline shell and pleerity.com footer",
+      "root_cause": "lead_automation_service builds bespoke HTML with hardcoded https://pleerity.com; bypasses build_customer_email_layout",
+      "evidence_files": [
+        "services/lead_automation_service.py:394-404",
+        "services/lead_automation_service.py:261-262"
+      ],
+      "production_reachable": true,
+      "workflow": "SEQUENCE_COMPLIANCE_GAP -> LEAD_FOLLOWUP -> admin-manual full HTML bypass"
+    },
+    {
+      "id": "ISSUE-RISK-LEAD-DOMAIN",
+      "symptom": "Risk nurture footer links pleerity.com",
+      "root_cause": "risk_lead_email_service._operational_footer_html hardcodes https://pleerity.com",
+      "evidence_files": [
+        "services/risk_lead_email_service.py:58-68"
+      ],
+      "production_reachable": true,
+      "workflow": "Risk check lead nurture sequence"
+    }
+  ],
+  "legacy_template_findings": [
+    {
+      "name": "ADMIN_MANUAL EmailService fallback",
+      "file": "services/email_service.py",
+      "lines": "1792-1821",
+      "still_reachable": true
+    },
+    {
+      "name": "Lead automation inline HTML",
+      "file": "services/lead_automation_service.py",
+      "lines": "394-404",
+      "still_reachable": true
+    },
+    {
+      "name": "Risk lead nurture footer",
+      "file": "services/risk_lead_email_service.py",
+      "lines": "58-68",
+      "still_reachable": true
+    },
+    {
+      "name": "Enablement HTML fragments with embedded greetings",
+      "file": "services/enablement_templates.py",
+      "still_reachable": true
+    },
+    {
+      "name": "Enablement status_changed_awareness parallel template",
+      "file": "services/enablement_templates.py",
+      "lines": "194-203",
+      "still_reachable": true
+    }
+  ],
+  "authority_questions": {
+    "Q1_canonical_layout": "email_templates/email_layout.py \u2192 build_customer_email_layout",
+    "Q2_templates_using_canonical": "19 unconditional code-built aliases + lifecycle reminders + DB fragments via finalize_db_email_html",
+    "Q3_legacy_templates": "ADMIN_MANUAL fallback, lead_automation inline, risk_lead inline, enablement fragments",
+    "Q4_status_colors_central": false,
+    "Q5_why_amber_red": "Missing new_color defaults to #dc2626; missing prev_color defaults to #22c55e",
+    "Q6_colors_consistent": false,
+    "Q7_salutation_central": false,
+    "Q8_name_fallback_governed": false,
+    "Q9_hello_there_and_hi_together": true,
+    "Q10_production_hardcode_pleerity_com": true,
+    "Q11_domains_sourced": "partial \u2014 canonical paths use APP_BASE_URL; legacy inline hardcode pleerity.com",
+    "Q12_footers_consistent": false,
+    "Q13_cta_labels_consistent": false,
+    "Q14_preferences_links_consistent": false,
+    "Q15_portal_authoritative": "partial \u2014 COMPLIANCE_ALERT code path includes disclaimer; gap/enablement paths weaker or absent",
+    "Q16_legacy_still_reachable": true,
+    "Q17_production_facing": "81 EMAIL template_keys in seed; ~69 client/contractor/lead-facing"
+  },
+  "production_impact": {
+    "severity": "medium_high",
+    "user_visible_defects": [
+      "AMBER/RED colour misrender in compliance alerts",
+      "double greeting on document verified",
+      "wrong domain on gap/risk emails",
+      "inconsistent CTA/footer branding"
+    ],
+    "affected_live_workflows": [
+      "jobs.check_compliance_status_changes \u2192 COMPLIANCE_ALERT",
+      "enablement DOCUMENT_VERIFIED \u2192 ENABLEMENT_DELIVERY",
+      "lead_automation SEQUENCE_COMPLIANCE_GAP \u2192 LEAD_FOLLOWUP",
+      "risk_lead_email_service nurture sequence"
+    ]
+  },
+  "recommended_global_fix": {
+    "approach": "Introduce Email Presentation Authority module \u2014 no per-template patches",
+    "components": [
+      "Shared status colour map (GREEN/AMBER/RED hex)",
+      "Shared greeting resolver with governed fallbacks",
+      "Mandatory canonical shell for all customer emails",
+      "jobs: inject prev_color/new_color at send time",
+      "enablement: strip embedded greetings; pass client_name in context",
+      "lead_automation + risk_lead: remove inline shells and pleerity.com",
+      "orchestrator: compliance-alert code bypass or send-time colour enrichment"
+    ]
+  },
+  "screenshot_correlation": [
+    {
+      "screenshot": "Compliance status update AMBER red",
+      "issue_id": "ISSUE-AMBER-COLOR"
+    },
+    {
+      "screenshot": "Document Verified Hello there + Hi ,",
+      "issue_id": "ISSUE-DOCUMENT-VERIFIED-GREETING"
+    },
+    {
+      "screenshot": "Compliance gap detected pleerity.com",
+      "issue_id": "ISSUE-GAP-EMAIL-LEGACY"
+    },
+    {
+      "screenshot": "Unresolved compliance gap reminder",
+      "issue_id": "ISSUE-GAP-EMAIL-LEGACY"
+    },
+    {
+      "screenshot": "AMBER previous in green",
+      "issue_id": "ISSUE-AMBER-COLOR"
+    }
+  ]
+}
