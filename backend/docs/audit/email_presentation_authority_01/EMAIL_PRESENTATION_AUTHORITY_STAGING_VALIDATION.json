@@ -1,0 +1,180 @@
+{
+  "programme": "EMAIL-PRESENTATION-AUTHORITY-01-STAGING-VALIDATION",
+  "generated_at": "2026-07-02T09:00:35.947559+00:00",
+  "branch": "develop",
+  "commit_under_test": "9468244cfe0d933e99a9168ac9ca166c8629cc52",
+  "commit_prefix": "9468244c",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "checks": {
+    "local_pytest_pass": true,
+    "all_representative_renders_pass": true,
+    "staging_deployed_expected_sha": true,
+    "staging_health_ok": true
+  },
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "output_tail": "........................                                                 [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n24 passed, 4 warnings in 0.55s\n"
+  },
+  "render_matrix": {
+    "compliance_status_update": {
+      "workflow": "compliance_status_update",
+      "checks": {
+        "single_greeting_no_hello_there_hi": true,
+        "no_double_hello_pleasant": true,
+        "named_greeting_or_hello_comma": true,
+        "no_pleerity_com": true,
+        "governed_domain_in_html": true,
+        "canonical_footer_support": true,
+        "canonical_header_navy": true,
+        "security_note_or_disclaimer": true,
+        "mobile_friendly_max_width": true,
+        "plain_text_present": true,
+        "green_colour_token": true,
+        "amber_not_red": true,
+        "red_colour_token": true,
+        "portal_authority_copy": true,
+        "preferences_link": true
+      },
+      "pass": true
+    },
+    "document_verified": {
+      "workflow": "document_verified",
+      "checks": {
+        "single_greeting_no_hello_there_hi": true,
+        "no_double_hello_pleasant": true,
+        "named_greeting_or_hello_comma": true,
+        "no_pleerity_com": true,
+        "governed_domain_in_html": true,
+        "canonical_footer_support": true,
+        "canonical_header_navy": true,
+        "security_note_or_disclaimer": true,
+        "mobile_friendly_max_width": true,
+        "plain_text_present": true
+      },
+      "pass": true
+    },
+    "document_pending_review": {
+      "workflow": "document_pending_review",
+      "checks": {
+        "single_greeting_no_hello_there_hi": true,
+        "no_double_hello_pleasant": true,
+        "named_greeting_or_hello_comma": true,
+        "no_pleerity_com": true,
+        "governed_domain_in_html": true,
+        "canonical_footer_support": true,
+        "canonical_header_navy": true,
+        "security_note_or_disclaimer": true,
+        "mobile_friendly_max_width": true,
+        "plain_text_present": true
+      },
+      "pass": true
+    },
+    "compliance_gap_detected": {
+      "workflow": "compliance_gap_detected",
+      "checks": {
+        "single_greeting_no_hello_there_hi": true,
+        "no_double_hello_pleasant": true,
+        "named_greeting_or_hello_comma": true,
+        "no_pleerity_com": true,
+        "governed_domain_in_html": true,
+        "canonical_footer_support": true,
+        "canonical_header_navy": true,
+        "security_note_or_disclaimer": true,
+        "mobile_friendly_max_width": true,
+        "plain_text_present": true,
+        "cta_review_issue": true
+      },
+      "pass": true
+    },
+    "compliance_gap_reminder": {
+      "workflow": "compliance_gap_reminder",
+      "checks": {
+        "single_greeting_no_hello_there_hi": true,
+        "no_double_hello_pleasant": true,
+        "named_greeting_or_hello_comma": true,
+        "no_pleerity_com": true,
+        "governed_domain_in_html": true,
+        "canonical_footer_support": true,
+        "canonical_header_navy": true,
+        "security_note_or_disclaimer": true,
+        "mobile_friendly_max_width": true,
+        "plain_text_present": true
+      },
+      "pass": true
+    },
+    "monthly_digest": {
+      "workflow": "monthly_digest",
+      "checks": {
+        "single_greeting_no_hello_there_hi": true,
+        "no_double_hello_pleasant": true,
+        "named_greeting_or_hello_comma": true,
+        "no_pleerity_com": true,
+        "governed_domain_in_html": true,
+        "canonical_footer_support": true,
+        "canonical_header_navy": true,
+        "security_note_or_disclaimer": true,
+        "mobile_friendly_max_width": true,
+        "plain_text_present": true
+      },
+      "pass": true
+    },
+    "risk_notification": {
+      "workflow": "risk_notification",
+      "checks": {
+        "no_pleerity_com": true,
+        "governed_domain": true,
+        "support_email": true,
+        "single_greeting": true,
+        "cta_start_monitoring": true
+      },
+      "pass": true
+    },
+    "lead_automation": {
+      "workflow": "lead_automation",
+      "checks": {
+        "single_greeting_no_hello_there_hi": true,
+        "no_double_hello_pleasant": true,
+        "named_greeting_or_hello_comma": true,
+        "no_pleerity_com": true,
+        "governed_domain_in_html": true,
+        "canonical_footer_support": true,
+        "canonical_header_navy": true,
+        "security_note_or_disclaimer": true,
+        "mobile_friendly_max_width": true,
+        "plain_text_present": true
+      },
+      "pass": true
+    },
+    "enablement_email": {
+      "workflow": "enablement_email",
+      "checks": {
+        "single_greeting_no_hello_there_hi": true,
+        "no_double_hello_pleasant": true,
+        "named_greeting_or_hello_comma": true,
+        "no_pleerity_com": true,
+        "governed_domain_in_html": true,
+        "canonical_footer_support": true,
+        "canonical_header_navy": true,
+        "security_note_or_disclaimer": true,
+        "mobile_friendly_max_width": true,
+        "plain_text_present": true
+      },
+      "pass": true
+    },
+    "all_workflows_pass": true
+  },
+  "staging_version_poll": {
+    "matched": true,
+    "body": {
+      "commit_sha": "9468244cfe0d933e99a9168ac9ca166c8629cc52",
+      "environment": "staging"
+    },
+    "attempts": "ok"
+  },
+  "staging_health": {
+    "status": 200,
+    "body": "{\"status\":\"healthy\",\"environment\":\"staging\",\"readiness\":{\"stage\":\"post_db_initialization\",\"degraded\":false,\"last_error\":null}}"
+  },
+  "outcome": "STAGING_VALIDATION_GO"
+}
