@@ -73,13 +73,30 @@ def humanize_risk_driver(driver: Any) -> str:
     return ""
 
 
-def interpret_evidence_posture(state_raw: str, evidence_raw: str) -> Tuple[str, str]:
+def interpret_evidence_posture(
+    state_raw: str,
+    evidence_raw: str,
+    requirement_row: Optional[Dict[str, Any]] = None,
+) -> Tuple[str, str]:
     """
     Calm client-facing evidence posture — does not equate missing with non-compliance.
     Returns (short_label, operational_note).
     """
     st = (state_raw or "").strip().lower()
     ev = (evidence_raw or "").strip().lower().replace("_", " ")
+
+    if isinstance(requirement_row, dict):
+        try:
+            from lifecycle_communication.context import infer_communication_family
+            from lifecycle_communication.copy import digest_posture_labels
+
+            family = infer_communication_family(requirement_row)
+            is_overdue = st in ("overdue", "expired")
+            is_due_soon = st in ("expiring soon", "expiring_soon")
+            if is_overdue or is_due_soon:
+                return digest_posture_labels(family, is_overdue=is_overdue)
+        except Exception:
+            pass
 
     if st in ("compliant", "valid") and ev in ("verified", "verified current", "yes"):
         return "Verified on file", "Accepted evidence recorded for this obligation."
@@ -103,7 +120,11 @@ def _count_evidence_postures(model: Dict[str, Any]) -> Dict[str, int]:
     for rr in model.get("requirement_rows_pdf") or []:
         if not isinstance(rr, dict):
             continue
-        label, _ = interpret_evidence_posture(str(rr.get("state") or ""), str(rr.get("evidence_state") or ""))
+        label, _ = interpret_evidence_posture(
+            str(rr.get("state") or ""),
+            str(rr.get("evidence_state") or ""),
+            rr if isinstance(rr, dict) else None,
+        )
         counts[label] += 1
     return dict(counts)
 
@@ -574,7 +595,11 @@ def build_condensed_appendix_rows(
         if not isinstance(rr, dict):
             continue
         st = str(rr.get("state") or "").lower()
-        ev_label, _ = interpret_evidence_posture(str(rr.get("state") or ""), str(rr.get("evidence_state") or ""))
+        ev_label, _ = interpret_evidence_posture(
+            str(rr.get("state") or ""),
+            str(rr.get("evidence_state") or ""),
+            rr if isinstance(rr, dict) else None,
+        )
         urgent = st in ("overdue", "expired", "missing", "pending") or "missing" in ev_label.lower()
         if not urgent and st != "expiring soon":
             continue

@@ -206,18 +206,20 @@ COMPLIANCE_AWARENESS_TEMPLATES = [
         "template_code": "requirement_expiring_soon",
         "category": EnablementCategory.COMPLIANCE_AWARENESS,
         "event_triggers": [EnablementEventType.REQUIREMENT_EXPIRING_SOON],
-        "title": "Requirement Expiring Soon",
-        "body": "Heads up: Your {{requirement_name}} for {{property_address}} expires on {{expiry_date}}. You may want to arrange renewal before then.",
-        "email_subject": "Upcoming Expiry: {{requirement_name}}",
+        "title": "{{comm_heading}}",
+        "body": "{{comm_reason}} {{comm_when}}",
+        "email_subject": "{{comm_heading}}: {{requirement_name}}",
         "email_body_html": """
-        <h2>Requirement Expiring Soon</h2>
+        <h2>{{comm_heading}}</h2>
         <p>Hi {{first_name}},</p>
-        <p>This is a reminder that one of your compliance requirements is approaching its expiry date:</p>
+        <p>{{comm_reason}}</p>
         <p><strong>Requirement:</strong> {{requirement_name}}</p>
         <p><strong>Property:</strong> {{property_address}}</p>
-        <p><strong>Expiry Date:</strong> {{expiry_date}}</p>
-        <p>We recommend arranging for renewal before this date to maintain your compliance status.</p>
-        <p><em>This is an automated reminder based on the expiry date recorded in your documents.</em></p>
+        <p><strong>Due date:</strong> {{expiry_date}}</p>
+        <p>{{comm_what}}</p>
+        <p>{{comm_how}}</p>
+        <p>{{comm_next_step}}</p>
+        <p><em>This is an automated reminder based on the dates recorded for this obligation.</em></p>
         """,
         "channels": [DeliveryChannel.IN_APP, DeliveryChannel.EMAIL],
     },
@@ -225,18 +227,20 @@ COMPLIANCE_AWARENESS_TEMPLATES = [
         "template_code": "requirement_overdue",
         "category": EnablementCategory.COMPLIANCE_AWARENESS,
         "event_triggers": [EnablementEventType.REQUIREMENT_OVERDUE],
-        "title": "Requirement Overdue",
-        "body": "Your {{requirement_name}} for {{property_address}} has expired as of {{expiry_date}}. Please arrange renewal at your earliest convenience.",
-        "email_subject": "Action Needed: {{requirement_name}} Has Expired",
+        "title": "{{comm_heading}}",
+        "body": "{{comm_reason}} {{comm_when}}",
+        "email_subject": "{{comm_heading}}: {{requirement_name}}",
         "email_body_html": """
-        <h2>Requirement Has Expired</h2>
+        <h2>{{comm_heading}}</h2>
         <p>Hi {{first_name}},</p>
-        <p>One of your compliance requirements has passed its expiry date:</p>
+        <p>{{comm_reason}}</p>
         <p><strong>Requirement:</strong> {{requirement_name}}</p>
         <p><strong>Property:</strong> {{property_address}}</p>
-        <p><strong>Expired On:</strong> {{expiry_date}}</p>
-        <p>Please arrange for renewal and upload the new certificate when available.</p>
-        <p><em>This notification is based on the expiry date recorded in your system. For guidance on specific legal requirements, please consult with appropriate authorities.</em></p>
+        <p><strong>Due date:</strong> {{expiry_date}}</p>
+        <p>{{comm_what}}</p>
+        <p>{{comm_how}}</p>
+        <p>{{comm_next_step}}</p>
+        <p><em>This notification is based on the dates recorded in your system. For guidance on specific legal requirements, please consult with appropriate authorities.</em></p>
         """,
         "channels": [DeliveryChannel.IN_APP, DeliveryChannel.EMAIL],
     },

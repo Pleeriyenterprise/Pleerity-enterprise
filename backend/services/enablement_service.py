@@ -394,6 +394,32 @@ async def process_enablement_event(event: EnablementEventPayload):
         "event_type": event.event_type.value,
         **event.context_payload
     }
+
+    try:
+        from lifecycle_communication.resolver import resolve_customer_communication
+
+        if event.event_type in (
+            EnablementEventType.REQUIREMENT_EXPIRING_SOON,
+            EnablementEventType.REQUIREMENT_OVERDUE,
+        ):
+            req_row = {
+                "requirement_name": render_context.get("requirement_name"),
+                "requirement_code": render_context.get("requirement_code"),
+                "lifecycle_semantics": render_context.get("lifecycle_semantics"),
+                "lifecycle_attention_kind": render_context.get("lifecycle_attention_kind"),
+            }
+            comm = resolve_customer_communication(
+                req_row,
+                surface="enablement",
+                channel="IN_APP",
+                context=render_context,
+                due_date=str(render_context.get("expiry_date") or render_context.get("due_date") or ""),
+                is_overdue=event.event_type == EnablementEventType.REQUIREMENT_OVERDUE,
+            )
+            render_context.update(comm.get("template_context") or {})
+            render_context["customer_communication"] = comm
+    except Exception:
+        pass
     
     # Get client name for personalization
     client = await db.clients.find_one(
