@@ -1,0 +1,259 @@
+{
+  "programme": "EMAIL-PRESENTATION-AUTHORITY-PRODUCTION-PROMOTION-01",
+  "generated_at": "2026-07-02T09:21:03.768352+00:00",
+  "branch": "main",
+  "promotion_scope": {
+    "main_before": "100b1e65",
+    "source_impl": "9468244c",
+    "source_staging_evidence": "48e753e9",
+    "main_impl": "b445f13e",
+    "main_staging_evidence": "30f816df",
+    "commits_on_main": [
+      "30f816df docs(email): add email presentation staging validation evidence",
+      "b445f13e fix(email): centralise email presentation authority"
+    ],
+    "files_changed": [
+      "backend/docs/EMAIL_PRESENTATION_AUTHORITY.md",
+      "backend/docs/audit/email_presentation_authority_01/EMAIL_PRESENTATION_AUTHORITY_EVIDENCE.json",
+      "backend/docs/audit/email_presentation_authority_01/EMAIL_PRESENTATION_AUTHORITY_REPORT.md",
+      "backend/docs/audit/email_presentation_authority_01/EMAIL_PRESENTATION_AUTHORITY_STAGING_VALIDATION.json",
+      "backend/docs/audit/email_presentation_authority_01/EMAIL_PRESENTATION_AUTHORITY_STAGING_VALIDATION_REPORT.md",
+      "backend/email_presentation/__init__.py",
+      "backend/email_presentation/authority.py",
+      "backend/email_presentation/brand.py",
+      "backend/email_presentation/constants.py",
+      "backend/email_presentation/context.py",
+      "backend/email_presentation/copy.py",
+      "backend/email_presentation/cta.py",
+      "backend/email_presentation/greeting.py",
+      "backend/email_presentation/registry.py",
+      "backend/email_presentation/shell.py",
+      "backend/email_presentation/status_colors.py",
+      "backend/services/branding_resolver_service.py",
+      "backend/services/email_service.py",
+      "backend/services/enablement_service.py",
+      "backend/services/enablement_templates.py",
+      "backend/services/jobs.py",
+      "backend/services/lead_automation_service.py",
+      "backend/services/lead_followup_service.py",
+      "backend/services/notification_orchestrator.py",
+      "backend/services/risk_lead_email_service.py",
+      "backend/tests/test_email_presentation_authority.py"
+    ],
+    "email_layout_excluded": true,
+    "only_two_commits": true,
+    "pass": true
+  },
+  "production_api": "https://api.pleerityenterprise.co.uk/api",
+  "checks": {
+    "promotion_scope_clean": true,
+    "local_pytest_pass": true,
+    "email_presentation_modules_present": true,
+    "no_hardcoded_pleerity_com_customer_paths": true,
+    "app_base_url_governed": true,
+    "representative_renders_pass": true,
+    "production_api_healthy": true,
+    "production_sha_matches_promoted": true,
+    "regression_surface_presentation_only": true
+  },
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "output_tail": "........................                                                 [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n24 passed, 4 warnings in 1.66s\n"
+  },
+  "module_presence": {
+    "files": {
+      "email_presentation/__init__.py": true,
+      "email_presentation/authority.py": true,
+      "email_presentation/greeting.py": true,
+      "email_presentation/status_colors.py": true,
+      "email_presentation/shell.py": true
+    },
+    "pass": true
+  },
+  "pleerity_com_scan": {
+    "hits": [],
+    "pass": true
+  },
+  "app_base_url": {
+    "url": "https://pleerityenterprise.co.uk",
+    "pass": true
+  },
+  "render_matrix": {
+    "matrix": {
+      "compliance_status_update": {
+        "workflow": "compliance_status_update",
+        "checks": {
+          "single_greeting_no_hello_there_hi": true,
+          "no_double_hello_pleasant": true,
+          "named_greeting_or_hello_comma": true,
+          "no_pleerity_com": true,
+          "governed_domain_in_html": true,
+          "canonical_footer_support": true,
+          "canonical_header_navy": true,
+          "security_note_or_disclaimer": true,
+          "mobile_friendly_max_width": true,
+          "plain_text_present": true,
+          "green_colour_token": true,
+          "amber_not_red": true,
+          "red_colour_token": true,
+          "portal_authority_copy": true,
+          "preferences_link": true
+        },
+        "pass": true
+      },
+      "document_verified": {
+        "workflow": "document_verified",
+        "checks": {
+          "single_greeting_no_hello_there_hi": true,
+          "no_double_hello_pleasant": true,
+          "named_greeting_or_hello_comma": true,
+          "no_pleerity_com": true,
+          "governed_domain_in_html": true,
+          "canonical_footer_support": true,
+          "canonical_header_navy": true,
+          "security_note_or_disclaimer": true,
+          "mobile_friendly_max_width": true,
+          "plain_text_present": true
+        },
+        "pass": true
+      },
+      "document_pending_review": {
+        "workflow": "document_pending_review",
+        "checks": {
+          "single_greeting_no_hello_there_hi": true,
+          "no_double_hello_pleasant": true,
+          "named_greeting_or_hello_comma": true,
+          "no_pleerity_com": true,
+          "governed_domain_in_html": true,
+          "canonical_footer_support": true,
+          "canonical_header_navy": true,
+          "security_note_or_disclaimer": true,
+          "mobile_friendly_max_width": true,
+          "plain_text_present": true
+        },
+        "pass": true
+      },
+      "compliance_gap_detected": {
+        "workflow": "compliance_gap_detected",
+        "checks": {
+          "single_greeting_no_hello_there_hi": true,
+          "no_double_hello_pleasant": true,
+          "named_greeting_or_hello_comma": true,
+          "no_pleerity_com": true,
+          "governed_domain_in_html": true,
+          "canonical_footer_support": true,
+          "canonical_header_navy": true,
+          "security_note_or_disclaimer": true,
+          "mobile_friendly_max_width": true,
+          "plain_text_present": true,
+          "cta_review_issue": true
+        },
+        "pass": true
+      },
+      "compliance_gap_reminder": {
+        "workflow": "compliance_gap_reminder",
+        "checks": {
+          "single_greeting_no_hello_there_hi": true,
+          "no_double_hello_pleasant": true,
+          "named_greeting_or_hello_comma": true,
+          "no_pleerity_com": true,
+          "governed_domain_in_html": true,
+          "canonical_footer_support": true,
+          "canonical_header_navy": true,
+          "security_note_or_disclaimer": true,
+          "mobile_friendly_max_width": true,
+          "plain_text_present": true
+        },
+        "pass": true
+      },
+      "monthly_digest": {
+        "workflow": "monthly_digest",
+        "checks": {
+          "single_greeting_no_hello_there_hi": true,
+          "no_double_hello_pleasant": true,
+          "named_greeting_or_hello_comma": true,
+          "no_pleerity_com": true,
+          "governed_domain_in_html": true,
+          "canonical_footer_support": true,
+          "canonical_header_navy": true,
+          "security_note_or_disclaimer": true,
+          "mobile_friendly_max_width": true,
+          "plain_text_present": true
+        },
+        "pass": true
+      },
+      "risk_notification": {
+        "workflow": "risk_notification",
+        "checks": {
+          "no_pleerity_com": true,
+          "governed_domain": true,
+          "support_email": true,
+          "single_greeting": true,
+          "cta_start_monitoring": true
+        },
+        "pass": true
+      },
+      "lead_automation": {
+        "workflow": "lead_automation",
+        "checks": {
+          "single_greeting_no_hello_there_hi": true,
+          "no_double_hello_pleasant": true,
+          "named_greeting_or_hello_comma": true,
+          "no_pleerity_com": true,
+          "governed_domain_in_html": true,
+          "canonical_footer_support": true,
+          "canonical_header_navy": true,
+          "security_note_or_disclaimer": true,
+          "mobile_friendly_max_width": true,
+          "plain_text_present": true
+        },
+        "pass": true
+      },
+      "enablement_email": {
+        "workflow": "enablement_email",
+        "checks": {
+          "single_greeting_no_hello_there_hi": true,
+          "no_double_hello_pleasant": true,
+          "named_greeting_or_hello_comma": true,
+          "no_pleerity_com": true,
+          "governed_domain_in_html": true,
+          "canonical_footer_support": true,
+          "canonical_header_navy": true,
+          "security_note_or_disclaimer": true,
+          "mobile_friendly_max_width": true,
+          "plain_text_present": true
+        },
+        "pass": true
+      },
+      "all_workflows_pass": true
+    },
+    "pass": true
+  },
+  "production_version_poll": {
+    "matched": true,
+    "body": {
+      "commit_sha": "30f816dfcf101c7e43f0fe7dbcd8e1aa63f7e4a4",
+      "environment": "production"
+    },
+    "poll": {
+      "health_status": 200,
+      "health_body": "{\"status\":\"healthy\",\"environment\":\"production\",\"readiness\":{\"stage\":\"post_db_initialization\",\"degraded\":false,\"last_error\":null}}",
+      "version_status": 200,
+      "version_body": {
+        "commit_sha": "30f816dfcf101c7e43f0fe7dbcd8e1aa63f7e4a4",
+        "environment": "production"
+      }
+    }
+  },
+  "regression_unchanged": {
+    "notification_triggers": "presentation-only diff; no scheduler/orchestrator send-rule edits beyond render enrich + compliance-alert code path",
+    "scheduling": "unchanged",
+    "recipient_selection": "unchanged",
+    "workflow_routing": "unchanged",
+    "business_logic": "unchanged",
+    "email_registry": "registry extended in email_presentation/registry.py only",
+    "template_selection": "unchanged template_key routing"
+  },
+  "outcome": "PRODUCTION_PROMOTION_SUCCESSFUL"
+}
