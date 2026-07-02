@@ -74,20 +74,10 @@ COMPACT_FOOTER_LIVE = "Point-in-time export · may differ on re-download"
 
 
 def humanize_audit_event_action(action: Optional[str]) -> str:
-    """Convert telemetry-style audit codes to operator-readable labels."""
-    raw = (action or "").strip()
-    if not raw:
-        return "System event"
-    if raw in _AUDIT_EVENT_OVERRIDES:
-        return _AUDIT_EVENT_OVERRIDES[raw]
-    if raw.upper() in _AUDIT_EVENT_OVERRIDES:
-        return _AUDIT_EVENT_OVERRIDES[raw.upper()]
-    # Title-case token stream: FOO_BAR_BAZ → Foo bar baz
-    words = re.sub(r"[_\-]+", " ", raw).strip().lower()
-    if not words:
-        return raw[:48]
-    titled = words.title() if len(words) <= 48 else words[:48].title()
-    return titled[:72]
+    """Convert telemetry-style audit codes to business-readable labels (presentation only)."""
+    from report_presentation.timeline import humanize_audit_event_action as _rpa_humanize
+
+    return _rpa_humanize(action)
 
 
 def _event_family(action: Optional[str]) -> str:
@@ -120,11 +110,14 @@ def group_audit_events_for_operational_report(
             continue
         family = _event_family(action)
         md = ev.get("metadata") if isinstance(ev.get("metadata"), dict) else {}
-        human = humanize_audit_event_action(action)
-        summary = str(md.get("summary") or human)[:80]
+        from report_presentation.timeline import present_timeline_row
+
+        presented = present_timeline_row(ev, profile="operational")
+        human = presented.get("business_event") or humanize_audit_event_action(action)
+        summary = presented.get("summary") or human
         by_family[family].append(
             {
-                "timestamp": ev.get("timestamp"),
+                "timestamp": presented.get("timestamp") or ev.get("timestamp"),
                 "action_raw": action,
                 "human_label": human,
                 "summary": summary,
@@ -249,15 +242,9 @@ def _human_status(status_raw: str) -> str:
 
 
 def _human_actor_role(role: Any) -> str:
-    raw = str(role or "system").strip()
-    upper = raw.upper()
-    if upper in ("ROLE_CLIENT", "CLIENT"):
-        return "Client"
-    if upper in ("SYSTEM", "ROLE_SYSTEM"):
-        return "System"
-    if upper.startswith("ROLE_"):
-        return raw[5:].replace("_", " ").title()
-    return raw.replace("_", " ").title() if raw else "System"
+    from report_presentation.actors import present_actor_label
+
+    return present_actor_label(role)
 
 
 def build_operational_matrix_rows(
@@ -605,7 +592,8 @@ def append_operational_audit_trail(
     header = [
         Paragraph("<b>Operational activity chronology</b>", styles["heading"]),
         Paragraph(
-            "Grouped system activity for audit preparation. Raw event codes are normalised for readability.",
+            "Grouped compliance activity for audit preparation. Business-impact summaries are shown; "
+            "regeneration telemetry is omitted from this view.",
             styles["small"],
         ),
         Spacer(1, 6),
@@ -622,7 +610,7 @@ def append_operational_audit_trail(
         )
         data = [
             [
-                _table_cell_para("When (UTC)", ent_styles, bold=True),
+                _table_cell_para("Date & time", ent_styles, bold=True),
                 _table_cell_para("Activity", ent_styles, bold=True),
                 _table_cell_para("Actor", ent_styles, bold=True),
                 _table_cell_para("Summary", ent_styles, bold=True),
@@ -635,13 +623,7 @@ def append_operational_audit_trail(
                 label = f"{label} (+{similar - 1} similar)"
             data.append(
                 [
-                    _table_cell_para(
-                        str(ev.get("timestamp") or "\u2014")
-                        .replace("T", " ", 1)
-                        .replace("+00:00", " UTC")
-                        .replace("Z", " UTC"),
-                        ent_styles,
-                    ),
+                    _table_cell_para(str(ev.get("timestamp") or "—"), ent_styles),
                     _table_cell_para(label, ent_styles),
                     _table_cell_para(_human_actor_role(ev.get("actor_role")), ent_styles),
                     _table_cell_para(str(ev.get("summary") or "—"), ent_styles),

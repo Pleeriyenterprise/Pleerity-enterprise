@@ -494,35 +494,57 @@ class ProfessionalReportGenerator:
             color=colors.Color(*hex_to_rgb(branding["secondary_color"])),
             spaceAfter=20
         ))
-        
-        # Summary
-        elements.append(Paragraph(f"Total entries: {len(logs)}", styles["body"]))
+
+        from report_presentation.executive import build_executive_summary_payload
+        from report_presentation.timeline import build_layered_timeline
+
+        exec_payload = build_executive_summary_payload(
+            report_class="professional_audit_log",
+            posture_lines=[
+                f"This report covers {len(logs)} compliance-related activity record(s) for the selected period.",
+            ],
+            key_findings=[
+                "See the compliance chronology below for business-impact events.",
+            ],
+            profile="evidential",
+        )
+        elements.append(Paragraph(exec_payload["title"], styles["heading"]))
+        elements.append(Paragraph(exec_payload["intro"], styles["body"]))
+        for line in exec_payload.get("posture_lines") or []:
+            elements.append(Paragraph(line, styles["body"]))
         elements.append(Spacer(1, 15))
-        
-        # Audit Log Table
-        log_data = [["Timestamp", "Action", "Actor", "Details"]]
-        for log in logs[:100]:  # Limit to 100 entries
-            timestamp = log.get("timestamp", "")
-            if timestamp:
-                try:
-                    dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-                    timestamp = dt.strftime('%Y-%m-%d %H:%M')
-                except:
-                    pass
-            
-            details = log.get("metadata", {})
-            details_str = ", ".join(f"{k}: {v}" for k, v in list(details.items())[:3])
-            
+
+        layered = build_layered_timeline(logs, report_class="professional_audit_log")
+        log_data = [["Date & time", "Event", "Actor", "Summary"]]
+        for row in layered["primary_rows"][:100]:
             log_data.append([
-                timestamp,
-                log.get("action", ""),
-                log.get("actor_id", "System")[:8] + "...",
-                details_str[:40] + "..." if len(details_str) > 40 else details_str
+                row.get("timestamp", ""),
+                row.get("business_event", ""),
+                row.get("actor", ""),
+                row.get("summary", "")[:120],
             ])
-        
-        log_table = Table(log_data, colWidths=[100, 120, 80, 150])
+
+        log_table = Table(log_data, colWidths=[110, 130, 100, 170])
         log_table.setStyle(table_style)
+        elements.append(Paragraph("Compliance chronology", styles["heading"]))
+        elements.append(Paragraph(layered.get("section_intro", ""), styles["small"]))
+        elements.append(Spacer(1, 8))
         elements.append(log_table)
+
+        if layered.get("include_technical_appendix") and layered.get("technical_rows"):
+            elements.append(Spacer(1, 20))
+            elements.append(Paragraph("Technical audit record (appendix)", styles["heading"]))
+            tech_data = [["Forensic timestamp", "Original action", "Actor ID", "Resource"]]
+            for tr in layered["technical_rows"][:100]:
+                tech_data.append([
+                    tr.get("technical_timestamp", ""),
+                    tr.get("original_action", ""),
+                    str(tr.get("actor_id", ""))[:16],
+                    str(tr.get("resource_id", ""))[:16],
+                ])
+            tech_table = Table(tech_data, colWidths=[110, 130, 80, 120])
+            tech_table.setStyle(table_style)
+            elements.append(tech_table)
         
         # Footer
         elements.append(Spacer(1, 40))

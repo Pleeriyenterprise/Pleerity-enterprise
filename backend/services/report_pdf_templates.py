@@ -588,13 +588,16 @@ def append_readiness_indicators_section(
     append_section_block(
         elements,
         title="Evidence sufficiency and audit readiness",
-        intro=(
-            "Indicators summarise whether evidence and delivery proof are sufficient for "
-            "independent review at the generation boundary."
-        ),
+        intro=__readiness_intro(),
         styles=styles,
         body_items=[t, Spacer(1, 8)],
     )
+
+
+def __readiness_intro() -> str:
+    from report_presentation.appendix import readiness_section_intro
+
+    return readiness_section_intro()
 
 
 def append_executive_summary_section(
@@ -778,15 +781,9 @@ def append_exception_summaries_section(
 
 
 def _human_actor_role(role: Any) -> str:
-    raw = str(role or "system").strip()
-    upper = raw.upper()
-    if upper in ("ROLE_CLIENT", "CLIENT"):
-        return "Client"
-    if upper in ("SYSTEM", "ROLE_SYSTEM"):
-        return "System"
-    if upper.startswith("ROLE_"):
-        return raw[5:].replace("_", " ").title()
-    return raw.replace("_", " ").title() if raw else "System"
+    from report_presentation.actors import present_actor_label
+
+    return present_actor_label(role)
 
 
 def _human_status_label(status: Any) -> str:
@@ -799,15 +796,13 @@ def _human_status_label(status: Any) -> str:
 
 
 def _compact_audit_timestamp(value: Any) -> str:
-    s = str(value or "\u2014").strip().replace("Z", "+00:00")
-    if "T" in s:
-        s = s.replace("T", " ", 1)
-    s = s.replace("+00:00", " UTC")
-    return s
+    from report_presentation.timestamps import format_customer_timestamp
+
+    return format_customer_timestamp(value)
 
 
 def _humanize_audit_event(action: Any) -> str:
-    from services.report_evidence_readiness_operational import humanize_audit_event_action
+    from report_presentation.timeline import humanize_audit_event_action
 
     return humanize_audit_event_action(action)
 
@@ -824,17 +819,81 @@ def _is_internal_reference_token(value: str) -> bool:
 
 
 def _audit_trail_summary_cell(ev: Dict[str, Any], styles: Dict[str, Any]) -> Paragraph:
-    md = ev.get("metadata") if isinstance(ev.get("metadata"), dict) else {}
-    action = ev.get("action") or ev.get("event_type")
-    summary = str(md.get("summary") or _humanize_audit_event(action) or "—")
-    subject = str(ev.get("resource_id") or md.get("requirement_id") or "").strip()
-    ref = str(md.get("document_id") or md.get("evidence_record_id") or "").strip()
-    parts = [summary]
-    if subject and subject not in summary and not _is_internal_reference_token(subject):
-        parts.append(f"Subject: {subject}")
-    elif ref and not _is_internal_reference_token(ref):
-        parts.append(f"Reference: {ref[:24]}")
-    return _table_cell_para(" · ".join(parts), styles)
+    from report_presentation.timeline import present_timeline_row
+
+    row = present_timeline_row(ev, profile="evidential")
+    summary = row.get("summary") or "—"
+    return _table_cell_para(summary, styles)
+
+
+def append_technical_audit_appendix(
+    elements: List[Any],
+    *,
+    technical_rows: List[Dict[str, Any]],
+    styles: Dict[str, Any],
+    table_style: TableStyle,
+    table_width: Optional[float] = None,
+    max_rows: int = 80,
+) -> None:
+    """Forensic audit appendix — original actions and precise timestamps."""
+    from report_presentation.appendix import TECHNICAL_APPENDIX_INTRO
+
+    if not technical_rows:
+        return
+    shown = technical_rows[:max_rows]
+    width = table_width or formal_report_table_width()
+    col_widths = proportional_col_widths(width, [0.20, 0.22, 0.14, 0.22, 0.22])
+    data: List[List[Any]] = [
+        [
+            _table_cell_para("Timestamp (forensic)", styles, bold=True),
+            _table_cell_para("Original action", styles, bold=True),
+            _table_cell_para("Actor ID", styles, bold=True),
+            _table_cell_para("Resource", styles, bold=True),
+            _table_cell_para("Event ID", styles, bold=True),
+        ]
+    ]
+    for row in shown:
+        data.append(
+            [
+                _table_cell_para(str(row.get("technical_timestamp") or "—"), styles),
+                _table_cell_para(str(row.get("original_action") or "—"), styles),
+                _table_cell_para(str(row.get("actor_id") or "—")[:24], styles),
+                _table_cell_para(str(row.get("resource_id") or "—")[:24], styles),
+                _table_cell_para(str(row.get("event_id") or "—")[:24], styles),
+            ]
+        )
+    t = Table(data, colWidths=col_widths, repeatRows=1, splitByRow=1)
+    t.setStyle(table_style)
+    append_section_block(
+        elements,
+        title="Technical audit record (appendix)",
+        intro=TECHNICAL_APPENDIX_INTRO,
+        styles=styles,
+        body_items=[t, Spacer(1, 10)],
+    )
+
+
+def append_recommended_actions_section(
+    elements: List[Any],
+    *,
+    matrix_rows: List[Dict[str, str]],
+    styles: Dict[str, Any],
+    profile: str = "operational",
+) -> None:
+    from report_presentation.actions import format_actions_closing_lines, present_recommended_actions
+    from report_presentation.profiles import profile_config
+
+    cfg = profile_config(profile)
+    actions = present_recommended_actions(matrix_rows)
+    lines = format_actions_closing_lines(actions, detail=str(cfg.get("action_detail") or "full"))
+    body = [Paragraph(_xml_escape(ln), styles["body"]) for ln in lines]
+    append_section_block(
+        elements,
+        title="Recommended next actions",
+        intro="Prioritised actions to improve compliance position. This is operational guidance, not legal advice.",
+        styles=styles,
+        body_items=body + [Spacer(1, 10)],
+    )
 
 
 def append_audit_trail_narrative(
@@ -845,44 +904,52 @@ def append_audit_trail_narrative(
     table_style: TableStyle,
     max_rows: int = 60,
     table_width: Optional[float] = None,
+    report_class: str = "audit_trail",
 ) -> None:
-    shown = events[:max_rows]
+    from report_presentation.timeline import build_layered_timeline
+
+    layered = build_layered_timeline(events, report_class=report_class)
+    shown = layered["primary_rows"]
     width = table_width or formal_report_table_width()
-    col_widths = proportional_col_widths(width, [0.18, 0.22, 0.14, 0.46])
+    col_widths = proportional_col_widths(width, [0.18, 0.22, 0.16, 0.44])
     data: List[List[Any]] = [
         [
-            _table_cell_para("Timestamp (UTC)", styles, bold=True),
+            _table_cell_para("Date & time", styles, bold=True),
             _table_cell_para("Event", styles, bold=True),
             _table_cell_para("Actor", styles, bold=True),
             _table_cell_para("Summary", styles, bold=True),
         ]
     ]
-    for ev in shown:
-        action = ev.get("action") or ev.get("event_type")
+    for row in shown:
         data.append(
             [
-                _table_cell_para(_compact_audit_timestamp(ev.get("timestamp")), styles),
-                _table_cell_para(_humanize_audit_event(action), styles),
-                _table_cell_para(
-                    _human_actor_role(ev.get("actor_role") or ev.get("actor")),
-                    styles,
-                ),
-                _audit_trail_summary_cell(ev, styles),
+                _table_cell_para(str(row.get("timestamp") or "—"), styles),
+                _table_cell_para(str(row.get("business_event") or "—"), styles),
+                _table_cell_para(str(row.get("actor") or "—"), styles),
+                _table_cell_para(str(row.get("summary") or "—"), styles),
             ]
         )
     t = Table(data, colWidths=col_widths, repeatRows=1, splitByRow=1)
     t.setStyle(table_style)
-    omitted = max(0, len(events) - len(shown))
-    intro = "Chronological audit trail from system records at generation time."
+    intro = layered.get("section_intro") or ""
+    omitted = int(layered.get("primary_omitted") or 0)
     if omitted:
-        intro += f" Showing {len(shown)} of {len(events)} events."
+        intro += f" Showing {len(shown)} of {layered.get('primary_total', len(shown))} events."
     append_section_block(
         elements,
-        title="Audit trail",
+        title="Compliance chronology",
         intro=intro,
         styles=styles,
         body_items=[t, Spacer(1, 10)],
     )
+    if layered.get("include_technical_appendix") and layered.get("technical_rows"):
+        append_technical_audit_appendix(
+            elements,
+            technical_rows=layered["technical_rows"],
+            styles=styles,
+            table_style=table_style,
+            table_width=table_width,
+        )
 
 
 def append_scope_limitations_section(
@@ -1009,6 +1076,14 @@ def build_formal_report_pdf(
             table_width=table_width,
         )
 
+    if matrix_rows and not action_groups:
+        append_recommended_actions_section(
+            elements,
+            matrix_rows=matrix_rows,
+            styles=styles,
+            profile="operational",
+        )
+
     if spec.include_audit_trail and audit_events:
         append_audit_trail_narrative(
             elements,
@@ -1016,6 +1091,7 @@ def build_formal_report_pdf(
             styles=styles,
             table_style=table_style,
             table_width=table_width,
+            report_class=spec.report_kind or "audit_trail",
         )
 
     if spec.include_scope_limitations and scope_lines:
