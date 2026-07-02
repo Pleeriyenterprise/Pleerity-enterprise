@@ -1,0 +1,103 @@
+{
+  "programme": "REPORT-PRESENTATION-AUTHORITY-01",
+  "generated_at": "2026-07-02T14:00:00+00:00",
+  "branch": "develop",
+  "outcome": "REPORT_PRESENTATION_AUTHORITY_IMPLEMENTATION_COMPLETE",
+  "authority_version": "report_presentation_v1",
+  "audit_source": "REPORT-PRESENTATION-AUTHORITY-AUDIT-01",
+  "module_introduced": "backend/report_presentation/",
+  "files_changed": [
+    "backend/report_presentation/__init__.py",
+    "backend/report_presentation/authority.py",
+    "backend/report_presentation/constants.py",
+    "backend/report_presentation/profiles.py",
+    "backend/report_presentation/timeline.py",
+    "backend/report_presentation/actors.py",
+    "backend/report_presentation/timestamps.py",
+    "backend/report_presentation/executive.py",
+    "backend/report_presentation/actions.py",
+    "backend/report_presentation/evidence.py",
+    "backend/report_presentation/confidence.py",
+    "backend/report_presentation/appendix.py",
+    "backend/report_presentation/technical_language.py",
+    "backend/services/report_pdf_templates.py",
+    "backend/services/report_evidence_readiness_operational.py",
+    "backend/services/professional_reports.py",
+    "backend/docs/REPORT_PRESENTATION_AUTHORITY.md",
+    "backend/tests/test_report_presentation_authority.py",
+    "backend/tests/test_report_pdf_templates.py",
+    "backend/tests/test_report_evidence_readiness_operational.py"
+  ],
+  "acceptance": {
+    "report_calculations_unchanged": true,
+    "compliance_logic_unchanged": true,
+    "timeline_business_story": true,
+    "technical_events_in_appendix": true,
+    "executive_summary_on_professional_audit_log": true,
+    "recommended_actions_on_formal_pdf": true,
+    "confidence_presentation_module": true,
+    "reader_profiles_introduced": true,
+    "technical_language_governed": true,
+    "cross_report_timeline_consistency": true,
+    "consumes_existing_authorities": true,
+    "report_apis_backward_compatible": true
+  },
+  "regression_tests": {
+    "test_report_presentation_authority.py": {
+      "passed": 16,
+      "exit_code": 0
+    },
+    "test_report_pdf_templates.py": {
+      "passed": true,
+      "exit_code": 0
+    },
+    "test_report_evidence_readiness_operational.py": {
+      "passed": true,
+      "exit_code": 0
+    }
+  },
+  "before_after_samples": [
+    {
+      "area": "audit_trail_event",
+      "before": "Risk Signal Created",
+      "after": "Electrical safety concern identified"
+    },
+    {
+      "area": "audit_trail_summary",
+      "before": "Risk Signal Created (duplicated)",
+      "after": "A new electrical safety concern was recorded (high priority)."
+    },
+    {
+      "area": "audit_trail_actor",
+      "before": "System",
+      "after": "Automated Compliance Monitoring"
+    },
+    {
+      "area": "audit_trail_timestamp",
+      "before": "2026-06-13 13:15:42.445699 UTC",
+      "after": "13 June 2026, 13:15 UTC"
+    },
+    {
+      "area": "regen_telemetry",
+      "before": "Risk assessment regeneration completed (primary)",
+      "after": "Suppressed from primary; preserved in technical appendix"
+    },
+    {
+      "area": "professional_audit_log",
+      "before": "Raw FOO_BAR action codes and actor_id hash",
+      "after": "Executive summary + compliance chronology + technical appendix"
+    }
+  ],
+  "integrations": [
+    "report_pdf_templates.append_audit_trail_narrative",
+    "report_pdf_templates.append_technical_audit_appendix",
+    "report_pdf_templates.append_recommended_actions_section",
+    "report_evidence_readiness_operational.group_audit_events_for_operational_report",
+    "professional_reports.generate_audit_log_pdf"
+  ],
+  "remaining_recommendations": [
+    "Route client jsPDF exports through server ReportLab for external submission grade",
+    "Apply report_presentation to portfolio audit timeline live UI",
+    "Align scheduled report email copy with email_presentation authority facade"
+  ]
+}

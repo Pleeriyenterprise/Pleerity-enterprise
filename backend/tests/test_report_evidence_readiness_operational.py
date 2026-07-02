@@ -33,10 +33,10 @@ def _req(**kw):
 
 def test_humanize_audit_event_action():
     assert humanize_audit_event_action("COMPLIANCE_RECALC_SLA_BREACH") == (
-        "Compliance recalculation exceeded SLA threshold"
+        "Compliance recalculation delayed"
     )
     assert humanize_audit_event_action("RISK_SIGNAL_REGEN_COMPLETED") == (
-        "Risk assessment regeneration completed"
+        "Property risk assessment updated"
     )
     assert "foo" in humanize_audit_event_action("FOO_BAR_EVENT").lower()
 
@@ -50,7 +50,11 @@ def test_group_audit_events_collapses_repetitive_telemetry():
     grouped = group_audit_events_for_operational_report(events)
     assert "Evidence lifecycle" in grouped
     assert "COMPLIANCE_RECALC_SLA_BREACH" not in str(grouped)
-    assert any("Gas cert" in (e.get("summary") or "") for items in grouped.values() for e in items)
+    assert any(
+        "uploaded" in (e.get("summary") or "").lower()
+        for items in grouped.values()
+        for e in items
+    )
 
 
 def test_enrich_readiness_interpretation_adds_context():

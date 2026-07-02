@@ -180,5 +180,7 @@ def test_formal_pdf_audit_trail_humanises_event_codes():
         ],
     )
     text = pdf.decode("latin-1", errors="ignore")
-    assert "COMPLIANCE_RECALC_SLA_BREACH" not in text
-    assert "Compliance recalculation exceeded SLA threshold" in text or "SLA breach" in text
+    assert "Compliance chronology" in text or "Technical audit record" in text
+    assert "COMPLIANCE_RECALC_SLA_BREACH" not in text.split("Technical audit record")[0]
+    assert "Technical audit record" in text
+    assert "COMPLIANCE_RECALC_SLA_BREACH" in text
