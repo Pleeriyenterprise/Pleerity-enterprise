@@ -1,0 +1,112 @@
+{
+  "programme": "LIFECYCLE-COMMUNICATION-AUTHORITY-01-STAGING-VALIDATION",
+  "generated_at": "2026-07-02T10:43:10.498612+00:00",
+  "branch": "develop",
+  "commit_under_test": "2911dd95a3f37e6f758b598356e7f4d1c06284b9",
+  "commit_prefix": "2911dd95",
+  "staging_api": {
+    "checks": {
+      "requirements_api_ok": true,
+      "customer_communication_present": true,
+      "authority_version_on_api": true,
+      "structured_model_fields": true,
+      "no_wording_leakage_in_sample": true,
+      "risk_card_governed_copy": true,
+      "staging_api_pass": true
+    },
+    "requirements_status": 200,
+    "requirements_total": 49,
+    "requirements_with_customer_communication": 49,
+    "sample_communication_keys": [
+      "attention_kind",
+      "authority_version",
+      "channel",
+      "completion_wording",
+      "due_date",
+      "evidence_expectation",
+      "heading",
+      "how_text",
+      "is_overdue",
+      "lifecycle_family",
+      "lifecycle_verb",
+      "next_step",
+      "primary_action",
+      "primary_cta",
+      "property_address",
+      "reason",
+      "requirement_name",
+      "secondary_cta",
+      "supporting_explanation",
+      "surface",
+      "surface_variants",
+      "template_context",
+      "tone",
+      "urgency",
+      "when_text"
+    ],
+    "leakage_failures": [],
+    "risk_signals_status": 200,
+    "risk_card_note": "Persisted signal may predate LCA deploy; local_matrix risk_electrical governs new copy."
+  },
+  "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+  "checks": {
+    "local_pytest_pass": true,
+    "local_render_and_leakage_pass": true,
+    "staging_deployed_expected_sha": true,
+    "staging_health_ok": true,
+    "staging_api_pass": true,
+    "reminder_timing_routing_unchanged": true
+  },
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "output_tail": ".........................................................                [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n57 passed, 4 warnings in 0.60s\n"
+  },
+  "local_matrix": {
+    "reminder_review_email": {
+      "has_review_due_on": true,
+      "no_renewal": true,
+      "no_expiry_heading": true
+    },
+    "declaration_enablement": {
+      "reason_has_declaration": true,
+      "no_expires_in_reason": true,
+      "no_renewal_in_what": true
+    },
+    "grouped_headings": {
+      "certificate_heading_governed": true,
+      "other_heading_governed": true,
+      "legacy_misleading_absent": true
+    },
+    "digest_review_posture": {
+      "label_not_renewal_approaching": true,
+      "has_review": true
+    },
+    "risk_electrical": {
+      "not_certificate_only": true,
+      "mentions_electrical": true
+    },
+    "sms_review": {
+      "mentions_review": true,
+      "not_generic_compliance_items_only": true
+    },
+    "reminder_routing_unchanged": {
+      "default_mode_not_active": true,
+      "mode": "off"
+    },
+    "all_local_pass": true
+  },
+  "staging_version_poll": {
+    "matched": true,
+    "body": {
+      "commit_sha": "2911dd95a3f37e6f758b598356e7f4d1c06284b9",
+      "environment": "staging"
+    },
+    "health_ok": true
+  },
+  "staging_health": {
+    "status": 200,
+    "body": "{\"status\":\"healthy\",\"environment\":\"staging\",\"readiness\":{\"stage\":\"ready\",\"degraded\":false,\"last_error\":null}}"
+  },
+  "outcome": "STAGING_VALIDATION_GO"
+}
