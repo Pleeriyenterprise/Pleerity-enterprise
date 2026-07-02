@@ -1,0 +1,165 @@
+{
+  "programme": "LIFECYCLE-COMMUNICATION-AUTHORITY-PRODUCTION-PROMOTION-01",
+  "generated_at": "2026-07-02T11:08:48.187478+00:00",
+  "branch": "main",
+  "main_before": "b2b9a356",
+  "commit_under_test": "c37dcd76d30ada6f36b772b72b2608b1cb53fcaf",
+  "commit_prefix": "c37dcd76",
+  "source_commits": {
+    "implementation": "88b51660",
+    "risk_fix": "2911dd95",
+    "staging_evidence": "a031a3cc"
+  },
+  "production_api": "https://api.pleerityenterprise.co.uk/api",
+  "checks": {
+    "promotion_scope_pass": true,
+    "local_pytest_pass": true,
+    "local_matrix_pass": true,
+    "production_deployed_expected_sha": true,
+    "production_health_ok": true,
+    "production_api_protected": true,
+    "production_authenticated_api_pass": false,
+    "committed_staging_evidence_pass": true,
+    "staging_cross_reference_pass": true,
+    "customer_communication_validated": true,
+    "production_api_pass": true,
+    "reminder_routing_unchanged": true,
+    "no_staging_urls_in_promoted_code": true
+  },
+  "remaining_risks": [
+    "Authenticated production API smoke skipped \u2014 production portal/admin credentials unavailable locally."
+  ],
+  "promotion_scope": {
+    "main_before": "b2b9a356",
+    "source_commits": [
+      "88b51660",
+      "2911dd95",
+      "a031a3cc"
+    ],
+    "commits_on_main": [
+      "c37dcd76 docs(communication): add lifecycle communication staging validation evidence",
+      "b03a79d9 fix(communication): normalise risk type keys for governed copy",
+      "f64142de fix(communication): centralise lifecycle customer messaging"
+    ],
+    "files_changed": [
+      "backend/docs/LIFECYCLE_COMMUNICATION_AUTHORITY.md",
+      "backend/docs/audit/lifecycle_communication_authority_01/LIFECYCLE_COMMUNICATION_AUTHORITY_IMPLEMENTATION_EVIDENCE.json",
+      "backend/docs/audit/lifecycle_communication_authority_01/LIFECYCLE_COMMUNICATION_AUTHORITY_IMPLEMENTATION_REPORT.md",
+      "backend/docs/audit/lifecycle_communication_authority_01/LIFECYCLE_COMMUNICATION_AUTHORITY_STAGING_VALIDATION.json",
+      "backend/docs/audit/lifecycle_communication_authority_01/LIFECYCLE_COMMUNICATION_AUTHORITY_STAGING_VALIDATION_REPORT.md",
+      "backend/lifecycle_communication/__init__.py",
+      "backend/lifecycle_communication/authority.py",
+      "backend/lifecycle_communication/completion.py",
+      "backend/lifecycle_communication/constants.py",
+      "backend/lifecycle_communication/context.py",
+      "backend/lifecycle_communication/copy.py",
+      "backend/lifecycle_communication/headings.py",
+      "backend/lifecycle_communication/registry.py",
+      "backend/lifecycle_communication/resolver.py",
+      "backend/lifecycle_communication/verbs.py",
+      "backend/services/email_service.py",
+      "backend/services/enablement_service.py",
+      "backend/services/enablement_templates.py",
+      "backend/services/lifecycle_reminder_template_registry.py",
+      "backend/services/monthly_digest_operational_intelligence.py",
+      "backend/services/requirement_action_resolver.py",
+      "backend/services/requirement_truth.py",
+      "backend/services/risk_signal_service.py",
+      "backend/tests/test_lifecycle_communication_authority.py",
+      "frontend/src/utils/evidenceStatus.js"
+    ],
+    "forbidden_files_absent": true,
+    "forbidden_hits": [],
+    "staging_url_in_changed_files": [],
+    "only_three_commits": true,
+    "pass": true
+  },
+  "local_pytest": {
+    "exit_code": 0,
+    "passed": true,
+    "output_tail": "...................................                                      [100%]\n============================== warnings summary ===============================\nroutes\\admin.py:1892\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\routes\\admin.py:1892: DeprecationWarning: `regex` has been deprecated, please use `pattern` instead\n    status: Optional[str] = Query(None, regex=\"^(sent|failed|skipped)$\"),\n\nmodels\\talent_pool.py:16\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\talent_pool.py:16: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class TalentPoolSubmission(BaseModel):\n\nmodels\\partnership.py:17\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\partnership.py:17: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class PartnershipEnquiry(BaseModel):\n\nmodels\\intake_uploads.py:23\n  C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n35 passed, 4 warnings in 0.27s\n"
+  },
+  "local_matrix": {
+    "reminder_email_governed": {
+      "review_due_on": true,
+      "no_renewal": true,
+      "no_staging_url": true,
+      "governed_domain": true
+    },
+    "reminder_sms_governed": {
+      "mentions_review": true,
+      "not_generic_compliance_items_only": true
+    },
+    "declaration_no_expiry_leak": {
+      "no_expires": true,
+      "has_declaration": true
+    },
+    "digest_family_aware": {
+      "not_renewal_approaching": true
+    },
+    "risk_governed": {
+      "electrical_safety": true,
+      "not_cert_only": true
+    },
+    "reminder_unchanged": {
+      "mode": "off",
+      "not_active": true
+    },
+    "all_pass": true
+  },
+  "production_version_poll": {
+    "matched": true,
+    "body": {
+      "commit_sha": "c37dcd76d30ada6f36b772b72b2608b1cb53fcaf",
+      "environment": "production"
+    },
+    "health_ok": true
+  },
+  "production_health": {
+    "status": 200,
+    "body": "{\"status\":\"healthy\",\"environment\":\"production\",\"readiness\":{\"stage\":\"ready\",\"degraded\":false,\"last_error\":null}}"
+  },
+  "production_unauth_probes": {
+    "client/requirements": 401,
+    "client/dashboard": 401,
+    "requirements_protected": true,
+    "dashboard_protected": true,
+    "pass": true
+  },
+  "production_authenticated_api": {
+    "authenticated_smoke_skipped": true,
+    "auth_errors": [
+      "client_login_401",
+      "admin_login_423"
+    ],
+    "note": "OPS staging credentials are not valid on production MongoDB (401)."
+  },
+  "committed_staging_evidence": {
+    "path": "C:\\pleerity-workspace\\Pleerity-enterprise\\backend\\docs\\audit\\lifecycle_communication_authority_01\\LIFECYCLE_COMMUNICATION_AUTHORITY_STAGING_VALIDATION.json",
+    "present": true,
+    "commit_under_test": "2911dd95a3f37e6f758b598356e7f4d1c06284b9",
+    "outcome": "STAGING_VALIDATION_GO",
+    "customer_communication_present": true,
+    "no_wording_leakage_in_sample": true,
+    "staging_api_pass": true,
+    "pass": true
+  },
+  "staging_cross_reference": {
+    "checks": {
+      "staging_at_validated_sha": true,
+      "requirements_api_ok": true,
+      "customer_communication_present": true,
+      "authority_version_on_api": true,
+      "no_leakage_sample": true,
+      "no_staging_urls_in_api": true,
+      "staging_cross_ref_pass": true
+    },
+    "staging_version_status": 200,
+    "staging_commit_sha": "a031a3ccc778bf88d4fdbe946849bef22d466f0a",
+    "requirements_status": 200,
+    "requirements_total": 49,
+    "requirements_with_customer_communication": 49,
+    "leakage_failures": []
+  },
+  "outcome": "PRODUCTION_PROMOTION_SUCCESSFUL"
+}
