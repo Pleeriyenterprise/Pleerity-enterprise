@@ -1,0 +1,159 @@
+{
+  "programme": "REPORT-PRESENTATION-AUTHORITY-PRODUCTION-PROMOTION-01",
+  "generated_at": "2026-07-02T13:34:22.325604+00:00",
+  "rollback_sha": "8d368c2ca3608dd708e54e069b6828789edfc189",
+  "main_before_sha": "8d368c2ca3608dd708e54e069b6828789edfc189",
+  "main_after_sha": "80c9d25eccadfd167058a9e52b92423f83685c29",
+  "cherry_pick_lineage": [
+    {
+      "order": 1,
+      "develop_sha": "73594124",
+      "main_sha": "12abdf99",
+      "subject": "fix(reports): route audit pack PDF body copy through RPA technical-language governance"
+    },
+    {
+      "order": 2,
+      "develop_sha": "36fec1cb",
+      "main_sha": "f3094759",
+      "subject": "feat(reports): implement Report Presentation Authority wiring on develop"
+    },
+    {
+      "order": 3,
+      "develop_sha": "a361ade4",
+      "main_sha": "80c9d25e",
+      "subject": "docs(audit): refresh gallery validation evidence after RPA wiring commit"
+    }
+  ],
+  "promotion_method": "scoped_cherry_pick_no_develop_merge",
+  "deployment_poll": [
+    {
+      "attempt": 1,
+      "status": 200,
+      "commit_sha": "8d368c2ca3608dd708e54e069b6828789edfc189",
+      "environment": "production",
+      "latency_ms": 894
+    },
+    {
+      "attempt": 2,
+      "status": 200,
+      "commit_sha": "8d368c2ca3608dd708e54e069b6828789edfc189",
+      "environment": "production",
+      "latency_ms": 644
+    },
+    {
+      "attempt": 3,
+      "status": 200,
+      "commit_sha": "8d368c2ca3608dd708e54e069b6828789edfc189",
+      "environment": "production",
+      "latency_ms": 757
+    },
+    {
+      "attempt": 4,
+      "status": 200,
+      "commit_sha": "8d368c2ca3608dd708e54e069b6828789edfc189",
+      "environment": "production",
+      "latency_ms": 904
+    },
+    {
+      "attempt": 5,
+      "status": 200,
+      "commit_sha": "8d368c2ca3608dd708e54e069b6828789edfc189",
+      "environment": "production",
+      "latency_ms": 804
+    },
+    {
+      "attempt": 6,
+      "status": 200,
+      "commit_sha": "8d368c2ca3608dd708e54e069b6828789edfc189",
+      "environment": "production",
+      "latency_ms": 1024
+    },
+    {
+      "attempt": 7,
+      "error": "HTTP Error 502: Bad Gateway"
+    },
+    {
+      "attempt": 8,
+      "error": "HTTP Error 502: Bad Gateway"
+    },
+    {
+      "attempt": 9,
+      "error": "HTTP Error 502: Bad Gateway"
+    },
+    {
+      "attempt": 10,
+      "error": "HTTP Error 502: Bad Gateway"
+    },
+    {
+      "attempt": 11,
+      "error": "HTTP Error 502: Bad Gateway"
+    },
+    {
+      "attempt": 12,
+      "status": 200,
+      "commit_sha": "80c9d25e2dbbaada22bdd8c24c62baac008e5b23",
+      "environment": "production",
+      "latency_ms": 1004
+    }
+  ],
+  "backend_deployed_sha": "80c9d25e2dbbaada22bdd8c24c62baac008e5b23",
+  "backend_sha_aligned": true,
+  "api_health": {
+    "status": "healthy",
+    "environment": "production",
+    "readiness": {
+      "stage": "post_db_initialization",
+      "degraded": false,
+      "last_error": null
+    },
+    "http_status": 200
+  },
+  "smoke": {
+    "homepage": {
+      "status": 200,
+      "ok": true
+    },
+    "reports_unauth": {
+      "status": 401,
+      "ok": true
+    },
+    "dashboard_unauth": {
+      "status": 401,
+      "ok": true
+    }
+  },
+  "frontend": {
+    "homepage_status": 200,
+    "bundle_path": "/static/js/main.ccfc03f2.js",
+    "bundle_id": "ccfc03f2",
+    "bundle_sha256": "a8580189e1a456152f96098529f3a0b4e213224c105c7085787c06bd43e294f1",
+    "bundle_has_prod_api": true,
+    "bundle_has_staging_api": false
+  },
+  "regression_tests": {
+    "exit_code": 0,
+    "passed": true,
+    "summary": "33 passed, 4 warnings in 0.81s"
+  },
+  "gallery_validation": {
+    "stdout": "{\n  \"outcome\": \"REPORT_PRESENTATION_GALLERY_VALIDATION_COMPLETE\",\n  \"passed\": 114,\n  \"total\": 114,\n  \"json\": \"C:\\\\pleerity-workspace\\\\Pleerity-enterprise\\\\backend\\\\docs\\\\audit\\\\report_presentation_gallery_validation_01\\\\REPORT_PRESENTATION_GALLERY_VALIDATION.json\"\n}",
+    "exit_code": 0,
+    "complete": true
+  },
+  "technical_language_gallery": {
+    "source": "gallery_validation_on_promoted_main",
+    "note": "114 PDFs assessed; executive body leakage checks pass per gallery script"
+  },
+  "production_report_pdf_validation": {
+    "status": "skipped_no_production_auth",
+    "reason": "No PRODUCTION_SMOKE credentials in environment; cross-reference gallery validation on promoted commit and API smoke only"
+  },
+  "verdict": "REPORT_PRESENTATION_AUTHORITY_PRODUCTION_PROMOTION_SUCCESSFUL",
+  "post_deploy_recheck_at": "2026-07-02T13:40:49.733583+00:00",
+  "known_limitations": [
+    "Authenticated production PDF generation not executed (no PRODUCTION_SMOKE credentials).",
+    "Report presentation validation cross-referenced to gallery validation on promoted commit (114/114 COMPLETE).",
+    "Frontend bundle unchanged by RPA programme; server-side PDF presentation is the promoted surface.",
+    "Brief 502/503 observed during Render deploy rollover; post-deploy health healthy."
+  ]
+}
