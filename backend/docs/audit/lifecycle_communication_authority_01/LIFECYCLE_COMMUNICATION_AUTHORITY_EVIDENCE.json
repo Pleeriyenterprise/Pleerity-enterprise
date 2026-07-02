@@ -1,0 +1,582 @@
+{
+  "programme": "LIFECYCLE-COMMUNICATION-AUTHORITY-AUDIT-01",
+  "branch": "develop",
+  "date": "2026-06-30",
+  "mode": "audit_only",
+  "verdict": "B",
+  "verdict_summary": "Communication authority is partially governed but fragmented. Introduce shared Lifecycle Communication Authority extending existing presentation authorities without replacing Lifecycle or Requirement Authority.",
+  "acceptance": {
+    "communication_authority_located": true,
+    "families_fully_correct_end_to_end": false,
+    "surfaces_with_drift": [
+      "daily_reminder_email_legacy",
+      "daily_reminder_sms_legacy",
+      "enablement_templates",
+      "property_detail_evidence_chips",
+      "monthly_digest_body",
+      "weekly_digest_body",
+      "risk_cards_command_centre",
+      "today_banner_vocabulary",
+      "grouped_reminder_headings"
+    ],
+    "duplicated_wording_authorities": [
+      "reminder_copy_registry_vs_legacy",
+      "reminder_copy_registry_vs_enablement",
+      "digest_suffix_vs_digest_body",
+      "client_lifecycle_label_vs_evidence_status_chips",
+      "lifecycle_authority_copy_fe_vs_be",
+      "take_action_resolver_vs_customer_status_cta"
+    ],
+    "families_requiring_improvement": [
+      "DECLARATION_BASED",
+      "OPERATIONAL",
+      "REVIEW_BASED",
+      "TENANCY_LIFECYCLE",
+      "OCCUPANCY_LIFECYCLE",
+      "EVENT_BASED",
+      "SELF_CERTIFIED",
+      "ASSESSMENT"
+    ],
+    "shared_lifecycle_communication_authority_recommended": true
+  },
+  "communication_authority_map": [
+    {
+      "id": "CA-01",
+      "name": "Lifecycle semantics (technical SSOT)",
+      "location": "backend/services/lifecycle_semantics_resolver.py",
+      "scope": "lifecycle_semantics, attention_kind, effective dates",
+      "consumes_lifecycle_authority": "n/a_defines_truth",
+      "classification": "NO_CHANGE_REQUIRED"
+    },
+    {
+      "id": "CA-02",
+      "name": "Client lifecycle labels",
+      "location": "backend/services/client_requirement_lifecycle.py",
+      "scope": "client_lifecycle_state, client_lifecycle_label, reason_codes",
+      "consumes_lifecycle_authority": true,
+      "classification": "NO_CHANGE_REQUIRED"
+    },
+    {
+      "id": "CA-03",
+      "name": "Lifecycle reminder template registry",
+      "location": "backend/services/lifecycle_reminder_template_registry.py",
+      "scope": "6 attention_kind email/SMS copy specs",
+      "consumes_lifecycle_authority": true,
+      "active_in_production": false,
+      "classification": "NO_CHANGE_REQUIRED"
+    },
+    {
+      "id": "CA-04",
+      "name": "Lifecycle authority copy",
+      "location": "backend/services/lifecycle_authority_copy.py, frontend/src/utils/lifecycleAuthorityCopy.js",
+      "scope": "digest suffixes, calendar sublines, count footnotes",
+      "consumes_lifecycle_authority": "partial",
+      "classification": "AUTHORITY_DUPLICATION"
+    },
+    {
+      "id": "CA-05",
+      "name": "Legacy COMPLIANCE_EXPIRY_REMINDER",
+      "location": "backend/services/email_service.py, notification_template_seed_definitions.py",
+      "scope": "default daily reminder email/SMS",
+      "consumes_lifecycle_authority": false,
+      "active_in_production": true,
+      "classification": "LEGACY_PRESENTATION"
+    },
+    {
+      "id": "CA-06",
+      "name": "Grouped reminder section headings",
+      "location": "backend/services/email_service.py _build_grouped_reminder_sections_*",
+      "scope": "certificate_reminders, declaration_reminders, assessment_reminders, condition_reminders, other_reminders",
+      "consumes_lifecycle_authority": "partial_bucket_only",
+      "classification": "MISLEADING_COMMUNICATION"
+    },
+    {
+      "id": "CA-07",
+      "name": "Enablement assistant templates",
+      "location": "backend/services/enablement_templates.py",
+      "scope": "requirement_expiring_soon, requirement_overdue, status awareness",
+      "consumes_lifecycle_authority": false,
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "id": "CA-08",
+      "name": "Take Action resolver",
+      "location": "backend/services/requirement_action_resolver.py, frontend/src/utils/requirementTakeActionResolver.js",
+      "scope": "primary CTA labels and routes for portal surfaces",
+      "consumes_lifecycle_authority": "partial_evidence_mode",
+      "classification": "WORDING_IMPROVEMENT"
+    },
+    {
+      "id": "CA-09",
+      "name": "Domain label service",
+      "location": "backend/presentation/label_service.py, domain_labels.json",
+      "scope": "requirement names, inbox titles",
+      "consumes_lifecycle_authority": "names_only",
+      "classification": "NO_CHANGE_REQUIRED"
+    },
+    {
+      "id": "CA-10",
+      "name": "Evidence status chips",
+      "location": "frontend/src/utils/evidenceStatus.js",
+      "scope": "Expiring soon, Overdue chip text",
+      "consumes_lifecycle_authority": false,
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "id": "CA-11",
+      "name": "Risk signal recommended actions",
+      "location": "backend/services/risk_signal_service.py RECOMMENDED_ACTIONS",
+      "scope": "Command Centre risk card copy",
+      "consumes_lifecycle_authority": false,
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "id": "CA-12",
+      "name": "Monthly digest operational intelligence",
+      "location": "backend/services/monthly_digest_operational_intelligence.py",
+      "scope": "digest highlights, obligation state narrative",
+      "consumes_lifecycle_authority": false,
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "id": "CA-13",
+      "name": "Today presentation authority",
+      "location": "frontend/src/utils/todayPresentationAuthority.js",
+      "scope": "banner, operational buckets, lane copy",
+      "consumes_lifecycle_authority": "operational_not_family",
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "id": "CA-14",
+      "name": "Email presentation authority",
+      "location": "backend/email_presentation/",
+      "scope": "shell, greeting, colours, CTA styling",
+      "consumes_lifecycle_authority": "presentation_only",
+      "classification": "NO_CHANGE_REQUIRED"
+    },
+    {
+      "id": "CA-15",
+      "name": "Lifecycle-aware document confirm",
+      "location": "frontend/src/utils/lifecycleAwareConfirm.js",
+      "scope": "upload confirm field labels by date field id",
+      "consumes_lifecycle_authority": "date_field_aware",
+      "classification": "NO_CHANGE_REQUIRED"
+    }
+  ],
+  "lifecycle_family_matrix": [
+    {
+      "family": "EXPIRY_BASED",
+      "attention_kind": "CERTIFICATE_EXPIRING",
+      "primary_action": "Renew certificate",
+      "expected_evidence": "Upload renewed certificate",
+      "reason_wording_governed": "is due on {due_date}",
+      "due_wording": "due on {due_date}",
+      "overdue_wording": "is overdue",
+      "cta_wording": "Upload certificate (requirement-specific in action resolver)",
+      "completion_wording": "Verified / Evidence recorded (client_lifecycle_label)",
+      "success_wording": "Document verified emails",
+      "reminder_wording_active": "Compliance renewal reminder",
+      "reminder_wording_production": "expires on {expiry_date} (legacy)",
+      "supporting_explanation": "calendar overdue subline when applicable",
+      "cross_surface_consistency": "drift",
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "family": "LICENSING",
+      "rollup": "EXPIRY_BASED",
+      "attention_kind": "CERTIFICATE_EXPIRING",
+      "primary_action": "Renew licence",
+      "expected_evidence": "Upload renewed licence",
+      "reason_wording_governed": "renewal reminder (registry)",
+      "reason_wording_drift": "expires / certificate renewal (legacy)",
+      "cta_wording": "Upload HMO Licence (action resolver)",
+      "cross_surface_consistency": "partial",
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "family": "REGISTRATION",
+      "rollup": "EXPIRY_BASED",
+      "attention_kind": "CERTIFICATE_EXPIRING",
+      "primary_action": "Renew registration",
+      "expected_evidence": "Upload registration evidence",
+      "reason_wording_drift": "certificate expiry language",
+      "cross_surface_consistency": "drift",
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "family": "DECLARATION_BASED",
+      "attention_kind": null,
+      "reminder_group": "declaration_reminders",
+      "primary_action": "Complete declaration",
+      "expected_evidence": "Submit compliance declaration",
+      "reason_wording_governed": "Declaration details need review and update (fallback only)",
+      "reason_wording_drift": "expires, renewal (enablement + legacy)",
+      "cta_wording": "Submit compliance declaration",
+      "cross_surface_consistency": "poor",
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "family": "TENANCY_LIFECYCLE",
+      "attention_kind": "TENANCY_TERM_ENDING",
+      "primary_action": "Upload tenancy agreement / record milestone",
+      "expected_evidence": "Upload signed agreement",
+      "reason_wording_governed": "tenancy milestone on {due_date}",
+      "reminder_wording_production": "expires / renewal (legacy)",
+      "cross_surface_consistency": "drift",
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "family": "OCCUPANCY_LIFECYCLE",
+      "attention_kind": "OCCUPANCY_REVIEW_DUE",
+      "primary_action": "Record occupancy verification",
+      "expected_evidence": "Occupancy verification evidence",
+      "reason_wording_governed": "occupancy review due on {due_date}",
+      "cross_surface_consistency": "drift",
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "family": "REVIEW_BASED",
+      "attention_kind": "REVIEW_DUE",
+      "primary_action": "Review",
+      "expected_evidence": "Review outcome / supporting evidence",
+      "reason_wording_governed": "review due on {due_date}",
+      "reason_wording_drift": "Renewal approaching (digest)",
+      "cross_surface_consistency": "drift",
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "family": "EVENT_BASED",
+      "attention_kind": "EVENT_ACTION_REQUIRED",
+      "primary_action": "Record event",
+      "expected_evidence": "Event evidence",
+      "reason_wording_governed": "requires action by {due_date}",
+      "cross_surface_consistency": "partial",
+      "classification": "WORDING_IMPROVEMENT"
+    },
+    {
+      "family": "DOCUMENT_EVIDENCE",
+      "primary_action": "Upload evidence",
+      "expected_evidence": "Requirement-specific document",
+      "cta_wording": "Add compliance evidence (fallback)",
+      "cross_surface_consistency": "partial",
+      "classification": "WORDING_IMPROVEMENT"
+    },
+    {
+      "family": "STRUCTURED_EVIDENCE",
+      "primary_action": "Submit declaration",
+      "expected_evidence": "Structured form submission",
+      "cta_wording": "Submit compliance declaration",
+      "cross_surface_consistency": "good_when_mode_detected",
+      "classification": "NO_CHANGE_REQUIRED"
+    },
+    {
+      "family": "SELF_CERTIFIED",
+      "rollup": "DECLARATION_BASED",
+      "primary_action": "Complete declaration",
+      "reason_wording_drift": "expiry path reachable",
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "family": "INSPECTION",
+      "primary_action": "Arrange inspection",
+      "expected_evidence": "Upload inspection report",
+      "cta_wording": "Complete inspection checklist",
+      "reason_wording_drift": "Review electrical certificate (risk)",
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "family": "ASSESSMENT",
+      "reminder_group": "assessment_reminders",
+      "primary_action": "Complete assessment",
+      "reason_wording_governed": "Assessment review due (fallback)",
+      "reason_wording_drift": "Renewal approaching (digest)",
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "family": "OPERATIONAL",
+      "attention_kind": "OPERATIONAL_ACTION_REQUIRED",
+      "primary_action": "Resolve operational issue",
+      "reason_wording_governed": "requires your attention by {due_date}",
+      "reason_wording_drift": "Compliance action required (fallback)",
+      "classification": "COMMUNICATION_DRIFT"
+    }
+  ],
+  "communication_matrix": [
+    {
+      "channel": "email_daily_reminder",
+      "why": "partial",
+      "what": "partial",
+      "when": "yes",
+      "how": "portal_link_only",
+      "what_next": "no",
+      "authority": "legacy_or_registry",
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "channel": "sms_daily_reminder",
+      "why": "no",
+      "what": "vague",
+      "when": "no",
+      "how": "link_only",
+      "what_next": "no",
+      "classification": "WORDING_IMPROVEMENT"
+    },
+    {
+      "channel": "enablement_email",
+      "why": "weak",
+      "what": "renewal_implied",
+      "when": "yes",
+      "how": "no",
+      "what_next": "vague",
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "channel": "monthly_digest",
+      "why": "portfolio_summary",
+      "what": "counts",
+      "when": "implied",
+      "how": "review_dates",
+      "what_next": "no",
+      "classification": "COMMUNICATION_DRIFT"
+    },
+    {
+      "channel": "portal_take_action",
+      "why": "from_parent",
+      "what": "yes",
+      "when": "from_requirement",
+      "how": "route",
+      "what_next": "no",
+      "classification": "WORDING_IMPROVEMENT"
+    },
+    {
+      "channel": "property_detail_chips",
+      "why": "no",
+      "what": "status_only",
+      "when": "implied",
+      "how": "no",
+      "what_next": "no",
+      "classification": "AUTHORITY_VIOLATION"
+    },
+    {
+      "channel": "risk_cards",
+      "why": "risk_label",
+      "what": "recommended_action",
+      "when": "no",
+      "how": "suggested_actions",
+      "what_next": "no",
+      "classification": "LIFECYCLE_MISMATCH"
+    },
+    {
+      "channel": "today_banner",
+      "why": "urgent_generic",
+      "what": "no",
+      "when": "no",
+      "how": "hero_only",
+      "what_next": "no",
+      "classification": "COMMUNICATION_DRIFT"
+    }
+  ],
+  "lifecycle_verb_matrix": [
+    {"family": "EXPIRY_BASED", "governed_verb": "Renew", "observed_verbs": ["expires", "renewal", "overdue"], "issue": "legacy uses expires", "classification": "COMMUNICATION_DRIFT"},
+    {"family": "LICENSING", "governed_verb": "Renew licence", "observed_verbs": ["renew certificate", "upload certificate"], "issue": "certificate leakage", "classification": "LIFECYCLE_MISMATCH"},
+    {"family": "REGISTRATION", "governed_verb": "Renew registration", "observed_verbs": ["expires", "renewal"], "issue": "expiry leakage", "classification": "LIFECYCLE_MISMATCH"},
+    {"family": "DECLARATION_BASED", "governed_verb": "Complete", "observed_verbs": ["renew", "upload", "evidence required"], "issue": "expiry leakage", "classification": "LIFECYCLE_MISMATCH"},
+    {"family": "TENANCY_LIFECYCLE", "governed_verb": "Upload / Record", "observed_verbs": ["renewal", "expires", "milestone"], "issue": "partial", "classification": "COMMUNICATION_DRIFT"},
+    {"family": "OCCUPANCY_LIFECYCLE", "governed_verb": "Record", "observed_verbs": ["review", "overdue"], "issue": "minor", "classification": "WORDING_IMPROVEMENT"},
+    {"family": "REVIEW_BASED", "governed_verb": "Review", "observed_verbs": ["renewal", "expires"], "issue": "review to renewal leakage", "classification": "LIFECYCLE_MISMATCH"},
+    {"family": "EVENT_BASED", "governed_verb": "Record", "observed_verbs": ["action required", "expires"], "issue": "generic action", "classification": "WORDING_IMPROVEMENT"},
+    {"family": "DOCUMENT_EVIDENCE", "governed_verb": "Upload", "observed_verbs": ["add compliance evidence"], "issue": "generic CTA", "classification": "WORDING_IMPROVEMENT"},
+    {"family": "STRUCTURED_EVIDENCE", "governed_verb": "Submit", "observed_verbs": ["submit compliance declaration"], "issue": "none", "classification": "NO_CHANGE_REQUIRED"},
+    {"family": "INSPECTION", "governed_verb": "Arrange", "observed_verbs": ["review certificate", "schedule inspection"], "issue": "cert framing in risks", "classification": "LIFECYCLE_MISMATCH"},
+    {"family": "ASSESSMENT", "governed_verb": "Complete", "observed_verbs": ["renewal", "review"], "issue": "digest renewal framing", "classification": "COMMUNICATION_DRIFT"},
+    {"family": "OPERATIONAL", "governed_verb": "Resolve", "observed_verbs": ["attention required", "compliance action"], "issue": "generic fallback", "classification": "COMMUNICATION_DRIFT"}
+  ],
+  "heading_matrix": [
+    {"heading": "Certificates & Expiring Evidence", "location": "email_service._build_grouped_reminder_sections_html", "may_contain": ["licences", "registrations", "non-cert expiry"], "classification": "WORDING_IMPROVEMENT"},
+    {"heading": "Declarations & Tenancy Records", "location": "email_service", "may_contain": ["declarations", "tenancy docs"], "classification": "NO_CHANGE_REQUIRED"},
+    {"heading": "Assessments & Reviews", "location": "email_service", "may_contain": ["assessments", "reviews"], "classification": "NO_CHANGE_REQUIRED"},
+    {"heading": "Property Conditions & Remediation", "location": "email_service", "may_contain": ["condition issues"], "classification": "NO_CHANGE_REQUIRED"},
+    {"heading": "Other Compliance Actions", "location": "email_service", "may_contain": ["operational", "mixed"], "classification": "MISLEADING_COMMUNICATION"},
+    {"heading": "Compliance renewal reminder", "location": "lifecycle_reminder_template_registry CERTIFICATE_EXPIRING", "may_contain": ["certificates when attention correct"], "classification": "NO_CHANGE_REQUIRED"},
+    {"heading": "Compliance review reminder", "location": "lifecycle_reminder_template_registry REVIEW_DUE", "may_contain": ["reviews"], "classification": "NO_CHANGE_REQUIRED"},
+    {"heading": "requirement_expiring_soon (enablement)", "location": "enablement_templates.py", "may_contain": ["any requirement type"], "classification": "LIFECYCLE_MISMATCH"}
+  ],
+  "cta_matrix": [
+    {"surface": "requirement_action_resolver", "cta": "Add compliance evidence", "lifecycle": "fallback", "classification": "WORDING_IMPROVEMENT"},
+    {"surface": "requirement_action_resolver", "cta": "Upload Gas Safety Certificate", "lifecycle": "EXPIRY_BASED", "classification": "NO_CHANGE_REQUIRED"},
+    {"surface": "requirement_action_resolver", "cta": "Submit compliance declaration", "lifecycle": "STRUCTURED_EVIDENCE", "classification": "NO_CHANGE_REQUIRED"},
+    {"surface": "requirement_action_resolver", "cta": "Complete inspection checklist", "lifecycle": "INSPECTION", "classification": "NO_CHANGE_REQUIRED"},
+    {"surface": "customer_status_projector", "cta": "Add compliance evidence", "lifecycle": "action_required override", "classification": "INCORRECT_CUSTOMER_ACTION"},
+    {"surface": "email_reminder", "cta": "View in portal", "lifecycle": "generic", "classification": "WORDING_IMPROVEMENT"},
+    {"surface": "enablement", "cta": "arrange renewal", "lifecycle": "all types", "classification": "LIFECYCLE_MISMATCH"}
+  ],
+  "evidence_wording_matrix": [
+    {"family": "EXPIRY_BASED", "governed": "Upload renewed certificate", "drift": [], "classification": "NO_CHANGE_REQUIRED"},
+    {"family": "DECLARATION_BASED", "governed": "Submit declaration", "drift": ["Evidence required", "upload language"], "classification": "LIFECYCLE_MISMATCH"},
+    {"family": "TENANCY_LIFECYCLE", "governed": "Upload signed agreement", "drift": ["renewal in digest"], "classification": "COMMUNICATION_DRIFT"},
+    {"family": "INSPECTION", "governed": "Upload inspection report", "drift": ["Review electrical certificate"], "classification": "LIFECYCLE_MISMATCH"},
+    {"family": "OPERATIONAL", "governed": "Provide supporting evidence", "drift": ["Compliance action required"], "classification": "COMMUNICATION_DRIFT"}
+  ],
+  "reason_wording_matrix": [
+    {"pattern": "expires on {date}", "acceptable_for": ["EXPIRY_BASED", "LICENSING", "REGISTRATION"], "violated_by": ["enablement for DECLARATION_BASED"], "classification": "LIFECYCLE_MISMATCH"},
+    {"pattern": "review due on {date}", "acceptable_for": ["REVIEW_BASED"], "violated_by": ["legacy reminder path"], "classification": "COMMUNICATION_DRIFT"},
+    {"pattern": "Action required", "acceptable_for": [], "violated_by": ["semantic fallbacks"], "classification": "MISLEADING_COMMUNICATION"},
+    {"pattern": "Compliance action required", "acceptable_for": [], "violated_by": ["email_service._safe_reminder_semantic_line"], "classification": "MISLEADING_COMMUNICATION"},
+    {"pattern": "need attention", "acceptable_for": [], "violated_by": ["legacy SMS", "enablement"], "classification": "MISLEADING_COMMUNICATION"},
+    {"pattern": "Renewal approaching", "acceptable_for": ["EXPIRY_BASED"], "violated_by": ["monthly_digest_operational_intelligence"], "classification": "LIFECYCLE_MISMATCH"}
+  ],
+  "communication_structure_matrix": [
+    {"surface": "lifecycle_reminder_active", "why": true, "what": true, "when": true, "how": "partial", "what_next": false},
+    {"surface": "legacy_expiry_reminder", "why": "partial", "what": "partial", "when": true, "how": "partial", "what_next": "partial"},
+    {"surface": "enablement_expiring", "why": false, "what": "partial", "when": true, "how": false, "what_next": "partial"},
+    {"surface": "grouped_reminder_sections", "why": false, "what": "partial", "when": "partial", "how": false, "what_next": false},
+    {"surface": "sms_legacy", "why": false, "what": false, "when": false, "how": "link", "what_next": false},
+    {"surface": "monthly_digest", "why": "partial", "what": "partial", "when": "partial", "how": "partial", "what_next": false},
+    {"surface": "property_detail_chips", "why": false, "what": false, "when": "partial", "how": false, "what_next": false}
+  ],
+  "surface_matrix": [
+    {"surface": "emails_daily_reminder", "authority": "legacy_or_lifecycle_registry", "consumes_lifecycle": "only_when_active", "gap": "production default off"},
+    {"surface": "sms_daily_reminder", "authority": "legacy_or_lifecycle_registry", "consumes_lifecycle": "only_when_active", "gap": "generic body"},
+    {"surface": "emails_enablement", "authority": "enablement_templates", "consumes_lifecycle": false, "gap": "expiry for all"},
+    {"surface": "emails_monthly_digest", "authority": "monthly_digest_operational_intelligence + digest_action_line_suffix", "consumes_lifecycle": "partial", "gap": "generic renewal body"},
+    {"surface": "emails_weekly_digest", "authority": "monthly_digest assembly stack", "consumes_lifecycle": "partial", "gap": "same as monthly"},
+    {"surface": "pdf_executive_report", "authority": "report builders + label_service", "consumes_lifecycle": "names_only", "gap": "generic narrative"},
+    {"surface": "portal_notifications", "authority": "notification_orchestrator", "consumes_lifecycle": "template_dependent", "gap": "mixed"},
+    {"surface": "dashboard_banners", "authority": "todayPresentationAuthority", "consumes_lifecycle": false, "gap": "urgent not family"},
+    {"surface": "dashboard_cards_today", "authority": "todayPresentationAuthority + take_action", "consumes_lifecycle": "partial", "gap": "bucket drift"},
+    {"surface": "command_centre", "authority": "risk_signal_service", "consumes_lifecycle": false, "gap": "hardcoded actions"},
+    {"surface": "property_detail", "authority": "evidenceStatus.js", "consumes_lifecycle": false, "gap": "chip drift"},
+    {"surface": "requirement_detail", "authority": "take_action contract", "consumes_lifecycle": "partial", "gap": "status override"},
+    {"surface": "compliance_score", "authority": "score presentation", "consumes_lifecycle": "partial", "gap": "recommendations lens"},
+    {"surface": "evidence_registry_documents", "authority": "lifecycleAwareConfirm", "consumes_lifecycle": "date_fields", "gap": "minimal"},
+    {"surface": "admin_previews", "authority": "same as production render", "consumes_lifecycle": "mirrors_production", "gap": "shows legacy"},
+    {"surface": "reminder_templates_db", "authority": "email_templates + seed definitions", "consumes_lifecycle": "partial", "gap": "81 templates mixed"}
+  ],
+  "authority_consumption_matrix": [
+    {"consumer": "lifecycle_reminder_template_registry", "lifecycle": true, "requirement": true, "navigation": true, "presentation": false, "email_presentation": true},
+    {"consumer": "COMPLIANCE_EXPIRY_REMINDER", "lifecycle": false, "requirement": "partial", "navigation": true, "presentation": false, "email_presentation": "shell_only"},
+    {"consumer": "enablement_templates", "lifecycle": false, "requirement": "partial", "navigation": "partial", "presentation": false, "email_presentation": "partial"},
+    {"consumer": "email_service_grouped_sections", "lifecycle": "partial", "requirement": true, "navigation": true, "presentation": false, "email_presentation": true},
+    {"consumer": "requirement_action_resolver", "lifecycle": "partial", "requirement": true, "navigation": true, "presentation": true, "email_presentation": "n/a"},
+    {"consumer": "evidenceStatus.js", "lifecycle": false, "requirement": "partial", "navigation": "n/a", "presentation": false, "email_presentation": "n/a"},
+    {"consumer": "monthly_digest_operational_intelligence", "lifecycle": false, "requirement": "partial", "navigation": true, "presentation": "partial", "email_presentation": true},
+    {"consumer": "risk_signal_service", "lifecycle": false, "requirement": "partial", "navigation": true, "presentation": false, "email_presentation": "n/a"},
+    {"consumer": "client_requirement_lifecycle", "lifecycle": true, "requirement": true, "navigation": "n/a", "presentation": "emits_labels", "email_presentation": "n/a"}
+  ],
+  "duplicate_wording_inventory": [
+    {"domain": "reminder_intro_subject", "authority_a": "lifecycle_reminder_template_registry", "authority_b": "COMPLIANCE_EXPIRY_REMINDER + enablement_templates", "drift_risk": "high"},
+    {"domain": "calendar_overdue_subline", "authority_a": "lifecycle_authority_copy.py", "authority_b": "lifecycleAuthorityCopy.js", "drift_risk": "medium"},
+    {"domain": "digest_action_phrasing", "authority_a": "digest_action_line_suffix", "authority_b": "monthly_digest_operational_intelligence body", "drift_risk": "high"},
+    {"domain": "primary_cta", "authority_a": "requirement_action_resolver", "authority_b": "_CUSTOMER_STATUS_CTA_PRIMARY", "drift_risk": "medium"},
+    {"domain": "status_chip_text", "authority_a": "client_lifecycle_label API", "authority_b": "evidenceStatus.js STATUS_CONFIG", "drift_risk": "high"},
+    {"domain": "risk_headline", "authority_a": "risk_signal_service", "authority_b": "riskSignalPresentationHeadline FE", "drift_risk": "medium"}
+  ],
+  "legacy_wording_inventory": [
+    {"stack": "COMPLIANCE_EXPIRY_REMINDER", "location": "email_service, notification seeds", "production_reachable": true},
+    {"stack": "enablement requirement_expiring_soon / requirement_overdue", "location": "enablement_templates.py", "production_reachable": true},
+    {"stack": "_safe_reminder_semantic_line fallbacks", "location": "email_service.py", "production_reachable": true},
+    {"stack": "evidenceStatus EXPIRING_SOON/OVERDUE", "location": "frontend/src/utils/evidenceStatus.js", "production_reachable": true},
+    {"stack": "monthly_digest renewal highlights", "location": "monthly_digest_operational_intelligence.py", "production_reachable": true},
+    {"stack": "RECOMMENDED_ACTIONS hardcoded", "location": "risk_signal_service.py", "production_reachable": true}
+  ],
+  "production_impact": {
+    "daily_reminders": "Legacy expiry path active; non-expiry families may read as certificate renewals",
+    "enablement": "Expiry templates applied to all requirement types",
+    "portal_chips": "Expiring soon / Overdue for all lifecycle families",
+    "monthly_digest": "Generic renewal narrative at portfolio level",
+    "command_centre_risks": "Certificate-oriented recommended actions",
+    "today_page": "Urgent vs needs-action vocabulary split",
+    "take_action_when_projector_on": "Generic Add compliance evidence may override family CTAs",
+    "epa_note": "Email shell/greeting/colour on production at 30f816df; lifecycle verbs separate"
+  },
+  "risk_assessment": [
+    {"risk": "Landlord renews wrong artifact", "severity": "high", "likelihood": "medium"},
+    {"risk": "Missed operational action from vague SMS/email", "severity": "medium", "likelihood": "medium"},
+    {"risk": "Trust erosion from vague or alarmist copy", "severity": "medium", "likelihood": "medium"},
+    {"risk": "Today banner confusion", "severity": "medium", "likelihood": "medium"},
+    {"risk": "Admin preview diverges from governed registry", "severity": "low", "likelihood": "medium"}
+  ],
+  "recommended_roadmap": [
+    {"phase": 1, "title": "Establish Lifecycle Communication Authority module", "scope": "resolve_customer_communication API consuming attention_kind, take_action, lifecycle labels"},
+    {"phase": 2, "title": "Consolidate duplicate authorities", "scope": "enablement, legacy reminder wrapper, evidenceStatus sync, FE/BE copy parity"},
+    {"phase": 3, "title": "Surface rollout", "scope": "reminders, digests, risk cards, grouped headings — communication only"},
+    {"phase": 4, "title": "Flag promotion and validation", "scope": "LIFECYCLE_AWARE_REMINDERS + LCA staging cohort validation; production via cherry-pick not merge"}
+  ],
+  "findings": [
+    {"id": "LCA-001", "classification": "AUTHORITY_DUPLICATION", "surface": "reminders", "summary": "lifecycle_reminder_template_registry vs COMPLIANCE_EXPIRY_REMINDER dual vocabulary"},
+    {"id": "LCA-002", "classification": "LEGACY_PRESENTATION", "surface": "reminders", "summary": "LIFECYCLE_AWARE_REMINDERS default off — family-aware copy not production-authoritative"},
+    {"id": "LCA-003", "classification": "LIFECYCLE_MISMATCH", "surface": "enablement", "summary": "requirement_expiring_soon/overdue use expiry/renewal for all types"},
+    {"id": "LCA-004", "classification": "MISLEADING_COMMUNICATION", "surface": "reminder_email", "summary": "Certificates & Expiring Evidence heading may include licences/registrations"},
+    {"id": "LCA-005", "classification": "MISLEADING_COMMUNICATION", "surface": "reminder_email", "summary": "Other Compliance Actions vague bucket"},
+    {"id": "LCA-006", "classification": "COMMUNICATION_DRIFT", "surface": "property_detail", "summary": "evidenceStatus.js ignores client_lifecycle_label"},
+    {"id": "LCA-007", "classification": "AUTHORITY_VIOLATION", "surface": "property_detail", "summary": "chips independently determine customer status wording"},
+    {"id": "LCA-008", "classification": "COMMUNICATION_DRIFT", "surface": "fe_be", "summary": "lifecycleAuthorityCopy.js branches not mirrored in backend"},
+    {"id": "LCA-009", "classification": "COMMUNICATION_DRIFT", "surface": "monthly_digest", "summary": "body generic renewal/overdue; suffixes only partially governed"},
+    {"id": "LCA-010", "classification": "LIFECYCLE_MISMATCH", "surface": "monthly_digest", "summary": "Renewal approaching for non-expiry families"},
+    {"id": "LCA-011", "classification": "INCORRECT_CUSTOMER_ACTION", "surface": "take_action", "summary": "customer status projector overrides with Add compliance evidence"},
+    {"id": "LCA-012", "classification": "WORDING_IMPROVEMENT", "surface": "take_action", "summary": "fallback Add compliance evidence too generic"},
+    {"id": "LCA-013", "classification": "LIFECYCLE_MISMATCH", "surface": "risk_cards", "summary": "electrical risk uses certificate framing"},
+    {"id": "LCA-014", "classification": "LIFECYCLE_MISMATCH", "surface": "risk_cards", "summary": "certificate expiry soon rule comment scope"},
+    {"id": "LCA-015", "classification": "MISLEADING_COMMUNICATION", "surface": "reminder_semantic", "summary": "Compliance action required fallback lacks WHY"},
+    {"id": "LCA-016", "classification": "COMMUNICATION_DRIFT", "surface": "today", "summary": "banner urgent count not lifecycle family aligned"},
+    {"id": "LCA-017", "classification": "WORDING_IMPROVEMENT", "surface": "sms", "summary": "legacy SMS lacks WHY WHAT WHEN"},
+    {"id": "LCA-018", "classification": "LIFECYCLE_MISMATCH", "surface": "declarations", "summary": "expiry reminder path reachable for declarations"},
+    {"id": "LCA-019", "classification": "NO_CHANGE_REQUIRED", "surface": "lifecycle_registry", "summary": "six attention_kind specs well-structured when active"},
+    {"id": "LCA-020", "classification": "NO_CHANGE_REQUIRED", "surface": "email_presentation", "summary": "EPA governs shell; out of scope for lifecycle verbs"},
+    {"id": "LCA-021", "classification": "COMMUNICATION_DRIFT", "surface": "weekly_digest", "summary": "inherits monthly generic renewal narrative"},
+    {"id": "LCA-022", "classification": "WORDING_IMPROVEMENT", "surface": "reminder_email", "summary": "portal CTA not family-specific"},
+    {"id": "LCA-023", "classification": "LIFECYCLE_MISMATCH", "surface": "review_based", "summary": "digest renewal language on review obligations"},
+    {"id": "LCA-024", "classification": "AUTHORITY_DUPLICATION", "surface": "digest", "summary": "digest_action_line_suffix vs operational_intelligence body"},
+    {"id": "LCA-025", "classification": "LEGACY_PRESENTATION", "surface": "enablement", "summary": "We'll remind you before this document expires on status change"},
+    {"id": "LCA-026", "classification": "MISLEADING_COMMUNICATION", "surface": "reminder_semantic", "summary": "Evidence renewal is due fallback for certificate group"},
+    {"id": "LCA-027", "classification": "WORDING_IMPROVEMENT", "surface": "command_centre", "summary": "riskSignalPresentationHeadline FE fallback Review suggested"},
+    {"id": "LCA-028", "classification": "NO_CHANGE_REQUIRED", "surface": "documents_confirm", "summary": "lifecycleAwareConfirm date field labels"},
+    {"id": "LCA-029", "classification": "NO_CHANGE_REQUIRED", "surface": "domain_labels", "summary": "requirement_label SSOT for names"},
+    {"id": "LCA-030", "classification": "COMMUNICATION_DRIFT", "surface": "tenancy", "summary": "legacy path uses expiry not tenancy milestone"},
+    {"id": "LCA-031", "classification": "COMMUNICATION_DRIFT", "surface": "occupancy", "summary": "legacy path generic compliance items"},
+    {"id": "LCA-032", "classification": "WORDING_IMPROVEMENT", "surface": "operational", "summary": "requires your attention by date only in active registry"},
+    {"id": "LCA-033", "classification": "AUTHORITY_VIOLATION", "surface": "enablement", "summary": "templates determine renewal action independent of attention_kind"},
+    {"id": "LCA-034", "classification": "LIFECYCLE_MISMATCH", "surface": "inspection", "summary": "schedule_inspection suggested action without family copy"},
+    {"id": "LCA-035", "classification": "WORDING_IMPROVEMENT", "surface": "pdf_reports", "summary": "executive report aggregates overdue without family verbs"},
+    {"id": "LCA-036", "classification": "COMMUNICATION_DRIFT", "surface": "compliance_score", "summary": "recommendations lens not lifecycle-family aware"},
+    {"id": "LCA-037", "classification": "MISLEADING_COMMUNICATION", "surface": "enablement", "summary": "Heads up expiring soon without obligation-specific reason"},
+    {"id": "LCA-038", "classification": "LEGACY_PRESENTATION", "surface": "reminder_registry", "summary": "lifecycle_reminder_spec falls back to CERTIFICATE_EXPIRING for unknown kind"},
+    {"id": "LCA-039", "classification": "WORDING_IMPROVEMENT", "surface": "lifecycle_copy", "summary": "EVIDENCE_REQUIRED_LABEL generic across families"},
+    {"id": "LCA-040", "classification": "NO_CHANGE_REQUIRED", "surface": "navigation", "summary": "requirement_action_links consumes resolver routes"},
+    {"id": "LCA-041", "classification": "COMMUNICATION_DRIFT", "surface": "assessment", "summary": "assessment group fallback not assessment-specific in legacy"},
+    {"id": "LCA-042", "classification": "LIFECYCLE_MISMATCH", "surface": "self_certified", "summary": "declaration obligations in certificate reminder bucket"},
+    {"id": "LCA-043", "classification": "WORDING_IMPROVEMENT", "surface": "sms_active", "summary": "lifecycle SMS still generic count + link"},
+    {"id": "LCA-044", "classification": "AUTHORITY_DUPLICATION", "surface": "risk", "summary": "RECOMMENDED_ACTIONS vs FE riskSignalPresentationHeadline"},
+    {"id": "LCA-045", "classification": "MISLEADING_COMMUNICATION", "surface": "digest", "summary": "Continue monitoring expiries for mixed portfolio"},
+    {"id": "LCA-046", "classification": "WORDING_IMPROVEMENT", "surface": "reminder_active", "summary": "what_next not stated in lifecycle reminder specs"},
+    {"id": "LCA-047", "classification": "NO_CHANGE_REQUIRED", "surface": "client_lifecycle", "summary": "client_requirement_lifecycle emits governed labels"},
+    {"id": "LCA-048", "classification": "COMMUNICATION_DRIFT", "surface": "admin_preview", "summary": "previews mirror production legacy path"}
+  ],
+  "code_references": [
+    {"file": "backend/services/lifecycle_reminder_template_registry.py", "lines": "27-123", "note": "family-aware reminder specs per attention_kind"},
+    {"file": "backend/services/lifecycle_aware_reminders_config.py", "lines": "23", "note": "default mode off"},
+    {"file": "backend/services/enablement_templates.py", "lines": "206-238", "note": "requirement_expiring_soon / requirement_overdue expiry-centric"},
+    {"file": "backend/services/email_service.py", "lines": "189-216", "note": "_safe_reminder_semantic_line fallbacks"},
+    {"file": "backend/services/email_service.py", "lines": "219-226", "note": "grouped reminder heading_map"},
+    {"file": "backend/services/requirement_action_resolver.py", "lines": "192-260", "note": "CTA labels and customer status overrides"},
+    {"file": "backend/services/risk_signal_service.py", "lines": "76-85", "note": "RECOMMENDED_ACTIONS hardcoded"},
+    {"file": "backend/services/monthly_digest_operational_intelligence.py", "lines": "92-95", "note": "generic overdue/renewal narrative"},
+    {"file": "backend/services/lifecycle_authority_copy.py", "lines": "1-55", "note": "partial governed copy"},
+    {"file": "frontend/src/utils/lifecycleAuthorityCopy.js", "lines": "1-51", "note": "FE mirror + extra branches"},
+    {"file": "frontend/src/utils/evidenceStatus.js", "lines": "32-37", "note": "expiry-biased chip labels"},
+    {"file": "frontend/src/utils/todayPresentationAuthority.js", "lines": "1-40", "note": "Today operational bucket authority"}
+  ],
+  "related_audits": [
+    "backend/docs/audit/email_template_authority_01/",
+    "backend/docs/audit/email_presentation_authority_01/",
+    "backend/docs/audit/presentation_authority_alignment_01/",
+    "backend/docs/audit/today_authority_consistency_01/"
+  ],
+  "constraints_observed": [
+    "no_fixes",
+    "no_template_changes",
+    "no_production",
+    "no_merge_main",
+    "lifecycle_requirement_scoring_reminder_routing_untouched"
+  ]
+}
