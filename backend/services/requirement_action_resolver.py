@@ -211,13 +211,22 @@ def _align_take_action_with_customer_status(
     """REM-05: align primary CTA label with customer_status_key when projector is active."""
     try:
         from services.customer_status_projector_config import is_customer_status_projector_active
+        from lifecycle_communication.resolver import resolve_customer_communication
 
         if not is_customer_status_projector_active():
             return
         key = str(requirement.get("customer_status_key") or "").strip()
         if not key:
             return
-        label = _CUSTOMER_STATUS_CTA_PRIMARY.get(key)
+        comm = resolve_customer_communication(
+            requirement,
+            surface="portal_cta",
+            channel="PORTAL",
+            take_action=take_action,
+        )
+        label = str(comm.get("primary_cta") or "").strip()
+        if not label:
+            label = _CUSTOMER_STATUS_CTA_PRIMARY.get(key)
         if not label:
             return
         pri = take_action.get("primary")
@@ -945,5 +954,17 @@ def enrich_take_action_envelope_for_client(
         merged["guidance_target"] = {"type": "requirements_list", "route": "/requirements"}
     else:
         merged["guidance_target"] = None
+
+    try:
+        from lifecycle_communication.resolver import resolve_customer_communication
+
+        merged["customer_communication"] = resolve_customer_communication(
+            requirement,
+            surface="portal_detail",
+            channel="PORTAL",
+            take_action=env.get("take_action"),
+        )
+    except Exception:
+        pass
 
     return merged

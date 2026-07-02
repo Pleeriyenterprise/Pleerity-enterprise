@@ -68,8 +68,28 @@ def _attention_kind_for_reminder_alias(
 
 
 def _lifecycle_reminder_intro_html(model: Dict[str, Any], template_alias: EmailTemplateAlias) -> str:
-    spec = lifecycle_reminder_spec(_attention_kind_for_reminder_alias(template_alias, model))
+    from lifecycle_communication.resolver import resolve_customer_communication
+
+    kind = _attention_kind_for_reminder_alias(template_alias, model)
     rc = (model.get("requirement_code") or model.get("requirement_type") or "").strip()
+    row = {
+        "requirement_code": rc,
+        "requirement_name": model.get("requirement_name"),
+        "lifecycle_attention_kind": kind,
+        "attention_kind": kind,
+    }
+    comm = resolve_customer_communication(
+        row,
+        surface="reminder_email",
+        channel="EMAIL",
+        context=model,
+        due_date=model.get("due_date"),
+        is_overdue=bool(model.get("is_overdue")),
+    )
+    sv = comm.get("surface_variants") or {}
+    if sv.get("intro_html"):
+        return str(sv["intro_html"])
+    spec = lifecycle_reminder_spec(kind)
     req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
     return spec["intro_html"].format(
         req_name=req_name,
@@ -79,8 +99,28 @@ def _lifecycle_reminder_intro_html(model: Dict[str, Any], template_alias: EmailT
 
 
 def _lifecycle_reminder_intro_text(model: Dict[str, Any], template_alias: EmailTemplateAlias) -> str:
-    spec = lifecycle_reminder_spec(_attention_kind_for_reminder_alias(template_alias, model))
+    from lifecycle_communication.resolver import resolve_customer_communication
+
+    kind = _attention_kind_for_reminder_alias(template_alias, model)
     rc = (model.get("requirement_code") or model.get("requirement_type") or "").strip()
+    row = {
+        "requirement_code": rc,
+        "requirement_name": model.get("requirement_name"),
+        "lifecycle_attention_kind": kind,
+        "attention_kind": kind,
+    }
+    comm = resolve_customer_communication(
+        row,
+        surface="reminder_email",
+        channel="EMAIL",
+        context=model,
+        due_date=model.get("due_date"),
+        is_overdue=bool(model.get("is_overdue")),
+    )
+    sv = comm.get("surface_variants") or {}
+    if sv.get("intro_text"):
+        return str(sv["intro_text"])
+    spec = lifecycle_reminder_spec(kind)
     req_name = requirement_label(rc) if rc else (model.get("requirement_name") or "Certificate")
     return spec["intro_text"].format(
         req_name=req_name,
@@ -186,43 +226,39 @@ def _notification_preferences_url(model: Dict[str, Any]) -> str:
     return ""
 
 
-def _safe_reminder_semantic_line(group_key: str, semantic_line: str) -> str:
-    line = str(semantic_line or "").strip()
-    low = line.lower()
-    forbidden_fragments = (
-        "blocking compliance",
-        "externally verified",
-        "legally validated",
-        "verified",
-        "certified",
-        "operationally safe",
-        "remediated",
-        "remediation complete",
-        "upload complete",
-        "document-complete",
-        "document complete",
-        "upload-only complete",
+def _safe_reminder_semantic_line(group_key: str, semantic_line: str, row: Optional[Dict[str, Any]] = None) -> str:
+    from lifecycle_communication.resolver import resolve_group_semantic_line
+
+    req_row = row if isinstance(row, dict) else {"workflow_semantics_bucket": group_key}
+    if not isinstance(row, dict):
+        bucket_map = {
+            "declaration_reminders": {"lifecycle_semantics": "DECLARATION_BASED"},
+            "assessment_reminders": {"lifecycle_semantics": "REVIEW_BASED"},
+            "certificate_reminders": {"lifecycle_semantics": "EXPIRY_BASED"},
+            "condition_reminders": {"compliance_requirement_class": "OPERATIONAL"},
+            "other_reminders": {"lifecycle_semantics": "OPERATIONAL"},
+        }
+        req_row = bucket_map.get(str(group_key or ""), req_row)
+    due = str((row or {}).get("due_date") or "")
+    overdue = bool((row or {}).get("days_overdue"))
+    return resolve_group_semantic_line(
+        group_key=group_key,
+        requirement_row=req_row,
+        semantic_line=semantic_line,
+        due_date=due,
+        is_overdue=overdue,
     )
-    if any(f in low for f in forbidden_fragments):
-        if group_key == "declaration_reminders":
-            return "Declaration details need review and update"
-        if group_key == "assessment_reminders":
-            return "Assessment review due and follow-up actions require attention"
-        if group_key == "condition_reminders":
-            return "Property condition issues require review"
-        if group_key == "certificate_reminders":
-            return "Evidence renewal is due"
-        return "Compliance action required"
-    return line
 
 
 def _build_grouped_reminder_sections_html(model: Dict[str, Any]) -> str:
+    from lifecycle_communication.headings import heading_for_reminder_group
+
     heading_map = [
-        ("certificate_reminders", "Certificates & Expiring Evidence"),
-        ("declaration_reminders", "Declarations & Tenancy Records"),
-        ("assessment_reminders", "Assessments & Reviews"),
-        ("condition_reminders", "Property Conditions & Remediation"),
-        ("other_reminders", "Other Compliance Actions"),
+        ("certificate_reminders", heading_for_reminder_group("certificate_reminders")),
+        ("declaration_reminders", heading_for_reminder_group("declaration_reminders")),
+        ("assessment_reminders", heading_for_reminder_group("assessment_reminders")),
+        ("condition_reminders", heading_for_reminder_group("condition_reminders")),
+        ("other_reminders", heading_for_reminder_group("other_reminders")),
     ]
     blocks: List[str] = []
     for key, heading in heading_map:
@@ -234,7 +270,9 @@ def _build_grouped_reminder_sections_html(model: Dict[str, Any]) -> str:
             if not isinstance(row, dict):
                 continue
             label = str(row.get("type") or row.get("detail_type") or "Compliance item").strip() or "Compliance item"
-            semantic = _safe_reminder_semantic_line(key, str(row.get("semantic_line") or "").strip())
+            semantic = _safe_reminder_semantic_line(
+                key, str(row.get("semantic_line") or "").strip(), row if isinstance(row, dict) else None
+            )
             label_h = html_module.escape(label)
             semantic_h = html_module.escape(semantic) if semantic else ""
             if semantic_h:
@@ -250,12 +288,14 @@ def _build_grouped_reminder_sections_html(model: Dict[str, Any]) -> str:
 
 
 def _build_grouped_reminder_sections_text(model: Dict[str, Any]) -> str:
+    from lifecycle_communication.headings import heading_for_reminder_group
+
     heading_map = [
-        ("certificate_reminders", "Certificates & Expiring Evidence"),
-        ("declaration_reminders", "Declarations & Tenancy Records"),
-        ("assessment_reminders", "Assessments & Reviews"),
-        ("condition_reminders", "Property Conditions & Remediation"),
-        ("other_reminders", "Other Compliance Actions"),
+        ("certificate_reminders", heading_for_reminder_group("certificate_reminders")),
+        ("declaration_reminders", heading_for_reminder_group("declaration_reminders")),
+        ("assessment_reminders", heading_for_reminder_group("assessment_reminders")),
+        ("condition_reminders", heading_for_reminder_group("condition_reminders")),
+        ("other_reminders", heading_for_reminder_group("other_reminders")),
     ]
     out: List[str] = []
     for key, heading in heading_map:
@@ -267,7 +307,9 @@ def _build_grouped_reminder_sections_text(model: Dict[str, Any]) -> str:
             if not isinstance(row, dict):
                 continue
             label = str(row.get("type") or row.get("detail_type") or "Compliance item").strip() or "Compliance item"
-            semantic = _safe_reminder_semantic_line(key, str(row.get("semantic_line") or "").strip())
+            semantic = _safe_reminder_semantic_line(
+                key, str(row.get("semantic_line") or "").strip(), row if isinstance(row, dict) else None
+            )
             out.append(f"- {label}" + (f" — {semantic}" if semantic else ""))
         out.append("")
     return "\n".join(out).strip()

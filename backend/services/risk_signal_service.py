@@ -72,17 +72,27 @@ MAINTENANCE_FREQUENCY_THRESHOLD = 4  # issues in 6 months
 SLA_BREACH_COUNT_THRESHOLD = 2
 RECURRING_ISSUES_THRESHOLD = 3
 
-# Recommended actions (task §8)
+# Recommended actions (task §8) — legacy fallback; prefer _recommended_action_for_risk()
 RECOMMENDED_ACTIONS = {
     RISK_TYPE_BOILER_FAILURE: "Arrange a qualified gas engineer inspection externally, or start a compliance job from Operations if your account uses jobs for inspections.",
     RISK_TYPE_DAMP_MOISTURE: "Arrange a damp inspection externally and plan work to fix the underlying cause.",
-    RISK_TYPE_ELECTRICAL: "Review your electrical certificate and arrange an external inspection if it is due or out of date.",
+    RISK_TYPE_ELECTRICAL: "Review your electrical safety obligation and arrange an external inspection if it is due or out of date.",
     RISK_TYPE_RECURRING_REPAIRS: "Investigate the root cause instead of repeat patch repairs.",
     RISK_TYPE_SLA_BREACH: "Review open jobs with your contractor and re-prioritise anything that is overdue.",
-    RISK_TYPE_COMPLIANCE_CHURN: "Upload missing evidence and plan renewals so obligations stay up to date.",
+    RISK_TYPE_COMPLIANCE_CHURN: "Upload missing evidence and complete outstanding obligations so your portfolio stays up to date.",
     RISK_TYPE_MAINTENANCE_FREQUENCY: "Review property condition and inspect assets that are generating repeat reports.",
     RISK_TYPE_CERTIFICATE_EXPIRY_SOON: "Renew the certificate before expiry and upload the new document with correct dates.",
 }
+
+
+def _recommended_action_for_risk(risk_type: str) -> str:
+    try:
+        from lifecycle_communication.copy import risk_recommended_action
+
+        return risk_recommended_action(risk_type)
+    except Exception:
+        pass
+    return RECOMMENDED_ACTIONS.get(risk_type, "Review this item and complete the recommended follow-up action.")
 
 # Suggested actions (task §2): actionable codes for UI buttons
 SUGGESTED_ACTION_CREATE_ISSUE = "create_issue"
@@ -338,7 +348,7 @@ async def _rule_boiler_failure(
             "risk_type": RISK_TYPE_BOILER_FAILURE,
             "risk_level": level,
             "reasons": reasons,
-            "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_BOILER_FAILURE],
+            "recommended_action": _recommended_action_for_risk(RISK_TYPE_BOILER_FAILURE),
             "asset_id": aid,
         })
     return signals
@@ -368,7 +378,7 @@ async def _rule_damp_moisture(
         "risk_type": RISK_TYPE_DAMP_MOISTURE,
         "risk_level": level,
         "reasons": reasons,
-        "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_DAMP_MOISTURE],
+        "recommended_action": _recommended_action_for_risk(RISK_TYPE_DAMP_MOISTURE),
         "asset_id": None,
     }]
 
@@ -408,7 +418,7 @@ async def _rule_electrical(
         "risk_type": RISK_TYPE_ELECTRICAL,
         "risk_level": level,
         "reasons": reasons or ["Electrical risk factors present"],
-        "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_ELECTRICAL],
+        "recommended_action": _recommended_action_for_risk(RISK_TYPE_ELECTRICAL),
         "asset_id": None,
     }]
 
@@ -442,7 +452,7 @@ async def _rule_recurring_repairs(
             "risk_type": RISK_TYPE_RECURRING_REPAIRS,
             "risk_level": RISK_LEVEL_HIGH if count >= 4 else RISK_LEVEL_MEDIUM,
             "reasons": reasons,
-            "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_RECURRING_REPAIRS],
+            "recommended_action": _recommended_action_for_risk(RISK_TYPE_RECURRING_REPAIRS),
             "asset_id": parts[1] if len(parts) > 1 and parts[1] else None,
         })
     return signals
@@ -470,7 +480,7 @@ async def _rule_sla_breach(
         "risk_type": RISK_TYPE_SLA_BREACH,
         "risk_level": RISK_LEVEL_HIGH if (breached_30 >= 3 or (reasons and "Same contractor" in str(reasons))) else RISK_LEVEL_MEDIUM,
         "reasons": reasons,
-        "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_SLA_BREACH],
+        "recommended_action": _recommended_action_for_risk(RISK_TYPE_SLA_BREACH),
         "asset_id": None,
     }]
 
@@ -626,7 +636,7 @@ async def _rule_compliance_churn(
         "risk_type": RISK_TYPE_COMPLIANCE_CHURN,
         "risk_level": level,
         "reasons": reasons,
-        "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_COMPLIANCE_CHURN],
+        "recommended_action": _recommended_action_for_risk(RISK_TYPE_COMPLIANCE_CHURN),
         "asset_id": None,
         "metadata": {"churn_metrics": metrics},
     }]
@@ -650,7 +660,7 @@ async def _rule_certificate_expiry_soon(
         "risk_type": RISK_TYPE_CERTIFICATE_EXPIRY_SOON,
         "risk_level": level,
         "reasons": reasons,
-        "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_CERTIFICATE_EXPIRY_SOON],
+        "recommended_action": _recommended_action_for_risk(RISK_TYPE_CERTIFICATE_EXPIRY_SOON),
         "asset_id": None,
     }]
 
@@ -674,7 +684,7 @@ async def _rule_maintenance_frequency(
         "risk_type": RISK_TYPE_MAINTENANCE_FREQUENCY,
         "risk_level": level,
         "reasons": reasons,
-        "recommended_action": RECOMMENDED_ACTIONS[RISK_TYPE_MAINTENANCE_FREQUENCY],
+        "recommended_action": _recommended_action_for_risk(RISK_TYPE_MAINTENANCE_FREQUENCY),
         "asset_id": None,
     }]
 

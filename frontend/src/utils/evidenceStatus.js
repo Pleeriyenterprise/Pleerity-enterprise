@@ -64,7 +64,10 @@ const VERIFY_CHIP = { icon: Clock, text: 'Awaiting verification', className: 'bg
  */
 function lifecycleDerivedChip(resolved, row) {
   const r = row && typeof row === 'object' ? row : {};
-  const text = resolved.label || 'Status';
+  const comm = r.customer_communication && typeof r.customer_communication === 'object' ? r.customer_communication : null;
+  const chipFromAuthority =
+    comm?.surface_variants?.chip_text || comm?.reason || null;
+  const text = chipFromAuthority || resolved.label || 'Status';
   if (resolved.state === 'NOT_APPLICABLE') {
     return { ...EVIDENCE_STATUS_CONFIG.NOT_REQUIRED, text };
   }
@@ -215,8 +218,19 @@ export function getEvidenceStatus(status, row) {
     const cfg = EVIDENCE_STATUS_CONFIG.PENDING_VERIFICATION;
     out = { ...cfg, subline: awaitingVerificationSubline() };
   } else if (key === 'OVERDUE' || key === 'EXPIRED' || key === 'FAILED') {
+    const comm = row?.customer_communication;
+    const chipText = comm?.surface_variants?.chip_text || comm?.reason;
     const cfg = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.OVERDUE;
-    out = { ...cfg, subline: calendarOverdueSubline(row) };
+    out = chipText
+      ? { ...cfg, text: chipText, subline: comm?.when_text || calendarOverdueSubline(row) }
+      : { ...cfg, subline: calendarOverdueSubline(row) };
+  } else if (key === 'EXPIRING_SOON') {
+    const comm = row?.customer_communication;
+    const chipText = comm?.surface_variants?.chip_text || comm?.reason;
+    const cfg = EVIDENCE_STATUS_CONFIG.EXPIRING_SOON;
+    out = chipText
+      ? { ...cfg, text: chipText, subline: comm?.when_text || 'Plan before the recorded due date.' }
+      : { ...cfg };
   } else {
     const base = EVIDENCE_STATUS_CONFIG[key] || EVIDENCE_STATUS_CONFIG.PENDING;
     out = tenancyStatus && (key === 'VALID' || key === 'COMPLIANT') ? { ...base, subline: tenancyStatus } : { ...base };

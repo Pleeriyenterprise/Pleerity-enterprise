@@ -141,7 +141,27 @@ def planned_sms_template_by_attention() -> Dict[str, str]:
 
 
 def lifecycle_reminder_spec(attention_kind: Optional[str]) -> Dict[str, str]:
-    return dict(_LIFECYCLE_REMINDER_SPECS.get(str(attention_kind or ""), _LIFECYCLE_REMINDER_SPECS["CERTIFICATE_EXPIRING"]))
+    kind = str(attention_kind or "CERTIFICATE_EXPIRING")
+    legacy = dict(_LIFECYCLE_REMINDER_SPECS.get(kind, _LIFECYCLE_REMINDER_SPECS["CERTIFICATE_EXPIRING"]))
+    try:
+        from lifecycle_communication.headings import reminder_header_title
+        from lifecycle_communication.resolver import resolve_customer_communication
+
+        row = {"lifecycle_attention_kind": kind, "attention_kind": kind}
+        comm = resolve_customer_communication(row, surface="reminder_email", channel="EMAIL")
+        sv = comm.get("surface_variants") or {}
+        legacy["header_title"] = reminder_header_title(kind)
+        if sv.get("why_received"):
+            legacy["why_received"] = str(sv["why_received"])
+        if sv.get("intro_html"):
+            legacy["intro_html"] = str(sv["intro_html"])
+        if sv.get("intro_text"):
+            legacy["intro_text"] = str(sv["intro_text"])
+        if sv.get("sms_body"):
+            legacy["sms_body"] = str(sv["sms_body"])
+    except Exception:
+        pass
+    return legacy
 
 
 def lifecycle_reminder_email_alias(attention_kind: Optional[str]) -> str:
@@ -160,9 +180,19 @@ def lifecycle_reminder_subject(
     requirement_name: str,
     is_overdue: bool,
 ) -> str:
-    spec = lifecycle_reminder_spec(attention_kind)
-    pattern = spec["subject_overdue"] if is_overdue else spec["subject_expiring"]
-    return pattern.format(req_name=requirement_name)
+    try:
+        from lifecycle_communication.resolver import resolve_reminder_subject
+
+        row = {
+            "requirement_name": requirement_name,
+            "lifecycle_attention_kind": attention_kind,
+            "attention_kind": attention_kind,
+        }
+        return resolve_reminder_subject(row, is_overdue=is_overdue)
+    except Exception:
+        spec = lifecycle_reminder_spec(attention_kind)
+        pattern = spec["subject_overdue"] if is_overdue else spec["subject_expiring"]
+        return pattern.format(req_name=requirement_name)
 
 
 def lifecycle_reminder_notification_seed_rows() -> List[Dict[str, Any]]:

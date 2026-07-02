@@ -1,0 +1,82 @@
+{
+  "programme": "LIFECYCLE-COMMUNICATION-AUTHORITY-01",
+  "branch": "develop",
+  "date": "2026-06-30",
+  "authority_version": "lifecycle_communication_v1",
+  "mode": "implementation",
+  "production_touched": false,
+  "main_touched": false,
+  "module": {
+    "path": "backend/lifecycle_communication/",
+    "entry_point": "resolve_customer_communication",
+    "facade": "LifecycleCommunicationAuthority",
+    "files": [
+      "__init__.py",
+      "authority.py",
+      "constants.py",
+      "context.py",
+      "copy.py",
+      "completion.py",
+      "headings.py",
+      "verbs.py",
+      "resolver.py",
+      "registry.py"
+    ]
+  },
+  "governance_doc": "backend/docs/LIFECYCLE_COMMUNICATION_AUTHORITY.md",
+  "tests": {
+    "file": "backend/tests/test_lifecycle_communication_authority.py",
+    "count": 24,
+    "regression_suites": [
+      "tests/test_lifecycle_reminders_s44.py",
+      "tests/test_monthly_digest_operational_intelligence.py"
+    ],
+    "result": "57 passed (LCA + regression)"
+  },
+  "integrations": [
+    {"file": "services/requirement_action_resolver.py", "change": "customer_communication on envelope; LCA CTA alignment"},
+    {"file": "services/requirement_truth.py", "change": "attach customer_communication to client rows"},
+    {"file": "services/email_service.py", "change": "LCA headings, semantic lines, lifecycle intros"},
+    {"file": "services/lifecycle_reminder_template_registry.py", "change": "delegate spec/subject to LCA"},
+    {"file": "services/enablement_service.py", "change": "enrich render context with LCA tokens"},
+    {"file": "services/enablement_templates.py", "change": "requirement_expiring/overdue use comm_* tokens"},
+    {"file": "services/monthly_digest_operational_intelligence.py", "change": "family-aware digest posture"},
+    {"file": "services/risk_signal_service.py", "change": "governed recommended_action"},
+    {"file": "frontend/src/utils/evidenceStatus.js", "change": "consume API customer_communication"}
+  ],
+  "unchanged_authorities": [
+    "Lifecycle Authority",
+    "Requirement Authority",
+    "Reminder scheduling",
+    "Notification orchestration",
+    "Today Authority",
+    "Navigation Authority",
+    "Email Presentation Authority"
+  ],
+  "acceptance": {
+    "shared_authority_exists": true,
+    "registry_exists": true,
+    "all_families_governed": true,
+    "structured_model_why_what_when_how_next": true,
+    "heading_duplication_removed": true,
+    "cta_consumes_take_action": true,
+    "governed_verbs": true,
+    "no_lifecycle_reclassification": true
+  },
+  "registry_families": [
+    "EXPIRY_BASED",
+    "LICENSING",
+    "REGISTRATION",
+    "DECLARATION_BASED",
+    "TENANCY_LIFECYCLE",
+    "OCCUPANCY_LIFECYCLE",
+    "REVIEW_BASED",
+    "EVENT_BASED",
+    "DOCUMENT_EVIDENCE",
+    "STRUCTURED_EVIDENCE",
+    "SELF_CERTIFIED",
+    "INSPECTION",
+    "ASSESSMENT",
+    "OPERATIONAL"
+  ]
+}

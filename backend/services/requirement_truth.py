@@ -569,6 +569,8 @@ def _attach_take_action_envelope_to_row(out: Dict[str, Any]) -> None:
     for k in ("workflow_class", "guidance_target", "allowed_evidence_modes"):
         if env_client.get(k) is not None:
             out[k] = env_client[k]
+    if env_client.get("customer_communication") is not None:
+        out["customer_communication"] = env_client["customer_communication"]
 
 
 def enrich_requirement_dict(
