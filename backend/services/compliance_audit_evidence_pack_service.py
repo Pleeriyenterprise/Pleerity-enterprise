@@ -164,15 +164,24 @@ def _obligation_bucket(requirement_type: str) -> str:
     return _safe_filename(rt.replace(" ", "_"), max_len=40)
 
 
+def _present_audit_pack_customer_lines(lines: List[str]) -> List[str]:
+    """Apply Report Presentation Authority technical-language governance to PDF body copy."""
+    from report_presentation.technical_language import sanitize_customer_section_text
+
+    return [sanitize_customer_section_text(line) for line in lines]
+
+
 def _build_scope_statement_lines(*, generated_at: str, jurisdiction: str) -> List[str]:
-    return [
-        "Includes governance metadata, compliance evidence files, delivery proof, audit timeline, and exception reporting generated from Compliance Vault Pro records.",
-        "Excludes hidden, deprecated, unpublished, and non-runtime-visible obligations from active compliance counts and status outcomes.",
-        "Findings reflect records available in-system up to the generation boundary timestamp only; later updates are outside this export scope.",
-        f"Jurisdiction assumptions are based on the property profile captured at generation time ({jurisdiction or 'Unknown jurisdiction'}).",
-        "Evidence verification remains subject to independent review of source documents, issuing authorities, and external registries where applicable.",
-        f"Generation timestamp boundary (UTC): {generated_at}.",
-    ]
+    return _present_audit_pack_customer_lines(
+        [
+            "Includes governance metadata, compliance evidence files, delivery proof, audit timeline, and exception reporting generated from Compliance Vault Pro records.",
+            "Excludes hidden, deprecated, unpublished, and inactive obligations from active compliance counts and status outcomes.",
+            "Findings reflect records available in-system as at the report date; later updates are outside this export scope.",
+            f"Jurisdiction assumptions are based on the property profile captured at generation time ({jurisdiction or 'Unknown jurisdiction'}).",
+            "Evidence verification remains subject to independent review of source documents, issuing authorities, and external registries where applicable.",
+            f"Report generated (UTC): {generated_at}.",
+        ]
+    )
 
 
 def _property_address_line(property_doc: Dict[str, Any]) -> str:
@@ -252,10 +261,12 @@ def _build_pack_overview_pdf_bytes(
             f"Governed audit evidence pack for property review. "
             f"Contract version: {metadata.get('contract_version') or CONTRACT_VERSION}.",
         ],
-        interpretation=[
-            "Governance files (manifest, checksums, generation metadata) in folder 06_GOVERNANCE "
-            "retain system provenance regardless of white-label presentation.",
-        ],
+        interpretation=_present_audit_pack_customer_lines(
+            [
+                "Governance files in folder 06_GOVERNANCE retain system provenance and integrity records "
+                "regardless of white-label presentation.",
+            ]
+        ),
         scope_lines=_build_scope_statement_lines(generated_at=generated_at, jurisdiction=jurisdiction),
     )
 
@@ -353,15 +364,18 @@ def _build_compliance_summary_pdf_bytes(
         ("Expiring soon", str(status_result.expiring_soon_count)),
         ("High-risk unresolved", str(risk_summary.get("high_risk_count", 0))),
     ]
-    interpretation = [
-        "Compliance metrics above reflect runtime-visible obligations at the generation boundary.",
-        "The evidence matrix below maps each obligation to evidentiary records and delivery proof.",
-        "Evidence remains subject to independent verification of source documents and issuing authorities.",
-    ]
-    if action_required:
-        interpretation.append("Immediate action is recommended for critical or overdue obligations listed in the matrix.")
-    else:
-        interpretation.append("No immediate mandatory action is indicated from export-scope metrics alone.")
+    interpretation = _present_audit_pack_customer_lines(
+        [
+            "Compliance metrics above reflect active obligations in scope at the report date.",
+            "The evidence matrix below maps each obligation to evidentiary records and delivery proof.",
+            "Evidence remains subject to independent verification of source documents and issuing authorities.",
+            (
+                "Immediate action is recommended for critical or overdue obligations listed in the matrix."
+                if action_required
+                else "No immediate mandatory action is indicated from export-scope metrics alone."
+            ),
+        ]
+    )
     return build_formal_report_pdf(
         spec,
         posture_lines=[posture],
