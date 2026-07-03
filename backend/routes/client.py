@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
-from middleware.capability_gating import client_require_capability
+from middleware.capability_gating import assert_client_capability, client_require_capability
 from services.compliance_score import calculate_compliance_score
 from services.evidence_review_config import is_feature_evidence_review_v2
 from services.customer_status_projector_config import get_customer_status_projector_mode
@@ -278,9 +278,9 @@ async def get_ledger(
     to_date: Optional[str] = None,
     limit: int = 50,
     cursor: Optional[str] = None,
+    user: dict = client_require_capability("CAP_LEDGER_VIEW", "read"),
 ):
     """Score ledger: paginated list of score change events (before/after, delta, trigger, drivers)."""
-    user = await client_route_guard(request)
     try:
         from services.score_ledger_service import list_ledger
         data = await list_ledger(
@@ -308,9 +308,9 @@ async def export_ledger_csv(
     trigger_type: Optional[str] = None,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
+    user: dict = client_require_capability("CAP_LEDGER_EXPORT", "read"),
 ):
     """Export score ledger as CSV (current filters; max 5000 rows)."""
-    user = await client_route_guard(request)
     try:
         from services.score_ledger_service import list_ledger_export
         import csv as csv_module
@@ -452,9 +452,9 @@ async def get_dashboard(
         description="When true, runs calculate_compliance_score for headline block (slow). "
         "Prefer GET /client/compliance-score for score authority.",
     ),
+    user: dict = client_require_capability("CAP_DASHBOARD_VIEW", "read"),
 ):
     """Get client dashboard data."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -549,6 +549,7 @@ async def get_dashboard(
 
         compliance_score_headline = None
         if include_score_headline:
+            await assert_client_capability(user, "CAP_SCORE_VIEW", "read")
             try:
                 cs = await calculate_compliance_score(user["client_id"])
                 compliance_score_headline = {
@@ -617,12 +618,14 @@ async def get_dashboard(
 
 
 @router.get("/dashboard/roi-summary")
-async def get_dashboard_roi_summary(request: Request):
+async def get_dashboard_roi_summary(
+    request: Request,
+    user: dict = client_require_capability("CAP_DASHBOARD_VIEW", "read"),
+):
     """
     Month-to-date ROI-style metrics (v1 approximations). Separate from /dashboard so the main
     dashboard load stays fast; clients may fetch this after first paint.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
     try:
         from services.client_roi_summary_service import get_roi_summary_month_to_date
@@ -657,9 +660,9 @@ async def get_client_priority_actions(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(20, ge=1, le=50),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """Compatibility endpoint: routes through command center urgent actions only."""
-    user = await client_route_guard(request)
     try:
         from services.command_center_service import get_command_center_bundle
         from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
@@ -688,9 +691,9 @@ async def get_client_tasks_digest(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     activity_limit: int = Query(8, ge=1, le=25),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """Dashboard-sized snapshot: task counts, freshness, short activity feed (no full task lists)."""
-    user = await client_route_guard(request)
     try:
         from services.unified_tasks_service import get_unified_tasks_digest
 
@@ -720,12 +723,12 @@ async def get_client_command_center(
         False,
         description="When true, includes HIUA operational uncertainty block (slower). Used with projection=full or secondary.",
     ),
+    user: dict = client_require_capability("CAP_CMD_CTR_VIEW", "read"),
 ):
     """
     Composed operations + compliance snapshot: urgent task rows, active risk signals,
     recent inbox activity, compliance summary. Reuses unified tasks, risk signals, and score services.
     """
-    user = await client_route_guard(request)
     try:
         from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
         from services.command_center_service import (
@@ -786,12 +789,12 @@ def _portal_locked_until_active(locked_until: Any) -> bool:
 async def get_protection_snapshot(
     request: Request,
     property_id: Optional[str] = Query(None, description="Optional filter for open issues and risk counts"),
+    user: dict = client_require_capability("CAP_CMD_CTR_VIEW", "read"),
 ):
     """
     Read-only aggregate for security/value surfaces: account sign-in hints, compliance requirement counts,
     open maintenance issues (when enabled), active risk signals (when predictive is enabled).
     """
-    user = await client_route_guard(request)
     client_id = user["client_id"]
     portal_user_id = user.get("portal_user_id")
     db = database.get_db()
@@ -907,12 +910,12 @@ async def get_client_unified_tasks(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before sectioning"),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """
     Unified Command Centre tasks: aggregated open work from compliance, maintenance, approvals,
     and risk signals; sections, freshness, and optional spend summary. Server-side prioritization.
     """
-    user = await client_route_guard(request)
     try:
         from services.unified_tasks_service import get_unified_tasks_for_client
 
@@ -948,11 +951,11 @@ async def get_client_priorities(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before sectioning"),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """
     Same payload as GET /api/client/tasks — canonical “priorities / Today” inbox for API clients and integrations.
     """
-    user = await client_route_guard(request)
     try:
         from services.unified_tasks_service import get_unified_tasks_for_client
 
@@ -979,12 +982,12 @@ async def get_client_unified_compliance_work_queue(
     request: Request,
     property_id: Optional[str] = Query(None, description="Filter by property"),
     limit: int = Query(120, ge=1, le=200, description="Max raw priority rows pulled before projection"),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """
     UCWQ v1: a single list of open work items (compliance + operations) with v1 DTO fields only.
     Projection is built only from the same unified task pipeline as Today / priorities — no parallel gap reads.
     """
-    user = await client_route_guard(request)
     try:
         from services.unified_compliance_work_queue_service import get_unified_compliance_work_queue_v1
 
@@ -1309,9 +1312,12 @@ class ClientTaskNavigationIntentBody(BaseModel):
 
 
 @router.post("/tasks/record-intent")
-async def post_client_task_navigation_intent(request: Request, body: ClientTaskNavigationIntentBody):
+async def post_client_task_navigation_intent(
+    request: Request,
+    body: ClientTaskNavigationIntentBody,
+    user: dict = client_require_capability("CAP_TODAY_ACT", "write"),
+):
     """Persist an audit trail row when the user follows a task deep-link from Today (analytics complement)."""
-    user = await client_route_guard(request)
     from services.client_task_state_service import is_valid_task_id
     from utils.audit import create_audit_log
     from models import AuditAction
@@ -1344,9 +1350,12 @@ async def post_client_task_navigation_intent(request: Request, body: ClientTaskN
 
 
 @router.post("/tasks/override")
-async def post_client_task_override(request: Request, body: ClientTaskOverrideBody):
+async def post_client_task_override(
+    request: Request,
+    body: ClientTaskOverrideBody,
+    user: dict = client_require_capability("CAP_TODAY_ACT", "write"),
+):
     """Apply or clear a personal task override (snooze, dismiss, done, restore). Audited."""
-    user = await client_route_guard(request)
     try:
         from services.client_task_state_service import apply_task_action
 
@@ -1376,9 +1385,9 @@ async def post_client_task_override(request: Request, body: ClientTaskOverrideBo
 async def get_client_task_activity(
     request: Request,
     limit: int = Query(30, ge=1, le=100),
+    user: dict = client_require_capability("CAP_TODAY_VIEW", "read"),
 ):
     """Recent Today inbox visibility actions (snooze, dismiss, reviewed, done, restore)—not domain completion."""
-    user = await client_route_guard(request)
     from services.client_task_state_service import list_recent_activity
 
     items = await list_recent_activity(

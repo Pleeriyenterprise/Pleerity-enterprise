@@ -1,8 +1,33 @@
 # Account Capability Enforcement Matrix
 
-**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 0–1 scaffold; Phase 2A pilot; Phase 2B Wave 1; Phase 2C-1)  
+**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 0–1 scaffold; Phase 2A pilot; Phase 2B Wave 1; Phase 2C-1; Phase 2C-2)  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** Phase 2C-1 — properties, portfolio, and client score/requirement subset fully capability-governed
+**Status:** Phase 2C-2 — dashboard, command centre, today/task, and ledger routes capability-governed
+
+---
+
+## Phase 2C-2 migrated routes (`routes/client.py` subset)
+
+| Endpoint | Method | Capability | Action | Notes |
+|----------|--------|------------|--------|-------|
+| `/api/client/dashboard` | GET | `CAP_DASHBOARD_VIEW` | read | `include_score_headline=true` → in-handler `CAP_SCORE_VIEW` read |
+| `/api/client/dashboard/roi-summary` | GET | `CAP_DASHBOARD_VIEW` | read | |
+| `/api/client/command-center` | GET | `CAP_CMD_CTR_VIEW` | read | |
+| `/api/client/protection-snapshot` | GET | `CAP_CMD_CTR_VIEW` | read | |
+| `/api/client/priority-actions` | GET | `CAP_TODAY_VIEW` | read | |
+| `/api/client/tasks/digest` | GET | `CAP_TODAY_VIEW` | read | |
+| `/api/client/tasks` | GET | `CAP_TODAY_VIEW` | read | |
+| `/api/client/priorities` | GET | `CAP_TODAY_VIEW` | read | |
+| `/api/client/work-queue` | GET | `CAP_TODAY_VIEW` | read | |
+| `/api/client/tasks/activity` | GET | `CAP_TODAY_VIEW` | read | |
+| `/api/client/tasks/record-intent` | POST | `CAP_TODAY_ACT` | write | |
+| `/api/client/tasks/override` | POST | `CAP_TODAY_ACT` | write | |
+| `/api/client/ledger` | GET | `CAP_LEDGER_VIEW` | read | |
+| `/api/client/ledger/export.csv` | GET | `CAP_LEDGER_EXPORT` | read | |
+
+No `enforce_feature()` in 2C-2 handlers. Router-level `client_route_guard` retained for auth on non-migrated routes.
+
+**Explicitly not migrated (2C-3+):** evidence-pack, analytics, activity-since, tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
 
 ---
 
@@ -37,7 +62,7 @@ No delete route exists; `CAP_PROP_DELETE` matrix row added for governance only. 
 
 Router-level `client_route_guard` removed. No hybrid permission logic in handlers.
 
-### `routes/client.py` (2C-1 subset only)
+### `routes/client.py` (2C-1 subset — score / property / requirement)
 
 | Endpoint | Method | Capability | Action |
 |----------|--------|------------|--------|
@@ -57,7 +82,22 @@ Router-level `client_route_guard` removed. No hybrid permission logic in handler
 | `/api/client/requirements` | GET | `CAP_REQ_VIEW` | read |
 | `/api/client/properties/{id}/requirements/mark-not-applicable` | POST | `CAP_REQ_MARK_N_A` | write | **Changed from `CAP_REQ_RESOLVE` (Option A)** |
 
-**Explicitly not migrated (2C-2+):** ledger, dashboard, command-centre, maintenance, rent ops, approvals, evidence-pack, tenant/branding, analytics, billing, and all other `client.py` handlers still on `client_route_guard` / `enforce_feature()`.
+**Explicitly not migrated in 2C-1:** see Phase 2C-2 for dashboard/command-centre/today/ledger; 2C-3+ for evidence-pack and ops routes.
+
+---
+
+## Runtime contract extensions (2C-2)
+
+New `_BASE_CAPABILITY_MATRIX` rows (schema unchanged):
+
+| Capability | Plan key | Distinct from |
+|------------|----------|---------------|
+| `CAP_LEDGER_VIEW` | — (lifecycle matrix) | `CAP_SCORE_VIEW` |
+| `CAP_LEDGER_EXPORT` | `reports_csv` | `CAP_LEDGER_VIEW` |
+
+Plan keys added for existing caps used by 2C-2 routes: `CAP_DASHBOARD_VIEW`, `CAP_CMD_CTR_VIEW` → `compliance_dashboard`.
+
+Portal ceilings updated for `BILLING_RECOVERY`, `READ_ONLY`, `SUSPENDED` (ledger read mirrors score view in recovery/read-only; export denied).
 
 ---
 
@@ -133,7 +173,7 @@ No `enforce_feature()` / `require_feature()` remains in client document handlers
 
 - Dependency: `client_require_capability()` / `assert_client_capability()` in `middleware/capability_gating.py`
 - Denied responses: governed `capability_denied` payload via `capability_denied_http_detail()`
-- Tests: `test_account_capability_enforcement_pilot.py`, `test_account_capability_enforcement_wave1.py`, `test_account_capability_enforcement_wave2c1.py`
+- Tests: `test_account_capability_enforcement_pilot.py`, `test_account_capability_enforcement_wave1.py`, `test_account_capability_enforcement_wave2c1.py`, `test_account_capability_enforcement_wave2c2.py`
 
 ---
 
@@ -204,9 +244,18 @@ This document is the implementation verification checklist for `CAP_*` enforceme
 
 ---
 
-## Runtime-resolved capabilities (47) — ENFORCEMENT_READY
+## Runtime-resolved capabilities (49) — ENFORCEMENT_READY
 
-Wave 1 added five capabilities; Phase 2C-1 adds nine to the prior 38-capability runtime set.
+Wave 1 added five capabilities; Phase 2C-1 adds nine; Phase 2C-2 adds two ledger caps to the prior 47-capability runtime set.
+
+| Capability | Runtime | Enforcement (2C-2) | Tests |
+|------------|---------|---------------------|-------|
+| `CAP_DASHBOARD_VIEW` | ✓ | **2C-2 client dashboard** | wave2c2 lifecycle matrix |
+| `CAP_CMD_CTR_VIEW` | ✓ | **2C-2 command-centre + protection-snapshot** | wave2c2 lifecycle matrix |
+| `CAP_TODAY_VIEW` | ✓ | **2C-2 today/tasks/priorities/work-queue** | wave2c2 lifecycle matrix |
+| `CAP_TODAY_ACT` | ✓ | **2C-2 tasks/override + record-intent** | wave2c2 lifecycle matrix |
+| `CAP_LEDGER_VIEW` | ✓ | **2C-2 ledger** | wave2c2 lifecycle matrix |
+| `CAP_LEDGER_EXPORT` | ✓ | **2C-2 ledger CSV** | wave2c2 lifecycle matrix |
 
 | Capability | Runtime | Enforcement (2C-1) | Tests |
 |------------|---------|---------------------|-------|
@@ -246,6 +295,16 @@ Wave 1 added five capabilities; Phase 2C-1 adds nine to the prior 38-capability 
 
 ---
 
+## Wave 2C-2 lifecycle test coverage
+
+`test_account_capability_enforcement_wave2c2.py` parametrizes:
+
+`ACTIVE`, `TRIAL`, `GRACE_PERIOD`, `CANCELLATION_SCHEDULED`, `READ_ONLY`, `CANCELLED_IMMEDIATE`, `SUBSCRIPTION_EXPIRED`, `SUSPENDED`, `ARCHIVED`, `UNKNOWN`
+
+Across ledger view/export, dashboard, command-centre, today tasks read, and today act write.
+
+---
+
 ## Wave 2C-1 lifecycle test coverage
 
 `test_account_capability_enforcement_wave2c1.py` parametrizes:
@@ -266,12 +325,12 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 
 ---
 
-## Deferred (2C-2+)
+## Deferred (2C-3+)
 
 - `routes/client.py` evidence-pack job routes (`CAP_REPORT_AUDIT_PACK` consumer)
-- Ledger, Today, Command Centre, maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
+- Analytics, activity-since, tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
 - Frontend `useCapability()` consumption
-- `client_route_guard` capability integration for non-migrated routes
+- `client_route_guard` capability integration for remaining non-migrated routes
 - Resolver matrix extension for remaining catalog-gap capabilities
 
 ---
@@ -285,11 +344,22 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 | Route helpers | `backend/middleware/capability_gating.py` |
 | Wave 1 routes | `client_compliance_evidence.py`, `reports.py`, `documents.py` |
 | 2C-1 routes | `properties.py`, `portfolio.py`, `client.py` (score/requirement subset) |
+| 2C-2 routes | `client.py` (dashboard/command-centre/today/ledger subset) |
 | Unit tests | `test_account_capability_enforcement.py` |
 | Pilot tests | `test_account_capability_enforcement_pilot.py` |
 | Wave 1 tests | `test_account_capability_enforcement_wave1.py` |
 | 2C-1 tests | `test_account_capability_enforcement_wave2c1.py` |
+| 2C-2 tests | `test_account_capability_enforcement_wave2c2.py` |
 | Audit evidence | `docs/audit/account_lifecycle_ilp_04/` |
+
+---
+
+## Regression proof (2C-2)
+
+- Dashboard, command-centre, today/task, and ledger routes use `client_require_capability()` only — no `enforce_feature()` in 2C-2 handlers
+- `CAP_LEDGER_VIEW` / `CAP_LEDGER_EXPORT` added to runtime matrix; export plan-gated via `reports_csv`
+- Optional dashboard score headline uses in-handler `CAP_SCORE_VIEW` assert
+- Evidence-pack, analytics, tenant, and ops routes **not** migrated
 
 ---
 
@@ -298,7 +368,6 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 - `CAP_REQ_MARK_N_A` is **not** aliased to `CAP_REQ_RESOLVE` (Option A governance decision)
 - `properties.py` and `portfolio.py` module-complete — no `enforce_feature()` / hybrid guards
 - `client.py` 2C-1 subset only; router-level `client_route_guard` retained for non-migrated routes
-- 2C-2 modules (ledger, dashboard, etc.) **not** started
 
 ---
 

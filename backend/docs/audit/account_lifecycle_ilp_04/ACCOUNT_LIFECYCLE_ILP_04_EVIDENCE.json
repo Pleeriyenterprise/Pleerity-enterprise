@@ -1,7 +1,7 @@
 {
   "programme": "ILP-4-CAPABILITY-ENFORCEMENT-01",
-  "phase": "2c-1",
-  "verdict": "ILP_04_PHASE_2C_1_COMPLETE",
+  "phase": "2c-2",
+  "verdict": "ILP_04_PHASE_2C_2_COMPLETE",
   "branch": "develop",
   "date": "2026-07-03",
   "prior_phases": {
@@ -16,6 +16,10 @@
     "phase_2b_wave_1": {
       "verdict": "ILP_04_PHASE_2B_WAVE_1_COMPLETE",
       "summary": "Full migration of client_compliance_evidence.py, reports.py, documents.py"
+    },
+    "phase_2c_1": {
+      "verdict": "ILP_04_PHASE_2C_1_COMPLETE",
+      "summary": "properties.py, portfolio.py, client.py score/requirement subset"
     }
   },
   "governance_decisions": {
@@ -63,8 +67,15 @@
       "CAP_SCORE_EXPLAIN": "compliance_score",
       "CAP_SCORE_SNAPSHOT": "compliance_score",
       "CAP_SCORE_TREND": "score_trending",
-      "CAP_COMPLIANCE_ACTIVITY": "compliance_dashboard"
+      "CAP_COMPLIANCE_ACTIVITY": "compliance_dashboard",
+      "CAP_DASHBOARD_VIEW": "compliance_dashboard",
+      "CAP_CMD_CTR_VIEW": "compliance_dashboard",
+      "CAP_LEDGER_EXPORT": "reports_csv"
     },
+    "phase_2c_2_new_capability_rows": [
+      "CAP_LEDGER_VIEW",
+      "CAP_LEDGER_EXPORT"
+    ],
     "portal_ceiling_updates": ["BILLING_RECOVERY", "READ_ONLY", "SUSPENDED"]
   },
   "phase_2c_1_migrated_modules": [
@@ -133,6 +144,33 @@
       ]
     }
   ],
+  "phase_2c_2_migrated_routes": {
+    "module": "routes/client.py",
+    "migration": "subset_2c_2_dashboard_command_centre_today_ledger",
+    "enforce_feature_removed_in_subset": true,
+    "conditional_assert_capability": [
+      {
+        "endpoint": "GET /api/client/dashboard",
+        "pattern": "include_score_headline=true -> CAP_SCORE_VIEW read"
+      }
+    ],
+    "routes": [
+      { "endpoint": "GET /api/client/dashboard", "capability_id": "CAP_DASHBOARD_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/dashboard/roi-summary", "capability_id": "CAP_DASHBOARD_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/command-center", "capability_id": "CAP_CMD_CTR_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/protection-snapshot", "capability_id": "CAP_CMD_CTR_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/priority-actions", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/tasks/digest", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/tasks", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/priorities", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/work-queue", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/tasks/activity", "capability_id": "CAP_TODAY_VIEW", "action": "read" },
+      { "endpoint": "POST /api/client/tasks/record-intent", "capability_id": "CAP_TODAY_ACT", "action": "write" },
+      { "endpoint": "POST /api/client/tasks/override", "capability_id": "CAP_TODAY_ACT", "action": "write" },
+      { "endpoint": "GET /api/client/ledger", "capability_id": "CAP_LEDGER_VIEW", "action": "read" },
+      { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
+    ]
+  },
   "wave_1_migrated_modules": [
     {
       "module": "routes/client_compliance_evidence.py",
@@ -151,9 +189,9 @@
     }
   ],
   "explicitly_deferred": {
-    "phase_2c_2_plus": [
-      "routes/client.py ledger dashboard command-centre priority-actions evidence-pack tenant branding analytics",
-      "maintenance rent ops approvals integrations assistant profile billing jobs sessions",
+    "phase_2c_3_plus": [
+      "routes/client.py evidence-pack job routes (CAP_REPORT_AUDIT_PACK consumer)",
+      "analytics activity-since tenant branding maintenance rent ops approvals integrations assistant profile billing jobs sessions",
       "frontend useCapability consumption",
       "admin routes"
     ]
@@ -182,6 +220,35 @@
       "recovery",
       "contract_version",
       "runtime_version"
+    ]
+  },
+  "phase_2c_2_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_wave2c2.py",
+    "test_count": 61,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "READ_ONLY",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "ledger_view_export",
+      "dashboard_read",
+      "command_center_read",
+      "today_tasks_read",
+      "today_act_write"
+    ],
+    "regression_suites": [
+      "test_account_capability_enforcement_pilot.py",
+      "test_account_capability_enforcement_wave1.py",
+      "test_account_capability_enforcement_wave2c1.py",
+      "test_account_capability_enforcement_wave2c2.py"
     ]
   },
   "phase_2c_1_test_coverage": {
@@ -218,22 +285,25 @@
   },
   "inventory": {
     "catalog_capability_count": 104,
-    "runtime_resolver_count": 47,
+    "runtime_resolver_count": 49,
     "runtime_added_wave_1": 5,
     "runtime_added_phase_2c_1": 9,
+    "runtime_added_phase_2c_2": 2,
     "wave_1_modules_fully_migrated": 3,
     "phase_2c_1_modules_fully_migrated": 2,
     "phase_2c_1_client_subset_routes": 15,
+    "phase_2c_2_client_subset_routes": 14,
     "pilot_routes_migrated": 4,
     "client_evidence_pack_routes_deferred": true
   },
   "regression_proof": {
     "client_route_guard_modified": false,
     "runtime_contract_schema_modified": false,
-    "runtime_contract_capability_rows_added_total": 14,
+    "runtime_contract_capability_rows_added_total": 16,
     "frontend_modified": false,
     "billing_stripe_jobs_sessions_comms_modified": false,
-    "client_py_non_2c_1_routes_migrated": false,
+    "client_py_evidence_pack_migrated": false,
+    "client_py_analytics_tenant_ops_migrated": false,
     "cap_req_mark_n_a_aliased_to_resolve": false
   }
 }

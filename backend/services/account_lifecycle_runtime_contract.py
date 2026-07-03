@@ -102,6 +102,8 @@ _BASE_CAPABILITY_MATRIX: Dict[str, Tuple[str, ...]] = {
     "CAP_TODAY_VIEW": ("A", "A", "D", "D", "A", "A", "A", "D", "D", "D", "D", "D", "D", "D", "D"),
     "CAP_TODAY_ACT": ("A", "A", "D", "D", "A", "L", "A", "D", "D", "D", "D", "D", "D", "D", "D"),
     "CAP_CMD_CTR_VIEW": ("A", "A", "D", "D", "A", "A", "A", "D", "D", "R", "D", "D", "D", "D", "R"),
+    "CAP_LEDGER_VIEW": ("A", "A", "R", "D", "A", "A", "A", "R", "R", "R", "D", "D", "D", "D", "R"),
+    "CAP_LEDGER_EXPORT": ("P", "P", "D", "D", "P", "L", "P", "D", "D", "D", "D", "D", "D", "D", "D"),
     "CAP_SCORE_VIEW": ("A", "A", "R", "D", "A", "A", "A", "R", "R", "R", "D", "D", "D", "D", "R"),
     "CAP_SCORE_EXPLAIN": ("P", "P", "R", "D", "P", "A", "A", "R", "R", "R", "D", "D", "D", "D", "R"),
     "CAP_SCORE_TREND": ("P", "P", "D", "D", "P", "A", "A", "R", "R", "R", "D", "D", "D", "D", "R"),
@@ -139,6 +141,9 @@ _CAP_PLAN_KEYS: Dict[str, str] = {
     "CAP_SCORE_TREND": "score_trending",
     "CAP_SCORE_SNAPSHOT": "compliance_score",
     "CAP_COMPLIANCE_ACTIVITY": "compliance_dashboard",
+    "CAP_DASHBOARD_VIEW": "compliance_dashboard",
+    "CAP_CMD_CTR_VIEW": "compliance_dashboard",
+    "CAP_LEDGER_EXPORT": "reports_csv",
 }
 
 _LIFECYCLE_TO_PORTAL_MODE: Dict[str, str] = {
@@ -193,6 +198,8 @@ _PORTAL_CAP_CEILINGS: Dict[str, Dict[str, str]] = {
         "CAP_SCORE_EXPLAIN": GRANT_READ,
         "CAP_SCORE_TREND": GRANT_READ,
         "CAP_COMPLIANCE_ACTIVITY": GRANT_READ,
+        "CAP_LEDGER_VIEW": GRANT_READ,
+        "CAP_LEDGER_EXPORT": GRANT_DENY,
         "CAP_PROFILE_EDIT": GRANT_DENY,
     },
     "PAYMENT_REQUIRED": {
@@ -242,6 +249,8 @@ _PORTAL_CAP_CEILINGS: Dict[str, Dict[str, str]] = {
         "CAP_SCORE_EXPLAIN": GRANT_READ,
         "CAP_SCORE_TREND": GRANT_READ,
         "CAP_COMPLIANCE_ACTIVITY": GRANT_READ,
+        "CAP_LEDGER_VIEW": GRANT_READ,
+        "CAP_LEDGER_EXPORT": GRANT_DENY,
         "CAP_DASHBOARD_VIEW": GRANT_READ,
         "CAP_CMD_CTR_VIEW": GRANT_READ,
     },
@@ -279,6 +288,8 @@ _PORTAL_CAP_CEILINGS: Dict[str, Dict[str, str]] = {
         "CAP_SCORE_TREND": GRANT_DENY,
         "CAP_SCORE_SNAPSHOT": GRANT_DENY,
         "CAP_COMPLIANCE_ACTIVITY": GRANT_DENY,
+        "CAP_LEDGER_VIEW": GRANT_DENY,
+        "CAP_LEDGER_EXPORT": GRANT_DENY,
     },
     "ARCHIVED": {
         "CAP_PROP_VIEW": GRANT_DENY,
