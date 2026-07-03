@@ -1,61 +1,149 @@
 {
   "programme": "ILP-4-CAPABILITY-ENFORCEMENT-01",
-  "phase": "2a-pilot",
-  "verdict": "ILP_04_PHASE_2A_PILOT_COMPLETE",
+  "phase": "2b-wave-1",
+  "verdict": "ILP_04_PHASE_2B_WAVE_1_COMPLETE",
   "branch": "develop",
   "date": "2026-07-03",
   "prior_phases": {
     "phase_0_1": {
       "verdict": "ILP_04_PHASE_01_COMPLETE",
-      "summary": "Enforcement service, compatibility layer, diagnostics — not wired to routes"
+      "summary": "Enforcement service, compatibility layer, diagnostics"
+    },
+    "phase_2a": {
+      "verdict": "ILP_04_PHASE_2A_PILOT_COMPLETE",
+      "summary": "Four pilot endpoints on client.py properties, reports download, documents list"
     }
   },
   "enforcement_semantics": {
     "contract_read_grant": "READ",
     "enforcement_read_only_semantic": "READ_ONLY",
     "read_action": "view and download without mutation",
-    "write_action": "create update delete and other mutations"
+    "write_action": "create update delete and other mutations",
+    "plan_gated_resolution": "Runtime Contract plan overlay only — no enforce_feature in migrated modules"
   },
-  "phase_2a_pilot_routes": [
+  "runtime_contract_extensions": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_REPORT_GENERATE_CSV",
+      "CAP_AUDIT_LOG_EXPORT",
+      "CAP_REPORT_AUDIT_PACK",
+      "CAP_DOC_BULK_ZIP",
+      "CAP_AI_EXTRACTION_ADVANCED"
+    ],
+    "plan_keys": {
+      "CAP_REPORT_GENERATE_CSV": "reports_csv",
+      "CAP_AUDIT_LOG_EXPORT": "audit_log_export",
+      "CAP_REPORT_AUDIT_PACK": "audit_log_export",
+      "CAP_DOC_BULK_ZIP": "zip_upload",
+      "CAP_AI_EXTRACTION_ADVANCED": "ai_extraction_advanced"
+    },
+    "portal_ceiling_updates": ["BILLING_RECOVERY", "READ_ONLY", "SUSPENDED"]
+  },
+  "wave_1_migrated_modules": [
     {
-      "endpoint": "GET /api/client/properties",
-      "type": "read",
-      "capability_id": "CAP_PROP_VIEW",
-      "action": "read",
-      "handler": "routes/client.py:get_properties",
-      "legacy_enforce_feature_removed": false
+      "module": "routes/client_compliance_evidence.py",
+      "migration": "full",
+      "enforce_feature_removed": true,
+      "routes": [
+        {
+          "endpoint": "GET /api/client/compliance-evidence/org-review-queue",
+          "capability_id": "CAP_EVIDENCE_VIEW",
+          "action": "read"
+        },
+        {
+          "endpoint": "GET /api/client/properties/{property_id}/requirements/{requirement_id}/evidence-resolution",
+          "capability_id": "CAP_EVIDENCE_VIEW",
+          "action": "read"
+        },
+        {
+          "endpoint": "GET /api/client/properties/{property_id}/requirements/{requirement_id}/compliance-evidence",
+          "capability_id": "CAP_EVIDENCE_VIEW",
+          "action": "read"
+        },
+        {
+          "endpoint": "POST /api/client/properties/{property_id}/requirements/{requirement_id}/compliance-evidence",
+          "capability_id": "CAP_REQ_RESOLVE",
+          "action": "write"
+        },
+        {
+          "endpoint": "POST /api/client/properties/{property_id}/requirements/{requirement_id}/compliance-evidence/{evidence_record_id}/verification",
+          "capability_id": "CAP_REQ_RESOLVE",
+          "action": "write"
+        }
+      ]
     },
     {
-      "endpoint": "POST /api/client/properties/{property_id}/requirements/mark-not-applicable",
-      "type": "write",
-      "capability_id": "CAP_REQ_RESOLVE",
-      "action": "write",
-      "handler": "routes/client.py:mark_requirement_not_applicable",
-      "legacy_enforce_feature_removed": false
+      "module": "routes/reports.py",
+      "migration": "full_client_routes",
+      "enforce_feature_removed": true,
+      "admin_routes_unchanged": [
+        {
+          "endpoint": "GET /api/reports/audit-logs",
+          "guard": "admin_route_guard",
+          "note": "Admin extract — not customer lifecycle"
+        }
+      ],
+      "conditional_assert_capability": [
+        {
+          "endpoints": ["GET /api/reports/compliance-summary", "GET /api/reports/requirements"],
+          "pattern": "format=pdf -> CAP_REPORT_GENERATE_PDF write; format=csv -> CAP_REPORT_GENERATE_CSV write"
+        }
+      ],
+      "client_capabilities": [
+        "CAP_REPORT_VIEW",
+        "CAP_REPORT_GENERATE_PDF",
+        "CAP_REPORT_GENERATE_CSV",
+        "CAP_REPORT_DOWNLOAD",
+        "CAP_REPORT_SCHEDULE",
+        "CAP_AUDIT_LOG_EXPORT"
+      ]
     },
     {
-      "endpoint": "GET /api/reports/{report_id}/download",
-      "type": "report_download",
-      "capability_id": "CAP_REPORT_DOWNLOAD",
-      "action": "read",
-      "handler": "routes/reports.py:download_report_by_id",
-      "legacy_enforce_feature_removed": true,
-      "removed_feature_key": "reports_pdf"
-    },
-    {
-      "endpoint": "GET /api/documents",
-      "type": "document_evidence",
-      "capability_id": "CAP_DOC_VIEW",
-      "action": "read",
-      "handler": "routes/documents.py:list_documents",
-      "legacy_enforce_feature_removed": false
+      "module": "routes/documents.py",
+      "migration": "full_client_routes",
+      "enforce_feature_removed": true,
+      "require_feature_removed": true,
+      "admin_routes_unchanged": [
+        {
+          "pattern": "/api/documents/admin/* and verify/reject handlers",
+          "guard": "admin_route_guard"
+        }
+      ],
+      "conditional_assert_capability": [
+        {
+          "endpoint": "POST /api/documents/analyze/{document_id}",
+          "pattern": "return_advanced=true -> CAP_AI_EXTRACTION_ADVANCED write after CAP_DOC_VIEW read"
+        }
+      ],
+      "client_capabilities": [
+        "CAP_DOC_VIEW",
+        "CAP_DOC_UPLOAD",
+        "CAP_DOC_BULK_ZIP",
+        "CAP_AI_EXTRACTION_ADVANCED"
+      ]
     }
   ],
-  "pilot_dependency": "client_require_capability() in middleware/capability_gating.py",
+  "explicitly_deferred": {
+    "wave_2": [
+      "routes/client.py evidence-pack job routes (CAP_REPORT_AUDIT_PACK consumer)",
+      "Properties/requirements/portfolio beyond Phase 2A pilot endpoints",
+      "Frontend useCapability consumption"
+    ]
+  },
+  "phase_2a_pilot_routes_retained": [
+    "GET /api/client/properties",
+    "POST /api/client/properties/{id}/requirements/mark-not-applicable",
+    "GET /api/reports/{report_id}/download",
+    "GET /api/documents"
+  ],
+  "middleware": {
+    "client_require_capability": "middleware/capability_gating.py",
+    "assert_client_capability": "middleware/capability_gating.py — in-handler conditional gates"
+  },
   "denied_response_shape": {
     "error": "capability_denied",
-    "error_code": "reason_code from CapabilityDecision",
     "governed_fields": [
+      "error_code",
       "message",
       "capability_id",
       "action",
@@ -68,53 +156,49 @@
       "runtime_version"
     ]
   },
-  "pilot_test_coverage": {
-    "ACTIVE": "test_active_properties_read_allowed",
-    "READ_ONLY": "test_read_only_allows_properties_list, test_read_only_blocks_mark_not_applicable",
-    "SUSPENDED": "test_suspended_blocks_documents_list",
-    "CANCELLED": "test_cancelled_blocks_mark_not_applicable",
-    "UNKNOWN": "test_unknown_capability_returns_hidden_safe_payload"
+  "wave_1_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_wave1.py",
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "READ_ONLY",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "evidence_read_write",
+      "reports_view_csv_schedule_audit_log",
+      "documents_list_delete_details_analyze_advanced",
+      "plan_gated_csv_and_advanced_analyze",
+      "no_enforce_feature_in_migrated_modules"
+    ],
+    "regression_suites": [
+      "test_account_lifecycle_state_resolver.py",
+      "test_account_lifecycle_runtime_contract.py",
+      "test_account_capability_enforcement.py",
+      "test_account_capability_enforcement_pilot.py",
+      "test_account_capability_enforcement_wave1.py"
+    ]
   },
   "inventory": {
     "catalog_capability_count": 104,
-    "runtime_resolver_count": 33,
-    "missing_from_runtime_count": 71,
-    "compatibility_feature_key_mappings": 31,
+    "runtime_resolver_count": 38,
+    "runtime_added_wave_1": 5,
+    "wave_1_modules_fully_migrated": 3,
     "pilot_routes_migrated": 4,
-    "routes_remaining": "deferred Phase 2B+"
-  },
-  "deliverables": {
-    "enforcement_service": "backend/services/account_capability_enforcement.py",
-    "compatibility": "backend/services/capability_compatibility.py",
-    "middleware_helper": "backend/middleware/capability_gating.py",
-    "diagnostics_route": "GET /api/client/capability-enforcement/diagnostic",
-    "verification_matrix": "backend/docs/ACCOUNT_CAPABILITY_ENFORCEMENT_MATRIX.md",
-    "unit_tests": "backend/tests/test_account_capability_enforcement.py",
-    "pilot_tests": "backend/tests/test_account_capability_enforcement_pilot.py"
+    "client_evidence_pack_routes_deferred": true
   },
   "regression_proof": {
     "client_route_guard_modified": false,
-    "non_pilot_enforce_feature_migrated": false,
-    "frontend_modified": false,
     "runtime_contract_schema_modified": false,
-    "lifecycle_resolver_modified": false,
-    "portal_mode_modified": false,
+    "runtime_contract_capability_rows_added": 5,
+    "frontend_modified": false,
     "billing_stripe_jobs_sessions_comms_modified": false,
-    "tests_passing_pilot_suite": 31
-  },
-  "grant_tests_covered": [
-    "ALLOW",
-    "READ_ONLY",
-    "DENY",
-    "HIDDEN",
-    "PLAN_GATED",
-    "LIMITED",
-    "UNKNOWN_CAPABILITY"
-  ],
-  "deferred_phase_2b": [
-    "Wider route migration beyond 4 pilot endpoints",
-    "Frontend useCapability consumption",
-    "client_route_guard capability integration",
-    "Resolver matrix extension for 71 catalog-gap capabilities"
-  ]
+    "client_py_evidence_pack_migrated": false
+  }
 }

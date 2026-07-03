@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, Depends, status, Body, Query
 from pydantic import BaseModel, ConfigDict
 from database import database
-from middleware import client_route_guard, admin_route_guard
-from middleware.capability_gating import client_require_capability
+from middleware import admin_route_guard
+from middleware.capability_gating import assert_client_capability, client_require_capability
 from models import Document, DocumentStatus, RequirementStatus, AuditAction
 from utils.audit import create_audit_log
 from utils.compliance_fanout_log import compliance_fanout_extra
@@ -725,20 +725,14 @@ async def _run_analysis_after_upload(
 @router.post("/bulk-upload")
 async def bulk_upload_documents(
     request: Request,
+    user: dict = client_require_capability("CAP_DOC_BULK_ZIP", "write"),
     files: list[UploadFile] = File(...),
     property_id: str = Form(...),
 ):
     """Bulk upload multiple documents for a property.
     
-    Gated: PORTFOLIO and PROFESSIONAL only (zip_upload feature).
     Documents will be auto-matched to requirements based on AI analysis.
     """
-    # Feature gating enforcement
-    from middleware.feature_gating import require_feature
-    gating_check = require_feature("zip_upload")
-    await gating_check(lambda r: None)(request)
-    
-    user = await client_route_guard(request)
     await _enforce_document_upload_rate_limit(user["client_id"])
     db = database.get_db()
     
@@ -997,6 +991,7 @@ async def bulk_upload_documents(
 @router.post("/zip-upload")
 async def upload_zip_archive(
     request: Request,
+    user: dict = client_require_capability("CAP_DOC_BULK_ZIP", "write"),
     file: UploadFile = File(...),
     property_id: str = Form(...),
 ):
@@ -1014,30 +1009,10 @@ async def upload_zip_archive(
     import tempfile
     import shutil
     
-    user = await client_route_guard(request)
     await _enforce_document_upload_rate_limit(user["client_id"])
     db = database.get_db()
     
     try:
-        # Plan gating: zip_upload requires PLAN_2_PORTFOLIO (plan_registry)
-        from services.plan_registry import plan_registry
-
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "zip_upload"
-        )
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "zip_upload",
-                    "upgrade_required": True,
-                    **(error_details or {})
-                }
-            )
-        
         # Verify file is a ZIP
         if not file.filename.lower().endswith('.zip'):
             raise HTTPException(
@@ -1795,6 +1770,7 @@ async def perform_client_document_upload(
 @router.post("/upload")
 async def upload_document(
     request: Request,
+    user: dict = client_require_capability("CAP_DOC_UPLOAD", "write"),
     file: UploadFile = File(...),
     property_id: str = Form(...),
     requirement_id: Optional[str] = Form(None),
@@ -1809,7 +1785,6 @@ async def upload_document(
     evidence_scope_type: str = Form("PROPERTY"),
 ):
     """Upload a compliance document (client or admin). requirement_id optional for 'Other' docs (link later)."""
-    user = await client_route_guard(request)
     await _enforce_document_upload_rate_limit(user["client_id"])
 
     try:
@@ -1849,12 +1824,15 @@ async def upload_document(
 
 
 @router.post("/{document_id}/validate")
-async def client_request_document_validation(request: Request, document_id: str):
+async def client_request_document_validation(
+    request: Request,
+    document_id: str,
+    user: dict = client_require_capability("CAP_DOC_UPLOAD", "write"),
+):
     """
     Client requests review / validation of an uploaded document (audit trail only; does not approve).
     Sets manual_review_flag and client_validation_requested_at on the document row.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
     doc = await db.documents.find_one(
         {"document_id": document_id.strip(), "client_id": user["client_id"]},
@@ -2680,9 +2658,12 @@ async def reject_document(request: Request, document_id: str, reason: str = Form
 
 
 @router.delete("/{document_id}")
-async def delete_document(request: Request, document_id: str):
+async def delete_document(
+    request: Request,
+    document_id: str,
+    user: dict = client_require_capability("CAP_DOC_UPLOAD", "write"),
+):
     """Client deletes own document. Requirement reverted to PENDING if no other VERIFIED doc; property compliance synced."""
-    user = await client_route_guard(request)
     db = database.get_db()
     try:
         document = await db.documents.find_one({"document_id": document_id}, {"_id": 0})
@@ -2974,17 +2955,16 @@ async def regenerate_requirement_due_date(requirement_id: str, client_id: str):
 async def analyze_document_ai(
     request: Request,
     document_id: str,
+    user: dict = client_require_capability("CAP_DOC_VIEW", "read"),
     return_advanced: bool = False,
 ):
     """Analyze a document using AI to extract metadata.
     
     - Basic extraction (all plans): document_type, issue_date, expiry_date.
     - Advanced extraction (Professional only): confidence scoring, Review & Apply UI.
-    If return_advanced=True and client is not entitled to ai_extraction_advanced, returns 403.
+    If return_advanced=True and client lacks CAP_AI_EXTRACTION_ADVANCED, returns governed capability_denied.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
-    from services.plan_registry import plan_registry
 
     try:
         # Get document
@@ -3004,32 +2984,9 @@ async def analyze_document_ai(
             )
         client_id = document["client_id"]
 
-        # Hard gate: requesting advanced response without entitlement -> 403 (no silent downgrade)
+        # Hard gate: requesting advanced response without capability -> 403 (no silent downgrade)
         if return_advanced:
-            allowed, error_msg, error_details = await plan_registry.enforce_feature(
-                client_id, "ai_extraction_advanced"
-            )
-            if not allowed:
-                await create_audit_log(
-                    action=AuditAction.ADMIN_ACTION,
-                    actor_id=user.get("portal_user_id"),
-                    client_id=client_id,
-                    metadata={
-                        "action_type": "PLAN_GATE_DENIED",
-                        "feature_key": "ai_extraction_advanced",
-                        "endpoint": f"/api/documents/analyze/{document_id}",
-                        "method": "POST",
-                        "reason": error_msg,
-                    }
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=error_details or {
-                        "message": "Upgrade to Professional to use Advanced AI.",
-                        "feature": "ai_extraction_advanced",
-                        "upgrade_required": True,
-                    }
-                )
+            await assert_client_capability(user, "CAP_AI_EXTRACTION_ADVANCED", "write")
 
         # Check if already analyzed
         if document.get("ai_extraction", {}).get("status") == "completed":
@@ -3120,9 +3077,13 @@ async def analyze_document_ai(
 
 
 @router.get("/{document_id}/file")
-async def get_document_file(request: Request, document_id: str, download: bool = False):
+async def get_document_file(
+    request: Request,
+    document_id: str,
+    user: dict = client_require_capability("CAP_DOC_VIEW", "read"),
+    download: bool = False,
+):
     """Client views or downloads their uploaded document. Logged for admin monitoring."""
-    user = await client_route_guard(request)
     db = database.get_db()
     document, file_path, media_type, filename = await _resolve_document_file_path(db, document_id)
     if document["client_id"] != user["client_id"]:
@@ -3260,9 +3221,12 @@ async def _resolve_document_file_path(db, document_id: str):
 
 
 @router.get("/{document_id}/extraction")
-async def get_document_extraction(request: Request, document_id: str):
+async def get_document_extraction(
+    request: Request,
+    document_id: str,
+    user: dict = client_require_capability("CAP_DOC_VIEW", "read"),
+):
     """Get AI extraction results for a document (from extracted_documents or legacy ai_extraction)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     try:
         document = await db.documents.find_one(
@@ -3493,9 +3457,10 @@ async def list_documents(
 
 @router.post("/{document_id}/apply-extraction")
 async def apply_ai_extraction(
-    request: Request, 
+    request: Request,
     document_id: str,
-    body: ExtractionApplyRequest = Body(default=None)
+    body: ExtractionApplyRequest = Body(default=None),
+    user: dict = client_require_capability("CAP_DOC_UPLOAD", "write"),
 ):
     """Apply reviewed AI-extracted data to the associated requirement.
     
@@ -3514,7 +3479,6 @@ async def apply_ai_extraction(
     Returns:
         Success message with changes applied, or descriptive error.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
     confirmed_data = body.confirmed_data if body else None
     try:
@@ -4001,9 +3965,13 @@ async def apply_ai_extraction(
 
 
 @router.post("/{document_id}/reject-extraction")
-async def reject_ai_extraction(request: Request, document_id: str, reason: str = None):
+async def reject_ai_extraction(
+    request: Request,
+    document_id: str,
+    reason: str = None,
+    user: dict = client_require_capability("CAP_DOC_UPLOAD", "write"),
+):
     """Mark AI extraction as rejected (user will enter data manually)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -4093,9 +4061,9 @@ async def reconcile_document_linkage(
     request: Request,
     document_id: str,
     body: DocumentLinkageReconcileRequest = Body(...),
+    user: dict = client_require_capability("CAP_DOC_UPLOAD", "write"),
 ):
     """Post-ingestion document↔requirement linkage reconciliation (client)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     from services.document_linkage_governance import (
         DocumentLinkageState,
@@ -4412,9 +4380,12 @@ async def reconcile_document_linkage(
 
 
 @router.get("/{document_id}/details")
-async def get_document_details(request: Request, document_id: str):
+async def get_document_details(
+    request: Request,
+    document_id: str,
+    user: dict = client_require_capability("CAP_DOC_VIEW", "read"),
+):
     """Get full document details including AI extraction and requirement info."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:

@@ -11,8 +11,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from database import database
-from middleware import client_route_guard, admin_route_guard
-from middleware.capability_gating import client_require_capability
+from middleware import admin_route_guard
+from middleware.capability_gating import assert_client_capability, client_require_capability
 from models import AuditAction
 from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
@@ -96,21 +96,16 @@ def _score_and_risk_from_report_data(report_data: dict) -> tuple:
 
 
 @router.post("/generate")
-async def generate_evidence_readiness_report(request: Request, body: GenerateReportRequest):
+async def generate_evidence_readiness_report(
+    request: Request,
+    body: GenerateReportRequest,
+    user: dict = client_require_capability("CAP_REPORT_GENERATE_PDF", "write"),
+):
     """
     Generate Evidence Readiness PDF report (deterministic template).
     Body: { scope: "portfolio" | "property", property_id?: string }.
-    Returns application/pdf. Stores metadata in reports collection. Plan-gated by reports_pdf.
+    Returns application/pdf. Stores metadata in reports collection.
     """
-    from services.plan_registry import plan_registry
-
-    user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
-        )
     await _enforce_report_export_rate(
         rate_key=f"report_export:client:{user['client_id']}",
         client_id=user["client_id"],
@@ -208,9 +203,11 @@ async def generate_evidence_readiness_report(request: Request, body: GenerateRep
 
 @router.get("")
 @router.get("/list")
-async def list_reports(request: Request):
+async def list_reports(
+    request: Request,
+    user: dict = client_require_capability("CAP_REPORT_VIEW", "read"),
+):
     """List previous Evidence Readiness report runs for the client (metadata only)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     cursor = db.reports.find(
         {"client_id": user["client_id"]},
@@ -236,6 +233,7 @@ async def list_reports(request: Request):
 @router.get("/score-drivers.csv")
 async def get_score_drivers_csv(
     request: Request,
+    user: dict = client_require_capability("CAP_REPORT_GENERATE_CSV", "write"),
     scoring_metadata: bool = Query(
         False,
         description="When true, prepends SCORING_SEMANTICS_EXPORT_V1 headline metadata rows (score_status, last_calculated_at, score_status_message, export_generated_at) before driver data. When false, prepends comment rows (# export_snapshot_generated_at, # headline_*) so exports are clearly point-in-time vs live portal.",
@@ -246,17 +244,7 @@ async def get_score_drivers_csv(
     Columns: CRN, Property name, Postcode, Requirement, Status, Date used, Date confidence,
     Evidence uploaded, Next step label, Last updated.
     Optional ``scoring_metadata=true``: prepends scoring contract rows (export_format + headline fields).
-    Plan-gated by reports_pdf (Portfolio and Professional only). Audit logged.
     """
-    from services.plan_registry import plan_registry
-
-    user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
-        )
     await _enforce_report_export_rate(
         rate_key=f"report_export:client:{user['client_id']}",
         client_id=user["client_id"],
@@ -387,22 +375,14 @@ async def get_score_drivers_csv(
 @router.get("/score-explanation.pdf")
 async def get_score_explanation_pdf(
     request: Request,
+    user: dict = client_require_capability("CAP_REPORT_GENERATE_PDF", "write"),
     scope: str = "portfolio",
     property_id: Optional[str] = None,
 ):
     """
     Download Compliance Score Summary (Informational) PDF.
-    Branded, audit-style report. Plan-gated by reports_pdf. Audit logged.
+    Branded, audit-style report. Audit logged.
     """
-    from services.plan_registry import plan_registry
-
-    user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True},
-        )
     await _enforce_report_export_rate(
         rate_key=f"report_export:client:{user['client_id']}",
         client_id=user["client_id"],
@@ -461,15 +441,14 @@ async def get_score_explanation_pdf(
 
 
 @router.get("/artifacts/{artifact_id}/download")
-async def download_governed_artifact_pdf(request: Request, artifact_id: str):
+async def download_governed_artifact_pdf(
+    request: Request,
+    artifact_id: str,
+    user: dict = client_require_capability("CAP_REPORT_DOWNLOAD", "read"),
+):
     """Re-download frozen immutable PDF bytes by artifact ID (tenant-scoped)."""
-    from services.plan_registry import plan_registry
     from services.immutable_report_artifact_service import serve_artifact_pdf
 
-    user = await client_route_guard(request)
-    allowed, _, _ = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
-    if not allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Upgrade required for PDF reports")
     await _enforce_report_export_rate(
         rate_key=f"report_export:client:{user['client_id']}",
         client_id=user["client_id"],
@@ -543,6 +522,7 @@ async def download_report_by_id(
 @router.get("/compliance-summary")
 async def get_compliance_summary_report(
     request: Request,
+    user: dict = client_require_capability("CAP_REPORT_VIEW", "read"),
     format: str = "csv",
     include_details: bool = True
 ):
@@ -552,24 +532,10 @@ async def get_compliance_summary_report(
     CSV: PORTFOLIO and PROFESSIONAL only (reports_csv).
     PDF: PORTFOLIO and PROFESSIONAL only (reports_pdf).
     """
-    user = await client_route_guard(request)
-    
-    from services.plan_registry import plan_registry
-    # Feature gating: PDF and CSV both require Portfolio+ per pricing page
     if format == "pdf":
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True}
-            )
-    if format == "csv":
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_csv")
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_details or {"message": error_msg, "feature": "reports_csv", "upgrade_required": True}
-            )
+        await assert_client_capability(user, "CAP_REPORT_GENERATE_PDF", "write")
+    elif format == "csv":
+        await assert_client_capability(user, "CAP_REPORT_GENERATE_CSV", "write")
     await _enforce_report_export_rate(
         rate_key=f"report_export:client:{user['client_id']}",
         client_id=user["client_id"],
@@ -617,6 +583,7 @@ async def get_compliance_summary_report(
 @router.get("/requirements")
 async def get_requirements_report(
     request: Request,
+    user: dict = client_require_capability("CAP_REPORT_VIEW", "read"),
     format: str = "csv",
     property_id: Optional[str] = None
 ):
@@ -626,23 +593,10 @@ async def get_requirements_report(
     Optionally filter by property_id.
     CSV/PDF: PORTFOLIO and PROFESSIONAL only (reports_csv / reports_pdf) per pricing page.
     """
-    user = await client_route_guard(request)
-    
-    from services.plan_registry import plan_registry
     if format == "pdf":
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_details or {"message": error_msg, "feature": "reports_pdf", "upgrade_required": True}
-            )
-    if format == "csv":
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "reports_csv")
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=error_details or {"message": error_msg, "feature": "reports_csv", "upgrade_required": True}
-            )
+        await assert_client_capability(user, "CAP_REPORT_GENERATE_PDF", "write")
+    elif format == "csv":
+        await assert_client_capability(user, "CAP_REPORT_GENERATE_CSV", "write")
     await _enforce_report_export_rate(
         rate_key=f"report_export:client:{user['client_id']}",
         client_id=user["client_id"],
@@ -762,12 +716,13 @@ async def get_audit_logs_report(
 
 
 @router.get("/available")
-async def get_available_reports(request: Request):
+async def get_available_reports(
+    request: Request,
+    user: dict = client_require_capability("CAP_REPORT_VIEW", "read"),
+):
     """Get list of available reports for the user."""
     from services.reporting_semantics_v1 import EXPORT_GRADE_DEFINITIONS, SURFACE_EXPORT_REGISTRY
 
-    user = await client_route_guard(request)
-    
     def _meta(surface_key: str) -> dict:
         reg = SURFACE_EXPORT_REGISTRY.get(surface_key) or {}
         grade = reg.get("export_grade") or ""
@@ -845,7 +800,11 @@ class CreateScheduleRequest(BaseModel):
 
 
 @router.post("/schedules")
-async def create_report_schedule(request: Request, data: CreateScheduleRequest):
+async def create_report_schedule(
+    request: Request,
+    data: CreateScheduleRequest,
+    user: dict = client_require_capability("CAP_REPORT_SCHEDULE", "write"),
+):
     """Create a scheduled report for automatic email delivery.
     
     Schedules:
@@ -855,29 +814,9 @@ async def create_report_schedule(request: Request, data: CreateScheduleRequest):
     
     Note: Scheduled reports require Portfolio plan (PLAN_2_PORTFOLIO) or higher.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
-        # Plan gating: scheduled_reports (plan_registry)
-        from services.plan_registry import plan_registry
-
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "scheduled_reports"
-        )
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "scheduled_reports",
-                    "upgrade_required": True,
-                    **(error_details or {})
-                }
-            )
-        
         from datetime import datetime, timezone, timedelta
         import uuid
         
@@ -970,32 +909,11 @@ async def create_report_schedule(request: Request, data: CreateScheduleRequest):
 
 
 @router.get("/schedules")
-async def list_report_schedules(request: Request):
-    """List all scheduled reports for the client. Gated: Portfolio+ (scheduled_reports)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(
-        user["client_id"],
-        "scheduled_reports"
-    )
-    if not allowed:
-        await create_audit_log(
-            action=AuditAction.ADMIN_ACTION,
-            actor_id=user.get("portal_user_id"),
-            client_id=user["client_id"],
-            metadata={
-                "action_type": "PLAN_GATE_DENIED",
-                "feature_key": "scheduled_reports",
-                "endpoint": "/api/reports/schedules",
-                "method": "GET",
-                "reason": error_msg,
-            }
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "scheduled_reports", "upgrade_required": True}
-        )
+async def list_report_schedules(
+    request: Request,
+    user: dict = client_require_capability("CAP_REPORT_SCHEDULE", "read"),
+):
+    """List all scheduled reports for the client."""
     db = database.get_db()
     try:
         schedules = await db.report_schedules.find(
@@ -1014,32 +932,12 @@ async def list_report_schedules(request: Request):
 
 
 @router.delete("/schedules/{schedule_id}")
-async def delete_report_schedule(request: Request, schedule_id: str):
-    """Delete a scheduled report. Gated: Portfolio+ (scheduled_reports)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(
-        user["client_id"],
-        "scheduled_reports"
-    )
-    if not allowed:
-        await create_audit_log(
-            action=AuditAction.ADMIN_ACTION,
-            actor_id=user.get("portal_user_id"),
-            client_id=user["client_id"],
-            metadata={
-                "action_type": "PLAN_GATE_DENIED",
-                "feature_key": "scheduled_reports",
-                "endpoint": f"/api/reports/schedules/{schedule_id}",
-                "method": "DELETE",
-                "reason": error_msg,
-            }
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "scheduled_reports", "upgrade_required": True}
-        )
+async def delete_report_schedule(
+    request: Request,
+    schedule_id: str,
+    user: dict = client_require_capability("CAP_REPORT_SCHEDULE", "write"),
+):
+    """Delete a scheduled report."""
     db = database.get_db()
     try:
         # Verify ownership
@@ -1068,9 +966,12 @@ async def delete_report_schedule(request: Request, schedule_id: str):
 
 
 @router.patch("/schedules/{schedule_id}/toggle")
-async def toggle_report_schedule(request: Request, schedule_id: str):
+async def toggle_report_schedule(
+    request: Request,
+    schedule_id: str,
+    user: dict = client_require_capability("CAP_REPORT_SCHEDULE", "write"),
+):
     """Toggle a scheduled report on/off."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -1114,6 +1015,7 @@ async def toggle_report_schedule(request: Request, schedule_id: str):
 @router.get("/professional/compliance-summary")
 async def download_compliance_summary_pdf(
     request: Request,
+    user: dict = client_require_capability("CAP_REPORT_GENERATE_PDF", "write"),
     artifact_id: Optional[str] = None,
     property_id: Optional[str] = None,
 ):
@@ -1121,7 +1023,6 @@ async def download_compliance_summary_pdf(
 
     Pass ``artifact_id`` to re-download frozen bytes. Omit to create a new immutable snapshot.
     """
-    from services.plan_registry import plan_registry
     from services.professional_reports import professional_report_generator
     from services.immutable_report_artifact_service import (
         artifact_http_headers,
@@ -1131,23 +1032,7 @@ async def download_compliance_summary_pdf(
     )
     from services.reporting_semantics_v1 import load_score_projection_portal_rows
 
-    user = await client_route_guard(request)
     try:
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "reports_pdf"
-        )
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "reports_pdf",
-                    "upgrade_required": True,
-                    **(error_details or {})
-                }
-            )
         await _enforce_report_export_rate(
             rate_key=f"report_export:client:{user['client_id']}",
             client_id=user["client_id"],
@@ -1247,10 +1132,10 @@ async def download_compliance_summary_pdf(
 @router.get("/professional/requirements")
 async def download_requirements_pdf(
     request: Request,
+    user: dict = client_require_capability("CAP_REPORT_GENERATE_PDF", "write"),
     property_id: Optional[str] = None,
 ):
-    """Server-side requirements PDF (ReportLab). Plan-gated by reports_pdf."""
-    from services.plan_registry import plan_registry
+    """Server-side requirements PDF (ReportLab)."""
     from services.branding_resolver_service import resolve_branding, BrandingContext
     from services.reporting_semantics_v1 import (
         EXPORT_GRADE_DEFINITIONS,
@@ -1259,21 +1144,6 @@ async def download_requirements_pdf(
         load_score_projection_portal_rows,
     )
 
-    user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(
-        user["client_id"], "reports_pdf"
-    )
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": error_msg,
-                "feature": "reports_pdf",
-                "upgrade_required": True,
-                **(error_details or {}),
-            },
-        )
     await _enforce_report_export_rate(
         rate_key=f"report_export:client:{user['client_id']}",
         client_id=user["client_id"],
@@ -1350,32 +1220,13 @@ async def download_requirements_pdf(
 @router.get("/professional/expiry-schedule")
 async def download_expiry_schedule_pdf(
     request: Request,
-    days: int = 90
+    user: dict = client_require_capability("CAP_REPORT_GENERATE_PDF", "write"),
+    days: int = 90,
 ):
-    """Download professionally formatted expiry schedule PDF.
-    
-    Plan gating: Requires Portfolio plan or higher (plan_registry reports_pdf).
-    """
-    from services.plan_registry import plan_registry
+    """Download professionally formatted expiry schedule PDF."""
     from services.professional_reports import professional_report_generator
 
-    user = await client_route_guard(request)
     try:
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "reports_pdf"
-        )
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "reports_pdf",
-                    "upgrade_required": True,
-                    **(error_details or {})
-                }
-            )
         await _enforce_report_export_rate(
             rate_key=f"report_export:client:{user['client_id']}",
             client_id=user["client_id"],
@@ -1427,34 +1278,15 @@ async def download_expiry_schedule_pdf(
 @router.get("/professional/audit-log")
 async def download_audit_log_pdf(
     request: Request,
+    user: dict = client_require_capability("CAP_AUDIT_LOG_EXPORT", "read"),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    actions: Optional[str] = None
+    actions: Optional[str] = None,
 ):
-    """Download professionally formatted audit log PDF.
-    
-    Plan gating: Requires Professional plan (plan_registry audit_log_export).
-    """
-    from services.plan_registry import plan_registry
+    """Download professionally formatted audit log PDF."""
     from services.professional_reports import professional_report_generator
 
-    user = await client_route_guard(request)
     try:
-        # Canonical: audit_exports -> audit_log_export (plan_registry)
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "audit_log_export"
-        )
-        if not allowed:
-            detail = {
-                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": error_msg,
-                "upgrade_required": True,
-                **(error_details or {}),
-            }
-            detail["feature"] = "audit_exports"  # preserve response shape
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
-
         await _enforce_report_export_rate(
             rate_key=f"report_export:client:{user['client_id']}",
             client_id=user["client_id"],

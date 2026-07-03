@@ -158,3 +158,43 @@ def client_require_capability(
         return user
 
     return Depends(_dependency)
+
+
+async def assert_client_capability(
+    user: dict,
+    capability_id: str,
+    action: CapabilityAction = "write",
+) -> CapabilityDecision:
+    """
+    In-handler CAP_* check for routes with conditional capability (e.g. format=csv|pdf).
+    Raises governed 403; use only in fully capability-governed modules.
+    """
+    if _owner_bypass(user):
+        return CapabilityDecision(
+            capability_id=capability_id,
+            action=action,
+            grant="ALLOW",
+            effective_semantic="ALLOW",
+            allowed=True,
+            source="owner_bypass",
+            reason_code="allowed",
+            reason="ROLE_OWNER bypass",
+        )
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=404, detail="Client not found")
+    service = CapabilityEnforcementService(database.get_db())
+    decision = await service.evaluate(client_id, capability_id, action)
+    if not decision.allowed:
+        logger.info(
+            "capability_denied client_id=%s capability=%s action=%s code=%s",
+            client_id,
+            capability_id,
+            action,
+            decision.reason_code,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=capability_denied_http_detail(decision),
+        )
+    return decision
