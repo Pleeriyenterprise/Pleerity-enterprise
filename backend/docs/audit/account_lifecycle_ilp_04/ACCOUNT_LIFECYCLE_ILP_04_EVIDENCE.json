@@ -1,7 +1,7 @@
 {
   "programme": "ILP-4-CAPABILITY-ENFORCEMENT-01",
-  "phase": "2b-wave-1",
-  "verdict": "ILP_04_PHASE_2B_WAVE_1_COMPLETE",
+  "phase": "2c-1",
+  "verdict": "ILP_04_PHASE_2C_1_COMPLETE",
   "branch": "develop",
   "date": "2026-07-03",
   "prior_phases": {
@@ -12,6 +12,18 @@
     "phase_2a": {
       "verdict": "ILP_04_PHASE_2A_PILOT_COMPLETE",
       "summary": "Four pilot endpoints on client.py properties, reports download, documents list"
+    },
+    "phase_2b_wave_1": {
+      "verdict": "ILP_04_PHASE_2B_WAVE_1_COMPLETE",
+      "summary": "Full migration of client_compliance_evidence.py, reports.py, documents.py"
+    }
+  },
+  "governance_decisions": {
+    "mark_not_applicable": {
+      "option": "A",
+      "capability_id": "CAP_REQ_MARK_N_A",
+      "aliased_to_cap_req_resolve": false,
+      "note": "Evidence write routes remain on CAP_REQ_RESOLVE"
     }
   },
   "enforcement_semantics": {
@@ -23,111 +35,127 @@
   },
   "runtime_contract_extensions": {
     "schema_modified": false,
-    "new_capability_rows": [
+    "wave_1_new_capability_rows": [
       "CAP_REPORT_GENERATE_CSV",
       "CAP_AUDIT_LOG_EXPORT",
       "CAP_REPORT_AUDIT_PACK",
       "CAP_DOC_BULK_ZIP",
       "CAP_AI_EXTRACTION_ADVANCED"
     ],
+    "phase_2c_1_new_capability_rows": [
+      "CAP_PROP_ARCHIVE",
+      "CAP_PROP_DELETE",
+      "CAP_PROP_IMPORT",
+      "CAP_REQ_MARK_N_A",
+      "CAP_REQ_COMPLETE",
+      "CAP_SCORE_EXPLAIN",
+      "CAP_SCORE_TREND",
+      "CAP_SCORE_SNAPSHOT",
+      "CAP_COMPLIANCE_ACTIVITY"
+    ],
     "plan_keys": {
       "CAP_REPORT_GENERATE_CSV": "reports_csv",
       "CAP_AUDIT_LOG_EXPORT": "audit_log_export",
       "CAP_REPORT_AUDIT_PACK": "audit_log_export",
       "CAP_DOC_BULK_ZIP": "zip_upload",
-      "CAP_AI_EXTRACTION_ADVANCED": "ai_extraction_advanced"
+      "CAP_AI_EXTRACTION_ADVANCED": "ai_extraction_advanced",
+      "CAP_PROP_IMPORT": "document_upload_bulk_zip",
+      "CAP_SCORE_EXPLAIN": "compliance_score",
+      "CAP_SCORE_SNAPSHOT": "compliance_score",
+      "CAP_SCORE_TREND": "score_trending",
+      "CAP_COMPLIANCE_ACTIVITY": "compliance_dashboard"
     },
     "portal_ceiling_updates": ["BILLING_RECOVERY", "READ_ONLY", "SUSPENDED"]
   },
+  "phase_2c_1_migrated_modules": [
+    {
+      "module": "routes/properties.py",
+      "migration": "full",
+      "enforce_feature_removed": true,
+      "client_route_guard_removed": true,
+      "conditional_assert_capability": [
+        {
+          "endpoint": "PATCH /api/properties/{property_id}",
+          "pattern": "is_active=false -> CAP_PROP_ARCHIVE write"
+        },
+        {
+          "endpoint": "PATCH /api/properties/{property_id}/requirements/{requirement_id}",
+          "pattern": "applicability=NOT_REQUIRED -> CAP_REQ_MARK_N_A write"
+        }
+      ],
+      "routes": [
+        { "endpoint": "POST /api/properties/create", "capability_id": "CAP_PROP_CREATE", "action": "write" },
+        { "endpoint": "PATCH /api/properties/{property_id}", "capability_id": "CAP_PROP_EDIT", "action": "write" },
+        { "endpoint": "POST /api/properties/{property_id}/requirements/mark-not-applicable", "capability_id": "CAP_REQ_MARK_N_A", "action": "write" },
+        { "endpoint": "PATCH /api/properties/{property_id}/requirements/{requirement_id}", "capability_id": "CAP_REQ_RESOLVE", "action": "write" },
+        { "endpoint": "GET /api/properties/list", "capability_id": "CAP_PROP_VIEW", "action": "read" },
+        { "endpoint": "POST /api/properties/bulk-import", "capability_id": "CAP_PROP_IMPORT", "action": "write" },
+        { "endpoint": "GET /api/properties/upcoming-deadlines", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "GET /api/properties/{property_id}/requirements", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "POST /api/properties/{property_id}/requirements/sync", "capability_id": "CAP_REQ_RESOLVE", "action": "write" }
+      ],
+      "matrix_only_capabilities": ["CAP_PROP_DELETE"]
+    },
+    {
+      "module": "routes/portfolio.py",
+      "migration": "full",
+      "enforce_feature_removed": true,
+      "client_route_guard_removed": true,
+      "routes": [
+        { "endpoint": "GET /api/portfolio/compliance-summary", "capability_id": "CAP_SCORE_VIEW", "action": "read" },
+        { "endpoint": "GET /api/portfolio/properties/{property_id}/compliance-detail", "capability_id": "CAP_PROP_VIEW", "action": "read" },
+        { "endpoint": "GET /api/portfolio/properties/{property_id}/score-history", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/portfolio/properties/{property_id}/timeline", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "GET /api/portfolio/properties/{property_id}/evidence", "capability_id": "CAP_EVIDENCE_VIEW", "action": "read" },
+        { "endpoint": "GET /api/portfolio/audit-timeline", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "read" }
+      ]
+    },
+    {
+      "module": "routes/client.py",
+      "migration": "subset_2c_1_only",
+      "router_level_client_route_guard": "retained_for_non_migrated_routes",
+      "routes": [
+        { "endpoint": "GET /api/client/compliance-score", "capability_id": "CAP_SCORE_VIEW", "action": "read" },
+        { "endpoint": "GET /api/client/compliance-score/trend", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/score/timeline", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/score-trend/portfolio", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/score-trend/property/{property_id}", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/score/changes", "capability_id": "CAP_SCORE_TREND", "action": "read" },
+        { "endpoint": "GET /api/client/compliance/activity", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "read" },
+        { "endpoint": "GET /api/client/compliance-score/explanation", "capability_id": "CAP_SCORE_EXPLAIN", "action": "read" },
+        { "endpoint": "GET /api/client/properties/{property_id}/compliance-score/explanation", "capability_id": "CAP_SCORE_EXPLAIN", "action": "read" },
+        { "endpoint": "POST /api/client/compliance-score/snapshot", "capability_id": "CAP_SCORE_SNAPSHOT", "action": "write" },
+        { "endpoint": "GET /api/client/properties", "capability_id": "CAP_PROP_VIEW", "action": "read" },
+        { "endpoint": "GET /api/client/properties/{property_id}/requirements", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "GET /api/client/properties/{property_id}/requirements/explanation", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "GET /api/client/requirements", "capability_id": "CAP_REQ_VIEW", "action": "read" },
+        { "endpoint": "POST /api/client/properties/{property_id}/requirements/mark-not-applicable", "capability_id": "CAP_REQ_MARK_N_A", "action": "write" }
+      ]
+    }
+  ],
   "wave_1_migrated_modules": [
     {
       "module": "routes/client_compliance_evidence.py",
       "migration": "full",
-      "enforce_feature_removed": true,
-      "routes": [
-        {
-          "endpoint": "GET /api/client/compliance-evidence/org-review-queue",
-          "capability_id": "CAP_EVIDENCE_VIEW",
-          "action": "read"
-        },
-        {
-          "endpoint": "GET /api/client/properties/{property_id}/requirements/{requirement_id}/evidence-resolution",
-          "capability_id": "CAP_EVIDENCE_VIEW",
-          "action": "read"
-        },
-        {
-          "endpoint": "GET /api/client/properties/{property_id}/requirements/{requirement_id}/compliance-evidence",
-          "capability_id": "CAP_EVIDENCE_VIEW",
-          "action": "read"
-        },
-        {
-          "endpoint": "POST /api/client/properties/{property_id}/requirements/{requirement_id}/compliance-evidence",
-          "capability_id": "CAP_REQ_RESOLVE",
-          "action": "write"
-        },
-        {
-          "endpoint": "POST /api/client/properties/{property_id}/requirements/{requirement_id}/compliance-evidence/{evidence_record_id}/verification",
-          "capability_id": "CAP_REQ_RESOLVE",
-          "action": "write"
-        }
-      ]
+      "enforce_feature_removed": true
     },
     {
       "module": "routes/reports.py",
       "migration": "full_client_routes",
-      "enforce_feature_removed": true,
-      "admin_routes_unchanged": [
-        {
-          "endpoint": "GET /api/reports/audit-logs",
-          "guard": "admin_route_guard",
-          "note": "Admin extract — not customer lifecycle"
-        }
-      ],
-      "conditional_assert_capability": [
-        {
-          "endpoints": ["GET /api/reports/compliance-summary", "GET /api/reports/requirements"],
-          "pattern": "format=pdf -> CAP_REPORT_GENERATE_PDF write; format=csv -> CAP_REPORT_GENERATE_CSV write"
-        }
-      ],
-      "client_capabilities": [
-        "CAP_REPORT_VIEW",
-        "CAP_REPORT_GENERATE_PDF",
-        "CAP_REPORT_GENERATE_CSV",
-        "CAP_REPORT_DOWNLOAD",
-        "CAP_REPORT_SCHEDULE",
-        "CAP_AUDIT_LOG_EXPORT"
-      ]
+      "enforce_feature_removed": true
     },
     {
       "module": "routes/documents.py",
       "migration": "full_client_routes",
-      "enforce_feature_removed": true,
-      "require_feature_removed": true,
-      "admin_routes_unchanged": [
-        {
-          "pattern": "/api/documents/admin/* and verify/reject handlers",
-          "guard": "admin_route_guard"
-        }
-      ],
-      "conditional_assert_capability": [
-        {
-          "endpoint": "POST /api/documents/analyze/{document_id}",
-          "pattern": "return_advanced=true -> CAP_AI_EXTRACTION_ADVANCED write after CAP_DOC_VIEW read"
-        }
-      ],
-      "client_capabilities": [
-        "CAP_DOC_VIEW",
-        "CAP_DOC_UPLOAD",
-        "CAP_DOC_BULK_ZIP",
-        "CAP_AI_EXTRACTION_ADVANCED"
-      ]
+      "enforce_feature_removed": true
     }
   ],
   "explicitly_deferred": {
-    "wave_2": [
-      "routes/client.py evidence-pack job routes (CAP_REPORT_AUDIT_PACK consumer)",
-      "Properties/requirements/portfolio beyond Phase 2A pilot endpoints",
-      "Frontend useCapability consumption"
+    "phase_2c_2_plus": [
+      "routes/client.py ledger dashboard command-centre priority-actions evidence-pack tenant branding analytics",
+      "maintenance rent ops approvals integrations assistant profile billing jobs sessions",
+      "frontend useCapability consumption",
+      "admin routes"
     ]
   },
   "phase_2a_pilot_routes_retained": [
@@ -156,8 +184,8 @@
       "runtime_version"
     ]
   },
-  "wave_1_test_coverage": {
-    "test_file": "backend/tests/test_account_capability_enforcement_wave1.py",
+  "phase_2c_1_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_wave2c1.py",
     "lifecycle_states": [
       "ACTIVE",
       "TRIAL",
@@ -171,34 +199,41 @@
       "UNKNOWN"
     ],
     "areas": [
-      "evidence_read_write",
-      "reports_view_csv_schedule_audit_log",
-      "documents_list_delete_details_analyze_advanced",
-      "plan_gated_csv_and_advanced_analyze",
-      "no_enforce_feature_in_migrated_modules"
+      "property_view_create_edit_archive_import",
+      "requirement_view_resolve_mark_not_applicable",
+      "score_explain_trend_snapshot",
+      "compliance_activity",
+      "portfolio_score_history_audit_timeline_compliance_summary",
+      "cap_req_mark_n_a_distinct_from_resolve",
+      "no_enforce_feature_in_properties_and_portfolio"
     ],
     "regression_suites": [
       "test_account_lifecycle_state_resolver.py",
       "test_account_lifecycle_runtime_contract.py",
       "test_account_capability_enforcement.py",
       "test_account_capability_enforcement_pilot.py",
-      "test_account_capability_enforcement_wave1.py"
+      "test_account_capability_enforcement_wave1.py",
+      "test_account_capability_enforcement_wave2c1.py"
     ]
   },
   "inventory": {
     "catalog_capability_count": 104,
-    "runtime_resolver_count": 38,
+    "runtime_resolver_count": 47,
     "runtime_added_wave_1": 5,
+    "runtime_added_phase_2c_1": 9,
     "wave_1_modules_fully_migrated": 3,
+    "phase_2c_1_modules_fully_migrated": 2,
+    "phase_2c_1_client_subset_routes": 15,
     "pilot_routes_migrated": 4,
     "client_evidence_pack_routes_deferred": true
   },
   "regression_proof": {
     "client_route_guard_modified": false,
     "runtime_contract_schema_modified": false,
-    "runtime_contract_capability_rows_added": 5,
+    "runtime_contract_capability_rows_added_total": 14,
     "frontend_modified": false,
     "billing_stripe_jobs_sessions_comms_modified": false,
-    "client_py_evidence_pack_migrated": false
+    "client_py_non_2c_1_routes_migrated": false,
+    "cap_req_mark_n_a_aliased_to_resolve": false
   }
 }

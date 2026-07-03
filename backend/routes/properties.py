@@ -3,7 +3,7 @@ Allows clients to create and manage properties.
 """
 from fastapi import APIRouter, HTTPException, Request, status
 from database import database
-from middleware import client_route_guard
+from middleware.capability_gating import assert_client_capability, client_require_capability
 from models import Property, ComplianceStatus, AuditAction, UserRole
 from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
 from utils.audit import create_audit_log
@@ -52,12 +52,15 @@ class CreatePropertyRequest(BaseModel):
     )
 
 @router.post("/create")
-async def create_property(request: Request, data: CreatePropertyRequest):
+async def create_property(
+    request: Request,
+    data: CreatePropertyRequest,
+    user: dict = client_require_capability("CAP_PROP_CREATE", "write"),
+):
     """Create a new property for the authenticated client.
     
     Enforces plan-based property limits.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -306,13 +309,17 @@ class PatchPropertyRequest(BaseModel):
 
 
 @router.patch("/{property_id}")
-async def patch_property(request: Request, property_id: str, data: PatchPropertyRequest):
+async def patch_property(
+    request: Request,
+    property_id: str,
+    data: PatchPropertyRequest,
+    user: dict = client_require_capability("CAP_PROP_EDIT", "write"),
+):
     """Update a property. Only provided fields are updated.
     Changing is_hmo, bedrooms, occupancy, licence_required, has_gas_supply, or has_gas triggers compliance score recalc (queued).
     Changing jurisdiction runs an immediate compliance score recalculation for this property.
     Setting is_active=False archives the property (read-only); is_active=True counts toward plan limit.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
 
     prop = await db.properties.find_one(
@@ -360,6 +367,9 @@ async def patch_property(request: Request, property_id: str, data: PatchProperty
 
     for key, value in payload.items():
         update[key] = value
+
+    if "is_active" in update and update["is_active"] is False:
+        await assert_client_capability(user, "CAP_PROP_ARCHIVE", "write")
 
     # When activating a property, enforce plan limit (active count cannot exceed allowed)
     if "is_active" in update and update["is_active"] is True:
@@ -542,9 +552,9 @@ async def mark_requirement_not_applicable(
     request: Request,
     property_id: str,
     data: MarkNotApplicableRequest,
+    user: dict = client_require_capability("CAP_REQ_MARK_N_A", "write"),
 ):
     """Create or update a requirement row to mark a catalog item as not applicable for this property."""
-    user = await client_route_guard(request)
     client_id = user["client_id"]
     db = database.get_db()
 
@@ -610,9 +620,9 @@ async def patch_requirement(
     property_id: str,
     requirement_id: str,
     data: PatchRequirementRequest,
+    user: dict = client_require_capability("CAP_REQ_RESOLVE", "write"),
 ):
     """Update a requirement's confirmed expiry date or applicability (e.g. mark NOT_REQUIRED with reason)."""
-    user = await client_route_guard(request)
     db = database.get_db()
 
     req = await db.requirements.find_one(
@@ -687,6 +697,8 @@ async def patch_requirement(
 
     if data.applicability is not None:
         app = data.applicability.strip().upper()
+        if app == "NOT_REQUIRED":
+            await assert_client_capability(user, "CAP_REQ_MARK_N_A", "write")
         if app not in ("REQUIRED", "NOT_REQUIRED", "UNKNOWN"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -834,13 +846,15 @@ async def patch_requirement(
 
 
 @router.get("/list")
-async def list_properties(request: Request):
+async def list_properties(
+    request: Request,
+    user: dict = client_require_capability("CAP_PROP_VIEW", "read"),
+):
     """List all properties for the authenticated client.
     
     This is a convenience endpoint that returns the same data
     as the dashboard endpoint.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -921,7 +935,11 @@ def _resolve_bulk_import_jurisdiction(raw_jurisdiction: Optional[str], client_de
 
 
 @router.post("/bulk-import")
-async def bulk_import_properties(request: Request, data: BulkImportRequest):
+async def bulk_import_properties(
+    request: Request,
+    data: BulkImportRequest,
+    user: dict = client_require_capability("CAP_PROP_IMPORT", "write"),
+):
     """Import multiple properties from a list (e.g., parsed CSV data).
     
     Accepts a list of property objects and creates them with requirements.
@@ -929,7 +947,6 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
     
     Returns summary of successful and failed imports.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -1098,9 +1115,12 @@ async def bulk_import_properties(request: Request, data: BulkImportRequest):
 
 
 @router.get("/upcoming-deadlines")
-async def get_upcoming_deadlines(request: Request, days: int = 30):
+async def get_upcoming_deadlines(
+    request: Request,
+    days: int = 30,
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
+):
     """Get upcoming compliance deadlines for dashboard widget."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -1169,9 +1189,12 @@ async def get_upcoming_deadlines(request: Request, days: int = 30):
 
 
 @router.get("/{property_id}/requirements")
-async def get_property_requirements_api(request: Request, property_id: str):
+async def get_property_requirements_api(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
+):
     """List enriched requirements for one property (same shape as GET /api/client/properties/{id}/requirements)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
@@ -1200,9 +1223,12 @@ async def get_property_requirements_api(request: Request, property_id: str):
 
 
 @router.post("/{property_id}/requirements/sync")
-async def sync_property_requirements_from_registry(request: Request, property_id: str):
+async def sync_property_requirements_from_registry(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_REQ_RESOLVE", "write"),
+):
     """Re-run catalog registry materialisation for this property (idempotent upsert + obsolete reconcile)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},

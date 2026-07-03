@@ -3,7 +3,15 @@
 **Programme:** ACCOUNT-LIFECYCLE-CAPABILITY-AUTHORITY-01  
 **Authority version:** `account_capability_v1`  
 **Follows:** ACCOUNT-LIFECYCLE-POLICY-AUTHORITY-01, ACCOUNT-LIFECYCLE-AUTHORITY-AUDIT-01  
-**Branch:** develop (governance only — no implementation)
+**Branch:** develop (governance + ILP-4 Phase 2C-1 implementation on develop)
+
+---
+
+## ILP-4 enforcement note (Phase 2C-1)
+
+**Governance decision (Option A):** Mark-not-applicable routes use `CAP_REQ_MARK_N_A` — **not** aliased to `CAP_REQ_RESOLVE`. Evidence write routes correctly remain on `CAP_REQ_RESOLVE`.
+
+Implemented in `routes/properties.py`, `routes/portfolio.py`, and the `client.py` property/requirement/score subset. See `ACCOUNT_CAPABILITY_ENFORCEMENT_MATRIX.md`.
 
 ---
 

@@ -11,6 +11,11 @@ from database import database as db_singleton
 from middleware import client_route_guard as middleware_client_route_guard
 from routes import client as client_routes
 from server import app
+from services.account_capability_enforcement import (
+    GRANT_ALLOW,
+    CapabilityDecision,
+    CapabilityReasonCode,
+)
 
 
 @pytest.fixture
@@ -49,11 +54,27 @@ def test_client_catalog_mark_not_applicable_orders_sync_audit_enqueue(client_htt
     async def _fake_guard(request: Request):
         return user
 
+    async def _allow_capability(*_a, **_k):
+        return CapabilityDecision(
+            capability_id="CAP_REQ_RESOLVE",
+            action="write",
+            grant=GRANT_ALLOW,
+            effective_semantic=GRANT_ALLOW,
+            allowed=True,
+            source="runtime_contract",
+            reason_code=CapabilityReasonCode.ALLOWED.value,
+            reason="allowed",
+        )
+
     app.dependency_overrides[middleware_client_route_guard] = _fake_guard
     try:
         with (
             patch.object(db_singleton, "get_db", return_value=mock_db),
             patch.object(client_routes, "client_route_guard", new=AsyncMock(return_value=user)),
+            patch(
+                "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
+                new=AsyncMock(side_effect=_allow_capability),
+            ),
             patch(
                 "services.requirement_evidence_authority.sync_requirement_evidence_authority",
                 AsyncMock(side_effect=track_sync),

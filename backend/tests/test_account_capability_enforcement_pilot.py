@@ -11,8 +11,6 @@ from database import database as db_singleton
 from middleware import client_route_guard as middleware_client_route_guard
 from middleware.capability_gating import capability_denied_http_detail
 from routes import client as client_routes
-from routes import documents as documents_routes
-from routes import reports as reports_routes
 from server import app
 from services.account_capability_enforcement import (
     GRANT_DENY,
@@ -82,11 +80,7 @@ def override_guard(pilot_user):
         return pilot_user
 
     app.dependency_overrides[middleware_client_route_guard] = _fake_guard
-    with (
-        patch.object(client_routes, "client_route_guard", new=AsyncMock(return_value=pilot_user)),
-        patch.object(reports_routes, "client_route_guard", new=AsyncMock(return_value=pilot_user)),
-        patch.object(documents_routes, "client_route_guard", new=AsyncMock(return_value=pilot_user)),
-    ):
+    with patch.object(client_routes, "client_route_guard", new=AsyncMock(return_value=pilot_user)):
         yield
     app.dependency_overrides.pop(middleware_client_route_guard, None)
 
@@ -186,7 +180,7 @@ class TestPilotRouteEnforcement:
         assert res.status_code == 403
         detail = res.json()["detail"]
         assert detail["error"] == "capability_denied"
-        assert detail["capability_id"] == "CAP_REQ_RESOLVE"
+        assert detail["capability_id"] == "CAP_REQ_MARK_N_A"
         assert detail["error_code"] == CapabilityReasonCode.DENIED.value
 
     def test_read_only_allows_properties_list(self, client, override_guard):
@@ -260,7 +254,7 @@ class TestPilotRouteEnforcement:
             )
         assert res.status_code == 403
         detail = res.json()["detail"]
-        assert detail["capability_id"] == "CAP_REQ_RESOLVE"
+        assert detail["capability_id"] == "CAP_REQ_MARK_N_A"
         assert detail["error"] == "capability_denied"
         assert detail["lifecycle_state"] == "CANCELLED_IMMEDIATE"
 
@@ -269,12 +263,20 @@ class TestPilotRouteEnforcement:
 
         async def _doc_unknown(client_id, capability_id, action, *, contract=None):
             if capability_id == "CAP_DOC_VIEW":
-                return svc.evaluate_from_contract(_contract(), "CAP_SCORE_EXPLAIN", action)
+                return svc.evaluate_from_contract(_contract(), "CAP_TEST_UNKNOWN_GAP", action)
             return svc.evaluate_from_contract(_contract(), capability_id, action)
 
-        with patch(
-            "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
-            new=AsyncMock(side_effect=_doc_unknown),
+        mock_db = MagicMock()
+        doc_cursor = MagicMock()
+        doc_cursor.to_list = AsyncMock(return_value=[])
+        mock_db.documents.find = MagicMock(return_value=MagicMock(sort=MagicMock(return_value=doc_cursor)))
+
+        with (
+            patch.object(db_singleton, "get_db", return_value=mock_db),
+            patch(
+                "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
+                new=AsyncMock(side_effect=_doc_unknown),
+            ),
         ):
             res = client.get("/api/documents")
         assert res.status_code == 403

@@ -113,6 +113,28 @@ Capabilities are **descriptive only** in ILP-2:
 
 Does not replace `hasFeature()` or `FEATURE_MATRIX`. Enforcement is ILP-4.
 
+### ILP-4 Phase 2C-1 runtime extensions (schema unchanged)
+
+Nine new capability rows in `_BASE_CAPABILITY_MATRIX`:
+
+| Capability | Plan key |
+|------------|----------|
+| `CAP_PROP_ARCHIVE` | — |
+| `CAP_PROP_DELETE` | — (governance row; no customer route) |
+| `CAP_PROP_IMPORT` | `document_upload_bulk_zip` |
+| `CAP_REQ_MARK_N_A` | — (distinct from `CAP_REQ_RESOLVE`; Option A) |
+| `CAP_REQ_COMPLETE` | — (governance row; no route in 2C-1) |
+| `CAP_SCORE_EXPLAIN` | `compliance_score` |
+| `CAP_SCORE_TREND` | `score_trending` |
+| `CAP_SCORE_SNAPSHOT` | `compliance_score` |
+| `CAP_COMPLIANCE_ACTIVITY` | `compliance_dashboard` |
+
+Portal ceilings for `BILLING_RECOVERY`, `READ_ONLY`, and `SUSPENDED` restrict write grants and expose read grants for score explain/trend/activity where `CAP_SCORE_VIEW` is readable.
+
+Runtime resolver count: **47** capabilities (38 after Wave 1 + 9 in 2C-1).
+
+Enforcement wiring: `ACCOUNT_CAPABILITY_ENFORCEMENT_MATRIX.md` — `properties.py`, `portfolio.py`, `client.py` score/requirement subset.
+
 ---
 
 ## Consumer roadmap
@@ -157,6 +179,7 @@ Compares runtime contract against legacy `canonical_entitlement_state`, `billing
 
 ```bash
 pytest tests/test_account_lifecycle_runtime_contract.py -v
+pytest tests/test_account_capability_enforcement_wave2c1.py -v
 ```
 
-30 unit tests cover generation, portal mode, capabilities, policies, versioning, immutability, idempotency, cache, JSON serialization, and regression guards.
+30 unit tests cover generation, portal mode, capabilities, policies, versioning, immutability, idempotency, cache, JSON serialization, and regression guards. ILP-4 Phase 2C-1 adds lifecycle-matrix route tests in `test_account_capability_enforcement_wave2c1.py`.

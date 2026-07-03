@@ -6,7 +6,7 @@ GET /api/portfolio/properties/{id}/compliance-detail: matrix, score, risk (catal
 from fastapi import APIRouter, Request, Depends, status, HTTPException
 from fastapi import Query
 from database import database
-from middleware import client_route_guard
+from middleware.capability_gating import client_require_capability
 from utils.risk_bands import score_to_risk_level, score_authority_fields, risk_level_to_band_explanation
 from services.catalog_compliance import (
     get_property_compliance_detail,
@@ -33,7 +33,7 @@ from utils.compliance_fanout_log import compliance_fanout_extra
 from services.requirement_client_runtime_surface import project_requirement_row_client_runtime
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/portfolio", tags=["portfolio"], dependencies=[Depends(client_route_guard)])
+router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
 REQUIREMENT_POINTS = {
     "VALID": 100,
@@ -47,13 +47,15 @@ REQUIREMENT_POINTS = {
 
 
 @router.get("/compliance-summary")
-async def get_compliance_summary(request: Request):
+async def get_compliance_summary(
+    request: Request,
+    user: dict = client_require_capability("CAP_SCORE_VIEW", "read"),
+):
     """
     Portfolio compliance summary. Headline ``portfolio_score`` / ``risk_level`` always use persisted
     property scores (``compliance_score`` aggregate). Catalog or legacy matrix lenses are returned only
     under explicitly non-authoritative preview keys for requirement KPIs / diagnostics.
     """
-    user = await client_route_guard(request)
     client_id = user["client_id"]
     headline = await get_persisted_portfolio_headline_for_summary(client_id)
     db = database.get_db()
@@ -427,12 +429,15 @@ async def get_compliance_summary(request: Request):
 
 
 @router.get("/properties/{property_id}/compliance-detail")
-async def get_property_compliance_detail_route(request: Request, property_id: str):
+async def get_property_compliance_detail_route(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_PROP_VIEW", "read"),
+):
     """
     Property-level compliance detail: requirement matrix (from catalog + state), property_score,
     risk_index, risk_level, score_delta, score_change_summary, last_updated_at. Evidence-based status only; not legal advice.
     """
-    user = await client_route_guard(request)
     client_id = user["client_id"]
     db = database.get_db()
     prop = await db.properties.find_one(
@@ -637,9 +642,13 @@ async def get_property_compliance_detail_route(request: Request, property_id: st
 
 
 @router.get("/properties/{property_id}/score-history")
-async def get_property_score_history_route(request: Request, property_id: str, limit: int = 20):
+async def get_property_score_history_route(
+    request: Request,
+    property_id: str,
+    limit: int = 20,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
+):
     """Return last N score change log entries for this property (client-scoped)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
@@ -671,9 +680,9 @@ async def get_property_timeline_route(
     to_date: Optional[str] = Query(None, description="To date YYYY-MM-DD"),
     limit: int = Query(50, ge=1, le=100),
     cursor: Optional[str] = Query(None, description="Pagination cursor (last timestamp)"),
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
 ):
     """Unified property timeline: evidence, compliance, maintenance, score events. Chronological, newest first."""
-    user = await client_route_guard(request)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
@@ -703,13 +712,16 @@ async def get_property_timeline_route(
 
 
 @router.get("/properties/{property_id}/evidence")
-async def get_property_evidence(request: Request, property_id: str):
+async def get_property_evidence(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_EVIDENCE_VIEW", "read"),
+):
     """
     Evidence vault data for the Property Evidence tab: summary, documents, recent events.
     Composes existing documents list + requirements + timeline (EVIDENCE category).
     Additive; does not replace GET /documents.
     """
-    user = await client_route_guard(request)
     client_id = user["client_id"]
     db = database.get_db()
     prop = await db.properties.find_one(
@@ -872,13 +884,16 @@ _TIMELINE_ACTIONS = [
 
 
 @router.get("/audit-timeline")
-async def get_portfolio_audit_timeline(request: Request, limit: int = 50):
+async def get_portfolio_audit_timeline(
+    request: Request,
+    limit: int = 50,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "read"),
+):
     """
     Get audit timeline for the authenticated client (read-only).
     Key events: intake, provisioning, auth, documents, notifications, compliance.
     Does not include admin-only actions.
     """
-    user = await client_route_guard(request)
     client_id = user["client_id"]
     db = database.get_db()
     limit = max(1, min(100, limit))

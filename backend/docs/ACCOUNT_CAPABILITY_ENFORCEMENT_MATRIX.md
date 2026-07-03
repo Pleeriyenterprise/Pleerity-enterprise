@@ -1,8 +1,63 @@
 # Account Capability Enforcement Matrix
 
-**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 0–1 scaffold; Phase 2A pilot; Phase 2B Wave 1)  
+**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 0–1 scaffold; Phase 2A pilot; Phase 2B Wave 1; Phase 2C-1)  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** Phase 2B Wave 1 — evidence, reports, and documents modules fully capability-governed
+**Status:** Phase 2C-1 — properties, portfolio, and client score/requirement subset fully capability-governed
+
+---
+
+## Phase 2C-1 migrated modules (CAP_* only)
+
+### `routes/properties.py` (full)
+
+| Endpoint | Method | Capability | Action | Notes |
+|----------|--------|------------|--------|-------|
+| `/api/properties/create` | POST | `CAP_PROP_CREATE` | write | Plan property limit via `plan_registry.enforce_property_limit()` retained |
+| `/api/properties/{id}` | PATCH | `CAP_PROP_EDIT` | write | `is_active=false` → in-handler `CAP_PROP_ARCHIVE` write |
+| `/api/properties/{id}/requirements/mark-not-applicable` | POST | `CAP_REQ_MARK_N_A` | write | **Option A** — distinct from `CAP_REQ_RESOLVE` |
+| `/api/properties/{id}/requirements/{id}` | PATCH | `CAP_REQ_RESOLVE` | write | `applicability=NOT_REQUIRED` → in-handler `CAP_REQ_MARK_N_A` write |
+| `/api/properties/list` | GET | `CAP_PROP_VIEW` | read | |
+| `/api/properties/bulk-import` | POST | `CAP_PROP_IMPORT` | write | |
+| `/api/properties/upcoming-deadlines` | GET | `CAP_REQ_VIEW` | read | |
+| `/api/properties/{id}/requirements` | GET | `CAP_REQ_VIEW` | read | |
+| `/api/properties/{id}/requirements/sync` | POST | `CAP_REQ_RESOLVE` | write | |
+
+No delete route exists; `CAP_PROP_DELETE` matrix row added for governance only. No `enforce_feature()` / `client_route_guard` in module.
+
+### `routes/portfolio.py` (full)
+
+| Endpoint | Method | Capability | Action |
+|----------|--------|------------|--------|
+| `/api/portfolio/compliance-summary` | GET | `CAP_SCORE_VIEW` | read |
+| `/api/portfolio/properties/{id}/compliance-detail` | GET | `CAP_PROP_VIEW` | read |
+| `/api/portfolio/properties/{id}/score-history` | GET | `CAP_SCORE_TREND` | read |
+| `/api/portfolio/properties/{id}/timeline` | GET | `CAP_REQ_VIEW` | read |
+| `/api/portfolio/properties/{id}/evidence` | GET | `CAP_EVIDENCE_VIEW` | read |
+| `/api/portfolio/audit-timeline` | GET | `CAP_COMPLIANCE_ACTIVITY` | read |
+
+Router-level `client_route_guard` removed. No hybrid permission logic in handlers.
+
+### `routes/client.py` (2C-1 subset only)
+
+| Endpoint | Method | Capability | Action |
+|----------|--------|------------|--------|
+| `/api/client/compliance-score` | GET | `CAP_SCORE_VIEW` | read |
+| `/api/client/compliance-score/trend` | GET | `CAP_SCORE_TREND` | read |
+| `/api/client/score/timeline` | GET | `CAP_SCORE_TREND` | read |
+| `/api/client/score-trend/portfolio` | GET | `CAP_SCORE_TREND` | read |
+| `/api/client/score-trend/property/{id}` | GET | `CAP_SCORE_TREND` | read |
+| `/api/client/score/changes` | GET | `CAP_SCORE_TREND` | read |
+| `/api/client/compliance/activity` | GET | `CAP_COMPLIANCE_ACTIVITY` | read |
+| `/api/client/compliance-score/explanation` | GET | `CAP_SCORE_EXPLAIN` | read |
+| `/api/client/properties/{id}/compliance-score/explanation` | GET | `CAP_SCORE_EXPLAIN` | read |
+| `/api/client/compliance-score/snapshot` | POST | `CAP_SCORE_SNAPSHOT` | write |
+| `/api/client/properties` | GET | `CAP_PROP_VIEW` | read | (2A pilot, retained) |
+| `/api/client/properties/{id}/requirements` | GET | `CAP_REQ_VIEW` | read |
+| `/api/client/properties/{id}/requirements/explanation` | GET | `CAP_REQ_VIEW` | read |
+| `/api/client/requirements` | GET | `CAP_REQ_VIEW` | read |
+| `/api/client/properties/{id}/requirements/mark-not-applicable` | POST | `CAP_REQ_MARK_N_A` | write | **Changed from `CAP_REQ_RESOLVE` (Option A)** |
+
+**Explicitly not migrated (2C-2+):** ledger, dashboard, command-centre, maintenance, rent ops, approvals, evidence-pack, tenant/branding, analytics, billing, and all other `client.py` handlers still on `client_route_guard` / `enforce_feature()`.
 
 ---
 
@@ -72,13 +127,33 @@ No `enforce_feature()` / `require_feature()` remains in client document handlers
 | Endpoint | Method | Capability | Action | File |
 |----------|--------|------------|--------|------|
 | `/api/client/properties` | GET | `CAP_PROP_VIEW` | read | `routes/client.py` |
-| `/api/client/properties/{id}/requirements/mark-not-applicable` | POST | `CAP_REQ_RESOLVE` | write | `routes/client.py` |
+| `/api/client/properties/{id}/requirements/mark-not-applicable` | POST | `CAP_REQ_MARK_N_A` | write | `routes/client.py` |
 | `/api/reports/{report_id}/download` | GET | `CAP_REPORT_DOWNLOAD` | read | `routes/reports.py` |
 | `/api/documents` | GET | `CAP_DOC_VIEW` | read | `routes/documents.py` |
 
 - Dependency: `client_require_capability()` / `assert_client_capability()` in `middleware/capability_gating.py`
 - Denied responses: governed `capability_denied` payload via `capability_denied_http_detail()`
-- Tests: `test_account_capability_enforcement_pilot.py`, `test_account_capability_enforcement_wave1.py`
+- Tests: `test_account_capability_enforcement_pilot.py`, `test_account_capability_enforcement_wave1.py`, `test_account_capability_enforcement_wave2c1.py`
+
+---
+
+## Runtime contract extensions (2C-1)
+
+New `_BASE_CAPABILITY_MATRIX` rows (schema unchanged):
+
+| Capability | Plan key | Distinct from |
+|------------|----------|---------------|
+| `CAP_PROP_ARCHIVE` | — (lifecycle matrix) | `CAP_PROP_EDIT` |
+| `CAP_PROP_DELETE` | — (matrix row; no route) | `CAP_PROP_ARCHIVE` |
+| `CAP_PROP_IMPORT` | `document_upload_bulk_zip` | `CAP_PROP_CREATE` |
+| `CAP_REQ_MARK_N_A` | — (lifecycle matrix) | **`CAP_REQ_RESOLVE` — not aliased (Option A)** |
+| `CAP_REQ_COMPLETE` | — (matrix row; no route in 2C-1) | `CAP_REQ_RESOLVE` |
+| `CAP_SCORE_EXPLAIN` | `compliance_score` | `CAP_SCORE_VIEW` |
+| `CAP_SCORE_TREND` | `score_trending` | `CAP_SCORE_VIEW` |
+| `CAP_SCORE_SNAPSHOT` | `compliance_score` | `CAP_SCORE_TREND` |
+| `CAP_COMPLIANCE_ACTIVITY` | `compliance_dashboard` | `CAP_DASHBOARD_VIEW` |
+
+Portal ceilings updated for `BILLING_RECOVERY`, `READ_ONLY`, `SUSPENDED` (read grants for score explain/trend/activity mirror `CAP_SCORE_VIEW` in recovery/read-only modes).
 
 ---
 
@@ -129,9 +204,27 @@ This document is the implementation verification checklist for `CAP_*` enforceme
 
 ---
 
-## Runtime-resolved capabilities (38) — ENFORCEMENT_READY
+## Runtime-resolved capabilities (47) — ENFORCEMENT_READY
 
-Wave 1 adds five capabilities to the prior 33-capability runtime set.
+Wave 1 added five capabilities; Phase 2C-1 adds nine to the prior 38-capability runtime set.
+
+| Capability | Runtime | Enforcement (2C-1) | Tests |
+|------------|---------|---------------------|-------|
+| `CAP_PROP_VIEW` | ✓ | pilot + **2C-1 properties/portfolio/client** | wave2c1 lifecycle matrix |
+| `CAP_PROP_CREATE` | ✓ | **2C-1 properties** | wave2c1 lifecycle matrix |
+| `CAP_PROP_EDIT` | ✓ | **2C-1 properties** | wave2c1 lifecycle matrix |
+| `CAP_PROP_ARCHIVE` | ✓ | **2C-1 properties** (conditional) | wave2c1 lifecycle matrix |
+| `CAP_PROP_DELETE` | ✓ | matrix only (no route) | — |
+| `CAP_PROP_IMPORT` | ✓ | **2C-1 properties** | wave2c1 lifecycle matrix |
+| `CAP_REQ_VIEW` | ✓ | **2C-1 properties/portfolio/client** | wave2c1 lifecycle matrix |
+| `CAP_REQ_RESOLVE` | ✓ | pilot evidence write + **2C-1 properties** | wave1 + wave2c1 |
+| `CAP_REQ_MARK_N_A` | ✓ | **2C-1 properties + client** | wave2c1 lifecycle matrix |
+| `CAP_REQ_COMPLETE` | ✓ | matrix only (no route in 2C-1) | — |
+| `CAP_SCORE_VIEW` | ✓ | **2C-1 client + portfolio** | wave2c1 lifecycle matrix |
+| `CAP_SCORE_EXPLAIN` | ✓ | **2C-1 client** | wave2c1 lifecycle matrix |
+| `CAP_SCORE_TREND` | ✓ | **2C-1 client + portfolio** | wave2c1 lifecycle matrix |
+| `CAP_SCORE_SNAPSHOT` | ✓ | **2C-1 client** | wave2c1 lifecycle matrix |
+| `CAP_COMPLIANCE_ACTIVITY` | ✓ | **2C-1 client + portfolio** | wave2c1 lifecycle matrix |
 
 | Capability | Runtime | Enforcement (Wave 1) | Tests |
 |------------|---------|------------------------|-------|
@@ -153,6 +246,16 @@ Wave 1 adds five capabilities to the prior 33-capability runtime set.
 
 ---
 
+## Wave 2C-1 lifecycle test coverage
+
+`test_account_capability_enforcement_wave2c1.py` parametrizes:
+
+`ACTIVE`, `TRIAL`, `GRACE_PERIOD`, `CANCELLATION_SCHEDULED`, `READ_ONLY`, `CANCELLED_IMMEDIATE`, `SUBSCRIPTION_EXPIRED`, `SUSPENDED`, `ARCHIVED`, `UNKNOWN`
+
+Across property view/create/edit/archive/import, requirement view/resolve/mark-not-applicable, score explain/trend/snapshot, compliance activity, and portfolio score-history/audit-timeline/compliance-summary.
+
+---
+
 ## Wave 1 lifecycle test coverage
 
 `test_account_capability_enforcement_wave1.py` parametrizes:
@@ -163,12 +266,12 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 
 ---
 
-## Deferred (Wave 2+)
+## Deferred (2C-2+)
 
 - `routes/client.py` evidence-pack job routes (`CAP_REPORT_AUDIT_PACK` consumer)
-- Properties / requirements / portfolio module migration
+- Ledger, Today, Command Centre, maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
 - Frontend `useCapability()` consumption
-- `client_route_guard` capability integration
+- `client_route_guard` capability integration for non-migrated routes
 - Resolver matrix extension for remaining catalog-gap capabilities
 
 ---
@@ -181,10 +284,21 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 | Runtime contract | `backend/services/account_lifecycle_runtime_contract.py` |
 | Route helpers | `backend/middleware/capability_gating.py` |
 | Wave 1 routes | `client_compliance_evidence.py`, `reports.py`, `documents.py` |
+| 2C-1 routes | `properties.py`, `portfolio.py`, `client.py` (score/requirement subset) |
 | Unit tests | `test_account_capability_enforcement.py` |
 | Pilot tests | `test_account_capability_enforcement_pilot.py` |
 | Wave 1 tests | `test_account_capability_enforcement_wave1.py` |
+| 2C-1 tests | `test_account_capability_enforcement_wave2c1.py` |
 | Audit evidence | `docs/audit/account_lifecycle_ilp_04/` |
+
+---
+
+## Regression proof (2C-1)
+
+- `CAP_REQ_MARK_N_A` is **not** aliased to `CAP_REQ_RESOLVE` (Option A governance decision)
+- `properties.py` and `portfolio.py` module-complete — no `enforce_feature()` / hybrid guards
+- `client.py` 2C-1 subset only; router-level `client_route_guard` retained for non-migrated routes
+- 2C-2 modules (ledger, dashboard, etc.) **not** started
 
 ---
 

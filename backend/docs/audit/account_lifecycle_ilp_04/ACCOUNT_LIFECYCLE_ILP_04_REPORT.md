@@ -1,29 +1,31 @@
-# ILP-4 Capability Enforcement — Phase 2B Wave 1 Report
+# ILP-4 Capability Enforcement — Phase 2C-1 Report
 
-**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 2B Wave 1)  
+**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 2C-1)  
 **Branch:** `develop`  
-**Verdict:** `ILP_04_PHASE_2B_WAVE_1_COMPLETE`  
+**Verdict:** `ILP_04_PHASE_2C_1_COMPLETE`  
 **Date:** 2026-07-03
 
 ---
 
 ## Summary
 
-Phase 2B Wave 1 fully migrates three customer API modules to `client_require_capability()` / `assert_client_capability()` — eliminating hybrid `enforce_feature()` gates inside those modules while extending the Runtime Contract capability matrix for report and document capabilities required by the route mapping.
+Phase 2C-1 migrates `properties.py`, `portfolio.py`, and the `client.py` property/requirement/score subset to `client_require_capability()` / `assert_client_capability()`, extending the Runtime Contract with nine new capability rows including **`CAP_REQ_MARK_N_A`** (Option A — distinct from `CAP_REQ_RESOLVE`).
 
-Phase 2A pilot routes remain in place. Wave 2 (properties/requirements/portfolio beyond pilot, `client.py` evidence-pack) is **not** started.
+Phase 2B Wave 1 and Phase 2A pilot routes remain in place. Phase 2C-2 (ledger, Today, Command Centre, maintenance, etc.) is **not** started.
 
 ---
 
-## Wave 1 scope delivered
+## 2C-1 scope delivered
 
-| Module | Status | Client endpoints |
-|--------|--------|------------------|
-| `routes/client_compliance_evidence.py` | **Full** | 5 |
-| `routes/reports.py` | **Full** (client) | 18 client routes |
-| `routes/documents.py` | **Full** (client) | 12+ client routes |
+| Module | Status | Notes |
+|--------|--------|-------|
+| `routes/properties.py` | **Full** | 9 endpoints; archive via `CAP_PROP_ARCHIVE` assert on patch |
+| `routes/portfolio.py` | **Full** | 6 endpoints; router-level `client_route_guard` removed |
+| `routes/client.py` | **Subset** | Score, activity, requirements, mark-not-applicable; duplicate score-trend handlers removed |
 
-**Explicitly deferred:** `client.py` evidence-pack job routes (`CAP_REPORT_AUDIT_PACK` consumer).
+**Governance decision:** All mark-not-applicable routes use `CAP_REQ_MARK_N_A` (not aliased to `CAP_REQ_RESOLVE`).
+
+**Explicitly not migrated (2C-2+):** ledger, dashboard, command-centre, priority-actions, evidence-pack, tenant/branding, analytics, billing, jobs, sessions, frontend, admin routes.
 
 ---
 
@@ -31,24 +33,15 @@ Phase 2A pilot routes remain in place. Wave 2 (properties/requirements/portfolio
 
 New `_BASE_CAPABILITY_MATRIX` rows:
 
-- `CAP_REPORT_GENERATE_CSV` → plan key `reports_csv`
-- `CAP_AUDIT_LOG_EXPORT` → plan key `audit_log_export`
-- `CAP_REPORT_AUDIT_PACK` → plan key `audit_log_export` (matrix ready; route deferred)
-- `CAP_DOC_BULK_ZIP` → plan key `zip_upload`
-- `CAP_AI_EXTRACTION_ADVANCED` → plan key `ai_extraction_advanced`
+- `CAP_PROP_ARCHIVE`, `CAP_PROP_DELETE` (matrix row; no delete route)
+- `CAP_PROP_IMPORT` → plan key `document_upload_bulk_zip`
+- `CAP_REQ_MARK_N_A` — **Option A; not aliased to `CAP_REQ_RESOLVE`**
+- `CAP_REQ_COMPLETE` (matrix row; no route in 2C-1)
+- `CAP_SCORE_EXPLAIN`, `CAP_SCORE_SNAPSHOT` → plan key `compliance_score`
+- `CAP_SCORE_TREND` → plan key `score_trending`
+- `CAP_COMPLIANCE_ACTIVITY` → plan key `compliance_dashboard`
 
 Portal ceilings updated for `BILLING_RECOVERY`, `READ_ONLY`, `SUSPENDED`.
-
-Distinct capabilities are **not** aliased to broader caps unless the governance matrix defines equivalence.
-
----
-
-## Admin-only routes (unchanged guard)
-
-| Route | Guard | Rationale |
-|-------|-------|-----------|
-| `GET /api/reports/audit-logs` | `admin_route_guard` | Admin extract; not customer lifecycle |
-| `routes/documents.py` `/admin/*`, verify/reject | `admin_route_guard` | Operational admin surfaces |
 
 ---
 
@@ -57,10 +50,9 @@ Distinct capabilities are **not** aliased to broader caps unless the governance 
 | Pattern | Usage |
 |---------|--------|
 | `client_require_capability(CAP, action)` | Route dependency — returns `user` when allowed |
-| `assert_client_capability(user, CAP, action)` | In-handler conditional gates (`format=csv\|pdf`, `return_advanced=true`) |
+| `assert_client_capability(user, CAP, action)` | Conditional gates (archive, NOT_REQUIRED applicability) |
 | Denied | HTTP 403 `capability_denied` governed payload |
-| `READ` contract grant | Read allowed; write blocked (`READ_ONLY` semantic) |
-| `PLAN_GATED` | Resolved via Runtime Contract plan overlay — no local `enforce_feature()` |
+| Plan limits | `plan_registry.enforce_property_limit()` retained (plan cap, not `enforce_feature`) |
 
 ---
 
@@ -68,33 +60,11 @@ Distinct capabilities are **not** aliased to broader caps unless the governance 
 
 | Objective | Evidence |
 |-----------|----------|
-| Full module migration (3 modules) | No `enforce_feature` / `require_feature` in migrated client handlers |
-| Runtime matrix extended | 5 new CAP rows + plan keys + portal ceilings |
-| Lifecycle matrix regression | `test_account_capability_enforcement_wave1.py` |
-| READ_ONLY semantics | Read endpoints pass; write endpoints return governed 403 |
-| Plan gating via contract | Solo plan CSV + advanced analyze denied without `enforce_feature` |
-| Phase 2A regression | `test_account_capability_enforcement_pilot.py` |
-
----
-
-## 403 payload shape (unchanged)
-
-```json
-{
-  "error": "capability_denied",
-  "error_code": "read_only_blocked",
-  "message": "...",
-  "capability_id": "CAP_DOC_UPLOAD",
-  "action": "write",
-  "grant": "READ",
-  "effective_semantic": "READ_ONLY",
-  "lifecycle_state": "READ_ONLY",
-  "portal_mode": "READ_ONLY",
-  "recovery": { "route": "/settings/billing", "label": "..." },
-  "contract_version": "...",
-  "runtime_version": 1
-}
-```
+| Module-complete migration (properties, portfolio) | No `enforce_feature` / `client_route_guard` in those modules |
+| Client subset only | Non-2C-1 `client.py` routes unchanged |
+| `CAP_REQ_MARK_N_A` distinct | Mark-not-applicable on properties + client; pilot tests updated |
+| Lifecycle matrix regression | `test_account_capability_enforcement_wave2c1.py` |
+| Prior phases regression | pilot + wave1 suites |
 
 ---
 
@@ -107,6 +77,19 @@ Distinct capabilities are **not** aliased to broader caps unless the governance 
 | ILP-4 Phase 0–1 | `test_account_capability_enforcement.py` |
 | ILP-4 Phase 2A pilot | `test_account_capability_enforcement_pilot.py` |
 | ILP-4 Phase 2B Wave 1 | `test_account_capability_enforcement_wave1.py` |
+| ILP-4 Phase 2C-1 | `test_account_capability_enforcement_wave2c1.py` |
+
+Lifecycle states parametrized in 2C-1 tests: `ACTIVE`, `TRIAL`, `GRACE_PERIOD`, `CANCELLATION_SCHEDULED`, `READ_ONLY`, `CANCELLED_IMMEDIATE`, `SUBSCRIPTION_EXPIRED`, `SUSPENDED`, `ARCHIVED`, `UNKNOWN`.
+
+---
+
+## Deferred to 2C-2+
+
+- `client.py` evidence-pack routes (`CAP_REPORT_AUDIT_PACK`)
+- Ledger, Today, Command Centre, maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
+- Frontend `useCapability()` consumption
+- `client_route_guard` capability integration for remaining routes
+- Remaining catalog-gap capability resolver rows
 
 ---
 
@@ -114,13 +97,6 @@ Distinct capabilities are **not** aliased to broader caps unless the governance 
 
 - Phase 0–1: `ILP_04_PHASE_01_COMPLETE` — enforcement service, compatibility layer, diagnostics
 - Phase 2A: `ILP_04_PHASE_2A_PILOT_COMPLETE` — 4 pilot endpoints
+- Phase 2B Wave 1: `ILP_04_PHASE_2B_WAVE_1_COMPLETE` — evidence, reports, documents
 
----
-
-## Deferred to Wave 2+
-
-- `client.py` evidence-pack routes (`CAP_REPORT_AUDIT_PACK`)
-- Properties / requirements / portfolio (beyond 2A pilot endpoints in `client.py`)
-- Frontend `useCapability()` consumption
-- `client_route_guard` capability integration
-- Remaining catalog-gap capability resolver rows
+See `ACCOUNT_LIFECYCLE_ILP_04_EVIDENCE.json` for machine-readable route inventory.

@@ -66,9 +66,11 @@ def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> s
     return compute_property_compliance_rag(requirements)
 
 @router.get("/compliance-score")
-async def get_compliance_score(request: Request):
+async def get_compliance_score(
+    request: Request,
+    user: dict = client_require_capability("CAP_SCORE_VIEW", "read"),
+):
     """Get the client's overall compliance score. Headline ``score`` is the persisted portfolio aggregate; optional ``catalog_portfolio_view`` is a non-authoritative matrix preview."""
-    user = await client_route_guard(request)
     client_id = user["client_id"]
 
     try:
@@ -83,12 +85,15 @@ async def get_compliance_score(request: Request):
 
 
 @router.get("/properties/{property_id}/compliance-score/explanation")
-async def get_property_compliance_score_explanation(request: Request, property_id: str):
+async def get_property_compliance_score_explanation(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_SCORE_EXPLAIN", "read"),
+):
     """
     Property-level compliance explainability payload for v2 scoring.
     Returns score, jurisdiction, bucket breakdown, requirement breakdown, deficits, and next actions.
     """
-    user = await client_route_guard(request)
     db = database.get_db()
 
     prop = await db.properties.find_one(
@@ -117,7 +122,8 @@ async def get_property_compliance_score_explanation(request: Request, property_i
 async def get_compliance_score_trend(
     request: Request,
     days: int = 30,
-    include_breakdown: bool = False
+    include_breakdown: bool = False,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """Get compliance score trend data for trend visualization.
     
@@ -127,7 +133,6 @@ async def get_compliance_score_trend(
         days: Number of days of history (default 30, max 90)
         include_breakdown: Include detailed breakdown per day
     """
-    user = await client_route_guard(request)
     
     try:
         from services.compliance_trending import get_score_trend
@@ -154,9 +159,9 @@ async def get_score_timeline(
     request: Request,
     days: int = 90,
     interval: str = "week",
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """Score trend (90 days): points from SCORE_RECALCULATED events, latest per bucket. Fallback: current score flat line."""
-    user = await client_route_guard(request)
     try:
         from services.score_events_service import get_timeline
         days = min(max(1, days), 90)
@@ -174,9 +179,9 @@ async def get_score_timeline(
 async def get_score_trend_portfolio(
     request: Request,
     days: int = 90,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """Portfolio score trend for last N days (daily snapshots) with summary stats for Score Trend card."""
-    user = await client_route_guard(request)
     try:
         from services.compliance_trending import get_portfolio_trend_with_summary
         days = min(max(1, days), 90)
@@ -195,9 +200,9 @@ async def get_score_trend_property(
     request: Request,
     property_id: str,
     days: int = 90,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """Property score trend for last N days (daily snapshots) with summary stats. Property must belong to client."""
-    user = await client_route_guard(request)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
@@ -226,9 +231,9 @@ async def get_score_trend_property(
 async def get_score_changes(
     request: Request,
     limit: int = 20,
+    user: dict = client_require_capability("CAP_SCORE_TREND", "read"),
 ):
     """What Changed: recent score-affecting events with title, details, delta, deep-link ids."""
-    user = await client_route_guard(request)
     try:
         from services.score_events_service import get_changes
         data = await get_changes(client_id=user["client_id"], limit=min(max(1, limit), 100))
@@ -246,9 +251,9 @@ async def get_compliance_activity(
     request: Request,
     property_id: Optional[str] = None,
     limit: int = 50,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "read"),
 ):
     """Action -> Outcome activity timeline for client-visible UX feedback."""
-    user = await client_route_guard(request)
     try:
         from services.compliance_outcome_engine import list_activity
         return await list_activity(
@@ -358,52 +363,12 @@ async def export_ledger_csv(
         )
 
 
-@router.get("/score-trend/portfolio")
-async def get_score_trend_portfolio(request: Request, days: int = 90):
-    """Portfolio score trend for last N days (snapshot-based). Returns points + summary stats for Score Trend card."""
-    user = await client_route_guard(request)
-    try:
-        from services.compliance_trending import get_portfolio_trend_with_summary
-        days = min(max(1, days), 90)
-        data = await get_portfolio_trend_with_summary(user["client_id"], days=days)
-        return data
-    except Exception as e:
-        logger.error(f"Score trend portfolio error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get portfolio score trend"
-        )
-
-
-@router.get("/score-trend/property/{property_id}")
-async def get_score_trend_property(request: Request, property_id: str, days: int = 90):
-    """Property score trend for last N days (snapshot-based). Returns points + summary stats. Property must belong to client."""
-    user = await client_route_guard(request)
-    db = database.get_db()
-    prop = await db.properties.find_one(
-        {"property_id": property_id, "client_id": user["client_id"]},
-        {"_id": 0, "property_id": 1},
-    )
-    if not prop:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    try:
-        from services.compliance_trending import get_property_trend_with_summary
-        days = min(max(1, days), 90)
-        data = await get_property_trend_with_summary(user["client_id"], property_id, days=days)
-        return data
-    except Exception as e:
-        logger.error(f"Score trend property error: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get property score trend"
-        )
-
-
 @router.get("/compliance-score/explanation")
 async def get_compliance_score_explanation(
     request: Request,
     compare_days: int = 7,
-    property_id: Optional[str] = None
+    property_id: Optional[str] = None,
+    user: dict = client_require_capability("CAP_SCORE_EXPLAIN", "read"),
 ):
     """Get explanation of compliance score: per-property (stored breakdown) or client-level trend.
     
@@ -415,7 +380,6 @@ async def get_compliance_score_explanation(
         compare_days: Days back to compare for client-level trend (default 7, max 30)
         property_id: Optional; when set, return property-level explanation from stored data
     """
-    user = await client_route_guard(request)
     
     try:
         if property_id:
@@ -458,13 +422,15 @@ async def get_compliance_score_explanation(
 
 
 @router.post("/compliance-score/snapshot")
-async def trigger_compliance_snapshot(request: Request):
+async def trigger_compliance_snapshot(
+    request: Request,
+    user: dict = client_require_capability("CAP_SCORE_SNAPSHOT", "write"),
+):
     """Manually trigger a compliance score snapshot (for testing/admin).
     
     Creates an immediate snapshot of the current compliance score.
     Useful for manual updates or debugging.
     """
-    user = await client_route_guard(request)
     
     try:
         from services.compliance_trending import capture_daily_snapshot
@@ -1782,9 +1748,12 @@ async def get_property_occupancy_operational_summary(request: Request, property_
 
 
 @router.get("/properties/{property_id}/requirements")
-async def get_property_requirements(request: Request, property_id: str):
+async def get_property_requirements(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
+):
     """Get requirements for a property."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -1861,9 +1830,9 @@ async def get_requirement_explanation(
     property_id: str,
     requirement_code: Optional[str] = Query(None, description="Requirement code (e.g. gas_safety, eicr)"),
     requirement_id: Optional[str] = Query(None, description="Requirement row id if used by client"),
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
 ):
     """Get contextual explanation for a compliance requirement (why it matters, legal context, recommended action)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     prop = await db.properties.find_one(
         {"property_id": property_id, "client_id": user["client_id"]},
@@ -1903,7 +1872,7 @@ async def get_requirement_explanation(
 async def mark_requirement_not_applicable(
     request: Request,
     property_id: str,
-    user: dict = client_require_capability("CAP_REQ_RESOLVE", "write"),
+    user: dict = client_require_capability("CAP_REQ_MARK_N_A", "write"),
 ):
     """Create or update a requirement row as NOT_REQUIRED for a catalog item (e.g. from Property detail).
     Aligns with requirement-id mark: audit free-text reason, evidence authority sync, audit log, async recalc enqueue."""
@@ -1961,9 +1930,9 @@ async def get_all_requirements(
         "list",
         description="list = faster portal list projection; full = enriched presentation + evidence linkage",
     ),
+    user: dict = client_require_capability("CAP_REQ_VIEW", "read"),
 ):
     """Get all requirements for the client."""
-    user = await client_route_guard(request)
     db = database.get_db()
     list_mode = str(projection or "list").strip().lower() == "list"
 
