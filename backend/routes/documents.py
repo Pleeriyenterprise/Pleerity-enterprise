@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form, D
 from pydantic import BaseModel, ConfigDict
 from database import database
 from middleware import client_route_guard, admin_route_guard
+from middleware.capability_gating import client_require_capability
 from models import Document, DocumentStatus, RequirementStatus, AuditAction
 from utils.audit import create_audit_log
 from utils.compliance_fanout_log import compliance_fanout_extra
@@ -3393,6 +3394,7 @@ async def get_document_extraction(request: Request, document_id: str):
 @router.get("")
 async def list_documents(
     request: Request,
+    user: dict = client_require_capability("CAP_DOC_VIEW", "read"),
     property_id: str = None,
     requirement_id: str = None,
     visibility_state: str = None,
@@ -3404,7 +3406,6 @@ async def list_documents(
     ),
 ):
     """List documents for the client."""
-    user = await client_route_guard(request)
     db = database.get_db()
     list_projection = str(projection or "full").strip().lower() == "list"
     

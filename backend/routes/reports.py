@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from database import database
 from middleware import client_route_guard, admin_route_guard
+from middleware.capability_gating import client_require_capability
 from models import AuditAction
 from utils.audit import create_audit_log
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
@@ -482,18 +483,17 @@ async def download_governed_artifact_pdf(request: Request, artifact_id: str):
 
 
 @router.get("/{report_id}/download")
-async def download_report_by_id(request: Request, report_id: str):
+async def download_report_by_id(
+    request: Request,
+    report_id: str,
+    user: dict = client_require_capability("CAP_REPORT_DOWNLOAD", "read"),
+):
     """Download immutable PDF for a previous report run (frozen bytes when stored)."""
-    from services.plan_registry import plan_registry
     from services.immutable_report_artifact_service import (
         artifact_http_headers,
         read_pdf_artifact_bytes,
     )
 
-    user = await client_route_guard(request)
-    allowed, _, _ = await plan_registry.enforce_feature(user["client_id"], "reports_pdf")
-    if not allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Upgrade required for PDF reports")
     await _enforce_report_export_rate(
         rate_key=f"report_export:client:{user['client_id']}",
         client_id=user["client_id"],

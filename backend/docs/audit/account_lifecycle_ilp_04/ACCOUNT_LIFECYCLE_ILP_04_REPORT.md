@@ -1,72 +1,85 @@
-# ILP-4 Capability Enforcement — Phase 0–1 Report
+# ILP-4 Capability Enforcement — Phase 2A Pilot Report
 
-**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 0–1 only)  
+**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 2A pilot)  
 **Branch:** `develop`  
-**Verdict:** `ILP_04_PHASE_01_COMPLETE`  
+**Verdict:** `ILP_04_PHASE_2A_PILOT_COMPLETE`  
 **Date:** 2026-07-03
 
 ---
 
 ## Summary
 
-Phase 0–1 introduces the governed capability enforcement service and compatibility layer. `CAP_*` grants from the Runtime Contract can be evaluated for read/write actions. **No production route, middleware, or frontend behaviour changed.**
+Phase 2A migrates four low-risk client API endpoints to `client_require_capability()` — proving end-to-end backend capability enforcement without replacing `client_route_guard`, migrating the frontend, or touching billing/Stripe/jobs.
 
 ---
 
-## Deliverables
+## Pilot endpoints
 
-| Area | Path |
-|------|------|
-| Enforcement service | `backend/services/account_capability_enforcement.py` |
-| Compatibility mapping | `backend/services/capability_compatibility.py` |
-| `require_capability()` helper | `backend/middleware/capability_gating.py` (not wired) |
-| Diagnostics API | `backend/routes/client_capability_enforcement.py` |
-| Verification matrix scaffold | `backend/docs/ACCOUNT_CAPABILITY_ENFORCEMENT_MATRIX.md` |
-| Drift diagnostic | `backend/scripts/account_capability_enforcement_drift_diagnostic.py` |
-| Unit tests | `backend/tests/test_account_capability_enforcement.py` (20 tests) |
+| Type | Endpoint | Capability | Action |
+|------|----------|------------|--------|
+| Read | `GET /api/client/properties` | `CAP_PROP_VIEW` | read |
+| Write | `POST /api/client/properties/{id}/requirements/mark-not-applicable` | `CAP_REQ_RESOLVE` | write |
+| Report/download | `GET /api/reports/{report_id}/download` | `CAP_REPORT_DOWNLOAD` | read |
+| Documents | `GET /api/documents` | `CAP_DOC_VIEW` | read |
 
----
-
-## Capability inventory
-
-| Scope | Count |
-|-------|------:|
-| Catalog (`ACCOUNT_CAPABILITY_CATALOG.md`) | 104 |
-| Runtime resolver (`_BASE_CAPABILITY_MATRIX`) | 33 |
-| Missing from runtime (deferred) | 71 |
-| Feature_key compatibility mappings | 31 |
-
-`READ` contract grant is enforced as **READ_ONLY** semantics (view permitted, mutation blocked with governed reason).
+Handlers contain **CAP_* only** — no hybrid `enforce_feature()` inside migrated handlers. Report download removed legacy `enforce_feature("reports_pdf")` gate.
 
 ---
 
-## Regression proof
+## Objectives proved
+
+| Objective | Evidence |
+|-----------|----------|
+| Backend capability enforcement end-to-end | Pilot routes + `client_require_capability()` |
+| READ allows view, blocks write | `test_read_only_allows_properties_list`, `test_read_only_blocks_mark_not_applicable` |
+| DENY/HIDDEN safe structured 403 | `capability_denied_http_detail()` + pilot HTTP tests |
+| ACTIVE customer flows pass | `test_active_properties_read_allowed` |
+| Legacy `enforce_feature()` compatibility | Non-pilot routes unchanged; `TestLegacyEnforceFeatureCompatibility` |
+
+---
+
+## 403 payload shape
+
+```json
+{
+  "error": "capability_denied",
+  "error_code": "read_only_blocked",
+  "message": "...",
+  "capability_id": "CAP_PROP_VIEW",
+  "action": "write",
+  "grant": "READ",
+  "effective_semantic": "READ_ONLY",
+  "lifecycle_state": "...",
+  "portal_mode": "...",
+  "recovery": { "route": "/settings/billing", "label": "..." },
+  "contract_version": "...",
+  "runtime_version": 1
+}
+```
+
+---
+
+## Unchanged (regression proof)
 
 | Area | Changed? |
 |------|----------|
 | `middleware/__init__.py` `client_route_guard` | **No** |
-| Route `enforce_feature` call sites | **No** |
-| `plan_registry.enforce_feature` implementation | **No** |
+| Non-pilot route `enforce_feature` call sites | **No** |
 | Frontend | **No** |
 | Runtime Contract schema | **No** |
-| Lifecycle resolver | **No** |
-| Portal Mode (ILP-3) | **No** |
-| Billing / Stripe / jobs | **No** |
-
-**Tests:** 82 passing (ILP-1 + ILP-2 + ILP-4 Phase 0–1).
+| Billing / Stripe / jobs / sessions / comms | **No** |
 
 ---
 
-## Deferred to Phase 2+
+## Deferred to Phase 2B+
 
-- Middleware `client_route_guard` capability migration
-- Per-endpoint `require_capability()` wiring
-- Frontend `useCapability()` / guards
-- `hasFeature()` internal delegation
+- Wider route migration beyond 4 pilot endpoints
+- Frontend `useCapability()` consumption
+- `client_route_guard` capability integration
 - Resolver matrix extension for 71 catalog-gap capabilities
 
 ---
 
-## ILP-5 / Phase 2 readiness
+## Prior phases
 
-`CapabilityEnforcementService`, `CapabilityDecision`, compatibility mappings, and diagnostics are ready. API route migration can proceed without redesigning the enforcement model.
+- Phase 0–1: `ILP_04_PHASE_01_COMPLETE` — enforcement service, compatibility layer, diagnostics (not wired to routes)

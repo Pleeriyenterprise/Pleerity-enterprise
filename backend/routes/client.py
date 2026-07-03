@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import client_require_capability
 from services.compliance_score import calculate_compliance_score
 from services.evidence_review_config import is_feature_evidence_review_v2
 from services.customer_status_projector_config import get_customer_status_projector_mode
@@ -1691,9 +1692,10 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
 
 
 @router.get("/properties")
-async def get_properties(request: Request):
+async def get_properties(
+    user: dict = client_require_capability("CAP_PROP_VIEW", "read"),
+):
     """Get client properties."""
-    user = await client_route_guard(request)
     db = database.get_db()
     
     try:
@@ -1898,10 +1900,13 @@ async def get_requirement_explanation(
 
 
 @router.post("/properties/{property_id}/requirements/mark-not-applicable")
-async def mark_requirement_not_applicable(request: Request, property_id: str):
+async def mark_requirement_not_applicable(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_REQ_RESOLVE", "write"),
+):
     """Create or update a requirement row as NOT_REQUIRED for a catalog item (e.g. from Property detail).
     Aligns with requirement-id mark: audit free-text reason, evidence authority sync, audit log, async recalc enqueue."""
-    user = await client_route_guard(request)
     db = database.get_db()
     client_id = user["client_id"]
     try:

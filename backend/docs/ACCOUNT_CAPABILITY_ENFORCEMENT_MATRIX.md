@@ -1,8 +1,24 @@
 # Account Capability Enforcement Matrix
 
-**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 0–1 scaffold)  
+**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 0–1 scaffold; Phase 2A pilot)  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** Verification checklist — enforcement service built; routes/middleware/frontend **not migrated** in Phase 0–1
+**Status:** Phase 2A pilot routes wired; broader migration deferred
+
+---
+
+## Phase 2A pilot routes (CAP_* only)
+
+| Endpoint | Method | Capability | Action | File |
+|----------|--------|------------|--------|------|
+| `/api/client/properties` | GET | `CAP_PROP_VIEW` | read | `routes/client.py` |
+| `/api/client/properties/{id}/requirements/mark-not-applicable` | POST | `CAP_REQ_RESOLVE` | write | `routes/client.py` |
+| `/api/reports/{report_id}/download` | GET | `CAP_REPORT_DOWNLOAD` | read | `routes/reports.py` |
+| `/api/documents` | GET | `CAP_DOC_VIEW` | read | `routes/documents.py` |
+
+- Dependency: `client_require_capability()` in `middleware/capability_gating.py`
+- `client_route_guard` unchanged (router-level + dependency-internal)
+- Report download: `enforce_feature("reports_pdf")` **removed** from pilot handler only
+- Tests: `backend/tests/test_account_capability_enforcement_pilot.py`
 
 ---
 
@@ -48,18 +64,18 @@ These capabilities are present in `_BASE_CAPABILITY_MATRIX` and evaluable by `Ca
 | `CAP_AUTH_LOGIN` | ✓ | Service only | `test_denied_deleted_login` |
 | `CAP_PROFILE_VIEW` | ✓ | Service only | — |
 | `CAP_PROFILE_EDIT` | ✓ | Service only | — |
-| `CAP_PROP_VIEW` | ✓ | Service only | `test_read_only_blocks_write_allows_read` |
+| `CAP_PROP_VIEW` | ✓ | **Pilot route** | `test_read_only_blocks_write_allows_read`, pilot HTTP tests |
 | `CAP_PROP_CREATE` | ✓ | Service only | — |
 | `CAP_PROP_EDIT` | ✓ | Service only | — |
 | `CAP_REQ_VIEW` | ✓ | Service only | — |
-| `CAP_REQ_RESOLVE` | ✓ | Service only | — |
-| `CAP_DOC_VIEW` | ✓ | Service only | — |
+| `CAP_REQ_RESOLVE` | ✓ | **Pilot route** | pilot HTTP tests |
+| `CAP_DOC_VIEW` | ✓ | **Pilot route** | pilot HTTP tests |
 | `CAP_DOC_UPLOAD` | ✓ | Service only | `test_plan_gated_resolved_*` |
 | `CAP_EVIDENCE_VIEW` | ✓ | Service only | — |
 | `CAP_EVIDENCE_DOWNLOAD` | ✓ | Service only | — |
 | `CAP_REPORT_VIEW` | ✓ | Service only | — |
 | `CAP_REPORT_GENERATE_PDF` | ✓ | Service only | `test_plan_gated_resolved_*` |
-| `CAP_REPORT_DOWNLOAD` | ✓ | Service only | — |
+| `CAP_REPORT_DOWNLOAD` | ✓ | **Pilot route** | pilot HTTP tests |
 | `CAP_REPORT_SCHEDULE` | ✓ | Service only | — |
 | `CAP_DASHBOARD_VIEW` | ✓ | Service only | — |
 | `CAP_TODAY_VIEW` | ✓ | Service only | — |
@@ -118,17 +134,18 @@ Full machine-readable inventory: `backend/docs/audit/account_lifecycle_ilp_04/AC
 |-----------|------|
 | Enforcement service | `backend/services/account_capability_enforcement.py` |
 | Compatibility mapping | `backend/services/capability_compatibility.py` |
-| Route dependency helper | `backend/middleware/capability_gating.py` (`require_capability` — **not wired**) |
+| Route dependency helper | `backend/middleware/capability_gating.py` (`client_require_capability` — **4 pilot routes**) |
 | Diagnostics API | `GET /api/client/capability-enforcement/diagnostic` |
 | Drift script | `backend/scripts/account_capability_enforcement_drift_diagnostic.py` |
 | Unit tests | `backend/tests/test_account_capability_enforcement.py` |
+| Pilot route tests | `backend/tests/test_account_capability_enforcement_pilot.py` |
 
 ---
 
-## Deferred (Phase 2+)
+## Deferred (Phase 2B+)
 
 - `client_route_guard` replacement
-- Per-route `require_capability()` wiring
+- Remaining route `require_capability()` wiring (beyond 4 pilot endpoints)
 - Frontend `useCapability()` / guards
 - `hasFeature()` internal delegation
 - ILP-6 governed API error payloads
