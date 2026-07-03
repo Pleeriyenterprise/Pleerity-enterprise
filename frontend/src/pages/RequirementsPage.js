@@ -31,6 +31,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import EmptyState from '../components/EmptyState';
 import { requirementDisplayTitle, requirementLabel } from '../domain/presentDomain';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import {
   PortalPageShell,
   PortalSectionSkeleton,
@@ -829,6 +830,7 @@ const RequirementsPage = () => {
 
   return (
     <div data-testid="requirements-page">
+        <PortalModePageBanner />
         <PortalStaleRefreshBanner refreshing={refreshing} />
         {documentsEnrichmentLoading ? (
           <p className="text-xs text-gray-500 mb-3" data-testid="requirements-doc-counts-loading">

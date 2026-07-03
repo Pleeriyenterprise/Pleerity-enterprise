@@ -32,6 +32,7 @@ import {
   PortalPageShell,
   PortalStaleRefreshBanner,
   portalPageRoot,
+  PortalPageWithLifecyclePresentation,
 } from '../components/client/ClientPortalPatterns';
 import PortalLoadingState from '../components/loading/PortalLoadingState';
 import LifecycleKpiAttentionStrip from '../components/dashboard/LifecycleKpiAttentionStrip';
@@ -1197,7 +1198,7 @@ const ClientDashboard = () => {
 
   return (
     <TooltipProvider delayDuration={250}>
-    <div className={portalPageRoot} data-testid="client-dashboard">
+    <PortalPageWithLifecyclePresentation data-testid="client-dashboard">
         <PortalStaleRefreshBanner refreshing={dashboardRefreshing} />
         <ErrorBanner message={error} onRetry={fetchDashboard} retryLabel="Retry" />
 
@@ -3574,7 +3575,7 @@ const ClientDashboard = () => {
       )}
         </>
       )}
-    </div>
+    </PortalPageWithLifecyclePresentation>
     </TooltipProvider>
   );
 };

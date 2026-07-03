@@ -34,6 +34,7 @@ import {
 import UpgradePrompt from '../components/UpgradePrompt';
 import { operationalLabelForToken } from '../utils/presentationLanguage';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import { jurisdictionSourceLabel } from '../utils/jurisdictionComplianceCopy';
@@ -519,6 +520,7 @@ const ReportsPage = () => {
 
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')} data-testid="reports-page">
+      <PortalModePageBanner />
       <header className="bg-midnight-blue text-white py-4">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

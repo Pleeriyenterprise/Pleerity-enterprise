@@ -39,6 +39,7 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI } from '../api/client';
 import { PortalStaleRefreshBanner } from '../components/client/ClientPortalPatterns';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import PortalLoadingState from '../components/loading/PortalLoadingState';
 import { todayLoadingStages } from '../components/loading/portalLoadingStageModels';
 import { usePortalLoadingTelemetry } from '../components/loading/usePortalLoadingTelemetry';
@@ -1439,6 +1440,7 @@ export default function ClientTasksPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto" data-testid="client-tasks-page">
+      <PortalModePageBanner />
       <div className="mb-6">
         <div className="flex items-center gap-2 text-midnight-blue mb-1">
           <LayoutList className="w-7 h-7" />

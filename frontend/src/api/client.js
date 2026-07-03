@@ -543,6 +543,8 @@ export const clientAPI = {
   /** Paid invoice total this UTC month (maintenance/contractor). Requires INVOICING. */
   getMaintenanceSpendThisMonth: () => apiClient.get('/client/finance/maintenance-spend-this-month'),
   getEntitlements: () => apiClient.get('/client/entitlements'),
+  /** Governed lifecycle runtime contract (ILP-2); presentation-only consumption in ILP-3. */
+  getLifecycleRuntime: () => apiClient.get('/client/lifecycle-runtime'),
   getProperties: () => apiClient.get('/client/properties'),
   /** PATCH /api/properties/{id} — partial property update (e.g. jurisdiction). */
   patchProperty: (propertyId, body) => apiClient.patch(`/properties/${encodeURIComponent(propertyId)}`, body),

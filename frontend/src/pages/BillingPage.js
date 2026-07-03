@@ -32,7 +32,8 @@ import { toast } from '@/utils/portalNotifications';
 import api, { clientAPI } from '../api/client';
 import { useEntitlements } from '../contexts/EntitlementsContext';
 import { formatUpgradeUsageContext } from '../components/UpgradePrompt';
-import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PortalLoadingPanel, portalPageRoot, PortalPageWithLifecyclePresentation } from '../components/client/ClientPortalPatterns';
+import { useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
 import branding from '../config/branding';
 
@@ -314,6 +315,7 @@ function planStatusLabel(bs) {
 const BillingPage = () => {
   const navigate = useNavigate();
   const { usageContext, refetch: refetchEntitlements } = useEntitlements();
+  const { customerExperience } = useLifecycleRuntime();
   const billingUsageHint = formatUpgradeUsageContext(usageContext);
   const [usageRefreshing, setUsageRefreshing] = useState(false);
   const billingStepUp = useStepUpApi();
@@ -650,7 +652,7 @@ const BillingPage = () => {
   }
 
   return (
-    <div className={portalPageRoot} data-testid="billing-page">
+    <PortalPageWithLifecyclePresentation data-testid="billing-page">
       <div className="max-w-6xl mx-auto px-4 pt-4 pb-2">
         <div className="flex items-start gap-3">
           <button
@@ -806,10 +808,10 @@ const BillingPage = () => {
                     </p>
                   )}
                 </div>
-                {billingStatus?.has_subscription && billingStatus?.canonical_entitlement_state && (
+                {billingStatus?.has_subscription && customerExperience?.current_state_label && (
                   <div>
                     <p className="text-gray-500">Access status</p>
-                    <p className="font-medium">{billingStatus.canonical_entitlement_state}</p>
+                    <p className="font-medium">{customerExperience.current_state_label}</p>
                   </div>
                 )}
                 {billingStatus?.has_subscription && billingStatus?.grace_period_summary && (
@@ -1576,7 +1578,7 @@ const BillingPage = () => {
         </div>
       )}
       {billingStepUp.modal}
-    </div>
+    </PortalPageWithLifecyclePresentation>
   );
 };
 

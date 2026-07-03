@@ -27,6 +27,7 @@ import {
   PortalStaleRefreshBanner,
   portalPageRoot,
 } from '../components/client/ClientPortalPatterns';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import PortalLoadingState from '../components/loading/PortalLoadingState';
 import PortalCardLoading from '../components/loading/PortalCardLoading';
 import { commandCenterLoadingStages } from '../components/loading/portalLoadingStageModels';
@@ -600,6 +601,7 @@ export default function ClientCommandCenterPage() {
 
   return (
     <div className={portalPageRoot} data-testid="command-center-root">
+      <PortalModePageBanner />
       <PortalStaleRefreshBanner refreshing={refreshing} />
       {primaryFreshness?.projection === 'primary' ? (
         <p className="text-xs text-gray-500 mb-2" data-testid="command-center-primary-freshness">

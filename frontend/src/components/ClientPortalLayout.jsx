@@ -31,6 +31,10 @@ import {
   isOperationsPath,
   isSecondaryNavPath,
 } from '../config/portalNavigationConfig';
+import { annotateNavWithLifecyclePolicy } from '../utils/portalNavigationPolicy';
+import { usePortalMode } from '../contexts/LifecycleRuntimeContext';
+import LifecycleShell from './lifecycle/LifecycleShell';
+import LifecycleRuntimeDiagnostics from './lifecycle/LifecycleRuntimeDiagnostics';
 import {
   PortalNavDropdown,
   PortalNavLink,
@@ -48,6 +52,7 @@ export { PORTAL_TABS };
 export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { user, logout, isClient } = useAuth();
   const { hasFeature, entitlementsLoadFailed } = useEntitlements();
+  const { navigationPolicy } = usePortalMode();
   /** While entitlements failed to load, keep gated nav visible so users are not misled into thinking features are absent; route gates show retry. */
   const navHasFeature = (key) => entitlementsLoadFailed || hasFeature(key);
   const navigate = useNavigate();
@@ -232,11 +237,14 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const tenantTabs = isTenant ? TENANT_PORTAL_TABS : null;
   const navModel = isTenant
     ? null
-    : buildPortalNavigationModel({
-        navHasFeature,
-        showReports,
-        userRole: user?.role,
-      });
+    : annotateNavWithLifecyclePolicy(
+        buildPortalNavigationModel({
+          navHasFeature,
+          showReports,
+          userRole: user?.role,
+        }),
+        navigationPolicy,
+      );
   const { primaryLinks = [], operationsGroup = null, secondaryItems = [] } = navModel || {};
 
   const closeNavMenus = () => {
@@ -492,6 +500,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                       icon={item.icon}
                       invoicingEnabled={invoicingEnabled}
                       onNavigate={closeNavMenus}
+                      lifecycleNavHint={item.lifecycleNavHint}
                     />
                   ))}
                   {operationsGroup ? (
@@ -628,6 +637,8 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       )}
 
       <main className="client-portal-main client-portal-prose flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 pb-10">
+        <LifecycleRuntimeDiagnostics />
+        <LifecycleShell />
         {children}
       </main>
 

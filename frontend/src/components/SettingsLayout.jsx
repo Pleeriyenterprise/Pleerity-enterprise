@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { User, Bell, CreditCard, Palette, Globe2 } from 'lucide-react';
 import { useEntitlements } from '../contexts/EntitlementsContext';
+import { PortalModePageBanner } from './lifecycle/LifecycleShell';
 import { ScrollableUnderlineNav, scrollableNavItemClass } from './ui/scrollable-nav';
 
 const BASE_TABS = [
@@ -25,6 +26,7 @@ export default function SettingsLayout() {
 
   return (
     <div className="min-w-0 max-w-full">
+      <PortalModePageBanner />
       <h1 className="text-2xl font-bold text-midnight-blue mb-2">Settings</h1>
       <p className="text-gray-600 mb-6">Profile, compliance jurisdiction, notifications, and plan.</p>
       <ScrollableUnderlineNav ariaLabel="Settings sections" data-testid="settings-tab-nav">

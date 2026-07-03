@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useParams, Outlet, useLocation 
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { EntitlementsProvider } from './contexts/EntitlementsContext';
+import { LifecycleRuntimeProvider } from './contexts/LifecycleRuntimeContext';
 import { ProtectedRoute } from './utils/ProtectedRoute';
 import { EntitlementProtectedRoute } from './utils/EntitlementProtectedRoute';
 import { Toaster } from './components/ui/sonner';
@@ -282,6 +283,7 @@ function App() {
     <HelmetProvider>
       <AuthProvider>
         <EntitlementsProvider>
+        <LifecycleRuntimeProvider>
         <BrowserRouter>
           <ScrollToTop />
           <ClientRouteTelemetry />
@@ -887,7 +889,8 @@ function App() {
           <DebugPanel />
         </div>
           </ErrorBoundary>
-      </BrowserRouter>
+        </BrowserRouter>
+        </LifecycleRuntimeProvider>
         </EntitlementsProvider>
     </AuthProvider>
     </HelmetProvider>

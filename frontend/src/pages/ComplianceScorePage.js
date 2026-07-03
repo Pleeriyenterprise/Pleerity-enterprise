@@ -39,6 +39,7 @@ import {
 import { projectResolvedRequirementSemantics } from '../utils/resolvedRequirementViewModel';
 import { useComplianceOutcomeRefresh } from '../utils/useComplianceOutcomeRefresh';
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import { cn } from '../lib/utils';
 import { requirementDisplayTitle } from '../domain/presentDomain';
 import { complianceRequirementStatusLabel } from '../domain/presentDomain';
@@ -466,6 +467,7 @@ const ComplianceScorePage = () => {
   return (
     <TooltipProvider>
     <div className={portalPageRoot} data-testid="compliance-score-page">
+      <PortalModePageBanner />
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-4">
           <h1 className="text-xl sm:text-2xl font-bold text-midnight-blue">Compliance score</h1>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">

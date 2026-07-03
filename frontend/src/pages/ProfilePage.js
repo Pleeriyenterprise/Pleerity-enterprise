@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { ArrowLeft, Save, User, Bell, CheckCircle2, Camera } from 'lucide-react';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import { cn } from '../lib/utils';
 
 const ProfilePage = () => {
@@ -113,6 +114,7 @@ const ProfilePage = () => {
 
   return (
     <div className={cn(portalPageRoot, 'bg-gray-50')}>
+      <PortalModePageBanner />
       {/* Header */}
       <header className="bg-midnight-blue text-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

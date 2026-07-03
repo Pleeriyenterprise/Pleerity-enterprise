@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 import { Loader2 } from 'lucide-react';
+import { PortalModePageBanner } from '../lifecycle/LifecycleShell';
 
 /** Filters / toolbar: stack on narrow viewports, no horizontal squeeze. */
 export function PortalFilterStack({ children, className }) {
@@ -27,6 +28,16 @@ export const portalDrawerPanelClass =
 
 /** Root wrapper for pages inside ClientPortal (prevents horizontal bleed, flex shrink). */
 export const portalPageRoot = 'w-full min-w-0';
+
+/** Page root with governed portal-mode presentation banner (ILP-3). */
+export function PortalPageWithLifecyclePresentation({ children, className, ...props }) {
+  return (
+    <div className={cn(portalPageRoot, className)} {...props}>
+      <PortalModePageBanner />
+      {children}
+    </div>
+  );
+}
 
 export function PortalLoadingPanel({ message = 'Loading…' }) {
   return (
@@ -64,6 +75,7 @@ export function PortalStaleRefreshBanner({ refreshing, className }) {
 export function PortalPageShell({ title, subtitle, children, actions, refreshing = false, testId }) {
   return (
     <div className={portalPageRoot} data-testid={testId}>
+      <PortalModePageBanner />
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           {title ? <h1 className="text-2xl font-bold text-midnight-blue">{title}</h1> : null}

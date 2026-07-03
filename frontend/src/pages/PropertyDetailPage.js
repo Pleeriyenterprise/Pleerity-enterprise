@@ -134,6 +134,7 @@ import {
   PortalLoadingPanel,
   PortalFilterStack,
   portalPageRoot,
+  PortalPageWithLifecyclePresentation,
   portalPrimaryButtonClass,
   portalSecondaryButtonClass,
   portalDrawerPanelClass,
@@ -1561,7 +1562,7 @@ export default function PropertyDetailPage() {
     showBuildingAgeField(complianceDetail?.effective_jurisdiction_label);
 
   return (
-    <div className={portalPageRoot} data-testid="property-detail-page">
+    <PortalPageWithLifecyclePresentation data-testid="property-detail-page">
       <div className="flex items-center justify-between gap-4 mb-4">
         <Button variant="ghost" size="sm" className="-ml-2" onClick={() => (window.history.length > 2 ? navigate(-1) : navigate('/properties'))}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -4549,6 +4550,6 @@ export default function PropertyDetailPage() {
           </div>
         </div>
       )}
-    </div>
+    </PortalPageWithLifecyclePresentation>
   );
 }

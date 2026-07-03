@@ -34,6 +34,27 @@ jest.mock('../contexts/EntitlementsContext', () => ({
   }),
 }));
 
+jest.mock('../contexts/LifecycleRuntimeContext', () => ({
+  usePortalMode: () => ({
+    portalMode: 'FULL_ACCESS',
+    navigationPolicy: {
+      landing_route: '/today',
+      locked_routes: [],
+      read_only_routes: [],
+      hidden_routes: [],
+    },
+    customerExperience: { heading: '', current_state_label: 'Active' },
+    runtimeAvailable: true,
+  }),
+  useLifecycleRuntime: () => ({
+    loading: false,
+    error: null,
+    runtimeAvailable: true,
+    portalMode: 'FULL_ACCESS',
+    warnings: [],
+  }),
+}));
+
 jest.mock('./SessionIdleGuard', () => ({
   __esModule: true,
   default: ({ children }) => <>{children}</>,

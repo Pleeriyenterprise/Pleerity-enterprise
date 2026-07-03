@@ -17,7 +17,15 @@ export const portalNavDropdownItemClass = (isActive) =>
       : 'border-transparent text-gray-300 hover:text-white hover:bg-white/5'
   }`;
 
-export function PortalNavLink({ to, label, icon: Icon, end, isTenant, invoicingEnabled, onNavigate, className = '' }) {
+export function PortalNavLink({ to, label, icon: Icon, end, isTenant, invoicingEnabled, onNavigate, className = '', lifecycleNavHint }) {
+  const hintClass =
+    lifecycleNavHint === 'locked'
+      ? 'opacity-60'
+      : lifecycleNavHint === 'read_only'
+        ? 'opacity-80'
+        : lifecycleNavHint === 'de_emphasized'
+          ? 'opacity-50'
+          : '';
   return (
     <NavLink
       to={to}
@@ -26,8 +34,9 @@ export function PortalNavLink({ to, label, icon: Icon, end, isTenant, invoicingE
       className={({ isActive }) =>
         `${portalNavLinkClass(
           isActive || ((to === '/settings' || to === '/tenant/settings') && isSettingsPath(to, { isTenant, invoicingEnabled }))
-        )} ${className}`
+        )} ${hintClass} ${className}`
       }
+      data-lifecycle-nav-hint={lifecycleNavHint || 'normal'}
     >
       {Icon ? <Icon className="w-4 h-4 mr-2 shrink-0" aria-hidden /> : null}
       {label}

@@ -42,6 +42,7 @@ import {
   PortalStaleRefreshBanner,
   portalPageRoot,
 } from '../components/client/ClientPortalPatterns';
+import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import {
   fetchOperational,
   OPERATIONAL_CACHE_KEYS,
@@ -1120,6 +1121,7 @@ const DocumentsPage = () => {
 
   return (
     <div className={portalPageRoot} data-testid="documents-page">
+      <PortalModePageBanner />
       <PortalStaleRefreshBanner refreshing={refreshing} />
       {registryLoading ? (
         <p className="text-xs text-gray-500 mb-3" data-testid="documents-registry-loading">
