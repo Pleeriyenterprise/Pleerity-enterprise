@@ -1022,9 +1022,12 @@ class EvidencePackJobCreateBody(BaseModel):
 
 
 @router.get("/analytics/summary")
-async def get_client_analytics_summary(request: Request, days: int = Query(30, ge=7, le=90)):
+async def get_client_analytics_summary(
+    request: Request,
+    days: int = Query(30, ge=7, le=90),
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "read"),
+):
     """First-party event totals by name for this client (Mongo aggregates; not a full warehouse)."""
-    user = await client_route_guard(request)
     try:
         from services.product_analytics_service import summarize_client_events
 
@@ -1038,12 +1041,14 @@ async def get_client_analytics_summary(request: Request, days: int = Query(30, g
 
 
 @router.get("/activity-since")
-async def get_client_activity_since(request: Request):
+async def get_client_activity_since(
+    request: Request,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "read"),
+):
     """
     Structured deltas since this user's last acknowledged visit (or last login / 30 days).
     Does not advance the cursor; POST /activity-since/acknowledge after the user marks the feed as seen.
     """
-    user = await client_route_guard(request)
     portal_user_id = user.get("portal_user_id")
     if not portal_user_id:
         raise HTTPException(
@@ -1063,9 +1068,11 @@ async def get_client_activity_since(request: Request):
 
 
 @router.post("/activity-since/acknowledge")
-async def post_client_activity_since_acknowledge(request: Request):
+async def post_client_activity_since_acknowledge(
+    request: Request,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "write"),
+):
     """Advance the 'since last visit' cursor to now."""
-    user = await client_route_guard(request)
     portal_user_id = user.get("portal_user_id")
     if not portal_user_id:
         raise HTTPException(
@@ -1086,9 +1093,12 @@ async def post_client_activity_since_acknowledge(request: Request):
 
 
 @router.post("/analytics/events")
-async def post_client_analytics_event(request: Request, body: ClientAnalyticsEventBody):
+async def post_client_analytics_event(
+    request: Request,
+    body: ClientAnalyticsEventBody,
+    user: dict = client_require_capability("CAP_COMPLIANCE_ACTIVITY", "write"),
+):
     """First-party product analytics (Mongo). Unknown event names are ignored."""
-    user = await client_route_guard(request)
     try:
         from utils.analytics_event_logger import record_portal_analytics_event
 
@@ -1111,6 +1121,7 @@ async def post_client_evidence_pack_job(
     request: Request,
     background_tasks: BackgroundTasks,
     body: Optional[EvidencePackJobCreateBody] = Body(default=None),
+    user: dict = client_require_capability("CAP_REPORT_AUDIT_PACK", "write"),
 ):
     """
     Build a ZIP evidence pack (CSVs + manifest) and store in GridFS.
@@ -1121,24 +1132,12 @@ async def post_client_evidence_pack_job(
     For a single governed **per-property** audit bundle (PDF report + verified certs + timeline +
     delivery proof + checksum manifest), use ``POST /api/client/compliance/audit-pack/generate`` instead.
     """
-    from services.plan_registry import plan_registry
     from models import AuditAction
     from utils.audit import create_audit_log
     from services.evidence_pack_service import parse_export_period
 
-    user = await client_route_guard(request)
     b = body or EvidencePackJobCreateBody()
     client_id = user["client_id"]
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(client_id, "audit_log_export")
-    if not allowed:
-        detail = {
-            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-            "message": error_msg,
-            "upgrade_required": True,
-            **(error_details or {}),
-        }
-        detail["feature"] = "audit_log_export"
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
     db = database.get_db()
     now = datetime.now(timezone.utc)
@@ -1206,41 +1205,24 @@ async def post_client_evidence_pack_job(
 
 
 @router.get("/evidence-pack/jobs")
-async def list_client_evidence_pack_jobs(request: Request, limit: int = Query(10, ge=1, le=30)):
-    from services.plan_registry import plan_registry
+async def list_client_evidence_pack_jobs(
+    request: Request,
+    limit: int = Query(10, ge=1, le=30),
+    user: dict = client_require_capability("CAP_REPORT_AUDIT_PACK", "read"),
+):
     from services.evidence_pack_service import recent_jobs
 
-    user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "audit_log_export")
-    if not allowed:
-        detail = {
-            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-            "message": error_msg,
-            "upgrade_required": True,
-            **(error_details or {}),
-        }
-        detail["feature"] = "audit_log_export"
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
     items = await recent_jobs(user["client_id"], limit=limit)
     return {"jobs": items}
 
 
 @router.get("/evidence-pack/jobs/{job_id}/file")
-async def download_client_evidence_pack_file(request: Request, job_id: str):
-    from services.plan_registry import plan_registry
+async def download_client_evidence_pack_file(
+    request: Request,
+    job_id: str,
+    user: dict = client_require_capability("CAP_REPORT_AUDIT_PACK", "read"),
+):
     from services.evidence_pack_service import get_job, read_pack_bytes
-
-    user = await client_route_guard(request)
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "audit_log_export")
-    if not allowed:
-        detail = {
-            "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-            "message": error_msg,
-            "upgrade_required": True,
-            **(error_details or {}),
-        }
-        detail["feature"] = "audit_log_export"
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
     job = await get_job(user["client_id"], job_id.strip())
     if not job:

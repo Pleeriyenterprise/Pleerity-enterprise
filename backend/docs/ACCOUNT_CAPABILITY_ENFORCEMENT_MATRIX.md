@@ -1,12 +1,30 @@
 # Account Capability Enforcement Matrix
 
-**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 0–1 scaffold; Phase 2A pilot; Phase 2B Wave 1; Phase 2C-1; Phase 2C-2)  
+**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** Phase 2C-2 — dashboard, command centre, today/task, and ledger routes capability-governed
+**Status:** ILP-4 in progress — evidence pack, analytics, and activity-since routes capability-governed
 
 ---
 
-## Phase 2C-2 migrated routes (`routes/client.py` subset)
+## ILP-4 migrated routes — evidence pack, analytics, activity-since (`routes/client.py`)
+
+| Endpoint | Method | Capability | Action | Notes |
+|----------|--------|------------|--------|-------|
+| `/api/client/analytics/summary` | GET | `CAP_COMPLIANCE_ACTIVITY` | read | |
+| `/api/client/analytics/events` | POST | `CAP_COMPLIANCE_ACTIVITY` | write | |
+| `/api/client/activity-since` | GET | `CAP_COMPLIANCE_ACTIVITY` | read | |
+| `/api/client/activity-since/acknowledge` | POST | `CAP_COMPLIANCE_ACTIVITY` | write | |
+| `/api/client/evidence-pack/jobs` | POST | `CAP_REPORT_AUDIT_PACK` | write | Plan via runtime `audit_log_export`; rate limit retained |
+| `/api/client/evidence-pack/jobs` | GET | `CAP_REPORT_AUDIT_PACK` | read | |
+| `/api/client/evidence-pack/jobs/{id}/file` | GET | `CAP_REPORT_AUDIT_PACK` | read | |
+
+No `enforce_feature()` in these handlers. Router-level `client_route_guard` retained for auth on non-migrated routes.
+
+**Explicitly not migrated:** tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
+
+---
+
+## ILP-4 migrated routes — dashboard, command centre, today/task, ledger (`routes/client.py`)
 
 | Endpoint | Method | Capability | Action | Notes |
 |----------|--------|------------|--------|-------|
@@ -27,11 +45,11 @@
 
 No `enforce_feature()` in 2C-2 handlers. Router-level `client_route_guard` retained for auth on non-migrated routes.
 
-**Explicitly not migrated (2C-3+):** evidence-pack, analytics, activity-since, tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
+**Explicitly not migrated (remaining ILP-4):** tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
 
 ---
 
-## Phase 2C-1 migrated modules (CAP_* only)
+## ILP-4 migrated modules — properties, portfolio, score/requirement (`routes/client.py` subset)
 
 ### `routes/properties.py` (full)
 
@@ -273,7 +291,7 @@ Wave 1 added five capabilities; Phase 2C-1 adds nine; Phase 2C-2 adds two ledger
 | `CAP_SCORE_EXPLAIN` | ✓ | **2C-1 client** | wave2c1 lifecycle matrix |
 | `CAP_SCORE_TREND` | ✓ | **2C-1 client + portfolio** | wave2c1 lifecycle matrix |
 | `CAP_SCORE_SNAPSHOT` | ✓ | **2C-1 client** | wave2c1 lifecycle matrix |
-| `CAP_COMPLIANCE_ACTIVITY` | ✓ | **2C-1 client + portfolio** | wave2c1 lifecycle matrix |
+| `CAP_COMPLIANCE_ACTIVITY` | ✓ | **ILP-4 client analytics/activity-since + 2C-1 client + portfolio** | wave2c1 + evidence_pack_analytics lifecycle matrix |
 
 | Capability | Runtime | Enforcement (Wave 1) | Tests |
 |------------|---------|------------------------|-------|
@@ -285,7 +303,7 @@ Wave 1 added five capabilities; Phase 2C-1 adds nine; Phase 2C-2 adds two ledger
 | `CAP_REPORT_DOWNLOAD` | ✓ | pilot + **Wave 1 reports** | wave1 lifecycle matrix |
 | `CAP_REPORT_SCHEDULE` | ✓ | **Wave 1 reports** | wave1 lifecycle matrix |
 | `CAP_AUDIT_LOG_EXPORT` | ✓ | **Wave 1 reports** | wave1 lifecycle matrix |
-| `CAP_REPORT_AUDIT_PACK` | ✓ | matrix only (route deferred) | — |
+| `CAP_REPORT_AUDIT_PACK` | ✓ | **ILP-4 client evidence-pack jobs** | evidence_pack_analytics lifecycle matrix |
 | `CAP_DOC_VIEW` | ✓ | pilot + **Wave 1 documents** | wave1 lifecycle matrix |
 | `CAP_DOC_UPLOAD` | ✓ | **Wave 1 documents** | wave1 lifecycle matrix |
 | `CAP_DOC_BULK_ZIP` | ✓ | **Wave 1 documents** | wave1 lifecycle matrix |
@@ -325,10 +343,9 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 
 ---
 
-## Deferred (2C-3+)
+## Deferred (remaining ILP-4 backend)
 
-- `routes/client.py` evidence-pack job routes (`CAP_REPORT_AUDIT_PACK` consumer)
-- Analytics, activity-since, tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
+- Tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
 - Frontend `useCapability()` consumption
 - `client_route_guard` capability integration for remaining non-migrated routes
 - Resolver matrix extension for remaining catalog-gap capabilities

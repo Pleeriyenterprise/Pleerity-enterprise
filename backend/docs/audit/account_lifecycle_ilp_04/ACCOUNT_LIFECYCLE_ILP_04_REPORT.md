@@ -1,72 +1,47 @@
-# ILP-4 Capability Enforcement — Phase 2C-2 Report
+# ILP-4 Capability Enforcement — Progress Report
 
-**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01 (Phase 2C-2)  
+**Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Branch:** `develop`  
-**Verdict:** `ILP_04_PHASE_2C_2_COMPLETE`  
+**Status:** ILP-4 in progress  
 **Date:** 2026-07-03
 
 ---
 
-## Summary
+## Latest milestone — evidence pack, analytics, activity-since
 
-Phase 2C-2 migrates the `client.py` dashboard, command centre, today/task, and ledger route subset to `client_require_capability()` / `assert_client_capability()`, extending the Runtime Contract with `CAP_LEDGER_VIEW` and `CAP_LEDGER_EXPORT`.
-
-Prior phases (2A pilot, 2B Wave 1, 2C-1) remain in place. Phase 2C-3 (evidence-pack) and ops modules are **not** started.
-
----
-
-## 2C-2 scope delivered
+Migrated seven `client.py` routes to `client_require_capability()` / `assert_client_capability()`. Removed all `enforce_feature("audit_log_export")` checks from evidence-pack handlers.
 
 | Area | Endpoints | Primary capabilities |
 |------|-----------|---------------------|
-| Dashboard | 2 | `CAP_DASHBOARD_VIEW` (+ conditional `CAP_SCORE_VIEW`) |
-| Command centre | 2 | `CAP_CMD_CTR_VIEW` |
-| Today / tasks | 8 | `CAP_TODAY_VIEW`, `CAP_TODAY_ACT` |
-| Ledger | 2 | `CAP_LEDGER_VIEW`, `CAP_LEDGER_EXPORT` |
+| Analytics | 2 | `CAP_COMPLIANCE_ACTIVITY` (read/write) |
+| Activity since | 2 | `CAP_COMPLIANCE_ACTIVITY` (read/write) |
+| Evidence pack | 3 | `CAP_REPORT_AUDIT_PACK` (read/write) |
 
-**Total:** 14 routes migrated in `routes/client.py`.
+**Total this milestone:** 7 routes. **Cumulative migrated in `client.py`:** 37 endpoints on `CAP_*`.
 
-**Explicitly not migrated:** evidence-pack, analytics, activity-since, tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions, frontend.
-
----
-
-## Runtime contract extensions (schema unchanged)
-
-- `CAP_LEDGER_VIEW` — lifecycle matrix row (read in billing recovery / read-only)
-- `CAP_LEDGER_EXPORT` → plan key `reports_csv`
-- Plan keys wired for 2C-2 consumers: `CAP_DASHBOARD_VIEW`, `CAP_CMD_CTR_VIEW` → `compliance_dashboard`
-
-Portal ceilings updated for `BILLING_RECOVERY`, `READ_ONLY`, `SUSPENDED`.
-
-Runtime resolver count: **49** capabilities (47 after 2C-1 + 2 ledger caps).
+**Not migrated:** tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements, frontend.
 
 ---
 
-## Test suites (regression)
+## Test suites
 
-| Suite | Path | Result |
-|-------|------|--------|
-| ILP-4 Phase 2C-2 | `test_account_capability_enforcement_wave2c2.py` | 61 lifecycle matrix tests |
-| ILP-4 Phase 2C-1 | `test_account_capability_enforcement_wave2c1.py` | regression |
-| ILP-4 Phase 2B Wave 1 | `test_account_capability_enforcement_wave1.py` | regression |
-| ILP-4 Phase 2A pilot | `test_account_capability_enforcement_pilot.py` | regression |
+| Suite | Path | Scope |
+|-------|------|-------|
+| Evidence pack + analytics | `test_account_capability_enforcement_evidence_pack_analytics.py` | 71 lifecycle matrix tests |
+| Dashboard / today / ledger | `test_account_capability_enforcement_wave2c2.py` | regression |
+| Properties / portfolio / score | `test_account_capability_enforcement_wave2c1.py` | regression |
+| Evidence / reports / documents | `test_account_capability_enforcement_wave1.py` | regression |
+| Pilot | `test_account_capability_enforcement_pilot.py` | regression |
 
 Lifecycle states: `ACTIVE`, `TRIAL`, `GRACE_PERIOD`, `CANCELLATION_SCHEDULED`, `READ_ONLY`, `CANCELLED_IMMEDIATE`, `SUBSCRIPTION_EXPIRED`, `SUSPENDED`, `ARCHIVED`, `UNKNOWN`.
 
 ---
 
-## Deferred to 2C-3+
+## ILP-4 completion criteria (remaining)
 
-- `client.py` evidence-pack routes (`CAP_REPORT_AUDIT_PACK`)
-- Analytics, tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile
-- Frontend `useCapability()` consumption
-
----
-
-## Prior phases
-
-- Phase 2C-1: `ILP_04_PHASE_2C_1_COMPLETE` — properties, portfolio, score/requirement subset
-- Phase 2B Wave 1: `ILP_04_PHASE_2B_WAVE_1_COMPLETE` — evidence, reports, documents
-- Phase 2A: `ILP_04_PHASE_2A_PILOT_COMPLETE` — 4 pilot endpoints
+- Backend customer APIs — ~35 unmigrated `client.py` handlers + standalone route modules
+- Frontend Runtime Contract consumption — not started
+- Full regression + staging validation — pending
+- Final ILP-4 implementation report — pending programme completion
 
 See `ACCOUNT_LIFECYCLE_ILP_04_EVIDENCE.json` for machine-readable route inventory.

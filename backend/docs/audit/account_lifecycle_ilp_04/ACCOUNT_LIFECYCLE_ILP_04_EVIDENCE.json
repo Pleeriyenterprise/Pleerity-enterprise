@@ -1,7 +1,8 @@
 {
   "programme": "ILP-4-CAPABILITY-ENFORCEMENT-01",
-  "phase": "2c-2",
-  "verdict": "ILP_04_PHASE_2C_2_COMPLETE",
+  "phase": "ilp4_in_progress",
+  "verdict": "ILP_04_IN_PROGRESS",
+  "latest_milestone": "evidence_pack_analytics_activity_since",
   "branch": "develop",
   "date": "2026-07-03",
   "prior_phases": {
@@ -171,6 +172,20 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
+  "ilp4_evidence_pack_analytics_migrated_routes": {
+    "module": "routes/client.py",
+    "migration": "evidence_pack_analytics_activity_since",
+    "enforce_feature_removed_in_subset": true,
+    "routes": [
+      { "endpoint": "GET /api/client/analytics/summary", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "read" },
+      { "endpoint": "POST /api/client/analytics/events", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "write" },
+      { "endpoint": "GET /api/client/activity-since", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "read" },
+      { "endpoint": "POST /api/client/activity-since/acknowledge", "capability_id": "CAP_COMPLIANCE_ACTIVITY", "action": "write" },
+      { "endpoint": "POST /api/client/evidence-pack/jobs", "capability_id": "CAP_REPORT_AUDIT_PACK", "action": "write" },
+      { "endpoint": "GET /api/client/evidence-pack/jobs", "capability_id": "CAP_REPORT_AUDIT_PACK", "action": "read" },
+      { "endpoint": "GET /api/client/evidence-pack/jobs/{job_id}/file", "capability_id": "CAP_REPORT_AUDIT_PACK", "action": "read" }
+    ]
+  },
   "wave_1_migrated_modules": [
     {
       "module": "routes/client_compliance_evidence.py",
@@ -189,10 +204,9 @@
     }
   ],
   "explicitly_deferred": {
-    "phase_2c_3_plus": [
-      "routes/client.py evidence-pack job routes (CAP_REPORT_AUDIT_PACK consumer)",
-      "analytics activity-since tenant branding maintenance rent ops approvals integrations assistant profile billing jobs sessions",
-      "frontend useCapability consumption",
+    "remaining_ilp4_backend": [
+      "tenant branding maintenance rent ops approvals integrations assistant profile billing jobs sessions",
+      "frontend Runtime Contract capability consumption",
       "admin routes"
     ]
   },
@@ -248,7 +262,33 @@
       "test_account_capability_enforcement_pilot.py",
       "test_account_capability_enforcement_wave1.py",
       "test_account_capability_enforcement_wave2c1.py",
-      "test_account_capability_enforcement_wave2c2.py"
+      "test_account_capability_enforcement_wave2c2.py",
+      "test_account_capability_enforcement_evidence_pack_analytics.py"
+    ]
+  },
+  "ilp4_evidence_pack_analytics_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_evidence_pack_analytics.py",
+    "test_count": 71,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "READ_ONLY",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "analytics_summary_read",
+      "activity_since_read",
+      "activity_since_acknowledge_write",
+      "analytics_events_write",
+      "evidence_pack_create_write",
+      "evidence_pack_list_read",
+      "evidence_pack_download_read"
     ]
   },
   "phase_2c_1_test_coverage": {
