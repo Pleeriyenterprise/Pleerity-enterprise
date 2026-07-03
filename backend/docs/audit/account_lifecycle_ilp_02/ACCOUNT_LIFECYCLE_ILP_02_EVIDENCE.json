@@ -1,0 +1,127 @@
+{
+  "programme": "ILP-2-RUNTIME-CONTRACT-API-01",
+  "verdict": "ILP_02_COMPLETE",
+  "completed_at": "2026-07-03",
+  "branch": "develop",
+  "contract_version": "1.0.0",
+  "runtime_build_id": "ilp2_lifecycle_runtime_contract_v1",
+  "implemented_files": [
+    "backend/services/account_lifecycle_runtime_contract.py",
+    "backend/routes/client_lifecycle_runtime.py",
+    "backend/server.py",
+    "backend/tests/test_account_lifecycle_runtime_contract.py",
+    "backend/scripts/account_lifecycle_runtime_drift_diagnostic.py",
+    "backend/docs/ACCOUNT_RUNTIME_API.md",
+    "backend/docs/audit/account_lifecycle_ilp_02/ACCOUNT_LIFECYCLE_ILP_02_REPORT.md",
+    "backend/docs/audit/account_lifecycle_ilp_02/ACCOUNT_LIFECYCLE_ILP_02_EVIDENCE.json"
+  ],
+  "governance_documents_consumed": [
+    "backend/docs/ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT.md",
+    "backend/docs/ACCOUNT_RUNTIME_SCHEMA.md",
+    "backend/docs/ACCOUNT_RUNTIME_VERSIONING.md",
+    "backend/docs/ACCOUNT_RUNTIME_CONSUMERS.md",
+    "backend/docs/ACCOUNT_PORTAL_MODE_AUTHORITY.md",
+    "backend/docs/ACCOUNT_CAPABILITY_AUTHORITY.md",
+    "backend/docs/ACCOUNT_CAPABILITY_CATALOG.md",
+    "backend/docs/ACCOUNT_CAPABILITY_MATRIX.md",
+    "backend/docs/ACCOUNT_PORTAL_MODE_CAPABILITY_MATRIX.md",
+    "backend/docs/ACCOUNT_CUSTOMER_EXPERIENCE_AUTHORITY.md",
+    "backend/docs/ACCOUNT_REACTIVATION_AUTHORITY.md",
+    "backend/docs/ACCOUNT_LIFECYCLE_POLICY_MATRIX.md"
+  ],
+  "ilp1_dependency": {
+    "module": "services/account_lifecycle_state_resolver.py",
+    "resolver_version": "ilp1_lifecycle_state_resolver_v1"
+  },
+  "api_endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/client/lifecycle-runtime",
+      "description": "Full runtime contract",
+      "response_wrapper": "lifecycle_runtime"
+    },
+    {
+      "method": "GET",
+      "path": "/api/client/lifecycle-contract",
+      "description": "Transitional alias"
+    },
+    {
+      "method": "GET",
+      "path": "/api/client/lifecycle-runtime/diagnostic",
+      "description": "Contract + legacy drift comparison"
+    }
+  ],
+  "portal_mode_mapping": {
+    "ACTIVE": "FULL_ACCESS",
+    "TRIAL": "FULL_ACCESS",
+    "TRIAL_EXPIRED": "PAYMENT_REQUIRED",
+    "PAYMENT_PENDING": "PAYMENT_REQUIRED",
+    "PAYMENT_FAILED": "FULL_ACCESS",
+    "GRACE_PERIOD": "GRACE",
+    "CANCELLATION_SCHEDULED": "FULL_ACCESS",
+    "CANCELLED_IMMEDIATE": "BILLING_RECOVERY",
+    "SUBSCRIPTION_EXPIRED": "BILLING_RECOVERY",
+    "READ_ONLY": "READ_ONLY",
+    "SUSPENDED": "SUSPENDED",
+    "ARCHIVED": "ARCHIVED",
+    "ACCOUNT_DELETED": "ACCOUNT_DELETED",
+    "UNKNOWN": "BILLING_RECOVERY",
+    "LEGACY": "READ_ONLY"
+  },
+  "capability_resolution": {
+    "base_matrix": "ACCOUNT_CAPABILITY_MATRIX.md",
+    "portal_overlay": "ACCOUNT_PORTAL_MODE_CAPABILITY_MATRIX.md",
+    "plan_gated_preresolution": true,
+    "enforcement": false
+  },
+  "tests_run": {
+    "command": "pytest tests/test_account_lifecycle_runtime_contract.py -q",
+    "result": "30 passed",
+    "ilp1_regression": "32 passed"
+  },
+  "drift_diagnostic": {
+    "script": "backend/scripts/account_lifecycle_runtime_drift_diagnostic.py",
+    "mode": "fixture",
+    "fixture_count": 4,
+    "output": "backend/docs/audit/account_lifecycle_ilp_02/drift_diagnostic_fixture_output.json"
+  },
+  "regression_proof": {
+    "middleware_unchanged": true,
+    "auth_unchanged": true,
+    "entitlements_endpoint_unchanged": true,
+    "hasFeature_unchanged": true,
+    "stripe_webhooks_unchanged": true,
+    "frontend_unchanged": true,
+    "jobs_unchanged": true
+  },
+  "consumer_inventory": {
+    "active_ilp2": ["tests", "diagnostics", "GET /api/client/lifecycle-runtime"],
+    "blocked": ["middleware", "EntitlementsContext", "ProtectedRoute", "jobs", "notifications"],
+    "reference": "backend/docs/ACCOUNT_RUNTIME_CONSUMERS.md"
+  },
+  "known_limitations": [
+    "runtime_version is hash-derived without Mongo snapshot persistence",
+    "plan_name fallback when Stripe price env unavailable",
+    "capabilities descriptive only until ILP-4",
+    "audit block on diagnostic path only"
+  ],
+  "ilp3_readiness": {
+    "stable_contract_api": true,
+    "portal_mode_deterministic": true,
+    "customer_experience_populated": true,
+    "navigation_policy_populated": true,
+    "version_headers": true,
+    "no_enforcement_side_effects": true,
+    "assessment": "READY_FOR_ILP_3_PORTAL_MODE"
+  },
+  "explicit_non_changes": [
+    "middleware route guards",
+    "frontend routing",
+    "hasFeature enforcement",
+    "canonical_entitlement_state writes",
+    "Stripe webhook logic",
+    "background jobs",
+    "session invalidation",
+    "existing client API payloads"
+  ]
+}
