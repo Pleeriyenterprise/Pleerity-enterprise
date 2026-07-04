@@ -1,4 +1,5 @@
 """Client read API: management (JWT) and data plane (ple_read_ API keys)."""
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -6,12 +7,39 @@ from fastapi import Request
 
 from middleware import client_route_guard as middleware_client_route_guard
 from server import app
+from services.account_capability_enforcement import CapabilityEnforcementService
+from services.account_lifecycle_runtime_contract import build_runtime_contract
+
+NOW = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+CLIENT_ID = "read-api-test-client"
+
+
+def _contract(*, plan="PLAN_3_PRO"):
+    return build_runtime_contract(
+        client={"client_id": CLIENT_ID, "billing_plan": plan, "subscription_status": "ACTIVE"},
+        billing={
+            "client_id": CLIENT_ID,
+            "subscription_status": "ACTIVE",
+            "billing_lifecycle_state": "active",
+            "canonical_entitlement_state": "ENABLED",
+        },
+        now=NOW,
+    )
+
+
+def _mock_evaluate(fixed_contract):
+    svc = CapabilityEnforcementService(db=None)
+
+    async def _evaluate(client_id, capability_id, action, *, contract=None):
+        return svc.evaluate_from_contract(fixed_contract, capability_id, action)
+
+    return _evaluate
 
 
 @pytest.fixture
 def client_user():
     return {
-        "client_id": "read-api-test-client",
+        "client_id": CLIENT_ID,
         "portal_user_id": "pu-read-api-1",
         "role": "ROLE_CLIENT",
     }
@@ -141,9 +169,8 @@ def test_data_plane_401_without_key(client):
 
 def test_management_list_requires_webhooks(client, override_client_guard, mock_db):
     with patch(
-        "routes.client_read_api.plan_registry.enforce_feature",
-        new_callable=AsyncMock,
-        return_value=(True, None, None),
+        "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+        new=AsyncMock(side_effect=_mock_evaluate(_contract())),
     ):
         r = client.get("/api/client/integrations/read-api-keys")
     assert r.status_code == 200
@@ -154,19 +181,22 @@ def test_management_list_requires_webhooks(client, override_client_guard, mock_d
 
 def test_management_403_when_not_entitled(client, override_client_guard, mock_db):
     with patch(
-        "routes.client_read_api.plan_registry.enforce_feature",
-        new_callable=AsyncMock,
-        return_value=(False, "no", {"upgrade_required": True, "feature": "webhooks"}),
+        "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+        new=AsyncMock(side_effect=_mock_evaluate(_contract(plan="PLAN_1_SOLO"))),
     ):
         r = client.get("/api/client/integrations/read-api-keys")
     assert r.status_code == 403
+    assert r.json()["detail"]["error"] == "capability_denied"
 
 
 def test_create_then_read_properties_with_token(client, override_client_guard, mock_db):
+    allow = _contract()
     with patch(
-        "routes.client_read_api.plan_registry.enforce_feature",
-        new_callable=AsyncMock,
-        return_value=(True, None, None),
+        "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+        new=AsyncMock(side_effect=_mock_evaluate(allow)),
+    ), patch(
+        "routes.client_read_api.CapabilityEnforcementService.evaluate",
+        new=AsyncMock(side_effect=_mock_evaluate(allow)),
     ), patch("routes.client_read_api.create_audit_log", new_callable=AsyncMock):
         cr = client.post("/api/client/integrations/read-api-keys", json={"name": "CI"})
     assert cr.status_code == 200
@@ -174,9 +204,8 @@ def test_create_then_read_properties_with_token(client, override_client_guard, m
     assert secret.startswith("ple_read_")
 
     with patch(
-        "routes.client_read_api.plan_registry.enforce_feature",
-        new_callable=AsyncMock,
-        return_value=(True, None, None),
+        "routes.client_read_api.CapabilityEnforcementService.evaluate",
+        new=AsyncMock(side_effect=_mock_evaluate(allow)),
     ):
         pr = client.get(
             "/api/client-data/v1/properties",
@@ -186,9 +215,8 @@ def test_create_then_read_properties_with_token(client, override_client_guard, m
     assert pr.json() == {"properties": []}
 
     with patch(
-        "routes.client_read_api.plan_registry.enforce_feature",
-        new_callable=AsyncMock,
-        return_value=(True, None, None),
+        "routes.client_read_api.CapabilityEnforcementService.evaluate",
+        new=AsyncMock(side_effect=_mock_evaluate(allow)),
     ):
         cap = client.get(
             "/api/client-data/v1/capabilities",

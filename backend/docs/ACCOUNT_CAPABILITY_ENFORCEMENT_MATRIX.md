@@ -2,7 +2,31 @@
 
 **Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** ILP-4 in progress — profile, assistant, calendar, compliance workflow, rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+**Status:** ILP-4 in progress — read API, webhooks, profile, assistant, calendar, compliance workflow, rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+
+---
+
+## ILP-4 migrated routes — read API and webhooks
+
+### `routes/client_read_api.py` (full module)
+
+| Route area | Capability | Action | Notes |
+|------------|------------|--------|-------|
+| `GET/POST/DELETE /api/client/integrations/read-api-keys*` | `CAP_INTEGRATION_READ_API` | read / write | Key list read; create/revoke write |
+| `GET /api/client-data/v1/*` | `CAP_EXPORT_API` | read | API-key auth plane (after token resolve) |
+
+No `plan_registry.enforce_feature("webhooks")` in handlers.
+
+**Runtime contract rows added:** `CAP_INTEGRATION_READ_API`, `CAP_EXPORT_API`, `CAP_INTEGRATION_WEBHOOKS` (plan key `webhooks`).
+
+### `routes/webhooks_config.py` (full module)
+
+| Route area | Capability | Action |
+|------------|------------|--------|
+| `GET /api/webhooks/events`, `/stats`, `/deliveries`, `GET /api/webhooks`, `GET /api/webhooks/{id}` | `CAP_INTEGRATION_WEBHOOKS` | read |
+| `POST /api/webhooks`, `PATCH/DELETE /api/webhooks/{id}`, test/enable/disable/regenerate-secret | `CAP_INTEGRATION_WEBHOOKS` | write |
+
+**Out of scope:** `routes/webhooks.py` inbound Stripe/Postmark receivers (no client entitlement gates).
 
 ---
 

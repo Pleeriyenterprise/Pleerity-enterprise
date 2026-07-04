@@ -133,6 +133,9 @@ _BASE_CAPABILITY_MATRIX: Dict[str, Tuple[str, ...]] = {
     "CAP_BRANDING_VIEW": ("A", "A", "R", "L", "A", "A", "A", "R", "R", "R", "D", "D", "D", "D", "R"),
     "CAP_BRANDING_EDIT": ("P", "P", "D", "D", "P", "L", "P", "D", "D", "D", "D", "D", "D", "D", "D"),
     "CAP_BRANDING_WHITE_LABEL": ("P", "P", "D", "D", "P", "L", "P", "D", "D", "D", "D", "D", "D", "D", "D"),
+    "CAP_INTEGRATION_WEBHOOKS": ("P", "P", "D", "D", "P", "L", "P", "D", "D", "D", "D", "D", "D", "D", "D"),
+    "CAP_INTEGRATION_READ_API": ("P", "P", "D", "D", "P", "L", "P", "D", "D", "D", "D", "D", "D", "D", "D"),
+    "CAP_EXPORT_API": ("P", "P", "D", "D", "P", "L", "P", "D", "D", "D", "D", "D", "D", "D", "D"),
 }
 
 _CAP_PLAN_KEYS: Dict[str, str] = {
@@ -166,6 +169,9 @@ _CAP_PLAN_KEYS: Dict[str, str] = {
     "CAP_DASHBOARD_VIEW": "compliance_dashboard",
     "CAP_CMD_CTR_VIEW": "compliance_dashboard",
     "CAP_LEDGER_EXPORT": "reports_csv",
+    "CAP_INTEGRATION_WEBHOOKS": "webhooks",
+    "CAP_INTEGRATION_READ_API": "webhooks",
+    "CAP_EXPORT_API": "webhooks",
 }
 
 _LIFECYCLE_TO_PORTAL_MODE: Dict[str, str] = {
@@ -236,6 +242,9 @@ _PORTAL_CAP_CEILINGS: Dict[str, Dict[str, str]] = {
         "CAP_PROFILE_EDIT": GRANT_DENY,
         "CAP_PROFILE_JURISDICTION": GRANT_DENY,
         "CAP_CALENDAR_VIEW": GRANT_DENY,
+        "CAP_INTEGRATION_WEBHOOKS": GRANT_DENY,
+        "CAP_INTEGRATION_READ_API": GRANT_DENY,
+        "CAP_EXPORT_API": GRANT_DENY,
     },
     "PAYMENT_REQUIRED": {
         "CAP_PROP_VIEW": GRANT_DENY,
@@ -297,6 +306,9 @@ _PORTAL_CAP_CEILINGS: Dict[str, Dict[str, str]] = {
         "CAP_OPS_RENT": GRANT_DENY,
         "CAP_OPS_APPROVALS": GRANT_DENY,
         "CAP_OPS_COMPLIANCE_REVIEW": GRANT_DENY,
+        "CAP_INTEGRATION_WEBHOOKS": GRANT_DENY,
+        "CAP_INTEGRATION_READ_API": GRANT_DENY,
+        "CAP_EXPORT_API": GRANT_DENY,
         "CAP_DASHBOARD_VIEW": GRANT_READ,
         "CAP_CMD_CTR_VIEW": GRANT_READ,
     },
@@ -331,6 +343,9 @@ _PORTAL_CAP_CEILINGS: Dict[str, Dict[str, str]] = {
         "CAP_REPORT_AUDIT_PACK": GRANT_DENY,
         "CAP_AI_EXTRACTION_ADVANCED": GRANT_DENY,
         "CAP_AI_ASSISTANT": GRANT_DENY,
+        "CAP_INTEGRATION_WEBHOOKS": GRANT_DENY,
+        "CAP_INTEGRATION_READ_API": GRANT_DENY,
+        "CAP_EXPORT_API": GRANT_DENY,
         "CAP_SCORE_VIEW": GRANT_DENY,
         "CAP_SCORE_EXPLAIN": GRANT_DENY,
         "CAP_SCORE_TREND": GRANT_DENY,

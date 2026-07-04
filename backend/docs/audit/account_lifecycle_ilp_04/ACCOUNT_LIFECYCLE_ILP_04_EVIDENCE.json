@@ -172,7 +172,39 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "profile_assistant_calendar",
+  "latest_milestone": "read_api_webhooks",
+  "runtime_contract_extensions_read_api_webhooks": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_INTEGRATION_WEBHOOKS",
+      "CAP_INTEGRATION_READ_API",
+      "CAP_EXPORT_API"
+    ],
+    "plan_keys": {
+      "CAP_INTEGRATION_WEBHOOKS": "webhooks",
+      "CAP_INTEGRATION_READ_API": "webhooks",
+      "CAP_EXPORT_API": "webhooks"
+    },
+    "runtime_resolver_count": 64
+  },
+  "ilp4_read_api_webhooks_migrated_routes": {
+    "modules": [
+      "routes/client_read_api.py",
+      "routes/webhooks_config.py"
+    ],
+    "migration": "read_api_webhooks",
+    "enforce_feature_removed_in_subset": true,
+    "inbound_webhooks_out_of_scope": ["routes/webhooks.py"],
+    "capability_mapping_summary": {
+      "CAP_INTEGRATION_READ_API": "read API key management (JWT)",
+      "CAP_EXPORT_API": "client-data v1 pull API (API key auth)",
+      "CAP_INTEGRATION_WEBHOOKS": "outbound webhook configuration and delivery history"
+    },
+    "legacy_removed": [
+      "plan_registry.enforce_feature webhooks on client_read_api and webhooks_config"
+    ]
+  },
+  "latest_milestone_previous": "profile_assistant_calendar",
   "runtime_contract_extensions_profile_assistant_calendar": {
     "schema_modified": false,
     "new_capability_rows": [
