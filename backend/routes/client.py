@@ -2193,18 +2193,11 @@ async def get_client_contractors(
     skip: int = 0,
     limit: int = 100,
     source_type: Optional[str] = None,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "read"),
 ):
     """List contractors available to this client (assigned or system-wide). Requires CONTRACTOR_NETWORK flag."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Contractor network is not enabled for your account. Contact your administrator.",
-        )
     result = await contractor_service.list_contractors_for_client(
         client_id=user["client_id"],
         vetted_only=vetted_only,
@@ -2229,16 +2222,15 @@ class CreateContractorBody(BaseModel):
 
 
 @router.get("/contractors/{contractor_id}/explanation")
-async def get_contractor_explanation(request: Request, contractor_id: str):
+async def get_contractor_explanation(
+    request: Request,
+    contractor_id: str,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "read"),
+):
     """Get explanation for contractor reliability/performance score (why it matters, usage guidance). Requires CONTRACTOR_NETWORK."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
     from services.explanation_engine import explain_contractor_score
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=403, detail="Contractor network not enabled")
     result = await contractor_service.list_contractors_for_client(
         client_id=user["client_id"], skip=0, limit=500,
     )
@@ -2252,18 +2244,14 @@ async def get_contractor_explanation(request: Request, contractor_id: str):
 
 
 @router.post("/contractors/{contractor_id}/submit-to-network")
-async def submit_contractor_to_network(request: Request, contractor_id: str):
+async def submit_contractor_to_network(
+    request: Request,
+    contractor_id: str,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "write"),
+):
     """Submit a private contractor for network review. Contractor remains private until admin approves. Requires CONTRACTOR_NETWORK."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Contractor network is not enabled for your account.",
-        )
     doc = await contractor_service.submit_contractor_to_network(contractor_id, user["client_id"])
     if not doc:
         raise HTTPException(
@@ -2283,18 +2271,14 @@ async def submit_contractor_to_network(request: Request, contractor_id: str):
 
 
 @router.post("/contractors")
-async def create_client_contractor(request: Request, body: CreateContractorBody):
+async def create_client_contractor(
+    request: Request,
+    body: CreateContractorBody,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "write"),
+):
     """Landlord adds a contractor. Requires CONTRACTOR_NETWORK. Contractor is visible only to this organisation."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Contractor network is not enabled for your account.",
-        )
     if not body.phone and not body.email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phone or email is required")
     doc = await contractor_service.create_contractor_landlord(
@@ -2332,15 +2316,15 @@ class RateContractorBody(BaseModel):
 
 
 @router.post("/contractors/{contractor_id}/rate")
-async def rate_contractor(request: Request, contractor_id: str, body: RateContractorBody):
+async def rate_contractor(
+    request: Request,
+    contractor_id: str,
+    body: RateContractorBody,
+    user: dict = client_require_capability("CAP_OPS_CONTRACTORS", "write"),
+):
     """Submit a rating for a contractor (e.g. after work order). Requires CONTRACTOR_NETWORK."""
-    user = await client_route_guard(request)
-    from services.ops_compliance_feature_flags import get_effective_flags, CONTRACTOR_NETWORK
     from services import contractor_service
 
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(CONTRACTOR_NETWORK):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Contractor network is not enabled.")
     if not (1 <= body.rating <= 5):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="rating must be between 1 and 5")
     try:

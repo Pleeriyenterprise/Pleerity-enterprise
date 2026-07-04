@@ -2,7 +2,41 @@
 
 **Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** ILP-4 in progress — tenant, branding, evidence pack, analytics routes capability-governed
+**Status:** ILP-4 in progress — maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+
+---
+
+## ILP-4 migrated routes — maintenance and contractors
+
+### `routes/client_maintenance.py` (full module)
+
+| Route group | Capability | Action | Notes |
+|-------------|------------|--------|-------|
+| `/api/client/maintenance/work-orders*` (list, get, create, patch, schedule, evidence file, ICS) | `CAP_OPS_MAINTENANCE` | read / write | Schedule mutations are write |
+| `/api/client/maintenance/issues*` | `CAP_OPS_MAINTENANCE` | read / write | Timeline and open-count are read |
+| `/api/client/maintenance/operational-issue-suggestions*` | `CAP_OPS_MAINTENANCE` + `CAP_OPS_PREDICTIVE` | write | Dismiss and convert |
+| `/api/client/maintenance/work-orders/{id}/recommend-contractors` | `CAP_OPS_MAINTENANCE` + `CAP_OPS_CONTRACTORS` | read | |
+| `/api/client/maintenance/work-orders/{id}/assignable-contractors` | `CAP_OPS_MAINTENANCE` | read | |
+| `/api/client/maintenance/work-orders/{id}/contractor-routing*` | `CAP_OPS_MAINTENANCE` + `CAP_OPS_CONTRACTORS` | read / write | Generate uses contractors write |
+| `/api/client/maintenance/properties/{id}/assets*` | `CAP_OPS_MAINTENANCE` **or** `CAP_OPS_PREDICTIVE` | read / write | Either capability grants access |
+| `/api/client/maintenance/predictive-insights` | `CAP_OPS_PREDICTIVE` | read | |
+| `/api/client/maintenance/properties/{id}/events*` | `CAP_OPS_PREDICTIVE` | read / write | |
+| `/api/client/maintenance/risk-signals*` | `CAP_OPS_PREDICTIVE` | read / write | Create issue/wo also requires `CAP_OPS_MAINTENANCE` write |
+| `/api/client/maintenance/risk-signals/{id}/arrange-compliance-inspection` | `CAP_OPS_PREDICTIVE` + `CAP_OPS_MAINTENANCE` | write | `COMPLIANCE_ENGINE` ops flag retained (compliance workflow out of scope) |
+
+No `enforce_feature()` / ops-flag permission gates in handlers. Router-level `client_route_guard` retained.
+
+**Runtime contract rows added:** `CAP_OPS_CONTRACTORS` (plan key `contractor_network`), `CAP_OPS_PREDICTIVE` (plan key `predictive_maintenance`). `CAP_OPS_MAINTENANCE` (plan key `maintenance_workflows`) was already in matrix.
+
+### `routes/client.py` (contractor subset)
+
+| Endpoint | Method | Capability | Action |
+|----------|--------|------------|--------|
+| `/api/client/contractors` | GET | `CAP_OPS_CONTRACTORS` | read |
+| `/api/client/contractors/{contractor_id}/explanation` | GET | `CAP_OPS_CONTRACTORS` | read |
+| `/api/client/contractors/{contractor_id}/submit-to-network` | POST | `CAP_OPS_CONTRACTORS` | write |
+| `/api/client/contractors` | POST | `CAP_OPS_CONTRACTORS` | write |
+| `/api/client/contractors/{contractor_id}/rate` | POST | `CAP_OPS_CONTRACTORS` | write |
 
 ---
 
@@ -48,7 +82,7 @@ No `enforce_feature()` in these handlers.
 
 No `enforce_feature()` in these handlers. Router-level `client_route_guard` retained for auth on non-migrated routes.
 
-**Explicitly not migrated:** maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
+**Explicitly not migrated:** rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
 
 ---
 
@@ -73,7 +107,7 @@ No `enforce_feature()` in these handlers. Router-level `client_route_guard` reta
 
 No `enforce_feature()` in 2C-2 handlers. Router-level `client_route_guard` retained for auth on non-migrated routes.
 
-**Explicitly not migrated (remaining ILP-4):** tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
+**Explicitly not migrated (remaining ILP-4):** rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
 
 ---
 
@@ -373,7 +407,7 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 
 ## Deferred (remaining ILP-4 backend)
 
-- Maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
+- Rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
 - Frontend `useCapability()` consumption
 - `client_route_guard` capability integration for remaining non-migrated routes
 - Resolver matrix extension for remaining catalog-gap capabilities

@@ -172,7 +172,48 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "tenant_branding",
+  "latest_milestone": "maintenance_contractors",
+  "runtime_contract_extensions_maintenance_contractors": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_OPS_CONTRACTORS",
+      "CAP_OPS_PREDICTIVE"
+    ],
+    "existing_capability_rows_consumed": [
+      "CAP_OPS_MAINTENANCE"
+    ],
+    "plan_keys": {
+      "CAP_OPS_MAINTENANCE": "maintenance_workflows",
+      "CAP_OPS_CONTRACTORS": "contractor_network",
+      "CAP_OPS_PREDICTIVE": "predictive_maintenance"
+    },
+    "runtime_resolver_count": 56
+  },
+  "ilp4_maintenance_contractors_migrated_routes": {
+    "modules": [
+      "routes/client_maintenance.py",
+      "routes/client.py"
+    ],
+    "migration": "maintenance_contractors",
+    "enforce_feature_removed_in_subset": true,
+    "client_maintenance_route_count": 50,
+    "client_contractor_route_count": 5,
+    "capability_mapping_summary": {
+      "CAP_OPS_MAINTENANCE": "work orders, issues, schedule, contractor-evidence (maintenance domain)",
+      "CAP_OPS_CONTRACTORS": "contractor directory, routing generate, client.py contractor CRUD",
+      "CAP_OPS_PREDICTIVE": "predictive insights, assets (or maintenance), property events, risk signals"
+    },
+    "client_contractor_routes": [
+      { "endpoint": "GET /api/client/contractors", "capability_id": "CAP_OPS_CONTRACTORS", "action": "read" },
+      { "endpoint": "GET /api/client/contractors/{contractor_id}/explanation", "capability_id": "CAP_OPS_CONTRACTORS", "action": "read" },
+      { "endpoint": "POST /api/client/contractors/{contractor_id}/submit-to-network", "capability_id": "CAP_OPS_CONTRACTORS", "action": "write" },
+      { "endpoint": "POST /api/client/contractors", "capability_id": "CAP_OPS_CONTRACTORS", "action": "write" },
+      { "endpoint": "POST /api/client/contractors/{contractor_id}/rate", "capability_id": "CAP_OPS_CONTRACTORS", "action": "write" }
+    ],
+    "compliance_engine_ops_flag_retained": [
+      "POST /api/client/maintenance/risk-signals/{signal_id}/arrange-compliance-inspection"
+    ]
+  },
   "runtime_contract_extensions_tenant_branding": {
     "schema_modified": false,
     "new_capability_rows": [
@@ -247,7 +288,7 @@
   ],
   "explicitly_deferred": {
     "remaining_ilp4_backend": [
-      "maintenance rent ops approvals integrations assistant profile billing jobs sessions",
+      "rent ops approvals integrations assistant profile billing jobs sessions",
       "frontend Runtime Contract capability consumption",
       "admin routes"
     ]
@@ -306,6 +347,28 @@
       "test_account_capability_enforcement_wave2c1.py",
       "test_account_capability_enforcement_wave2c2.py",
       "test_account_capability_enforcement_evidence_pack_analytics.py"
+    ]
+  },
+  "ilp4_maintenance_contractors_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_maintenance.py",
+    "test_count": 37,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "maintenance_work_orders_read",
+      "maintenance_issue_create_write",
+      "contractors_list_read",
+      "contractors_create_write",
+      "read_only_write_blocked",
+      "source_governance"
     ]
   },
   "ilp4_tenant_branding_test_coverage": {
@@ -387,7 +450,7 @@
   },
   "inventory": {
     "catalog_capability_count": 104,
-    "runtime_resolver_count": 49,
+    "runtime_resolver_count": 56,
     "runtime_added_wave_1": 5,
     "runtime_added_phase_2c_1": 9,
     "runtime_added_phase_2c_2": 2,
@@ -401,11 +464,12 @@
   "regression_proof": {
     "client_route_guard_modified": false,
     "runtime_contract_schema_modified": false,
-    "runtime_contract_capability_rows_added_total": 16,
+    "runtime_contract_capability_rows_added_total": 18,
     "frontend_modified": false,
     "billing_stripe_jobs_sessions_comms_modified": false,
-    "client_py_evidence_pack_migrated": false,
-    "client_py_analytics_tenant_ops_migrated": false,
+    "client_py_evidence_pack_migrated": true,
+    "client_py_analytics_tenant_ops_migrated": true,
+    "client_maintenance_migrated": true,
     "cap_req_mark_n_a_aliased_to_resolve": false
   }
 }
