@@ -172,7 +172,47 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "read_api_webhooks",
+  "latest_milestone": "billing_client_routes",
+  "runtime_contract_extensions_billing_client": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_BILLING_INVOICES",
+      "CAP_BILLING_PAYMENT_METHODS",
+      "CAP_SUB_CANCEL"
+    ],
+    "existing_capability_rows_consumed": [
+      "CAP_BILLING_VIEW",
+      "CAP_BILLING_CHECKOUT",
+      "CAP_SUB_MANAGE"
+    ],
+    "runtime_resolver_count": 67
+  },
+  "ilp4_billing_client_migrated_routes": {
+    "modules": [
+      "routes/billing.py",
+      "routes/client_billing.py"
+    ],
+    "migration": "billing_client_routes",
+    "enforce_feature_removed_in_subset": false,
+    "legacy_removed": [],
+    "capability_mapping_summary": {
+      "CAP_BILLING_VIEW": "GET /api/billing/status",
+      "CAP_BILLING_PAYMENT_METHODS": "GET /api/billing/payment-method-summary",
+      "CAP_BILLING_INVOICES": "GET /api/billing/invoices and /api/client/billing/receipt*",
+      "CAP_BILLING_CHECKOUT": "POST /api/billing/checkout",
+      "CAP_SUB_MANAGE": "POST /api/billing/portal",
+      "CAP_SUB_CANCEL": "POST /api/billing/cancel"
+    },
+    "billing_recovery_preserved": true,
+    "out_of_scope": [
+      "routes/webhooks.py",
+      "routes/admin_billing.py",
+      "billing engine",
+      "jobs",
+      "frontend"
+    ]
+  },
+  "latest_milestone_previous": "read_api_webhooks",
   "runtime_contract_extensions_read_api_webhooks": {
     "schema_modified": false,
     "new_capability_rows": [
@@ -451,8 +491,8 @@
   ],
   "explicitly_deferred": {
     "remaining_ilp4_backend": [
-      "integrations assistant profile billing jobs sessions read API webhooks calendar frontend",
-      "remaining client.py handlers onboarding entitlements",
+      "onboarding extras entitlements jobs sessions frontend",
+      "remaining client.py handlers jurisdiction CAP_PROFILE_JURISDICTION",
       "frontend Runtime Contract capability consumption",
       "admin routes"
     ]
@@ -681,9 +721,10 @@
   "regression_proof": {
     "client_route_guard_modified": false,
     "runtime_contract_schema_modified": false,
-    "runtime_contract_capability_rows_added_total": 20,
+    "runtime_contract_capability_rows_added_total": 23,
     "frontend_modified": false,
     "billing_stripe_jobs_sessions_comms_modified": false,
+    "billing_client_routes_migrated": true,
     "client_py_evidence_pack_migrated": true,
     "client_py_analytics_tenant_ops_migrated": true,
     "client_maintenance_migrated": true,

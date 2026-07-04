@@ -2,7 +2,42 @@
 
 **Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** ILP-4 in progress — read API, webhooks, profile, assistant, calendar, compliance workflow, rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+**Status:** ILP-4 in progress — billing client routes, read API, webhooks, profile, assistant, calendar, compliance workflow, rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+
+---
+
+## ILP-4 migrated routes — customer billing (`routes/billing.py`, `routes/client_billing.py`)
+
+### `routes/billing.py` (customer `/api/billing/*`)
+
+| Endpoint | Method | Capability | Action | Notes |
+|----------|--------|------------|--------|-------|
+| `/api/billing/status` | GET | `CAP_BILLING_VIEW` | read | Subscription status dashboard |
+| `/api/billing/payment-method-summary` | GET | `CAP_BILLING_PAYMENT_METHODS` | read | Masked card summary |
+| `/api/billing/invoices` | GET | `CAP_BILLING_INVOICES` | read | Stripe invoice history |
+| `/api/billing/checkout` | POST | `CAP_BILLING_CHECKOUT` | write | Step-up retained after capability |
+| `/api/billing/portal` | POST | `CAP_SUB_MANAGE` | write | Stripe billing portal session |
+| `/api/billing/cancel` | POST | `CAP_SUB_CANCEL` | write | Subscription cancellation |
+| `/api/billing/plans` | GET | — | — | Public plan catalogue (unchanged) |
+
+No `enforce_feature()` / subscription entitlement checks in handlers. Stripe integration unchanged.
+
+### `routes/client_billing.py` (full module)
+
+| Endpoint | Method | Capability | Action |
+|----------|--------|------------|--------|
+| `/api/client/billing/receipts` | GET | `CAP_BILLING_INVOICES` | read |
+| `/api/client/billing/receipt/latest` | GET | `CAP_BILLING_INVOICES` | read |
+| `/api/client/billing/receipt/{id}` | GET | `CAP_BILLING_INVOICES` | read |
+| `/api/client/billing/receipt/{id}/download` | GET | `CAP_BILLING_INVOICES` | read |
+
+**Runtime contract rows added:** `CAP_BILLING_INVOICES`, `CAP_BILLING_PAYMENT_METHODS`, `CAP_SUB_CANCEL` (billing-exempt grants mirror `CAP_BILLING_VIEW` / `CAP_SUB_MANAGE`).
+
+**Existing rows consumed:** `CAP_BILLING_VIEW`, `CAP_BILLING_CHECKOUT`, `CAP_SUB_MANAGE`.
+
+**Out of scope:** `routes/webhooks.py` inbound Stripe receivers, `routes/admin_billing.py`, billing engine, jobs.
+
+**Lifecycle test coverage:** `test_account_capability_enforcement_billing_client.py` — `ACTIVE`, `TRIAL`, `GRACE_PERIOD`, `CANCELLATION_SCHEDULED`, `CANCELLED_IMMEDIATE`, `SUBSCRIPTION_EXPIRED`, `READ_ONLY`, `SUSPENDED`, `ARCHIVED`, `ACCOUNT_DELETED`, `UNKNOWN`; recovery caps never blocked in governed recovery lifecycles.
 
 ---
 
@@ -559,7 +594,7 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 
 ## Deferred (remaining ILP-4 backend)
 
-- Integrations, assistant, profile, billing client routes, jobs, sessions, read API, webhooks, calendar, frontend
+- Onboarding extras, entitlements, jobs, sessions, frontend
 - `client_route_guard` capability integration for remaining non-migrated routes
 - Resolver matrix extension for remaining catalog-gap capabilities
 

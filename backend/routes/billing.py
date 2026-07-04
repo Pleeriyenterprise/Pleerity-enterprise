@@ -19,6 +19,7 @@ from services.stripe_mode_containment_service import (
     validate_portal_billing_preflight,
 )
 from middleware import client_route_guard
+from middleware.capability_gating import assert_client_capability
 from middleware.step_up_auth import require_recent_step_up
 from utils.audit import create_audit_log
 from models import AuditAction
@@ -54,6 +55,7 @@ async def create_checkout(request: Request, body: CheckoutRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_BILLING_CHECKOUT", "write")
     await require_recent_step_up(request, user)
 
     # Validate plan code
@@ -133,6 +135,7 @@ async def get_payment_method_summary(request: Request):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user",
         )
+    await assert_client_capability(user, "CAP_BILLING_PAYMENT_METHODS", "read")
     try:
         summary = await stripe_service.get_payment_method_summary(client_id)
         if summary:
@@ -154,6 +157,7 @@ async def get_billing_status(request: Request):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_BILLING_VIEW", "read")
     
     try:
         billing_status = await stripe_service.get_subscription_status(client_id)
@@ -195,6 +199,7 @@ async def create_billing_portal(request: Request):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_SUB_MANAGE", "write")
     await require_recent_step_up(request, user)
 
     db = database.get_db()
@@ -268,6 +273,7 @@ async def cancel_subscription(request: Request, body: CancelRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_SUB_CANCEL", "write")
     await require_recent_step_up(request, user)
 
     try:
@@ -301,6 +307,7 @@ async def get_billing_invoices(request: Request, limit: int = 24):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No client_id associated with user"
         )
+    await assert_client_capability(user, "CAP_BILLING_INVOICES", "read")
     try:
         result = await stripe_service.list_invoices(client_id=client_id, limit=min(limit, 100))
         return result
