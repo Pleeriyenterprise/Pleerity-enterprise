@@ -2,7 +2,74 @@
 
 **Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** ILP-4 in progress — billing client routes, read API, webhooks, profile, assistant, calendar, compliance workflow, rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+**Status:** ILP-4 backend route migration complete — customer `/api/client/*`, `/api/billing/*`, `/api/portal/digests`, help centre, and support client routes capability-governed
+
+---
+
+## ILP-4 backend completion — residual customer routes
+
+### `routes/client.py` (residual handlers)
+
+| Endpoint | Method | Capability | Action |
+|----------|--------|------------|--------|
+| `/api/client/onboarding/checklist` | GET | `CAP_BILLING_CHECKOUT` | read |
+| `/api/client/onboarding/checklist/items/{id}/complete` | POST | `CAP_BILLING_CHECKOUT` | write |
+| `/api/client/onboarding/jurisdiction-fallback-acknowledgement` | POST | `CAP_PROFILE_JURISDICTION` | write |
+| `/api/client/settings/jurisdiction` | GET/PATCH/POST apply | `CAP_PROFILE_JURISDICTION` | read / write |
+| `/api/client/portal-context` | GET | `CAP_DASHBOARD_VIEW` | read |
+| `/api/client/value-insights` | GET | `CAP_DASHBOARD_VIEW` | read |
+| `/api/client/plan-features` | GET | `CAP_PROFILE_VIEW` | read |
+| `/api/client/entitlements` | GET | `CAP_PROFILE_VIEW` | read |
+| `/api/client/entitlements/context` | GET | `CAP_DASHBOARD_VIEW` | read |
+| `/api/client/documents` | GET | `CAP_DOC_VIEW` | read |
+
+`plan-features` retains `subscription_allows_feature_access()` for **response metadata only** (`is_active` field); access gate is `CAP_PROFILE_VIEW`.
+
+### `routes/client_lifecycle_runtime.py` (full module)
+
+| Endpoint | Capability | Action |
+|----------|------------|--------|
+| `/api/client/lifecycle-runtime`, `/lifecycle-contract`, `/lifecycle-runtime/diagnostic` | `CAP_PROFILE_VIEW` | read |
+
+### `routes/portal.py` (client digests)
+
+| Endpoint | Capability | Action |
+|----------|------------|--------|
+| `GET /api/portal/digests*` | `CAP_REPORT_VIEW` | read |
+| `GET /api/portal/digests/{id}/pdf` | `CAP_REPORT_DOWNLOAD` | read |
+
+### `routes/knowledge_base.py` (`/api/client/help/*`)
+
+| Endpoint | Capability | Action |
+|----------|------------|--------|
+| GET articles/categories | `CAP_KNOWLEDGE_CENTRE` | read |
+| POST query/feedback | `CAP_SUPPORT_REQUEST` | write |
+
+### `routes/support.py` (client `/api/support/*`)
+
+| Endpoint | Capability | Action |
+|----------|------------|--------|
+| `GET /api/support/account-snapshot`, `/my-conversations` | `CAP_SUPPORT_ACCESS` | read |
+
+### `routes/client_capability_enforcement.py`
+
+| Endpoint | Capability | Action |
+|----------|------------|--------|
+| `GET /api/client/capability-enforcement/diagnostic` | `CAP_PROFILE_VIEW` | read |
+
+**Runtime contract rows added:** `CAP_KNOWLEDGE_CENTRE`, `CAP_SUPPORT_REQUEST`.
+
+**Intentionally deferred (documented):**
+
+| Route module | Reason |
+|--------------|--------|
+| `routes/client_orders.py` | No `CAP_*` in catalog for professional-services orders workflow |
+| `routes/onboarding.py` | Public/token `/api/onboarding/*` — not JWT `client_route_guard` plane |
+| `middleware/__init__.py` `client_route_guard` | Shell lifecycle block bundle (ILP-10); billing exempt paths retained |
+| `services/jobs.py`, `notification_orchestrator.py`, `branding_resolver_service.py` | Background/plan-registry compatibility wrappers until ILP-10 |
+| Admin, contractor, tenant portal, Stripe webhooks, frontend | Out of ILP-4 customer-route scope |
+
+**Resolver count:** 69 (`_BASE_CAPABILITY_MATRIX`).
 
 ---
 
@@ -595,7 +662,8 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 ## Deferred (remaining ILP-4 backend)
 
 - Onboarding extras, entitlements, jobs, sessions, frontend
-- `client_route_guard` capability integration for remaining non-migrated routes
+- `client_route_guard` shell lifecycle integration (ILP-10)
+- `client_orders` pending catalog capability
 - Resolver matrix extension for remaining catalog-gap capabilities
 
 ---

@@ -121,6 +121,8 @@ _BASE_CAPABILITY_MATRIX: Dict[str, Tuple[str, ...]] = {
     "CAP_SUB_RENEW": ("N", "N", "A", "A", "N", "N", "A", "A", "A", "A", "A", "D", "D", "A", "A"),
     "CAP_DATA_EXPORT": ("A", "A", "R", "D", "A", "A", "A", "R", "R", "R", "D", "D", "D", "D", "R"),
     "CAP_SUPPORT_ACCESS": ("A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "D", "A", "A"),
+    "CAP_SUPPORT_REQUEST": ("A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "D", "A", "A"),
+    "CAP_KNOWLEDGE_CENTRE": ("A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "D", "A", "A"),
     "CAP_NOTIF_EMAIL": ("A", "A", "D", "D", "A", "A", "A", "D", "D", "D", "D", "D", "D", "D", "D"),
     "CAP_NOTIF_SMS": ("P", "P", "D", "D", "P", "P", "P", "D", "D", "D", "D", "D", "D", "D", "D"),
     "CAP_AI_ASSISTANT": ("P", "P", "D", "D", "P", "L", "P", "D", "D", "D", "D", "D", "D", "D", "D"),

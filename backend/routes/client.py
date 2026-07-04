@@ -59,6 +59,12 @@ async def _resolved_jurisdiction_settings_for_client(db, client_id: str) -> Dict
     return {"default_jurisdiction": "Scotland", "enabled_jurisdictions": ["Scotland"]}
 
 
+async def _require_capability_from_request(request: Request, capability_id: str, action: str) -> dict:
+    user = await client_route_guard(request)
+    await assert_client_capability(user, capability_id, action)
+    return user
+
+
 def _compute_property_compliance_status(requirements: List[Dict[str, Any]]) -> str:
     """Live property RAG from enriched requirement rows (delegates to shared service)."""
     from services.property_compliance_status_service import compute_property_compliance_rag
@@ -1383,7 +1389,7 @@ async def get_client_task_activity(
 @router.get("/onboarding/checklist")
 async def get_onboarding_checklist(request: Request):
     """Get server-driven onboarding checklist (items + completion)."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_BILLING_CHECKOUT", "read")
     from services.onboarding_checklist_service import get_checklist_state
     return await get_checklist_state(user["client_id"], portal_user_id=user.get("portal_user_id"))
 
@@ -1391,7 +1397,7 @@ async def get_onboarding_checklist(request: Request):
 @router.get("/value-insights")
 async def get_client_value_insights(request: Request):
     """Plan-aware achievements, risk snapshot, and upgrade unlock copy (entitlements from billing plan)."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_DASHBOARD_VIEW", "read")
     from services.client_value_insights_service import get_value_insights
 
     return await get_value_insights(user["client_id"])
@@ -1400,7 +1406,7 @@ async def get_client_value_insights(request: Request):
 @router.get("/portal-context")
 async def get_portal_context(request: Request):
     """Server time + last recorded client audit activity (trust / freshness signals for the portal shell)."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_DASHBOARD_VIEW", "read")
     try:
         db = database.get_db()
         last = await db.audit_logs.find_one(
@@ -1453,7 +1459,7 @@ async def acknowledge_jurisdiction_fallback_assumptions(
     Record explicit consent to continue while some properties lack jurisdiction on the property record.
     Does not change scoring; enables onboarding checklist completion when defaults apply.
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_JURISDICTION", "write")
     if not body.confirm:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1488,7 +1494,7 @@ async def acknowledge_jurisdiction_fallback_assumptions(
 @router.post("/onboarding/checklist/items/{item_id}/complete")
 async def complete_onboarding_item(request: Request, item_id: str):
     """Mark one checklist item complete. Server-validates before accepting."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_BILLING_CHECKOUT", "write")
     from services.onboarding_checklist_service import mark_item_complete
     from models import AuditAction
     from utils.audit import create_audit_log
@@ -1525,7 +1531,7 @@ async def complete_onboarding_item(request: Request, item_id: str):
 @router.get("/settings/jurisdiction")
 async def get_jurisdiction_settings(request: Request):
     """Get client jurisdiction settings (default_jurisdiction, enabled_jurisdictions)."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_JURISDICTION", "read")
     db = database.get_db()
     return await _resolved_jurisdiction_settings_for_client(db, user["client_id"])
 
@@ -1538,7 +1544,7 @@ class JurisdictionSettingsBody(BaseModel):
 @router.patch("/settings/jurisdiction")
 async def update_jurisdiction_settings(request: Request, body: JurisdictionSettingsBody):
     """Update client jurisdiction settings. Valid: Scotland, England, Wales, Northern Ireland."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_JURISDICTION", "write")
     valid = {"Scotland", "England", "Wales", "Northern Ireland"}
     updates = {}
     if body.default_jurisdiction is not None:
@@ -1591,7 +1597,7 @@ async def apply_default_jurisdiction_to_missing_properties(request: Request):
     UK portfolio label yet. Does not overwrite properties that already have a jurisdiction on record
     (supports mixed-jurisdiction portfolios).
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_JURISDICTION", "write")
     db = database.get_db()
     from services.compliance_rules_registry import (
         canonicalize_uk_portfolio_label,
@@ -2019,7 +2025,7 @@ async def get_plan_features(request: Request):
     Returns feature availability for UI gating.
     Uses plan_registry (2/10/25 caps); response shape preserved for compatibility.
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_VIEW", "read")
     try:
         from services.plan_registry import plan_registry, subscription_allows_feature_access
 
@@ -2070,7 +2076,7 @@ async def get_client_entitlements(request: Request):
     Returns detailed feature availability with metadata for UI rendering.
     Uses plan_registry plus ops_compliance module flags (maintenance_workflows, predictive_maintenance).
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_PROFILE_VIEW", "read")
     try:
         from services.plan_registry import plan_registry
         from services.ops_compliance_feature_flags import (
@@ -2159,7 +2165,7 @@ async def get_client_entitlements_context(request: Request):
     Lightweight usage context for upsell and dashboard copy (property count vs plan cap, read API path).
     Does not replace GET /entitlements; safe to call when building contextual upgrade messaging.
     """
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_DASHBOARD_VIEW", "read")
     try:
         from services.plan_registry import plan_registry
 
@@ -2346,7 +2352,7 @@ async def rate_contractor(
 @router.get("/documents")
 async def get_documents(request: Request):
     """Get client documents."""
-    user = await client_route_guard(request)
+    user = await _require_capability_from_request(request, "CAP_DOC_VIEW", "read")
     db = database.get_db()
     
     try:

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, Request, Response
 
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import assert_client_capability
 from services.account_capability_enforcement import (
     CapabilityAction,
     CapabilityEnforcementService,
@@ -43,6 +44,7 @@ async def capability_enforcement_diagnostic(
     Does not enforce access on other endpoints. Safe for staging inspection.
     """
     user = await client_route_guard(request)
+    await assert_client_capability(user, "CAP_PROFILE_VIEW", "read")
     client_id = user["client_id"]
     service = CapabilityEnforcementService(database.get_db())
     contract = await service.load_contract(client_id, include_audit=True)

@@ -148,7 +148,7 @@ class TestReadApiWebhooksRuntimeMatrix:
     def test_runtime_resolver_count_includes_integration_caps(self):
         from services.account_lifecycle_runtime_contract import _BASE_CAPABILITY_MATRIX
 
-        assert len(_BASE_CAPABILITY_MATRIX) == 64
+        assert len(_BASE_CAPABILITY_MATRIX) == 69
 
 
 @pytest.mark.parametrize("lifecycle", list(LIFECYCLE_PRESETS.keys()))

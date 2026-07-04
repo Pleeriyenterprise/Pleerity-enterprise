@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime, timezone, timedelta
 from middleware import require_support_or_above, client_route_guard, require_owner_or_admin, get_current_user
+from middleware.capability_gating import assert_client_capability
 from utils.rate_limiter import rate_limiter, log_rate_limit_event
 from services.support_service import (
     ConversationService, MessageService, TicketService, SupportAuditService,
@@ -739,6 +740,7 @@ async def get_account_snapshot(
     Get account snapshot for authenticated client.
     Used by portal assistant.
     """
+    await assert_client_capability(current_user, "CAP_SUPPORT_ACCESS", "read")
     client_id = current_user.get("client_id") or current_user.get("user_id")
     
     if not client_id:
@@ -758,6 +760,7 @@ async def get_my_conversations(
     limit: int = Query(20, le=100)
 ):
     """Get client's own conversations."""
+    await assert_client_capability(current_user, "CAP_SUPPORT_ACCESS", "read")
     client_id = current_user.get("client_id") or current_user.get("user_id")
     
     db = database.get_db()

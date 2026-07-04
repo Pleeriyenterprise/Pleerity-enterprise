@@ -172,7 +172,47 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "billing_client_routes",
+  "latest_milestone": "backend_completion",
+  "runtime_contract_extensions_backend_completion": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_KNOWLEDGE_CENTRE",
+      "CAP_SUPPORT_REQUEST"
+    ],
+    "existing_capability_rows_consumed": [
+      "CAP_PROFILE_VIEW",
+      "CAP_PROFILE_JURISDICTION",
+      "CAP_DASHBOARD_VIEW",
+      "CAP_BILLING_CHECKOUT",
+      "CAP_DOC_VIEW",
+      "CAP_REPORT_VIEW",
+      "CAP_REPORT_DOWNLOAD",
+      "CAP_SUPPORT_ACCESS"
+    ],
+    "runtime_resolver_count": 69
+  },
+  "ilp4_backend_completion_migrated_routes": {
+    "modules": [
+      "routes/client.py",
+      "routes/client_lifecycle_runtime.py",
+      "routes/portal.py",
+      "routes/knowledge_base.py",
+      "routes/support.py",
+      "routes/client_capability_enforcement.py"
+    ],
+    "migration": "backend_completion",
+    "intentionally_deferred": [
+      "routes/client_orders.py",
+      "routes/onboarding.py",
+      "middleware client_route_guard shell lifecycle",
+      "jobs notification_orchestrator branding_resolver enforce_feature wrappers",
+      "admin contractor tenant frontend"
+    ],
+    "legacy_route_permission_paths_removed": [
+      "client.py guard-only onboarding entitlements jurisdiction portal-context value-insights documents plan-features"
+    ]
+  },
+  "latest_milestone_previous": "billing_client_routes",
   "runtime_contract_extensions_billing_client": {
     "schema_modified": false,
     "new_capability_rows": [
@@ -491,8 +531,8 @@
   ],
   "explicitly_deferred": {
     "remaining_ilp4_backend": [
-      "onboarding extras entitlements jobs sessions frontend",
-      "remaining client.py handlers jurisdiction CAP_PROFILE_JURISDICTION",
+      "client_orders onboarding public routes jobs sessions frontend",
+      "middleware client_route_guard ILP-10",
       "frontend Runtime Contract capability consumption",
       "admin routes"
     ]
@@ -721,10 +761,11 @@
   "regression_proof": {
     "client_route_guard_modified": false,
     "runtime_contract_schema_modified": false,
-    "runtime_contract_capability_rows_added_total": 23,
+    "runtime_contract_capability_rows_added_total": 25,
     "frontend_modified": false,
     "billing_stripe_jobs_sessions_comms_modified": false,
     "billing_client_routes_migrated": true,
+    "backend_customer_routes_migrated": true,
     "client_py_evidence_pack_migrated": true,
     "client_py_analytics_tenant_ops_migrated": true,
     "client_maintenance_migrated": true,

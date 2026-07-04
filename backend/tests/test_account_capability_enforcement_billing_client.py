@@ -215,7 +215,7 @@ class TestBillingClientRuntimeMatrix:
     def test_runtime_resolver_count_includes_billing_caps(self):
         from services.account_lifecycle_runtime_contract import _BASE_CAPABILITY_MATRIX
 
-        assert len(_BASE_CAPABILITY_MATRIX) == 67
+        assert len(_BASE_CAPABILITY_MATRIX) == 69
 
 
 class TestBillingRecoveryNotBlocked:

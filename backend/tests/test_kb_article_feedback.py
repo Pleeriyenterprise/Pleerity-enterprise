@@ -9,11 +9,26 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from pymongo import MongoClient
 
 from middleware import admin_route_guard
+from services.account_capability_enforcement import CapabilityDecision, GRANT_ALLOW
+
+
+async def _allow_capability_evaluate(client_id, capability_id, action, *, contract=None):
+    return CapabilityDecision(
+        capability_id=capability_id,
+        action=action,
+        grant=GRANT_ALLOW,
+        effective_semantic=GRANT_ALLOW,
+        allowed=True,
+        source="test",
+        reason_code="allowed",
+        reason="test allow",
+    )
 
 
 def _sync_db():
@@ -224,23 +239,27 @@ def test_kb_client_help_feedback_uses_authenticated_dedupe_key(client):
     try:
         assert sdb["kb_article_feedback"].count_documents({"article_id": aid}) == 0
 
-        r1 = client.post(
-            f"/api/client/help/articles/{aid}/feedback",
-            json={"feedback_type": "helpful"},
-        )
-        assert r1.status_code == 200, r1.text
-        assert r1.json()["duplicate"] is False
-        row = sdb["kb_article_feedback"].find_one({"article_id": aid})
-        assert row["dedupe_key"] == f"user:{portal_user_id}"
-        assert row["source_surface"] == "client_help"
+        with patch(
+            "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
+        ):
+            r1 = client.post(
+                f"/api/client/help/articles/{aid}/feedback",
+                json={"feedback_type": "helpful"},
+            )
+            assert r1.status_code == 200, r1.text
+            assert r1.json()["duplicate"] is False
+            row = sdb["kb_article_feedback"].find_one({"article_id": aid})
+            assert row["dedupe_key"] == f"user:{portal_user_id}"
+            assert row["source_surface"] == "client_help"
 
-        r2 = client.post(
-            f"/api/client/help/articles/{aid}/feedback",
-            json={"feedback_type": "not_helpful"},
-        )
-        assert r2.status_code == 200
-        assert r2.json()["duplicate"] is True
-        assert sdb["kb_article_feedback"].count_documents({"article_id": aid}) == 1
+            r2 = client.post(
+                f"/api/client/help/articles/{aid}/feedback",
+                json={"feedback_type": "not_helpful"},
+            )
+            assert r2.status_code == 200
+            assert r2.json()["duplicate"] is True
+            assert sdb["kb_article_feedback"].count_documents({"article_id": aid}) == 1
     finally:
         app.dependency_overrides.pop(client_route_guard, None)
         _cleanup_sync(sdb, aid)
@@ -264,17 +283,21 @@ def test_kb_client_help_feedback_comment_after_vote(client):
     app = __import__("server", fromlist=["app"]).app
     app.dependency_overrides[client_route_guard] = _fake_client_user
     try:
-        rv = client.post(f"/api/client/help/articles/{aid}/feedback", json={"feedback_type": "not_helpful"})
-        assert rv.status_code == 200
+        with patch(
+            "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
+        ):
+            rv = client.post(f"/api/client/help/articles/{aid}/feedback", json={"feedback_type": "not_helpful"})
+            assert rv.status_code == 200
 
-        rc = client.post(
-            f"/api/client/help/articles/{aid}/feedback/comment",
-            json={"comment": "Still unclear on renewals"},
-        )
-        assert rc.status_code == 200, rc.text
-        row = sdb["kb_article_feedback"].find_one({"article_id": aid})
-        assert row.get("comment") == "Still unclear on renewals"
-        assert row.get("comment_source_surface") == "client_help"
+            rc = client.post(
+                f"/api/client/help/articles/{aid}/feedback/comment",
+                json={"comment": "Still unclear on renewals"},
+            )
+            assert rc.status_code == 200, rc.text
+            row = sdb["kb_article_feedback"].find_one({"article_id": aid})
+            assert row.get("comment") == "Still unclear on renewals"
+            assert row.get("comment_source_surface") == "client_help"
     finally:
         app.dependency_overrides.pop(client_route_guard, None)
         _cleanup_sync(sdb, aid)
@@ -294,13 +317,17 @@ def test_kb_client_help_article_get_excludes_internal_metadata(client):
     app = __import__("server", fromlist=["app"]).app
     app.dependency_overrides[client_route_guard] = _fake_client_user
     try:
-        r = client.get(f"/api/client/help/articles/{slug}")
-        assert r.status_code == 200, r.text
-        data = r.json()
-        assert "status" not in data
-        assert "audience" not in data
-        assert "version" not in data
-        assert data.get("article_id") == aid
+        with patch(
+            "middleware.capability_gating.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
+        ):
+            r = client.get(f"/api/client/help/articles/{slug}")
+            assert r.status_code == 200, r.text
+            data = r.json()
+            assert "status" not in data
+            assert "audience" not in data
+            assert "version" not in data
+            assert data.get("article_id") == aid
     finally:
         app.dependency_overrides.pop(client_route_guard, None)
         _cleanup_sync(sdb, aid)
