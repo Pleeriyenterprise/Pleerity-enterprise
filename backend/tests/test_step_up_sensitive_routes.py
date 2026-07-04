@@ -7,6 +7,7 @@ from fastapi import Request
 from auth import create_step_up_token
 from middleware import client_route_guard
 from server import app
+from services.account_capability_enforcement import CapabilityDecision, GRANT_ALLOW
 
 
 @pytest.fixture
@@ -16,6 +17,19 @@ def client_user():
         "portal_user_id": "portal-user-test-1",
         "role": "ROLE_CLIENT",
     }
+
+
+async def _allow_capability_evaluate(client_id, capability_id, action, *, contract=None):
+    return CapabilityDecision(
+        capability_id=capability_id,
+        action=action,
+        grant=GRANT_ALLOW,
+        effective_semantic=GRANT_ALLOW,
+        allowed=True,
+        source="test",
+        reason_code="allowed",
+        reason="test allow",
+    )
 
 
 @pytest.fixture
@@ -74,8 +88,8 @@ def test_client_approval_patch_requires_step_up(client, client_user, override_cl
     # calls client_route_guard by name — patch that name too.
     with patch("routes.client_approvals.client_route_guard", AsyncMock(return_value=client_user)):
         with patch(
-            "routes.client_approvals.get_effective_flags",
-            AsyncMock(return_value={"INVOICING": True}),
+            "routes.client_approvals.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
         ):
             with patch(
                 "routes.client_approvals.approval_service.update_approval",
@@ -93,8 +107,8 @@ def test_client_approval_patch_with_step_up_token(client, client_user, override_
     step = create_step_up_token(client_user["portal_user_id"])
     with patch("routes.client_approvals.client_route_guard", AsyncMock(return_value=client_user)):
         with patch(
-            "routes.client_approvals.get_effective_flags",
-            AsyncMock(return_value={"INVOICING": True}),
+            "routes.client_approvals.CapabilityEnforcementService.evaluate",
+            AsyncMock(side_effect=_allow_capability_evaluate),
         ):
             with patch(
                 "routes.client_approvals.approval_service.update_approval",

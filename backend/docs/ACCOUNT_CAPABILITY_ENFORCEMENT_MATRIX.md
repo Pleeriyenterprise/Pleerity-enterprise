@@ -2,7 +2,44 @@
 
 **Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** ILP-4 in progress — maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+**Status:** ILP-4 in progress — rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+
+---
+
+## ILP-4 migrated routes — rent operations and approvals
+
+### `routes/client_rent_operations.py` (full module)
+
+| Route group | Capability | Action | Notes |
+|-------------|------------|--------|-------|
+| `/api/client/operations/rent/capabilities` | `CAP_OPS_RENT` | read | Handshake |
+| `/api/client/operations/rent/tenancies*` | `CAP_OPS_RENT` | read / write | List read; create/close write |
+| `/api/client/operations/rent/schedules/preview` | `CAP_OPS_RENT` | read | Preview only |
+| `/api/client/operations/rent/schedules*` | `CAP_OPS_RENT` | read / write | List read; create write |
+| `/api/client/operations/rent/summary` | `CAP_OPS_RENT` | read | |
+| `/api/client/operations/rent/ledgers*` | `CAP_OPS_RENT` | read / write | Patch ledger, payments, reminders write |
+| `/api/client/operations/rent/payments` | `CAP_OPS_RENT` | write | |
+| `/api/client/operations/expenses*` | `CAP_OPS_RENT` | read / write | |
+| `/api/client/properties/{id}/financial-snapshot` | `CAP_OPS_RENT` | read | |
+
+No `get_effective_flags()` / `RENT_OPERATIONS` ops-flag gates in handlers. Router-level `client_route_guard` retained.
+
+**Runtime contract row added:** `CAP_OPS_RENT` (plan key `rent_operations`).
+
+### `routes/client_approvals.py` (full module)
+
+| Endpoint | Method | Capability | Action |
+|----------|--------|------------|--------|
+| `/api/client/invoices` | POST | `CAP_OPS_APPROVALS` | write |
+| `/api/client/finance/maintenance-spend-this-month` | GET | `CAP_OPS_APPROVALS` | read |
+| `/api/client/approvals` | GET | `CAP_OPS_APPROVALS` | read |
+| `/api/client/approvals/export` | GET | `CAP_OPS_APPROVALS` | read |
+| `/api/client/approvals/{invoice_id}` | GET | `CAP_OPS_APPROVALS` | read |
+| `/api/client/approvals/{invoice_id}` | PATCH | `CAP_OPS_APPROVALS` | write | Step-up auth retained |
+
+No `get_effective_flags()` / `INVOICING` ops-flag gates in handlers.
+
+**Runtime contract row added:** `CAP_OPS_APPROVALS` (plan key `compliance_engine` per catalog).
 
 ---
 
@@ -407,7 +444,7 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 
 ## Deferred (remaining ILP-4 backend)
 
-- Rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
+- Compliance workflow, compliance pack, integrations, assistant, profile, billing, jobs, sessions
 - Frontend `useCapability()` consumption
 - `client_route_guard` capability integration for remaining non-migrated routes
 - Resolver matrix extension for remaining catalog-gap capabilities

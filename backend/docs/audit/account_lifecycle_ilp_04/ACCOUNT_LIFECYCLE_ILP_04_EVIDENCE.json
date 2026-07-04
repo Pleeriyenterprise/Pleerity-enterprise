@@ -172,7 +172,34 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "maintenance_contractors",
+  "latest_milestone": "rent_operations_approvals",
+  "runtime_contract_extensions_rent_operations_approvals": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_OPS_RENT",
+      "CAP_OPS_APPROVALS"
+    ],
+    "plan_keys": {
+      "CAP_OPS_RENT": "rent_operations",
+      "CAP_OPS_APPROVALS": "compliance_engine"
+    },
+    "runtime_resolver_count": 58
+  },
+  "ilp4_rent_operations_approvals_migrated_routes": {
+    "modules": [
+      "routes/client_rent_operations.py",
+      "routes/client_approvals.py"
+    ],
+    "migration": "rent_operations_approvals",
+    "enforce_feature_removed_in_subset": true,
+    "client_rent_operations_route_count": 21,
+    "client_approvals_route_count": 7,
+    "capability_mapping_summary": {
+      "CAP_OPS_RENT": "tenancies, schedules, ledgers, payments, reminders, expenses, financial snapshot",
+      "CAP_OPS_APPROVALS": "invoices, approvals list/export/detail, approval actions, maintenance spend"
+    }
+  },
+  "latest_milestone_previous": "maintenance_contractors",
   "runtime_contract_extensions_maintenance_contractors": {
     "schema_modified": false,
     "new_capability_rows": [
@@ -288,7 +315,7 @@
   ],
   "explicitly_deferred": {
     "remaining_ilp4_backend": [
-      "rent ops approvals integrations assistant profile billing jobs sessions",
+      "compliance workflow compliance pack integrations assistant profile billing jobs sessions",
       "frontend Runtime Contract capability consumption",
       "admin routes"
     ]
@@ -347,6 +374,28 @@
       "test_account_capability_enforcement_wave2c1.py",
       "test_account_capability_enforcement_wave2c2.py",
       "test_account_capability_enforcement_evidence_pack_analytics.py"
+    ]
+  },
+  "ilp4_rent_operations_approvals_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_rent_approvals.py",
+    "test_count": 37,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "rent_ledgers_read",
+      "rent_payment_write",
+      "approvals_list_read",
+      "approvals_update_write",
+      "read_only_write_blocked",
+      "source_governance"
     ]
   },
   "ilp4_maintenance_contractors_test_coverage": {
@@ -450,7 +499,7 @@
   },
   "inventory": {
     "catalog_capability_count": 104,
-    "runtime_resolver_count": 56,
+    "runtime_resolver_count": 58,
     "runtime_added_wave_1": 5,
     "runtime_added_phase_2c_1": 9,
     "runtime_added_phase_2c_2": 2,
@@ -464,12 +513,14 @@
   "regression_proof": {
     "client_route_guard_modified": false,
     "runtime_contract_schema_modified": false,
-    "runtime_contract_capability_rows_added_total": 18,
+    "runtime_contract_capability_rows_added_total": 20,
     "frontend_modified": false,
     "billing_stripe_jobs_sessions_comms_modified": false,
     "client_py_evidence_pack_migrated": true,
     "client_py_analytics_tenant_ops_migrated": true,
     "client_maintenance_migrated": true,
+    "client_rent_operations_migrated": true,
+    "client_approvals_migrated": true,
     "cap_req_mark_n_a_aliased_to_resolve": false
   }
 }

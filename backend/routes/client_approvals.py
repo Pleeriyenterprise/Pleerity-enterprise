@@ -1,15 +1,17 @@
 """
-Client API for invoice approvals (Operations → Approvals). Gated by INVOICING.
-List, filter, get one, approve/reject/needs_info, export CSV.
+Client API for invoice approvals (Operations → Approvals).
+Permission authority: Runtime Contract CAP_OPS_APPROVALS.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional
 
+from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import capability_denied_http_detail
 from middleware.step_up_auth import require_recent_step_up
-from services.ops_compliance_feature_flags import get_effective_flags, INVOICING
+from services.account_capability_enforcement import CapabilityEnforcementService
 from services import approval_service
 from services import invoice_service
 
@@ -29,25 +31,33 @@ class CreateInvoiceBody(BaseModel):
     attachment_storage_key: Optional[str] = None
 
 
-async def _require_invoicing_enabled(request: Request):
-    """Ensure client has INVOICING enabled."""
-    user = await client_route_guard(request)
+async def _enforce_capability(user: dict, capability_id: str, action: str) -> None:
+    if user.get("role") == "ROLE_OWNER":
+        return
     client_id = user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=403, detail="Client context required")
-    flags = await get_effective_flags(client_id)
-    if not flags.get(INVOICING):
+    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
+        client_id, capability_id, action
+    )
+    if not decision.allowed:
         raise HTTPException(
             status_code=403,
-            detail="Invoicing is not enabled for your account. Contact your administrator.",
+            detail=capability_denied_http_detail(decision),
         )
+
+
+async def _require_approvals_enabled(request: Request, action: str = "read") -> dict:
+    """Capability gate for approvals workflow (CAP_OPS_APPROVALS)."""
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_OPS_APPROVALS", action)
     return user
 
 
 @router.post("/invoices")
 async def create_invoice(request: Request, body: CreateInvoiceBody):
-    """Create an invoice linked to a work order (record contractor invoice for approval). Requires INVOICING. Invoice appears in Approvals."""
-    user = await _require_invoicing_enabled(request)
+    """Create an invoice linked to a work order (record contractor invoice for approval)."""
+    user = await _require_approvals_enabled(request, "write")
     client_id = user["client_id"]
     try:
         doc = await invoice_service.create_invoice(
@@ -74,9 +84,8 @@ async def create_invoice(request: Request, body: CreateInvoiceBody):
 async def get_maintenance_spend_this_month(request: Request):
     """
     Paid maintenance invoice total for the current UTC month (see approval_service for definition).
-    Requires INVOICING.
     """
-    user = await _require_invoicing_enabled(request)
+    user = await _require_approvals_enabled(request)
     data = await approval_service.get_maintenance_invoice_spend_this_month(user["client_id"])
     return data
 
@@ -95,8 +104,8 @@ async def list_approvals(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
 ):
-    """List approval items with summary and exceptions. Requires INVOICING."""
-    user = await _require_invoicing_enabled(request)
+    """List approval items with summary and exceptions."""
+    user = await _require_approvals_enabled(request)
     result = await approval_service.list_approvals(
         client_id=user["client_id"],
         status=status,
@@ -125,8 +134,8 @@ async def export_approvals(
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
 ):
-    """Export filtered approvals as CSV. Requires INVOICING."""
-    user = await _require_invoicing_enabled(request)
+    """Export filtered approvals as CSV."""
+    user = await _require_approvals_enabled(request)
     csv_str = await approval_service.export_approvals_csv(
         client_id=user["client_id"],
         status=status,
@@ -147,8 +156,8 @@ async def export_approvals(
 
 @router.get("/approvals/{invoice_id}")
 async def get_approval(request: Request, invoice_id: str):
-    """Get a single approval/invoice for the detail drawer. Requires INVOICING."""
-    user = await _require_invoicing_enabled(request)
+    """Get a single approval/invoice for the detail drawer."""
+    user = await _require_approvals_enabled(request)
     doc = await approval_service.get_approval(client_id=user["client_id"], invoice_id=invoice_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Approval not found")
@@ -165,8 +174,8 @@ class ApprovalActionBody(BaseModel):
 
 @router.patch("/approvals/{invoice_id}")
 async def update_approval(request: Request, invoice_id: str, body: ApprovalActionBody):
-    """Approve, reject, request more info, or mark as paid. Requires INVOICING."""
-    user = await _require_invoicing_enabled(request)
+    """Approve, reject, request more info, or mark as paid."""
+    user = await _require_approvals_enabled(request, "write")
     await require_recent_step_up(request, user)
     if body.action == "mark_paid":
         if not body.payment_method or body.payment_method not in approval_service.PAYMENT_METHODS:
