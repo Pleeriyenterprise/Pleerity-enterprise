@@ -2,7 +2,7 @@
 
 **Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** ILP-4 in progress — rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+**Status:** ILP-4 in progress — compliance workflow, rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
 
 ---
 
@@ -40,6 +40,57 @@ No `get_effective_flags()` / `RENT_OPERATIONS` ops-flag gates in handlers. Route
 No `get_effective_flags()` / `INVOICING` ops-flag gates in handlers.
 
 **Runtime contract row added:** `CAP_OPS_APPROVALS` (plan key `compliance_engine` per catalog).
+
+---
+
+## ILP-4 migrated routes — compliance workflow, execution, and compliance pack
+
+### `routes/api_compliance_workflow.py` (full module, `/api/*`)
+
+| Route area | Capability | Action | Notes |
+|------------|------------|--------|-------|
+| `GET /api/requirements/{id}` | `CAP_REQ_VIEW` | read | |
+| `POST /api/requirements/{id}/jobs` | `CAP_OPS_COMPLIANCE_REVIEW` + `CAP_OPS_MAINTENANCE` | write | Replaces `COMPLIANCE_ENGINE` + `MAINTENANCE_WORKFLOWS` ops flags |
+| `POST /api/requirements/{id}/mark-not-applicable` | `CAP_REQ_MARK_N_A` | write | |
+| `POST /api/requirements/{id}/reopen` | `CAP_REQ_RESOLVE` | write | |
+| `POST /api/requirements/{id}/documents` | `CAP_DOC_UPLOAD` | write | |
+| `GET /api/jobs/{id}` | `CAP_OPS_MAINTENANCE` | read | |
+| `POST /api/jobs/{id}/*` (mutations) | `CAP_OPS_MAINTENANCE` | write | Schedule, booking, quote, completion, close, cancel |
+| `POST /api/jobs/{id}/verify` | `CAP_OPS_MAINTENANCE` + `CAP_OPS_COMPLIANCE_REVIEW` | write | Compliance closeout only |
+| `GET /api/jobs/{id}/assignable-contractors` | `CAP_OPS_MAINTENANCE` + `CAP_OPS_CONTRACTORS` | read | |
+| `POST /api/contractors`, assign-contractor routes | `CAP_OPS_MAINTENANCE` + `CAP_OPS_CONTRACTORS` | write | |
+| `GET /api/today/items` | `CAP_TODAY_VIEW` | read | |
+| `POST /api/today/items/{id}/*` | `CAP_TODAY_ACT` | write | snooze, dismiss, restore, mark-reviewed |
+
+**Legacy removed:** `get_effective_flags`, `COMPLIANCE_ENGINE`, `MAINTENANCE_WORKFLOWS`, `CONTRACTOR_NETWORK` gates.
+
+### `routes/client_compliance_execution.py` (full module)
+
+| Route area | Capability | Action |
+|------------|------------|--------|
+| `POST .../work-orders/book` | `CAP_REQ_RESOLVE` + `CAP_OPS_MAINTENANCE` | write |
+| `GET .../contractor-routing` | `CAP_REQ_RESOLVE` + `CAP_OPS_MAINTENANCE` | read |
+| Contractor routing mutations / lists | above + `CAP_OPS_CONTRACTORS` | read / write |
+
+### `routes/compliance_delivery_audit.py` (client routes only)
+
+| Endpoint | Capability | Action | Replaces |
+|----------|------------|--------|----------|
+| `POST /api/client/compliance/tenant-delivery` | `CAP_TENANT_MANAGE` + `CAP_REPORT_GENERATE_PDF` | write | `tenant_portal` + `reports_pdf` |
+| `GET /api/client/compliance/tenant-deliveries` | `CAP_TENANT_MANAGE` | read | ungated → capability-gated |
+| `POST /api/client/compliance/audit-pack/generate` | `CAP_REPORT_AUDIT_PACK` | write | `reports_pdf` |
+| `GET /api/client/compliance/audit-pack/{id}/download` | `CAP_REPORT_AUDIT_PACK` | read | `reports_pdf` |
+
+### `routes/client.py` (compliance-pack subset)
+
+| Endpoint | Capability | Action | Replaces |
+|----------|------------|--------|----------|
+| `GET /api/client/compliance-pack/{id}/preview` | `CAP_REPORT_DOWNLOAD` | read | ungated |
+| `GET /api/client/compliance-pack/{id}/download` | `CAP_REPORT_DOWNLOAD` | read | `reports_pdf` |
+
+**Runtime contract row added:** `CAP_OPS_COMPLIANCE_REVIEW` (plan key `compliance_engine`).
+
+**Existing rows consumed:** `CAP_REQ_VIEW`, `CAP_REQ_RESOLVE`, `CAP_REQ_MARK_N_A`, `CAP_DOC_UPLOAD`, `CAP_OPS_MAINTENANCE`, `CAP_OPS_CONTRACTORS`, `CAP_TODAY_VIEW`, `CAP_TODAY_ACT`, `CAP_TENANT_MANAGE`, `CAP_REPORT_GENERATE_PDF`, `CAP_REPORT_AUDIT_PACK`, `CAP_REPORT_DOWNLOAD`.
 
 ---
 
@@ -444,8 +495,7 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 
 ## Deferred (remaining ILP-4 backend)
 
-- Compliance workflow, compliance pack, integrations, assistant, profile, billing, jobs, sessions
-- Frontend `useCapability()` consumption
+- Integrations, assistant, profile, billing client routes, jobs, sessions, read API, webhooks, calendar, frontend
 - `client_route_guard` capability integration for remaining non-migrated routes
 - Resolver matrix extension for remaining catalog-gap capabilities
 

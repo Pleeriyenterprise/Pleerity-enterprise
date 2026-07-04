@@ -418,7 +418,7 @@ def test_http_post_tenant_delivery_and_audit_pack_generate(client_http):
     with (
         patch.object(cda_routes, "client_route_guard", guard),
         patch.object(cda_routes.database, "get_db", return_value=mock_db),
-        patch.object(cda_routes.plan_registry, "enforce_feature", new=AsyncMock(return_value=(True, None, {}))),
+        patch.object(cda_routes, "assert_client_capability", new=AsyncMock()),
         patch.object(
             cda_routes.td_proof,
             "initiate_tenant_compliance_delivery",
@@ -447,7 +447,7 @@ def test_http_post_tenant_delivery_and_audit_pack_generate(client_http):
 
     with (
         patch.object(cda_routes, "client_route_guard", guard),
-        patch.object(cda_routes.plan_registry, "enforce_feature", new=AsyncMock(return_value=(True, None, {}))),
+        patch.object(cda_routes, "assert_client_capability", new=AsyncMock()),
         patch.object(
             cda_routes.audit_pack,
             "build_compliance_audit_pack",
@@ -765,7 +765,7 @@ def test_http_audit_pack_download_logs_audit(client_http):
 
     with (
         patch.object(cda_routes, "client_route_guard", guard),
-        patch.object(cda_routes.plan_registry, "enforce_feature", new=AsyncMock(return_value=(True, None, {}))),
+        patch.object(cda_routes, "assert_client_capability", new=AsyncMock()),
         patch.object(cda_routes.audit_pack, "get_audit_pack_record", new=AsyncMock(return_value=rec)),
         patch.object(cda_routes.audit_pack, "read_audit_pack_zip_bytes", new=AsyncMock(return_value=b"PK\x03\x04zz")),
         patch.object(cda_routes, "create_audit_log", new_callable=AsyncMock) as audit,

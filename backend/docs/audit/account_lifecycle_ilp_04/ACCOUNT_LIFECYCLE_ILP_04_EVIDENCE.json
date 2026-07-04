@@ -172,7 +172,69 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "rent_operations_approvals",
+  "latest_milestone": "compliance_workflow_compliance_pack",
+  "runtime_contract_extensions_compliance_workflow": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_OPS_COMPLIANCE_REVIEW"
+    ],
+    "plan_keys": {
+      "CAP_OPS_COMPLIANCE_REVIEW": "compliance_engine"
+    },
+    "existing_capability_rows_consumed": [
+      "CAP_REQ_VIEW",
+      "CAP_REQ_RESOLVE",
+      "CAP_REQ_MARK_N_A",
+      "CAP_DOC_UPLOAD",
+      "CAP_OPS_MAINTENANCE",
+      "CAP_OPS_CONTRACTORS",
+      "CAP_TODAY_VIEW",
+      "CAP_TODAY_ACT",
+      "CAP_TENANT_MANAGE",
+      "CAP_REPORT_GENERATE_PDF",
+      "CAP_REPORT_AUDIT_PACK",
+      "CAP_REPORT_DOWNLOAD"
+    ],
+    "runtime_resolver_count": 59
+  },
+  "ilp4_compliance_workflow_migrated_routes": {
+    "modules": [
+      "routes/api_compliance_workflow.py",
+      "routes/client_compliance_execution.py",
+      "routes/compliance_delivery_audit.py",
+      "routes/client.py"
+    ],
+    "migration": "compliance_workflow_compliance_pack",
+    "enforce_feature_removed_in_subset": true,
+    "get_effective_flags_removed_in_workflow_modules": true,
+    "api_compliance_workflow_route_count": 40,
+    "client_compliance_execution_route_count": 10,
+    "compliance_delivery_audit_client_route_count": 4,
+    "client_compliance_pack_route_count": 2,
+    "capability_mapping_summary": {
+      "CAP_OPS_COMPLIANCE_REVIEW": "compliance job create, job verify closeout",
+      "CAP_OPS_MAINTENANCE": "workflow job mutations and detail read",
+      "CAP_OPS_CONTRACTORS": "workflow contractor assign/create/assignable lists",
+      "CAP_REQ_VIEW": "requirement by id",
+      "CAP_REQ_RESOLVE": "reopen, compliance execution book",
+      "CAP_REQ_MARK_N_A": "mark not applicable",
+      "CAP_DOC_UPLOAD": "requirement document upload",
+      "CAP_TODAY_VIEW": "today items read",
+      "CAP_TODAY_ACT": "today snooze/dismiss/restore/mark-reviewed",
+      "CAP_TENANT_MANAGE": "tenant delivery proof list and initiate",
+      "CAP_REPORT_GENERATE_PDF": "tenant delivery initiate (with tenant manage)",
+      "CAP_REPORT_AUDIT_PACK": "audit pack generate/download",
+      "CAP_REPORT_DOWNLOAD": "compliance pack preview/download"
+    },
+    "legacy_removed": [
+      "get_effective_flags COMPLIANCE_ENGINE",
+      "get_effective_flags MAINTENANCE_WORKFLOWS",
+      "get_effective_flags CONTRACTOR_NETWORK",
+      "plan_registry.enforce_feature tenant_portal",
+      "plan_registry.enforce_feature reports_pdf on compliance pack and audit pack client routes"
+    ]
+  },
+  "latest_milestone_previous": "rent_operations_approvals",
   "runtime_contract_extensions_rent_operations_approvals": {
     "schema_modified": false,
     "new_capability_rows": [
@@ -315,7 +377,8 @@
   ],
   "explicitly_deferred": {
     "remaining_ilp4_backend": [
-      "compliance workflow compliance pack integrations assistant profile billing jobs sessions",
+      "integrations assistant profile billing jobs sessions read API webhooks calendar frontend",
+      "remaining client.py handlers onboarding entitlements",
       "frontend Runtime Contract capability consumption",
       "admin routes"
     ]
@@ -374,6 +437,37 @@
       "test_account_capability_enforcement_wave2c1.py",
       "test_account_capability_enforcement_wave2c2.py",
       "test_account_capability_enforcement_evidence_pack_analytics.py"
+    ]
+  },
+  "ilp4_compliance_workflow_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_compliance_workflow.py",
+    "test_count": 60,
+    "lifecycle_states": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "requirement_view_read",
+      "today_view_read",
+      "today_act_write",
+      "compliance_job_create_write",
+      "audit_pack_generate_write",
+      "compliance_pack_preview_read",
+      "contractors_read_on_assignable_list",
+      "source_governance"
+    ],
+    "affected_existing_tests_updated": [
+      "test_workflow_contractors_http.py",
+      "test_tenant_delivery_and_audit_pack.py"
+    ],
+    "regression_suites": [
+      "test_account_lifecycle_runtime_contract.py"
     ]
   },
   "ilp4_rent_operations_approvals_test_coverage": {
@@ -499,7 +593,7 @@
   },
   "inventory": {
     "catalog_capability_count": 104,
-    "runtime_resolver_count": 58,
+    "runtime_resolver_count": 59,
     "runtime_added_wave_1": 5,
     "runtime_added_phase_2c_1": 9,
     "runtime_added_phase_2c_2": 2,
@@ -521,6 +615,10 @@
     "client_maintenance_migrated": true,
     "client_rent_operations_migrated": true,
     "client_approvals_migrated": true,
+    "compliance_workflow_migrated": true,
+    "client_compliance_execution_migrated": true,
+    "compliance_delivery_audit_client_migrated": true,
+    "client_compliance_pack_migrated": true,
     "cap_req_mark_n_a_aliased_to_resolve": false
   }
 }

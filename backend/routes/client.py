@@ -2366,13 +2366,15 @@ async def get_documents(request: Request):
 
 
 @router.get("/compliance-pack/{property_id}/preview")
-async def get_compliance_pack_preview(request: Request, property_id: str):
+async def get_compliance_pack_preview(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_REPORT_DOWNLOAD", "read"),
+):
     """Get a preview of what the compliance pack will contain."""
-    user = await client_route_guard(request)
-    
     try:
         from services.compliance_pack import compliance_pack_service
-        
+
         preview = await compliance_pack_service.get_pack_preview(
             property_id=property_id,
             client_id=user["client_id"]
@@ -2394,35 +2396,18 @@ async def get_compliance_pack_preview(request: Request, property_id: str):
 
 @router.get("/compliance-pack/{property_id}/download")
 async def download_compliance_pack(
-    request: Request, 
+    request: Request,
     property_id: str,
-    include_expired: bool = False
+    include_expired: bool = False,
+    user: dict = client_require_capability("CAP_REPORT_DOWNLOAD", "read"),
 ):
     """Download a compliance pack PDF for a property.
-    
-    Requires Portfolio plan or higher. TEMP: gated by reports_pdf until Step 5 canonical key.
+
+    Requires Portfolio plan or higher (CAP_REPORT_DOWNLOAD / reports_pdf plan gate).
     """
-    user = await client_route_guard(request)
     try:
-        # TEMP Step 2: compliance_packs has no plan_registry key; gate by reports_pdf (Portfolio+)
-        from services.plan_registry import plan_registry
-
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "reports_pdf"
-        )
-        if not allowed:
-            detail = {
-                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": error_msg,
-                "upgrade_required": True,
-                **(error_details or {}),
-            }
-            detail["feature"] = "compliance_packs"  # preserve response shape
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
-
         from services.compliance_pack import compliance_pack_service
-        
+
         pdf_bytes = await compliance_pack_service.generate_compliance_pack(
             property_id=property_id,
             client_id=user["client_id"],
