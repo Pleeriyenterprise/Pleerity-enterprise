@@ -541,7 +541,15 @@ def infer_compliance_gaps_for_requirement(
         expiring_window_days=resolve_expiring_soon_days_for_requirement(requirement, property_doc, None),
     )
     if not eligible and suppression:
-        return []
+        td_req = bool(requirement.get("tenant_delivery_required"))
+        td_proof = (requirement.get("tenant_delivery_proof_status") or "").upper() or None
+        tenant_delivery_gap_open = td_req and td_proof not in (
+            "SUBMITTED",
+            "DELIVERED",
+            "ACKNOWLEDGED",
+        )
+        if not tenant_delivery_gap_open:
+            return []
 
     ea = requirement.get("evidence_authority") or {}
     synced = bool(requirement.get("evidence_authority_synced_at")) and int(ea.get("version") or 0) >= AUTHORITY_VERSION

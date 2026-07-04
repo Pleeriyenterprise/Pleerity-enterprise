@@ -168,7 +168,7 @@ class TestCapabilityEnforcementService:
 
     def test_unknown_catalog_capability_missing_from_map(self):
         contract = _contract()
-        decision = _service().evaluate_from_contract(contract, "CAP_SCORE_EXPLAIN", "read")
+        decision = _service().evaluate_from_contract(contract, "CAP_INTEGRATION_READ_API", "read")
         assert decision.allowed is False
         assert decision.reason_code == CapabilityReasonCode.UNKNOWN_CAPABILITY.value
 
