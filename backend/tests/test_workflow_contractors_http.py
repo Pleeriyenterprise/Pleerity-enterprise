@@ -13,16 +13,6 @@ from services.account_lifecycle_runtime_contract import build_runtime_contract
 CLIENT_ID = "cli-wc"
 JOB_ID = "wo-wc-1"
 
-_ACTIVE_CONTRACT = build_runtime_contract(
-    client={"client_id": CLIENT_ID, "billing_plan": "PLAN_3_PRO", "subscription_status": "ACTIVE"},
-    billing={
-        "client_id": CLIENT_ID,
-        "subscription_status": "ACTIVE",
-        "billing_lifecycle_state": "active",
-        "canonical_entitlement_state": "ENABLED",
-    },
-)
-
 
 async def _fake_mw(request: Request):
     return {"client_id": CLIENT_ID, "portal_user_id": "pu-wc", "role": "ROLE_CLIENT_ADMIN"}
@@ -58,7 +48,7 @@ def test_get_assignable_contractors_requires_contractors_capability(client_wf):
         },
     )
     with patch(
-        "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
+        "routes.api_compliance_workflow.CapabilityEnforcementService.evaluate",
         new=AsyncMock(side_effect=_mock_evaluate_contract(deny_contract)),
     ):
         res = client_wf.get(f"/api/jobs/{JOB_ID}/assignable-contractors")
@@ -67,10 +57,7 @@ def test_get_assignable_contractors_requires_contractors_capability(client_wf):
 
 
 def test_get_assignable_contractors_delegates(client_wf):
-    with patch(
-        "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
-        new=AsyncMock(side_effect=_mock_evaluate_contract(_ACTIVE_CONTRACT)),
-    ):
+    with patch.object(acw, "_enforce_capability", new=AsyncMock()):
         with patch.object(
             acw.contractor_service,
             "list_assignable_contractors_for_work_order",
@@ -84,10 +71,7 @@ def test_get_assignable_contractors_delegates(client_wf):
 
 
 def test_post_contractors_requires_phone_or_email(client_wf):
-    with patch(
-        "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
-        new=AsyncMock(side_effect=_mock_evaluate_contract(_ACTIVE_CONTRACT)),
-    ):
+    with patch.object(acw, "_enforce_capability", new=AsyncMock()):
         res = client_wf.post(
             "/api/contractors",
             json={"company_name": "Acme", "trade_types": ["general"]},
@@ -107,7 +91,7 @@ def test_post_assign_contractor_requires_contractors_capability(client_wf):
         },
     )
     with patch(
-        "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
+        "routes.api_compliance_workflow.CapabilityEnforcementService.evaluate",
         new=AsyncMock(side_effect=_mock_evaluate_contract(deny_contract)),
     ):
         with patch.object(acw, "load_client_work_order", new_callable=AsyncMock, return_value=wo):
@@ -123,10 +107,7 @@ def test_post_assign_contractor_requires_contractors_capability(client_wf):
 def test_post_assign_contractor_allowed_with_contractors_capability(client_wf):
     wo = {"work_order_id": JOB_ID, "client_id": CLIENT_ID}
     updated = {**wo, "contractor_id": "ctr-ok-1"}
-    with patch(
-        "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
-        new=AsyncMock(side_effect=_mock_evaluate_contract(_ACTIVE_CONTRACT)),
-    ):
+    with patch.object(acw, "_enforce_capability", new=AsyncMock()):
         with patch.object(acw, "load_client_work_order", new_callable=AsyncMock, return_value=wo):
             with patch.object(acw, "_resolve_portal_job_assignment_profile", new_callable=AsyncMock, return_value={}):
                 with patch.object(
@@ -146,10 +127,7 @@ def test_post_contractors_creates_landlord_row(client_wf):
     created = {"contractor_id": "ctr-new-1", "company_name": "Acme Ltd", "source_type": "landlord_added"}
     create_mock = AsyncMock(return_value=created)
 
-    with patch(
-        "services.account_capability_enforcement.CapabilityEnforcementService.evaluate",
-        new=AsyncMock(side_effect=_mock_evaluate_contract(_ACTIVE_CONTRACT)),
-    ):
+    with patch.object(acw, "_enforce_capability", new=AsyncMock()):
         with patch.object(acw.contractor_service, "create_contractor_for_client_job_portal", create_mock):
             with patch.object(acw, "create_audit_log", new_callable=AsyncMock):
                 res = client_wf.post(
