@@ -172,7 +172,49 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "compliance_workflow_compliance_pack",
+  "latest_milestone": "profile_assistant_calendar",
+  "runtime_contract_extensions_profile_assistant_calendar": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_PROFILE_JURISDICTION",
+      "CAP_CALENDAR_VIEW"
+    ],
+    "plan_keys": {
+      "CAP_CALENDAR_VIEW": "compliance_calendar"
+    },
+    "existing_capability_rows_consumed": [
+      "CAP_PROFILE_VIEW",
+      "CAP_PROFILE_EDIT",
+      "CAP_AI_ASSISTANT"
+    ],
+    "matrix_only_capabilities": [
+      "CAP_PROFILE_JURISDICTION"
+    ],
+    "runtime_resolver_count": 61
+  },
+  "ilp4_profile_assistant_calendar_migrated_routes": {
+    "modules": [
+      "routes/profile.py",
+      "routes/assistant.py",
+      "routes/calendar.py"
+    ],
+    "migration": "profile_assistant_calendar",
+    "enforce_feature_removed_in_subset": true,
+    "profile_route_count": 16,
+    "assistant_route_count": 5,
+    "calendar_route_count": 5,
+    "capability_mapping_summary": {
+      "CAP_PROFILE_VIEW": "profile read, system banner list",
+      "CAP_PROFILE_EDIT": "profile mutations, in-app notifications, banner dismiss",
+      "CAP_PROFILE_JURISDICTION": "matrix row only — jurisdiction routes on client.py not migrated",
+      "CAP_AI_ASSISTANT": "assistant snapshot, chat, ask, escalate, conversation status",
+      "CAP_CALENDAR_VIEW": "calendar events, expiries, upcoming, ics export, subscription url"
+    },
+    "legacy_removed": [
+      "plan_registry.enforce_feature compliance_calendar on calendar export and subscription-url"
+    ]
+  },
+  "latest_milestone_previous": "compliance_workflow_compliance_pack",
   "runtime_contract_extensions_compliance_workflow": {
     "schema_modified": false,
     "new_capability_rows": [

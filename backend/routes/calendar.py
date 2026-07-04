@@ -7,8 +7,10 @@ from fastapi import APIRouter, HTTPException, Request, status, Query
 from fastapi.responses import JSONResponse, Response
 from database import database
 from middleware import client_route_guard
+from middleware.capability_gating import capability_denied_http_detail
+from services.account_capability_enforcement import CapabilityEnforcementService
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Any, Dict, Optional
 import logging
 
 from utils.expiry_utils import get_effective_expiry_date, get_computed_status, is_included_for_calendar
@@ -30,6 +32,25 @@ _FILTER_ALIASES = {
     "compliance_jobs": "compliance_job",
     "compliance": "compliance_job",
 }
+
+
+async def _enforce_capability(user: Dict[str, Any], capability_id: str, action: str) -> None:
+    if user.get("role") == "ROLE_OWNER":
+        return
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=403, detail="Client context required")
+    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
+        client_id, capability_id, action
+    )
+    if not decision.allowed:
+        raise HTTPException(status_code=403, detail=capability_denied_http_detail(decision))
+
+
+async def _require_calendar_view(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_CALENDAR_VIEW", "read")
+    return user
 
 
 def _parse_filter_categories(filters: Optional[str]) -> Optional[set]:
@@ -55,7 +76,7 @@ async def get_calendar_events(
     Unified timeline events for the month (requirements + scheduled work orders + compliance milestones).
     Obligation dates use requirement truth (effective expiry); visits use work_orders.scheduled_at + schedule_status.
     """
-    user = await client_route_guard(request)
+    user = await _require_calendar_view(request)
     now = datetime.now(timezone.utc)
     year = year or now.year
     if month:
@@ -95,7 +116,7 @@ async def get_expiry_calendar(
 
     Remaining consumers: external/integration tests and docs; do not add new client-portal usage.
     """
-    user = await client_route_guard(request)
+    user = await _require_calendar_view(request)
     db = database.get_db()
     
     try:
@@ -230,7 +251,7 @@ async def get_upcoming_expiries(
     urgent_only: bool = Query(default=False),
 ):
     """Unified timeline for list/agenda view: obligations + visits in range (includes overdue obligations)."""
-    user = await client_route_guard(request)
+    user = await _require_calendar_view(request)
     try:
         now = datetime.now(timezone.utc)
         lookback_days = 730
@@ -311,27 +332,8 @@ async def export_ical_calendar(
     Uses ``get_timeline_events_for_range`` then ``filter_timeline_events`` so exports match the client
     calendar when the same ``filters`` and ``urgent_only`` query params are used.
     """
-    from services.plan_registry import plan_registry
-
-    user = await client_route_guard(request)
+    user = await _require_calendar_view(request)
     try:
-        # TEMP Step 2: calendar_sync has no plan_registry key; gate by compliance_calendar (all plans have it)
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "compliance_calendar"
-        )
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "calendar_sync",
-                    "upgrade_required": True,
-                    **(error_details or {})
-                }
-            )
-        
         db = database.get_db()
         client_id = user["client_id"]
         
@@ -390,30 +392,10 @@ async def get_calendar_subscription_url(request: Request):
     Returns a URL that can be used to subscribe to the calendar
     in external applications. The URL includes an authentication token.
     
-    Plan gating: TEMP gated by compliance_calendar (Step 5 may introduce calendar_sync).
+    Plan gating: ``CAP_CALENDAR_VIEW`` via Runtime Contract (plan key ``compliance_calendar``).
     """
-    from services.plan_registry import plan_registry
-    import os
-
-    user = await client_route_guard(request)
+    user = await _require_calendar_view(request)
     try:
-        # TEMP Step 2: calendar_sync -> compliance_calendar
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            user["client_id"],
-            "compliance_calendar"
-        )
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                    "message": error_msg,
-                    "feature": "calendar_sync",
-                    "upgrade_required": True,
-                    **(error_details or {})
-                }
-            )
-        
         # Get base URL from environment
         from utils.app_urls import get_api_base_url
 

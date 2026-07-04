@@ -2,7 +2,47 @@
 
 **Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** ILP-4 in progress — compliance workflow, rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+**Status:** ILP-4 in progress — profile, assistant, calendar, compliance workflow, rent, approvals, maintenance, contractors, tenant, branding, evidence pack, analytics routes capability-governed
+
+---
+
+## ILP-4 migrated routes — profile, assistant, and calendar
+
+### `routes/profile.py` (full module)
+
+| Route area | Capability | Action | Notes |
+|------------|------------|--------|-------|
+| `GET /api/profile/me`, notifications, avatar | `CAP_PROFILE_VIEW` | read | |
+| `PATCH /api/profile/me`, notification prefs, avatar upload | `CAP_PROFILE_EDIT` | write | |
+| In-app notification read/dismiss/cta | `CAP_PROFILE_EDIT` | write | |
+| `GET /api/profile/system-banners/active` | `CAP_PROFILE_VIEW` | read | `require_auth` + `assert_client_capability` (invited users) |
+| `POST /api/profile/system-banners/{id}/dismiss` | `CAP_PROFILE_EDIT` | write | |
+
+No `enforce_feature()` / subscription entitlement checks in handlers.
+
+**Runtime contract row added (matrix only, not yet routed):** `CAP_PROFILE_JURISDICTION` — jurisdiction routes remain on `client.py` (out of scope).
+
+### `routes/assistant.py` (full module)
+
+| Route area | Capability | Action |
+|------------|------------|--------|
+| `GET /api/assistant/snapshot` | `CAP_AI_ASSISTANT` | read |
+| `GET /api/assistant/conversation/{id}/status` | `CAP_AI_ASSISTANT` | read |
+| `POST /api/assistant/ask`, `/chat`, `/escalate` | `CAP_AI_ASSISTANT` | write |
+
+Rate limits retained. No plan-registry gates.
+
+### `routes/calendar.py` (full module)
+
+| Route area | Capability | Action | Notes |
+|------------|------------|--------|-------|
+| `GET /api/calendar/events`, `/expiries`, `/upcoming` | `CAP_CALENDAR_VIEW` | read | |
+| `GET /api/calendar/export.ics` | `CAP_CALENDAR_VIEW` | read | Replaces `plan_registry.enforce_feature(compliance_calendar)` |
+| `GET /api/calendar/subscription-url` | `CAP_CALENDAR_VIEW` | read | Same |
+
+No separate calendar write capability in catalog — export/subscription are read under `CAP_CALENDAR_VIEW`.
+
+**Runtime contract rows added:** `CAP_CALENDAR_VIEW` (plan key `compliance_calendar`); `CAP_PROFILE_JURISDICTION` (no plan key, for future `client.py` jurisdiction routes).
 
 ---
 

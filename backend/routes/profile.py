@@ -5,6 +5,8 @@ from fastapi import APIRouter, HTTPException, Request, status, File, UploadFile,
 from fastapi.responses import FileResponse
 from database import database
 from middleware import client_route_guard, require_auth
+from middleware.capability_gating import assert_client_capability, capability_denied_http_detail
+from services.account_capability_enforcement import CapabilityEnforcementService
 from services import admin_communications_service as acs
 from models import AuditAction, UserRole
 from utils.audit import create_audit_log
@@ -25,6 +27,32 @@ PROFILE_AVATARS_PATH = Path(DATA_DIR) / "data" / "profile_avatars"
 PROFILE_AVATARS_PATH.mkdir(parents=True, exist_ok=True)
 AVATAR_MAX_BYTES = 5 * 1024 * 1024  # 5MB
 AVATAR_ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+async def _enforce_capability(user: Dict[str, Any], capability_id: str, action: str) -> None:
+    if user.get("role") == "ROLE_OWNER":
+        return
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=403, detail="Client context required")
+    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
+        client_id, capability_id, action
+    )
+    if not decision.allowed:
+        raise HTTPException(status_code=403, detail=capability_denied_http_detail(decision))
+
+
+async def _require_profile_view(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_PROFILE_VIEW", "read")
+    return user
+
+
+async def _require_profile_edit(request: Request) -> Dict[str, Any]:
+    user = await client_route_guard(request)
+    await _enforce_capability(user, "CAP_PROFILE_EDIT", "write")
+    return user
+
 
 class UpdateProfileRequest(BaseModel):
     full_name: Optional[str] = None
@@ -69,7 +97,7 @@ class NotificationPreferencesRequest(BaseModel):
 @router.get("/me")
 async def get_profile(request: Request):
     """Get current user profile and preferences."""
-    user = await client_route_guard(request)
+    user = await _require_profile_view(request)
     db = database.get_db()
     
     try:
@@ -145,7 +173,7 @@ async def get_profile(request: Request):
 @router.get("/notifications")
 async def get_notification_preferences(request: Request):
     """Get notification preferences only."""
-    user = await client_route_guard(request)
+    user = await _require_profile_view(request)
     db = database.get_db()
     
     try:
@@ -203,7 +231,7 @@ async def get_notification_preferences(request: Request):
 @router.put("/notifications")
 async def update_notification_preferences(request: Request, data: NotificationPreferencesRequest):
     """Update notification preferences."""
-    user = await client_route_guard(request)
+    user = await _require_profile_edit(request)
     db = database.get_db()
     
     try:
@@ -327,7 +355,7 @@ async def update_notification_preferences(request: Request, data: NotificationPr
 @router.patch("/me")
 async def update_profile(request: Request, data: UpdateProfileRequest):
     """Update user profile (name, phone only)."""
-    user = await client_route_guard(request)
+    user = await _require_profile_edit(request)
     db = database.get_db()
     
     try:
@@ -391,7 +419,7 @@ async def update_profile(request: Request, data: UpdateProfileRequest):
 @router.get("/me/avatar")
 async def get_my_avatar(request: Request):
     """Return the current user's profile picture. 404 if none."""
-    user = await client_route_guard(request)
+    user = await _require_profile_view(request)
     db = database.get_db()
     client = await db.clients.find_one(
         {"client_id": user["client_id"]},
@@ -410,7 +438,7 @@ async def get_my_avatar(request: Request):
 @router.post("/me/avatar")
 async def upload_my_avatar(request: Request, file: UploadFile = File(...)):
     """Upload profile picture. Replaces existing. Logged for admin monitoring."""
-    user = await client_route_guard(request)
+    user = await _require_profile_edit(request)
     db = database.get_db()
     if not file.content_type or file.content_type.lower() not in AVATAR_ALLOWED_TYPES:
         raise HTTPException(
@@ -467,7 +495,7 @@ async def list_my_in_app_notifications(
     ),
 ):
     """List in-app notifications for the authenticated portal user (non-dismissed)."""
-    user = await client_route_guard(request)
+    user = await _require_profile_view(request)
     from services.order_service import list_inbox_notifications
 
     items = await list_inbox_notifications(
@@ -481,7 +509,7 @@ async def list_my_in_app_notifications(
 @router.get("/in-app-notifications/unread-count")
 async def in_app_notifications_unread_count(request: Request):
     """Unread count for notification bell (admin broadcasts + system notices)."""
-    user = await client_route_guard(request)
+    user = await _require_profile_view(request)
     from services.order_service import get_unread_count
 
     n = await get_unread_count(user["portal_user_id"])
@@ -490,7 +518,7 @@ async def in_app_notifications_unread_count(request: Request):
 
 @router.patch("/in-app-notifications/{notification_id}/read")
 async def mark_in_app_notification_read(request: Request, notification_id: str):
-    user = await client_route_guard(request)
+    user = await _require_profile_edit(request)
     from services.order_service import mark_notification_read
 
     ok = await mark_notification_read(notification_id, user["portal_user_id"])
@@ -511,7 +539,7 @@ async def mark_in_app_notification_read(request: Request, notification_id: str):
 
 @router.post("/in-app-notifications/read-all")
 async def mark_all_in_app_notifications_read(request: Request):
-    user = await client_route_guard(request)
+    user = await _require_profile_edit(request)
     from services.order_service import mark_all_notifications_read
 
     n = await mark_all_notifications_read(user["portal_user_id"])
@@ -531,7 +559,7 @@ async def mark_all_in_app_notifications_read(request: Request):
 
 @router.post("/in-app-notifications/{notification_id}/dismiss")
 async def dismiss_in_app_notification(request: Request, notification_id: str):
-    user = await client_route_guard(request)
+    user = await _require_profile_edit(request)
     from services.order_service import dismiss_notification
 
     ok = await dismiss_notification(notification_id, user["portal_user_id"])
@@ -552,7 +580,7 @@ async def dismiss_in_app_notification(request: Request, notification_id: str):
 
 @router.post("/in-app-notifications/{notification_id}/cta")
 async def in_app_notification_cta(request: Request, notification_id: str, body: InAppCtaRequest):
-    user = await client_route_guard(request)
+    user = await _require_profile_edit(request)
     from services.order_service import record_in_app_cta_action
 
     ok = await record_in_app_cta_action(notification_id, user["portal_user_id"], body.action_key)
@@ -586,6 +614,11 @@ async def list_active_system_banners(request: Request):
     if not pu or not pu.get("client_id"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No client context")
     client_id = pu["client_id"]
+    await assert_client_capability(
+        {"client_id": client_id, "role": user.get("role"), "portal_user_id": user.get("portal_user_id")},
+        "CAP_PROFILE_VIEW",
+        "read",
+    )
     now = datetime.now(timezone.utc)
     q = {
         "active": True,
@@ -620,6 +653,17 @@ async def list_active_system_banners(request: Request):
 async def dismiss_system_banner(request: Request, banner_id: str):
     user = await require_auth(request)
     db = database.get_db()
+    pu = await db.portal_users.find_one(
+        {"portal_user_id": user["portal_user_id"]},
+        {"_id": 0, "client_id": 1},
+    )
+    if not pu or not pu.get("client_id"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No client context")
+    await assert_client_capability(
+        {"client_id": pu["client_id"], "role": user.get("role"), "portal_user_id": user.get("portal_user_id")},
+        "CAP_PROFILE_EDIT",
+        "write",
+    )
     b = await db.system_banners.find_one({"banner_id": banner_id}, {"_id": 0, "persistent_display": 1})
     if not b:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Banner not found")

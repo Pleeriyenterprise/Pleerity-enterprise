@@ -28,7 +28,7 @@ def test_client_chat_ignores_crn_uses_auth_client():
         "citations": [{"source_type": "portal_data", "source_id": "client_summary", "title": "Client"}],
         "safety_flags": {},
     })
-    with patch("routes.assistant.client_route_guard", AsyncMock(return_value=user)):
+    with patch("routes.assistant._require_assistant_write", AsyncMock(return_value=user)):
         with patch("routes.assistant.assistant_chat_turn", mock_turn):
             with patch("routes.assistant.rate_limiter.check_rate_limit", AsyncMock(return_value=(True, None))):
                 with patch("routes.assistant.rate_limiter.check_rate_limit_daily", AsyncMock(return_value=(True, None))):
