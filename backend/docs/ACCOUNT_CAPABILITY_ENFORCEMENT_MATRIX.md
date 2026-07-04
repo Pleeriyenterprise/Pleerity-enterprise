@@ -2,7 +2,35 @@
 
 **Programme:** ILP-4-CAPABILITY-ENFORCEMENT-01  
 **Authority:** `ACCOUNT_CAPABILITY_AUTHORITY.md`, `ACCOUNT_CAPABILITY_CATALOG.md`  
-**Status:** ILP-4 in progress — evidence pack, analytics, and activity-since routes capability-governed
+**Status:** ILP-4 in progress — tenant, branding, evidence pack, analytics routes capability-governed
+
+---
+
+## ILP-4 migrated routes — tenant and branding (`routes/client.py`)
+
+| Endpoint | Method | Capability | Action | Notes |
+|----------|--------|------------|--------|-------|
+| `/api/client/tenants/invite` | POST | `CAP_TENANT_MANAGE` | write | Admin role check retained |
+| `/api/client/tenants` | GET | `CAP_TENANT_MANAGE` | read | |
+| `/api/client/tenant-messages` | GET | `CAP_TENANT_MESSAGES` | read | |
+| `/api/client/tenant-requests` | GET | `CAP_TENANT_MANAGE` | read | |
+| `/api/client/tenant-requests/{id}/start-compliance-job` | POST | `CAP_TENANT_MANAGE` | write | |
+| `/api/client/tenant-requests/{id}` | PATCH | `CAP_TENANT_MANAGE` | write | |
+| `/api/client/tenants/{id}/assign-property` | POST | `CAP_TENANT_MANAGE` | write | |
+| `/api/client/tenants/{id}/unassign-property/{property_id}` | DELETE | `CAP_TENANT_MANAGE` | write | |
+| `/api/client/tenants/{id}` | DELETE | `CAP_TENANT_MANAGE` | write | |
+| `/api/client/tenants/{id}/resend-invite` | POST | `CAP_TENANT_MANAGE` | write | |
+| `/api/client/branding` | GET | `CAP_BRANDING_VIEW` | read | `feature_enabled` via `CAP_BRANDING_WHITE_LABEL` |
+| `/api/client/branding` | PUT | `CAP_BRANDING_EDIT` | write | |
+| `/api/client/branding/reset` | POST | `CAP_BRANDING_EDIT` | write | |
+| `/api/client/branding/logo` | GET | `CAP_BRANDING_VIEW` | read | |
+| `/api/client/branding/logo` | POST | `CAP_BRANDING_EDIT` | write | |
+| `/api/client/branding/preview` | GET | `CAP_BRANDING_EDIT` | read | |
+| `/api/client/properties/{id}/occupancy-operational-summary` | GET | `CAP_PROP_VIEW` | read | Tenant slice: `CAP_TENANT_PORTAL` evaluate |
+
+No `enforce_feature()` in these handlers.
+
+**Runtime contract rows added:** `CAP_TENANT_MANAGE`, `CAP_TENANT_MESSAGES`, `CAP_BRANDING_VIEW`, `CAP_BRANDING_EDIT`, `CAP_BRANDING_WHITE_LABEL`.
 
 ---
 
@@ -20,7 +48,7 @@
 
 No `enforce_feature()` in these handlers. Router-level `client_route_guard` retained for auth on non-migrated routes.
 
-**Explicitly not migrated:** tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
+**Explicitly not migrated:** maintenance, rent ops, approvals, integrations, assistant, profile, billing, onboarding extras, entitlements.
 
 ---
 
@@ -345,7 +373,7 @@ Across evidence read/write, reports view/CSV/schedule/audit-log, documents list/
 
 ## Deferred (remaining ILP-4 backend)
 
-- Tenant/branding, maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
+- Maintenance, rent ops, approvals, integrations, assistant, profile, billing, jobs, sessions
 - Frontend `useCapability()` consumption
 - `client_route_guard` capability integration for remaining non-migrated routes
 - Resolver matrix extension for remaining catalog-gap capabilities

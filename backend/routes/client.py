@@ -1699,19 +1699,25 @@ async def get_properties(
 
 
 @router.get("/properties/{property_id}/occupancy-operational-summary")
-async def get_property_occupancy_operational_summary(request: Request, property_id: str):
+async def get_property_occupancy_operational_summary(
+    request: Request,
+    property_id: str,
+    user: dict = client_require_capability("CAP_PROP_VIEW", "read"),
+):
     """
     Read-only property-scoped tenant/occupancy operational aggregation.
     Composes tenant portal, maintenance, rent ops, and calendar projections — does not own domain truth.
     """
-    from services.plan_registry import plan_registry
+    from services.account_capability_enforcement import CapabilityEnforcementService
     from services.ops_compliance_feature_flags import get_effective_flags, RENT_OPERATIONS, MAINTENANCE_WORKFLOWS
     from services.property_occupancy_operational_service import build_property_occupancy_operational_summary
 
-    user = await client_route_guard(request)
     client_id = user["client_id"]
     flags = await get_effective_flags(client_id)
-    tenant_allowed, _, _ = await plan_registry.enforce_feature(client_id, "tenant_portal")
+    tenant_decision = await CapabilityEnforcementService(database.get_db()).evaluate(
+        client_id, "CAP_TENANT_PORTAL", "read"
+    )
+    tenant_allowed = tenant_decision.allowed
     try:
         body = await build_property_occupancy_operational_summary(
             client_id,
@@ -2476,21 +2482,16 @@ async def download_compliance_pack(
 
 
 @router.post("/tenants/invite")
-async def invite_tenant(request: Request):
+async def invite_tenant(
+    request: Request,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """
     Invite a tenant to view property compliance status.
     
     Creates a ROLE_TENANT user with read-only access.
     Gated: Portfolio and Professional only (tenant_portal).
     """
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     # Only CLIENT_ADMIN can invite tenants
@@ -2675,16 +2676,11 @@ async def invite_tenant(request: Request):
 
 
 @router.get("/tenants")
-async def list_tenants(request: Request):
+async def list_tenants(
+    request: Request,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "read"),
+):
     """List all tenants invited by this client. Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     try:
@@ -2734,16 +2730,11 @@ async def list_tenants(request: Request):
 
 
 @router.get("/tenant-messages")
-async def list_tenant_messages(request: Request):
+async def list_tenant_messages(
+    request: Request,
+    user: dict = client_require_capability("CAP_TENANT_MESSAGES", "read"),
+):
     """List messages from tenants to this client (landlord). Gated: tenant_portal."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     cursor = db.tenant_messages.find(
         {"client_id": user["client_id"]},
@@ -2757,16 +2748,11 @@ async def list_tenant_messages(request: Request):
 
 
 @router.get("/tenant-requests")
-async def list_tenant_requests(request: Request):
+async def list_tenant_requests(
+    request: Request,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "read"),
+):
     """List certificate requests from tenants for this client. Gated: tenant_portal."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     cursor = db.tenant_requests.find(
         {"client_id": user["client_id"]},
@@ -2802,17 +2788,9 @@ async def start_tenant_request_compliance_job(
     request: Request,
     request_id: str,
     body: Optional[TenantRequestStartComplianceJobBody] = None,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
 ):
     """Create a COMPLIANCE work order directly from a tenant request (real execution, audited)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True},
-        )
     if user.get("role") not in ["ROLE_CLIENT", "ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
@@ -2836,16 +2814,12 @@ async def start_tenant_request_compliance_job(
 
 
 @router.patch("/tenant-requests/{request_id}")
-async def update_tenant_request_status(request: Request, request_id: str):
+async def update_tenant_request_status(
+    request: Request,
+    request_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Update a certificate request status (IN_PROGRESS, DONE, DECLINED). Gated: tenant_portal."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     if user.get("role") not in ["ROLE_CLIENT", "ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     try:
@@ -2952,16 +2926,12 @@ async def update_tenant_request_status(request: Request, request_id: str):
 
 
 @router.post("/tenants/{tenant_id}/assign-property")
-async def assign_tenant_to_property(request: Request, tenant_id: str):
+async def assign_tenant_to_property(
+    request: Request,
+    tenant_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Assign a tenant to a property. Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -3042,16 +3012,13 @@ async def assign_tenant_to_property(request: Request, tenant_id: str):
 
 
 @router.delete("/tenants/{tenant_id}/unassign-property/{property_id}")
-async def unassign_tenant_from_property(request: Request, tenant_id: str, property_id: str):
+async def unassign_tenant_from_property(
+    request: Request,
+    tenant_id: str,
+    property_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Remove a tenant's assignment to a property. Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -3101,16 +3068,12 @@ async def unassign_tenant_from_property(request: Request, tenant_id: str, proper
 
 
 @router.delete("/tenants/{tenant_id}")
-async def revoke_tenant_access(request: Request, tenant_id: str):
+async def revoke_tenant_access(
+    request: Request,
+    tenant_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Revoke a tenant's access entirely (disable account). Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -3157,16 +3120,12 @@ async def revoke_tenant_access(request: Request, tenant_id: str):
 
 
 @router.post("/tenants/{tenant_id}/resend-invite")
-async def resend_tenant_invite(request: Request, tenant_id: str):
+async def resend_tenant_invite(
+    request: Request,
+    tenant_id: str,
+    user: dict = client_require_capability("CAP_TENANT_MANAGE", "write"),
+):
     """Resend invitation email to a tenant. Gated: Portfolio+ (tenant_portal)."""
-    user = await client_route_guard(request)
-    from services.plan_registry import plan_registry
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(user["client_id"], "tenant_portal")
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_details or {"message": error_msg, "feature": "tenant_portal", "upgrade_required": True}
-        )
     db = database.get_db()
     
     if user.get("role") not in ["ROLE_CLIENT_ADMIN", "ROLE_ADMIN"]:
@@ -3272,25 +3231,27 @@ def _branding_logo_path(client_id: str, ext: str) -> Path:
     return BRANDING_LOGOS_PATH / f"{client_id}{ext}"
 
 @router.get("/branding")
-async def get_branding_settings(request: Request):
+async def get_branding_settings(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_VIEW", "read"),
+):
     """Get the client's branding settings.
     
     Returns current branding configuration for white-label customization.
     Plan gating: Requires Portfolio plan (PLAN_6_15) for full customization.
     """
-    from services.plan_registry import plan_registry
+    from services.account_capability_enforcement import CapabilityEnforcementService
     from datetime import datetime, timezone
 
-    user = await client_route_guard(request)
     try:
         db = database.get_db()
         client_id = user["client_id"]
 
-        # Canonical: white_label -> white_label_reports (plan_registry)
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            client_id,
-            "white_label_reports"
+        wl_decision = await CapabilityEnforcementService(db).evaluate(
+            client_id, "CAP_BRANDING_WHITE_LABEL", "read"
         )
+        allowed = wl_decision.allowed
+        error_msg = None if allowed else wl_decision.reason
         
         # Get existing branding settings
         branding = await db.branding_settings.find_one(
@@ -3353,38 +3314,22 @@ async def get_branding_settings(request: Request):
 
 
 @router.put("/branding")
-async def update_branding_settings(request: Request):
+async def update_branding_settings(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_EDIT", "write"),
+):
     """Update the client's branding settings.
     
     Plan gating: Requires Professional plan (white_label_reports).
     """
-    from services.plan_registry import plan_registry
     from models import AuditAction
     from utils.audit import create_audit_log
     from datetime import datetime, timezone
 
-    user = await client_route_guard(request)
     body = await request.json()
     try:
         db = database.get_db()
         client_id = user["client_id"]
-
-        # Canonical: white_label -> white_label_reports (plan_registry)
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            client_id,
-            "white_label_reports"
-        )
-        if not allowed:
-            detail = {
-                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": error_msg,
-                "upgrade_required": True,
-                **(error_details or {}),
-            }
-            detail["feature"] = "white_label"  # preserve response shape
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
-
-        # Allowed fields to update
         allowed_fields = [
             "company_name", "logo_url", "favicon_url",
             "primary_color", "secondary_color", "accent_color", "text_color",
@@ -3483,34 +3428,20 @@ async def update_branding_settings(request: Request):
 
 
 @router.post("/branding/reset")
-async def reset_branding_settings(request: Request):
+async def reset_branding_settings(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_EDIT", "write"),
+):
     """Reset branding settings to defaults.
     
     Plan gating: Requires Professional plan (white_label_reports).
     """
-    from services.plan_registry import plan_registry
     from models import AuditAction
     from utils.audit import create_audit_log
 
-    user = await client_route_guard(request)
     try:
         db = database.get_db()
         client_id = user["client_id"]
-
-        # Canonical: white_label -> white_label_reports (plan_registry)
-        allowed, error_msg, error_details = await plan_registry.enforce_feature(
-            client_id,
-            "white_label_reports"
-        )
-        if not allowed:
-            detail = {
-                "error_code": (error_details or {}).get("error_code", "PLAN_NOT_ELIGIBLE"),
-                "message": error_msg,
-                "upgrade_required": True,
-                **(error_details or {}),
-            }
-            detail["feature"] = "white_label"  # preserve response shape
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
         # Remove uploaded logo file if any
         for ext in [".png", ".jpg", ".webp"]:
@@ -3547,9 +3478,11 @@ async def reset_branding_settings(request: Request):
 
 
 @router.get("/branding/logo")
-async def get_branding_logo(request: Request):
+async def get_branding_logo(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_VIEW", "read"),
+):
     """Serve the client's uploaded branding logo (for use in reports and preview)."""
-    user = await client_route_guard(request)
     db = database.get_db()
     client_id = user["client_id"]
     branding = await db.branding_settings.find_one(
@@ -3568,23 +3501,14 @@ async def get_branding_logo(request: Request):
 
 
 @router.post("/branding/logo")
-async def upload_branding_logo(request: Request, file: UploadFile = File(...)):
+async def upload_branding_logo(
+    request: Request,
+    file: UploadFile = File(...),
+    user: dict = client_require_capability("CAP_BRANDING_EDIT", "write"),
+):
     """Upload a logo file for branding. Replaces existing. Returns logo_url to use in settings."""
-    from services.plan_registry import plan_registry
-
-    user = await client_route_guard(request)
     db = database.get_db()
     client_id = user["client_id"]
-
-    allowed, error_msg, error_details = await plan_registry.enforce_feature(
-        client_id,
-        "white_label_reports"
-    )
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg or "Upgrade required for white-label branding"
-        )
 
     if not file.content_type or file.content_type.lower() not in BRANDING_LOGO_ALLOWED_TYPES:
         raise HTTPException(
@@ -3629,23 +3553,14 @@ async def upload_branding_logo(request: Request, file: UploadFile = File(...)):
 
 
 @router.get("/branding/preview")
-async def get_branding_preview(request: Request):
+async def get_branding_preview(
+    request: Request,
+    user: dict = client_require_capability("CAP_BRANDING_EDIT", "read"),
+):
     """Generate a sample PDF using current branding (for preview before saving)."""
-    from services.plan_registry import plan_registry
     from services.professional_reports import professional_report_generator
 
-    user = await client_route_guard(request)
     client_id = user["client_id"]
-
-    allowed, error_msg, _ = await plan_registry.enforce_feature(
-        client_id,
-        "white_label_reports"
-    )
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=error_msg or "Upgrade required for white-label branding"
-        )
 
     db = database.get_db()
     branding_row = await db.branding_settings.find_one(

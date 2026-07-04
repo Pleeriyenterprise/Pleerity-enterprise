@@ -172,6 +172,48 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
+  "latest_milestone": "tenant_branding",
+  "runtime_contract_extensions_tenant_branding": {
+    "schema_modified": false,
+    "new_capability_rows": [
+      "CAP_TENANT_MANAGE",
+      "CAP_TENANT_MESSAGES",
+      "CAP_BRANDING_VIEW",
+      "CAP_BRANDING_EDIT",
+      "CAP_BRANDING_WHITE_LABEL"
+    ],
+    "plan_keys": {
+      "CAP_TENANT_MANAGE": "tenant_portal",
+      "CAP_TENANT_MESSAGES": "tenant_portal",
+      "CAP_BRANDING_EDIT": "white_label_reports",
+      "CAP_BRANDING_WHITE_LABEL": "white_label_reports"
+    },
+    "runtime_resolver_count": 54
+  },
+  "ilp4_tenant_branding_migrated_routes": {
+    "module": "routes/client.py",
+    "migration": "tenant_branding",
+    "enforce_feature_removed_in_subset": true,
+    "routes": [
+      { "endpoint": "POST /api/client/tenants/invite", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "GET /api/client/tenants", "capability_id": "CAP_TENANT_MANAGE", "action": "read" },
+      { "endpoint": "GET /api/client/tenant-messages", "capability_id": "CAP_TENANT_MESSAGES", "action": "read" },
+      { "endpoint": "GET /api/client/tenant-requests", "capability_id": "CAP_TENANT_MANAGE", "action": "read" },
+      { "endpoint": "POST /api/client/tenant-requests/{request_id}/start-compliance-job", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "PATCH /api/client/tenant-requests/{request_id}", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "POST /api/client/tenants/{tenant_id}/assign-property", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "DELETE /api/client/tenants/{tenant_id}/unassign-property/{property_id}", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "DELETE /api/client/tenants/{tenant_id}", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "POST /api/client/tenants/{tenant_id}/resend-invite", "capability_id": "CAP_TENANT_MANAGE", "action": "write" },
+      { "endpoint": "GET /api/client/branding", "capability_id": "CAP_BRANDING_VIEW", "action": "read" },
+      { "endpoint": "PUT /api/client/branding", "capability_id": "CAP_BRANDING_EDIT", "action": "write" },
+      { "endpoint": "POST /api/client/branding/reset", "capability_id": "CAP_BRANDING_EDIT", "action": "write" },
+      { "endpoint": "GET /api/client/branding/logo", "capability_id": "CAP_BRANDING_VIEW", "action": "read" },
+      { "endpoint": "POST /api/client/branding/logo", "capability_id": "CAP_BRANDING_EDIT", "action": "write" },
+      { "endpoint": "GET /api/client/branding/preview", "capability_id": "CAP_BRANDING_EDIT", "action": "read" },
+      { "endpoint": "GET /api/client/properties/{property_id}/occupancy-operational-summary", "capability_id": "CAP_PROP_VIEW", "action": "read", "notes": "tenant slice via CAP_TENANT_PORTAL evaluate" }
+    ]
+  },
   "ilp4_evidence_pack_analytics_migrated_routes": {
     "module": "routes/client.py",
     "migration": "evidence_pack_analytics_activity_since",
@@ -205,7 +247,7 @@
   ],
   "explicitly_deferred": {
     "remaining_ilp4_backend": [
-      "tenant branding maintenance rent ops approvals integrations assistant profile billing jobs sessions",
+      "maintenance rent ops approvals integrations assistant profile billing jobs sessions",
       "frontend Runtime Contract capability consumption",
       "admin routes"
     ]
@@ -264,6 +306,26 @@
       "test_account_capability_enforcement_wave2c1.py",
       "test_account_capability_enforcement_wave2c2.py",
       "test_account_capability_enforcement_evidence_pack_analytics.py"
+    ]
+  },
+  "ilp4_tenant_branding_test_coverage": {
+    "test_file": "backend/tests/test_account_capability_enforcement_tenant_branding.py",
+    "test_count": 34,
+    "lifecycle_states": [
+      "ACTIVE",
+      "READ_ONLY",
+      "CANCELLED_IMMEDIATE",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "areas": [
+      "tenant_list_read",
+      "tenant_messages_read",
+      "tenant_invite_write",
+      "branding_get_read",
+      "branding_update_write",
+      "plan_gated_solo"
     ]
   },
   "ilp4_evidence_pack_analytics_test_coverage": {
