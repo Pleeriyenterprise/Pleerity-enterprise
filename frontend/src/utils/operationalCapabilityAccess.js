@@ -20,7 +20,17 @@ export const OPS_CAPABILITY = {
   OPS_PREDICTIVE: 'CAP_OPS_PREDICTIVE',
   OPS_CONTRACTORS: 'CAP_OPS_CONTRACTORS',
   OPS_APPROVALS: 'CAP_OPS_APPROVALS',
+  OPS_COMPLIANCE_REVIEW: 'CAP_OPS_COMPLIANCE_REVIEW',
   OPS_RENT: 'CAP_OPS_RENT',
+};
+
+/** Legacy feature keys → capability route gates (presentation feature for UpgradeRequired). */
+export const OPERATIONAL_ROUTE_CAPABILITY = {
+  maintenance_workflows: { capabilityId: OPS_CAPABILITY.OPS_MAINTENANCE, action: 'read', presentationFeature: 'maintenance_workflows' },
+  predictive_maintenance: { capabilityId: OPS_CAPABILITY.OPS_PREDICTIVE, action: 'read', presentationFeature: 'predictive_maintenance' },
+  contractor_network: { capabilityId: OPS_CAPABILITY.OPS_CONTRACTORS, action: 'read', presentationFeature: 'contractor_network' },
+  invoicing: { capabilityId: OPS_CAPABILITY.OPS_APPROVALS, action: 'read', presentationFeature: 'invoicing' },
+  compliance_engine: { capabilityId: OPS_CAPABILITY.OPS_COMPLIANCE_REVIEW, action: 'read', presentationFeature: 'compliance_engine' },
 };
 
 function buildOpsFlags(capabilityAllowed, getCapabilityGrant) {
@@ -30,8 +40,11 @@ function buildOpsFlags(capabilityAllowed, getCapabilityGrant) {
     canUseOpsPredictive: capabilityAllowed(OPS_CAPABILITY.OPS_PREDICTIVE, 'read'),
     canWriteOpsPredictive: capabilityAllowed(OPS_CAPABILITY.OPS_PREDICTIVE, 'write'),
     canUseOpsContractors: capabilityAllowed(OPS_CAPABILITY.OPS_CONTRACTORS, 'read'),
+    canWriteOpsContractors: capabilityAllowed(OPS_CAPABILITY.OPS_CONTRACTORS, 'write'),
     canUseOpsApprovals: capabilityAllowed(OPS_CAPABILITY.OPS_APPROVALS, 'read'),
     canWriteOpsApprovals: capabilityAllowed(OPS_CAPABILITY.OPS_APPROVALS, 'write'),
+    canUseOpsComplianceReview: capabilityAllowed(OPS_CAPABILITY.OPS_COMPLIANCE_REVIEW, 'read'),
+    canWriteOpsComplianceReview: capabilityAllowed(OPS_CAPABILITY.OPS_COMPLIANCE_REVIEW, 'write'),
     canUseOpsRent: capabilityAllowed(OPS_CAPABILITY.OPS_RENT, 'read'),
     getCapabilityGrant,
   };
@@ -77,6 +90,24 @@ export function useCommandCentreCapabilities() {
   );
 }
 
+/**
+ * Runtime Contract capability consumption for operational execution workflow
+ * (maintenance, contractors, approvals, predictive, issues, jobs).
+ */
+export function useOperationalExecutionCapabilities() {
+  const { capabilityAllowed, getCapabilityGrant } = useLifecycleRuntime();
+
+  return useMemo(
+    () => ({
+      ...buildOpsFlags(capabilityAllowed, getCapabilityGrant),
+      canViewDocuments: capabilityAllowed('CAP_DOC_VIEW', 'read'),
+      canUploadDocuments: capabilityAllowed('CAP_DOC_UPLOAD', 'write'),
+      canViewEvidence: capabilityAllowed('CAP_EVIDENCE_VIEW', 'read'),
+    }),
+    [capabilityAllowed, getCapabilityGrant],
+  );
+}
+
 export function getCapabilityDeniedMessage(error, fallback = 'Action not permitted') {
   const detail = extractCapabilityDeniedFromError(error);
   return detail?.message || fallback;
@@ -100,6 +131,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_ALLOW,
     CAP_OPS_CONTRACTORS: GRANT_ALLOW,
     CAP_OPS_APPROVALS: GRANT_ALLOW,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_ALLOW,
     CAP_OPS_RENT: GRANT_ALLOW,
   },
   TRIAL: {
@@ -112,6 +144,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_ALLOW,
     CAP_OPS_CONTRACTORS: GRANT_ALLOW,
     CAP_OPS_APPROVALS: GRANT_ALLOW,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_ALLOW,
     CAP_OPS_RENT: GRANT_ALLOW,
   },
   GRACE_PERIOD: {
@@ -124,6 +157,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_LIMITED,
     CAP_OPS_CONTRACTORS: GRANT_LIMITED,
     CAP_OPS_APPROVALS: GRANT_LIMITED,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_LIMITED,
     CAP_OPS_RENT: GRANT_LIMITED,
   },
   CANCELLATION_SCHEDULED: {
@@ -136,6 +170,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_ALLOW,
     CAP_OPS_CONTRACTORS: GRANT_ALLOW,
     CAP_OPS_APPROVALS: GRANT_ALLOW,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_ALLOW,
     CAP_OPS_RENT: GRANT_ALLOW,
   },
   CANCELLED_IMMEDIATE: {
@@ -148,6 +183,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_DENY,
     CAP_OPS_CONTRACTORS: GRANT_DENY,
     CAP_OPS_APPROVALS: GRANT_DENY,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_DENY,
     CAP_OPS_RENT: GRANT_DENY,
   },
   SUBSCRIPTION_EXPIRED: {
@@ -160,6 +196,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_DENY,
     CAP_OPS_CONTRACTORS: GRANT_DENY,
     CAP_OPS_APPROVALS: GRANT_DENY,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_DENY,
     CAP_OPS_RENT: GRANT_DENY,
   },
   READ_ONLY: {
@@ -172,6 +209,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_DENY,
     CAP_OPS_CONTRACTORS: GRANT_DENY,
     CAP_OPS_APPROVALS: GRANT_DENY,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_DENY,
     CAP_OPS_RENT: GRANT_DENY,
   },
   SUSPENDED: {
@@ -184,6 +222,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_DENY,
     CAP_OPS_CONTRACTORS: GRANT_DENY,
     CAP_OPS_APPROVALS: GRANT_DENY,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_DENY,
     CAP_OPS_RENT: GRANT_DENY,
   },
   ARCHIVED: {
@@ -196,6 +235,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_DENY,
     CAP_OPS_CONTRACTORS: GRANT_DENY,
     CAP_OPS_APPROVALS: GRANT_DENY,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_DENY,
     CAP_OPS_RENT: GRANT_DENY,
   },
   UNKNOWN: {
@@ -208,6 +248,7 @@ export const OPERATIONAL_LIFECYCLE_GRANT_FIXTURES = {
     CAP_OPS_PREDICTIVE: GRANT_DENY,
     CAP_OPS_CONTRACTORS: GRANT_DENY,
     CAP_OPS_APPROVALS: GRANT_DENY,
+    CAP_OPS_COMPLIANCE_REVIEW: GRANT_DENY,
     CAP_OPS_RENT: GRANT_DENY,
   },
 };
@@ -249,5 +290,25 @@ export function evaluateCommandCentreCapabilitiesFromMap(capabilities) {
     canUseOpsPredictive: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_PREDICTIVE, 'read').allowed,
     canUseOpsContractors: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_CONTRACTORS, 'read').allowed,
     canUseOpsApprovals: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_APPROVALS, 'read').allowed,
+    canUseOpsComplianceReview: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_COMPLIANCE_REVIEW, 'read').allowed,
+  };
+}
+
+export function evaluateOperationalExecutionCapabilitiesFromMap(capabilities) {
+  const caps = capabilities || {};
+  return {
+    canUseOpsMaintenance: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_MAINTENANCE, 'read').allowed,
+    canWriteOpsMaintenance: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_MAINTENANCE, 'write').allowed,
+    canUseOpsPredictive: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_PREDICTIVE, 'read').allowed,
+    canWriteOpsPredictive: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_PREDICTIVE, 'write').allowed,
+    canUseOpsContractors: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_CONTRACTORS, 'read').allowed,
+    canWriteOpsContractors: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_CONTRACTORS, 'write').allowed,
+    canUseOpsApprovals: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_APPROVALS, 'read').allowed,
+    canWriteOpsApprovals: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_APPROVALS, 'write').allowed,
+    canUseOpsComplianceReview: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_COMPLIANCE_REVIEW, 'read').allowed,
+    canWriteOpsComplianceReview: evaluateCapabilityGrant(caps, OPS_CAPABILITY.OPS_COMPLIANCE_REVIEW, 'write').allowed,
+    canViewDocuments: evaluateCapabilityGrant(caps, 'CAP_DOC_VIEW', 'read').allowed,
+    canUploadDocuments: evaluateCapabilityGrant(caps, 'CAP_DOC_UPLOAD', 'write').allowed,
+    canViewEvidence: evaluateCapabilityGrant(caps, 'CAP_EVIDENCE_VIEW', 'read').allowed,
   };
 }

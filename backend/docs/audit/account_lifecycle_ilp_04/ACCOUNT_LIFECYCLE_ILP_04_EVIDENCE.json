@@ -1259,5 +1259,81 @@
     "tests_passed": 60,
     "tests_failed": 0
   },
-  "latest_milestone_frontend_property_workflow": "frontend_property_workflow_capability_migration"
+  "latest_milestone_frontend_property_workflow": "frontend_property_workflow_capability_migration",
+  "ilp4_frontend_operational_execution_capability_migration": {
+    "domain": "operational_execution_workflow",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T15:58:00Z",
+    "capabilities_consumed": {
+      "maintenance": ["CAP_OPS_MAINTENANCE"],
+      "predictive": ["CAP_OPS_PREDICTIVE"],
+      "contractors": ["CAP_OPS_CONTRACTORS"],
+      "approvals": ["CAP_OPS_APPROVALS"],
+      "compliance_review": ["CAP_OPS_COMPLIANCE_REVIEW"],
+      "documents": ["CAP_DOC_VIEW", "CAP_DOC_UPLOAD"],
+      "evidence": ["CAP_EVIDENCE_VIEW"]
+    },
+    "legacy_removed": [
+      "useEntitlements on ClientMaintenancePage.js",
+      "useEntitlements on ClientJobDetailPage.js",
+      "useEntitlements on ClientIssuesPage.js",
+      "useEntitlements on ClientIssueDetailPage.js",
+      "useEntitlements on ClientRiskSignalsPage.js",
+      "useEntitlements on ClientContractorsPage.js",
+      "useEntitlements on ClientApprovalsPage.js",
+      "useEntitlements on ContractorNetworkLockedModal.jsx",
+      "EntitlementProtectedRoute on operational execution pages",
+      "hasFeature(maintenance_workflows|predictive_maintenance|contractor_network|invoicing|compliance_engine) permission decisions in operational execution workflow"
+    ],
+    "secondary_actions_audited": [
+      "Create work order and report issue",
+      "Assign and request contractor on jobs and issues",
+      "Contractor directory submit to network",
+      "Record invoice from jobs list",
+      "Approval approve reject needs_info mark_paid",
+      "Predictive insights load and risk signal dismiss",
+      "Compliance inspection arrange from risk signals",
+      "Job detail lifecycle mutations and contractor modal",
+      "Job detail invoicing and compliance link document",
+      "Overflow and row quick actions on maintenance and issues lists"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/ClientMaintenancePage.js",
+      "frontend/src/pages/ClientJobDetailPage.js",
+      "frontend/src/pages/ClientIssuesPage.js",
+      "frontend/src/pages/ClientIssueDetailPage.js",
+      "frontend/src/pages/ClientRiskSignalsPage.js",
+      "frontend/src/pages/ClientContractorsPage.js",
+      "frontend/src/pages/ClientApprovalsPage.js",
+      "frontend/src/components/client/ContractorNetworkLockedModal.jsx",
+      "frontend/src/utils/operationalCapabilityAccess.js",
+      "frontend/src/utils/CapabilityProtectedRoute.js",
+      "frontend/src/testUtils/operationalExecutionTestCapabilities.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/operationalCapabilityAccess.test.js",
+      "frontend/src/utils/CapabilityProtectedRoute.capability.test.js",
+      "frontend/src/pages/operationalExecution.capability.test.js",
+      "frontend/src/components/client/ContractorNetworkLockedModal.capability.test.js",
+      "frontend/src/utils/jobDetailPrimaryAction.test.js",
+      "frontend/src/utils/contractorNetworkEntitlement.test.js"
+    ],
+    "tests_passed": 57,
+    "tests_failed": 0
+  },
+  "latest_milestone_frontend_operational_execution": "frontend_operational_execution_capability_migration"
 }

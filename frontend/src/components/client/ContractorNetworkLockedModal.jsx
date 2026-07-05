@@ -10,7 +10,6 @@ import {
 } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { LifeBuoy } from 'lucide-react';
-import { useEntitlements } from '../../contexts/EntitlementsContext';
 import { getFeatureDisplayInfo } from '../UpgradePrompt';
 import {
   CONTRACTOR_NETWORK_FEATURE_KEY,
@@ -24,8 +23,7 @@ import { buildSafeQueryPath, resolveClientPortalPath } from '../../utils/clientP
  */
 export function ContractorNetworkLockedModal({ open, onOpenChange }) {
   const navigate = useNavigate();
-  const { entitlements } = useEntitlements();
-  const info = getFeatureDisplayInfo(CONTRACTOR_NETWORK_FEATURE_KEY, entitlements);
+  const info = getFeatureDisplayInfo(CONTRACTOR_NETWORK_FEATURE_KEY);
 
   const close = () => onOpenChange?.(false);
 

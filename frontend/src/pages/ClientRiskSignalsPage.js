@@ -47,8 +47,8 @@ import {
   Info,
 } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
-import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { OperationalCapabilityProtectedRoute } from '../utils/CapabilityProtectedRoute';
+import { useOperationalExecutionCapabilities } from '../utils/operationalCapabilityAccess';
 import {
   Dialog,
   DialogContent,
@@ -108,7 +108,12 @@ function riskLevelBadgeClass(level) {
 }
 
 function ClientRiskSignalsPageInner() {
-  const { hasFeature } = useEntitlements();
+  const {
+    canUseOpsMaintenance,
+    canUseOpsComplianceReview,
+    canUseOpsContractors,
+    canWriteOpsPredictive,
+  } = useOperationalExecutionCapabilities();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
@@ -288,7 +293,7 @@ function ClientRiskSignalsPageInner() {
   };
 
   const confirmDismissSignal = async () => {
-    if (!dismissTargetId) return;
+    if (!dismissTargetId || !canWriteOpsPredictive) return;
     setDismissSaving(true);
     try {
       await clientAPI.dismissRiskSignal(dismissTargetId, dismissReason);
@@ -303,7 +308,7 @@ function ClientRiskSignalsPageInner() {
   };
 
   const openArrangeInspection = async (propertyId) => {
-    if (!hasFeature('compliance_engine') || !hasFeature('maintenance_workflows')) {
+    if (!canUseOpsComplianceReview || !canUseOpsMaintenance) {
       toast.error('Booking a compliance inspection requires compliance execution and maintenance workflows.');
       return;
     }
@@ -366,13 +371,13 @@ function ClientRiskSignalsPageInner() {
 
   const runRiskSignalPrimaryAction = async (s) => {
     if (!s?.signal_id) return;
-    const hasMaint = hasFeature('maintenance_workflows');
-    const hasComp = hasFeature('compliance_engine');
+    const hasMaint = canUseOpsMaintenance;
+    const hasComp = canUseOpsComplianceReview;
     const primary = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
     const { key, url, continuation } = primary;
     const normalizedKey = normalizeOperationalPrimaryKey(key);
 
-    if (isIssueAssignContractorLocked(primary, hasFeature('contractor_network'))) {
+    if (isIssueAssignContractorLocked(primary, canUseOpsContractors)) {
       setContractorNetworkLockedOpen(true);
       return;
     }
@@ -698,7 +703,7 @@ function ClientRiskSignalsPageInner() {
                       onClick={() => runRiskSignalPrimaryAction(s)}
                     >
                       {
-                        resolveRiskSignalPrimaryKey(s, hasFeature('maintenance_workflows'), hasFeature('compliance_engine'))
+                        resolveRiskSignalPrimaryKey(s, canUseOpsMaintenance, canUseOpsComplianceReview)
                           .label
                       }
                     </Button>
@@ -819,7 +824,7 @@ function ClientRiskSignalsPageInner() {
                     <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
                       <Button className="w-full min-h-11 justify-center" variant="default" onClick={() => runRiskSignalPrimaryAction(s)}>
                         {
-                          resolveRiskSignalPrimaryKey(s, hasFeature('maintenance_workflows'), hasFeature('compliance_engine'))
+                          resolveRiskSignalPrimaryKey(s, canUseOpsMaintenance, canUseOpsComplianceReview)
                             .label
                         }
                       </Button>
@@ -903,7 +908,7 @@ function ClientRiskSignalsPageInner() {
                         <TableCell className="text-right">
                           <div className="flex flex-col items-end gap-1">
                             <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90 text-white" onClick={() => runRiskSignalPrimaryAction(s)}>
-                              {resolveRiskSignalPrimaryKey(s, hasFeature('maintenance_workflows'), hasFeature('compliance_engine')).label}
+                              {resolveRiskSignalPrimaryKey(s, canUseOpsMaintenance, canUseOpsComplianceReview).label}
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => setDrawerSignalId(s.signal_id)}>
                               <Eye className="w-4 h-4 mr-1" /> View details
@@ -1132,8 +1137,8 @@ function ClientRiskSignalsPageInner() {
                 <p className="text-xs text-muted-foreground uppercase">Next step</p>
                 <div className="flex flex-wrap gap-2">
                   {(() => {
-                    const hasMaint = hasFeature('maintenance_workflows');
-                    const hasComp = hasFeature('compliance_engine');
+                    const hasMaint = canUseOpsMaintenance;
+                    const hasComp = canUseOpsComplianceReview;
                     const { key: drawerPrimaryKey, label: drawerPrimaryLabel } = resolveRiskSignalPrimaryKey(drawerSignal, hasMaint, hasComp);
                     if (drawerPrimaryKey === 'review') {
                       return (
@@ -1294,8 +1299,8 @@ function ClientRiskSignalsPageInner() {
 
 export default function ClientRiskSignalsPage() {
   return (
-    <EntitlementProtectedRoute requiredFeature="predictive_maintenance">
+    <OperationalCapabilityProtectedRoute requiredFeature="predictive_maintenance">
       <ClientRiskSignalsPageInner />
-    </EntitlementProtectedRoute>
+    </OperationalCapabilityProtectedRoute>
   );
 }

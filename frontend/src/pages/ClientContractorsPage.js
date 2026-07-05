@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { clientAPI } from '../api/client';
-import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { OperationalCapabilityProtectedRoute } from '../utils/CapabilityProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Briefcase, Loader2, AlertCircle, CheckCircle, Send, UserPlus, Eye } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { toast } from '@/utils/portalNotifications';
+import { useOperationalExecutionCapabilities } from '../utils/operationalCapabilityAccess';
 import { CONTRACTOR_DIRECTORY_EMPTY_HINT } from '../utils/assignContractorEarlyNetwork';
 
 function sourceLabel(sourceType) {
@@ -17,14 +19,15 @@ function sourceLabel(sourceType) {
 
 export default function ClientContractorsPage() {
   return (
-    <EntitlementProtectedRoute requiredFeature="contractor_network">
+    <OperationalCapabilityProtectedRoute requiredFeature="contractor_network">
       <ClientContractorsPageInner />
-    </EntitlementProtectedRoute>
+    </OperationalCapabilityProtectedRoute>
   );
 }
 
 function ClientContractorsPageInner() {
   const navigate = useNavigate();
+  const { canWriteOpsContractors } = useOperationalExecutionCapabilities();
   const [contractors, setContractors] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -63,6 +66,7 @@ function ClientContractorsPageInner() {
   }, [load]);
 
   const handleSubmitToNetwork = (contractorId) => {
+    if (!canWriteOpsContractors) return;
     setSubmittingId(contractorId);
     clientAPI.submitContractorToNetwork(contractorId)
       .then(() => {
@@ -232,7 +236,7 @@ function ClientContractorsPageInner() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleSubmitToNetwork(c.contractor_id)}
-                          disabled={submittingId === c.contractor_id}
+                          disabled={!canWriteOpsContractors || submittingId === c.contractor_id}
                         >
                           {submittingId === c.contractor_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1" />}
                           Submit to Network

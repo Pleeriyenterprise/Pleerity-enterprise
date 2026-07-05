@@ -9,8 +9,8 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AlertCircle, Loader2, ArrowLeft, History } from 'lucide-react';
 import { toast } from '@/utils/portalNotifications';
-import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { OperationalCapabilityProtectedRoute } from '../utils/CapabilityProtectedRoute';
+import { useOperationalExecutionCapabilities } from '../utils/operationalCapabilityAccess';
 import { ContractorNetworkLockedModal } from '../components/client/ContractorNetworkLockedModal';
 import { isIssueAssignContractorLocked } from '../utils/contractorNetworkEntitlement';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
@@ -32,7 +32,7 @@ function ClientIssueDetailPageInner() {
   const [closing, setClosing] = useState(false);
   const [planJobGate, setPlanJobGate] = useState(null);
   const [contractorNetworkLockedOpen, setContractorNetworkLockedOpen] = useState(false);
-  const { hasFeature } = useEntitlements();
+  const { canUseOpsContractors } = useOperationalExecutionCapabilities();
   const createWoInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -145,7 +145,7 @@ function ClientIssueDetailPageInner() {
   const continuationReason = issue?.operational_continuation?.user_safe_reason;
 
   const handleIssuePrimary = () => {
-    if (isIssueAssignContractorLocked(issuePrimary, hasFeature('contractor_network'))) {
+    if (isIssueAssignContractorLocked(issuePrimary, canUseOpsContractors)) {
       setContractorNetworkLockedOpen(true);
       return;
     }
@@ -174,7 +174,7 @@ function ClientIssueDetailPageInner() {
 
       <NextActionHero
         entity={issue}
-        primaryLocked={isIssueAssignContractorLocked(issuePrimary, hasFeature('contractor_network'))}
+        primaryLocked={isIssueAssignContractorLocked(issuePrimary, canUseOpsContractors)}
         onPrimaryClick={issue.status !== 'closed' && issue.status !== 'cancelled' && issuePrimary ? handleIssuePrimary : undefined}
         primaryBusy={creating}
         primaryDisabled={!issuePrimary}
@@ -292,8 +292,8 @@ function ClientIssueDetailPageInner() {
 
 export default function ClientIssueDetailPage() {
   return (
-    <EntitlementProtectedRoute requiredFeature="maintenance_workflows">
+    <OperationalCapabilityProtectedRoute requiredFeature="maintenance_workflows">
       <ClientIssueDetailPageInner />
-    </EntitlementProtectedRoute>
+    </OperationalCapabilityProtectedRoute>
   );
 }

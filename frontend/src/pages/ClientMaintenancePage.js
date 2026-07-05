@@ -1,13 +1,13 @@
 /**
  * Operations → Jobs (/operations/work-orders): portfolio execution list (maintenance + compliance).
  * Summary KPIs, filters, table, SLA risk panel. Row actions open the canonical job page.
- * Gated by maintenance_workflows (EntitlementProtectedRoute; upgrade prompt when not entitled).
+ * Gated by CAP_OPS_MAINTENANCE (OperationalCapabilityProtectedRoute; upgrade prompt when denied).
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { clientAPI, parseApiError } from '../api/client';
-import { useEntitlements } from '../contexts/EntitlementsContext';
-import { EntitlementProtectedRoute } from '../utils/EntitlementProtectedRoute';
+import { OperationalCapabilityProtectedRoute } from '../utils/CapabilityProtectedRoute';
+import { isCapabilityDeniedApiError, useOperationalExecutionCapabilities } from '../utils/operationalCapabilityAccess';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import {
@@ -96,16 +96,23 @@ function hoursRemainingOrOverdue(slaCompleteBy) {
 
 export default function ClientMaintenancePage() {
   return (
-    <EntitlementProtectedRoute requiredFeature="maintenance_workflows">
+    <OperationalCapabilityProtectedRoute requiredFeature="maintenance_workflows">
       <ClientMaintenancePageInner />
-    </EntitlementProtectedRoute>
+    </OperationalCapabilityProtectedRoute>
   );
 }
 
 function ClientMaintenancePageInner() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { hasFeature } = useEntitlements();
+  const {
+    canWriteOpsMaintenance,
+    canUseOpsPredictive,
+    canUseOpsContractors,
+    canUseOpsApprovals,
+    canWriteOpsApprovals,
+    canUseOpsComplianceReview,
+  } = useOperationalExecutionCapabilities();
   const [workOrders, setWorkOrders] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -165,11 +172,11 @@ function ClientMaintenancePageInner() {
   }, []);
 
   const loadContractors = useCallback(() => {
-    if (!hasFeature('contractor_network')) return;
+    if (!canUseOpsContractors) return;
     clientAPI.getContractors({ limit: 200 }).then((res) => {
       setContractors(res.data?.contractors || res.data || []);
     }).catch(() => setContractors([]));
-  }, [hasFeature]);
+  }, [canUseOpsContractors]);
 
   const loadInsights = useCallback(() => {
     clientAPI.getPredictiveInsights({ limit: 20 })
@@ -192,7 +199,15 @@ function ClientMaintenancePageInner() {
     const sla = searchParams.get('sla_state');
     if (sla) setFilterSlaState(sla);
   }, [searchParams]);
-  useEffect(() => { setInsightsLoading(true); loadInsights(); }, [loadInsights]);
+  useEffect(() => {
+    if (!canUseOpsPredictive) {
+      setInsights(null);
+      setInsightsLoading(false);
+      return;
+    }
+    setInsightsLoading(true);
+    loadInsights();
+  }, [loadInsights, canUseOpsPredictive]);
 
   useEffect(() => {
     const onOutcome = () => {
@@ -314,6 +329,7 @@ function ClientMaintenancePageInner() {
 
   const handleCreateSubmit = (e) => {
     e.preventDefault();
+    if (!canWriteOpsMaintenance) return;
     if (!createForm.property_id || !createForm.description?.trim()) {
       toast.error('Select a property and enter a description');
       return;
@@ -335,6 +351,10 @@ function ClientMaintenancePageInner() {
       })
       .catch((err) => {
         if (openPlanRestrictedJobGate(err, setPlanJobGate, { propertyId: createForm.property_id })) return;
+        if (isCapabilityDeniedApiError(err)) {
+          toast.error(parseApiError(err, 'Create failed'));
+          return;
+        }
         toast.error(parseApiError(err, 'Create failed'));
       })
       .finally(() => setCreateSaving(false));
@@ -389,7 +409,7 @@ function ClientMaintenancePageInner() {
           <Button variant="outline" className="w-full sm:w-auto min-h-11 justify-center" onClick={() => navigate('/operations/issues')}>
             View maintenance issues
           </Button>
-          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90">
+          <Button disabled={!canWriteOpsMaintenance} onClick={() => setCreateOpen(true)} className="w-full sm:w-auto min-h-11 justify-center bg-electric-teal hover:bg-electric-teal/90">
             <Plus className="w-4 h-4 mr-2 shrink-0" />
             Report issue
           </Button>
@@ -441,7 +461,7 @@ function ClientMaintenancePageInner() {
       </div>
 
       {/* Predictive insights */}
-      {(insights !== null || insightsLoading) && (
+      {canUseOpsPredictive && (insights !== null || insightsLoading) && (
         <Card className="mb-6 border-teal-200 bg-teal-50/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -497,7 +517,7 @@ function ClientMaintenancePageInner() {
                 {properties.map((p) => <option key={p.property_id} value={p.property_id}>{propertyLabel(p.property_id)}</option>)}
               </select>
             </div>
-            {hasFeature('contractor_network') && (
+            {canUseOpsContractors && (
               <div className="w-full sm:w-auto min-w-0 flex-1 sm:flex-initial">
                 <label className="block text-xs text-gray-500 mb-1">Contractor</label>
                 <select value={filterContractor} onChange={(e) => setFilterContractor(e.target.value)} className="border border-gray-200 rounded-md px-3 py-2.5 text-sm w-full min-h-11 max-w-full sm:min-w-[160px]">
@@ -626,7 +646,7 @@ function ClientMaintenancePageInner() {
               <p className="text-gray-500 mb-4">No {PORTAL_COPY.jobs.toLowerCase()} have been created across your portfolio yet.</p>
               <div className="flex gap-2 justify-center flex-wrap">
                 <Button variant="outline" onClick={() => navigate('/operations/issues')}>View maintenance issues</Button>
-                <Button onClick={() => setCreateOpen(true)} className="bg-electric-teal hover:bg-electric-teal/90">Report issue</Button>
+                <Button disabled={!canWriteOpsMaintenance} onClick={() => setCreateOpen(true)} className="bg-electric-teal hover:bg-electric-teal/90">Report issue</Button>
               </div>
             </div>
           ) : !filteredBySearch.length ? (
@@ -693,14 +713,14 @@ function ClientMaintenancePageInner() {
                       })()}
                       <div className="flex flex-col gap-2 pt-2 border-t border-gray-100">
                         <Button className="w-full min-h-11" variant="default" onClick={() => navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)}>View details</Button>
-                        {hasFeature('invoicing') && wo.contractor_id && wo.property_id && (
+                        {canUseOpsApprovals && wo.contractor_id && wo.property_id && (
                           <Button className="w-full min-h-11" variant="outline" onClick={() => openRecordInvoice(wo)}>
                             Record invoice
                           </Button>
                         )}
-                        {hasFeature('contractor_network') && !wo.contractor_id && (
+                        {canUseOpsContractors && !wo.contractor_id && (
                           <Button className="w-full min-h-11" variant="outline" onClick={() => navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)}>
-                            {workOrderNeedsContractorRouting(wo, hasFeature('compliance_engine')) ? 'Request contractor' : 'Assign contractor'}
+                            {workOrderNeedsContractorRouting(wo, canUseOpsComplianceReview) ? 'Request contractor' : 'Assign contractor'}
                           </Button>
                         )}
                         {wo.issue_id && (
@@ -785,14 +805,14 @@ function ClientMaintenancePageInner() {
                           <td className="p-2 text-gray-500 whitespace-nowrap">{formatRelativeTime(wo.updated_at)}</td>
                           <td className="p-2 text-right whitespace-nowrap">
                             <Button size="sm" variant="ghost" onClick={() => navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)}>View</Button>
-                            {hasFeature('invoicing') && wo.contractor_id && wo.property_id && (
+                            {canUseOpsApprovals && wo.contractor_id && wo.property_id && (
                               <Button size="sm" variant="outline" className="ml-1" onClick={() => openRecordInvoice(wo)}>
                                 Invoice
                               </Button>
                             )}
-                            {hasFeature('contractor_network') && !wo.contractor_id && (
+                            {canUseOpsContractors && !wo.contractor_id && (
                               <Button size="sm" variant="outline" className="ml-1" onClick={() => navigate(`/operations/jobs/${encodeURIComponent(wo.work_order_id)}`)}>
-                                {workOrderNeedsContractorRouting(wo, hasFeature('compliance_engine')) ? 'Request' : 'Assign'}
+                                {workOrderNeedsContractorRouting(wo, canUseOpsComplianceReview) ? 'Request' : 'Assign'}
                               </Button>
                             )}
                           </td>
@@ -822,6 +842,7 @@ function ClientMaintenancePageInner() {
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
+                if (!canWriteOpsApprovals) return;
                 setInvoiceSaving(true);
                 try {
                   await clientAPI.createInvoice({

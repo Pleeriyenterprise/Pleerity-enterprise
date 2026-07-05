@@ -1,6 +1,7 @@
 import {
   evaluateCommandCentreCapabilitiesFromMap,
   evaluateDashboardCapabilitiesFromMap,
+  evaluateOperationalExecutionCapabilitiesFromMap,
   evaluateTodayCapabilitiesFromMap,
   getCapabilityDeniedMessage,
   isCapabilityDeniedApiError,
@@ -64,6 +65,48 @@ describe('operationalCapabilityAccess', () => {
     it('preserves recovery and grace operational visibility', () => {
       const dash = evaluateDashboardCapabilitiesFromMap(OPERATIONAL_LIFECYCLE_GRANT_FIXTURES[lifecycle]);
       expect(dash.canViewDashboard).toBe(allowed);
+    });
+  });
+
+  describe('operational execution workflow grants', () => {
+    it('ACTIVE permits maintenance write and compliance review', () => {
+      const ops = evaluateOperationalExecutionCapabilitiesFromMap(OPERATIONAL_LIFECYCLE_GRANT_FIXTURES.ACTIVE);
+      expect(ops.canUseOpsMaintenance).toBe(true);
+      expect(ops.canWriteOpsMaintenance).toBe(true);
+      expect(ops.canUseOpsPredictive).toBe(true);
+      expect(ops.canUseOpsContractors).toBe(true);
+      expect(ops.canWriteOpsContractors).toBe(true);
+      expect(ops.canUseOpsApprovals).toBe(true);
+      expect(ops.canWriteOpsApprovals).toBe(true);
+      expect(ops.canUseOpsComplianceReview).toBe(true);
+      expect(ops.canWriteOpsComplianceReview).toBe(true);
+    });
+
+    it('READ_ONLY denies operational mutations', () => {
+      const ops = evaluateOperationalExecutionCapabilitiesFromMap(OPERATIONAL_LIFECYCLE_GRANT_FIXTURES.READ_ONLY);
+      expect(ops.canUseOpsMaintenance).toBe(false);
+      expect(ops.canWriteOpsMaintenance).toBe(false);
+      expect(ops.canUseOpsPredictive).toBe(false);
+      expect(ops.canUseOpsContractors).toBe(false);
+      expect(ops.canUseOpsApprovals).toBe(false);
+      expect(ops.canUseOpsComplianceReview).toBe(false);
+    });
+
+    it('GRACE_PERIOD retains limited operational write', () => {
+      const ops = evaluateOperationalExecutionCapabilitiesFromMap(OPERATIONAL_LIFECYCLE_GRANT_FIXTURES.GRACE_PERIOD);
+      expect(ops.canUseOpsMaintenance).toBe(true);
+      expect(ops.canWriteOpsMaintenance).toBe(true);
+      expect(ops.canUseOpsPredictive).toBe(true);
+      expect(ops.canWriteOpsPredictive).toBe(true);
+    });
+
+    it('SUSPENDED denies all operational execution capabilities', () => {
+      const ops = evaluateOperationalExecutionCapabilitiesFromMap(OPERATIONAL_LIFECYCLE_GRANT_FIXTURES.SUSPENDED);
+      expect(ops.canUseOpsMaintenance).toBe(false);
+      expect(ops.canUseOpsPredictive).toBe(false);
+      expect(ops.canUseOpsContractors).toBe(false);
+      expect(ops.canUseOpsApprovals).toBe(false);
+      expect(ops.canUseOpsComplianceReview).toBe(false);
     });
   });
 });
