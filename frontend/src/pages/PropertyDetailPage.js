@@ -795,7 +795,7 @@ export default function PropertyDetailPage() {
       })
       .catch(() => setPredictiveInsights(null))
       .finally(() => setInsightsLoading(false));
-  }, [propertyId, canUseOpsMaintenance]);
+  }, [propertyId, canUseOpsPredictive]);
 
   const loadRiskSignals = useCallback(() => {
     if (!propertyId || !canUseOpsPredictive) return;
@@ -804,7 +804,7 @@ export default function PropertyDetailPage() {
       .then((res) => setRiskSignalsData(res.data || null))
       .catch(() => setRiskSignalsData(null))
       .finally(() => setRiskSignalsLoading(false));
-  }, [propertyId, canUseOpsMaintenance]);
+  }, [propertyId, canUseOpsPredictive]);
 
   const openBookInspectionFromRisk = useCallback(
     (signalId) => {
@@ -1089,7 +1089,7 @@ export default function PropertyDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [propertyId, canUseOpsMaintenance]);
+  }, [propertyId, canUseOpsContractors]);
 
   const contractorNameById = useMemo(() => {
     const m = new Map();
