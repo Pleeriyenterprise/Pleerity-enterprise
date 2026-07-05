@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { filenameFromContentDisposition } from '../api/client';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  useReportCapabilities,
+} from '../utils/reportCapabilityAccess';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
@@ -21,10 +25,7 @@ import { AUDIT_PACK_IMMUTABLE_DISCLOSURE } from '../utils/reportingSemanticsLabe
  * Property-scoped governed audit evidence ZIP (reports / compliance export — not tenant email delivery).
  */
 export default function ReportsAuditPackPage() {
-  const { hasFeature, entitlementsLoadFailed, loading } = useEntitlements();
-  const navHasFeature = (k) => entitlementsLoadFailed || hasFeature(k);
-  /** Route is gated by reports_pdf; this mirrors load behaviour if entitlements are still resolving. */
-  const canUse = navHasFeature('reports_pdf');
+  const { canAuditPackRead, canAuditPackWrite } = useReportCapabilities();
 
   const [properties, setProperties] = useState([]);
   const [propertyId, setPropertyId] = useState('');
@@ -32,7 +33,7 @@ export default function ReportsAuditPackPage() {
   const [generating, setGenerating] = useState(false);
 
   const loadProperties = useCallback(async () => {
-    if (!canUse) {
+    if (!canAuditPackRead) {
       setLoadingProps(false);
       return;
     }
@@ -41,17 +42,22 @@ export default function ReportsAuditPackPage() {
       const pRes = await api.get('/client/properties');
       setProperties(pRes.data.properties || []);
     } catch (e) {
-      toast.error(e.response?.data?.detail?.message || e.response?.data?.detail || 'Failed to load properties');
+      if (isCapabilityDeniedApiError(e)) {
+        toast.error(getCapabilityDeniedMessage(e, 'Failed to load properties'));
+      } else {
+        toast.error(e.response?.data?.detail?.message || e.response?.data?.detail || 'Failed to load properties');
+      }
     } finally {
       setLoadingProps(false);
     }
-  }, [canUse]);
+  }, [canAuditPackRead]);
 
   useEffect(() => {
     loadProperties();
   }, [loadProperties]);
 
   const generateAuditEvidencePack = async () => {
+    if (!canAuditPackWrite) return;
     if (!propertyId) {
       toast.error('Select a property first');
       return;
@@ -72,13 +78,17 @@ export default function ReportsAuditPackPage() {
       window.URL.revokeObjectURL(url);
       toast.success('Audit evidence pack downloaded');
     } catch (e) {
-      toast.error(e.response?.data?.detail?.message || e.response?.data?.detail || 'Failed to generate audit evidence pack');
+      if (isCapabilityDeniedApiError(e)) {
+        toast.error(getCapabilityDeniedMessage(e, 'Failed to generate audit evidence pack'));
+      } else {
+        toast.error(e.response?.data?.detail?.message || e.response?.data?.detail || 'Failed to generate audit evidence pack');
+      }
     } finally {
       setGenerating(false);
     }
   };
 
-  if (loading) {
+  if (loadingProps && canAuditPackRead) {
     return (
       <div className={portalPageRoot} data-testid="reports-audit-pack-loading">
         <PortalLoadingPanel message="Loading…" />
@@ -122,7 +132,7 @@ export default function ReportsAuditPackPage() {
             <>
               <div>
                 <Label>Property</Label>
-                <Select value={propertyId || undefined} onValueChange={setPropertyId}>
+                <Select value={propertyId || undefined} onValueChange={setPropertyId} disabled={!canAuditPackRead}>
                   <SelectTrigger className="mt-1 max-w-md">
                     <SelectValue placeholder="Select property" />
                   </SelectTrigger>
@@ -135,7 +145,11 @@ export default function ReportsAuditPackPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={generateAuditEvidencePack} disabled={generating || !propertyId} className="w-full sm:w-auto">
+              <Button
+                onClick={generateAuditEvidencePack}
+                disabled={!canAuditPackWrite || generating || !propertyId}
+                className="w-full sm:w-auto"
+              >
                 {generating ? 'Building…' : (
                   <>
                     <Download className="h-4 w-4 mr-2" />

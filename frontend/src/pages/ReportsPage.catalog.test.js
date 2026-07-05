@@ -6,8 +6,19 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ReportsPage from './ReportsPage';
 
-const mockHasFeature = jest.fn();
 const mockApiGet = jest.fn();
+
+const mockReportCapabilities = {
+  canViewReports: true,
+  canDownloadReports: true,
+  canGeneratePdf: true,
+  canGenerateCsv: true,
+  canScheduleReportsRead: true,
+  canScheduleReportsWrite: true,
+  canAuditPackRead: true,
+  canAuditPackWrite: true,
+  canViewRentOperationsSummary: false,
+};
 
 jest.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({
@@ -15,10 +26,9 @@ jest.mock('../contexts/AuthContext', () => ({
   }),
 }));
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({
-    hasFeature: (...args) => mockHasFeature(...args),
-  }),
+jest.mock('../utils/reportCapabilityAccess', () => ({
+  ...jest.requireActual('../utils/reportCapabilityAccess'),
+  useReportCapabilities: () => mockReportCapabilities,
 }));
 
 jest.mock('../api/client', () => ({
@@ -72,7 +82,17 @@ const CATALOG = [
 describe('ReportsPage reporting UX catalog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockHasFeature.mockImplementation((f) => ['reports_pdf', 'reports_csv'].includes(f));
+    Object.assign(mockReportCapabilities, {
+      canViewReports: true,
+      canDownloadReports: true,
+      canGeneratePdf: true,
+      canGenerateCsv: true,
+      canScheduleReportsRead: true,
+      canScheduleReportsWrite: true,
+      canAuditPackRead: true,
+      canAuditPackWrite: true,
+      canViewRentOperationsSummary: false,
+    });
     mockApiGet.mockImplementation((url) => {
       if (url === '/reports/available') return Promise.resolve({ data: { reports: CATALOG } });
       if (url === '/client/properties') return Promise.resolve({ data: { properties: [] } });

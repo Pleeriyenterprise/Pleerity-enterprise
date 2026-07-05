@@ -172,7 +172,7 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "frontend_documents_capability_migration",
+  "latest_milestone": "frontend_reports_capability_migration",
   "runtime_contract_extensions_backend_completion": {
     "schema_modified": false,
     "new_capability_rows": [
@@ -289,6 +289,44 @@
       "frontend/src/pages/BulkUploadPage.capability.test.js"
     ]
   },
+  "ilp4_frontend_reports_capability_migration": {
+    "domain": "reports",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T12:26:00Z",
+    "capabilities_consumed": [
+      "CAP_REPORT_VIEW",
+      "CAP_REPORT_DOWNLOAD",
+      "CAP_REPORT_GENERATE_PDF",
+      "CAP_REPORT_GENERATE_CSV",
+      "CAP_REPORT_SCHEDULE",
+      "CAP_REPORT_AUDIT_PACK",
+      "CAP_OPS_RENT"
+    ],
+    "legacy_removed": [
+      "hasFeature(reports_pdf)",
+      "hasFeature(reports_csv)",
+      "hasFeature(scheduled_reports)",
+      "hasFeature(audit_log_export)",
+      "hasFeature(rent_operations) on ReportsPage rent summary",
+      "useEntitlements on ReportsPage",
+      "useEntitlements on ReportsAuditPackPage",
+      "UpgradeRequired and UpgradePrompt on ReportsPage"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/ReportsPage.js",
+      "frontend/src/pages/ReportsAuditPackPage.js",
+      "frontend/src/utils/reportCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/reportCapabilityAccess.test.js",
+      "frontend/src/pages/ReportsPage.capability.test.js",
+      "frontend/src/pages/ReportsPage.catalog.test.js",
+      "frontend/src/pages/ReportsPage.auditPackCta.test.js"
+    ]
+  },
+  "latest_milestone_frontend_documents": "frontend_documents_capability_migration",
   "latest_milestone_backend_completion_regression": "backend_completion_regression_checkpoint",
   "latest_milestone_previous": "billing_client_routes",
   "runtime_contract_extensions_billing_client": {
@@ -849,6 +887,7 @@
     "frontend_capability_primitives_started": true,
     "frontend_capability_primitives_tests_passed": 20,
     "frontend_documents_capability_migrated": true,
+    "frontend_reports_capability_migrated": true,
     "client_py_evidence_pack_migrated": true,
     "client_py_analytics_tenant_ops_migrated": true,
     "client_maintenance_migrated": true,
