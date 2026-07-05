@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI, parseApiError } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useCommandCentreCapabilities, getCapabilityDeniedMessage, isCapabilityDeniedApiError } from '../utils/operationalCapabilityAccess';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -107,9 +107,13 @@ export default function ClientCommandCenterPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
-  const { hasFeature } = useEntitlements();
+  const {
+    canViewCommandCentre,
+    canUseOpsMaintenance,
+    canUseOpsPredictive,
+  } = useCommandCentreCapabilities();
   const isClientUser = user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
-  const predictiveEnabled = hasFeature('predictive_maintenance');
+  const predictiveEnabled = canUseOpsPredictive;
 
   const [loading, setLoading] = useState(true);
   const [secondaryLoading, setSecondaryLoading] = useState(false);
@@ -149,7 +153,7 @@ export default function ClientCommandCenterPage() {
   }, [loadPortalRequirements]);
 
   useEffect(() => {
-    if (!isClientUser) {
+    if (!isClientUser || !canViewCommandCentre) {
       setLoading(false);
       return undefined;
     }
@@ -157,7 +161,7 @@ export default function ClientCommandCenterPage() {
     setLoading(true);
     setError('');
 
-    const maintenanceEnabled = hasFeature('maintenance_workflows');
+    const maintenanceEnabled = canUseOpsMaintenance;
 
     fetchOperational(OPERATIONAL_CACHE_KEYS.commandCenterPrimary, () =>
       clientAPI.getCommandCenterPrimary({}).then((r) => r.data),
@@ -212,7 +216,9 @@ export default function ClientCommandCenterPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        if (err?.response?.status !== 403) {
+        if (isCapabilityDeniedApiError(err)) {
+          setError(getCapabilityDeniedMessage(err, 'Command center snapshot could not be loaded'));
+        } else if (err?.response?.status !== 403) {
           setError(parseApiError(err, 'Command center snapshot could not be loaded'));
         }
         setLoading(false);
@@ -229,11 +235,11 @@ export default function ClientCommandCenterPage() {
     return () => {
       cancelled = true;
     };
-  }, [isClientUser, hasFeature]);
+  }, [isClientUser, canViewCommandCentre, canUseOpsMaintenance]);
 
   const reloadBundle = useCallback(() => {
-    if (!isClientUser) return;
-    const maintenanceEnabled = hasFeature('maintenance_workflows');
+    if (!isClientUser || !canViewCommandCentre) return;
+    const maintenanceEnabled = canUseOpsMaintenance;
     clearOperationalCache(OPERATIONAL_CACHE_KEYS.commandCenterPrimary);
     clearOperationalCache(OPERATIONAL_CACHE_KEYS.commandCenterSecondary);
     clientAPI
@@ -279,7 +285,7 @@ export default function ClientCommandCenterPage() {
         setSecondaryLoading(false);
         setSecondaryJobsLoading(false);
       });
-  }, [isClientUser, hasFeature]);
+  }, [isClientUser, canViewCommandCentre, canUseOpsMaintenance]);
 
   useEffect(() => {
     if (!isClientUser) return undefined;
@@ -496,7 +502,7 @@ export default function ClientCommandCenterPage() {
     prevPressureRef.current = cur;
   }, [loading, pressureMetrics]);
 
-  const maintenanceEnabled = hasFeature('maintenance_workflows');
+  const maintenanceEnabled = canUseOpsMaintenance;
 
   const allClearEmpty = isCommandCenterAllClearEmpty({
     urgentCount,

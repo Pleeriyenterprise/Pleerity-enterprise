@@ -49,7 +49,11 @@ import {
   OPERATIONAL_CACHE_KEYS,
 } from '../utils/clientOperationalFetch';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  useTodayCapabilities,
+} from '../utils/operationalCapabilityAccess';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -359,6 +363,8 @@ function TaskCard({
   complianceBookingBusyId,
   showComplianceBooking,
   enableTriage,
+  canActToday,
+  canWriteOpsMaintenance,
   inboxRequirementById,
   propertyById,
 }) {
@@ -607,7 +613,7 @@ function TaskCard({
                 type="button"
                 variant="outline"
                 className="w-full min-h-11 h-11 text-sm justify-center border-midnight-blue/25 text-midnight-blue/90"
-                disabled={riskLoading === `wo:${sid}`}
+                disabled={riskLoading === `wo:${sid}` || !canWriteOpsMaintenance}
                 onClick={() => onRiskAction('work_order', sid, task)}
               >
                 {riskLoading === `wo:${sid}` ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Start maintenance job'}
@@ -673,7 +679,7 @@ function TaskCard({
                           type="button"
                           variant="outline"
                           className="h-11 text-xs justify-center w-full"
-                          disabled={riskLoading === `issue:${sid}`}
+                          disabled={riskLoading === `issue:${sid}` || !canWriteOpsMaintenance}
                           onClick={() => onRiskAction('issue', sid, task)}
                         >
                           {riskLoading === `issue:${sid}` ? (
@@ -687,7 +693,7 @@ function TaskCard({
                             type="button"
                             variant="outline"
                             className="h-11 text-xs justify-center w-full"
-                            disabled={riskLoading === `wo:${sid}`}
+                            disabled={riskLoading === `wo:${sid}` || !canWriteOpsMaintenance}
                             onClick={() => onRiskAction('work_order', sid, task)}
                           >
                             {riskLoading === `wo:${sid}` ? (
@@ -710,7 +716,7 @@ function TaskCard({
                                   type="button"
                                   variant="outline"
                                   className="h-11 text-xs justify-center w-full"
-                                  disabled={busy}
+                                  disabled={busy || !canActToday}
                                   onClick={() => onOpenDismissModal(task)}
                                 >
                                   <EyeOff className="w-3.5 h-3.5 mr-1 shrink-0" />
@@ -730,7 +736,7 @@ function TaskCard({
                                 type="button"
                                 variant="outline"
                                 className="h-11 text-xs justify-center w-full"
-                                disabled={busy}
+                                disabled={busy || !canActToday}
                                 onClick={() => onVisibilityTap(va, task, isSnooze ? days : undefined)}
                               >
                                 {isSnooze ? <Bell className="w-3.5 h-3.5 mr-1 shrink-0" /> : null}
@@ -761,7 +767,7 @@ function TaskCard({
   );
 }
 
-function HiddenTaskCard({ item, onRestore, busy }) {
+function HiddenTaskCard({ item, onRestore, busy, canActToday }) {
   const ov = item.user_override;
   const kind =
     ov === 'dismiss'
@@ -784,7 +790,7 @@ function HiddenTaskCard({ item, onRestore, busy }) {
           ) : null}
           <p className="text-xs text-gray-500 mt-1">Hidden {formatWhen(item.hidden_at) || '—'}</p>
         </div>
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => onRestore(item)}>
+        <Button type="button" size="sm" variant="outline" disabled={busy || !canActToday} onClick={() => onRestore(item)}>
           <RotateCcw className="w-3 h-3 mr-1" />
           Show in Today again
         </Button>
@@ -793,7 +799,7 @@ function HiddenTaskCard({ item, onRestore, busy }) {
   );
 }
 
-function SnoozedTaskCard({ task, onRestore, busy }) {
+function SnoozedTaskCard({ task, onRestore, busy, canActToday }) {
   return (
     <Card className="border border-amber-200 bg-amber-50/40 shadow-sm">
       <CardContent className="p-4 flex flex-wrap items-center justify-between gap-2">
@@ -806,7 +812,7 @@ function SnoozedTaskCard({ task, onRestore, busy }) {
             Snoozed until {formatWhen(task.snoozed_until) || task.snoozed_until || '—'}
           </p>
         </div>
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => onRestore(task)}>
+        <Button type="button" size="sm" variant="outline" disabled={busy || !canActToday} onClick={() => onRestore(task)}>
           <RotateCcw className="w-3 h-3 mr-1" />
           Show in Today again
         </Button>
@@ -831,6 +837,8 @@ function SectionBlock({
   showComplianceBooking,
   emptyHint,
   enableTriage,
+  canActToday,
+  canWriteOpsMaintenance,
   inboxRequirementById,
   propertyById,
   defaultCollapsed = false,
@@ -894,6 +902,8 @@ function SectionBlock({
                 complianceBookingBusyId={complianceBookingBusyId}
                 showComplianceBooking={showComplianceBooking}
                 enableTriage={enableTriage}
+                canActToday={canActToday}
+                canWriteOpsMaintenance={canWriteOpsMaintenance}
                 inboxRequirementById={inboxRequirementById}
                 propertyById={propertyById}
               />
@@ -918,7 +928,15 @@ export default function ClientTasksPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
-  const { hasFeature } = useEntitlements();
+  const {
+    canViewToday,
+    canActToday,
+    canUseOpsMaintenance,
+    canWriteOpsMaintenance,
+    canUseOpsPredictive,
+    canUseOpsApprovals,
+    canWriteOpsApprovals,
+  } = useTodayCapabilities();
   const [loading, setLoading] = useState(true);
   const [inboxEnrichmentLoading, setInboxEnrichmentLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -961,6 +979,12 @@ export default function ClientTasksPage() {
 
   const load = useCallback(() => {
     if (!isClientUser) return;
+    if (!canViewToday) {
+      setLoading(false);
+      setPayload(null);
+      setError('');
+      return;
+    }
     emitTodayAnalytics('TODAY_PAGE_REQUESTED', {
       ...(propertyFilter ? { property_id: propertyFilter } : {}),
     });
@@ -997,7 +1021,11 @@ export default function ClientTasksPage() {
         );
       })
       .catch((err) => {
-        setError(err?.response?.data?.detail || 'Failed to load tasks');
+        if (isCapabilityDeniedApiError(err)) {
+          setError(getCapabilityDeniedMessage(err, 'Failed to load tasks'));
+        } else {
+          setError(err?.response?.data?.detail || 'Failed to load tasks');
+        }
         setPayload(null);
         emitTodayAnalytics('TODAY_PAGE_LOAD_FAILED', {
           ...(propertyFilter ? { property_id: propertyFilter } : {}),
@@ -1022,7 +1050,7 @@ export default function ClientTasksPage() {
       .catch(() => {
         setPropertyOptions([]);
       });
-  }, [isClientUser, propertyFilter, emitTodayAnalytics]);
+  }, [isClientUser, canViewToday, propertyFilter, emitTodayAnalytics]);
 
   useEffect(() => {
     load();
@@ -1146,14 +1174,14 @@ export default function ClientTasksPage() {
   const spend = payload?.spend_this_month;
 
   const spendDisplay = useMemo(() => {
-    if (!hasFeature('invoicing')) return null;
+    if (!canUseOpsApprovals) return null;
     if (!spend || spend.has_any_invoices === false) return null;
     return {
       amount: formatMoney(spend.total_amount, spend.currency),
       hint: spend.calculation_summary,
       count: spend.invoice_count,
     };
-  }, [spend, hasFeature]);
+  }, [spend, canUseOpsApprovals]);
 
   const jurisdictionTodayBanner = useMemo(
     () =>
@@ -1161,9 +1189,8 @@ export default function ClientTasksPage() {
     [jurisdictionComplianceNotice, commandCenterFallbackAcknowledged],
   );
 
-  const showRiskInline = hasFeature('predictive_maintenance') && hasFeature('maintenance_workflows');
-  const showComplianceBooking =
-    hasFeature('compliance_engine') && hasFeature('maintenance_workflows');
+  const showRiskInline = canUseOpsPredictive && canUseOpsMaintenance;
+  const showComplianceBooking = canWriteOpsApprovals && canWriteOpsMaintenance;
 
   const runBusinessAction = async (act, task) => {
     if (act?.id && task) {
@@ -1225,7 +1252,11 @@ export default function ClientTasksPage() {
           return;
         }
         const d = err?.response?.data?.detail;
-        toast.error(typeof d === 'string' ? d : d?.message || 'Could not start compliance fix');
+        if (isCapabilityDeniedApiError(err)) {
+          toast.error(getCapabilityDeniedMessage(err, 'Could not start compliance fix'));
+        } else {
+          toast.error(typeof d === 'string' ? d : d?.message || 'Could not start compliance fix');
+        }
       } finally {
         setComplianceBookingBusyId(null);
       }
@@ -1243,6 +1274,7 @@ export default function ClientTasksPage() {
   };
 
   const runVisibilityTap = async (va, task, snoozeDays) => {
+    if (!canActToday) return;
     const tid = task?.id || task?.task_id;
     if (!tid) return;
     if (va.id === 'mark_reviewed') {
@@ -1256,7 +1288,11 @@ export default function ClientTasksPage() {
         );
         load();
       } catch (err) {
-        toast.error(err?.response?.data?.detail || 'Could not update Today inbox');
+        if (isCapabilityDeniedApiError(err)) {
+          toast.error(getCapabilityDeniedMessage(err, 'Could not update Today inbox'));
+        } else {
+          toast.error(err?.response?.data?.detail || 'Could not update Today inbox');
+        }
       } finally {
         setOverrideBusyId(null);
       }
@@ -1273,7 +1309,11 @@ export default function ClientTasksPage() {
         );
         load();
       } catch (err) {
-        toast.error(err?.response?.data?.detail || 'Could not snooze this item in Today');
+        if (isCapabilityDeniedApiError(err)) {
+          toast.error(getCapabilityDeniedMessage(err, 'Could not snooze this item in Today'));
+        } else {
+          toast.error(err?.response?.data?.detail || 'Could not snooze this item in Today');
+        }
       } finally {
         setOverrideBusyId(null);
       }
@@ -1336,6 +1376,7 @@ export default function ClientTasksPage() {
   };
 
   const restoreTodayItem = async (taskOrItem) => {
+    if (!canActToday) return;
     const tid = taskOrItem?.id || taskOrItem?.task_id;
     if (!tid) return;
     setOverrideBusyId(tid);
@@ -1347,7 +1388,11 @@ export default function ClientTasksPage() {
       );
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not restore');
+      if (isCapabilityDeniedApiError(err)) {
+        toast.error(getCapabilityDeniedMessage(err, 'Could not restore'));
+      } else {
+        toast.error(err?.response?.data?.detail || 'Could not restore');
+      }
     } finally {
       setOverrideBusyId(null);
     }
@@ -1359,6 +1404,7 @@ export default function ClientTasksPage() {
   };
 
   const confirmDismissTask = async () => {
+    if (!canActToday) return;
     const task = dismissModalTask;
     const tid = task?.id || task?.task_id;
     const reason = dismissReason.trim();
@@ -1377,14 +1423,18 @@ export default function ClientTasksPage() {
       );
       load();
     } catch (err) {
-      toast.error(err?.response?.data?.detail || 'Could not hide this item from Today');
+      if (isCapabilityDeniedApiError(err)) {
+        toast.error(getCapabilityDeniedMessage(err, 'Could not hide this item from Today'));
+      } else {
+        toast.error(err?.response?.data?.detail || 'Could not hide this item from Today');
+      }
     } finally {
       setOverrideBusyId(null);
     }
   };
 
   const onRiskAction = async (kind, signalId, taskForAnalytics) => {
-    if (!signalId) return;
+    if (!signalId || !canWriteOpsMaintenance) return;
     const key = `${kind}:${signalId}`;
     setRiskLoading(key);
     try {
@@ -1424,7 +1474,11 @@ export default function ClientTasksPage() {
       ) {
         return;
       }
-      toast.error(err?.response?.data?.detail || 'Action failed');
+      if (isCapabilityDeniedApiError(err)) {
+        toast.error(getCapabilityDeniedMessage(err, 'Action failed'));
+      } else {
+        toast.error(err?.response?.data?.detail || 'Action failed');
+      }
     } finally {
       setRiskLoading(null);
     }
@@ -1747,6 +1801,8 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            canActToday={canActToday}
+            canWriteOpsMaintenance={canWriteOpsMaintenance}
             inboxRequirementById={inboxRequirementById}
             propertyById={propertyById}
             urgentShowMoreLimit={8}
@@ -1773,6 +1829,8 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            canActToday={canActToday}
+            canWriteOpsMaintenance={canWriteOpsMaintenance}
             inboxRequirementById={inboxRequirementById}
             propertyById={propertyById}
             defaultCollapsed={waitingOnOthers.length > 4}
@@ -1793,6 +1851,8 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage
+            canActToday={canActToday}
+            canWriteOpsMaintenance={canWriteOpsMaintenance}
             inboxRequirementById={inboxRequirementById}
             propertyById={propertyById}
             defaultCollapsed
@@ -1811,6 +1871,7 @@ export default function ClientTasksPage() {
                     key={t.id}
                     task={t}
                     busy={overrideBusyId === t.id}
+                    canActToday={canActToday}
                     onRestore={(tk) => restoreTodayItem(tk)}
                   />
                 ))}
@@ -1830,6 +1891,7 @@ export default function ClientTasksPage() {
                     key={h.task_id}
                     item={h}
                     busy={overrideBusyId === h.task_id}
+                    canActToday={canActToday}
                     onRestore={(it) => restoreTodayItem(it)}
                   />
                 ))}
@@ -1851,6 +1913,8 @@ export default function ClientTasksPage() {
             complianceBookingBusyId={complianceBookingBusyId}
             showComplianceBooking={showComplianceBooking}
             enableTriage={false}
+            canActToday={canActToday}
+            canWriteOpsMaintenance={canWriteOpsMaintenance}
             inboxRequirementById={inboxRequirementById}
             propertyById={propertyById}
             emptyHint="Recent requirement and invoice milestones will show here."

@@ -51,6 +51,21 @@ jest.mock('../contexts/AuthContext', () => ({
   }),
 }));
 
+jest.mock('../utils/operationalCapabilityAccess', () => ({
+  useDashboardCapabilities: () => ({
+    canViewDashboard: true,
+    canViewScore: true,
+    canViewCommandCentre: true,
+    canViewToday: true,
+    canUseOpsMaintenance: true,
+    canUseOpsPredictive: false,
+    canUseOpsContractors: false,
+    canUseOpsApprovals: false,
+  }),
+  getCapabilityDeniedMessage: (_e, fallback) => fallback,
+  isCapabilityDeniedApiError: () => false,
+}));
+
 jest.mock('../contexts/EntitlementsContext', () => ({
   useEntitlements: () => ({
     hasFeature: (key) => key === 'maintenance_workflows',

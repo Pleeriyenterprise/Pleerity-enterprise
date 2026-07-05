@@ -368,6 +368,85 @@
       "frontend/src/pages/BillingPage.capability.test.js"
     ]
   },
+  "ilp4_frontend_operational_capability_migration": {
+    "domain": "dashboard_today_command_centre",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T14:30:00Z",
+    "capabilities_consumed": {
+      "dashboard": [
+        "CAP_DASHBOARD_VIEW",
+        "CAP_SCORE_VIEW",
+        "CAP_CMD_CTR_VIEW",
+        "CAP_TODAY_VIEW",
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_APPROVALS"
+      ],
+      "today": [
+        "CAP_TODAY_VIEW",
+        "CAP_TODAY_ACT",
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_APPROVALS",
+        "CAP_OPS_RENT"
+      ],
+      "command_centre": [
+        "CAP_CMD_CTR_VIEW",
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_APPROVALS"
+      ]
+    },
+    "legacy_removed": [
+      "useEntitlements on ClientDashboard.js",
+      "useEntitlements on ClientTasksPage.js",
+      "useEntitlements on ClientCommandCenterPage.js",
+      "hasFeature(maintenance_workflows|predictive_maintenance|contractor_network|invoicing|compliance_engine) permission decisions"
+    ],
+    "secondary_actions_audited": [
+      "Today snooze/dismiss/restore/mark-reviewed",
+      "Today risk follow-up issue/work order",
+      "Today compliance booking",
+      "Dashboard ops KPI fetches and contractor network banner",
+      "Command Centre maintenance work order secondary load"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "READ_ONLY",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/ClientDashboard.js",
+      "frontend/src/pages/ClientTasksPage.js",
+      "frontend/src/pages/ClientCommandCenterPage.js",
+      "frontend/src/utils/operationalCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/operationalCapabilityAccess.test.js",
+      "frontend/src/pages/ClientDashboard.capability.test.js",
+      "frontend/src/pages/ClientTasksPage.capability.test.js",
+      "frontend/src/pages/ClientCommandCenterPage.capability.test.js",
+      "frontend/src/pages/ClientDashboard.scoreWidgetLabels.test.js",
+      "frontend/src/pages/ClientDashboard.slaKpi.test.js",
+      "frontend/src/pages/ClientDashboard.workQueueEntry.test.js",
+      "frontend/src/pages/ClientDashboard.scoreFreshness.test.js",
+      "frontend/src/pages/ClientCommandCenterPage.test.js"
+    ],
+    "tests_passed": 51,
+    "tests_failed": 0
+  },
+  "latest_milestone_frontend_operational": "frontend_operational_capability_migration",
   "ilp4_frontend_capability_architecture_checkpoint": {
     "verdict": "PASS",
     "executed_at_utc": "2026-07-05T13:11:00Z",
