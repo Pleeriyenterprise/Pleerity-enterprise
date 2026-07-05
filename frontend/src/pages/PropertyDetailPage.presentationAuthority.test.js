@@ -20,9 +20,15 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({ hasFeature: mockHasFeature }),
-}));
+jest.mock('../utils/propertyCapabilityAccess', () => {
+  const actual = jest.requireActual('../utils/propertyCapabilityAccess');
+  return {
+    ...actual,
+    usePropertyWorkflowCapabilities: jest.fn(),
+  };
+});
+
+const { usePropertyWorkflowCapabilities } = require('../utils/propertyCapabilityAccess');
 
 jest.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { portal_user_id: 'user-1', role: 'ROLE_CLIENT_ADMIN' } }),
@@ -64,6 +70,9 @@ function stubPropertyDetailApis(complianceDetail) {
 describe('PropertyDetailPage presentation authority alignment', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
+    usePropertyWorkflowCapabilities.mockImplementation(() =>
+      require('../testUtils/propertyWorkflowTestCapabilities').defaultPropertyWorkflowTestCaps(mockHasFeature),
+    );
     mockNavigate.mockReset();
   });
 

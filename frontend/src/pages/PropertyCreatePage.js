@@ -13,10 +13,16 @@ import { cn } from '../lib/utils';
 import { JURISDICTION_OPTIONS, BUILDING_AGE_SCOTLAND_HELPER, showBuildingAgeField } from '../utils/jurisdictionComplianceCopy';
 import { useUkPostcodeLookup } from '../hooks/useUkPostcodeLookup';
 import { normalizeUkPostcode } from '../utils/ukPostcode';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  usePropertyCapabilities,
+} from '../utils/propertyCapabilityAccess';
 
 const PropertyCreatePage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { canCreateProperty } = usePropertyCapabilities();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -71,7 +77,7 @@ const PropertyCreatePage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (submitInFlight.current || loading) return;
+    if (!canCreateProperty || submitInFlight.current || loading) return;
     submitInFlight.current = true;
     setError('');
     setIsPlanLimit(false);
@@ -105,6 +111,9 @@ const PropertyCreatePage = () => {
         navigate('/dashboard');
       }, 2000);
     } catch (err) {
+      if (isCapabilityDeniedApiError(err)) {
+        setError(getCapabilityDeniedMessage(err, 'Failed to create property'));
+      } else {
       const detail = err.response?.data?.detail;
       const code = typeof detail === 'object' && detail?.error_code;
       if (err.response?.status === 403 && code === 'PLAN_LIMIT') {
@@ -114,6 +123,7 @@ const PropertyCreatePage = () => {
       } else {
         const msg = typeof detail === 'string' ? detail : (detail?.message ?? err.message ?? 'Failed to create property');
         setError(msg);
+      }
       }
     } finally {
       setLoading(false);

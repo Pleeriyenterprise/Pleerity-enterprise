@@ -23,7 +23,10 @@ jest.mock('../../context/GuidedEvidenceModalContext', () => ({
 function hubProps(overrides = {}) {
   return {
     propertyId: 'prop-1',
-    hasFeature: () => false,
+    canUseOpsMaintenance: false,
+    canUseOpsPredictive: false,
+    canUseOpsContractors: false,
+    canUseOpsComplianceReview: false,
     tabs: {
       compliance: 'c',
       maintenance: 'm',

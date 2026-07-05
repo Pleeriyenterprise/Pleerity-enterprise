@@ -1146,5 +1146,118 @@
     "compliance_delivery_audit_client_migrated": true,
     "client_compliance_pack_migrated": true,
     "cap_req_mark_n_a_aliased_to_resolve": false
-  }
+  },
+  "ilp4_frontend_property_workflow_capability_migration": {
+    "domain": "property_compliance_workflow",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T15:45:00Z",
+    "capabilities_consumed": {
+      "property": [
+        "CAP_PROP_VIEW",
+        "CAP_PROP_CREATE",
+        "CAP_PROP_EDIT",
+        "CAP_PROP_ARCHIVE",
+        "CAP_PROP_IMPORT"
+      ],
+      "requirements": [
+        "CAP_REQ_VIEW",
+        "CAP_REQ_RESOLVE",
+        "CAP_REQ_MARK_N_A",
+        "CAP_REQ_COMPLETE"
+      ],
+      "documents": [
+        "CAP_DOC_VIEW",
+        "CAP_DOC_UPLOAD"
+      ],
+      "evidence": [
+        "CAP_EVIDENCE_VIEW",
+        "CAP_EVIDENCE_DOWNLOAD"
+      ],
+      "score": [
+        "CAP_SCORE_VIEW",
+        "CAP_SCORE_EXPLAIN",
+        "CAP_SCORE_TREND",
+        "CAP_SCORE_SNAPSHOT"
+      ],
+      "operational_on_property": [
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_COMPLIANCE_REVIEW",
+        "CAP_OPS_RENT",
+        "CAP_TENANT_PORTAL"
+      ]
+    },
+    "legacy_removed": [
+      "useEntitlements on PropertyDetailPage.js",
+      "useEntitlements on RequirementsPage.js",
+      "useEntitlements on PropertyOccupancyTenancyPanel.jsx",
+      "useEntitlements on PropertyFinancialSnapshotCard.jsx",
+      "hasFeature(maintenance_workflows|predictive_maintenance|contractor_network|compliance_engine|tenant_portal|rent_operations) on property workflow surfaces"
+    ],
+    "secondary_actions_audited": [
+      "Portfolio create property",
+      "Property detail upload document",
+      "Property detail maintenance create WO/issue",
+      "Property detail book inspection from risk",
+      "Property detail score change history",
+      "Property detail jurisdiction and building age save",
+      "Property evidence registry view/download/confirm",
+      "Requirements resolve guided evidence primary CTA",
+      "Requirements edit dates and applicability",
+      "Requirements mark not applicable and reopen",
+      "Property operating hub risk and maintenance CTAs",
+      "Property tab navigation ops gating"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/PropertiesPage.js",
+      "frontend/src/pages/PropertyCreatePage.js",
+      "frontend/src/pages/BulkPropertyImportPage.js",
+      "frontend/src/pages/PropertyDetailPage.js",
+      "frontend/src/pages/RequirementsPage.js",
+      "frontend/src/components/client/PropertyEvidenceRegistrySections.js",
+      "frontend/src/components/property/PropertyOperatingHub.jsx",
+      "frontend/src/components/property/PropertyOccupancyTenancyPanel.jsx",
+      "frontend/src/components/rent/PropertyFinancialSnapshotCard.jsx",
+      "frontend/src/utils/propertyCapabilityAccess.js",
+      "frontend/src/utils/requirementCapabilityAccess.js",
+      "frontend/src/utils/evidenceCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/propertyCapabilityAccess.test.js",
+      "frontend/src/utils/requirementCapabilityAccess.test.js",
+      "frontend/src/utils/evidenceCapabilityAccess.test.js",
+      "frontend/src/pages/PropertiesPage.capability.test.js",
+      "frontend/src/pages/PropertyDetailPage.capability.test.js",
+      "frontend/src/pages/RequirementsPage.capability.test.js",
+      "frontend/src/components/client/PropertyEvidenceRegistrySections.capability.test.js",
+      "frontend/src/pages/PropertyDetailPage.complianceActions.test.js",
+      "frontend/src/pages/PropertyDetailPage.validKpiParity.test.js",
+      "frontend/src/pages/PropertyDetailPage.presentationAuthority.test.js",
+      "frontend/src/pages/PropertyDetailPage.complianceMobileCards.test.js",
+      "frontend/src/pages/PropertyDetailPage.resolveRequirement.test.js",
+      "frontend/src/pages/PropertyDetailPage.conditionStandardResolve.test.js",
+      "frontend/src/pages/PropertyDetailPage.complianceHash.test.js",
+      "frontend/src/pages/PropertyDetailPage.asyncHonesty.test.js",
+      "frontend/src/pages/RequirementsPage.guidedEvidence.integration.test.js",
+      "frontend/src/components/property/PropertyOperatingHub.priorityTaskCta.test.jsx"
+    ],
+    "tests_passed": 60,
+    "tests_failed": 0
+  },
+  "latest_milestone_frontend_property_workflow": "frontend_property_workflow_capability_migration"
 }

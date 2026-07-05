@@ -17,8 +17,16 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({ hasFeature: () => true }),
+import { clearOperationalCache } from '../utils/clientOperationalFetch';
+
+jest.mock('../utils/propertyCapabilityAccess', () => ({
+  usePropertyWorkflowCapabilities: () => ({
+    canViewRequirements: true,
+    canResolveRequirements: true,
+    canMarkRequirementNotApplicable: true,
+  }),
+  getCapabilityDeniedMessage: (_error, fallback) => fallback,
+  isCapabilityDeniedApiError: () => false,
 }));
 
 jest.mock('@/utils/portalNotifications', () => ({
@@ -68,6 +76,7 @@ function renderWithGuided() {
 
 describe('RequirementsPage guided evidence modal', () => {
   beforeEach(() => {
+    clearOperationalCache();
     jest.spyOn(clientApiModule.clientAPI, 'getProperties').mockResolvedValue({
       data: {
         properties: [

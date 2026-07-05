@@ -2,7 +2,12 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import apiClient, { clientAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  isPropertyTabOpsCapEnabled,
+  usePropertyWorkflowCapabilities,
+} from '../utils/propertyCapabilityAccess';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Label } from '../components/ui/label';
@@ -340,7 +345,24 @@ export default function PropertyDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
-  const { hasFeature } = useEntitlements();
+  const {
+    canViewProperties,
+    canEditProperty,
+    canViewScoreExplain,
+    canViewScoreTrend,
+    canViewEvidence,
+    canViewDocuments,
+    canUploadDocuments,
+    canDownloadEvidence,
+    canResolveRequirements,
+    canMarkRequirementNotApplicable,
+    canUseOpsMaintenance,
+    canWriteOpsMaintenance,
+    canUseOpsPredictive,
+    canUseOpsContractors,
+    canUseOpsComplianceReview,
+    canWriteOpsComplianceReview,
+  } = usePropertyWorkflowCapabilities();
   const { user: authUser } = useAuth();
   const portalUserId = authUser?.portal_user_id;
   const [activeTab, setActiveTab] = useState(TAB_OPERATING);
@@ -741,16 +763,16 @@ export default function PropertyDetailPage() {
   }, [fetchData]);
 
   const loadWorkOrders = useCallback(() => {
-    if (!propertyId || !hasFeature('maintenance_workflows')) return;
+    if (!propertyId || !canUseOpsMaintenance) return;
     setWorkOrdersLoading(true);
     clientAPI.getMaintenanceWorkOrders({ property_id: propertyId, limit: 100 })
       .then((res) => setWorkOrders(res.data?.work_orders || []))
       .catch(() => setWorkOrders([]))
       .finally(() => setWorkOrdersLoading(false));
-  }, [propertyId, hasFeature]);
+  }, [propertyId, canUseOpsMaintenance]);
 
   const loadMaintenanceIssues = useCallback(() => {
-    if (!propertyId || !hasFeature('maintenance_workflows')) return;
+    if (!propertyId || !canUseOpsMaintenance) return;
     setMaintenanceIssuesLoading(true);
     const params = { property_id: propertyId, limit: 100 };
     if (maintenanceIssueFilter.status) params.status = maintenanceIssueFilter.status;
@@ -760,10 +782,10 @@ export default function PropertyDetailPage() {
       .then((res) => setMaintenanceIssues(res.data?.issues || []))
       .catch(() => setMaintenanceIssues([]))
       .finally(() => setMaintenanceIssuesLoading(false));
-  }, [propertyId, hasFeature, maintenanceIssueFilter.status, maintenanceIssueFilter.severity, maintenanceIssueFilter.category]);
+  }, [propertyId, canUseOpsMaintenance, maintenanceIssueFilter.status, maintenanceIssueFilter.severity, maintenanceIssueFilter.category]);
 
   const loadInsights = useCallback(() => {
-    if (!propertyId || !hasFeature('predictive_maintenance')) return;
+    if (!propertyId || !canUseOpsPredictive) return;
     setInsightsLoading(true);
     clientAPI.getPredictiveInsights({ limit: 100 })
       .then((res) => {
@@ -773,25 +795,25 @@ export default function PropertyDetailPage() {
       })
       .catch(() => setPredictiveInsights(null))
       .finally(() => setInsightsLoading(false));
-  }, [propertyId, hasFeature]);
+  }, [propertyId, canUseOpsMaintenance]);
 
   const loadRiskSignals = useCallback(() => {
-    if (!propertyId || !hasFeature('predictive_maintenance')) return;
+    if (!propertyId || !canUseOpsPredictive) return;
     setRiskSignalsLoading(true);
     clientAPI.getPropertyRiskSignals(propertyId)
       .then((res) => setRiskSignalsData(res.data || null))
       .catch(() => setRiskSignalsData(null))
       .finally(() => setRiskSignalsLoading(false));
-  }, [propertyId, hasFeature]);
+  }, [propertyId, canUseOpsMaintenance]);
 
   const openBookInspectionFromRisk = useCallback(
     (signalId) => {
-      if (!hasFeature('compliance_engine') || !hasFeature('maintenance_workflows')) return;
+      if (!canUseOpsComplianceReview || !canUseOpsMaintenance) return;
       setBookInspectionSignalId(signalId);
       setBookInspectionReqPick('');
       setBookInspectionOpen(true);
     },
-    [hasFeature],
+    [canUseOpsComplianceReview, canUseOpsMaintenance],
   );
 
   const confirmBookInspectionFromRisk = useCallback(async () => {
@@ -852,7 +874,7 @@ export default function PropertyDetailPage() {
   const operatingHubPriorityRequirementsById = useMemo(() => requirementMapFromList(requirements), [requirements]);
 
   const loadAssets = useCallback(() => {
-    if (!propertyId || (!hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance'))) return;
+    if (!propertyId || (!canUseOpsMaintenance && !canUseOpsPredictive)) return;
     setAssetsLoading(true);
     clientAPI.getPropertyAssets(propertyId)
       .then((res) => {
@@ -861,37 +883,37 @@ export default function PropertyDetailPage() {
       })
       .catch(() => { setAssets([]); setAssetsSummary(null); })
       .finally(() => setAssetsLoading(false));
-  }, [propertyId, hasFeature]);
+  }, [propertyId, canUseOpsMaintenance, canUseOpsPredictive]);
 
   const loadDocuments = useCallback(() => {
-    if (!propertyId) return;
+    if (!propertyId || !canViewDocuments) return;
     setDocumentsLoading(true);
     clientAPI.getDocuments({ property_id: propertyId })
       .then((res) => setDocuments(res.data?.documents || []))
       .catch(() => setDocuments([]))
       .finally(() => setDocumentsLoading(false));
-  }, [propertyId]);
+  }, [propertyId, canViewDocuments]);
 
   const loadEvidence = useCallback(() => {
-    if (!propertyId) return;
+    if (!propertyId || !canViewEvidence) return;
     setEvidenceLoading(true);
     clientAPI.getPropertyEvidence(propertyId)
       .then((res) => setEvidenceData(res.data || null))
       .catch(() => setEvidenceData(null))
       .finally(() => setEvidenceLoading(false));
-  }, [propertyId]);
+  }, [propertyId, canViewEvidence]);
 
   const loadComplianceExplainability = useCallback(() => {
-    if (!propertyId) return;
+    if (!propertyId || !canViewScoreExplain) return;
     setComplianceExplainabilityLoading(true);
     clientAPI.getPropertyComplianceScoreExplanation(propertyId)
       .then((res) => setComplianceExplainability(res.data || null))
       .catch(() => setComplianceExplainability(null))
       .finally(() => setComplianceExplainabilityLoading(false));
-  }, [propertyId]);
+  }, [propertyId, canViewScoreExplain]);
 
   const savePropertyJurisdiction = useCallback(async () => {
-    if (!propertyId || !property) return;
+    if (!propertyId || !property || !canEditProperty) return;
     setJurisdictionSaving(true);
     try {
       await clientAPI.patchProperty(propertyId, { jurisdiction: (jurisdictionDraft ?? '').trim() || '' });
@@ -902,15 +924,19 @@ export default function PropertyDetailPage() {
       await fetchData();
       loadComplianceExplainability();
     } catch (e) {
-      const d = e.response?.data?.detail;
-      toast.error(typeof d === 'string' ? d : 'Could not update jurisdiction.');
+      if (isCapabilityDeniedApiError(e)) {
+        toast.error(getCapabilityDeniedMessage(e, 'Could not update jurisdiction.'));
+      } else {
+        const d = e.response?.data?.detail;
+        toast.error(typeof d === 'string' ? d : 'Could not update jurisdiction.');
+      }
     } finally {
       setJurisdictionSaving(false);
     }
-  }, [propertyId, property, jurisdictionDraft, fetchData, loadComplianceExplainability]);
+  }, [propertyId, property, jurisdictionDraft, fetchData, loadComplianceExplainability, canEditProperty]);
 
   const saveBuildingAge = useCallback(async () => {
-    if (!propertyId || !property) return;
+    if (!propertyId || !property || !canEditProperty) return;
     const ageRaw = String(buildingAgeDraft ?? '').trim();
     let payload;
     if (ageRaw === '') {
@@ -932,12 +958,16 @@ export default function PropertyDetailPage() {
       await fetchData();
       loadComplianceExplainability();
     } catch (e) {
-      const d = e.response?.data?.detail;
-      toast.error(typeof d === 'string' ? d : 'Could not update building age.');
+      if (isCapabilityDeniedApiError(e)) {
+        toast.error(getCapabilityDeniedMessage(e, 'Could not update building age.'));
+      } else {
+        const d = e.response?.data?.detail;
+        toast.error(typeof d === 'string' ? d : 'Could not update building age.');
+      }
     } finally {
       setBuildingAgeSaving(false);
     }
-  }, [propertyId, property, buildingAgeDraft, fetchData, loadComplianceExplainability]);
+  }, [propertyId, property, buildingAgeDraft, fetchData, loadComplianceExplainability, canEditProperty]);
 
   const startJurisdictionEdit = useCallback(() => {
     setJurisdictionDraft(property?.jurisdiction ?? '');
@@ -992,15 +1022,15 @@ export default function PropertyDetailPage() {
       if (outcomePropertyId && outcomePropertyId !== propertyId) return;
       fetchData();
       loadComplianceExplainability();
-      if (hasFeature('maintenance_workflows')) {
+      if (canUseOpsMaintenance) {
         loadWorkOrders();
         loadMaintenanceIssues();
       }
-      if (hasFeature('predictive_maintenance')) {
+      if (canUseOpsPredictive) {
         loadInsights();
         loadRiskSignals();
       }
-      if (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) {
+      if (canUseOpsMaintenance || canUseOpsPredictive) {
         loadAssets();
       }
       if (activeTab === TAB_EVIDENCE) {
@@ -1014,7 +1044,8 @@ export default function PropertyDetailPage() {
     return () => window.removeEventListener('compliance-outcome', onOutcome);
   }, [
     propertyId,
-    hasFeature,
+    canUseOpsMaintenance,
+    canUseOpsPredictive,
     fetchData,
     loadWorkOrders,
     loadMaintenanceIssues,
@@ -1029,20 +1060,20 @@ export default function PropertyDetailPage() {
 
   useEffect(() => {
     if (!propertyId) return;
-    if (hasFeature('maintenance_workflows')) loadWorkOrders();
-  }, [propertyId, hasFeature, loadWorkOrders]);
+    if (canUseOpsMaintenance) loadWorkOrders();
+  }, [propertyId, canUseOpsMaintenance, loadWorkOrders]);
 
   useEffect(() => {
-    if (propertyId && activeTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows')) loadMaintenanceIssues();
-  }, [propertyId, activeTab, hasFeature, loadMaintenanceIssues]);
+    if (propertyId && activeTab === TAB_MAINTENANCE && canUseOpsMaintenance) loadMaintenanceIssues();
+  }, [propertyId, activeTab, canUseOpsMaintenance, loadMaintenanceIssues]);
 
   useEffect(() => {
     if (!propertyId || activeTab !== TAB_CONTRACTORS) return;
-    if (hasFeature('maintenance_workflows')) loadWorkOrders();
-  }, [propertyId, activeTab, hasFeature, loadWorkOrders]);
+    if (canUseOpsMaintenance) loadWorkOrders();
+  }, [propertyId, activeTab, canUseOpsMaintenance, loadWorkOrders]);
 
   useEffect(() => {
-    if (!propertyId || !hasFeature('contractor_network')) {
+    if (!propertyId || !canUseOpsContractors) {
       setContractorsDirectory([]);
       return undefined;
     }
@@ -1058,7 +1089,7 @@ export default function PropertyDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [propertyId, hasFeature]);
+  }, [propertyId, canUseOpsMaintenance]);
 
   const contractorNameById = useMemo(() => {
     const m = new Map();
@@ -1123,27 +1154,27 @@ export default function PropertyDetailPage() {
 
   useEffect(() => {
     if (!propertyId) return;
-    if (hasFeature('predictive_maintenance')) {
+    if (canUseOpsPredictive) {
       loadInsights();
       loadRiskSignals();
     }
-  }, [propertyId, hasFeature, loadInsights, loadRiskSignals]);
+  }, [propertyId, canUseOpsPredictive, loadInsights, loadRiskSignals]);
 
   useEffect(() => {
     if (!propertyId) return;
-    if (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) loadAssets();
-  }, [propertyId, hasFeature, loadAssets]);
+    if (canUseOpsMaintenance || canUseOpsPredictive) loadAssets();
+  }, [propertyId, canUseOpsMaintenance, canUseOpsPredictive, loadAssets]);
 
   useEffect(() => {
     if (!propertyId) return;
-    if (activeTab === TAB_COMPLIANCE || activeTab === TAB_OPERATING) {
+    if ((activeTab === TAB_COMPLIANCE || activeTab === TAB_OPERATING) && canViewScoreExplain) {
       loadComplianceExplainability();
     }
-  }, [propertyId, activeTab, loadComplianceExplainability]);
+  }, [propertyId, activeTab, canViewScoreExplain, loadComplianceExplainability]);
 
   useEffect(() => {
-    if (propertyId && activeTab === TAB_EVIDENCE) loadEvidence();
-  }, [propertyId, activeTab, loadEvidence]);
+    if (propertyId && activeTab === TAB_EVIDENCE && canViewEvidence) loadEvidence();
+  }, [propertyId, activeTab, canViewEvidence, loadEvidence]);
 
   const loadOperatingFeed = useCallback(() => {
     if (!propertyId) return;
@@ -1404,7 +1435,7 @@ export default function PropertyDetailPage() {
   const evidenceDocStatusLabel = (doc) => getClientDocumentRowStatusLabel(doc);
 
   const handleEvidenceDocumentDownload = async (doc) => {
-    if (!doc?.document_id) return;
+    if (!doc?.document_id || !canDownloadEvidence) return;
     try {
       await downloadClientDocumentFile(apiClient, doc, {
         onError: (msg) => toast.error(msg),
@@ -1505,7 +1536,7 @@ export default function PropertyDetailPage() {
     if (per.open_issues != null && per.open_issues > 0) {
       parts.push(`${per.open_issues} open issue${per.open_issues === 1 ? '' : 's'}`);
     }
-    if (hasFeature('predictive_maintenance') && per.risk) {
+    if (canUseOpsPredictive && per.risk) {
       parts.push(`Risk: ${String(per.risk).replace(/^\w/, (c) => c.toUpperCase())}`);
     }
     return parts.length ? parts.join(' · ') : 'No activity recorded yet — open the asset for details.';
@@ -1835,11 +1866,13 @@ export default function PropertyDetailPage() {
             </div>
           </div>
           <div className="flex flex-col gap-2 w-full lg:w-auto lg:min-w-[220px] shrink-0">
+            {canUploadDocuments ? (
             <Button type="button" className={cn(portalPrimaryButtonClass, 'w-full justify-center')} onClick={() => navigate(resolveDocumentsPath(propertyId))}>
               <Upload className="w-4 h-4 mr-2 shrink-0" />
               {PORTAL_COPY.uploadDocument}
             </Button>
-            {hasFeature('maintenance_workflows') ? (
+            ) : null}
+            {canUseOpsMaintenance ? (
               <Button
                 type="button"
                 className={cn(portalPrimaryButtonClass, 'w-full justify-center bg-electric-teal hover:bg-electric-teal/90')}
@@ -1862,7 +1895,7 @@ export default function PropertyDetailPage() {
                 {PORTAL_COPY.upgradeForWorkOrders}
               </Button>
             )}
-            {hasFeature('maintenance_workflows') && (
+            {canUseOpsMaintenance && (
               <Button
                 type="button"
                 variant="outline"
@@ -1880,19 +1913,21 @@ export default function PropertyDetailPage() {
       {/* Tab navigation — wrap on small screens (no horizontal tab strip) */}
       <nav className="flex flex-wrap gap-1 border-b border-gray-200 mb-6 pb-px" aria-label="Property sections">
         {[
-          { id: TAB_OPERATING, label: 'Operating', icon: Building2, feature: null },
-          { id: TAB_OCCUPANCY, label: 'Occupancy & tenancy', icon: Users, feature: null },
-          { id: TAB_COMPLIANCE, label: 'Compliance', icon: ClipboardCheck, feature: null },
-          { id: TAB_MAINTENANCE, label: 'Jobs & issues', icon: Wrench, feature: 'maintenance_workflows' },
-          { id: TAB_EVIDENCE, label: 'Documents', icon: FileText, feature: null },
-          { id: TAB_CONTRACTORS, label: 'Contractors', icon: Users, feature: 'contractor_network' },
-          { id: TAB_TIMELINE, label: 'Timeline', icon: Calendar, feature: null },
-          { id: TAB_RISK_SIGNALS, label: 'Risk signals', icon: AlertCircle, feature: 'predictive_maintenance' },
-          { id: TAB_ASSETS, label: 'Assets', icon: Package, feature: 'maintenance_workflows' },
-        ].map(({ id, label, icon: Icon, feature }) => {
-          const enabled = id === TAB_ASSETS
-            ? (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance'))
-            : (!feature || hasFeature(feature));
+          { id: TAB_OPERATING, label: 'Operating', icon: Building2, opsCap: null },
+          { id: TAB_OCCUPANCY, label: 'Occupancy & tenancy', icon: Users, opsCap: null },
+          { id: TAB_COMPLIANCE, label: 'Compliance', icon: ClipboardCheck, opsCap: null },
+          { id: TAB_MAINTENANCE, label: 'Jobs & issues', icon: Wrench, opsCap: 'maintenance' },
+          { id: TAB_EVIDENCE, label: 'Documents', icon: FileText, opsCap: null },
+          { id: TAB_CONTRACTORS, label: 'Contractors', icon: Users, opsCap: 'contractors' },
+          { id: TAB_TIMELINE, label: 'Timeline', icon: Calendar, opsCap: null },
+          { id: TAB_RISK_SIGNALS, label: 'Risk signals', icon: AlertCircle, opsCap: 'predictive' },
+          { id: TAB_ASSETS, label: 'Assets', icon: Package, opsCap: 'assets' },
+        ].map(({ id, label, icon: Icon, opsCap }) => {
+          const enabled = isPropertyTabOpsCapEnabled(opsCap, {
+            canUseOpsMaintenance,
+            canUseOpsPredictive,
+            canUseOpsContractors,
+          });
           return (
             <button
               key={id}
@@ -1929,7 +1964,10 @@ export default function PropertyDetailPage() {
         <>
         <PropertyOperatingHub
           propertyId={propertyId}
-          hasFeature={hasFeature}
+          canUseOpsMaintenance={canUseOpsMaintenance}
+          canUseOpsPredictive={canUseOpsPredictive}
+          canUseOpsContractors={canUseOpsContractors}
+          canUseOpsComplianceReview={canUseOpsComplianceReview}
           tabs={{
             compliance: TAB_COMPLIANCE,
             maintenance: TAB_MAINTENANCE,
@@ -2105,6 +2143,7 @@ export default function PropertyDetailPage() {
                   {complianceDetail.score_change_summary && (
                     <span className="text-sm text-gray-600">{complianceDetail.score_change_summary}</span>
                   )}
+                  {canViewScoreTrend ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -2125,6 +2164,7 @@ export default function PropertyDetailPage() {
                     <History className="w-3.5 h-3.5 mr-1" />
                     View change history
                   </Button>
+                  ) : null}
                 </div>
               )}
             </>
@@ -2783,7 +2823,7 @@ export default function PropertyDetailPage() {
       )}
 
       {/* Tab: Jobs & issues (maintenance issues + work orders, including compliance jobs) */}
-      {activeTab === TAB_MAINTENANCE && !hasFeature('maintenance_workflows') && (
+      {activeTab === TAB_MAINTENANCE && !canUseOpsMaintenance && (
         <DiscoverabilityHint
           title={`${getFeatureDisplayInfo('maintenance_workflows').featureName} — portfolio-scale`}
           body="Create and manage issues, repair jobs, and compliance-led jobs when you add portfolio-scale automation. Evidence uploads and requirements stay available on your current plan."
@@ -2796,7 +2836,7 @@ export default function PropertyDetailPage() {
           }
         />
       )}
-      {activeTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows') && (
+      {activeTab === TAB_MAINTENANCE && canUseOpsMaintenance && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -2926,7 +2966,7 @@ export default function PropertyDetailPage() {
                   <p className="font-medium">No jobs on this property yet.</p>
                   <div className="flex flex-wrap gap-2 justify-center mt-3">
                     <Button size="sm" variant="outline" onClick={() => setCreateWoOpen(true)}>Start maintenance job</Button>
-                    {hasFeature('contractor_network') && <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_CONTRACTORS)}>Contractors</Button>}
+                    {canUseOpsContractors && <Button size="sm" variant="outline" onClick={() => setActiveTab(TAB_CONTRACTORS)}>Contractors</Button>}
                   </div>
                 </div>
               ) : (
@@ -3075,7 +3115,7 @@ export default function PropertyDetailPage() {
           )}
 
           {/* Recurring / risk strip */}
-          {hasFeature('predictive_maintenance') && (
+          {canUseOpsPredictive && (
             <Card className="border-gray-200">
               <CardContent className="py-3 flex items-center justify-between gap-4">
                 <span className="text-sm text-gray-600">Recurring issues and repair history feed into open issues.</span>
@@ -3341,7 +3381,7 @@ export default function PropertyDetailPage() {
                       >
                         {cta}
                       </Button>
-                      {hasFeature('contractor_network') && (
+                      {canUseOpsContractors && (
                         <Button size="sm" variant="outline" className="w-full min-h-11" onClick={() => { setActiveTab(TAB_CONTRACTORS); setWoDetailDrawer(null); }}>
                           Browse contractors
                         </Button>
@@ -3564,6 +3604,9 @@ export default function PropertyDetailPage() {
                     evidenceData={evidenceData}
                     requirements={requirements}
                     propertyId={propertyId}
+                    canViewEvidence={canViewEvidence}
+                    canDownloadEvidence={canDownloadEvidence}
+                    canUploadDocuments={canUploadDocuments}
                     evidenceDocStatusLabel={evidenceDocStatusLabel}
                     linkedRequirementLabelForDocument={linkedRequirementLabelForDocument}
                     rowTitle={rowTitle}
@@ -3670,7 +3713,7 @@ export default function PropertyDetailPage() {
       )}
 
       {/* Tab: Contractors */}
-      {activeTab === TAB_CONTRACTORS && !hasFeature('contractor_network') && (
+      {activeTab === TAB_CONTRACTORS && !canUseOpsContractors && (
         <DiscoverabilityHint
           title={`${getFeatureDisplayInfo('contractor_network').featureName} — portfolio coordination`}
           body="Contractor directory and routing fit larger operations with delegated maintenance. Optional when your workflow grows."
@@ -3683,7 +3726,7 @@ export default function PropertyDetailPage() {
           }
         />
       )}
-      {activeTab === TAB_CONTRACTORS && hasFeature('contractor_network') && (
+      {activeTab === TAB_CONTRACTORS && canUseOpsContractors && (
         <div className="space-y-4">
           <Card className="border border-gray-200">
             <CardHeader>
@@ -3693,7 +3736,7 @@ export default function PropertyDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {hasFeature('maintenance_workflows') && workOrdersLoading && workOrders.length === 0 ? (
+              {canUseOpsMaintenance && workOrdersLoading && workOrders.length === 0 ? (
                 <div className="flex gap-2 text-gray-500 py-6"><Loader2 className="w-5 h-5 animate-spin" /> Loading job history…</div>
               ) : contractorsTabRows.length > 0 ? (
                 <>
@@ -3775,7 +3818,7 @@ export default function PropertyDetailPage() {
                 <Button variant="outline" className="text-electric-teal border-electric-teal" onClick={() => navigate('/operations/contractors')}>
                   View all contractors
                 </Button>
-                {hasFeature('maintenance_workflows') && (
+                {canUseOpsMaintenance && (
                   <>
                     <Button variant="outline" onClick={() => setActiveTab(TAB_MAINTENANCE)}>
                       Jobs & issues
@@ -3866,7 +3909,7 @@ export default function PropertyDetailPage() {
                     <Upload className="w-4 h-4 mr-2" />
                     {PORTAL_COPY.uploadDocument}
                   </Button>
-                  {hasFeature('maintenance_workflows') && (
+                  {canUseOpsMaintenance && (
                     <Button size="sm" className="bg-electric-teal hover:bg-electric-teal/90 min-h-11" onClick={() => { setActiveTab(TAB_MAINTENANCE); setCreateWoOpen(true); }}>
                       <Plus className="w-4 h-4 mr-2" />
                       {PORTAL_COPY.addWorkOrder}
@@ -3885,7 +3928,7 @@ export default function PropertyDetailPage() {
                 const cat = item.category || 'SCORE_RISK';
                 const Icon = cat === 'EVIDENCE' ? FileText : cat === 'COMPLIANCE' ? ClipboardCheck : cat === 'MAINTENANCE' ? Wrench : cat === 'SYSTEM' ? Building2 : BarChart3;
                 const actionTab = cat === 'EVIDENCE' ? TAB_EVIDENCE : cat === 'COMPLIANCE' ? TAB_COMPLIANCE : cat === 'MAINTENANCE' ? TAB_MAINTENANCE : cat === 'SCORE_RISK' ? TAB_RISK_SIGNALS : null;
-                const showLink = !actionTab || (actionTab === TAB_MAINTENANCE && hasFeature('maintenance_workflows')) || (actionTab === TAB_RISK_SIGNALS && hasFeature('predictive_maintenance')) || actionTab === TAB_EVIDENCE || actionTab === TAB_COMPLIANCE;
+                const showLink = !actionTab || (actionTab === TAB_MAINTENANCE && canUseOpsMaintenance) || (actionTab === TAB_RISK_SIGNALS && canUseOpsPredictive) || actionTab === TAB_EVIDENCE || actionTab === TAB_COMPLIANCE;
                 return (
                   <li key={item.id} className="border border-gray-200 rounded-lg bg-white overflow-hidden hover:border-gray-300 transition-colors">
                     <div className="p-4 flex gap-4">
@@ -3934,7 +3977,7 @@ export default function PropertyDetailPage() {
       )}
 
       {/* Tab: Risk Signals */}
-      {activeTab === TAB_RISK_SIGNALS && !hasFeature('predictive_maintenance') && (
+      {activeTab === TAB_RISK_SIGNALS && !canUseOpsPredictive && (
         <DiscoverabilityHint
           title={`${getFeatureDisplayInfo('predictive_maintenance').featureName} — operational insight`}
           body="Predictive signals and asset-linked insight are included on portfolio-scale plans. Resolving a signal does not by itself restore compliance."
@@ -3947,7 +3990,7 @@ export default function PropertyDetailPage() {
           }
         />
       )}
-      {activeTab === TAB_RISK_SIGNALS && hasFeature('predictive_maintenance') && (
+      {activeTab === TAB_RISK_SIGNALS && canUseOpsPredictive && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-midnight-blue">Risk signals</h2>
           {riskSignalsLoading ? (
@@ -3970,8 +4013,8 @@ export default function PropertyDetailPage() {
               )}
               <ul className="space-y-3">
                 {riskSignalsData.signals.map((s) => {
-                  const hasMaint = hasFeature('maintenance_workflows');
-                  const hasComp = hasFeature('compliance_engine');
+                  const hasMaint = canUseOpsMaintenance;
+                  const hasComp = canUseOpsComplianceReview;
                   const { key: primaryKey, label: primaryLabel } = resolveRiskSignalPrimaryKey(s, hasMaint, hasComp);
 
                   const onCreateWo = async () => {
@@ -4086,14 +4129,14 @@ export default function PropertyDetailPage() {
       )}
 
       {/* Tab: Assets */}
-      {activeTab === TAB_ASSETS && !hasFeature('maintenance_workflows') && !hasFeature('predictive_maintenance') && (
+      {activeTab === TAB_ASSETS && !canUseOpsMaintenance && !canUseOpsPredictive && (
         <DiscoverabilityHint
           title="Property assets — portfolio-scale tooling"
           body="Track equipment and link assets to maintenance when jobs and risk tooling are enabled. Your core compliance views stay unchanged."
           onCta={() => navigate(buildSafeQueryPath('/settings/billing', { upgrade_to: 'PLAN_2_PORTFOLIO' }))}
         />
       )}
-      {activeTab === TAB_ASSETS && (hasFeature('maintenance_workflows') || hasFeature('predictive_maintenance')) && (
+      {activeTab === TAB_ASSETS && (canUseOpsMaintenance || canUseOpsPredictive) && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-midnight-blue">Property assets</h2>
           <p className="text-sm text-gray-600">Key systems and equipment. Assets are created automatically during property setup or you can add more.</p>
@@ -4151,7 +4194,7 @@ export default function PropertyDetailPage() {
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Open issues</p>
                     <p className="text-lg font-semibold text-amber-600">{assetsSummary.with_open_issues ?? 0}</p>
                   </div>
-                  {hasFeature('predictive_maintenance') && (
+                  {canUseOpsPredictive && (
                     <div className="p-3 rounded-lg border border-gray-200 bg-white">
                       <p className="text-xs text-gray-500 uppercase tracking-wide">Elevated risk</p>
                       <p className="text-lg font-semibold text-red-600">{assetsSummary.with_elevated_risk ?? 0}</p>
@@ -4283,7 +4326,7 @@ export default function PropertyDetailPage() {
                       ))}
                     </ul>
                   ) : <p className="text-sm text-gray-500">No events yet.</p>}
-                  {hasFeature('predictive_maintenance') && (
+                  {canUseOpsPredictive && (
                     <>
                       <h4 className="font-medium mt-4 mb-2">Risk signals</h4>
                       <p className="text-sm text-gray-500">View risk signals on the Risk signals tab.</p>

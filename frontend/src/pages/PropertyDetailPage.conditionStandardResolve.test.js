@@ -8,9 +8,15 @@ const mockOpenGuidedEvidence = jest.fn();
 const mockHasFeature = jest.fn(() => false);
 let mockLocationSearch = '?open=resolve&requirement_id=req-rs';
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({ hasFeature: mockHasFeature }),
-}));
+jest.mock('../utils/propertyCapabilityAccess', () => {
+  const actual = jest.requireActual('../utils/propertyCapabilityAccess');
+  return {
+    ...actual,
+    usePropertyWorkflowCapabilities: jest.fn(),
+  };
+});
+
+const { usePropertyWorkflowCapabilities } = require('../utils/propertyCapabilityAccess');
 
 jest.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { portal_user_id: 'user-1' } }),
@@ -105,6 +111,9 @@ function stubPropertyApis(matrix) {
 describe('PropertyDetailPage ?open=resolve condition-standard', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
+    usePropertyWorkflowCapabilities.mockImplementation(() =>
+      require('../testUtils/propertyWorkflowTestCapabilities').defaultPropertyWorkflowTestCaps(mockHasFeature),
+    );
     mockNavigate.mockReset();
     mockOpenGuidedEvidence.mockReset();
     mockLocationSearch = '?open=resolve&requirement_id=req-rs';

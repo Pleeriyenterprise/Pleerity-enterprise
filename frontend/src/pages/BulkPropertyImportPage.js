@@ -23,10 +23,16 @@ import {
 import { portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { JURISDICTION_OPTIONS } from '../utils/jurisdictionComplianceCopy';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  usePropertyCapabilities,
+} from '../utils/propertyCapabilityAccess';
 
 const BulkPropertyImportPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { canImportProperties } = usePropertyCapabilities();
   const [parsedData, setParsedData] = useState([]);
   const [errors, setErrors] = useState([]);
   const [importing, setImporting] = useState(false);
@@ -130,6 +136,7 @@ const BulkPropertyImportPage = () => {
   };
 
   const handleImport = async () => {
+    if (!canImportProperties) return;
     if (parsedData.length === 0) {
       toast.error('No properties to import');
       return;
@@ -163,7 +170,11 @@ const BulkPropertyImportPage = () => {
         );
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Import failed');
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Import failed'));
+      } else {
+        toast.error(error.response?.data?.detail || 'Import failed');
+      }
     } finally {
       setImporting(false);
     }
