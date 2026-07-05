@@ -31,14 +31,19 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { toast } from '@/utils/portalNotifications';
 import api from '../api/client';
 import { DiscoverabilityHint, GrowthCapabilityPanel } from '../components/client/PlanGatingDiscoverability';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useIntegrationCapabilities } from '../utils/integrationCapabilityAccess';
 import { PortalLoadingPanel, portalPageRoot } from '../components/client/ClientPortalPatterns';
 import { cn } from '../lib/utils';
 import { buildSafeQueryPath } from '../utils/clientPortalNavigation';
 
 const IntegrationsPage = () => {
   const navigate = useNavigate();
-  const { hasFeature } = useEntitlements();
+  const {
+    canViewWebhooks,
+    canWriteWebhooks,
+    canViewReadApiKeys,
+    canWriteReadApiKeys,
+  } = useIntegrationCapabilities();
   const [loading, setLoading] = useState(true);
   const [webhooks, setWebhooks] = useState([]);
   const [availableEvents, setAvailableEvents] = useState([]);
@@ -58,7 +63,7 @@ const IntegrationsPage = () => {
   const [webhookDeliveriesLoading, setWebhookDeliveriesLoading] = useState(false);
   const [webhookDeliveriesFailedOnly, setWebhookDeliveriesFailedOnly] = useState(false);
 
-  const hasWebhooksAccess = hasFeature('webhooks');
+  const hasWebhooksAccess = canViewWebhooks;
 
   useEffect(() => {
     if (!hasWebhooksAccess) {

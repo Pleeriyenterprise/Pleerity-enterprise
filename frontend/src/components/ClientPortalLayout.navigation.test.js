@@ -55,6 +55,8 @@ jest.mock('../utils/accountCapabilityAccess', () => ({
     navHasFeature: () => true,
     showReports: true,
     showBilling: true,
+    showCalendar: true,
+    showAssistant: true,
     invoicingEnabled: true,
   }),
   useProfileCapabilities: () => ({

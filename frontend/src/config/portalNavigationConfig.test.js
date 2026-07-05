@@ -41,6 +41,7 @@ describe('portalNavigationConfig', () => {
       navHasFeature: allFeatures,
       showReports: true,
       showBilling: true,
+      showCalendar: true,
       userRole: 'ROLE_CLIENT_ADMIN',
     });
 
@@ -61,10 +62,11 @@ describe('portalNavigationConfig', () => {
       navHasFeature: (key) => key !== 'tenant_portal',
       showReports: false,
       showBilling: false,
+      showCalendar: false,
       userRole: 'ROLE_CLIENT',
     });
 
-    expect(model.secondaryItems.map((i) => i.label)).toEqual(['Calendar', 'Settings']);
+    expect(model.secondaryItems.map((i) => i.label)).toEqual(['Settings']);
   });
 
   it('detects operations and secondary paths', () => {

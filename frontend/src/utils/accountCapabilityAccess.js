@@ -11,6 +11,8 @@ import {
 import { BILLING_CAPABILITY } from './billingCapabilityAccess';
 import { REPORT_CAPABILITY } from './reportCapabilityAccess';
 import { OPS_CAPABILITY } from './operationalCapabilityAccess';
+import { INTEGRATION_CAPABILITY } from './integrationCapabilityAccess';
+import { CALENDAR_CAPABILITY } from './calendarCapabilityAccess';
 
 /** Runtime Contract capability ids for profile, support, and account settings. */
 export const ACCOUNT_CAPABILITY = {
@@ -40,6 +42,18 @@ export const NAV_FEATURE_CAPABILITY = {
   tenant_portal: { capabilityId: ACCOUNT_CAPABILITY.TENANT_PORTAL, action: 'read' },
   white_label_reports: { capabilityId: ACCOUNT_CAPABILITY.BRANDING_WHITE_LABEL, action: 'read' },
   sms_reminders: { capabilityId: ACCOUNT_CAPABILITY.NOTIF_SMS, action: 'read' },
+  webhooks: { capabilityId: INTEGRATION_CAPABILITY.WEBHOOKS, action: 'read' },
+  compliance_calendar: { capabilityId: CALENDAR_CAPABILITY.VIEW, action: 'read' },
+};
+
+/** Route gates keyed by legacy presentation feature id. */
+export const ACCOUNT_ROUTE_CAPABILITY = {
+  reports_pdf: { capabilityId: REPORT_CAPABILITY.AUDIT_PACK, action: 'read', presentationFeature: 'reports_pdf' },
+  white_label_reports: { capabilityId: ACCOUNT_CAPABILITY.BRANDING_WHITE_LABEL, action: 'read', presentationFeature: 'white_label_reports' },
+  tenant_portal: { capabilityId: ACCOUNT_CAPABILITY.TENANT_PORTAL, action: 'read', presentationFeature: 'tenant_portal' },
+  webhooks: { capabilityId: INTEGRATION_CAPABILITY.WEBHOOKS, action: 'read', presentationFeature: 'webhooks' },
+  rent_operations: { capabilityId: OPS_CAPABILITY.OPS_RENT, action: 'read', presentationFeature: 'rent_operations' },
+  compliance_calendar: { capabilityId: CALENDAR_CAPABILITY.VIEW, action: 'read', presentationFeature: 'compliance_calendar' },
 };
 
 export function useProfileCapabilities() {
@@ -112,6 +126,8 @@ export function usePortalNavigationCapabilities() {
         capabilityAllowed(REPORT_CAPABILITY.GENERATE_CSV, 'read') ||
         capabilityAllowed(REPORT_CAPABILITY.DOWNLOAD, 'read'),
       showBilling: capabilityAllowed(BILLING_CAPABILITY.VIEW, 'read'),
+      showCalendar: capabilityAllowed(CALENDAR_CAPABILITY.VIEW, 'read'),
+      showAssistant: capabilityAllowed('CAP_AI_ASSISTANT', 'read'),
       invoicingEnabled: capabilityAllowed(OPS_CAPABILITY.OPS_APPROVALS, 'read'),
     }),
     [capabilityAllowed, navHasFeature],

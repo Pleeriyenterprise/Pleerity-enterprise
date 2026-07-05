@@ -21,6 +21,10 @@ jest.mock('uuid', () => ({
   v4: () => 'test-uuid-1',
 }));
 
+jest.mock('../hooks/usePortfolioUsageContext', () => ({
+  usePortfolioUsageContext: () => ({ usageContext: null, loading: false, refetch: jest.fn() }),
+}));
+
 // Mock intake API
 jest.mock('../api/client', () => ({
   publicAgreementsAPI: {

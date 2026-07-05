@@ -2,7 +2,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useAuth } from './AuthContext';
 import { clientAPI } from '../api/client';
 
-const EntitlementsContext = createContext(null);
+/**
+ * @deprecated Legacy entitlement fetch — customer permission authority is LifecycleRuntimeContext.
+ * Retained for admin tooling references only; not mounted in customer App tree after ILP-4 completion.
+ */
 
 /** Shown in UI only — never forward API exception text or `detail` to users. */
 export const ENTITLEMENTS_UNAVAILABLE_USER_MESSAGE =

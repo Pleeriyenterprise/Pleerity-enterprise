@@ -3,6 +3,12 @@ import { useLifecycleRuntime, LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE } from '../c
 import { UpgradeRequired } from '../components/UpgradePrompt';
 import { Button } from '../components/ui/button';
 import { OPERATIONAL_ROUTE_CAPABILITY } from './operationalCapabilityAccess';
+import { ACCOUNT_ROUTE_CAPABILITY } from './accountCapabilityAccess';
+
+export const ROUTE_CAPABILITY = {
+  ...OPERATIONAL_ROUTE_CAPABILITY,
+  ...ACCOUNT_ROUTE_CAPABILITY,
+};
 
 /**
  * Renders children only when the Runtime Contract grants the required capability.
@@ -40,7 +46,7 @@ export function CapabilityProtectedRoute({
   if (!capabilityAllowed(capabilityId, action)) {
     const featureKey =
       presentationFeature ||
-      Object.values(OPERATIONAL_ROUTE_CAPABILITY).find((r) => r.capabilityId === capabilityId)?.presentationFeature ||
+      Object.entries(ROUTE_CAPABILITY).find(([, r]) => r.capabilityId === capabilityId)?.[0] ||
       'maintenance_workflows';
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50" data-testid="capability-gate">
@@ -55,7 +61,26 @@ export function CapabilityProtectedRoute({
 }
 
 /**
- * Route gate keyed by legacy operational feature id (presentation metadata only).
+ * Route gate keyed by legacy presentation feature id (permission via Runtime Contract).
+ */
+export function AccountCapabilityProtectedRoute({ requiredFeature, children }) {
+  const route = ROUTE_CAPABILITY[requiredFeature];
+  if (!route) {
+    return children;
+  }
+  return (
+    <CapabilityProtectedRoute
+      capabilityId={route.capabilityId}
+      action={route.action}
+      presentationFeature={route.presentationFeature || requiredFeature}
+    >
+      {children}
+    </CapabilityProtectedRoute>
+  );
+}
+
+/**
+ * Route gate keyed by legacy operational presentation feature id.
  */
 export function OperationalCapabilityProtectedRoute({ requiredFeature, children }) {
   const route = OPERATIONAL_ROUTE_CAPABILITY[requiredFeature];

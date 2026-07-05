@@ -51,7 +51,7 @@ export { PORTAL_TABS };
 
 export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { user, logout, isClient } = useAuth();
-  const { navHasFeature, showReports, showBilling, invoicingEnabled } = usePortalNavigationCapabilities();
+  const { navHasFeature, showReports, showBilling, showCalendar, showAssistant, invoicingEnabled } = usePortalNavigationCapabilities();
   const { canEditProfile } = useProfileCapabilities();
   const { navigationPolicy } = usePortalMode();
   const navigate = useNavigate();
@@ -237,6 +237,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
           navHasFeature,
           showReports,
           showBilling,
+          showCalendar,
           userRole: user?.role,
         }),
         navigationPolicy,
@@ -415,6 +416,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                   )}
                 </div>
               )}
+              {showAssistant && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -425,6 +427,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                 <MessageSquare className="w-4 h-4 sm:mr-1.5 shrink-0" />
                 <span className="hidden sm:inline">Ask Assistant</span>
               </Button>
+              )}
               <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial justify-end">
                 {headerAvatarUrl && (
                   <div className="w-9 h-9 rounded-full overflow-hidden border border-white/30 shrink-0">

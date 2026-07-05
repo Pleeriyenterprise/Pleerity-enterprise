@@ -2,10 +2,9 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, Outlet, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
-import { EntitlementsProvider } from './contexts/EntitlementsContext';
 import { LifecycleRuntimeProvider } from './contexts/LifecycleRuntimeContext';
 import { ProtectedRoute } from './utils/ProtectedRoute';
-import { EntitlementProtectedRoute } from './utils/EntitlementProtectedRoute';
+import { AccountCapabilityProtectedRoute } from './utils/CapabilityProtectedRoute';
 import { Toaster } from './components/ui/sonner';
 import TawkToWidget from './components/TawkToWidget';
 import './App.css';
@@ -282,7 +281,6 @@ function App() {
   return (
     <HelmetProvider>
       <AuthProvider>
-        <EntitlementsProvider>
         <LifecycleRuntimeProvider>
         <BrowserRouter>
           <ScrollToTop />
@@ -396,9 +394,9 @@ function App() {
               <Route
                 path="audit-pack"
                 element={
-                  <EntitlementProtectedRoute requiredFeature="reports_pdf">
+                  <AccountCapabilityProtectedRoute requiredFeature="reports_pdf">
                     <ReportsAuditPackPage />
-                  </EntitlementProtectedRoute>
+                  </AccountCapabilityProtectedRoute>
                 }
               />
             </Route>
@@ -413,7 +411,7 @@ function App() {
               <Route path="inbox" element={<ClientNotificationInboxPage />} />
               <Route path="billing" element={<BillingPage />} />
               <Route path="billing/receipts" element={<Navigate to="/settings/billing?tab=account" replace />} />
-              <Route path="branding" element={<EntitlementProtectedRoute requiredFeature="white_label_reports"><BrandingSettingsPage /></EntitlementProtectedRoute>} />
+              <Route path="branding" element={<AccountCapabilityProtectedRoute requiredFeature="white_label_reports"><BrandingSettingsPage /></AccountCapabilityProtectedRoute>} />
             </Route>
             <Route path="/tenant" element={<ClientPortal><Outlet /></ClientPortal>}>
               <Route index element={<TenantDashboard />} />
@@ -425,9 +423,9 @@ function App() {
               path="/tenants"
               element={
                 <ClientPortal>
-                  <EntitlementProtectedRoute requiredFeature="tenant_portal">
+                  <AccountCapabilityProtectedRoute requiredFeature="tenant_portal">
                     <TenantsLayout />
-                  </EntitlementProtectedRoute>
+                  </AccountCapabilityProtectedRoute>
                 </ClientPortal>
               }
             >
@@ -437,7 +435,7 @@ function App() {
               <Route path="delivery" element={<ClientTenantComplianceDeliveryPage />} />
             </Route>
             <Route path="/compliance/tenant-delivery" element={<ClientPortal><ComplianceTenantDeliveryRedirect /></ClientPortal>} />
-            <Route path="/integrations" element={<ClientPortal><EntitlementProtectedRoute requiredFeature="webhooks"><IntegrationsPage /></EntitlementProtectedRoute></ClientPortal>} />
+            <Route path="/integrations" element={<ClientPortal><AccountCapabilityProtectedRoute requiredFeature="webhooks"><IntegrationsPage /></AccountCapabilityProtectedRoute></ClientPortal>} />
             <Route path="/orders/:orderId/provide-info" element={<ClientPortal><ClientProvideInfoPage /></ClientPortal>} />
             <Route path="/orders" element={<ClientPortal><ClientOrdersPage /></ClientPortal>} />
             {/* Operations (unified) */}
@@ -891,7 +889,6 @@ function App() {
           </ErrorBoundary>
         </BrowserRouter>
         </LifecycleRuntimeProvider>
-        </EntitlementsProvider>
     </AuthProvider>
     </HelmetProvider>
   );

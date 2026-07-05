@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useReportCapabilities } from '../utils/reportCapabilityAccess';
 import UpgradePrompt from '../components/UpgradePrompt';
 import api from '../api/client';
 import { toast } from '@/utils/portalNotifications';
@@ -258,10 +258,10 @@ function scoreDriverRequirementTitle(d) {
 }
 
 const ComplianceScorePage = () => {
-  const { hasFeature } = useEntitlements();
   const navigate = useNavigate();
   const { openGuidedEvidence } = useGuidedEvidenceModal();
-  const canExportScore = hasFeature('reports_pdf'); // Portfolio and Professional only
+  const { canGeneratePdf, canGenerateCsv } = useReportCapabilities();
+  const canExportScore = canGeneratePdf || canGenerateCsv;
   const [scoreData, setScoreData] = useState(null);
   const [properties, setProperties] = useState([]);
   const [requirements, setRequirements] = useState([]);

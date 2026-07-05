@@ -7,8 +7,21 @@ import AssistantPage from './AssistantPage';
 import axios from 'axios';
 
 jest.mock('axios');
+jest.mock('../components/client/ClientPortalPatterns', () => ({
+  portalPageRoot: 'portal-page-root',
+}));
 jest.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { email: 'test@test.com' }, logout: jest.fn() }),
+}));
+
+jest.mock('../components/UpgradePrompt', () => ({
+  UpgradeRequired: ({ feature }) => <div data-testid="assistant-gate">gate:{feature}</div>,
+}));
+jest.mock('../utils/assistantCapabilityAccess', () => ({
+  useAssistantCapabilities: () => ({
+    canViewAssistant: true,
+    canUseAssistant: true,
+  }),
 }));
 
 describe('AssistantPage', () => {

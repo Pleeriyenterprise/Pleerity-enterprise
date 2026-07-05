@@ -10,7 +10,6 @@ jest.mock('../api/client', () => ({
 }));
 
 const mockNavigate = jest.fn();
-const mockHasFeature = jest.fn(() => false);
 const mockOpenGuidedEvidence = jest.fn();
 
 jest.mock('react-router-dom', () => {
@@ -21,8 +20,12 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({ hasFeature: mockHasFeature }),
+jest.mock('../utils/reportCapabilityAccess', () => ({
+  ...jest.requireActual('../utils/reportCapabilityAccess'),
+  useReportCapabilities: () => ({
+    canGeneratePdf: false,
+    canGenerateCsv: false,
+  }),
 }));
 
 jest.mock('../context/GuidedEvidenceModalContext', () => ({

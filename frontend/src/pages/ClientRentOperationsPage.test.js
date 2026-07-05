@@ -33,8 +33,8 @@ jest.mock('../api/client', () => ({
   },
 }));
 
-jest.mock('../utils/EntitlementProtectedRoute', () => ({
-  EntitlementProtectedRoute: ({ children }) => <>{children}</>,
+jest.mock('../utils/CapabilityProtectedRoute', () => ({
+  AccountCapabilityProtectedRoute: ({ children }) => <>{children}</>,
 }));
 
 describe('ClientRentOperationsPage', () => {

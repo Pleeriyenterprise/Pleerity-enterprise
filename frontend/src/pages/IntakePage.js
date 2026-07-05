@@ -34,7 +34,7 @@ import {
 import { toast } from '@/utils/portalNotifications';
 import { v4 as uuidv4 } from 'uuid';
 import { PropertyLimitPrompt } from '../components/UpgradePrompt';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { usePortfolioUsageContext } from '../hooks/usePortfolioUsageContext';
 import { BRAND_LOGO_URL, branding } from '../config/branding';
 import { JURISDICTION_OPTIONS } from '../utils/jurisdictionComplianceCopy';
 import {
@@ -1617,7 +1617,7 @@ const Step2SelectPlan = ({
 // STEP 3: PROPERTIES
 // ============================================================================
 const Step3Properties = ({ formData, setFormData, updateProperty, addProperty, removeProperty, propertyLimitError, setPropertyLimitError, onNext, onBack, goToStep, leadPropertyCountHint }) => {
-  const { usageContext } = useEntitlements();
+  const { usageContext } = usePortfolioUsageContext();
   const existingPortfolioCount =
     typeof usageContext?.property_count === 'number' ? usageContext.property_count : 0;
   const maxProperties = PLAN_LIMITS[formData.billing_plan] ?? 2;

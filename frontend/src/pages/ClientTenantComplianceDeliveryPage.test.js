@@ -5,8 +5,9 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ClientTenantComplianceDeliveryPage from './ClientTenantComplianceDeliveryPage';
 
-const mockHasFeature = jest.fn();
 const mockApiGet = jest.fn();
+const mockCanViewTenantDeliveries = jest.fn(() => true);
+const mockCanSendTenantDelivery = jest.fn(() => false);
 
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
@@ -24,11 +25,17 @@ jest.mock('../api/client', () => ({
   },
 }));
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({
-    hasFeature: (...args) => mockHasFeature(...args),
-    entitlementsLoadFailed: false,
+jest.mock('../contexts/LifecycleRuntimeContext', () => ({
+  useLifecycleRuntime: () => ({
     loading: false,
+    capabilityAllowed: () => true,
+  }),
+}));
+
+jest.mock('../utils/tenantCapabilityAccess', () => ({
+  useTenantCapabilities: () => ({
+    canViewTenantDeliveries: mockCanViewTenantDeliveries(),
+    canSendTenantDelivery: mockCanSendTenantDelivery(),
   }),
 }));
 
@@ -36,24 +43,25 @@ jest.mock('../components/UpgradePrompt', () => ({
   UpgradeRequired: ({ feature }) => <div data-testid="upgrade-required">upgrade:{feature}</div>,
 }));
 
-describe('ClientTenantComplianceDeliveryPage entitlements', () => {
+describe('ClientTenantComplianceDeliveryPage capabilities', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCanViewTenantDeliveries.mockReturnValue(true);
+    mockCanSendTenantDelivery.mockReturnValue(false);
     mockApiGet.mockResolvedValue({ data: { properties: [], tenants: [], items: [], provider_evidence_notice: '' } });
   });
 
-  it('gates page by tenant_portal entitlement', () => {
-    mockHasFeature.mockImplementation((f) => f !== 'tenant_portal');
+  it('gates page when tenant manage read capability is denied', () => {
+    mockCanViewTenantDeliveries.mockReturnValue(false);
     render(<ClientTenantComplianceDeliveryPage />);
 
     expect(screen.getByTestId('upgrade-required')).toHaveTextContent('upgrade:tenant_portal');
   });
 
-  it('keeps send action disabled without reports_pdf even when tenant_portal exists', async () => {
-    mockHasFeature.mockImplementation((f) => f === 'tenant_portal');
+  it('keeps send action disabled without report generate write even when tenant delivery read is allowed', async () => {
     render(<ClientTenantComplianceDeliveryPage />);
 
-    expect(await screen.findByText(/same as the governed email payload/i)).toBeInTheDocument();
+    expect(await screen.findByText(/PDF report generation/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /send compliance pack/i })).toBeDisabled();
   });
 });

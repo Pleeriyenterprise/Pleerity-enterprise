@@ -15,7 +15,6 @@ import {
   normalizeRouteId,
   resolvePropertyPath,
 } from '../../utils/clientPortalNavigation';
-import { useEntitlements } from '../../contexts/EntitlementsContext';
 import { getFeatureDisplayInfo } from '../UpgradePrompt';
 
 /** Calm, operational framing — discoverability lives in Billing, not punitive “locked” language. */
@@ -54,7 +53,6 @@ export function openPlanRestrictedJobGate(error, setGate, context = {}) {
  */
 export function PlanRestrictedJobModal({ gate, onDismiss }) {
   const navigate = useNavigate();
-  const { entitlements } = useEntitlements();
   const open = Boolean(gate);
   const kind = gate?.kind === 'maintenance_job' ? 'maintenance_job' : 'compliance_job';
   const upgradeDetail = gate?.upgradeDetail ?? null;
@@ -67,8 +65,8 @@ export function PlanRestrictedJobModal({ gate, onDismiss }) {
       upgradeDetail?.feature ||
       upgradeDetail?.feature_key ||
       (kind === 'compliance_job' ? 'maintenance_workflows' : 'maintenance_workflows');
-    return getFeatureDisplayInfo(fk, entitlements).requiredPlan;
-  }, [upgradeDetail, entitlements, gate?.billingFeatureFallbackKey, kind]);
+    return getFeatureDisplayInfo(fk).requiredPlan;
+  }, [upgradeDetail, gate?.billingFeatureFallbackKey, kind]);
 
   const pid = normalizeRouteId(gate?.propertyId);
   const rid = normalizeRouteId(gate?.requirementId);
