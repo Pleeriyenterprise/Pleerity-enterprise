@@ -30,8 +30,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { toast } from '@/utils/portalNotifications';
 import api, { clientAPI } from '../api/client';
-import { useEntitlements } from '../contexts/EntitlementsContext';
-import { formatUpgradeUsageContext } from '../components/UpgradePrompt';
+import {
+  formatBillingUsageHint,
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  useBillingCapabilities,
+} from '../utils/billingCapabilityAccess';
 import { PortalLoadingPanel, portalPageRoot, PortalPageWithLifecyclePresentation } from '../components/client/ClientPortalPatterns';
 import { useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
@@ -314,12 +318,18 @@ function planStatusLabel(bs) {
 
 const BillingPage = () => {
   const navigate = useNavigate();
-  const { usageContext, refetch: refetchEntitlements } = useEntitlements();
+  const {
+    canViewBilling,
+    canViewInvoices,
+    canViewPaymentMethods,
+    canCheckout,
+    canManageSubscription,
+    canCancelSubscription,
+  } = useBillingCapabilities();
   const { customerExperience } = useLifecycleRuntime();
-  const billingUsageHint = formatUpgradeUsageContext(usageContext);
-  const [usageRefreshing, setUsageRefreshing] = useState(false);
   const billingStepUp = useStepUpApi();
   const [searchParams] = useSearchParams();
+  const [usageRefreshing, setUsageRefreshing] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
   const [billingStatus, setBillingStatus] = useState(null);
@@ -336,6 +346,8 @@ const BillingPage = () => {
   const [pdfReceipts, setPdfReceipts] = useState([]);
   const [portalOpening, setPortalOpening] = useState(false);
   const [planCatalog, setPlanCatalog] = useState(null);
+
+  const billingUsageHint = useMemo(() => formatBillingUsageHint(billingStatus), [billingStatus]);
 
   const highlightPlan = searchParams.get('upgrade_to');
 
@@ -359,38 +371,67 @@ const BillingPage = () => {
     });
   }, [planCatalog]);
 
-  const fetchBillingStatus = async () => {
+  const fetchBillingStatus = useCallback(async () => {
+    if (!canViewBilling) return;
     try {
       const response = await api.get('/billing/status');
       setBillingStatus(response.data);
     } catch (error) {
-      console.error('Failed to fetch billing status:', error);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to load billing status'));
+      } else {
+        console.error('Failed to fetch billing status:', error);
+      }
     }
-  };
+  }, [canViewBilling]);
+
+  const fetchInvoices = useCallback(async () => {
+    if (!canViewInvoices) {
+      setInvoices([]);
+      return;
+    }
+    try {
+      const response = await api.get('/billing/invoices');
+      setInvoices(response.data.invoices || []);
+    } catch (error) {
+      if (isCapabilityDeniedApiError(error)) {
+        setInvoices([]);
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to load invoices'));
+      } else {
+        console.error('Failed to fetch invoices:', error);
+      }
+    }
+  }, [canViewInvoices]);
 
   const handleRefreshUsage = useCallback(async () => {
     setUsageRefreshing(true);
     try {
-      const ok = await refetchEntitlements();
-      try {
-        const response = await api.get('/billing/status');
-        setBillingStatus(response.data);
-      } catch (e) {
-        console.error('Failed to refresh billing status:', e);
+      await fetchEntitlements();
+      if (canViewBilling) {
+        try {
+          const response = await api.get('/billing/status');
+          setBillingStatus(response.data);
+        } catch (e) {
+          if (isCapabilityDeniedApiError(e)) {
+            toast.error(getCapabilityDeniedMessage(e, 'Could not refresh billing status'));
+          } else {
+            console.error('Failed to refresh billing status:', e);
+          }
+        }
       }
-      if (ok) {
-        toast.success('Usage data updated');
-      } else {
-        toast.error('Could not refresh usage data');
-      }
+      toast.success('Usage data updated');
     } finally {
       setUsageRefreshing(false);
     }
-  }, [refetchEntitlements]);
+  }, [canViewBilling]);
 
   useEffect(() => {
     fetchEntitlements();
-    fetchBillingStatus();
+    if (canViewBilling) {
+      fetchBillingStatus();
+    } else {
+      setLoading(false);
+    }
     const loadPlans = async () => {
       try {
         const res = await api.get('/billing/plans');
@@ -406,7 +447,7 @@ const BillingPage = () => {
       expanded[cat.name] = true;
     });
     setExpandedCategories(expanded);
-  }, []);
+  }, [canViewBilling, fetchBillingStatus]);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -423,44 +464,48 @@ const BillingPage = () => {
         description: 'Your plan change is being confirmed. This may take a moment.',
       });
       fetchBillingStatus();
-      refetchEntitlements();
+      fetchEntitlements();
     } else if (checkoutReturn === 'cancelled') {
       toast.info('Checkout cancelled', {
         description: 'No changes were made. You can choose a plan again when ready.',
       });
     }
     navigate('/settings/billing', { replace: true });
-  }, [searchParams, navigate, refetchEntitlements]);
+  }, [searchParams, navigate, canViewBilling, fetchBillingStatus]);
 
   useEffect(() => {
-    if (!billingStatus?.has_subscription) {
+    if (!canViewInvoices) {
       setInvoices([]);
       return;
     }
     if (billingMainTab === 'account') {
       fetchInvoices();
     }
-  }, [billingStatus?.has_subscription, billingMainTab]);
+  }, [canViewInvoices, billingMainTab, fetchInvoices]);
 
   useEffect(() => {
     if (billingMainTab !== 'account') return;
     const loadPm = async () => {
-      if (!billingStatus?.has_subscription) {
+      if (!canViewPaymentMethods) {
         setPaymentMethodInfo(null);
         return;
       }
       try {
         const res = await api.get('/billing/payment-method-summary');
         setPaymentMethodInfo(res.data);
-      } catch {
-        setPaymentMethodInfo(null);
+      } catch (e) {
+        if (isCapabilityDeniedApiError(e)) {
+          setPaymentMethodInfo(null);
+        } else {
+          setPaymentMethodInfo(null);
+        }
       }
     };
     loadPm();
-  }, [billingMainTab, billingStatus?.has_subscription]);
+  }, [billingMainTab, canViewPaymentMethods]);
 
   useEffect(() => {
-    if (billingMainTab !== 'account' || !billingStatus?.has_subscription) {
+    if (billingMainTab !== 'account' || !canViewInvoices) {
       setPdfReceipts([]);
       return;
     }
@@ -473,7 +518,7 @@ const BillingPage = () => {
       }
     };
     loadPdf();
-  }, [billingMainTab, billingStatus?.has_subscription]);
+  }, [billingMainTab, canViewInvoices]);
 
   useEffect(() => {
     if (!showCancelModal) return;
@@ -497,6 +542,7 @@ const BillingPage = () => {
   }, [showCancelModal]);
 
   const openBillingPortal = async () => {
+    if (!canManageSubscription) return;
     setPortalOpening(true);
     try {
       const origin = window.location.origin;
@@ -510,7 +556,11 @@ const BillingPage = () => {
       }
     } catch (e) {
       if (e?.message === 'step_up_cancelled') return;
-      toast.error(e.response?.data?.detail || 'Billing portal unavailable');
+      if (isCapabilityDeniedApiError(e)) {
+        toast.error(getCapabilityDeniedMessage(e, 'Billing portal unavailable'));
+      } else {
+        toast.error(e.response?.data?.detail || 'Billing portal unavailable');
+      }
     } finally {
       setPortalOpening(false);
     }
@@ -529,16 +579,8 @@ const BillingPage = () => {
     }
   };
 
-  const fetchInvoices = async () => {
-    try {
-      const response = await api.get('/billing/invoices');
-      setInvoices(response.data.invoices || []);
-    } catch (error) {
-      console.error('Failed to fetch invoices:', error);
-    }
-  };
-
   const handleCancelSubscription = async (cancelImmediately = false) => {
+    if (!canCancelSubscription) return;
     setCancelling(true);
     try {
       await billingStepUp.request((headers) =>
@@ -565,8 +607,12 @@ const BillingPage = () => {
         return;
       }
       console.error('Cancel error:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to cancel subscription';
-      toast.error(errorMessage);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to cancel subscription'));
+      } else {
+        const errorMessage = error.response?.data?.detail || 'Failed to cancel subscription';
+        toast.error(errorMessage);
+      }
     } finally {
       setCancelling(false);
     }
@@ -580,6 +626,7 @@ const BillingPage = () => {
   };
 
   const handlePlanChange = async (planCode) => {
+    if (!canCheckout) return;
     if (planCode === currentPlan) {
       toast.info('You are already on this plan');
       return;
@@ -619,13 +666,17 @@ const BillingPage = () => {
       }
       console.error('Plan change error:', error);
       const detail = error.response?.data?.detail;
-      const errorMessage =
-        typeof detail === 'object' && detail?.message
-          ? detail.message
-          : typeof detail === 'string'
-            ? detail
-            : 'Failed to start plan change';
-      toast.error(errorMessage);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to start plan change'));
+      } else {
+        const errorMessage =
+          typeof detail === 'object' && detail?.message
+            ? detail.message
+            : typeof detail === 'string'
+              ? detail
+              : 'Failed to start plan change';
+        toast.error(errorMessage);
+      }
       setUpgrading(null);
     }
   };
@@ -871,8 +922,8 @@ const BillingPage = () => {
                 <div>
                   <p className="text-gray-500">Properties</p>
                   <p className="font-medium">
-                    {billingStatus?.has_subscription
-                      ? `${billingStatus.properties_used ?? usageContext?.property_count ?? '—'} / ${billingStatus.properties_limit ?? usageContext?.max_properties ?? '—'}`
+                    {canViewBilling && billingStatus?.has_subscription
+                      ? `${billingStatus.properties_used ?? '—'} / ${billingStatus.properties_limit ?? '—'}`
                       : '—'}
                   </p>
                 </div>
@@ -923,6 +974,8 @@ const BillingPage = () => {
               <CardContent className="space-y-4">
                 {!billingStatus?.has_subscription ? (
                   <p className="text-sm text-gray-600">Subscribe to a plan to add a payment method.</p>
+                ) : !canViewPaymentMethods ? (
+                  <p className="text-sm text-gray-600">Payment method details are not available for this account state.</p>
                 ) : (
                   <>
                     {paymentMethodInfo?.display && (
@@ -939,7 +992,7 @@ const BillingPage = () => {
                       variant="outline"
                       className="border-electric-teal text-electric-teal"
                       onClick={openBillingPortal}
-                      disabled={portalOpening}
+                      disabled={!canManageSubscription || portalOpening}
                     >
                       {portalOpening ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ExternalLink className="w-4 h-4 mr-2" />}
                       Update payment method in Stripe
@@ -958,7 +1011,11 @@ const BillingPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-10">
-                {!billingStatus?.has_subscription ? (
+                {!canViewInvoices ? (
+                  <p className="text-sm text-gray-600 py-2">
+                    Billing history is not available for this account state.
+                  </p>
+                ) : !billingStatus?.has_subscription ? (
                   <p className="text-sm text-gray-600 py-2">
                     No active subscription — billing history appears after you subscribe and pay.
                   </p>
@@ -1033,7 +1090,7 @@ const BillingPage = () => {
                                   size="sm"
                                   variant="outline"
                                   className="mt-3 min-h-11 w-full"
-                                  disabled={!r.invoice_number}
+                                  disabled={!canViewInvoices || !r.invoice_number}
                                   onClick={async () => {
                                     if (!r.invoice_number) return;
                                     try {
@@ -1087,7 +1144,7 @@ const BillingPage = () => {
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        disabled={!r.invoice_number}
+                                        disabled={!canViewInvoices || !r.invoice_number}
                                         onClick={async () => {
                                           if (!r.invoice_number) return;
                                           try {
@@ -1183,7 +1240,7 @@ const BillingPage = () => {
                   £{displayPlans.find((p) => p.code === currentPlan)?.monthlyPrice || 0}
                   <span className="text-lg font-normal text-gray-300">/mo</span>
                 </p>
-                {billingStatus?.has_subscription && !billingStatus?.cancel_at_period_end && (
+                {billingStatus?.has_subscription && !billingStatus?.cancel_at_period_end && canCancelSubscription && (
                   <button
                     onClick={() => setShowCancelModal(true)}
                     className="text-xs text-gray-400 hover:text-white mt-2 underline"
@@ -1301,7 +1358,7 @@ const BillingPage = () => {
                     }`}
                     variant={status === 'downgrade' ? 'outline' : 'default'}
                     onClick={() => handlePlanChange(plan.code)}
-                    disabled={status === 'current' || upgrading === plan.code}
+                    disabled={status === 'current' || upgrading === plan.code || !canCheckout}
                     data-testid={`upgrade-btn-${plan.code}`}
                   >
                     {upgrading === plan.code ? (

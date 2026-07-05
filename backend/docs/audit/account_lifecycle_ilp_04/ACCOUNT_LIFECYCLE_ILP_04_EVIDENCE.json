@@ -326,6 +326,49 @@
       "frontend/src/pages/ReportsPage.auditPackCta.test.js"
     ]
   },
+  "ilp4_frontend_billing_capability_migration": {
+    "domain": "billing",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T12:45:00Z",
+    "capabilities_consumed": [
+      "CAP_BILLING_VIEW",
+      "CAP_BILLING_INVOICES",
+      "CAP_BILLING_PAYMENT_METHODS",
+      "CAP_BILLING_CHECKOUT",
+      "CAP_SUB_MANAGE",
+      "CAP_SUB_CANCEL"
+    ],
+    "legacy_removed": [
+      "useEntitlements on BillingPage",
+      "hasFeature() permission decisions on BillingPage",
+      "UpgradePrompt on BillingPage",
+      "has_subscription used for permission gating (retained for display only)"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "READ_ONLY",
+      "SUSPENDED",
+      "ARCHIVED",
+      "ACCOUNT_DELETED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/BillingPage.js",
+      "frontend/src/utils/billingCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/billingCapabilityAccess.test.js",
+      "frontend/src/pages/BillingPage.capability.test.js"
+    ]
+  },
+  "latest_milestone_frontend_billing": "frontend_billing_capability_migration",
   "latest_milestone_frontend_documents": "frontend_documents_capability_migration",
   "latest_milestone_backend_completion_regression": "backend_completion_regression_checkpoint",
   "latest_milestone_previous": "billing_client_routes",
