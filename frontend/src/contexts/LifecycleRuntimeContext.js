@@ -37,6 +37,8 @@ const GOVERNED_FALLBACK = {
   warnings: ['lifecycle_runtime_unavailable'],
 };
 
+const EMPTY_CAPABILITIES = Object.freeze({});
+
 function isClientUser(user) {
   return Boolean(
     user &&
@@ -127,7 +129,7 @@ export function LifecycleRuntimeProvider({ children }) {
   const effectiveRuntime = runtime || GOVERNED_FALLBACK;
   const runtimeAvailable = Boolean(runtime);
   const portalMode = effectiveRuntime.portal_mode || 'FULL_ACCESS';
-  const capabilities = effectiveRuntime.capabilities || {};
+  const capabilities = effectiveRuntime.capabilities ?? EMPTY_CAPABILITIES;
 
   const capabilityAllowed = useCallback(
     (capabilityId, action = 'read') =>
@@ -207,7 +209,7 @@ export function useLifecycleRuntime() {
       runtimeVersion: null,
       lifecycleState: null,
       portalMode: 'FULL_ACCESS',
-      capabilities: {},
+      capabilities: EMPTY_CAPABILITIES,
       capabilityAllowed: () => false,
       getCapabilityGrant: () => ({ allowed: false, grant: 'HIDDEN', effectiveSemantic: 'HIDDEN' }),
       customerExperience: GOVERNED_FALLBACK.customer_experience,
