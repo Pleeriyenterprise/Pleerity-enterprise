@@ -172,7 +172,7 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "backend_completion_regression_checkpoint",
+  "latest_milestone": "frontend_documents_capability_migration",
   "runtime_contract_extensions_backend_completion": {
     "schema_modified": false,
     "new_capability_rows": [
@@ -257,7 +257,39 @@
       ]
     }
   },
-  "latest_milestone_backend_completion": "backend_completion",
+  "ilp4_frontend_documents_capability_migration": {
+    "domain": "documents",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T11:44:00Z",
+    "capabilities_consumed": [
+      "CAP_DOC_VIEW",
+      "CAP_DOC_UPLOAD",
+      "CAP_DOC_BULK_ZIP",
+      "CAP_AI_EXTRACTION_ADVANCED"
+    ],
+    "legacy_removed": [
+      "hasFeature(ai_extraction_advanced)",
+      "hasFeature(zip_upload)",
+      "useEntitlements on DocumentsPage",
+      "useEntitlements on BulkUploadPage",
+      "UpgradeRequired plan-gate UX on document pages"
+    ],
+    "frontend_files": [
+      "frontend/src/pages/DocumentsPage.js",
+      "frontend/src/pages/BulkUploadPage.js",
+      "frontend/src/utils/documentCapabilityAccess.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/documentCapabilityAccess.test.js",
+      "frontend/src/pages/DocumentsPage.capability.test.js",
+      "frontend/src/pages/DocumentsPage.layout.test.js",
+      "frontend/src/pages/BulkUploadPage.capability.test.js"
+    ]
+  },
+  "latest_milestone_backend_completion_regression": "backend_completion_regression_checkpoint",
   "latest_milestone_previous": "billing_client_routes",
   "runtime_contract_extensions_billing_client": {
     "schema_modified": false,
@@ -816,6 +848,7 @@
     "backend_completion_regression_tests_passed": 903,
     "frontend_capability_primitives_started": true,
     "frontend_capability_primitives_tests_passed": 20,
+    "frontend_documents_capability_migrated": true,
     "client_py_evidence_pack_migrated": true,
     "client_py_analytics_tenant_ops_migrated": true,
     "client_maintenance_migrated": true,

@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import api, { clientAPI, parseApiError, parseStructuredApiDetail } from '../api/client';
-import { useEntitlements } from '../contexts/EntitlementsContext';
-import { UpgradeRequired } from '../components/UpgradePrompt';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  useDocumentCapabilities,
+} from '../utils/documentCapabilityAccess';
 import EmptyState from '../components/EmptyState';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -105,7 +108,12 @@ const DocumentsPage = () => {
   const uploadTypeLookupLoggedRef = useRef(new Set());
   const [uploadDocTypeMap, setUploadDocTypeMap] = useState({});
   const [uploadDocTypeMapLoaded, setUploadDocTypeMapLoaded] = useState(false);
-  const { hasFeature } = useEntitlements();
+  const {
+    canViewDocuments,
+    canUploadDocuments,
+    canBulkZipUpload,
+    canUseAdvancedExtraction,
+  } = useDocumentCapabilities();
   const [documents, setDocuments] = useState([]);
   const [properties, setProperties] = useState([]);
   const [requirements, setRequirements] = useState([]);
@@ -120,7 +128,6 @@ const DocumentsPage = () => {
   const [reviewModal, setReviewModal] = useState(null);
   const [applying, setApplying] = useState(false);
   const [editedData, setEditedData] = useState({});
-  const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
   /** Optional L-009 `propagation_notice` from last document mutation — read-only async honesty. */
   const [documentPropagationNotice, setDocumentPropagationNotice] = useState(null);
   const [linkageReconcileModal, setLinkageReconcileModal] = useState(null);
@@ -364,7 +371,11 @@ const DocumentsPage = () => {
           setRequirementsLoaded(true);
         });
     } catch (error) {
-      toast.error('Failed to load documents');
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to load documents'));
+      } else {
+        toast.error('Failed to load documents');
+      }
       setLoading(false);
     }
   };
@@ -579,9 +590,8 @@ const DocumentsPage = () => {
 
   const analyzeDocument = async (documentId) => {
     setAnalyzing(documentId);
-    setUpgradeRequiredDetail(null);
     try {
-      const returnAdvanced = hasFeature('ai_extraction_advanced');
+      const returnAdvanced = canUseAdvancedExtraction;
       const response = await api.post(`/documents/analyze/${documentId}`, null, {
         params: { return_advanced: returnAdvanced }
       });
@@ -600,8 +610,8 @@ const DocumentsPage = () => {
         toast.error(response.data.error || 'Analysis failed');
       }
     } catch (error) {
-      if (error.isPlanGateDenied && error.upgradeDetail) {
-        setUpgradeRequiredDetail(error.upgradeDetail);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to analyze document'));
         return;
       }
       const d = error.response?.data?.detail;
@@ -724,9 +734,9 @@ const DocumentsPage = () => {
       setReviewModal(null);
       fetchData();
     } catch (error) {
-      if (error.isPlanGateDenied && error.upgradeDetail) {
+      if (isCapabilityDeniedApiError(error)) {
         setReviewModal(null);
-        setUpgradeRequiredDetail(error.upgradeDetail);
+        toast.error(getCapabilityDeniedMessage(error, 'Failed to apply extraction'));
         return;
       }
       const st = error.response?.status;
@@ -1153,6 +1163,7 @@ const DocumentsPage = () => {
           variant="outline"
           className="w-full sm:w-auto min-h-11 shrink-0"
           onClick={() => navigate('/documents/bulk-upload')}
+          disabled={!canBulkZipUpload}
           data-testid="bulk-upload-nav-btn"
         >
           <Files className="w-4 h-4 mr-2 shrink-0" />
@@ -1287,14 +1298,9 @@ const DocumentsPage = () => {
             </div>
           </div>
         )}
-        {upgradeRequiredDetail ? (
-          <div className="flex flex-col items-center justify-center py-12" data-testid="documents-upgrade-required">
-            <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
-            <Button variant="ghost" className="mt-4" onClick={() => setUpgradeRequiredDetail(null)}>Continue to documents</Button>
-          </div>
-        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Upload Form */}
+          {canUploadDocuments ? (
           <div className="lg:col-span-1">
             <Card id="upload-form-anchor" data-testid="upload-form-card">
               <CardHeader>
@@ -1470,9 +1476,10 @@ const DocumentsPage = () => {
               </CardContent>
             </Card>
           </div>
+          ) : null}
 
           {/* Documents List */}
-          <div className="lg:col-span-2">
+          <div className={canUploadDocuments ? 'lg:col-span-2' : 'lg:col-span-3'}>
             <Card data-testid="documents-list-card">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -1688,6 +1695,7 @@ const DocumentsPage = () => {
                                     <Button
                                       size="sm"
                                       onClick={() => openReviewModal(doc)}
+                                      disabled={!canUploadDocuments}
                                       className="w-full"
                                       data-testid={`review-btn-${doc.document_id}`}
                                     >
@@ -1702,6 +1710,7 @@ const DocumentsPage = () => {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => openReviewModal(doc)}
+                                      disabled={!canViewDocuments}
                                       className="w-full"
                                       data-testid={`view-extracted-data-${doc.document_id}`}
                                     >
@@ -1717,7 +1726,7 @@ const DocumentsPage = () => {
                             {shouldShowReviewAndApplyData(doc) && !doc.ai_extraction?.data && (
                               <div className="mt-3 p-3 bg-teal-50 rounded-lg border border-teal-100">
                                 <p className="text-sm text-teal-800 mb-2">Extracted document details are ready for review.</p>
-                                <Button size="sm" onClick={() => openReviewModal(doc)} className="w-full" data-testid={`review-extraction-btn-${doc.document_id}`}>
+                                <Button size="sm" onClick={() => openReviewModal(doc)} disabled={!canUploadDocuments} className="w-full" data-testid={`review-extraction-btn-${doc.document_id}`}>
                                   <FileCheck className="w-4 h-4 mr-2" />
                                   Review extraction
                                 </Button>
@@ -1750,6 +1759,7 @@ const DocumentsPage = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleViewDocument(doc)}
+                                disabled={!canViewDocuments}
                                 data-testid={`view-doc-btn-${doc.document_id}`}
                               >
                                 <Eye className="w-4 h-4 mr-1" />
@@ -1759,6 +1769,7 @@ const DocumentsPage = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleDownloadDocument(doc)}
+                                disabled={!canViewDocuments}
                                 data-testid={`download-doc-btn-${doc.document_id}`}
                               >
                                 <Download className="w-4 h-4 mr-1" />
@@ -1769,6 +1780,7 @@ const DocumentsPage = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => openLinkageReconcileModal(doc)}
+                                  disabled={!canUploadDocuments}
                                   className="border-orange-300 text-orange-900 hover:bg-orange-50"
                                   data-testid={`resolve-linkage-btn-${doc.document_id}`}
                                 >
@@ -1780,7 +1792,7 @@ const DocumentsPage = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleRemoveDocument(doc)}
-                                disabled={deletingDocumentId === doc.document_id}
+                                disabled={!canUploadDocuments || deletingDocumentId === doc.document_id}
                                 className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
                                 data-testid={`remove-doc-btn-${doc.document_id}`}
                               >
@@ -1799,6 +1811,7 @@ const DocumentsPage = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => openConfirmDetailsForDocument(doc)}
+                                disabled={!canUploadDocuments}
                                 data-testid={`confirm-details-btn-${doc.document_id}`}
                               >
                                 <Calendar className="w-4 h-4 mr-1" />
@@ -1810,7 +1823,7 @@ const DocumentsPage = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => analyzeDocument(doc.document_id)}
-                                disabled={analyzing === doc.document_id}
+                                disabled={!canViewDocuments || analyzing === doc.document_id}
                                 data-testid={`analyze-btn-${doc.document_id}`}
                               >
                                 {analyzing === doc.document_id ? (
@@ -1828,6 +1841,7 @@ const DocumentsPage = () => {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openReviewModal(doc)}
+                                disabled={!canUploadDocuments}
                                 data-testid={`edit-extraction-btn-${doc.document_id}`}
                               >
                                 <Edit3 className="w-4 h-4" />
@@ -1845,7 +1859,6 @@ const DocumentsPage = () => {
             </Card>
           </div>
         </div>
-        )}
       </div>
 
       {/* Review Modal */}
@@ -2066,6 +2079,7 @@ const DocumentsPage = () => {
                 <Button
                   variant="outline"
                   onClick={rejectExtraction}
+                  disabled={!canUploadDocuments}
                   className="flex-1"
                   data-testid="reject-extraction-btn"
                 >
@@ -2074,7 +2088,7 @@ const DocumentsPage = () => {
                 </Button>
                 <Button
                   onClick={applyExtraction}
-                  disabled={applying}
+                  disabled={!canUploadDocuments || applying}
                   className="flex-1"
                   data-testid="apply-extraction-btn"
                 >

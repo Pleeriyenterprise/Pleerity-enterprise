@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { LifecycleRuntimeProvider, usePortalMode, useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
+import { LifecycleRuntimeProvider, usePortalMode, useLifecycleRuntime, useCapability } from '../contexts/LifecycleRuntimeContext';
 import LifecycleShell, { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -46,6 +46,7 @@ function runtimePayload(overrides = {}) {
         navigation_policy: { locked_routes: [], read_only_routes: [], hidden_routes: [] },
         polling_policy: { enabled: false },
         warnings: [],
+        capabilities: {},
         ...overrides,
       },
     },
@@ -117,6 +118,45 @@ describe('LifecycleRuntimeProvider', () => {
     );
     await waitFor(() => {
       expect(screen.getByTestId('probe')).toHaveTextContent('1.0.0:42');
+    });
+  });
+
+  it('exposes runtime capabilities and useCapability hook', async () => {
+    clientAPI.getLifecycleRuntime.mockResolvedValue(
+      runtimePayload({
+        capabilities: {
+          CAP_DOC_VIEW: 'READ',
+          CAP_DOC_UPLOAD: 'ALLOW',
+          CAP_BILLING_VIEW: 'DENY',
+        },
+      }),
+    );
+
+    function CapabilityProbe() {
+      const docRead = useCapability('CAP_DOC_VIEW', 'read');
+      const docWrite = useCapability('CAP_DOC_VIEW', 'write');
+      const billing = useCapability('CAP_BILLING_VIEW', 'read');
+      const { capabilityAllowed } = useLifecycleRuntime();
+      return (
+        <div data-testid="cap-probe">
+          {docRead.allowed ? 'doc-read' : 'no-doc-read'}:
+          {docWrite.allowed ? 'doc-write' : 'no-doc-write'}:
+          {billing.allowed ? 'billing' : 'no-billing'}:
+          {capabilityAllowed('CAP_DOC_UPLOAD', 'write') ? 'upload' : 'no-upload'}
+        </div>
+      );
+    }
+
+    render(
+      <LifecycleRuntimeProvider>
+        <CapabilityProbe />
+      </LifecycleRuntimeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('cap-probe')).toHaveTextContent(
+        'doc-read:no-doc-write:no-billing:upload',
+      );
     });
   });
 });

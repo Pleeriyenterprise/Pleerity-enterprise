@@ -2,8 +2,11 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { clientAPI, parseApiError } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntitlements } from '../contexts/EntitlementsContext';
-import { UpgradeRequired } from '../components/UpgradePrompt';
+import {
+  getCapabilityDeniedMessage,
+  isCapabilityDeniedApiError,
+  useDocumentCapabilities,
+} from '../utils/documentCapabilityAccess';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from '@/utils/portalNotifications';
@@ -29,7 +32,7 @@ import { cn } from '../lib/utils';
 const BulkUploadPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { hasFeature } = useEntitlements();
+  const { canBulkZipUpload } = useDocumentCapabilities();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProperty, setSelectedProperty] = useState('');
@@ -40,11 +43,8 @@ const BulkUploadPage = () => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadMode, setUploadMode] = useState('files'); // 'files' or 'zip'
   const [zipFile, setZipFile] = useState(null);
-  const [upgradeRequiredDetail, setUpgradeRequiredDetail] = useState(null);
   /** Top-level L-009 notice from bulk or ZIP API (merged server-side when present). */
   const [bulkPropagationNotice, setBulkPropagationNotice] = useState(null);
-
-  const canUseZipUpload = hasFeature('zip_upload');
 
   useEffect(() => {
     fetchProperties();
@@ -232,18 +232,11 @@ const BulkUploadPage = () => {
       }
 
     } catch (error) {
-      if (error.isPlanGateDenied && error.upgradeDetail) {
-        setUpgradeRequiredDetail(error.upgradeDetail);
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'ZIP upload failed'));
       } else {
         const errorDetail = error.response?.data?.detail;
-        if (errorDetail?.error_code === 'PLAN_NOT_ELIGIBLE') {
-          toast.info(
-            `ZIP bulk upload is available on portfolio-scale plans. ${errorDetail.message || 'See Billing for current options.'}`,
-            { tier: 'important' },
-          );
-        } else {
-          toast.error(typeof errorDetail === 'string' ? errorDetail : 'ZIP upload failed');
-        }
+        toast.error(typeof errorDetail === 'string' ? errorDetail : 'ZIP upload failed');
       }
       setZipFile(prev => prev && typeof prev === 'object' ? { ...prev, status: 'error' } : null);
     } finally {
@@ -323,7 +316,11 @@ const BulkUploadPage = () => {
       }
 
     } catch (error) {
-      toast.error(parseApiError(error, 'Bulk upload failed'));
+      if (isCapabilityDeniedApiError(error)) {
+        toast.error(getCapabilityDeniedMessage(error, 'Bulk upload failed'));
+      } else {
+        toast.error(parseApiError(error, 'Bulk upload failed'));
+      }
       setFiles(prev => prev.map(f => ({ ...f, status: 'error' })));
     } finally {
       setUploading(false);
@@ -398,11 +395,6 @@ const BulkUploadPage = () => {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {upgradeRequiredDetail && (
-          <div className="mb-6" data-testid="bulk-upload-upgrade-required">
-            <UpgradeRequired upgradeDetail={upgradeRequiredDetail} showBackToDashboard />
-          </div>
-        )}
         {bulkPropagationNotice ? (
           <PropagationNoticeCallout
             className="mb-6"
@@ -454,7 +446,7 @@ const BulkUploadPage = () => {
                       ? 'bg-electric-teal text-white' 
                       : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
-                  disabled={uploading}
+                  disabled={uploading || !canBulkZipUpload}
                   data-testid="mode-files-btn"
                 >
                   <Files className="w-4 h-4" />
@@ -462,7 +454,7 @@ const BulkUploadPage = () => {
                 </button>
                 <button
                   onClick={() => {
-                    if (canUseZipUpload) {
+                    if (canBulkZipUpload) {
                       setUploadMode('zip');
                       setFiles([]);
                     }
@@ -470,18 +462,18 @@ const BulkUploadPage = () => {
                   className={`px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors ${
                     uploadMode === 'zip' 
                       ? 'bg-electric-teal text-white' 
-                      : canUseZipUpload
+                      : canBulkZipUpload
                         ? 'bg-white text-gray-600 hover:bg-gray-50'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   }`}
-                  disabled={uploading || !canUseZipUpload}
+                  disabled={uploading || !canBulkZipUpload}
                   data-testid="mode-zip-btn"
                 >
                   <Archive className="w-4 h-4" />
                   ZIP Archive
                 </button>
               </div>
-              {!canUseZipUpload && (
+              {!canBulkZipUpload && (
                 <span className="flex items-center gap-1 text-xs text-slate-600">
                   ZIP bulk archives are included on portfolio-scale plans — see Billing to compare options.
                 </span>
@@ -498,7 +490,7 @@ const BulkUploadPage = () => {
                 dragActive 
                   ? 'border-electric-teal bg-teal-50' 
                   : 'border-gray-300 hover:border-electric-teal'
-              } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+              } ${uploading || !canBulkZipUpload ? 'opacity-50 pointer-events-none' : ''}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -511,7 +503,7 @@ const BulkUploadPage = () => {
                 accept={uploadMode === 'zip' ? '.zip' : '.pdf,.jpg,.jpeg,.png'}
                 onChange={handleFileSelect}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                disabled={uploading}
+                disabled={uploading || !canBulkZipUpload}
                 data-testid="file-input"
               />
               
@@ -747,7 +739,7 @@ const BulkUploadPage = () => {
           <div className="flex gap-4">
             <Button
               onClick={handleUpload}
-              disabled={uploading || !selectedProperty}
+              disabled={uploading || !selectedProperty || !canBulkZipUpload}
               className="flex-1 py-6 text-lg"
               data-testid="upload-btn"
             >
