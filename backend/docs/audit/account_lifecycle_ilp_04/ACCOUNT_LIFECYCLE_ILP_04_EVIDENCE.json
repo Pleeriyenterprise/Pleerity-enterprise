@@ -368,6 +368,132 @@
       "frontend/src/pages/BillingPage.capability.test.js"
     ]
   },
+  "ilp4_frontend_capability_architecture_checkpoint": {
+    "verdict": "PASS",
+    "executed_at_utc": "2026-07-05T13:11:00Z",
+    "scope": {
+      "migrated_domains": ["documents", "reports", "billing"],
+      "primitives": [
+        "frontend/src/utils/capabilityRuntime.js",
+        "frontend/src/contexts/LifecycleRuntimeContext.js"
+      ],
+      "domain_helpers": [
+        "frontend/src/utils/documentCapabilityAccess.js",
+        "frontend/src/utils/reportCapabilityAccess.js",
+        "frontend/src/utils/billingCapabilityAccess.js"
+      ]
+    },
+    "architecture_verification": {
+      "runtime_contract_sole_permission_source": true,
+      "portal_mode_presentation_only": true,
+      "useEntitlements_removed_from_migrated_pages": true,
+      "hasFeature_removed_from_migrated_pages": true,
+      "backend_frontend_capability_alignment": true,
+      "capability_denied_safe_rendering": true,
+      "billing_recovery_journeys_preserved": true,
+      "read_write_semantics_consistent": true
+    },
+    "capability_mapping_summary": {
+      "documents": {
+        "CAP_DOC_VIEW": "read",
+        "CAP_DOC_UPLOAD": "write",
+        "CAP_DOC_BULK_ZIP": "write",
+        "CAP_AI_EXTRACTION_ADVANCED": "write"
+      },
+      "reports": {
+        "CAP_REPORT_VIEW": "read",
+        "CAP_REPORT_DOWNLOAD": "read",
+        "CAP_REPORT_GENERATE_PDF": "write",
+        "CAP_REPORT_GENERATE_CSV": "write",
+        "CAP_REPORT_SCHEDULE": "read/write",
+        "CAP_REPORT_AUDIT_PACK": "read/write",
+        "CAP_OPS_RENT": "read"
+      },
+      "billing": {
+        "CAP_BILLING_VIEW": "read",
+        "CAP_BILLING_INVOICES": "read",
+        "CAP_BILLING_PAYMENT_METHODS": "read",
+        "CAP_BILLING_CHECKOUT": "write",
+        "CAP_SUB_MANAGE": "write",
+        "CAP_SUB_CANCEL": "write"
+      }
+    },
+    "portal_mode_interaction": {
+      "DocumentsPage": "PortalModePageBanner only (no permission gating)",
+      "ReportsPage": "PortalModePageBanner only (no permission gating)",
+      "BillingPage": "PortalPageWithLifecyclePresentation (presentation shell only)",
+      "LifecycleRuntimeContext": "portalMode separate from capabilityAllowed(); capabilities from runtime.capabilities map"
+    },
+    "read_write_semantics": {
+      "shared_primitive": "isGrantActionAllowed in capabilityRuntime.js",
+      "read_grants": ["ALLOW", "READ", "LIMITED"],
+      "write_grants": ["ALLOW", "LIMITED"],
+      "deny_grants": ["DENY", "HIDDEN", "PLAN_GATED"]
+    },
+    "billing_recovery_lifecycles": {
+      "recovery_allowed": [
+        "ACTIVE",
+        "TRIAL",
+        "GRACE_PERIOD",
+        "CANCELLATION_SCHEDULED",
+        "CANCELLED_IMMEDIATE",
+        "SUBSCRIPTION_EXPIRED",
+        "READ_ONLY",
+        "SUSPENDED"
+      ],
+      "recovery_denied": ["ARCHIVED", "ACCOUNT_DELETED", "UNKNOWN"]
+    },
+    "tests": {
+      "verdict": "PASS",
+      "suites_passed": 9,
+      "tests_passed": 48,
+      "tests_failed": 0,
+      "suites": [
+        "frontend/src/utils/capabilityRuntime.test.js",
+        "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+        "frontend/src/utils/documentCapabilityAccess.test.js",
+        "frontend/src/pages/DocumentsPage.capability.test.js",
+        "frontend/src/pages/BulkUploadPage.capability.test.js",
+        "frontend/src/utils/reportCapabilityAccess.test.js",
+        "frontend/src/pages/ReportsPage.capability.test.js",
+        "frontend/src/utils/billingCapabilityAccess.test.js",
+        "frontend/src/pages/BillingPage.capability.test.js"
+      ]
+    },
+    "observations": [
+      "BillingPage retains GET /client/entitlements for plan comparison display only — not permission gating",
+      "documentCapabilityAccess and reportCapabilityAccess getCapabilityDeniedMessage return null without message; billing helper falls back — cosmetic inconsistency only"
+    ],
+    "next_milestone": {
+      "id": "ilp4_frontend_dashboard_today_command_centre_capability_migration",
+      "domains": ["dashboard", "today", "command_centre"],
+      "target_pages": [
+        "frontend/src/pages/ClientDashboard.js",
+        "frontend/src/pages/ClientTasksPage.js",
+        "frontend/src/pages/ClientCommandCenterPage.js"
+      ],
+      "backend_capabilities": {
+        "dashboard": ["CAP_DASHBOARD_VIEW", "CAP_SCORE_VIEW"],
+        "today": ["CAP_TODAY_VIEW", "CAP_TODAY_ACT"],
+        "command_centre": ["CAP_CMD_CTR_VIEW"]
+      },
+      "legacy_to_remove": [
+        "useEntitlements on ClientDashboard.js",
+        "hasFeature(contractor_network|maintenance_workflows|predictive_maintenance|invoicing) on ClientDashboard.js",
+        "useEntitlements on ClientTasksPage.js",
+        "hasFeature(invoicing|predictive_maintenance|maintenance_workflows|compliance_engine) on ClientTasksPage.js",
+        "useEntitlements on ClientCommandCenterPage.js",
+        "hasFeature(predictive_maintenance|maintenance_workflows) on ClientCommandCenterPage.js"
+      ],
+      "ops_capabilities_likely_needed": [
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_APPROVALS"
+      ]
+    }
+  },
+  "latest_milestone_frontend_capability_checkpoint": "frontend_capability_architecture_checkpoint",
   "latest_milestone_frontend_billing": "frontend_billing_capability_migration",
   "latest_milestone_frontend_documents": "frontend_documents_capability_migration",
   "latest_milestone_backend_completion_regression": "backend_completion_regression_checkpoint",
