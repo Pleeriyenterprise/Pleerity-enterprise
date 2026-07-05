@@ -1429,5 +1429,49 @@
     "tests_passed": 49,
     "tests_failed": 0
   },
-  "latest_milestone_frontend_navigation_account": "frontend_navigation_account_surfaces_capability_migration"
+  "latest_milestone_frontend_navigation_account": "frontend_navigation_account_surfaces_capability_migration",
+  "ilp4_final_customer_authority_completion": {
+    "domain": "customer_frontend_authority",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T23:30:00Z",
+    "entitlements_provider_removed_from_app": true,
+    "capabilities_consumed": {
+      "integrations": ["CAP_INTEGRATION_WEBHOOKS", "CAP_INTEGRATION_READ_API", "CAP_EXPORT_API"],
+      "tenant": ["CAP_TENANT_MANAGE", "CAP_TENANT_MESSAGES", "CAP_TENANT_PORTAL"],
+      "calendar": ["CAP_CALENDAR_VIEW"],
+      "assistant": ["CAP_AI_ASSISTANT"],
+      "compliance_score": ["CAP_REPORT_GENERATE_PDF", "CAP_REPORT_GENERATE_CSV"],
+      "routes": ["CAP_REPORT_AUDIT_PACK", "CAP_BRANDING_WHITE_LABEL", "CAP_OPS_RENT"]
+    },
+    "pages_migrated": [
+      "frontend/src/pages/ComplianceScorePage.js",
+      "frontend/src/pages/IntegrationsPage.js",
+      "frontend/src/pages/ClientRentOperationsPage.js",
+      "frontend/src/pages/ClientTenantComplianceDeliveryPage.js",
+      "frontend/src/pages/CalendarPage.js",
+      "frontend/src/pages/AssistantPage.js",
+      "frontend/src/pages/IntakePage.js"
+    ],
+    "shared_infrastructure": {
+      "EntitlementsContext.js": "INTENTIONALLY_RETAINED_DEPRECATED",
+      "EntitlementProtectedRoute.js": "COMPATIBILITY_WRAPPER",
+      "UpgradePrompt.js": "MIGRATED",
+      "PlanRestrictedActionModal.jsx": "MIGRATED"
+    },
+    "frontend_files_added": [
+      "frontend/src/utils/integrationCapabilityAccess.js",
+      "frontend/src/utils/tenantCapabilityAccess.js",
+      "frontend/src/utils/calendarCapabilityAccess.js",
+      "frontend/src/utils/assistantCapabilityAccess.js",
+      "frontend/src/hooks/usePortfolioUsageContext.js",
+      "frontend/src/pages/ilp4Completion.capability.test.js"
+    ],
+    "tests_targeted_passed": 165,
+    "tests_full_frontend_passed": 947,
+    "tests_full_frontend_failed": 5,
+    "tests_full_frontend_failed_preexisting": true,
+    "build_ci_pass": true,
+    "completion_report": "backend/docs/audit/account_lifecycle_ilp_04/ILP_4_FINAL_COMPLETION_REPORT.md"
+  },
+  "latest_milestone_ilp4_final": "ilp4_final_customer_authority_completion"
 }
