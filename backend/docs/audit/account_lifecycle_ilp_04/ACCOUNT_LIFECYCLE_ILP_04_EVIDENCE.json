@@ -1335,5 +1335,99 @@
     "tests_passed": 57,
     "tests_failed": 0
   },
-  "latest_milestone_frontend_operational_execution": "frontend_operational_execution_capability_migration"
+  "latest_milestone_frontend_operational_execution": "frontend_operational_execution_capability_migration",
+  "ilp4_frontend_navigation_account_surfaces_capability_migration": {
+    "domain": "navigation_settings_profile_support",
+    "verdict": "COMPLETE",
+    "executed_at_utc": "2026-07-05T16:45:00Z",
+    "capabilities_consumed": {
+      "navigation": [
+        "CAP_OPS_MAINTENANCE",
+        "CAP_OPS_PREDICTIVE",
+        "CAP_OPS_CONTRACTORS",
+        "CAP_OPS_APPROVALS",
+        "CAP_OPS_RENT",
+        "CAP_TENANT_PORTAL",
+        "CAP_REPORT_VIEW",
+        "CAP_REPORT_GENERATE_PDF",
+        "CAP_REPORT_GENERATE_CSV",
+        "CAP_REPORT_DOWNLOAD",
+        "CAP_BILLING_VIEW"
+      ],
+      "profile": [
+        "CAP_PROFILE_VIEW",
+        "CAP_PROFILE_EDIT",
+        "CAP_PROFILE_JURISDICTION"
+      ],
+      "support": [
+        "CAP_SUPPORT_ACCESS",
+        "CAP_SUPPORT_REQUEST",
+        "CAP_KNOWLEDGE_CENTRE"
+      ],
+      "notifications_branding": [
+        "CAP_NOTIF_SMS",
+        "CAP_BRANDING_VIEW",
+        "CAP_BRANDING_EDIT",
+        "CAP_BRANDING_WHITE_LABEL"
+      ]
+    },
+    "legacy_removed": [
+      "useEntitlements on ClientPortalLayout.jsx",
+      "useEntitlements on SettingsLayout.jsx",
+      "hasFeature on NotificationPreferencesPage.js",
+      "entitlement navHasFeature fallback on portal navigation",
+      "feature_key billing gate via invoicing on secondary nav"
+    ],
+    "secondary_actions_audited": [
+      "Header notification mark-read",
+      "Notification inbox mark-read dismiss mark-all",
+      "Profile save and avatar upload",
+      "Jurisdiction settings save",
+      "Branding white-label mutations",
+      "Notification preferences save and SMS section",
+      "Help centre ask query and feedback",
+      "Support chat widget send quick-action and ticket flows",
+      "Settings tab visibility",
+      "Portal sidebar operations and More menu gates"
+    ],
+    "recovery_lifecycles_validated": [
+      "ACTIVE",
+      "TRIAL",
+      "READ_ONLY",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "SUSPENDED",
+      "ARCHIVED",
+      "UNKNOWN"
+    ],
+    "frontend_files": [
+      "frontend/src/components/ClientPortalLayout.jsx",
+      "frontend/src/components/SettingsLayout.jsx",
+      "frontend/src/config/portalNavigationConfig.js",
+      "frontend/src/pages/ProfilePage.js",
+      "frontend/src/pages/JurisdictionSettingsPage.js",
+      "frontend/src/pages/BrandingSettingsPage.js",
+      "frontend/src/pages/NotificationPreferencesPage.js",
+      "frontend/src/pages/HelpPage.js",
+      "frontend/src/pages/ClientNotificationInboxPage.js",
+      "frontend/src/components/SupportChatWidget.js",
+      "frontend/src/components/notifications/InAppNotificationCenter.jsx",
+      "frontend/src/utils/accountCapabilityAccess.js"
+    ],
+    "tests": [
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.test.js",
+      "frontend/src/utils/accountCapabilityAccess.test.js",
+      "frontend/src/pages/navigationAccountSurfaces.capability.test.js",
+      "frontend/src/components/ClientPortalLayout.navigation.test.js",
+      "frontend/src/components/ClientPortalLayout.banner.test.js",
+      "frontend/src/config/portalNavigationConfig.test.js",
+      "frontend/src/components/SettingsLayout.test.jsx"
+    ],
+    "tests_passed": 49,
+    "tests_failed": 0
+  },
+  "latest_milestone_frontend_navigation_account": "frontend_navigation_account_surfaces_capability_migration"
 }

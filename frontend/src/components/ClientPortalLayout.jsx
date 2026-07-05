@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { usePortalNavigationCapabilities, useProfileCapabilities } from '../utils/accountCapabilityAccess';
 import api, { clientAPI, authAPI } from '../api/client';
 import { Button } from './ui/button';
 import { SUPPORT_EMAIL } from '../config';
@@ -51,10 +51,9 @@ export { PORTAL_TABS };
 
 export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { user, logout, isClient } = useAuth();
-  const { hasFeature, entitlementsLoadFailed } = useEntitlements();
+  const { navHasFeature, showReports, showBilling, invoicingEnabled } = usePortalNavigationCapabilities();
+  const { canEditProfile } = useProfileCapabilities();
   const { navigationPolicy } = usePortalMode();
-  /** While entitlements failed to load, keep gated nav visible so users are not misled into thinking features are absent; route gates show retry. */
-  const navHasFeature = (key) => entitlementsLoadFailed || hasFeature(key);
   const navigate = useNavigate();
   const isTenant = user?.role === 'ROLE_TENANT';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -127,8 +126,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
 
   useEffect(() => {
     if (!isClient || isTenant) return undefined;
-    const reportsUnlocked = hasFeature('reports_pdf') || hasFeature('reports_csv');
-    if (!reportsUnlocked) return undefined;
+    if (!showReports) return undefined;
     const onOutcome = (ev) => {
       const detail = ev && typeof ev === 'object' ? ev.detail : undefined;
       if (!detail || !shouldSuggestComplianceReportHint(detail)) return;
@@ -140,7 +138,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
     };
     window.addEventListener('compliance-outcome', onOutcome);
     return () => window.removeEventListener('compliance-outcome', onOutcome);
-  }, [isClient, isTenant, hasFeature]);
+  }, [isClient, isTenant, showReports]);
 
   useEffect(() => {
     if (notifOpen) loadInAppNotifications();
@@ -231,9 +229,6 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   const location = useLocation();
-  const showReports = navHasFeature('reports_pdf') || navHasFeature('reports_csv');
-  const invoicingEnabled = navHasFeature('invoicing');
-
   const tenantTabs = isTenant ? TENANT_PORTAL_TABS : null;
   const navModel = isTenant
     ? null
@@ -241,6 +236,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         buildPortalNavigationModel({
           navHasFeature,
           showReports,
+          showBilling,
           userRole: user?.role,
         }),
         navigationPolicy,
@@ -388,14 +384,13 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
                                 className={`w-full text-left px-3 py-2 border-b border-gray-50 hover:bg-gray-50 text-sm ${n.is_read ? 'opacity-80' : 'bg-slate-50/80'}`}
                                 onClick={async () => {
                                   try {
-                                    await clientAPI.markInAppNotificationRead(n.notification_id);
-                                    const wasUnread = !n.is_read;
-                                    setNotifItems((prev) =>
-                                      prev.map((x) =>
-                                        x.notification_id === n.notification_id ? { ...x, is_read: true } : x
-                                      )
-                                    );
-                                    if (wasUnread) {
+                                    if (canEditProfile && !n.is_read) {
+                                      await clientAPI.markInAppNotificationRead(n.notification_id);
+                                      setNotifItems((prev) =>
+                                        prev.map((x) =>
+                                          x.notification_id === n.notification_id ? { ...x, is_read: true } : x
+                                        )
+                                      );
                                       setNotifUnreadCount((c) => Math.max(0, c - 1));
                                     }
                                   } catch (_) {

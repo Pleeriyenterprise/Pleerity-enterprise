@@ -40,6 +40,7 @@ describe('portalNavigationConfig', () => {
     const model = buildPortalNavigationModel({
       navHasFeature: allFeatures,
       showReports: true,
+      showBilling: true,
       userRole: 'ROLE_CLIENT_ADMIN',
     });
 
@@ -57,8 +58,9 @@ describe('portalNavigationConfig', () => {
 
   it('filters gated secondary items when features are off', () => {
     const model = buildPortalNavigationModel({
-      navHasFeature: (key) => key !== 'tenant_portal' && key !== 'invoicing',
+      navHasFeature: (key) => key !== 'tenant_portal',
       showReports: false,
+      showBilling: false,
       userRole: 'ROLE_CLIENT',
     });
 

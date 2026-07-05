@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { User, Bell, CreditCard, Palette, Globe2 } from 'lucide-react';
-import { useEntitlements } from '../contexts/EntitlementsContext';
+import { useBrandingCapabilities, useProfileCapabilities } from '../utils/accountCapabilityAccess';
 import { PortalModePageBanner } from './lifecycle/LifecycleShell';
 import { ScrollableUnderlineNav, scrollableNavItemClass } from './ui/scrollable-nav';
 
@@ -10,18 +10,21 @@ const BASE_TABS = [
   { path: '/settings/jurisdiction', label: 'Jurisdiction', icon: Globe2 },
   { path: '/settings/notifications', label: 'Notifications', icon: Bell },
   { path: '/settings/billing', label: 'Billing', icon: CreditCard },
-  { path: '/settings/branding', label: 'Branding', icon: Palette, feature: 'white_label_reports' },
+  { path: '/settings/branding', label: 'Branding', icon: Palette },
 ];
 
 export default function SettingsLayout() {
-  const { hasFeature, entitlementsLoadFailed } = useEntitlements();
+  const { canViewProfile, canViewJurisdiction } = useProfileCapabilities();
+  const { canViewBranding, canUseWhiteLabelBranding } = useBrandingCapabilities();
   const tabs = useMemo(
     () =>
       BASE_TABS.filter((t) => {
-        if (!t.feature) return true;
-        return entitlementsLoadFailed || hasFeature(t.feature);
+        if (t.path === '/settings/jurisdiction') return canViewJurisdiction;
+        if (t.path === '/settings/branding') return canViewBranding || canUseWhiteLabelBranding;
+        if (t.path === '/settings/profile' || t.path === '/settings/notifications') return canViewProfile;
+        return true;
       }),
-    [hasFeature, entitlementsLoadFailed]
+    [canViewProfile, canViewJurisdiction, canViewBranding, canUseWhiteLabelBranding],
   );
 
   return (

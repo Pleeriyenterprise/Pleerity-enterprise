@@ -5,10 +5,14 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import SettingsLayout from './SettingsLayout';
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({
-    hasFeature: () => true,
-    entitlementsLoadFailed: false,
+jest.mock('../utils/accountCapabilityAccess', () => ({
+  useProfileCapabilities: () => ({
+    canViewProfile: true,
+    canViewJurisdiction: true,
+  }),
+  useBrandingCapabilities: () => ({
+    canViewBranding: true,
+    canUseWhiteLabelBranding: true,
   }),
 }));
 

@@ -18,8 +18,11 @@ import HelpArticleMarkdown from '../components/help/HelpArticleMarkdown';
 import KbArticleFeedbackBlock from '../components/help/KbArticleFeedbackBlock';
 import { Badge } from '../components/ui/badge';
 
+import { useSupportCapabilities } from '../utils/accountCapabilityAccess';
+
 export default function HelpPage() {
   const navigate = useNavigate();
+  const { canViewKnowledgeCentre, canRequestSupport } = useSupportCapabilities();
   const [searchParams] = useSearchParams();
   const slugFromUrl = searchParams.get('article');
 
@@ -102,7 +105,7 @@ export default function HelpPage() {
   const handleAskSubmit = async (e) => {
     e?.preventDefault();
     const q = (askQuery || '').trim();
-    if (!q || askLoading) return;
+    if (!q || askLoading || !canRequestSupport) return;
     setAskLoading(true);
     setAskResult(null);
     setFeedbackSent(false);
@@ -121,7 +124,7 @@ export default function HelpPage() {
   };
 
   const handleFeedback = async (helpful) => {
-    if (!askResult || feedbackSent) return;
+    if (!askResult || feedbackSent || !canRequestSupport) return;
     try {
       await client.post('/client/help/feedback', {
         query: askQuery.trim(),
@@ -243,7 +246,7 @@ export default function HelpPage() {
                   className="flex-1 min-h-11"
                   disabled={askLoading}
                 />
-                <Button type="submit" disabled={!askQuery.trim() || askLoading} className="min-h-11 w-full sm:w-auto shrink-0">
+                <Button type="submit" disabled={!canViewKnowledgeCentre || !canRequestSupport || !askQuery.trim() || askLoading} className="min-h-11 w-full sm:w-auto shrink-0">
                   {askLoading ? 'Searching...' : 'Search'}
                 </Button>
               </form>

@@ -46,6 +46,8 @@ export default function InAppNotificationCenter({
   markRead,
   markAllRead,
   dismiss,
+  canMarkRead = true,
+  canDismiss = true,
 }) {
   const navigate = useNavigate();
   const isAdmin = variant === 'admin';
@@ -91,7 +93,7 @@ export default function InAppNotificationCenter({
     const id = n.notification_id;
     if (!id) return;
     try {
-      if (!n.is_read) {
+      if (!n.is_read && canMarkRead) {
         await markRead(id);
         setItems((prev) => prev.map((x) => (x.notification_id === id ? { ...x, is_read: true } : x)));
         setUnreadCount((c) => Math.max(0, c - 1));
@@ -107,6 +109,7 @@ export default function InAppNotificationCenter({
   const onDismiss = async (e, n) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!canDismiss) return;
     const id = n.notification_id;
     if (!id) return;
     try {
@@ -120,6 +123,7 @@ export default function InAppNotificationCenter({
   };
 
   const onMarkAll = async () => {
+    if (!canMarkRead) return;
     try {
       await markAllRead();
       setItems((prev) => prev.map((x) => ({ ...x, is_read: true })));
@@ -142,7 +146,7 @@ export default function InAppNotificationCenter({
             {unreadCount > 0 ? `${unreadCount} unread` : 'You are up to date'}
           </p>
         </div>
-        {unreadCount > 0 && (
+        {unreadCount > 0 && canMarkRead && (
           <Button variant="outline" size="sm" onClick={onMarkAll} className="shrink-0">
             <CheckCheck className="h-4 w-4 mr-2" />
             Mark all as read
@@ -210,6 +214,7 @@ export default function InAppNotificationCenter({
                     <p className={cn('font-medium text-gray-900', !n.is_read && 'text-gray-950')}>
                       {n.title || '—'}
                     </p>
+                    {canDismiss ? (
                     <button
                       type="button"
                       className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 shrink-0"
@@ -218,6 +223,7 @@ export default function InAppNotificationCenter({
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
+                    ) : null}
                   </div>
                   {n.message ? (
                     <p className="text-sm text-gray-600 mt-1 line-clamp-3">{n.message}</p>
