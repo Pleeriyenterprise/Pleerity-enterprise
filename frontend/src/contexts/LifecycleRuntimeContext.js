@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { clientAPI } from '../api/client';
+import { evaluateCapabilityGrant } from '../utils/capabilityRuntime';
 
 const LifecycleRuntimeContext = createContext(null);
 const PortalModeContext = createContext(null);
@@ -126,6 +127,18 @@ export function LifecycleRuntimeProvider({ children }) {
   const effectiveRuntime = runtime || GOVERNED_FALLBACK;
   const runtimeAvailable = Boolean(runtime);
   const portalMode = effectiveRuntime.portal_mode || 'FULL_ACCESS';
+  const capabilities = effectiveRuntime.capabilities || {};
+
+  const capabilityAllowed = useCallback(
+    (capabilityId, action = 'read') =>
+      evaluateCapabilityGrant(capabilities, capabilityId, action).allowed,
+    [capabilities],
+  );
+
+  const getCapabilityGrant = useCallback(
+    (capabilityId, action = 'read') => evaluateCapabilityGrant(capabilities, capabilityId, action),
+    [capabilities],
+  );
 
   const lifecycleValue = useMemo(
     () => ({
@@ -138,6 +151,9 @@ export function LifecycleRuntimeProvider({ children }) {
       runtimeVersion: runtimeVersion || effectiveRuntime.runtime_version,
       lifecycleState: effectiveRuntime.lifecycle_state,
       portalMode,
+      capabilities,
+      capabilityAllowed,
+      getCapabilityGrant,
       customerExperience: effectiveRuntime.customer_experience || GOVERNED_FALLBACK.customer_experience,
       navigationPolicy: effectiveRuntime.navigation_policy || GOVERNED_FALLBACK.navigation_policy,
       warnings: effectiveRuntime.warnings || [],
@@ -153,6 +169,9 @@ export function LifecycleRuntimeProvider({ children }) {
       contractVersion,
       runtimeVersion,
       portalMode,
+      capabilities,
+      capabilityAllowed,
+      getCapabilityGrant,
       fetchRuntime,
     ],
   );
@@ -188,6 +207,9 @@ export function useLifecycleRuntime() {
       runtimeVersion: null,
       lifecycleState: null,
       portalMode: 'FULL_ACCESS',
+      capabilities: {},
+      capabilityAllowed: () => false,
+      getCapabilityGrant: () => ({ allowed: false, grant: 'HIDDEN', effectiveSemantic: 'HIDDEN' }),
       customerExperience: GOVERNED_FALLBACK.customer_experience,
       navigationPolicy: GOVERNED_FALLBACK.navigation_policy,
       warnings: [],
@@ -196,6 +218,24 @@ export function useLifecycleRuntime() {
     };
   }
   return ctx;
+}
+
+/**
+ * Runtime Contract capability check — uses lifecycle-runtime capabilities map only.
+ * @param {string} capabilityId
+ * @param {'read'|'write'} [action='read']
+ */
+export function useCapability(capabilityId, action = 'read') {
+  const { capabilities, runtimeAvailable } = useLifecycleRuntime();
+  return useMemo(
+    () => ({
+      ...evaluateCapabilityGrant(capabilities, capabilityId, action),
+      runtimeAvailable,
+      capabilityId,
+      action,
+    }),
+    [capabilities, capabilityId, action, runtimeAvailable],
+  );
 }
 
 /** Presentation-only portal mode — never use for permission checks. */

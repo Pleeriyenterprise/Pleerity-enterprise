@@ -172,7 +172,7 @@
       { "endpoint": "GET /api/client/ledger/export.csv", "capability_id": "CAP_LEDGER_EXPORT", "action": "read" }
     ]
   },
-  "latest_milestone": "backend_completion",
+  "latest_milestone": "backend_completion_regression_checkpoint",
   "runtime_contract_extensions_backend_completion": {
     "schema_modified": false,
     "new_capability_rows": [
@@ -212,6 +212,52 @@
       "client.py guard-only onboarding entitlements jurisdiction portal-context value-insights documents plan-features"
     ]
   },
+  "ilp4_backend_completion_regression_checkpoint": {
+    "verdict": "PASS",
+    "executed_at_utc": "2026-06-30T23:09:00Z",
+    "duration_seconds": 14640,
+    "tests_passed": 903,
+    "tests_failed": 0,
+    "exit_code": 0,
+    "log_path": "backend/tmp_ilp4_regression_checkpoint.log",
+    "scope_excluded": ["frontend_tests", "frontend_capability_page_migration"],
+    "suites": [
+      "tests/test_account_lifecycle_state_resolver.py",
+      "tests/test_account_lifecycle_runtime_contract.py",
+      "tests/test_account_capability_enforcement.py",
+      "tests/test_account_capability_enforcement_pilot.py",
+      "tests/test_account_capability_enforcement_wave1.py",
+      "tests/test_account_capability_enforcement_wave2c1.py",
+      "tests/test_account_capability_enforcement_wave2c2.py",
+      "tests/test_account_capability_enforcement_evidence_analytics.py",
+      "tests/test_account_capability_enforcement_compliance.py",
+      "tests/test_account_capability_enforcement_rent_approvals.py",
+      "tests/test_account_capability_enforcement_maintenance.py",
+      "tests/test_account_capability_enforcement_tenant_branding.py",
+      "tests/test_account_capability_enforcement_profile_assistant_calendar.py",
+      "tests/test_account_capability_enforcement_read_api_webhooks.py",
+      "tests/test_account_capability_enforcement_billing_client.py",
+      "tests/test_account_capability_enforcement_backend_completion.py",
+      "tests/test_billing_recovery_operations.py"
+    ],
+    "frontend_capability_primitives_started": true,
+    "frontend_capability_primitives": [
+      "frontend/src/utils/capabilityRuntime.js",
+      "frontend/src/utils/capabilityRuntime.test.js",
+      "frontend/src/contexts/LifecycleRuntimeContext.js (capabilities, useCapability)"
+    ],
+    "frontend_capability_primitives_tests": {
+      "verdict": "PASS",
+      "executed_at_utc": "2026-07-05T08:58:00Z",
+      "tests_passed": 20,
+      "tests_failed": 0,
+      "suites": [
+        "frontend/src/utils/capabilityRuntime.test.js",
+        "frontend/src/contexts/LifecycleRuntimeContext.test.js"
+      ]
+    }
+  },
+  "latest_milestone_backend_completion": "backend_completion",
   "latest_milestone_previous": "billing_client_routes",
   "runtime_contract_extensions_billing_client": {
     "schema_modified": false,
@@ -766,6 +812,10 @@
     "billing_stripe_jobs_sessions_comms_modified": false,
     "billing_client_routes_migrated": true,
     "backend_customer_routes_migrated": true,
+    "backend_completion_regression_passed": true,
+    "backend_completion_regression_tests_passed": 903,
+    "frontend_capability_primitives_started": true,
+    "frontend_capability_primitives_tests_passed": 20,
     "client_py_evidence_pack_migrated": true,
     "client_py_analytics_tenant_ops_migrated": true,
     "client_maintenance_migrated": true,
