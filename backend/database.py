@@ -990,6 +990,26 @@ class Database:
                     await self.db.subscription_operational_events.create_index("digest_date", sparse=True)
                 except Exception:
                     pass
+            # Account lifecycle platform events (ILP-9 authoritative catalogue)
+            if hasattr(self.db, "account_lifecycle_events"):
+                try:
+                    await self.db.account_lifecycle_events.create_index(
+                        "idempotency_key", unique=True, sparse=True
+                    )
+                except Exception:
+                    pass
+                try:
+                    await self.db.account_lifecycle_events.create_index(
+                        [("client_id", 1), ("occurred_at", -1)]
+                    )
+                except Exception:
+                    pass
+                try:
+                    await self.db.account_lifecycle_events.create_index(
+                        [("event_type", 1), ("occurred_at", -1)]
+                    )
+                except Exception:
+                    pass
             # MRR snapshots for NRR (Executive Overview)
             if hasattr(self.db, "mrr_snapshots"):
                 try:

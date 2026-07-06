@@ -369,6 +369,36 @@ async def evaluate_customer_communication(
         event_type=event_type,
     )
     log_communication_decision(decision, template_key=template_key, event_type=event_type)
+    if decision.suppressed and db is not None:
+        try:
+            from services.account_lifecycle_event_authority import (
+                LifecycleEventCategory,
+                LifecycleEventPayload,
+                LifecycleEventType,
+                publish_lifecycle_event,
+            )
+
+            await publish_lifecycle_event(
+                db,
+                LifecycleEventPayload(
+                    event_type=LifecycleEventType.COMMUNICATION_SUPPRESSED.value,
+                    client_id=client_id,
+                    lifecycle_state=decision.lifecycle_state,
+                    portal_mode=decision.portal_mode,
+                    runtime_version=decision.runtime_version,
+                    event_category=LifecycleEventCategory.COMMUNICATION.value,
+                    source_service="account_customer_communication_authority",
+                    trigger=decision.suppression_reason,
+                    idempotency_key=f"{client_id}:CommunicationSuppressed:{template_key}:{channel}:{decision.suppression_reason}",
+                    metadata={
+                        "surface": decision.surface,
+                        "channel_policy_key": decision.channel_policy_key,
+                        "template_key": template_key,
+                    },
+                ),
+            )
+        except Exception:
+            pass
     return decision
 
 

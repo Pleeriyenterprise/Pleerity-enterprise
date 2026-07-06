@@ -1052,6 +1052,19 @@ async def resolve_runtime_contract_for_client(
         entitlements_version=entitlements_version,
         include_audit=include_audit,
     )
+    previous = peek_cached_runtime_contract(client_id) if client_id and use_cache else None
+    if client_id and previous is not None:
+        try:
+            from services.account_lifecycle_event_authority import publish_runtime_contract_transition
+
+            await publish_runtime_contract_transition(
+                db,
+                previous,
+                contract,
+                trigger="runtime_contract_resolve",
+            )
+        except Exception as exc:
+            logger.debug("lifecycle_event_publish_skipped client_id=%s error=%s", client_id, exc)
     if use_cache and client_id:
         _runtime_cache[client_id] = (time.time(), contract["runtime_version"], contract)
     return contract
@@ -1067,6 +1080,21 @@ def get_cached_runtime_contract(client_id: str, runtime_version: int) -> Optiona
     if cached_version != runtime_version:
         return None
     return contract
+
+
+def peek_cached_runtime_contract(client_id: str) -> Optional[Mapping[str, Any]]:
+    """Return cached contract if within TTL (for lifecycle event transition detection)."""
+    entry = _runtime_cache.get(client_id)
+    if not entry:
+        return None
+    cached_at, _, contract = entry
+    if time.time() - cached_at > CACHE_TTL_SECONDS:
+        return None
+    return contract
+
+
+def invalidate_runtime_cache_for_client(client_id: str) -> None:
+    _runtime_cache.pop(client_id, None)
 
 
 def compare_runtime_with_legacy(
