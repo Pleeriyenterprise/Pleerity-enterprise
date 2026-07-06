@@ -1040,6 +1040,7 @@ async def resolve_runtime_contract_for_client(
     now: Optional[datetime] = None,
     use_cache: bool = True,
     include_audit: bool = False,
+    emit_events: bool = True,
 ) -> Mapping[str, Any]:
     client, billing = await load_client_and_billing(db, client_id)
     entitlements_version = None
@@ -1053,7 +1054,7 @@ async def resolve_runtime_contract_for_client(
         include_audit=include_audit,
     )
     previous = peek_cached_runtime_contract(client_id) if client_id and use_cache else None
-    if client_id and previous is not None:
+    if emit_events and client_id and previous is not None:
         try:
             from services.account_lifecycle_event_authority import publish_runtime_contract_transition
 

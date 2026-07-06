@@ -255,13 +255,23 @@ async def _client_context_guard(request: Request, user: dict, db) -> dict:
     path = str(request.url.path) or ""
     billing_allowed = path.startswith("/api/billing") or path.startswith("/api/client/billing")
 
+    billing_row = await db.client_billing.find_one(
+        {"client_id": user["client_id"]},
+        {"_id": 0, "billing_lifecycle_state": 1, "subscription_status": 1},
+    )
+    if not billing_row:
+        return user
+
     from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
 
-    contract = await resolve_runtime_contract_for_client(db, user["client_id"])
+    contract = await resolve_runtime_contract_for_client(
+        db,
+        user["client_id"],
+        emit_events=False,
+    )
     lifecycle_state = str(contract.get("lifecycle_state") or "")
 
-    # Lifecycle states that block general portal API access (ILP-10 — Runtime Contract authority).
-    # Replaces legacy canonical_entitlement_state SUSPENDED/CANCELLED gate.
+    # Coarse portal API block — matches legacy canonical SUSPENDED/CANCELLED bands.
     _blocked_lifecycle = frozenset({
         "SUSPENDED",
         "CANCELLED_IMMEDIATE",

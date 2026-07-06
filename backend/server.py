@@ -1272,6 +1272,24 @@ from utils.cors_origins import resolve_cors_origin_regex, resolve_cors_origins
 
 _cors_origins = resolve_cors_origins()
 _cors_origin_regex = resolve_cors_origin_regex()
+
+
+def _cors_headers_for_origin(request: Request) -> dict:
+    origin = request.headers.get("origin")
+    if not origin:
+        return {}
+    from utils.cors_origins import is_cors_origin_allowed
+
+    if is_cors_origin_allowed(origin, origins=_cors_origins, origin_regex=_cors_origin_regex):
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
+    return {}
+
+
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -1303,7 +1321,11 @@ async def _security_monitoring_gate(request: Request, call_next):
                 details={"path": path, "method": method},
                 severity="medium",
             )
-            return JSONResponse(status_code=429, content={"detail": "Request blocked due to suspicious activity."})
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Request blocked due to suspicious activity."},
+                headers=_cors_headers_for_origin(request),
+            )
     except Exception:
         pass
 
