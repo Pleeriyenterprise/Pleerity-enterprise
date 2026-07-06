@@ -85,17 +85,11 @@ export function LifecycleRuntimeProvider({ children }) {
   const lastFetchRef = useRef(0);
   const refreshLockRef = useRef(false);
   const lastRefreshAttemptRef = useRef(0);
+  const runtimeRef = useRef(null);
+  const sessionRuntimeRef = useRef(null);
 
-  const setters = useMemo(
-    () => ({
-      setRuntime,
-      setContractVersion,
-      setRuntimeVersion,
-      setSessionRuntime,
-      setError,
-    }),
-    [],
-  );
+  runtimeRef.current = runtime;
+  sessionRuntimeRef.current = sessionRuntime;
 
   const fetchRuntime = useCallback(
     async (options = {}) => {
@@ -127,7 +121,7 @@ export function LifecycleRuntimeProvider({ children }) {
 
       refreshLockRef.current = true;
       lastRefreshAttemptRef.current = now;
-      if (!runtime || reason === 'login') {
+      if (!runtimeRef.current || reason === 'login') {
         setLoading(true);
       } else {
         setRefreshing(true);
@@ -146,15 +140,13 @@ export function LifecycleRuntimeProvider({ children }) {
           res.headers?.['X-Lifecycle-Runtime-Version'] ||
           payload?.runtime_version;
 
-        applyRuntimePayload(
-          payload,
-          sessionRuntime,
-          {
-            ...setters,
-            setContractVersion: (v) => setContractVersion(v || headerContract || null),
-            setRuntimeVersion: (v) => setRuntimeVersion(v ?? headerRuntime ?? null),
-          },
-        );
+        applyRuntimePayload(payload, sessionRuntimeRef.current, {
+          setRuntime,
+          setContractVersion: (v) => setContractVersion(v || headerContract || null),
+          setRuntimeVersion: (v) => setRuntimeVersion(v ?? headerRuntime ?? null),
+          setSessionRuntime,
+          setError,
+        });
         setContractVersion(headerContract || payload?.contract_version || null);
         setRuntimeVersion(headerRuntime ?? payload?.runtime_version ?? null);
         lastFetchRef.current = Date.now();
@@ -202,7 +194,13 @@ export function LifecycleRuntimeProvider({ children }) {
         const payload = res.data?.lifecycle_runtime;
         const session = res.data?.session_runtime;
         if (payload) {
-          applyRuntimePayload(payload, session, setters);
+          applyRuntimePayload(payload, session, {
+            setRuntime,
+            setContractVersion,
+            setRuntimeVersion,
+            setSessionRuntime,
+            setError,
+          });
           setContractVersion(payload.contract_version || null);
           setRuntimeVersion(payload.runtime_version ?? null);
         }
@@ -226,13 +224,16 @@ export function LifecycleRuntimeProvider({ children }) {
         refreshLockRef.current = false;
       }
     },
-    [user, fetchRuntime, loginWithToken, logout, setters],
+    [user, fetchRuntime, loginWithToken, logout],
   );
+
+  const fetchRuntimeRef = useRef(fetchRuntime);
+  fetchRuntimeRef.current = fetchRuntime;
 
   useEffect(() => {
     applySessionRuntimeFromUser(user);
-    fetchRuntime({ reason: 'login', force: true });
-  }, [user?.portal_user_id, user?.client_id, user?.role]);
+    fetchRuntimeRef.current({ reason: 'login', force: true });
+  }, [user, user?.portal_user_id, user?.client_id, user?.role]);
 
   useEffect(() => {
     registerSessionRuntimeRefreshHandler(refreshSession);
