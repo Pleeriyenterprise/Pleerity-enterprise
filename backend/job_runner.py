@@ -40,6 +40,12 @@ async def _emit_job_run_evidence_finished(
             error_message=error_message,
             outcome_status=outcome_status,
         )
+    except asyncio.CancelledError:
+        logger.debug(
+            "operational_evidence job finished emit cancelled (shutdown) job_id=%s run_id=%s",
+            job_id,
+            job_run_id,
+        )
     except Exception as emit_err:
         logger.debug("operational_evidence job finished emit skipped: %s", emit_err)
 
@@ -116,6 +122,8 @@ async def run_instrumented(
             correlation_id=corr,
             triggered_by=triggered_by,
         )
+    except asyncio.CancelledError:
+        logger.debug("operational_evidence job started emit cancelled (shutdown) job_id=%s", job_id)
     except Exception as emit_err:
         logger.debug("operational_evidence job started emit skipped: %s", emit_err)
     try:

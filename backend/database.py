@@ -10,6 +10,10 @@ load_dotenv(ROOT_DIR / '.env')
 
 logger = logging.getLogger(__name__)
 
+# Compound unique idempotency indexes: sparse does not exclude explicit null values when
+# client_id is always present — index only rows with a string idempotency_key.
+_IDEM_COMPOUND_PARTIAL = {"idempotency_key": {"$type": "string"}}
+
 class Database:
     client: AsyncIOMotorClient = None
     db = None
@@ -41,6 +45,34 @@ class Database:
     
     def get_db(self):
         return self.db
+
+    async def _ensure_compound_idempotency_index(self, collection, *, label: str) -> None:
+        """Unique (client_id, idempotency_key) only when idempotency_key is a non-null string."""
+        name = "client_id_1_idempotency_key_1"
+        keys = [("client_id", 1), ("idempotency_key", 1)]
+
+        async def _create() -> None:
+            await collection.create_index(
+                keys,
+                unique=True,
+                name=name,
+                partialFilterExpression=_IDEM_COMPOUND_PARTIAL,
+            )
+
+        try:
+            await _create()
+        except Exception as e:
+            err = str(e).lower()
+            if "indexoptionsconflict" in err or "indexkeyspecsconflict" in err:
+                try:
+                    await collection.drop_index(name)
+                    await _create()
+                    logger.info("%s idempotency index rebuilt with partial filter", label)
+                    return
+                except Exception as rebuild_err:
+                    logger.warning("%s idempotency index rebuild failed: %s", label, rebuild_err)
+                    return
+            logger.warning("%s idempotency index: %s", label, e)
     
     async def _create_indexes(self):
         """Create MongoDB indexes for efficient queries."""
@@ -749,18 +781,20 @@ class Database:
             await self.db.rent_reminder_events.create_index([("client_id", 1), ("ledger_id", 1)])
             await self.db.rent_schedules.create_index("schedule_id", unique=True)
             await self.db.rent_schedules.create_index([("client_id", 1), ("property_id", 1), ("is_active", 1)])
-            await self.db.rent_schedules.create_index(
-                [("client_id", 1), ("idempotency_key", 1)], unique=True, sparse=True
-            )
+            try:
+                await self._ensure_compound_idempotency_index(self.db.rent_schedules, label="rent_schedules")
+            except Exception as e:
+                logger.warning("rent_schedules idempotency index: %s", e)
             await self.db.rent_schedules.create_index(
                 [("client_id", 1), ("property_id", 1), ("tenancy_id", 1), ("rent_type", 1), ("is_active", 1)]
             )
             await self.db.rent_ledger_periods.create_index(
                 [("client_id", 1), ("schedule_id", 1), ("period_key", 1)], unique=True, sparse=True
             )
-            await self.db.rent_payments.create_index(
-                [("client_id", 1), ("idempotency_key", 1)], unique=True, sparse=True
-            )
+            try:
+                await self._ensure_compound_idempotency_index(self.db.rent_payments, label="rent_payments")
+            except Exception as e:
+                logger.warning("rent_payments idempotency index: %s", e)
             await self.db.rent_payments.create_index([("client_id", 1), ("tenancy_id", 1), ("payment_date", -1)], sparse=True)
             await self.db.property_tenancies.create_index("tenancy_id", unique=True)
             await self.db.property_tenancies.create_index(
