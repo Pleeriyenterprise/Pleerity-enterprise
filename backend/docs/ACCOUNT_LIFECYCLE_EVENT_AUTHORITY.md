@@ -1,12 +1,39 @@
 # Account Lifecycle Event Authority
 
-**Programme:** ACCOUNT-LIFECYCLE-POLICY-AUTHORITY-01  
+**Programme (implementation):** ILP-9-LIFECYCLE-EVENTS-DISCOVERY-AND-IMPLEMENTATION-01  
+**Module:** `services/account_lifecycle_event_authority.py`  
+**Schema version:** `account_lifecycle_event_v1`  
+**Branch:** `develop`
+
+**Programme (governance policy):** ACCOUNT-LIFECYCLE-POLICY-AUTHORITY-01  
 **Authority version:** `account_lifecycle_policy_v1`  
 **Parent:** `ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md`
 
 ---
 
-## Purpose
+## ILP-9 implementation summary
+
+ILP-9 introduces the **authoritative lifecycle event architecture** — not a generic message bus.
+
+| Responsibility | Location |
+|----------------|----------|
+| Canonical event names | `LifecycleEventType` enum |
+| Canonical payload schema | `LifecycleEventPayload` |
+| Single publication authority | `LifecycleEventAuthority.publish()` |
+| Runtime transition detection | `detect_runtime_contract_events()` |
+| Consumer registry | `register_lifecycle_event_consumer()` |
+| Persistence | `account_lifecycle_events` collection |
+| Audit | `_audit_lifecycle_event()` |
+
+**Related docs:** `ACCOUNT_LIFECYCLE_EVENT_CATALOG.md`, `ACCOUNT_LIFECYCLE_EVENT_SCHEMA.md`, `ACCOUNT_LIFECYCLE_EVENT_CONSUMERS.md`, `ACCOUNT_LIFECYCLE_EVENT_SEQUENCE.md`
+
+**Discovery audit:** `docs/audit/account_lifecycle_ilp_09/LIFECYCLE_EVENT_DISCOVERY_INVENTORY.json`
+
+No service may invent ad-hoc lifecycle event payloads outside this authority.
+
+---
+
+## Governance — Purpose
 
 Canonical lifecycle events are the **audit and integration contract**. No subsystem may infer or emit lifecycle state changes independently.
 

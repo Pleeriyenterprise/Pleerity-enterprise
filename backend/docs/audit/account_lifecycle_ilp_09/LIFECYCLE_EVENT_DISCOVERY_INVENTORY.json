@@ -1,0 +1,163 @@
+{
+  "programme": "ILP-9-LIFECYCLE-EVENTS-DISCOVERY-AND-IMPLEMENTATION-01",
+  "branch": "develop",
+  "audited_at_utc": "2026-07-06T22:00:00Z",
+  "phase": "A_discovery_complete",
+  "publishers": [
+    {
+      "id": "ilp9_lifecycle_event_authority",
+      "location": "backend/services/account_lifecycle_event_authority.py",
+      "status": "authoritative",
+      "events": "canonical catalogue (LifecycleEventType enum)",
+      "notes": "Single publication authority introduced ILP-9"
+    },
+    {
+      "id": "runtime_contract_resolve",
+      "location": "backend/services/account_lifecycle_runtime_contract.py",
+      "status": "migrated",
+      "trigger": "resolve_runtime_contract_for_client material change vs cache",
+      "events": ["RuntimeContractChanged", "LifecycleStateChanged", "PortalModeChanged", "CapabilitiesChanged", "BackgroundPolicyChanged", "SessionRuntimeChanged"],
+      "notes": "Delegates to publish_runtime_contract_transition"
+    },
+    {
+      "id": "customer_communication_authority",
+      "location": "backend/services/account_customer_communication_authority.py",
+      "status": "migrated_partial",
+      "events": ["CommunicationSuppressed"],
+      "deferred": ["CommunicationSent"]
+    },
+    {
+      "id": "stripe_webhook_service",
+      "location": "backend/services/stripe_webhook_service.py",
+      "status": "local_lifecycle_sync",
+      "events": "billing row updates, audit touches",
+      "drift": "Updates billing then runtime contract rebuild; does not emit canonical lifecycle events directly"
+    },
+    {
+      "id": "subscription_operational_events",
+      "location": "backend/services/subscription_operational_events.py",
+      "status": "separate_domain",
+      "events": "admin billing operational events (renewal ops)",
+      "notes": "Not account lifecycle platform events — retained separately"
+    },
+    {
+      "id": "operational_evidence_producers",
+      "location": "backend/services/operational_evidence/producers.py",
+      "status": "non_lifecycle",
+      "events": "job/queue/notification evidence"
+    },
+    {
+      "id": "notification_orchestrator",
+      "location": "backend/services/notification_orchestrator.py",
+      "status": "audit_only",
+      "events": "create_audit_log on send/suppress",
+      "drift": "CommunicationSent not yet published via lifecycle authority"
+    },
+    {
+      "id": "webhook_service",
+      "location": "backend/services/webhook_service.py",
+      "status": "integration",
+      "events": "compliance/reminder/digest outbound webhooks",
+      "notes": "Customer integration webhooks — future consumer of lifecycle events"
+    }
+  ],
+  "consumers": [
+    {
+      "id": "runtime_cache_invalidation",
+      "location": "account_lifecycle_event_authority._consumer_runtime_cache_invalidation",
+      "categories": ["runtime", "lifecycle", "session"],
+      "status": "implemented_ilp9"
+    },
+    {
+      "id": "session_runtime_service",
+      "location": "backend/services/account_session_runtime_service.py",
+      "status": "indirect",
+      "trigger": "SessionRuntimeChanged event + runtime_version on API",
+      "frontend": "frontend/src/utils/sessionRuntimeSync.js"
+    },
+    {
+      "id": "background_runtime_authority",
+      "location": "backend/services/account_background_runtime_authority.py",
+      "status": "indirect",
+      "trigger": "BackgroundPolicyChanged via runtime contract rebuild"
+    },
+    {
+      "id": "communication_authority",
+      "location": "backend/services/account_customer_communication_authority.py",
+      "status": "publisher_and_consumer",
+      "notes": "Consumes runtime contract; publishes CommunicationSuppressed"
+    },
+    {
+      "id": "response_authority",
+      "location": "backend/services/account_lifecycle_response_authority.py",
+      "status": "indirect",
+      "trigger": "runtime_version in HTTP payloads"
+    },
+    {
+      "id": "capability_enforcement",
+      "location": "backend/services/account_capability_enforcement.py",
+      "status": "indirect",
+      "trigger": "CapabilitiesChanged via contract refresh"
+    },
+    {
+      "id": "frontend_lifecycle_runtime",
+      "location": "frontend/src/contexts/LifecycleRuntimeContext.js",
+      "status": "local_broadcast",
+      "mechanism": "broadcastRuntimeInvalidation custom event",
+      "drift": "Not yet subscribed to backend lifecycle event stream"
+    },
+    {
+      "id": "audit_trail",
+      "location": "utils/audit.create_audit_log",
+      "status": "integrated_ilp9",
+      "trigger": "_audit_lifecycle_event on publish"
+    }
+  ],
+  "duplicates_identified": [
+    {
+      "pattern": "stripe_webhook → billing update → implicit lifecycle change",
+      "resolution": "Runtime contract transition detection publishes canonical events on rebuild"
+    },
+    {
+      "pattern": "Multiple create_audit_log calls for lifecycle-adjacent actions",
+      "resolution": "LIFECYCLE_EVENT_PUBLISHED audit metadata on every authoritative event"
+    },
+    {
+      "pattern": "Frontend broadcastRuntimeInvalidation + backend cache TTL",
+      "resolution": "Event-driven cache invalidation consumer; frontend still polls runtime_version"
+    },
+    {
+      "pattern": "Governance policy catalogue vs code enum",
+      "resolution": "LifecycleEventType aligned to governance names; ACCOUNT_CREATED deferred"
+    }
+  ],
+  "local_only_mechanisms": [
+    "BroadcastChannel/sessionRuntimeSync.js auth sync",
+    "LifecycleRuntimeContext custom DOM events",
+    "subscription_operational_events collection",
+    "stripe_webhook_service direct Mongo updates",
+    "jobs.py compliance webhook fires"
+  ],
+  "canonical_events_adopted": [
+    "AccountActivated", "TrialStarted", "TrialExpired", "GracePeriodStarted", "PaymentRecovered",
+    "CancellationScheduled", "CancellationCancelled", "SubscriptionExpired", "SubscriptionReactivated",
+    "AccountSuspended", "AccountArchived", "AccountDeleted", "PortalModeChanged", "RuntimeContractChanged",
+    "LifecycleStateChanged", "CapabilitiesChanged", "SessionRuntimeChanged", "BackgroundPolicyChanged",
+    "CommunicationSuppressed", "CommunicationSent", "ReactivationStarted", "ReactivationCompleted",
+    "ReactivationFailed", "RecoveryJourneyStarted", "RecoveryJourneyCompleted", "RecoveryJourneyAbandoned"
+  ],
+  "deferred_to_ilp10": [
+    "CommunicationSent publication from notification_orchestrator",
+    "Reactivation/Recovery journey event publication from reactivation authority",
+    "Frontend subscription to lifecycle event SSE/WebSocket",
+    "Outbound customer webhook fan-out from lifecycle events",
+    "Stripe webhook direct publish (remain contract-transition derived)",
+    "ACCOUNT_CREATED first-event wiring",
+    "Dead-letter queue and metrics dashboards"
+  ],
+  "direct_service_coupling_remaining": [
+    "stripe_webhook_service → billing collection (triggers contract rebuild)",
+    "notification_orchestrator → email_service (delivery path)",
+    "jobs.py → webhook_service (compliance events)"
+  ]
+}

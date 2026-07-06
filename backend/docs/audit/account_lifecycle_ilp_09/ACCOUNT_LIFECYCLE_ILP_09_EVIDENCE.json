@@ -1,0 +1,47 @@
+{
+  "programme": "ILP-9-LIFECYCLE-EVENTS-DISCOVERY-AND-IMPLEMENTATION-01",
+  "branch": "develop",
+  "executed_at_utc": "2026-07-06T22:30:00Z",
+  "verdict": "ILP_09_IMPLEMENTED_TARGETED_VALIDATION_PASS_REGRESSION_DEFERRED",
+  "production_ready": false,
+  "lifecycle_event_authority": {
+    "module": "backend/services/account_lifecycle_event_authority.py",
+    "schema_version": "account_lifecycle_event_v1",
+    "policy_version": "account_lifecycle_event_v1",
+    "collection": "account_lifecycle_events"
+  },
+  "discovery_inventory": "backend/docs/audit/account_lifecycle_ilp_09/LIFECYCLE_EVENT_DISCOVERY_INVENTORY.json",
+  "documentation": [
+    "backend/docs/ACCOUNT_LIFECYCLE_EVENT_AUTHORITY.md",
+    "backend/docs/ACCOUNT_LIFECYCLE_EVENT_CATALOG.md",
+    "backend/docs/ACCOUNT_LIFECYCLE_EVENT_SCHEMA.md",
+    "backend/docs/ACCOUNT_LIFECYCLE_EVENT_CONSUMERS.md",
+    "backend/docs/ACCOUNT_LIFECYCLE_EVENT_SEQUENCE.md"
+  ],
+  "integrations": {
+    "runtime_contract": "publish_runtime_contract_transition on cache material change",
+    "communication": "CommunicationSuppressed on evaluate_customer_communication suppress",
+    "session": "SessionRuntimeChanged event + indirect runtime_version refresh",
+    "background": "BackgroundPolicyChanged via contract transition detection",
+    "audit": "LIFECYCLE_EVENT_PUBLISHED on every publish",
+    "cache_invalidation": "builtin consumer on runtime/lifecycle/session categories"
+  },
+  "canonical_event_count": 26,
+  "targeted_tests_passed": {
+    "total": 10,
+    "failed": 0,
+    "suite": "test_account_lifecycle_event_authority.py"
+  },
+  "deferred_items": [
+    "CommunicationSent publication",
+    "Reactivation/recovery journey events",
+    "Frontend event stream",
+    "Webhook fan-out",
+    "Event replay API",
+    "Full platform regression"
+  ],
+  "ilp10_readiness": {
+    "status": "READY_FOR_ILP10_CONVERGENCE",
+    "notes": "Authoritative model in place; remaining publishers and consumers to converge."
+  }
+}

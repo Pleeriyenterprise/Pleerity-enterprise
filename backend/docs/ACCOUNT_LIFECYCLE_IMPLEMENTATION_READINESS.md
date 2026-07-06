@@ -2,7 +2,7 @@
 
 **Programme:** ACCOUNT-LIFECYCLE-GOVERNANCE-CONSISTENCY-REVIEW-01  
 **Reconciliation:** ACCOUNT-LIFECYCLE-GOVERNANCE-RECONCILIATION-01  
-**Status:** **ILP-1–8 IMPLEMENTED — ILP-9–10 PENDING**  
+**Status:** **ILP-1–9 IMPLEMENTED — ILP-10 PENDING**  
 **Parent:** `ACCOUNT_LIFECYCLE_GOVERNANCE_REVIEW.md`  
 **Mapping:** `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md` (authoritative cross-reference)
 
@@ -26,7 +26,7 @@ During implementation, several governance ILPs were delivered within other imple
 | **ILP-6** | Background Runtime Authority | ✓ **Complete** |
 | **ILP-7** | Lifecycle Response Authority | ✓ **Complete** |
 | **ILP-8** | Customer Communications & Reactivation | ✓ **Complete** |
-| **ILP-9** | Lifecycle Events | ⬜ **Pending** |
+| **ILP-9** | Lifecycle Events | ✓ **Complete** |
 | **ILP-10** | Platform Convergence | ⬜ **Pending** |
 
 **Programme gate:** Platform Release Readiness (full regression) — pending after ILP-10.
@@ -50,7 +50,7 @@ Lifecycle Response Authority
         ↓
 Customer Communications & Reactivation    ← ILP-8 ✓
         ↓
-Lifecycle Events                          ← ILP-9
+Lifecycle Events                          ← ILP-9 ✓
         ↓
 Platform Convergence                      ← ILP-10
         ↓

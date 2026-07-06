@@ -32,9 +32,9 @@ Background Runtime Authority (ILP-6)
         ↓
 Lifecycle Response Authority (ILP-7)
         ↓
-Customer Communications & Reactivation   (ILP-8 — pending)
+Customer Communications & Reactivation   (ILP-8 ✓)
         ↓
-Lifecycle Events                       (ILP-9 — pending)
+Lifecycle Events                       (ILP-9 ✓)
         ↓
 Platform Convergence                   (ILP-10 — pending)
         ↓
@@ -58,7 +58,7 @@ Portal Mode consumption (ILP-3) is a **presentation layer** that reads the Runti
 | **ILP-7** | Session Authority — `session_policy`, force_reauth, runtime version sync | **ILP-5** | ✓ Complete | `audit/account_lifecycle_ilp_05/` |
 | **ILP-8** *(historical)* | Background Services — jobs consume `background_policy` | **ILP-6** | ✓ Complete | `audit/account_lifecycle_ilp_06/` |
 | **ILP-8** *(reconciled)* | Customer Communications & Reactivation | **ILP-8** | ✓ Complete | `audit/account_lifecycle_ilp_08/` |
-| **ILP-9** | Lifecycle Events — event bus, audit, runtime invalidation | — | ⬜ Pending | — |
+| **ILP-9** | Lifecycle Events — event bus, audit, runtime invalidation | **ILP-9** | ✓ Complete | `audit/account_lifecycle_ilp_09/` |
 | **ILP-10** | Platform Convergence / Legacy Removal | — | ⬜ Pending | — |
 
 ### Numbering reconciliation
@@ -107,18 +107,11 @@ Scope includes:
 
 ---
 
-### ILP-9 — Lifecycle Events
+### ILP-9 — Lifecycle Events ✓
 
-**Dependencies:** ILP-1 through ILP-8
+**Status:** Complete — see `audit/account_lifecycle_ilp_09/`
 
-Scope includes:
-
-- Lifecycle event model
-- Event emission
-- Runtime invalidation
-- Audit events
-- Integration and webhook events
-- Analytics events
+Delivered: `account_lifecycle_event_authority.py`, runtime transition publication, CommunicationSuppressed, cache invalidation consumers, audit integration.
 
 ---
 
