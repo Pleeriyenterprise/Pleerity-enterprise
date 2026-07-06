@@ -2,7 +2,7 @@
 
 **Programme:** ACCOUNT-LIFECYCLE-GOVERNANCE-CONSISTENCY-REVIEW-01  
 **Reconciliation:** ACCOUNT-LIFECYCLE-GOVERNANCE-RECONCILIATION-01  
-**Status:** **ILP-1–9 IMPLEMENTED — ILP-10 PENDING**  
+**Status:** **ILP-1–10 IMPLEMENTED — RELEASE READINESS PENDING**  
 **Parent:** `ACCOUNT_LIFECYCLE_GOVERNANCE_REVIEW.md`  
 **Mapping:** `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md` (authoritative cross-reference)
 
@@ -27,9 +27,9 @@ During implementation, several governance ILPs were delivered within other imple
 | **ILP-7** | Lifecycle Response Authority | ✓ **Complete** |
 | **ILP-8** | Customer Communications & Reactivation | ✓ **Complete** |
 | **ILP-9** | Lifecycle Events | ✓ **Complete** |
-| **ILP-10** | Platform Convergence | ⬜ **Pending** |
+| **ILP-10** | Platform Convergence | ✓ **Complete** |
 
-**Programme gate:** Platform Release Readiness (full regression) — pending after ILP-10.
+**Programme gate:** Platform Release Readiness (full regression) — **next programme**.
 
 ---
 
@@ -52,9 +52,9 @@ Customer Communications & Reactivation    ← ILP-8 ✓
         ↓
 Lifecycle Events                          ← ILP-9 ✓
         ↓
-Platform Convergence                      ← ILP-10
+Platform Convergence                      ← ILP-10 ✓
         ↓
-Platform Release Readiness
+Platform Release Readiness                ← NEXT
 ```
 
 Portal Mode (ILP-3) consumes the Runtime Contract for presentation; it is not an enforcement authority in this stack.

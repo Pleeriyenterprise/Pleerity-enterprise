@@ -1,0 +1,148 @@
+{
+  "programme": "ILP-10-PLATFORM-CONVERGENCE-AND-LEGACY-REMOVAL-01",
+  "branch": "develop",
+  "audited_at_utc": "2026-07-06T23:00:00Z",
+  "phase": "A_convergence_audit_complete",
+  "authority_stack": [
+    {"layer": 1, "authority": "Lifecycle State Resolver", "module": "account_lifecycle_state_resolver.py", "classification": "ACTIVE_AUTHORITY"},
+    {"layer": 2, "authority": "Runtime Contract", "module": "account_lifecycle_runtime_contract.py", "classification": "ACTIVE_AUTHORITY"},
+    {"layer": 3, "authority": "Capability Enforcement", "module": "account_capability_enforcement.py", "classification": "ACTIVE_AUTHORITY"},
+    {"layer": 4, "authority": "Session Runtime", "module": "account_session_runtime_service.py", "classification": "ACTIVE_AUTHORITY"},
+    {"layer": 5, "authority": "Background Runtime", "module": "account_background_runtime_authority.py", "classification": "ACTIVE_AUTHORITY"},
+    {"layer": 6, "authority": "Lifecycle Response", "module": "account_lifecycle_response_authority.py", "classification": "ACTIVE_AUTHORITY"},
+    {"layer": 7, "authority": "Customer Communication", "module": "account_customer_communication_authority.py", "classification": "ACTIVE_AUTHORITY"},
+    {"layer": 8, "authority": "Reactivation", "module": "account_lifecycle_reactivation_authority.py", "classification": "ACTIVE_AUTHORITY"},
+    {"layer": 9, "authority": "Lifecycle Events", "module": "account_lifecycle_event_authority.py", "classification": "ACTIVE_AUTHORITY"}
+  ],
+  "findings": [
+    {
+      "id": "entitlements_context",
+      "location": "frontend/src/contexts/EntitlementsContext.js",
+      "classification": "COMPATIBILITY_LAYER",
+      "disposition": "RETAINED",
+      "reason": "Deprecated; not mounted in customer App tree; test mocks only"
+    },
+    {
+      "id": "entitlement_protected_route",
+      "location": "frontend/src/utils/EntitlementProtectedRoute.js",
+      "classification": "COMPATIBILITY_LAYER",
+      "disposition": "RETAINED",
+      "reason": "Re-exports AccountCapabilityProtectedRoute"
+    },
+    {
+      "id": "capability_compatibility",
+      "location": "backend/services/capability_compatibility.py",
+      "classification": "COMPATIBILITY_LAYER",
+      "disposition": "RETAINED",
+      "reason": "Maps legacy feature_key to CAP_* for plan_registry bridge"
+    },
+    {
+      "id": "feature_gating_middleware",
+      "location": "backend/middleware/feature_gating.py",
+      "classification": "OBSOLETE",
+      "disposition": "RETAINED_TEST_ONLY",
+      "reason": "No production route consumers; governance regression tests"
+    },
+    {
+      "id": "plan_gating",
+      "location": "backend/services/plan_gating.py",
+      "classification": "OBSOLETE",
+      "disposition": "REMOVED",
+      "reason": "Zero imports; superseded by capability enforcement"
+    },
+    {
+      "id": "feature_entitlement",
+      "location": "backend/services/feature_entitlement.py",
+      "classification": "OBSOLETE",
+      "disposition": "REMOVED",
+      "reason": "Zero imports; superseded by capability enforcement"
+    },
+    {
+      "id": "client_context_guard_canonical",
+      "location": "backend/middleware/__init__.py _client_context_guard",
+      "classification": "DEPRECATED",
+      "disposition": "MIGRATED",
+      "reason": "Replaced canonical_entitlement_state gate with Runtime Contract lifecycle_state"
+    },
+    {
+      "id": "compare_runtime_with_legacy",
+      "location": "account_lifecycle_runtime_contract.compare_runtime_with_legacy",
+      "classification": "COMPATIBILITY_LAYER",
+      "disposition": "RETAINED",
+      "reason": "Diagnostic endpoint /lifecycle-runtime/diagnostic only"
+    },
+    {
+      "id": "lifecycle_contract_alias",
+      "location": "routes/client_lifecycle_runtime.py /lifecycle-contract",
+      "classification": "COMPATIBILITY_LAYER",
+      "disposition": "RETAINED",
+      "reason": "Transitional API alias for governance"
+    },
+    {
+      "id": "entitlement_access",
+      "location": "backend/services/entitlement_access.py",
+      "classification": "COMPATIBILITY_LAYER",
+      "disposition": "RETAINED",
+      "reason": "plan_registry.enforce_feature subscription band checks; branding path"
+    },
+    {
+      "id": "plan_registry_enforce_feature",
+      "location": "backend/services/plan_registry.py",
+      "classification": "COMPATIBILITY_LAYER",
+      "disposition": "RETAINED",
+      "reason": "branding_resolver_service; not customer route permission authority"
+    },
+    {
+      "id": "notification_orchestrator_subscription_fields",
+      "location": "notification_orchestrator.py template context",
+      "classification": "ADMIN_ONLY",
+      "disposition": "RETAINED",
+      "reason": "Template metadata; gating via evaluate_customer_communication"
+    },
+    {
+      "id": "lifecycle_kpi_gates",
+      "location": "backend/services/lifecycle_kpi_gates.py",
+      "classification": "OPERATIONAL",
+      "disposition": "RETAINED",
+      "reason": "Compliance KPI shadow mode; separate from account lifecycle stack"
+    },
+    {
+      "id": "subscription_operational_events",
+      "location": "subscription_operational_events.py",
+      "classification": "ADMIN_ONLY",
+      "disposition": "RETAINED",
+      "reason": "Billing ops visibility; not account lifecycle platform events"
+    },
+    {
+      "id": "frontend_broadcast_invalidation",
+      "location": "sessionRuntimeSync.js",
+      "classification": "ACTIVE_AUTHORITY",
+      "disposition": "RETAINED",
+      "reason": "Tab-sync for runtime_version refresh; indirect lifecycle event consumer"
+    }
+  ],
+  "customer_permission_verification": {
+    "frontend_route_guards": "AccountCapabilityProtectedRoute → capabilityRuntime",
+    "backend_route_guards": "capability_gating.assert_client_capability",
+    "legacy_hasFeature_in_customer_pages": "NONE",
+    "legacy_useEntitlements_in_customer_pages": "NONE"
+  },
+  "deferred_roadmap": [
+    {"item": "CommunicationSent lifecycle event", "source": "ILP-9", "disposition": "FUTURE_ROADMAP", "reason": "Notification delivery ack; not release-blocking"},
+    {"item": "Reactivation/recovery journey events", "source": "ILP-9", "disposition": "FUTURE_ROADMAP", "reason": "Metadata-only reactivation authority sufficient for convergence"},
+    {"item": "Frontend lifecycle event stream", "source": "ILP-9", "disposition": "FUTURE_ROADMAP", "reason": "runtime_version polling converged"},
+    {"item": "Lifecycle webhook fan-out", "source": "ILP-9", "disposition": "FUTURE_ROADMAP", "reason": "Integration tooling"},
+    {"item": "Event replay / dead-letter", "source": "ILP-9", "disposition": "INFRASTRUCTURE", "reason": "Post-release observability"},
+    {"item": "feature_gating.require_feature removal", "source": "ILP-10", "disposition": "FUTURE_ROADMAP", "reason": "Governance tests retained"},
+    {"item": "EntitlementsContext file removal", "source": "ILP-10", "disposition": "FUTURE_ROADMAP", "reason": "Test mocks reference; zero production mount"},
+    {"item": "compare_runtime_with_legacy removal", "source": "ILP-10", "disposition": "FUTURE_ROADMAP", "reason": "Diagnostic endpoint until release audit"},
+    {"item": "Customer orders capability", "source": "ILP-4 deferred", "disposition": "FUTURE_ROADMAP", "reason": "Separate commercial domain"}
+  ],
+  "removed_in_ilp10": [
+    "backend/services/plan_gating.py",
+    "backend/services/feature_entitlement.py"
+  ],
+  "migrated_in_ilp10": [
+    "middleware._client_context_guard → Runtime Contract lifecycle_state"
+  ]
+}

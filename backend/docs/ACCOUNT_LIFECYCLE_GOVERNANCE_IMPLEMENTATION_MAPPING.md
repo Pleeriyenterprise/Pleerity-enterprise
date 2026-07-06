@@ -36,9 +36,9 @@ Customer Communications & Reactivation   (ILP-8 ✓)
         ↓
 Lifecycle Events                       (ILP-9 ✓)
         ↓
-Platform Convergence                   (ILP-10 — pending)
+Platform Convergence                   (ILP-10 ✓)
         ↓
-Platform Release Readiness               (programme gate — pending)
+Platform Release Readiness               (programme gate — next)
 ```
 
 Portal Mode consumption (ILP-3) is a **presentation layer** that reads the Runtime Contract; it does not sit in the enforcement stack above.
@@ -59,7 +59,7 @@ Portal Mode consumption (ILP-3) is a **presentation layer** that reads the Runti
 | **ILP-8** *(historical)* | Background Services — jobs consume `background_policy` | **ILP-6** | ✓ Complete | `audit/account_lifecycle_ilp_06/` |
 | **ILP-8** *(reconciled)* | Customer Communications & Reactivation | **ILP-8** | ✓ Complete | `audit/account_lifecycle_ilp_08/` |
 | **ILP-9** | Lifecycle Events — event bus, audit, runtime invalidation | **ILP-9** | ✓ Complete | `audit/account_lifecycle_ilp_09/` |
-| **ILP-10** | Platform Convergence / Legacy Removal | — | ⬜ Pending | — |
+| **ILP-10** | Platform Convergence / Legacy Removal | **ILP-10** | ✓ Complete | `audit/account_lifecycle_ilp_10/` |
 
 ### Numbering reconciliation
 
@@ -115,17 +115,13 @@ Delivered: `account_lifecycle_event_authority.py`, runtime transition publicatio
 
 ---
 
-### ILP-10 — Platform Convergence
+### ILP-10 — Platform Convergence ✓
 
-**Dependencies:** ILP-1 through ILP-9
+**Status:** Complete — see `audit/account_lifecycle_ilp_10/`
 
-Scope includes:
+Delivered: convergence audit, obsolete module removal, route guard migration, platform architecture documentation.
 
-- Legacy field and consumer removal
-- Compatibility wrapper retirement
-- Duplicate lifecycle and capability path removal
-- Obsolete authority removal
-- Final convergence verification
+**Next:** Platform Release Readiness audit (full regression).
 
 ---
 

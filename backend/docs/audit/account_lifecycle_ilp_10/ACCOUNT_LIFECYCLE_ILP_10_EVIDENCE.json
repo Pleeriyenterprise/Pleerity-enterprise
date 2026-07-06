@@ -1,0 +1,51 @@
+{
+  "programme": "ILP-10-PLATFORM-CONVERGENCE-AND-LEGACY-REMOVAL-01",
+  "branch": "develop",
+  "executed_at_utc": "2026-07-06T23:30:00Z",
+  "verdict": "ILP_10_IMPLEMENTED_TARGETED_VALIDATION_PASS_REGRESSION_DEFERRED",
+  "production_ready": false,
+  "baseline_version": "account_lifecycle_platform_v1",
+  "convergence_inventory": "backend/docs/audit/account_lifecycle_ilp_10/PLATFORM_CONVERGENCE_INVENTORY.json",
+  "documentation": [
+    "backend/docs/ACCOUNT_PLATFORM_CONVERGENCE.md",
+    "backend/docs/ACCOUNT_PLATFORM_AUTHORITY_STACK.md",
+    "backend/docs/ACCOUNT_PLATFORM_RELEASE_BASELINE.md",
+    "backend/docs/ACCOUNT_PLATFORM_ARCHITECTURE.md"
+  ],
+  "removed_modules": [
+    "backend/services/plan_gating.py",
+    "backend/services/feature_entitlement.py"
+  ],
+  "migrations": [
+    "middleware._client_context_guard: canonical_entitlement_state → Runtime Contract lifecycle_state"
+  ],
+  "compatibility_retained": [
+    "frontend/contexts/EntitlementsContext.js",
+    "frontend/utils/EntitlementProtectedRoute.js",
+    "backend/services/capability_compatibility.py",
+    "backend/middleware/feature_gating.py",
+    "compare_runtime_with_legacy diagnostic"
+  ],
+  "authority_verification": {
+    "permissions": "account_capability_enforcement + Runtime Contract",
+    "responses": "account_lifecycle_response_authority",
+    "sessions": "account_session_runtime_service",
+    "communications": "account_customer_communication_authority",
+    "events": "account_lifecycle_event_authority",
+    "background": "account_background_runtime_authority"
+  },
+  "targeted_tests_passed": {
+    "backend_convergence": {"total": 14, "failed": 0, "suite": "test_platform_convergence.py"},
+    "backend_events": {"total": 10, "failed": 0, "suite": "test_account_lifecycle_event_authority.py"},
+    "frontend_convergence": {"total": 8, "failed": 0, "suite": "ilp10PlatformConvergence.test.js"}
+  },
+  "release_readiness_prerequisites": [
+    "full backend regression",
+    "full frontend regression",
+    "e2e lifecycle validation",
+    "staging verification",
+    "operational observability validation",
+    "production readiness assessment"
+  ],
+  "next_programme": "PLATFORM-WIDE-RELEASE-READINESS-AUDIT"
+}
