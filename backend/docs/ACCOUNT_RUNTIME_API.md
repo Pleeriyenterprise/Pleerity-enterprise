@@ -143,13 +143,25 @@ Enforcement wiring: `ACCOUNT_CAPABILITY_ENFORCEMENT_MATRIX.md` — `properties.p
 |----------|--------|-----|
 | Tests / diagnostics | Active | ILP-2 |
 | `GET /lifecycle-runtime` API | Active (new) | ILP-2 |
-| Middleware `client_route_guard` | Blocked | ILP-4 |
-| Frontend `EntitlementsContext` | Blocked | ILP-5 |
-| Portal shell / navigation | Blocked | ILP-3, ILP-5 |
-| Background jobs | Blocked | ILP-8 |
-| Session invalidation | Blocked | ILP-7 |
+| Middleware `client_route_guard` | Active | ILP-4, ILP-7 |
+| Capability denial 403 payloads | Active | ILP-4, ILP-7 |
+| Lifecycle denial 403 payloads | Active | ILP-7 |
+| Frontend `EntitlementsContext` | Active | ILP-3, ILP-5 |
+| Portal shell / navigation | Active | ILP-3 |
+| Background jobs | Active | ILP-6 |
+| Session invalidation | Active | ILP-5 |
 
 Full inventory: `ACCOUNT_RUNTIME_CONSUMERS.md`.
+
+### ILP-7 Lifecycle Response Authority
+
+Governed 403/401 error bodies include:
+
+- `lifecycle_redirect`, `recovery`, `customer_experience`
+- `response_type`, `policy_version`, `support_reference`
+- `runtime_version`, `contract_version`
+
+See `ACCOUNT_LIFECYCLE_RESPONSE_AUTHORITY.md` and `ACCOUNT_LIFECYCLE_RESPONSE_SCHEMA.md`.
 
 ---
 

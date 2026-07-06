@@ -1,0 +1,122 @@
+{
+  "audit_date_utc": "2026-07-06T19:00:00Z",
+  "programme": "ILP-7-LIFECYCLE-RESPONSE-AUTHORITY-01",
+  "summary": {
+    "total_customer_lifecycle_paths_identified": 12,
+    "centralized_in_ilp7": 12,
+    "deferred_non_lifecycle": 8
+  },
+  "capability_denial_paths": {
+    "status": "CENTRALIZED",
+    "builder": "capability_denied_http_detail() → LifecycleResponseAuthority.from_capability_decision()",
+    "call_sites": [
+      "middleware/capability_gating.py",
+      "services/account_capability_enforcement.py",
+      "routes/client_read_api.py",
+      "routes/calendar.py",
+      "routes/assistant.py",
+      "routes/profile.py",
+      "routes/client_compliance_execution.py",
+      "routes/api_compliance_workflow.py",
+      "routes/client_approvals.py",
+      "routes/client_rent_operations.py",
+      "routes/client_maintenance.py"
+    ],
+    "prior_inconsistencies": [
+      "recovery.route without lifecycle_redirect",
+      "missing response_type categorization",
+      "missing policy_version"
+    ],
+    "resolved": true
+  },
+  "lifecycle_denial_paths": {
+    "status": "CENTRALIZED",
+    "builder": "lifecycle_denial_for_client() → from_contract_lifecycle_denial()",
+    "call_sites": [
+      "middleware/__init__.py _client_context_guard"
+    ],
+    "prior_inconsistencies": [
+      "SUBSCRIPTION_ACCESS_BLOCKED error_code",
+      "canonical_entitlement_state leaked in detail",
+      "handwritten message strings"
+    ],
+    "resolved": true
+  },
+  "authentication_paths": {
+    "status": "GENERATORS_READY",
+    "generators": [
+      "LifecycleResponseAuthority.authentication_expired()",
+      "LifecycleResponseAuthority.session_refresh_required()"
+    ],
+    "existing_callers": "JWT middleware (plain 401 strings); session runtime headers (ILP-5)",
+    "deferred": "Wire generators to auth/session middleware in follow-up if required by ILP-8 gate"
+  },
+  "plan_feature_gating": {
+    "status": "DEFERRED",
+    "location": "middleware/feature_gating.py",
+    "current": "Plain string 403 detail",
+    "reason": "Plan gate is not lifecycle response; out of ILP-7 scope per programme constraints"
+  },
+  "rbac_and_context_denials": {
+    "status": "OUT_OF_SCOPE",
+    "examples": [
+      "Client context required",
+      "Insufficient permissions",
+      "Contractor context required",
+      "Tenant context required"
+    ],
+    "reason": "Role/context checks are authorization, not lifecycle customer experience"
+  },
+  "inconsistencies_found_pre_migration": [
+    {
+      "id": "INC-01",
+      "area": "capability_gating",
+      "issue": "Local payload builder with recovery.route only",
+      "resolution": "Delegated to Lifecycle Response Authority"
+    },
+    {
+      "id": "INC-02",
+      "area": "client_context_guard",
+      "issue": "SUBSCRIPTION_ACCESS_BLOCKED + canonical_entitlement_state in 403",
+      "resolution": "lifecycle_denial_for_client() with governed schema"
+    },
+    {
+      "id": "INC-03",
+      "area": "frontend",
+      "issue": "parseCapabilityDeniedDetail ignored lifecycle_redirect",
+      "resolution": "parseLifecycleResponseDetail + lifecycleRedirectRouteFromDetail"
+    },
+    {
+      "id": "INC-04",
+      "area": "read_only_capability",
+      "issue": "DENY grant on READ_ONLY mapped to capability_denied not read_only",
+      "resolution": "_response_type_for_capability checks lifecycle_state/portal_mode"
+    },
+    {
+      "id": "INC-05",
+      "area": "ilp4_compat",
+      "issue": "reason_code missing after schema rename to error_code",
+      "resolution": "reason_code alias in to_http_detail()"
+    }
+  ],
+  "missing_fields_pre_migration": [
+    "lifecycle_redirect",
+    "response_type",
+    "policy_version",
+    "support_reference",
+    "safe_to_retry (capability path)"
+  ],
+  "response_categories_standardized": [
+    "capability_denied",
+    "lifecycle_denied",
+    "read_only",
+    "billing_recovery",
+    "suspended",
+    "archived",
+    "deleted",
+    "unknown_lifecycle",
+    "authentication_expired",
+    "session_refresh_required",
+    "temporary_unavailable"
+  ]
+}

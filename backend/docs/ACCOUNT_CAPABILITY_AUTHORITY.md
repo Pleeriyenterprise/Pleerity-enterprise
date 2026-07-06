@@ -117,6 +117,9 @@ Portal mode **never decides permissions independently** — it consumes capabili
 | `ACCOUNT_FEATURE_CAPABILITY_MATRIX.md` | Product feature → capability |
 | `ACCOUNT_API_CAPABILITY_MATRIX.md` | Customer API → required capabilities |
 | `ACCOUNT_BACKGROUND_CAPABILITY_MATRIX.md` | Workers → required capabilities |
+| `ACCOUNT_LIFECYCLE_RESPONSE_AUTHORITY.md` | ILP-7 governed HTTP denial payloads |
+| `ACCOUNT_LIFECYCLE_RESPONSE_SCHEMA.md` | Canonical lifecycle response JSON schema |
+| `ACCOUNT_LIFECYCLE_RECOVERY_GUIDANCE.md` | Recovery actions and redirect policy |
 | `ACCOUNT_LIFECYCLE_STATE_DIAGRAM.md` | Visual lifecycle architecture |
 | `audit/.../FRONTEND_CAPABILITY_CONSUMPTION.md` | Phase 8 page-level capability audit |
 | `audit/.../ACCOUNT_CAPABILITY_AUTHORITY_EVIDENCE.json` | Gaps, classifications, roadmap |
@@ -160,11 +163,11 @@ Portal mode **never decides permissions independently** — it consumes capabili
 | **ILP-1** Lifecycle State Resolver | Publishes `account_lifecycle_state` for matrix lookup |
 | **ILP-2** Portal Mode API | Returns `capabilities: { CAP_*: grant }` in lifecycle-contract |
 | **ILP-3** Frontend Lifecycle Shell | `useCapabilities()` replaces direct `hasFeature` for lifecycle |
-| **ILP-4** API Lifecycle Responses | Endpoints check capability resolver before plan_registry |
+| **ILP-4** API Lifecycle Responses | Endpoints check capability resolver; denials via Lifecycle Response Authority (ILP-7) |
 | **ILP-5** Session Authority | Unaffected; session separate from capability |
 | **ILP-6** Background Processing | Jobs use `ACCOUNT_BACKGROUND_CAPABILITY_MATRIX` |
-| **ILP-7** Customer Communications | Send eligibility = communication capabilities |
-| **ILP-8** Reactivation | Restores capability grants per reactivation scope |
+| **ILP-7** Lifecycle Response Authority | Central HTTP denial/recovery payload generation |
+| **ILP-8** Customer Communications | Send eligibility = communication capabilities |
 | **ILP-9** Lifecycle Events | Events trigger capability cache invalidation |
 | **ILP-10** Legacy Migration | Maps legacy flags → capability IDs |
 
