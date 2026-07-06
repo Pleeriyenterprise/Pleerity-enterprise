@@ -24,6 +24,12 @@ def _attach_branding_db_mocks(db: MagicMock) -> None:
     db.branding_settings.find_one = AsyncMock(return_value=None)
 
 
+def _attach_runtime_db_mocks(db: MagicMock) -> None:
+    """ILP-6 background runtime gating reads client_billing via database.get_db()."""
+    db.client_billing = MagicMock()
+    db.client_billing.find_one = AsyncMock(return_value=None)
+
+
 @pytest.fixture(autouse=True)
 def _patch_branding_plan_gate():
     """Allow merge_email_branding_context → resolve_branding without real plan checks."""
@@ -225,6 +231,7 @@ def _send_email_db_mock():
         "text_body": "Hi {{client_name}}",
     })
     _attach_branding_db_mocks(db)
+    _attach_runtime_db_mocks(db)
     return db
 
 
@@ -320,6 +327,7 @@ async def test_professional_sms_allowed():
         "onboarding_status": "PROVISIONED",
         "subscription_status": "ACTIVE",
         "entitlement_status": "ENABLED",
+        "billing_plan": "PLAN_3_PRO",
     })
     db.notification_preferences.find_one = AsyncMock(
         return_value={
@@ -332,21 +340,19 @@ async def test_professional_sms_allowed():
     db.message_logs.count_documents = AsyncMock(return_value=0)
     db.message_logs.insert_one = AsyncMock()
     db.message_logs.update_one = AsyncMock()
+    _attach_runtime_db_mocks(db)
 
-    mock_registry = MagicMock()
-    mock_registry.enforce_feature = AsyncMock(return_value=(True, None, None))
     with patch("services.notification_orchestrator.database.get_db", return_value=db):
         with patch("services.notification_orchestrator.create_audit_log", new_callable=AsyncMock):
-            with patch("services.plan_registry.plan_registry", mock_registry):
-                with patch.dict("os.environ", {"SMS_ENABLED": "true", "TWILIO_PHONE_NUMBER": "+44000"}):
-                    with patch.object(notification_orchestrator, "_twilio_client", MagicMock()) as tw:
-                        tw.messages.create = MagicMock(return_value=MagicMock(sid="SM123"))
-                        result = await notification_orchestrator.send(
-                            template_key="COMPLIANCE_EXPIRY_REMINDER",
-                            client_id="c1",
-                            context={"client_name": "Test"},
-                            idempotency_key="sms_1",
-                        )
+            with patch.dict("os.environ", {"SMS_ENABLED": "true", "TWILIO_PHONE_NUMBER": "+44000"}):
+                with patch.object(notification_orchestrator, "_twilio_client", MagicMock()) as tw:
+                    tw.messages.create = MagicMock(return_value=MagicMock(sid="SM123"))
+                    result = await notification_orchestrator.send(
+                        template_key="COMPLIANCE_EXPIRY_REMINDER",
+                        client_id="c1",
+                        context={"client_name": "Test"},
+                        idempotency_key="sms_1",
+                    )
     assert result.outcome == "sent"
 
 
@@ -371,6 +377,7 @@ async def test_solo_sms_returns_403_plan_gate_denied():
         "onboarding_status": "PROVISIONED",
         "subscription_status": "ACTIVE",
         "entitlement_status": "ENABLED",
+        "billing_plan": "PLAN_1_SOLO",
     })
     db.notification_preferences.find_one = AsyncMock(
         return_value={
@@ -381,18 +388,16 @@ async def test_solo_sms_returns_403_plan_gate_denied():
     )
     db.message_logs.find_one = AsyncMock(return_value=None)
     db.message_logs.count_documents = AsyncMock(return_value=0)
+    _attach_runtime_db_mocks(db)
 
-    mock_registry = MagicMock()
-    mock_registry.enforce_feature = AsyncMock(return_value=(False, "SMS requires Pro plan", {"error_code": "PLAN_GATE_DENIED"}))
     with patch("services.notification_orchestrator.database.get_db", return_value=db):
         with patch("services.notification_orchestrator.create_audit_log", new_callable=AsyncMock):
-            with patch("services.plan_registry.plan_registry", mock_registry):
-                result = await notification_orchestrator.send(
-                    template_key="COMPLIANCE_EXPIRY_REMINDER",
-                    client_id="c1",
-                    context={"client_name": "Test"},
-                    idempotency_key="sms_solo",
-                )
+            result = await notification_orchestrator.send(
+                template_key="COMPLIANCE_EXPIRY_REMINDER",
+                client_id="c1",
+                context={"client_name": "Test"},
+                idempotency_key="sms_solo",
+            )
     assert result.outcome == "blocked"
     assert result.block_reason == "BLOCKED_PLAN_GATE"
     assert result.status_code == 403

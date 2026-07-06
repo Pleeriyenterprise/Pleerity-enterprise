@@ -258,6 +258,28 @@ class JobScheduler:
     async def close(self):
         if self.client:
             self.client.close()
+
+    async def _client_allowed_for_background(self, client_id: str, job_type: str, **kwargs) -> bool:
+        from services.account_background_runtime_authority import gate_client_background_job
+
+        allowed, decision = await gate_client_background_job(self.db, client_id, job_type, **kwargs)
+        if not allowed:
+            logger.info(
+                "Skipping %s for %s — background runtime %s (%s)",
+                job_type,
+                client_id,
+                decision.decision.value,
+                decision.reason,
+            )
+        return allowed
+
+    async def _find_clients_for_background(self, client_id: Optional[str] = None):
+        """Load client candidates without legacy subscription/entitlement filters."""
+        if client_id and str(client_id).strip():
+            cid = str(client_id).strip()
+            one = await self.db.clients.find_one({"client_id": cid}, {"_id": 0})
+            return [one] if one else []
+        return await self.db.clients.find({}, {"_id": 0}).to_list(1000)
     
     async def send_daily_reminders(self, client_id: Optional[str] = None):
         """Send daily compliance reminders for expiring requirements.
@@ -271,24 +293,26 @@ class JobScheduler:
         logger.info("Running daily reminder job...")
         
         try:
-            base_q = {
-                "subscription_status": "ACTIVE",
-                "entitlement_status": {"$in": ["ENABLED", None]},  # None for legacy compatibility
-            }
             if client_id and str(client_id).strip():
                 cid = str(client_id).strip()
-                one = await self.db.clients.find_one({**base_q, "client_id": cid}, {"_id": 0})
-                if not one:
+                clients = await self._find_clients_for_background(cid)
+                if not clients:
                     return {
-                        "message": f"Client not found or not eligible for reminders: {cid}",
+                        "message": f"Client not found: {cid}",
                         "count": 0,
                         "outcome_status": "failed",
-                        "error_message": "Client not found or not ACTIVE / not entitled",
+                        "error_message": "Client not found",
                         "outcome_metrics": {"expected_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 1},
                     }
-                clients = [one]
+                if not await self._client_allowed_for_background(cid, "daily_reminders"):
+                    return {
+                        "message": f"Background runtime suppressed reminders for {cid}",
+                        "count": 0,
+                        "outcome_status": "success",
+                        "outcome_metrics": {"skipped_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 0},
+                    }
             else:
-                clients = await self.db.clients.find(base_q, {"_id": 0}).to_list(1000)
+                clients = await self._find_clients_for_background()
             
             attempted_count = 0
             success_count = 0
@@ -299,6 +323,9 @@ class JobScheduler:
             suppressed_by_reason = {}
 
             for client in clients:
+                if not await self._client_allowed_for_background(client["client_id"], "daily_reminders"):
+                    skipped_count += 1
+                    continue
                 # Check notification preferences
                 prefs = await self.db.notification_preferences.find_one(
                     {"client_id": client["client_id"]},
@@ -487,11 +514,20 @@ class JobScheduler:
                                 )
                         else:
                             failed_count += 1
-                    # Portfolio and above: runtime plan gating before SMS (survives downgrade/cancel)
-                    from services.plan_registry import plan_registry
-                    sms_allowed, _sms_err, _sms_details = await plan_registry.enforce_feature(
-                        client["client_id"], "sms_reminders"
+                    # Portfolio and above: runtime contract capability before SMS
+                    from services.account_capability_enforcement import CapabilityEnforcementService
+                    from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
+                    from services.capability_compatibility import evaluate_feature_via_capability
+
+                    contract = await resolve_runtime_contract_for_client(self.db, client["client_id"])
+                    cap_result = await evaluate_feature_via_capability(
+                        CapabilityEnforcementService(self.db),
+                        client["client_id"],
+                        "sms_reminders",
+                        "read",
+                        contract=contract,
                     )
+                    sms_allowed = cap_result.allowed
                     if sms_allowed:
                         # Only send SMS for urgent (overdue) when sms_urgent_alerts_only is True
                         sms_urgent_only = prefs.get("sms_urgent_alerts_only", True) if prefs else True
@@ -613,21 +649,12 @@ class JobScheduler:
                 "error_message": "Client not found",
                 "outcome_metrics": {"expected_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 1},
             }
-        if client.get("subscription_status") != "ACTIVE":
+        if not await self._client_allowed_for_background(client_id, "monthly_digest"):
             return {
-                "message": "Client subscription not active",
+                "message": "Background runtime suppressed monthly digest",
                 "count": 0,
-                "outcome_status": "failed",
-                "error_message": "subscription_status not ACTIVE",
-                "outcome_metrics": {"expected_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 1},
-            }
-        if client.get("entitlement_status") == "DISABLED":
-            return {
-                "message": "Client entitlement disabled",
-                "count": 0,
-                "outcome_status": "failed",
-                "error_message": "entitlement DISABLED",
-                "outcome_metrics": {"expected_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 1},
+                "outcome_status": "success",
+                "outcome_metrics": {"skipped_count": 1, "attempted_count": 0, "success_count": 0, "failed_count": 0},
             }
 
         prefs = await self.db.notification_preferences.find_one({"client_id": client_id}, {"_id": 0})
@@ -799,15 +826,7 @@ class JobScheduler:
         logger.info("Running monthly digest job...")
         
         try:
-            # Get all active clients with ENABLED entitlement
-            # Per spec: no background jobs when entitlement is DISABLED
-            clients = await self.db.clients.find(
-                {
-                    "subscription_status": "ACTIVE",
-                    "entitlement_status": {"$in": ["ENABLED", None]}  # None for legacy compatibility
-                },
-                {"_id": 0}
-            ).to_list(1000)
+            clients = await self._find_clients_for_background()
             
             digest_count = 0
             attempted_digests = 0
@@ -821,6 +840,8 @@ class JobScheduler:
             )
 
             for client in clients:
+                if not await self._client_allowed_for_background(client["client_id"], "monthly_digest"):
+                    continue
                 prefs = await self.db.notification_preferences.find_one(
                     {"client_id": client["client_id"]},
                     {"_id": 0},
@@ -1548,29 +1569,32 @@ class JobScheduler:
         try:
             from services.webhook_service import fire_compliance_status_changed
             
-            base_q = {
-                "subscription_status": "ACTIVE",
-                "entitlement_status": {"$in": ["ENABLED", None]},  # None for legacy compatibility
-            }
             if client_id and str(client_id).strip():
                 cid = str(client_id).strip()
-                one = await self.db.clients.find_one({**base_q, "client_id": cid}, {"_id": 0})
-                if not one:
+                clients = await self._find_clients_for_background(cid)
+                if not clients:
                     return {
-                        "message": f"Client not found or not eligible: {cid}",
+                        "message": f"Client not found: {cid}",
                         "count": 0,
                         "outcome_status": "failed",
-                        "error_message": "Client not found or not ACTIVE / not entitled",
+                        "error_message": "Client not found",
                     }
-                clients = [one]
+                if not await self._client_allowed_for_background(cid, "compliance_monitoring"):
+                    return {
+                        "message": f"Background runtime suppressed compliance monitoring for {cid}",
+                        "count": 0,
+                        "outcome_status": "success",
+                    }
             else:
-                clients = await self.db.clients.find(base_q, {"_id": 0}).to_list(1000)
+                clients = await self._find_clients_for_background()
             
             alert_count = 0
             attempted_alerts = 0
             failed_alerts = 0
 
             for client in clients:
+                if not await self._client_allowed_for_background(client["client_id"], "compliance_monitoring"):
+                    continue
                 # Check notification preferences
                 prefs = await self.db.notification_preferences.find_one(
                     {"client_id": client["client_id"]},
@@ -2088,52 +2112,15 @@ class ScheduledReportJob:
                     # Skip if client not active or entitlement not ENABLED
                     if not client:
                         continue
-                    if client.get("subscription_status") != "ACTIVE":
-                        continue
-                    if client.get("entitlement_status") not in ["ENABLED", None]:
-                        logger.info(f"Skipping scheduled report for {schedule['client_id']} - entitlement is {client.get('entitlement_status')}")
-                        continue
-                    
-                    # Runtime plan gating: scheduled_reports must be allowed (survives downgrade/cancel)
-                    from services.plan_registry import plan_registry
-                    allowed, error_msg, error_details = await plan_registry.enforce_feature(
-                        schedule["client_id"], "scheduled_reports"
-                    )
+                    schedule_client_id = schedule["client_id"]
+                    from services.account_background_runtime_authority import gate_client_background_job
+
+                    allowed, _bg = await gate_client_background_job(self.db, schedule_client_id, "scheduled_reports")
                     if not allowed:
                         logger.info(
-                            "Skipping scheduled report for client %s - plan/subscription does not allow scheduled_reports: %s",
-                            schedule["client_id"],
-                            error_msg,
+                            "Skipping scheduled report for client %s — background runtime suppressed",
+                            schedule_client_id,
                         )
-                        from utils.audit import create_audit_log
-                        from models import AuditAction
-                        await create_audit_log(
-                            action=AuditAction.ADMIN_ACTION,
-                            actor_role="SYSTEM",
-                            client_id=schedule["client_id"],
-                            metadata={
-                                "action_type": "SCHEDULED_REPORT_BLOCKED_PLAN",
-                                "schedule_id": schedule.get("schedule_id"),
-                                "reason": error_msg,
-                                "error_code": (error_details or {}).get("error_code"),
-                            },
-                        )
-                        # MessageLog for visibility in notification health
-                        try:
-                            await self.db.message_logs.insert_one({
-                                "message_id": str(__import__("uuid").uuid4()),
-                                "client_id": schedule["client_id"],
-                                "recipient": None,
-                                "template_key": "SCHEDULED_REPORT",
-                                "channel": "EMAIL",
-                                "status": "BLOCKED_PLAN",
-                                "attempt_count": 1,
-                                "error_message": error_msg,
-                                "metadata": {"event_type": "scheduled_report", "block_reason": "BLOCKED_PLAN"},
-                                "created_at": datetime.now(timezone.utc),
-                            })
-                        except Exception:
-                            pass
                         continue
                     
                     # Generate report

@@ -624,48 +624,116 @@ class NotificationOrchestrator:
                     details={"error_code": "ACCOUNT_NOT_READY", "message": "Provisioning not completed."},
                 )
 
-        if template.get("requires_active_subscription"):
-            if (client.get("subscription_status") or "").upper() != "ACTIVE":
-                await self._write_blocked_log(
-                    db, client_id, template_key, channel, "BLOCKED_SUBSCRIPTION_INACTIVE", None, None, context, None,
-                )
-                await create_audit_log(
-                    action=AuditAction.NOTIFICATION_BLOCKED_SUBSCRIPTION_INACTIVE,
-                    client_id=client_id,
-                    metadata={"template_key": template_key, "subscription_status": client.get("subscription_status")},
-                )
-                return NotificationResult(outcome="blocked", block_reason="BLOCKED_SUBSCRIPTION_INACTIVE")
+        if template.get("requires_active_subscription") or template.get("requires_entitlement_enabled"):
+            from services.account_background_runtime_authority import (
+                evaluate_background_runtime,
+                log_background_decision,
+                resolve_notification_job_type,
+            )
 
-        if template.get("requires_entitlement_enabled"):
-            if (client.get("entitlement_status") or "").upper() != "ENABLED":
+            job_type = resolve_notification_job_type(template_key, template, event_type)
+            channel_key = str(channel or "").lower()
+            from services.account_lifecycle_runtime_contract import build_runtime_contract
+
+            billing_doc = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+            contract = build_runtime_contract(
+                client={**(client or {}), "client_id": client_id},
+                billing=billing_doc
+                or {
+                    "client_id": client_id,
+                    "subscription_status": (client or {}).get("subscription_status", "ACTIVE"),
+                    "billing_lifecycle_state": (client or {}).get("billing_lifecycle_state", "active"),
+                    "canonical_entitlement_state": (client or {}).get("entitlement_status", "ENABLED"),
+                },
+            )
+            bg_decision = await evaluate_background_runtime(
+                db,
+                client_id,
+                job_type,
+                channel=channel_key if channel_key == "sms" else None,
+                contract=contract,
+            )
+            if not bg_decision.allowed:
+                log_background_decision(bg_decision)
+                block_reason = "BLOCKED_RUNTIME_BACKGROUND_POLICY"
                 await self._write_blocked_log(
-                    db, client_id, template_key, channel, "BLOCKED_SUBSCRIPTION_INACTIVE", None, None, context, None,
+                    db,
+                    client_id,
+                    template_key,
+                    channel,
+                    block_reason,
+                    bg_decision.reason,
+                    None,
+                    context,
+                    event_type,
                 )
                 await create_audit_log(
                     action=AuditAction.NOTIFICATION_BLOCKED_SUBSCRIPTION_INACTIVE,
                     client_id=client_id,
-                    metadata={"template_key": template_key},
+                    metadata={
+                        "template_key": template_key,
+                        "background_decision": bg_decision.to_dict(),
+                    },
                 )
-                return NotificationResult(outcome="blocked", block_reason="BLOCKED_SUBSCRIPTION_INACTIVE")
+                return NotificationResult(
+                    outcome="blocked",
+                    block_reason=block_reason,
+                    details={
+                        "error_code": "BACKGROUND_RUNTIME_DENIED",
+                        "message": bg_decision.reason,
+                        "lifecycle_state": bg_decision.lifecycle_state,
+                    },
+                )
 
         plan_feature = template.get("plan_required_feature_key")
         if plan_feature:
-            from services.plan_registry import plan_registry
-            allowed, msg, details = await plan_registry.enforce_feature(client_id, plan_feature)
-            if not allowed:
+            from services.account_capability_enforcement import CapabilityEnforcementService
+            from services.account_lifecycle_runtime_contract import build_runtime_contract
+            from services.capability_compatibility import evaluate_feature_via_capability
+
+            billing_doc = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+            contract = build_runtime_contract(
+                client={**(client or {}), "client_id": client_id},
+                billing=billing_doc
+                or {
+                    "client_id": client_id,
+                    "subscription_status": (client or {}).get("subscription_status", "ACTIVE"),
+                    "billing_lifecycle_state": (client or {}).get("billing_lifecycle_state", "active"),
+                    "canonical_entitlement_state": (client or {}).get("entitlement_status", "ENABLED"),
+                },
+            )
+            enforcement = CapabilityEnforcementService(db)
+            cap_result = await evaluate_feature_via_capability(
+                enforcement,
+                client_id,
+                plan_feature,
+                "read",
+                contract=contract,
+            )
+            if not cap_result.allowed:
+                msg = cap_result.reason or f"Feature '{plan_feature}' not available"
                 await self._write_blocked_log(
                     db, client_id, template_key, channel, "BLOCKED_PLAN_GATE", msg, None, context, None,
                 )
                 await create_audit_log(
                     action=AuditAction.PLAN_GATE_DENIED,
                     client_id=client_id,
-                    metadata={"template_key": template_key, "feature_key": plan_feature, "reason": msg, **(details or {})},
+                    metadata={
+                        "template_key": template_key,
+                        "feature_key": plan_feature,
+                        "capability_id": cap_result.capability_id,
+                        "reason": msg,
+                        "lifecycle_state": cap_result.lifecycle_state,
+                    },
                 )
                 return NotificationResult(
                     outcome="blocked",
                     block_reason="BLOCKED_PLAN_GATE",
                     status_code=403,
-                    details={"error_code": "PLAN_GATE_DENIED", "message": msg or "Feature not available on plan"},
+                    details={
+                        "error_code": "PLAN_GATE_DENIED",
+                        "message": msg or "Feature not available on plan",
+                    },
                 )
         # Quiet-hours gate for non-critical notifications.
         prefs = client.get("notification_preferences") or {}

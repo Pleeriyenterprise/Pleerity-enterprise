@@ -262,6 +262,29 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                     {"_id": 0, "client_id": 1, "billing_plan": 1},
                 )
                 client_id = (prop or {}).get("client_id") or ""
+            from services.account_background_runtime_authority import (
+                apply_queue_runtime_suppression,
+                evaluate_background_runtime,
+                log_background_decision,
+                queue_runtime_action,
+            )
+
+            bg = await evaluate_background_runtime(db, client_id, "risk_signal_regen_queue")
+            if client_id and not bg.allowed:
+                log_background_decision(bg)
+                await apply_queue_runtime_suppression(
+                    db,
+                    collection_name="risk_signal_regen_queue",
+                    item_id=jid,
+                    decision=bg,
+                    status_pending=STATUS_PENDING,
+                    status_dead=STATUS_DEAD,
+                )
+                if queue_runtime_action(bg) == "terminate":
+                    failed_count += 1
+                else:
+                    skipped_feature_flag_count += 1
+                continue
             client_doc = await db.clients.find_one(
                 {"client_id": client_id},
                 {"_id": 0, "billing_plan": 1},

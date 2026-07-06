@@ -417,6 +417,30 @@ async def run_compliance_recalc_worker():
             if r.modified_count == 0:
                 claim_skipped += 1
                 continue
+            if client_id:
+                from services.account_background_runtime_authority import (
+                    apply_queue_runtime_suppression,
+                    evaluate_background_runtime,
+                    log_background_decision,
+                    queue_runtime_action,
+                )
+
+                bg = await evaluate_background_runtime(db, client_id, "compliance_recalc_queue")
+                if not bg.allowed:
+                    log_background_decision(bg)
+                    await apply_queue_runtime_suppression(
+                        db,
+                        collection_name="compliance_recalc_queue",
+                        item_id=jid,
+                        decision=bg,
+                        status_pending=STATUS_PENDING,
+                        status_dead=STATUS_DEAD,
+                    )
+                    if queue_runtime_action(bg) == "terminate":
+                        dead_count += 1
+                    else:
+                        claim_skipped += 1
+                    continue
             queue_item_id = str(jid)
             queue_collection = "compliance_recalc_queue"
             actor = {"id": actor_id or "system", "role": actor_type}
@@ -1232,6 +1256,12 @@ async def run_risk_signals_job(client_id: Optional[str] = None):
     for c in clients:
         cid = c.get("client_id")
         try:
+            from services.account_background_runtime_authority import gate_client_background_job
+
+            allowed, _bg = await gate_client_background_job(db, cid, "risk_signals")
+            if not allowed:
+                skipped_no_flag += 1
+                continue
             flags = await get_effective_flags(cid, c.get("billing_plan"))
             if not flags.get(PREDICTIVE_MAINTENANCE):
                 skipped_no_flag += 1
