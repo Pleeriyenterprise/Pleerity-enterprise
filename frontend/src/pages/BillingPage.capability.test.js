@@ -11,6 +11,18 @@ describe('BillingPage capability consumption', () => {
     expect(src).not.toMatch(/hasFeature\s*\(/);
     expect(src).not.toMatch(/UpgradeRequired/);
     expect(src).not.toMatch(/UpgradePrompt/);
+    expect(src).not.toMatch(/\/client\/entitlements/);
+    expect(src).not.toMatch(/\bentitlements\b/);
+    expect(src).not.toMatch(/EntitlementsContext/);
+    expect(src).not.toMatch(/subscription_status/);
+    expect(src).not.toMatch(/entitlement_status/);
+  });
+
+  it('sources plan comparison display from presentation helpers', () => {
+    const src = fs.readFileSync(PAGE, 'utf8');
+    expect(src).toMatch(/billingPlanPresentation/);
+    expect(src).toMatch(/isFeatureEnabledForBillingComparison/);
+    expect(src).toMatch(/featureCountForPlanBanner/);
   });
 
   it('gates billing actions on runtime capability flags', () => {

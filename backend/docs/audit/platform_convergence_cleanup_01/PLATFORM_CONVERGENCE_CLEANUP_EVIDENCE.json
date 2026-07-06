@@ -1,0 +1,68 @@
+{
+  "programme": "PLATFORM-CONVERGENCE-CLEANUP-01",
+  "verdict": "BILLING_LEGACY_DEPENDENCY_REMOVED",
+  "branch": "develop",
+  "executed_at": "2026-07-06T20:46:00Z",
+  "scope": {
+    "frontend": [
+      "frontend/src/pages/BillingPage.js",
+      "frontend/src/utils/billingPlanPresentation.js",
+      "frontend/src/pages/BillingPage.capability.test.js",
+      "frontend/src/utils/billingPlanPresentation.test.js"
+    ],
+    "backend_changes": false,
+    "stripe_changes": false,
+    "runtime_contract_schema_changes": false
+  },
+  "removed_dependencies": [
+    "GET /api/client/entitlements"
+  ],
+  "authority_sources": {
+    "permissions": [
+      "CAP_BILLING_VIEW",
+      "CAP_BILLING_INVOICES",
+      "CAP_BILLING_PAYMENT_METHODS",
+      "CAP_BILLING_CHECKOUT",
+      "CAP_SUB_MANAGE",
+      "CAP_SUB_CANCEL"
+    ],
+    "subscription_state": "GET /billing/status",
+    "plan_catalog": "GET /billing/plans",
+    "plan_comparison_display": "billingPlanPresentation.js (static FEATURE_MATRIX)"
+  },
+  "legacy_not_used": [
+    "EntitlementsContext",
+    "hasFeature",
+    "feature keys for permission",
+    "subscription_status",
+    "entitlement_status",
+    "/client/entitlements"
+  ],
+  "billing_recovery_lifecycle_states_preserved": [
+    "ACTIVE",
+    "TRIAL",
+    "GRACE_PERIOD",
+    "CANCELLATION_SCHEDULED",
+    "CANCELLED_IMMEDIATE",
+    "SUBSCRIPTION_EXPIRED",
+    "READ_ONLY",
+    "SUSPENDED"
+  ],
+  "tests": {
+    "command": "npm test -- --testPathPattern=\"BillingPage.capability|billingCapabilityAccess|billingPlanPresentation\" --watchAll=false",
+    "suites_passed": [
+      "BillingPage.capability.test.js",
+      "billingCapabilityAccess.test.js",
+      "billingPlanPresentation.test.js"
+    ],
+    "note": "capabilityRuntime.test.js not in scope (unchanged); pre-existing failure unrelated to this programme"
+  },
+  "grep_verification": {
+    "BillingPage.js": {
+      "/client/entitlements": 0,
+      "entitlements": 0,
+      "useEntitlements": 0
+    }
+  },
+  "commit_message": "fix(account): remove billing page legacy entitlement dependency"
+}

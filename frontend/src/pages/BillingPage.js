@@ -36,6 +36,11 @@ import {
   isCapabilityDeniedApiError,
   useBillingCapabilities,
 } from '../utils/billingCapabilityAccess';
+import {
+  featureCountForPlanBanner,
+  isFeatureEnabledForBillingComparison,
+  planPropertyLimitForDisplay,
+} from '../utils/billingPlanPresentation';
 import { PortalLoadingPanel, portalPageRoot, PortalPageWithLifecyclePresentation } from '../components/client/ClientPortalPatterns';
 import { useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
 import { PORTAL_COPY } from '../utils/clientPortalCopy';
@@ -155,95 +160,6 @@ const FEATURE_CATEGORIES = [
   },
 ];
 
-// Feature availability matrix
-const FEATURE_MATRIX = {
-  PLAN_1_SOLO: {
-    compliance_dashboard: true,
-    compliance_score: true,
-    compliance_calendar: true,
-    email_notifications: true,
-    multi_file_upload: true,
-    score_trending: true,
-    ai_extraction_basic: true,
-    ai_extraction_advanced: false,
-    extraction_review_ui: false,
-    zip_upload: false,
-    reports_pdf: false,
-    reports_csv: false,
-    scheduled_reports: false,
-    sms_reminders: false,
-    tenant_portal: false,
-    webhooks: false,
-    white_label_reports: false,
-    audit_log_export: false,
-  },
-  PLAN_2_PORTFOLIO: {
-    compliance_dashboard: true,
-    compliance_score: true,
-    compliance_calendar: true,
-    email_notifications: true,
-    multi_file_upload: true,
-    score_trending: true,
-    ai_extraction_basic: true,
-    ai_extraction_advanced: false,
-    extraction_review_ui: false,
-    zip_upload: true,
-    reports_pdf: true,
-    reports_csv: true,
-    scheduled_reports: true,
-    sms_reminders: true,
-    tenant_portal: false,
-    webhooks: false,
-    white_label_reports: false,
-    audit_log_export: false,
-  },
-  PLAN_3_PRO: {
-    compliance_dashboard: true,
-    compliance_score: true,
-    compliance_calendar: true,
-    email_notifications: true,
-    multi_file_upload: true,
-    score_trending: true,
-    ai_extraction_basic: true,
-    ai_extraction_advanced: true,
-    extraction_review_ui: true,
-    zip_upload: true,
-    reports_pdf: true,
-    reports_csv: true,
-    scheduled_reports: true,
-    sms_reminders: true,
-    tenant_portal: true,
-    webhooks: true,
-    white_label_reports: true,
-    audit_log_export: true,
-  },
-};
-
-/**
- * Static FEATURE_MATRIX must match backend/services/plan_registry.py FEATURE_MATRIX (single commercial truth).
- * For the signed-in client's current plan, feature on/off state comes from GET /client/entitlements when loaded.
- */
-function isFeatureEnabledForBillingComparison(planCode, featureKey, currentPlan, entitlements) {
-  if (
-    planCode === currentPlan &&
-    entitlements?.features &&
-    Object.prototype.hasOwnProperty.call(entitlements.features, featureKey)
-  ) {
-    return Boolean(entitlements.features[featureKey].enabled);
-  }
-  const row = FEATURE_MATRIX[planCode];
-  return row ? Boolean(row[featureKey]) : false;
-}
-
-function featureCountForPlanBanner(planCode, currentPlan, entitlements) {
-  if (planCode === currentPlan && typeof entitlements?.feature_summary?.enabled === 'number') {
-    return entitlements.feature_summary.enabled;
-  }
-  const row = FEATURE_MATRIX[planCode];
-  if (!row) return 0;
-  return Object.values(row).filter(Boolean).length;
-}
-
 /** Stripe epoch or missing dates must not surface as 1970 in the UI */
 const MIN_VALID_RENEWAL_MS = 946684800000;
 
@@ -331,7 +247,6 @@ const BillingPage = () => {
   const [searchParams] = useSearchParams();
   const [usageRefreshing, setUsageRefreshing] = useState(false);
   const [currentPlan, setCurrentPlan] = useState(null);
-  const [entitlements, setEntitlements] = useState(null);
   const [billingStatus, setBillingStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -376,12 +291,17 @@ const BillingPage = () => {
     try {
       const response = await api.get('/billing/status');
       setBillingStatus(response.data);
+      if (response.data?.current_plan_code) {
+        setCurrentPlan(response.data.current_plan_code);
+      }
     } catch (error) {
       if (isCapabilityDeniedApiError(error)) {
         toast.error(getCapabilityDeniedMessage(error, 'Failed to load billing status'));
       } else {
         console.error('Failed to fetch billing status:', error);
       }
+    } finally {
+      setLoading(false);
     }
   }, [canViewBilling]);
 
@@ -406,27 +326,16 @@ const BillingPage = () => {
   const handleRefreshUsage = useCallback(async () => {
     setUsageRefreshing(true);
     try {
-      await fetchEntitlements();
       if (canViewBilling) {
-        try {
-          const response = await api.get('/billing/status');
-          setBillingStatus(response.data);
-        } catch (e) {
-          if (isCapabilityDeniedApiError(e)) {
-            toast.error(getCapabilityDeniedMessage(e, 'Could not refresh billing status'));
-          } else {
-            console.error('Failed to refresh billing status:', e);
-          }
-        }
+        await fetchBillingStatus();
       }
       toast.success('Usage data updated');
     } finally {
       setUsageRefreshing(false);
     }
-  }, [canViewBilling]);
+  }, [canViewBilling, fetchBillingStatus]);
 
   useEffect(() => {
-    fetchEntitlements();
     if (canViewBilling) {
       fetchBillingStatus();
     } else {
@@ -464,7 +373,6 @@ const BillingPage = () => {
         description: 'Your plan change is being confirmed. This may take a moment.',
       });
       fetchBillingStatus();
-      fetchEntitlements();
     } else if (checkoutReturn === 'cancelled') {
       toast.info('Checkout cancelled', {
         description: 'No changes were made. You can choose a plan again when ready.',
@@ -566,19 +474,6 @@ const BillingPage = () => {
     }
   };
 
-  const fetchEntitlements = async () => {
-    try {
-      const response = await api.get('/client/entitlements');
-      setEntitlements(response.data);
-      setCurrentPlan(response.data.plan);
-    } catch (error) {
-      console.error('Failed to fetch entitlements:', error);
-      toast.error('Failed to load plan information');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCancelSubscription = async (cancelImmediately = false) => {
     if (!canCancelSubscription) return;
     setCancelling(true);
@@ -598,10 +493,7 @@ const BillingPage = () => {
       }
       
       setShowCancelModal(false);
-      // Refresh billing status
       await fetchBillingStatus();
-      await fetchEntitlements();
-      
     } catch (error) {
       if (error?.message === 'step_up_cancelled') {
         return;
@@ -1231,8 +1123,8 @@ const BillingPage = () => {
                   {displayPlans.find((p) => p.code === currentPlan)?.name || currentPlan}
                 </h2>
                 <p className="text-sm text-gray-300 mt-1">
-                  {entitlements?.max_properties} properties •{' '}
-                  {featureCountForPlanBanner(currentPlan, currentPlan, entitlements)} features enabled (your account)
+                  {planPropertyLimitForDisplay(currentPlan, billingStatus, displayPlans)} properties •{' '}
+                  {featureCountForPlanBanner(currentPlan)} plan features included
                 </p>
               </div>
               <div className="text-right">
@@ -1323,7 +1215,7 @@ const BillingPage = () => {
                     <div className="flex items-center gap-2 text-sm">
                       <Check className="w-4 h-4 text-green-500" />
                       <span>
-                        <strong>{featureCountForPlanBanner(plan.code, currentPlan, entitlements)}</strong> features
+                        <strong>{featureCountForPlanBanner(plan.code)}</strong> features
                         {plan.code === currentPlan ? ' (your account)' : ' (typical tier)'}
                       </span>
                     </div>
@@ -1435,7 +1327,7 @@ const BillingPage = () => {
                   </div>
                   {displayPlans.map((plan) => {
                     const enabledCount = category.features.filter((f) =>
-                      isFeatureEnabledForBillingComparison(plan.code, f.key, currentPlan, entitlements)
+                      isFeatureEnabledForBillingComparison(plan.code, f.key)
                     ).length;
                     return (
                       <div key={plan.code} className="text-center text-sm text-gray-500">
@@ -1463,9 +1355,7 @@ const BillingPage = () => {
                         {displayPlans.map((plan) => {
                           const isEnabled = isFeatureEnabledForBillingComparison(
                             plan.code,
-                            feature.key,
-                            currentPlan,
-                            entitlements
+                            feature.key
                           );
                           return (
                             <div key={plan.code} className="flex items-center justify-center">
