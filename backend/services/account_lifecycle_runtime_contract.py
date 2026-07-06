@@ -152,7 +152,7 @@ _CAP_PLAN_KEYS: Dict[str, str] = {
     "CAP_REPORT_SCHEDULE": "scheduled_reports",
     "CAP_AUDIT_LOG_EXPORT": "audit_log_export",
     "CAP_REPORT_AUDIT_PACK": "audit_log_export",
-    "CAP_NOTIF_SMS": "sms_notifications",
+    "CAP_NOTIF_SMS": "sms_reminders",
     "CAP_AI_ASSISTANT": "ai_assistant",
     "CAP_CALENDAR_VIEW": "compliance_calendar",
     "CAP_AI_EXTRACTION_ADVANCED": "ai_extraction_advanced",
