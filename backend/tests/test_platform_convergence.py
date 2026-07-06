@@ -68,8 +68,9 @@ def test_client_context_guard_uses_runtime_contract():
     text = _read(BACKEND_ROOT / "middleware" / "__init__.py")
     guard_section = text.split("_client_context_guard")[1].split("async def client_route_guard")[0]
     assert "resolve_runtime_contract_for_client" in guard_section
+    assert "emit_events=False" in guard_section
     assert "compute_canonical_entitlement_state" not in guard_section
-    assert "client_billing.find_one" not in guard_section
+    assert "client_billing.find_one" in guard_section
 
 
 def test_middleware_avoids_subscription_access_blocked():

@@ -1,0 +1,20 @@
+"""P0 staging runtime stabilization — guard and contract resolve behaviour."""
+from __future__ import annotations
+
+import inspect
+from pathlib import Path
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_resolve_runtime_contract_supports_emit_events_flag():
+    from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
+
+    sig = inspect.signature(resolve_runtime_contract_for_client)
+    assert "emit_events" in sig.parameters
+
+
+def test_client_guard_skips_event_emission():
+    text = (BACKEND_ROOT / "middleware" / "__init__.py").read_text(encoding="utf-8")
+    guard = text.split("_client_context_guard")[1].split("async def client_route_guard")[0]
+    assert "emit_events=False" in guard
