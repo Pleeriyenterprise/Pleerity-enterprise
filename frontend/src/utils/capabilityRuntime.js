@@ -67,18 +67,50 @@ export function evaluateCapabilityGrant(capabilities, capabilityId, action) {
 }
 
 /**
+ * Parse governed lifecycle-aware API payload (403/401 detail object).
+ * @param {unknown} detail
+ * @returns {object | null}
+ */
+export function parseLifecycleResponseDetail(detail) {
+  if (!detail || typeof detail !== 'object') {
+    return null;
+  }
+  if (typeof detail.message !== 'string') {
+    return null;
+  }
+  return detail;
+}
+
+/**
  * Parse governed capability_denied API payload (403 detail object).
  * @param {unknown} detail
  * @returns {object | null}
  */
 export function parseCapabilityDeniedDetail(detail) {
-  if (!detail || typeof detail !== 'object') {
+  const parsed = parseLifecycleResponseDetail(detail);
+  if (!parsed) {
     return null;
   }
-  if (detail.error !== CAPABILITY_DENIED_ERROR) {
+  if (parsed.error !== CAPABILITY_DENIED_ERROR && parsed.response_type !== CAPABILITY_DENIED_ERROR) {
     return null;
   }
-  return detail;
+  return parsed;
+}
+
+/**
+ * @param {unknown} detail
+ * @returns {string | null}
+ */
+export function lifecycleRedirectRouteFromDetail(detail) {
+  const redirect = detail?.lifecycle_redirect;
+  if (redirect && typeof redirect.route === 'string' && redirect.route.trim()) {
+    return redirect.route.trim();
+  }
+  const recovery = detail?.recovery;
+  if (recovery && typeof recovery.route === 'string' && recovery.route.trim()) {
+    return recovery.route.trim();
+  }
+  return null;
 }
 
 /**

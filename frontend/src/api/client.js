@@ -357,7 +357,7 @@ export function parseApiError(err, fallback = 'Something went wrong. Please try 
   if (d && typeof d === 'object') {
     if (typeof d.message === 'string' && d.message.trim()) {
       let msg = d.message.trim();
-      if (d.retry_suggested === true) msg = `${msg} You can try again.`;
+      if (d.retry_suggested === true || d.safe_to_retry === true) msg = `${msg} You can try again.`;
       const em = d.evidence_match && typeof d.evidence_match === 'object' ? d.evidence_match : null;
       const extra = Array.isArray(em?.user_messages) ? em.user_messages.filter(Boolean).join(' ') : '';
       if (extra) msg = `${msg} ${extra}`.trim();
