@@ -253,37 +253,35 @@ async def _client_context_guard(request: Request, user: dict, db) -> dict:
         )
 
     path = str(request.url.path) or ""
-    billing_row = await db.client_billing.find_one(
-        {"client_id": user["client_id"]},
-        {"_id": 0, "canonical_entitlement_state": 1, "billing_lifecycle_state": 1, "subscription_status": 1},
-    )
-    if not billing_row:
-        return user
+    billing_allowed = path.startswith("/api/billing") or path.startswith("/api/client/billing")
 
-    from services.entitlement_access import compute_canonical_entitlement_state
+    from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
 
-    canon = (billing_row or {}).get("canonical_entitlement_state")
-    if not canon:
-        lc_b = (billing_row or {}).get("billing_lifecycle_state") or client.get("billing_lifecycle_state")
-        st_b = (billing_row or {}).get("subscription_status") or client.get("subscription_status")
-        canon = compute_canonical_entitlement_state(
-            billing_lifecycle_state=lc_b,
-            subscription_status_upper=st_b,
+    contract = await resolve_runtime_contract_for_client(db, user["client_id"])
+    lifecycle_state = str(contract.get("lifecycle_state") or "")
+
+    # Lifecycle states that block general portal API access (ILP-10 — Runtime Contract authority).
+    # Replaces legacy canonical_entitlement_state SUSPENDED/CANCELLED gate.
+    _blocked_lifecycle = frozenset({
+        "SUSPENDED",
+        "CANCELLED_IMMEDIATE",
+        "SUBSCRIPTION_EXPIRED",
+        "READ_ONLY",
+        "ARCHIVED",
+        "ACCOUNT_DELETED",
+    })
+    if lifecycle_state in _blocked_lifecycle and not billing_allowed:
+        from services.account_lifecycle_response_authority import lifecycle_denial_for_client
+
+        detail = await lifecycle_denial_for_client(
+            db,
+            user["client_id"],
+            error_code="lifecycle_access_denied",
         )
-    if canon in ("SUSPENDED", "CANCELLED"):
-        billing_allowed = path.startswith("/api/billing") or path.startswith("/api/client/billing")
-        if not billing_allowed:
-            from services.account_lifecycle_response_authority import lifecycle_denial_for_client
-
-            detail = await lifecycle_denial_for_client(
-                db,
-                user["client_id"],
-                error_code="lifecycle_access_denied",
-            )
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=detail,
-            )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+        )
     return user
 
 
