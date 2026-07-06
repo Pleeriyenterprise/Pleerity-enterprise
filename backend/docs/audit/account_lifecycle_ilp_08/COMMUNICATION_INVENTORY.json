@@ -1,0 +1,49 @@
+{
+  "audit_date_utc": "2026-07-06T21:00:00Z",
+  "programme": "ILP-8-CUSTOMER-COMMUNICATIONS-AND-REACTIVATION-01",
+  "surfaces_audited": [
+    "notification_orchestrator (email/SMS transactional)",
+    "email_service (grouped reminders)",
+    "lifecycle_reminder_template_registry",
+    "jobs.py (reminders, digests)",
+    "account_background_runtime_authority (job comm checks)",
+    "lifecycle_communication/ (requirement-level LCA)",
+    "admin_communications_service (admin broadcast — out of scope)",
+    "frontend LifecycleRuntimeContext (customer_experience)",
+    "profile.py in-app notifications"
+  ],
+  "issues_pre_ilp8": [
+    {
+      "id": "COM-01",
+      "issue": "Notification gating used background runtime for communication_policy",
+      "resolution": "Migrated to CustomerCommunicationAuthority"
+    },
+    {
+      "id": "COM-02",
+      "issue": "No central suppression for operational email during billing recovery",
+      "resolution": "billing_recovery_suppress_operational_spam rule"
+    },
+    {
+      "id": "COM-03",
+      "issue": "No lifecycle template placeholders in notification context",
+      "resolution": "enrich_context_with_lifecycle_placeholders()"
+    },
+    {
+      "id": "COM-04",
+      "issue": "Reactivation journeys not exposed as structured metadata",
+      "resolution": "LifecycleReactivationAuthority recovery journeys"
+    },
+    {
+      "id": "COM-05",
+      "issue": "Requirement LCA separate from account lifecycle comms",
+      "status": "BY_DESIGN — both layers documented"
+    }
+  ],
+  "deferred": [
+    "Full email_service send-path migration (placeholders available at orchestrator)",
+    "Admin broadcast communications governance",
+    "Push notification channel (policy key reserved)",
+    "Stripe/billing execution in reactivation (orchestration metadata only)",
+    "Tenant notification route-by-route migration"
+  ]
+}

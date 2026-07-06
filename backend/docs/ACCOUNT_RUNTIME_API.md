@@ -163,6 +163,16 @@ Governed 403/401 error bodies include:
 
 See `ACCOUNT_LIFECYCLE_RESPONSE_AUTHORITY.md` and `ACCOUNT_LIFECYCLE_RESPONSE_SCHEMA.md`.
 
+### ILP-8 Customer Communication Authority
+
+Account-level communication eligibility and reactivation metadata:
+
+- `account_customer_communication_authority.py` — channel, suppression, placeholders
+- `account_lifecycle_reactivation_authority.py` — recovery journeys
+- `notification_orchestrator` — subscription-gated send gating
+
+See `ACCOUNT_CUSTOMER_COMMUNICATION_AUTHORITY.md` and `ACCOUNT_LIFECYCLE_COMMUNICATION_MATRIX.md`.
+
 ---
 
 ## Deferred enforcement

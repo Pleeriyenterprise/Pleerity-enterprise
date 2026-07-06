@@ -169,7 +169,7 @@ Portal mode **never decides permissions independently** — it consumes capabili
 | **ILP-5** Session Runtime Authority | ✓ Complete | Session sync; was governance ILP-7 |
 | **ILP-6** Background Runtime Authority | ✓ Complete | Jobs use background matrix; was governance ILP-8 |
 | **ILP-7** Lifecycle Response Authority | ✓ Complete | Central HTTP denial payloads; was governance ILP-6 |
-| **ILP-8** Customer Communications & Reactivation | ⬜ Pending | Send eligibility, templates, recovery |
+| **ILP-8** Customer Communications & Reactivation | ✓ Complete | Communication + reactivation authorities |
 | **ILP-9** Lifecycle Events | ⬜ Pending | Cache invalidation, event bus |
 | **ILP-10** Platform Convergence | ⬜ Pending | Legacy flags → capability IDs; wrapper removal |
 

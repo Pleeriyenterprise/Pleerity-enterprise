@@ -57,7 +57,7 @@ Portal Mode consumption (ILP-3) is a **presentation layer** that reads the Runti
 | **ILP-6** | API Responses — safe errors, `lifecycle_redirect`, `runtime_version` in 403 | **ILP-7** | ✓ Complete | `audit/account_lifecycle_ilp_07/` |
 | **ILP-7** | Session Authority — `session_policy`, force_reauth, runtime version sync | **ILP-5** | ✓ Complete | `audit/account_lifecycle_ilp_05/` |
 | **ILP-8** *(historical)* | Background Services — jobs consume `background_policy` | **ILP-6** | ✓ Complete | `audit/account_lifecycle_ilp_06/` |
-| **ILP-8** *(reconciled)* | Customer Communications & Reactivation | — | ⬜ Pending | — |
+| **ILP-8** *(reconciled)* | Customer Communications & Reactivation | **ILP-8** | ✓ Complete | `audit/account_lifecycle_ilp_08/` |
 | **ILP-9** | Lifecycle Events — event bus, audit, runtime invalidation | — | ⬜ Pending | — |
 | **ILP-10** | Platform Convergence / Legacy Removal | — | ⬜ Pending | — |
 

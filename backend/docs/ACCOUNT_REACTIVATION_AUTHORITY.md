@@ -1,8 +1,21 @@
 # Account Reactivation Authority
 
 **Programme:** ACCOUNT-LIFECYCLE-POLICY-AUTHORITY-01  
+**ILP-8 implementation:** `services/account_lifecycle_reactivation_authority.py` (`account_lifecycle_reactivation_v1`)  
 **Authority version:** `account_lifecycle_policy_v1`  
 **Parent:** `ACCOUNT_LIFECYCLE_POLICY_AUTHORITY.md`
+
+---
+
+## ILP-8 runtime module
+
+Governance path catalogue (R-001–R-008 below) is implemented for **orchestration metadata** in `LifecycleReactivationAuthority`:
+
+- Consumes `reactivation_policy` from Runtime Contract
+- Exposes recovery journeys (steps, CTA, eligibility)
+- Does **not** execute Stripe/billing mutations (fact sources unchanged)
+
+See `ACCOUNT_CUSTOMER_COMMUNICATION_AUTHORITY.md` for communication eligibility.
 
 ---
 
