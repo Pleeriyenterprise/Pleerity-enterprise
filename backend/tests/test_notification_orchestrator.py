@@ -31,12 +31,25 @@ def _attach_runtime_db_mocks(db: MagicMock) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _patch_branding_plan_gate():
-    """Allow merge_email_branding_context → resolve_branding without real plan checks."""
+def _patch_branding_capability_gate():
+    """Allow merge_email_branding_context → resolve_branding without real capability checks."""
+    from services.account_capability_enforcement import CapabilityDecision
+
+    allowed = CapabilityDecision(
+        capability_id="CAP_BRANDING_WHITE_LABEL",
+        action="read",
+        grant="ALLOW",
+        effective_semantic="ALLOW",
+        allowed=True,
+        source="test",
+        reason_code="",
+        reason="",
+    )
+    mock_svc = MagicMock()
+    mock_svc.evaluate = AsyncMock(return_value=allowed)
     with patch(
-        "services.branding_resolver_service.plan_registry.enforce_feature",
-        new_callable=AsyncMock,
-        return_value=(True, None, None),
+        "services.branding_resolver_service.CapabilityEnforcementService",
+        return_value=mock_svc,
     ):
         yield
 

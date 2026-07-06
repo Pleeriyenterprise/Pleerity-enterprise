@@ -1854,6 +1854,8 @@ class JobScheduler:
             client_id = b.get("client_id")
             if not client_id:
                 continue
+            if not await self._client_allowed_for_background(client_id, "subscription_lifecycle"):
+                continue
             if str(b.get("subscription_status") or "").upper() in ("CANCELED", "CANCELLED", "UNPAID", "INCOMPLETE_EXPIRED"):
                 continue
             pfail = b.get("payment_failed_at")
@@ -1917,7 +1919,7 @@ class JobScheduler:
             client_id = billing.get("client_id")
             if not client_id:
                 continue
-            if (billing.get("entitlement_status") or "").upper() not in ("ENABLED", ""):
+            if not await self._client_allowed_for_background(client_id, "renewal_reminders"):
                 continue
 
             prefs = await self.db.notification_preferences.find_one(
