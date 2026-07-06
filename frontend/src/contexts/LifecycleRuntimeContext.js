@@ -2,6 +2,16 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { useAuth } from './AuthContext';
 import { clientAPI } from '../api/client';
 import { evaluateCapabilityGrant } from '../utils/capabilityRuntime';
+import {
+  applySessionRuntimeFromContract,
+  applySessionRuntimeFromUser,
+  registerSessionRuntimeRefreshHandler,
+} from '../utils/sessionRuntimeStore';
+import {
+  broadcastRuntimeInvalidation,
+  isDocumentOnline,
+  subscribeSessionRuntimeSync,
+} from '../utils/sessionRuntimeSync';
 
 const LifecycleRuntimeContext = createContext(null);
 const PortalModeContext = createContext(null);
@@ -39,6 +49,11 @@ const GOVERNED_FALLBACK = {
 
 const EMPTY_CAPABILITIES = Object.freeze({});
 
+const REFRESH_THROTTLE_MS = 5000;
+const VISIBILITY_THROTTLE_MS = 15000;
+const FOCUS_THROTTLE_MS = 10000;
+const OFFLINE_RETRY_MS = 30000;
+
 function isClientUser(user) {
   return Boolean(
     user &&
@@ -47,84 +62,249 @@ function isClientUser(user) {
   );
 }
 
+function applyRuntimePayload(payload, sessionRuntime, setters) {
+  const { setRuntime, setContractVersion, setRuntimeVersion, setSessionRuntime, setError } = setters;
+  setRuntime(payload);
+  setContractVersion(payload?.contract_version || null);
+  setRuntimeVersion(payload?.runtime_version ?? null);
+  setSessionRuntime(sessionRuntime || null);
+  applySessionRuntimeFromContract(payload, sessionRuntime);
+  setError(null);
+}
+
 export function LifecycleRuntimeProvider({ children }) {
-  const { user } = useAuth();
+  const { user, loginWithToken, logout } = useAuth();
   const [runtime, setRuntime] = useState(null);
+  const [sessionRuntime, setSessionRuntime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [contractVersion, setContractVersion] = useState(null);
   const [runtimeVersion, setRuntimeVersion] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [offline, setOffline] = useState(false);
   const lastFetchRef = useRef(0);
+  const refreshLockRef = useRef(false);
+  const lastRefreshAttemptRef = useRef(0);
 
-  const fetchRuntime = useCallback(async () => {
-    if (!isClientUser(user)) {
-      setRuntime(null);
-      setLoading(false);
-      setError(null);
-      setContractVersion(null);
-      setRuntimeVersion(null);
-      return false;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await clientAPI.getLifecycleRuntime();
-      const payload = res.data?.lifecycle_runtime || null;
-      setRuntime(payload);
-      setContractVersion(
-        res.headers?.['x-lifecycle-contract-version'] ||
-          res.headers?.['X-Lifecycle-Contract-Version'] ||
-          payload?.contract_version ||
-          null,
-      );
-      setRuntimeVersion(
-        res.headers?.['x-lifecycle-runtime-version'] ||
-          res.headers?.['X-Lifecycle-Runtime-Version'] ||
-          payload?.runtime_version ||
-          null,
-      );
-      lastFetchRef.current = Date.now();
-      return true;
-    } catch (err) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[lifecycle-runtime] fetch failed', err);
+  const setters = useMemo(
+    () => ({
+      setRuntime,
+      setContractVersion,
+      setRuntimeVersion,
+      setSessionRuntime,
+      setError,
+    }),
+    [],
+  );
+
+  const fetchRuntime = useCallback(
+    async (options = {}) => {
+      const { reason = 'fetch', force = false } = options;
+      if (!isClientUser(user)) {
+        setRuntime(null);
+        setSessionRuntime(null);
+        setLoading(false);
+        setError(null);
+        setContractVersion(null);
+        setRuntimeVersion(null);
+        return false;
       }
-      setError(LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE);
-      setRuntime(null);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+
+      if (!isDocumentOnline()) {
+        setOffline(true);
+        setError('You appear to be offline. Permissions will refresh when connectivity returns.');
+        return false;
+      }
+      setOffline(false);
+
+      const now = Date.now();
+      if (!force && now - lastRefreshAttemptRef.current < REFRESH_THROTTLE_MS && reason !== 'login') {
+        return false;
+      }
+      if (refreshLockRef.current && !force) {
+        return false;
+      }
+
+      refreshLockRef.current = true;
+      lastRefreshAttemptRef.current = now;
+      if (!runtime || reason === 'login') {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+      setError(null);
+
+      try {
+        const res = await clientAPI.getLifecycleRuntime();
+        const payload = res.data?.lifecycle_runtime || null;
+        const headerContract =
+          res.headers?.['x-lifecycle-contract-version'] ||
+          res.headers?.['X-Lifecycle-Contract-Version'] ||
+          payload?.contract_version;
+        const headerRuntime =
+          res.headers?.['x-lifecycle-runtime-version'] ||
+          res.headers?.['X-Lifecycle-Runtime-Version'] ||
+          payload?.runtime_version;
+
+        applyRuntimePayload(
+          payload,
+          sessionRuntime,
+          {
+            ...setters,
+            setContractVersion: (v) => setContractVersion(v || headerContract || null),
+            setRuntimeVersion: (v) => setRuntimeVersion(v ?? headerRuntime ?? null),
+          },
+        );
+        setContractVersion(headerContract || payload?.contract_version || null);
+        setRuntimeVersion(headerRuntime ?? payload?.runtime_version ?? null);
+        lastFetchRef.current = Date.now();
+        return true;
+      } catch (err) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[lifecycle-runtime] fetch failed', err);
+        }
+        const detail = err?.response?.data?.detail;
+        const code = typeof detail === 'object' ? detail?.error_code : null;
+        if (code === 'SESSION_FORCE_REAUTH' || code === 'SESSION_TERMINATED') {
+          logout();
+          return false;
+        }
+        setError(LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE);
+        setRuntime(null);
+        return false;
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        refreshLockRef.current = false;
+      }
+    },
+    [user, logout],
+  );
+
+  const refreshSession = useCallback(
+    async (reason = 'manual') => {
+      if (!isClientUser(user)) return false;
+      if (!isDocumentOnline()) {
+        setOffline(true);
+        return false;
+      }
+      const now = Date.now();
+      if (now - lastRefreshAttemptRef.current < REFRESH_THROTTLE_MS) {
+        return false;
+      }
+      if (refreshLockRef.current) return false;
+
+      refreshLockRef.current = true;
+      lastRefreshAttemptRef.current = now;
+      setRefreshing(true);
+      try {
+        const res = await clientAPI.refreshSessionRuntime(reason);
+        const payload = res.data?.lifecycle_runtime;
+        const session = res.data?.session_runtime;
+        if (payload) {
+          applyRuntimePayload(payload, session, setters);
+          setContractVersion(payload.contract_version || null);
+          setRuntimeVersion(payload.runtime_version ?? null);
+        }
+        if (res.data?.access_token && res.data?.user) {
+          loginWithToken(res.data.access_token, res.data.user);
+          applySessionRuntimeFromUser(res.data.user);
+        }
+        lastFetchRef.current = Date.now();
+        broadcastRuntimeInvalidation({ reason, runtime_version: payload?.runtime_version });
+        return true;
+      } catch (err) {
+        const detail = err?.response?.data?.detail;
+        const code = typeof detail === 'object' ? detail?.error_code : null;
+        if (code === 'SESSION_FORCE_REAUTH' || code === 'SESSION_TERMINATED') {
+          logout();
+          return false;
+        }
+        return fetchRuntime({ reason: 'refresh_fallback', force: true });
+      } finally {
+        setRefreshing(false);
+        refreshLockRef.current = false;
+      }
+    },
+    [user, fetchRuntime, loginWithToken, logout, setters],
+  );
 
   useEffect(() => {
-    fetchRuntime();
-  }, [fetchRuntime]);
+    applySessionRuntimeFromUser(user);
+    fetchRuntime({ reason: 'login', force: true });
+  }, [user?.portal_user_id, user?.client_id, user?.role]);
+
+  useEffect(() => {
+    registerSessionRuntimeRefreshHandler(refreshSession);
+    return () => registerSessionRuntimeRefreshHandler(null);
+  }, [refreshSession]);
+
+  useEffect(() => {
+    return subscribeSessionRuntimeSync((event) => {
+      if (!isClientUser(user)) return;
+      if (event.type === 'auth_sync' && event.reason === 'logout') return;
+      const since = lastFetchRef.current;
+      if (event.at && since && event.at <= since) return;
+      refreshSession(event.reason || event.type || 'tab_sync');
+    });
+  }, [user, refreshSession]);
 
   useEffect(() => {
     const pollingEnabled = runtime?.polling_policy?.enabled;
     if (!pollingEnabled || !isClientUser(user)) return undefined;
     const timer = setInterval(() => {
-      fetchRuntime();
+      fetchRuntime({ reason: 'poll' });
     }, 120000);
     return () => clearInterval(timer);
   }, [runtime?.polling_policy?.enabled, fetchRuntime, user]);
 
   useEffect(() => {
-    let lastFocusRefetch = 0;
-    const throttleMs = 30000;
+    let lastVisibilityRefetch = 0;
     const onVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return;
+      if (document.visibilityState !== 'visible' || !isClientUser(user)) return;
       const now = Date.now();
-      if (now - lastFocusRefetch < throttleMs) return;
-      lastFocusRefetch = now;
-      if (runtime?.polling_policy?.enabled !== false) {
-        fetchRuntime();
-      }
+      if (now - lastVisibilityRefetch < VISIBILITY_THROTTLE_MS) return;
+      lastVisibilityRefetch = now;
+      fetchRuntime({ reason: 'visibility' });
+    };
+    const onFocus = () => {
+      if (!isClientUser(user)) return;
+      const now = Date.now();
+      if (now - lastVisibilityRefetch < FOCUS_THROTTLE_MS) return;
+      lastVisibilityRefetch = now;
+      fetchRuntime({ reason: 'focus' });
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, [fetchRuntime, runtime?.polling_policy?.enabled]);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [fetchRuntime, user]);
+
+  useEffect(() => {
+    const onOnline = () => {
+      setOffline(false);
+      if (isClientUser(user)) {
+        refreshSession('online');
+      }
+    };
+    const onOffline = () => setOffline(true);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [user, refreshSession]);
+
+  useEffect(() => {
+    if (!offline || !isClientUser(user)) return undefined;
+    const timer = setInterval(() => {
+      if (isDocumentOnline()) refreshSession('offline_retry');
+    }, OFFLINE_RETRY_MS);
+    return () => clearInterval(timer);
+  }, [offline, user, refreshSession]);
 
   const effectiveRuntime = runtime || GOVERNED_FALLBACK;
   const runtimeAvailable = Boolean(runtime);
@@ -146,8 +326,11 @@ export function LifecycleRuntimeProvider({ children }) {
     () => ({
       runtime: effectiveRuntime,
       rawRuntime: runtime,
+      sessionRuntime,
       runtimeAvailable,
       loading,
+      refreshing,
+      offline,
       error,
       contractVersion: contractVersion || effectiveRuntime.contract_version,
       runtimeVersion: runtimeVersion || effectiveRuntime.runtime_version,
@@ -160,13 +343,18 @@ export function LifecycleRuntimeProvider({ children }) {
       navigationPolicy: effectiveRuntime.navigation_policy || GOVERNED_FALLBACK.navigation_policy,
       warnings: effectiveRuntime.warnings || [],
       pollingPolicy: effectiveRuntime.polling_policy || GOVERNED_FALLBACK.polling_policy,
-      refetch: fetchRuntime,
+      sessionPolicy: effectiveRuntime.session_policy || null,
+      refetch: () => fetchRuntime({ reason: 'manual', force: true }),
+      refreshSession,
     }),
     [
       effectiveRuntime,
       runtime,
+      sessionRuntime,
       runtimeAvailable,
       loading,
+      refreshing,
+      offline,
       error,
       contractVersion,
       runtimeVersion,
@@ -175,6 +363,7 @@ export function LifecycleRuntimeProvider({ children }) {
       capabilityAllowed,
       getCapabilityGrant,
       fetchRuntime,
+      refreshSession,
     ],
   );
 
@@ -202,8 +391,11 @@ export function useLifecycleRuntime() {
     return {
       runtime: GOVERNED_FALLBACK,
       rawRuntime: null,
+      sessionRuntime: null,
       runtimeAvailable: false,
       loading: false,
+      refreshing: false,
+      offline: false,
       error: null,
       contractVersion: null,
       runtimeVersion: null,
@@ -216,7 +408,9 @@ export function useLifecycleRuntime() {
       navigationPolicy: GOVERNED_FALLBACK.navigation_policy,
       warnings: [],
       pollingPolicy: GOVERNED_FALLBACK.polling_policy,
+      sessionPolicy: null,
       refetch: async () => false,
+      refreshSession: async () => false,
     };
   }
   return ctx;

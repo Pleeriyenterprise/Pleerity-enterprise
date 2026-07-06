@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../api/client';
+import { applySessionRuntimeFromUser, clearSessionRuntimeVersions } from '../utils/sessionRuntimeStore';
+import { broadcastAuthSync } from '../utils/sessionRuntimeSync';
 
 export const AuthContext = createContext(null);
 
@@ -21,13 +23,49 @@ export const AuthProvider = ({ children }) => {
     
     if (token && userData) {
       try {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        applySessionRuntimeFromUser(parsed);
       } catch (e) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
+        clearSessionRuntimeVersions();
       }
     }
     setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key === 'auth_token' && !event.newValue) {
+        setUser(null);
+        clearSessionRuntimeVersions();
+        return;
+      }
+      if (event.key === 'user' && event.newValue) {
+        try {
+          const parsed = JSON.parse(event.newValue);
+          setUser(parsed);
+          applySessionRuntimeFromUser(parsed);
+        } catch {
+          /* ignore */
+        }
+      }
+      if (event.key === 'auth_token' && event.newValue) {
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          try {
+            const parsed = JSON.parse(userData);
+            setUser(parsed);
+            applySessionRuntimeFromUser(parsed);
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const login = async (email, password, isAdmin = false) => {
@@ -40,6 +78,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('auth_token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
+      applySessionRuntimeFromUser(userData);
+      broadcastAuthSync({ reason: 'login' });
 
       if (process.env.NODE_ENV === 'development') {
         const role = userData?.role || '(none)';
@@ -73,12 +113,16 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('auth_token', accessToken);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
+    applySessionRuntimeFromUser(userData);
+    broadcastAuthSync({ reason: 'token_refresh' });
   };
 
   const logout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
+    clearSessionRuntimeVersions();
     setUser(null);
+    broadcastAuthSync({ reason: 'logout' });
     window.location.href = '/';
   };
 

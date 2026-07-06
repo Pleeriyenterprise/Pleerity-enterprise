@@ -1,6 +1,12 @@
 import axios from 'axios';
 import { getAuthToken, getContractorToken } from './authStorage';
 import { buildClientLoginSessionExpiredUrl, isClientPortalPath } from '../utils/clientLoginRedirect';
+import {
+  getSessionRuntimeVersionHeaders,
+  requestSessionRuntimeRefresh,
+  responseForceReauth,
+  responseIndicatesSessionRefresh,
+} from '../utils/sessionRuntimeStore';
 
 export { getAuthToken, getContractorToken } from './authStorage';
 export { classifyAxiosError, classifyHttpStatus, ADMIN_FETCH_STATE } from '../utils/adminFetchState';
@@ -95,6 +101,10 @@ let firstRequestLogged = false;
 apiClient.interceptors.request.use(
   (config) => {
     applyPortalAuthHeader(config);
+    const path = normalizedApiUrlPath(config);
+    if (!path.startsWith('contractor/') && !path.startsWith('job/')) {
+      Object.assign(config.headers, getSessionRuntimeVersionHeaders());
+    }
     // FormData must use multipart/form-data with boundary; do not send application/json
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
@@ -123,6 +133,25 @@ apiClient.interceptors.response.use(
     const fullUrl = (response.config?.baseURL || '') + (response.config?.url || '');
     if (fullUrl.includes('/intake/submit') || fullUrl.includes('/intake/checkout') || fullUrl.includes('/intake/agreement-preview')) {
       logIntakeDebug(response.config?.method?.toUpperCase() || 'GET', fullUrl, response.status, response.data);
+    }
+    const path = normalizedApiUrlPath(response.config || {});
+    if (
+      !path.startsWith('contractor/') &&
+      !path.startsWith('job/') &&
+      !path.includes('session-runtime/refresh')
+    ) {
+      if (responseForceReauth(response)) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        if (typeof window !== 'undefined' && isClientPortalPath(window.location.pathname || '')) {
+          window.location.href = buildClientLoginSessionExpiredUrl(
+            window.location.pathname,
+            window.location.search || '',
+          );
+        }
+      } else if (responseIndicatesSessionRefresh(response)) {
+        requestSessionRuntimeRefresh('api_response_header');
+      }
     }
     return response;
   },
@@ -545,6 +574,13 @@ export const clientAPI = {
   getEntitlements: () => apiClient.get('/client/entitlements'),
   /** Governed lifecycle runtime contract (ILP-2); presentation-only consumption in ILP-3. */
   getLifecycleRuntime: () => apiClient.get('/client/lifecycle-runtime'),
+  /** Session runtime validation status (ILP-5). */
+  getSessionRuntimeStatus: () => apiClient.get('/client/session-runtime/status'),
+  validateSessionRuntime: (body) => apiClient.post('/client/session-runtime/validate', body),
+  refreshSessionRuntime: (reason = 'client_refresh') =>
+    apiClient.post('/client/session-runtime/refresh', null, {
+      headers: { 'X-Session-Refresh-Reason': reason },
+    }),
   getProperties: () => apiClient.get('/client/properties'),
   /** PATCH /api/properties/{id} — partial property update (e.g. jurisdiction). */
   patchProperty: (propertyId, body) => apiClient.patch(`/properties/${encodeURIComponent(propertyId)}`, body),
