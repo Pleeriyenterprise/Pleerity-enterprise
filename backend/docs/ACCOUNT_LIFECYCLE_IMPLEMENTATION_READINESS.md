@@ -259,4 +259,7 @@ Recommend scoped commit for policy + governance review packs before ILP-1 merge 
 
 | Item | Status |
 |------|--------|
-| ILP-7 | **READY TO BEGIN** (next programme after ILP-6 targeted validation) |
+| Programme | **ILP-7 API Lifecycle Responses** (governance ILP-6 API Responses scope) |
+| ILP-7 | **KICKOFF — audit complete, implementation not started** |
+| Kickoff audit | `backend/docs/audit/account_lifecycle_ilp_07/ILP_7_KICKOFF_AUDIT.md` |
+| Dependencies | ILP-4 ✓, ILP-5 ✓, ILP-6 ✓ |
