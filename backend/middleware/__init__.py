@@ -273,13 +273,16 @@ async def _client_context_guard(request: Request, user: dict, db) -> dict:
     if canon in ("SUSPENDED", "CANCELLED"):
         billing_allowed = path.startswith("/api/billing") or path.startswith("/api/client/billing")
         if not billing_allowed:
+            from services.account_lifecycle_response_authority import lifecycle_denial_for_client
+
+            detail = await lifecycle_denial_for_client(
+                db,
+                user["client_id"],
+                error_code="lifecycle_access_denied",
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error_code": "SUBSCRIPTION_ACCESS_BLOCKED",
-                    "message": "Your subscription is not active. Open Billing to review payment or resubscribe.",
-                    "canonical_entitlement_state": canon,
-                },
+                detail=detail,
             )
     return user
 
