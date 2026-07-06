@@ -1,69 +1,69 @@
 {
   "programme": "ILP-6-BACKGROUND-PROCESSING-RUNTIME-AUTHORITY-01",
   "branch": "develop",
-  "status": "IN_PROGRESS",
+  "executed_at_utc": "2026-07-06T18:00:00Z",
+  "verdict": "ILP_06_IMPLEMENTED_TARGETED_VALIDATION_PASS_REGRESSION_DEFERRED",
   "production_ready": false,
+  "verdict_reason": "Full regression deferred under approved testing policy until all production-critical ILPs are implemented and final programme validation gate runs.",
   "closeout_regression_required": true,
+  "closeout_regression_status": "DEFERRED",
+  "closeout_gate": "Full backend and frontend regression at final production-critical ILP programme validation",
   "runtime_guard": {
     "module": "backend/services/account_background_runtime_authority.py",
     "policy_version": "account_background_runtime_v1",
     "decisions": ["CONTINUE", "PAUSE", "SKIP", "TERMINATE", "RETENTION_ONLY"]
   },
+  "targeted_tests_passed": {
+    "total": 18,
+    "failed": 0,
+    "suites": {
+      "test_account_background_runtime_authority.py": 16,
+      "test_notification_orchestrator.py (SMS/plan gate)": 2
+    }
+  },
+  "domains_migrated": [
+    "reminder_notification_scheduling",
+    "email_sms_dispatch_guards",
+    "scheduled_reports_and_monthly_digests",
+    "compliance_monitoring",
+    "score_risk_queue_processing"
+  ],
+  "deferred_non_customer_schedulers": {
+    "platform_admin_monitors": [
+      "compliance_recalc_sla_monitor",
+      "notification_failure_spike_monitor",
+      "scheduler_heartbeat",
+      "delivery_reconciliation",
+      "sla_watchdog",
+      "risk_signal_regen_alert_monitor"
+    ],
+    "lead_pipeline": [
+      "lead_followup_processing",
+      "lead_compliance_gap_detection",
+      "lead_inactive_reactivation_detection",
+      "lead_sla_check"
+    ],
+    "order_delivery_pipeline": [
+      "order_delivery_processing",
+      "queued_order_processing",
+      "generation_auto_retry_processing",
+      "stuck_order_detection"
+    ],
+    "admin_ops_digests": [
+      "pending_verification_digest",
+      "subscription_ops_digest",
+      "scheduled_admin_communications"
+    ],
+    "billing_stripe_fact_sources_unchanged": [
+      "stripe_subscription_reconcile",
+      "commercial_entitlement_expiry",
+      "pilot_lifecycle_reconcile",
+      "subscription_lifecycle"
+    ]
+  },
   "background_processor_inventory": {
     "apscheduler_jobs": 52,
-    "queue_workers": ["compliance_recalc_worker", "risk_signal_regen_worker"],
-    "categories": {
-      "reminder_notification": [
-        "daily_reminders",
-        "work_order_schedule_reminders",
-        "subscription_lifecycle",
-        "notification_retry_worker",
-        "scheduled_admin_communications"
-      ],
-      "email_sms_digest": [
-        "monthly_digest",
-        "pending_verification_digest",
-        "subscription_ops_digest"
-      ],
-      "scheduled_reports": ["scheduled_reports"],
-      "compliance_monitoring": [
-        "compliance_check_morning",
-        "compliance_check_evening",
-        "compliance_score_snapshots",
-        "expiry_rollover_recalc"
-      ],
-      "score_risk_recalc": [
-        "compliance_recalc_worker",
-        "compliance_recalc_enqueue_property",
-        "risk_signal_regen_worker",
-        "risk_signals_job",
-        "contractor_performance_recalc"
-      ],
-      "document_evidence_queues": ["compliance_recalc_queue"],
-      "maintenance_ops_rent": [
-        "order_delivery_processing",
-        "sla_monitoring",
-        "queued_order_processing"
-      ],
-      "retention_cleanup": [
-        "client_lifecycle_stale_archive",
-        "client_purge_eligibility_scan",
-        "pending_payment_lifecycle"
-      ],
-      "platform_admin_monitors": [
-        "compliance_recalc_sla_monitor",
-        "notification_failure_spike_monitor",
-        "scheduler_heartbeat",
-        "delivery_reconciliation",
-        "sla_watchdog",
-        "risk_signal_regen_alert_monitor"
-      ],
-      "billing_stripe_fact_sources": [
-        "stripe_subscription_reconcile",
-        "commercial_entitlement_expiry",
-        "pilot_lifecycle_reconcile"
-      ]
-    },
+    "queue_workers": ["compliance_recalc_worker", "risk_signal_regen_queue"],
     "legacy_gating_removed_from": [
       "jobs.send_daily_reminders",
       "jobs.send_monthly_digests",
@@ -73,42 +73,11 @@
       "notification_orchestrator._apply_gating"
     ]
   },
-  "migrated_domains": [
-    {
-      "domain": "reminder_notification_scheduling",
-      "files": ["backend/services/jobs.py", "backend/services/notification_orchestrator.py"],
-      "job_types": ["daily_reminders", "renewal_reminders"]
-    },
-    {
-      "domain": "email_sms_dispatch",
-      "files": ["backend/services/notification_orchestrator.py"],
-      "policy": ["background_policy", "communication_policy", "CAP_NOTIF_*"]
-    },
-    {
-      "domain": "scheduled_reports_digests",
-      "files": ["backend/services/jobs.py"],
-      "job_types": ["monthly_digest", "scheduled_reports"]
-    },
-    {
-      "domain": "compliance_monitoring",
-      "files": ["backend/services/jobs.py"],
-      "job_types": ["compliance_monitoring"]
-    },
-    {
-      "domain": "score_risk_queues",
-      "files": ["backend/job_runner.py", "backend/services/risk_signal_regen_queue.py"],
-      "job_types": ["compliance_recalc_queue", "risk_signal_regen_queue", "risk_signals"]
-    }
-  ],
   "lifecycle_state_matrix_validated": [
     "ACTIVE", "TRIAL", "GRACE_PERIOD", "CANCELLATION_SCHEDULED", "READ_ONLY",
     "CANCELLED_IMMEDIATE", "SUBSCRIPTION_EXPIRED", "SUSPENDED", "ARCHIVED",
     "ACCOUNT_DELETED", "UNKNOWN"
   ],
-  "targeted_tests_run": {
-    "test_account_background_runtime_authority.py": "16 passed",
-    "test_notification_orchestrator.py (SMS/plan gate)": "2 passed"
-  },
   "blocker_fixes": [
     {
       "item": "CAP_NOTIF_SMS plan feature key",
@@ -116,10 +85,6 @@
       "reason": "Runtime contract plan-gated SMS resolution blocked legitimate Pro SMS"
     }
   ],
-  "deferred_items": [
-    "Per-job migration for platform/admin-only schedulers (SLA monitors, lead pipeline, order processing)",
-    "Full backend regression (ILP-6 closeout gate)",
-    "Frontend regression (no frontend changes in ILP-6)"
-  ],
-  "ilp_7_readiness": "Session/extended API response authority programmes may proceed after ILP-6 closeout regression"
+  "commits": ["e0e3c6c6", "07fb598f", "0ab6f0a5"],
+  "ilp_7_readiness": "READY — ILP-7 may begin; full ILP-6 regression deferred to final programme gate"
 }

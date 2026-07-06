@@ -246,8 +246,17 @@ Recommend scoped commit for policy + governance review packs before ILP-1 merge 
 
 | Item | Status |
 |------|--------|
-| ILP-6 Background Runtime Authority | **IMPLEMENTED** — closeout regression pending |
+| ILP-6 Background Runtime Authority | **IMPLEMENTED** |
+| Verdict | **`ILP_06_IMPLEMENTED_TARGETED_VALIDATION_PASS_REGRESSION_DEFERRED`** |
+| Targeted tests | 18 passed |
 | Central guard | `account_background_runtime_authority.py` |
 | Customer background domains migrated | Reminders, notifications, digests, reports, compliance monitoring, score/risk queues |
+| Deferred | Non-customer schedulers; full regression until final programme gate |
 | Evidence | `backend/docs/audit/account_lifecycle_ilp_06/` |
-| Production ready | **No** — await ILP-6 closeout gate |
+| Production ready | **No** — await final programme validation regression gate |
+
+## ILP-7 status (develop)
+
+| Item | Status |
+|------|--------|
+| ILP-7 | **READY TO BEGIN** (next programme after ILP-6 targeted validation) |

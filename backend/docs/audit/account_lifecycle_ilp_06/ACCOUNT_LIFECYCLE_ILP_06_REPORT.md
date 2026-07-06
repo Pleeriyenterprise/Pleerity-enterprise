@@ -2,8 +2,21 @@
 
 **Programme:** ILP-6-BACKGROUND-PROCESSING-RUNTIME-AUTHORITY-01  
 **Branch:** `develop`  
-**Status:** Implementation complete — **closeout regression pending**  
-**Production ready:** No (awaiting ILP-6 closeout gate)
+**Executed:** 2026-07-06 UTC  
+
+## Verdict
+
+**`ILP_06_IMPLEMENTED_TARGETED_VALIDATION_PASS_REGRESSION_DEFERRED`**
+
+Implementation is complete for customer-facing background domains. Targeted validation passed. Full backend/frontend regression is **deferred** under the approved testing policy until the final production-critical ILP gate (all production-critical ILPs implemented).
+
+**Production ready:** No — full regression remains a programme closeout gate, not an ILP-6 blocker.
+
+---
+
+## Reason
+
+Full regression is deferred under the approved testing policy: use targeted tests during ILP implementation; reserve full regression for the final production-critical ILP gate or platform-wide release readiness.
 
 ---
 
@@ -25,9 +38,53 @@ ILP-6 introduces a central **Background Runtime Authority** and migrates custome
 | Compliance monitoring gating | ✓ |
 | Queue runtime suppression (recalc + risk regen) | ✓ |
 | Auditable suppressed-job logging | ✓ |
-| Targeted tests | ✓ 16 authority + 2 notification SMS tests |
+| Targeted tests | ✓ 18 passed (see below) |
 | Documentation | ✓ `ACCOUNT_BACKGROUND_RUNTIME_AUTHORITY.md`, `ACCOUNT_BACKGROUND_PROCESSING_POLICY.md` |
 | Evidence | ✓ `ACCOUNT_LIFECYCLE_ILP_06_EVIDENCE.json` |
+
+---
+
+## Domains migrated
+
+1. **Reminder & notification scheduling** — `jobs.py`, `notification_orchestrator.py`
+2. **Email/SMS dispatch guards** — `notification_orchestrator.py` (runtime + capability)
+3. **Scheduled reports & monthly digests** — `jobs.py`
+4. **Compliance monitoring** — `jobs.py` compliance status check
+5. **Score/risk queue processing** — `job_runner.py`, `risk_signal_regen_queue.py`, `risk_signals_job`
+
+---
+
+## Deferred (non-customer schedulers)
+
+Platform/admin-only jobs inventoried but **not** migrated in ILP-6 (no customer lifecycle gate required):
+
+- SLA monitors (`compliance_recalc_sla_monitor`, `sla_watchdog`, `sla_monitoring`)
+- Lead pipeline (`lead_followup_processing`, `lead_compliance_gap_detection`, etc.)
+- Order/delivery pipeline (`order_delivery_processing`, `queued_order_processing`, etc.)
+- Scheduler heartbeat, delivery reconciliation, admin digests
+- Stripe/billing fact-source jobs (unchanged by design)
+
+---
+
+## Targeted tests (passed)
+
+```
+pytest tests/test_account_background_runtime_authority.py -q          → 16 passed
+pytest tests/test_notification_orchestrator.py::test_professional_sms_allowed \
+       tests/test_notification_orchestrator.py::test_solo_sms_returns_403_plan_gate_denied -q → 2 passed
+```
+
+**Total:** 18 passed, 0 failed.
+
+---
+
+## Remaining closeout gate
+
+| Gate | Status |
+|------|--------|
+| Full backend regression | **Deferred** — final programme validation |
+| Full frontend regression | **Deferred** — no ILP-6 frontend changes |
+| Production-ready verdict | **Pending** closeout gate |
 
 ---
 
@@ -35,41 +92,16 @@ ILP-6 introduces a central **Background Runtime Authority** and migrates custome
 
 ### Central guard
 
-`BackgroundRuntimeAuthority.evaluate()` loads the runtime contract, evaluates `background_policy`, optional `communication_policy`, and plan-gated capabilities (`CAP_NOTIF_EMAIL`, `CAP_REPORT_SCHEDULE`, etc.).
-
-### Domain migrations
-
-- **`jobs.py`** — daily reminders, monthly digests, compliance status checks, scheduled reports no longer filter on `subscription_status` / `entitlement_status`; per-client runtime gate applied.
-- **`notification_orchestrator.py`** — `_apply_gating` uses runtime authority + capability compatibility instead of `requires_active_subscription`, `requires_entitlement_enabled`, and `plan_registry.enforce_feature`.
-- **Queue workers** — `compliance_recalc_worker` and `risk_signal_regen_worker` reschedule or terminate items with auditable metadata when runtime denies processing.
+`BackgroundRuntimeAuthority.evaluate()` loads the runtime contract, evaluates `background_policy`, optional `communication_policy`, and plan-gated capabilities.
 
 ### Blocker fix
 
-`CAP_NOTIF_SMS` plan feature mapping corrected to `sms_reminders` so runtime contract plan-gated SMS resolves correctly (governance-aligned; not a schema change).
-
----
-
-## Testing
-
-Targeted run (ILP-6 policy):
-
-```
-pytest tests/test_account_background_runtime_authority.py -q   → 16 passed
-pytest tests/test_notification_orchestrator.py::test_professional_sms_allowed \
-       tests/test_notification_orchestrator.py::test_solo_sms_returns_403_plan_gate_denied -q → 2 passed
-```
-
-Full backend/frontend regression **deferred** to ILP-6 closeout per programme testing policy.
-
----
-
-## Deferred
-
-- Platform/admin-only schedulers (lead pipeline, order delivery, SLA platform monitors) — inventoried; not customer lifecycle gates in this sprint.
-- ILP-6 closeout full regression and production-ready verdict.
+`CAP_NOTIF_SMS` plan feature mapping corrected to `sms_reminders` (governance-aligned plan key).
 
 ---
 
 ## ILP-7 readiness
 
-After closeout regression passes, downstream programmes may proceed. Background customer processing is now aligned with the same runtime contract authority as the portal (ILP-4/5).
+**Ready to begin ILP-7** (next programme in the implementation sequence). ILP-6 targeted validation complete; full regression not required to start ILP-7.
+
+Recommended next: **API Lifecycle Responses** (governance ILP-6 scope) — normalized capability-denial payloads, `lifecycle_redirect`, and recovery-tier read APIs consuming runtime contract.
