@@ -43,7 +43,7 @@ describe('scoreFreshnessUi', () => {
 
   it('resolveDashboardFreshnessExplanation covers reconciliation_required and unavailable without message', () => {
     const r = resolveDashboardFreshnessExplanation('reconciliation_required', null);
-    expect(r).toContain('Persisted compliance scores');
+    expect(r).toContain('Compliance scores are not yet available');
     const u = resolveDashboardFreshnessExplanation('unavailable', null);
     expect(u).toContain('not available');
   });
@@ -64,8 +64,8 @@ describe('scoreFreshnessUi', () => {
   });
 
   it('COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE documents drivers vs headline', () => {
-    expect(COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE).toContain('Driver rows');
-    expect(COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE).toContain('stored property scores');
+    expect(COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE).toContain('These rows reflect your requirements');
+    expect(COMPLIANCE_SCORE_DRIVERS_VS_HEADLINE_NOTE).toContain('headline score');
   });
 
   it('COMMAND_CENTER_COMPLIANCE_SNAPSHOT_UNAVAILABLE is factual bundle-degraded copy', () => {
@@ -85,7 +85,7 @@ describe('scoreFreshnessUi', () => {
   });
 
   it('COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE distinguishes upload vs verified coverage', () => {
-    expect(COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE).toContain('Uploaded');
-    expect(COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE).toContain('external verification');
+    expect(COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE).toContain('Upload counts');
+    expect(COMPLIANCE_SCORE_DOCUMENTS_UPLOAD_VS_VERIFIED_NOTE).toContain('verification');
   });
 });

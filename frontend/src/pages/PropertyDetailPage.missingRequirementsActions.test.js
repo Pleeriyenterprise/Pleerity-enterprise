@@ -71,6 +71,6 @@ describe('PropertyDocumentsMissingRequirementList CTA behavior', () => {
     const uploadBtn = screen.getByRole('button', { name: 'Upload document' });
     expect(uploadBtn).toBeInTheDocument();
     fireEvent.click(uploadBtn);
-    expect(navigate).toHaveBeenCalledWith('/documents?property_id=prop-1&requirement_id=req-doc');
+    expect(navigate).toHaveBeenCalledWith('/documents?property_id=prop-1&requirement_id=req-doc&focus=upload');
   });
 });

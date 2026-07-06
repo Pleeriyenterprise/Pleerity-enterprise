@@ -1,10 +1,10 @@
 {
   "programme": "ILP-4-CAPABILITY-ENFORCEMENT-01",
-  "phase": "ilp4_in_progress",
-  "verdict": "ILP_04_IN_PROGRESS",
-  "latest_milestone": "evidence_pack_analytics_activity_since",
+  "phase": "ilp4_closeout_complete",
+  "verdict": "ILP_04_PRODUCTION_READY",
+  "latest_milestone": "ilp4_closeout_validation",
   "branch": "develop",
-  "date": "2026-07-03",
+  "date": "2026-07-06",
   "prior_phases": {
     "phase_0_1": {
       "verdict": "ILP_04_PHASE_01_COMPLETE",
@@ -1467,11 +1467,99 @@
       "frontend/src/pages/ilp4Completion.capability.test.js"
     ],
     "tests_targeted_passed": 165,
-    "tests_full_frontend_passed": 947,
-    "tests_full_frontend_failed": 5,
-    "tests_full_frontend_failed_preexisting": true,
+    "tests_full_frontend_passed": 964,
+    "tests_full_frontend_failed": 0,
+    "tests_full_frontend_failed_preexisting": false,
     "build_ci_pass": true,
     "completion_report": "backend/docs/audit/account_lifecycle_ilp_04/ILP_4_FINAL_COMPLETION_REPORT.md"
   },
-  "latest_milestone_ilp4_final": "ilp4_final_customer_authority_completion"
+  "ilp4_closeout_validation": {
+    "programme": "ILP-4-CLOSEOUT-VALIDATION-01",
+    "verdict": "PRODUCTION_READY",
+    "executed_at_utc": "2026-07-06T04:51:58Z",
+    "branch": "develop",
+    "frontend_regression": {
+      "verdict": "PASS",
+      "suites_passed": 210,
+      "tests_passed": 964,
+      "tests_failed": 0,
+      "duration_seconds": 52,
+      "log_path": "frontend/tmp_ilp4_closeout_frontend_regression.log"
+    },
+    "backend_regression": {
+      "verdict": "PASS",
+      "tests_passed": 916,
+      "tests_failed": 0,
+      "duration_seconds": 14670,
+      "exit_code": 0,
+      "log_path": "backend/tmp_ilp4_closeout_regression_full.log",
+      "suites": [
+        "tests/test_account_lifecycle_state_resolver.py",
+        "tests/test_account_lifecycle_runtime_contract.py",
+        "tests/test_account_capability_enforcement.py",
+        "tests/test_account_capability_enforcement_pilot.py",
+        "tests/test_account_capability_enforcement_wave1.py",
+        "tests/test_account_capability_enforcement_wave2c1.py",
+        "tests/test_account_capability_enforcement_wave2c2.py",
+        "tests/test_account_capability_enforcement_evidence_pack_analytics.py",
+        "tests/test_account_capability_enforcement_compliance_workflow.py",
+        "tests/test_account_capability_enforcement_rent_approvals.py",
+        "tests/test_account_capability_enforcement_maintenance.py",
+        "tests/test_account_capability_enforcement_tenant_branding.py",
+        "tests/test_account_capability_enforcement_profile_assistant_calendar.py",
+        "tests/test_account_capability_enforcement_read_api_webhooks.py",
+        "tests/test_account_capability_enforcement_billing_client.py",
+        "tests/test_account_capability_enforcement_backend_completion.py",
+        "tests/test_billing_recovery_operations.py",
+        "tests/test_ilp4_closeout_lifecycle_journey_validation.py"
+      ],
+      "note": "916 = 903 prior checkpoint suites + 13 closeout lifecycle journey tests"
+    },
+    "frontend_failures_resolved": [
+      {
+        "suite": "frontend/src/utils/scoreFreshnessUi.test.js",
+        "failures": 3,
+        "classification": "TEST_DRIFT",
+        "resolution": "Assertions aligned to current scoreFreshnessUi copy"
+      },
+      {
+        "suite": "frontend/src/pages/PropertyDetailPage.missingRequirementsActions.test.js",
+        "failures": 1,
+        "classification": "TEST_DRIFT",
+        "resolution": "Upload CTA URL includes focus=upload query param"
+      },
+      {
+        "suite": "frontend/src/pages/PropertyCreatePage.test.js",
+        "failures": 1,
+        "classification": "TEST_DRIFT",
+        "resolution": "Added usePropertyCapabilities mock with canCreateProperty"
+      }
+    ],
+    "lifecycle_journey_validation": {
+      "verdict": "PASS",
+      "lifecycles": [
+        "ACTIVE",
+        "READ_ONLY",
+        "CANCELLED_IMMEDIATE",
+        "SUBSCRIPTION_EXPIRED",
+        "SUSPENDED",
+        "ARCHIVED"
+      ],
+      "backend_tests_passed": 13,
+      "backend_test_file": "backend/tests/test_ilp4_closeout_lifecycle_journey_validation.py",
+      "frontend_test_file": "frontend/src/pages/ilp4Closeout.lifecycleJourney.test.js",
+      "billing_recovery_confirmed": true,
+      "cancelled_ops_denied_billing_retained": true,
+      "no_403_storm_after_cancellation": true
+    },
+    "authority_verification": {
+      "customer_useEntitlements_removed": true,
+      "customer_hasFeature_removed": true,
+      "entitlements_provider_mounted": false,
+      "runtime_contract_sole_authority": true,
+      "backend_frontend_matrix_drift": false
+    },
+    "completion_report": "backend/docs/audit/account_lifecycle_ilp_04/ILP_4_FINAL_COMPLETION_REPORT.md"
+  },
+  "latest_milestone_ilp4_final": "ilp4_closeout_validation"
 }
