@@ -625,14 +625,10 @@ class NotificationOrchestrator:
                 )
 
         if template.get("requires_active_subscription") or template.get("requires_entitlement_enabled"):
-            from services.account_background_runtime_authority import (
-                evaluate_background_runtime,
-                log_background_decision,
-                resolve_notification_job_type,
+            from services.account_customer_communication_authority import (
+                enrich_context_with_lifecycle_placeholders,
+                evaluate_customer_communication,
             )
-
-            job_type = resolve_notification_job_type(template_key, template, event_type)
-            channel_key = str(channel or "").lower()
             from services.account_lifecycle_runtime_contract import build_runtime_contract
 
             billing_doc = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
@@ -646,23 +642,25 @@ class NotificationOrchestrator:
                     "canonical_entitlement_state": (client or {}).get("entitlement_status", "ENABLED"),
                 },
             )
-            bg_decision = await evaluate_background_runtime(
+            comm_decision = await evaluate_customer_communication(
                 db,
                 client_id,
-                job_type,
-                channel=channel_key if channel_key == "sms" else None,
+                surface="notification",
+                channel=channel_key if (channel_key := str(channel or "").lower()) else "email",
+                template_key=template_key,
+                template=template,
+                event_type=event_type,
                 contract=contract,
             )
-            if not bg_decision.allowed:
-                log_background_decision(bg_decision)
-                block_reason = "BLOCKED_RUNTIME_BACKGROUND_POLICY"
+            if not comm_decision.allowed:
+                block_reason = "BLOCKED_COMMUNICATION_AUTHORITY"
                 await self._write_blocked_log(
                     db,
                     client_id,
                     template_key,
                     channel,
                     block_reason,
-                    bg_decision.reason,
+                    comm_decision.suppression_reason or comm_decision.reason,
                     None,
                     context,
                     event_type,
@@ -672,18 +670,22 @@ class NotificationOrchestrator:
                     client_id=client_id,
                     metadata={
                         "template_key": template_key,
-                        "background_decision": bg_decision.to_dict(),
+                        "communication_decision": comm_decision.to_dict(),
                     },
                 )
                 return NotificationResult(
                     outcome="blocked",
                     block_reason=block_reason,
                     details={
-                        "error_code": "BACKGROUND_RUNTIME_DENIED",
-                        "message": bg_decision.reason,
-                        "lifecycle_state": bg_decision.lifecycle_state,
+                        "error_code": "COMMUNICATION_SUPPRESSED",
+                        "message": comm_decision.suppression_reason or comm_decision.reason,
+                        "lifecycle_state": comm_decision.lifecycle_state,
+                        "suppression_reason": comm_decision.suppression_reason,
                     },
                 )
+            enriched = enrich_context_with_lifecycle_placeholders(context, comm_decision)
+            context.clear()
+            context.update(enriched)
 
         plan_feature = template.get("plan_required_feature_key")
         if plan_feature:
