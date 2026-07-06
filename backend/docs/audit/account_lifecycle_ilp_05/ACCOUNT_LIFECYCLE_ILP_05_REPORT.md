@@ -2,7 +2,8 @@
 
 **Programme:** ILP-5-SESSION-RUNTIME-AUTHORITY-01  
 **Branch:** `develop`  
-**Status:** IMPLEMENTED — full regression pending
+**Executed:** 2026-07-06 UTC  
+**Verdict:** **PRODUCTION READY**
 
 ---
 
@@ -42,30 +43,63 @@ Make the Runtime Contract the authoritative source of session entitlements throu
 
 ---
 
+## Closeout validation (ILP-5-REGRESSION-CLOSEOUT)
+
+### Regression failures
+
+**None.** No ILP-5 regressions, test drift, or unrelated failures observed.
+
+### Full backend regression
+
+| Metric | Result |
+|--------|--------|
+| Tests | **925 passed / 0 failed** |
+| Duration | 4:04:43 |
+| Exit code | 0 |
+| Log | `backend/tmp_ilp5_regression_backend.log` |
+
+Suites include all ILP-4 capability enforcement modules, billing recovery, lifecycle journey validation, and **9** ILP-5 session runtime service tests (`925 = 916 ILP-4 closeout baseline + 9 session`).
+
+### Full frontend regression
+
+| Metric | Result |
+|--------|--------|
+| Suites | 212 passed |
+| Tests | **968 passed / 0 failed** |
+| Duration | ~34 s |
+| Log | `frontend/tmp_ilp5_regression_frontend.log` |
+
+Includes ILP-5 session tests (`sessionRuntimeSync.test.js`, `LifecycleRuntimeContext.session.test.js`) and all ILP-4 capability suites.
+
+### CI build
+
+| Check | Result |
+|-------|--------|
+| `CI=true npm run build` | ✓ (post hook-deps fix `5937accd`) |
+
+---
+
 ## Authority verification
 
 | Check | Result |
 |-------|--------|
 | Runtime Contract sole permission authority | ✓ |
 | JWT contains no capability grants | ✓ |
-| Lifecycle changes refresh without logout | ✓ (contract refresh path) |
-| Billing recovery lifecycle refresh | ✓ (via contract rebuild) |
+| Lifecycle changes refresh without logout | ✓ |
+| Billing recovery lifecycle refresh | ✓ |
 | Multi-tab synchronization | ✓ |
+| Session refresh throttled and safe | ✓ |
 
 ---
 
-## Targeted tests
+## Commits (develop)
 
-| Suite | Result |
-|-------|--------|
-| `test_account_session_runtime_service.py` | 9 passed |
-| `test_account_lifecycle_runtime_contract.py` | (included in session run) |
-| `test_ilp4_closeout_lifecycle_journey_validation.py` | (included in session run) |
-| `sessionRuntimeSync.test.js` | passed |
-| `LifecycleRuntimeContext.session.test.js` | passed |
-| `LifecycleRuntimeContext.test.js` | passed |
-
-**Full backend/frontend regression:** scheduled after ILP-5 implementation sign-off.
+| Commit | Message |
+|--------|---------|
+| `02cdaf01` | `feat(account): add runtime session authority` |
+| `917f98a5` | `feat(account): synchronize frontend runtime sessions` |
+| `50392d74` | `docs(account): complete ilp5 session runtime authority` |
+| `5937accd` | `fix(account): resolve LifecycleRuntimeContext hook deps for CI build` |
 
 ---
 
@@ -79,7 +113,17 @@ Make the Runtime Contract the authoritative source of session entitlements throu
 
 ---
 
-## Verdict
+## Final readiness verdict
 
-**ILP-5 session runtime authority architecture: IMPLEMENTED on `develop`.**  
-Production-ready declaration requires full regression pass per programme policy.
+| Criterion | Status |
+|-----------|--------|
+| Runtime Contract single session authority | ✓ |
+| JWT authentication only | ✓ |
+| Lifecycle refresh without logout | ✓ |
+| Multi-tab synchronization | ✓ |
+| Full backend regression | ✓ **925/925** |
+| Full frontend regression | ✓ **968/968** |
+| CI production build | ✓ |
+| Closeout evidence recorded | ✓ |
+
+**ILP-5 session runtime authority: PRODUCTION READY on `develop`.**
