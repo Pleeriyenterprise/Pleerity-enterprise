@@ -138,3 +138,55 @@ export function extractCapabilityDeniedFromError(error) {
 export function isCapabilityDeniedError(error) {
   return Boolean(extractCapabilityDeniedFromError(error));
 }
+
+/**
+ * Coerce FastAPI `detail` (string, lifecycle object, or validation array) to display text.
+ * @param {unknown} detail
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+export function formatApiErrorDetail(detail, fallback = 'Something went wrong') {
+  if (detail == null || detail === '') {
+    return fallback;
+  }
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const first = detail[0];
+    if (first && typeof first.msg === 'string') {
+      return first.msg;
+    }
+    return fallback;
+  }
+  if (typeof detail === 'object') {
+    const parsed = parseLifecycleResponseDetail(detail);
+    if (parsed?.message) {
+      return parsed.message;
+    }
+    if (typeof detail.message === 'string') {
+      return detail.message;
+    }
+    if (typeof detail.reason === 'string') {
+      return detail.reason;
+    }
+  }
+  return fallback;
+}
+
+/**
+ * @param {unknown} error Axios-like error
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+export function formatApiErrorMessage(error, fallback = 'Something went wrong') {
+  if (!error) {
+    return fallback;
+  }
+  const denied = extractCapabilityDeniedFromError(error);
+  if (denied?.message) {
+    return denied.message;
+  }
+  const detail = error.response?.data?.detail ?? error.detail;
+  return formatApiErrorDetail(detail, fallback);
+}

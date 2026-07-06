@@ -7,6 +7,7 @@ import {
   responseForceReauth,
   responseIndicatesSessionRefresh,
 } from '../utils/sessionRuntimeStore';
+import { isApiCircuitOpen, recordApiCircuitFailure } from '../utils/apiRequestCircuit';
 
 export { getAuthToken, getContractorToken } from './authStorage';
 export { classifyAxiosError, classifyHttpStatus, ADMIN_FETCH_STATE } from '../utils/adminFetchState';
@@ -102,6 +103,14 @@ apiClient.interceptors.request.use(
   (config) => {
     applyPortalAuthHeader(config);
     const path = normalizedApiUrlPath(config);
+    if (!path.startsWith('contractor/') && !path.startsWith('job/') && isApiCircuitOpen(path)) {
+      return Promise.reject(
+        Object.assign(new Error('Request paused after repeated failures. Try again shortly.'), {
+          code: 'API_CIRCUIT_OPEN',
+          config,
+        }),
+      );
+    }
     if (!path.startsWith('contractor/') && !path.startsWith('job/')) {
       Object.assign(config.headers, getSessionRuntimeVersionHeaders());
     }
@@ -167,6 +176,9 @@ apiClient.interceptors.response.use(
       logIntakeDebug(error.config?.method?.toUpperCase() || 'GET', fullUrl, status, data);
     }
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
+    if (status === 403 || status === 429) {
+      recordApiCircuitFailure(errPath, status);
+    }
     if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
       error.structuredDetail = detail;
     }

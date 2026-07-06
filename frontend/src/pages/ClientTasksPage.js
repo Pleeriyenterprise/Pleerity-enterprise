@@ -54,6 +54,7 @@ import {
   isCapabilityDeniedApiError,
   useTodayCapabilities,
 } from '../utils/operationalCapabilityAccess';
+import { formatApiErrorMessage } from '../utils/capabilityRuntime';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -1024,7 +1025,7 @@ export default function ClientTasksPage() {
         if (isCapabilityDeniedApiError(err)) {
           setError(getCapabilityDeniedMessage(err, 'Failed to load tasks'));
         } else {
-          setError(err?.response?.data?.detail || 'Failed to load tasks');
+          setError(formatApiErrorMessage(err, 'Failed to load tasks'));
         }
         setPayload(null);
         emitTodayAnalytics('TODAY_PAGE_LOAD_FAILED', {

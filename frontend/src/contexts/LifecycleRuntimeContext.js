@@ -1,7 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { clientAPI } from '../api/client';
-import { evaluateCapabilityGrant } from '../utils/capabilityRuntime';
+import {
+  evaluateCapabilityGrant,
+  parseLifecycleResponseDetail,
+} from '../utils/capabilityRuntime';
 import {
   applySessionRuntimeFromContract,
   applySessionRuntimeFromUser,
@@ -156,9 +159,25 @@ export function LifecycleRuntimeProvider({ children }) {
           console.warn('[lifecycle-runtime] fetch failed', err);
         }
         const detail = err?.response?.data?.detail;
+        const parsed = parseLifecycleResponseDetail(detail);
         const code = typeof detail === 'object' ? detail?.error_code : null;
         if (code === 'SESSION_FORCE_REAUTH' || code === 'SESSION_TERMINATED') {
           logout();
+          return false;
+        }
+        if (parsed?.customer_experience) {
+          setRuntime({
+            ...GOVERNED_FALLBACK,
+            lifecycle_state: parsed.lifecycle_state || GOVERNED_FALLBACK.lifecycle_state,
+            portal_mode: parsed.portal_mode || GOVERNED_FALLBACK.portal_mode,
+            customer_experience: parsed.customer_experience,
+            runtime_version: parsed.runtime_version ?? null,
+            contract_version: parsed.contract_version ?? null,
+            warnings: ['lifecycle_runtime_from_denial_payload'],
+          });
+          setContractVersion(parsed.contract_version || null);
+          setRuntimeVersion(parsed.runtime_version ?? null);
+          setError(parsed.message || LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE);
           return false;
         }
         setError(LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE);

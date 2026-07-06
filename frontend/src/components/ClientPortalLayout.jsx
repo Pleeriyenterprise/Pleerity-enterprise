@@ -71,6 +71,8 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const [portalTrustLoading, setPortalTrustLoading] = useState(false);
   const [portalTrustError, setPortalTrustError] = useState(false);
   const complianceReportHintCooldownRef = useRef(0);
+  const portalTrustFailuresRef = useRef(0);
+  const portalTrustCircuitUntilRef = useRef(0);
 
   const loadInAppNotifications = () => {
     if (isTenant || !isClient) return;
@@ -90,23 +92,34 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
 
   const loadPortalTrust = async () => {
     if (isTenant || !isClient) return;
+    const now = Date.now();
+    if (portalTrustCircuitUntilRef.current > now) {
+      setPortalTrustError(true);
+      return;
+    }
     setPortalTrustLoading(true);
     setPortalTrustError(false);
-    const maxAttempts = 4;
+    const maxAttempts = 2;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const r = await clientAPI.getPortalContext();
         setPortalTrust(r.data || null);
         setPortalTrustError(false);
+        portalTrustFailuresRef.current = 0;
+        portalTrustCircuitUntilRef.current = 0;
         setPortalTrustLoading(false);
         return;
       } catch {
         setPortalTrustError(true);
         if (attempt < maxAttempts - 1) {
-          await sleep(600 * (attempt + 1));
+          await sleep(1200 * (attempt + 1));
         }
       }
+    }
+    portalTrustFailuresRef.current += 1;
+    if (portalTrustFailuresRef.current >= 3) {
+      portalTrustCircuitUntilRef.current = Date.now() + 5 * 60 * 1000;
     }
     setPortalTrustLoading(false);
   };
@@ -116,7 +129,11 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
     loadInAppNotifications();
     loadPortalTrust();
     const t = setInterval(loadInAppNotifications, 120000);
-    const t2 = setInterval(loadPortalTrust, 180000);
+    const t2 = setInterval(() => {
+      if (portalTrustCircuitUntilRef.current <= Date.now()) {
+        loadPortalTrust();
+      }
+    }, 180000);
     return () => {
       clearInterval(t);
       clearInterval(t2);
