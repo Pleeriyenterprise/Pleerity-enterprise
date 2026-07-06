@@ -291,18 +291,6 @@ async def extend_session(request: Request):
     )
     if not portal_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    token_data = {
-        "portal_user_id": portal_user["portal_user_id"],
-        "client_id": portal_user.get("client_id"),
-        "email": portal_user["auth_email"],
-        "role": portal_user["role"],
-        "session_version": portal_user.get("session_version", 0),
-    }
-    if user.get("impersonation"):
-        token_data["impersonation"] = True
-        token_data["impersonated_by_portal_user_id"] = user.get("impersonated_by_portal_user_id")
-        token_data["impersonated_by_role"] = user.get("impersonated_by_role")
-        token_data["impersonation_started_at"] = user.get("impersonation_started_at")
 
     expires_delta = None
     if user.get("impersonation") and user.get("exp") is not None:
@@ -316,7 +304,52 @@ async def extend_session(request: Request):
         except (TypeError, ValueError, OSError):
             expires_delta = None
 
-    access_token = create_access_token(token_data, expires_delta=expires_delta)
+    impersonation_claims = None
+    if user.get("impersonation"):
+        impersonation_claims = {
+            "impersonation": True,
+            "impersonated_by_portal_user_id": user.get("impersonated_by_portal_user_id"),
+            "impersonated_by_role": user.get("impersonated_by_role"),
+            "impersonation_started_at": user.get("impersonation_started_at"),
+        }
+
+    from services.account_session_runtime_service import (
+        CLIENT_PORTAL_ROLES,
+        issue_client_portal_login_token,
+    )
+
+    role = portal_user.get("role")
+    if role in CLIENT_PORTAL_ROLES and portal_user.get("client_id"):
+        access_token, user_out = await issue_client_portal_login_token(
+            db,
+            portal_user,
+            refresh_reason="session_extend",
+            session_id=user.get("session_id"),
+            extra_claims=impersonation_claims,
+            expires_delta=expires_delta,
+        )
+        if impersonation_claims:
+            user_out = {**user_out, **impersonation_claims}
+    else:
+        token_data = {
+            "portal_user_id": portal_user["portal_user_id"],
+            "client_id": portal_user.get("client_id"),
+            "email": portal_user["auth_email"],
+            "role": portal_user["role"],
+            "session_version": portal_user.get("session_version", 0),
+        }
+        if impersonation_claims:
+            token_data.update(impersonation_claims)
+        access_token = create_access_token(token_data, expires_delta=expires_delta)
+        user_out = {
+            "portal_user_id": portal_user["portal_user_id"],
+            "email": portal_user["auth_email"],
+            "role": portal_user["role"],
+            "client_id": portal_user.get("client_id"),
+        }
+        if impersonation_claims:
+            user_out.update(impersonation_claims)
+
     await create_audit_log(
         action=AuditAction.SESSION_EXTENDED,
         actor_id=portal_user["portal_user_id"],
@@ -324,16 +357,6 @@ async def extend_session(request: Request):
         client_id=portal_user.get("client_id"),
         metadata={"path": "session_extend"},
     )
-    user_out = {
-        "portal_user_id": portal_user["portal_user_id"],
-        "email": portal_user["auth_email"],
-        "role": portal_user["role"],
-        "client_id": portal_user.get("client_id"),
-    }
-    if user.get("impersonation"):
-        user_out["impersonation"] = True
-        user_out["impersonated_by_portal_user_id"] = user.get("impersonated_by_portal_user_id")
-        user_out["impersonated_by_role"] = user.get("impersonated_by_role")
 
     return TokenResponse(
         access_token=access_token,
@@ -544,14 +567,32 @@ async def login(request: Request, credentials: LoginRequest):
         )
         
         # Create access token
-        token_data = {
-            "portal_user_id": portal_user["portal_user_id"],
-            "client_id": portal_user.get("client_id"),
-            "email": portal_user["auth_email"],
-            "role": portal_user["role"],
-            "session_version": portal_user.get("session_version", 0),
-        }
-        access_token = create_access_token(token_data)
+        from services.account_session_runtime_service import (
+            CLIENT_PORTAL_ROLES,
+            issue_client_portal_login_token,
+        )
+
+        if portal_user.get("role") in CLIENT_PORTAL_ROLES and portal_user.get("client_id"):
+            access_token, user_out = await issue_client_portal_login_token(
+                db,
+                portal_user,
+                refresh_reason="login",
+            )
+        else:
+            token_data = {
+                "portal_user_id": portal_user["portal_user_id"],
+                "client_id": portal_user.get("client_id"),
+                "email": portal_user["auth_email"],
+                "role": portal_user["role"],
+                "session_version": portal_user.get("session_version", 0),
+            }
+            access_token = create_access_token(token_data)
+            user_out = {
+                "portal_user_id": portal_user["portal_user_id"],
+                "email": portal_user["auth_email"],
+                "role": portal_user["role"],
+                "client_id": portal_user.get("client_id"),
+            }
         
         await create_audit_log(
             action=AuditAction.USER_LOGIN_SUCCESS,
@@ -636,12 +677,7 @@ async def login(request: Request, credentials: LoginRequest):
         
         return TokenResponse(
             access_token=access_token,
-            user={
-                "portal_user_id": portal_user["portal_user_id"],
-                "email": portal_user["auth_email"],
-                "role": portal_user["role"],
-                "client_id": portal_user.get("client_id")  # Use .get() for admin users
-            }
+            user=user_out,
         )
     
     except HTTPException:
@@ -935,15 +971,33 @@ async def set_password(request: Request, data: SetPasswordRequest):
                     onb_err,
                 )
         
-        # Create access token for auto-login (include session_version)
-        token_data = {
-            "portal_user_id": portal_user["portal_user_id"],
-            "client_id": portal_user.get("client_id"),
-            "email": portal_user["auth_email"],
-            "role": portal_user["role"],
-            "session_version": portal_user.get("session_version", 0),
-        }
-        access_token = create_access_token(token_data)
+        # Create access token for auto-login (include session runtime for client portal)
+        from services.account_session_runtime_service import (
+            CLIENT_PORTAL_ROLES,
+            issue_client_portal_login_token,
+        )
+
+        if portal_user.get("role") in CLIENT_PORTAL_ROLES and portal_user.get("client_id"):
+            access_token, user_out = await issue_client_portal_login_token(
+                db,
+                portal_user,
+                refresh_reason="password_set",
+            )
+        else:
+            token_data = {
+                "portal_user_id": portal_user["portal_user_id"],
+                "client_id": portal_user.get("client_id"),
+                "email": portal_user["auth_email"],
+                "role": portal_user["role"],
+                "session_version": portal_user.get("session_version", 0),
+            }
+            access_token = create_access_token(token_data)
+            user_out = {
+                "portal_user_id": portal_user["portal_user_id"],
+                "email": portal_user["auth_email"],
+                "role": portal_user["role"],
+                "client_id": portal_user.get("client_id"),
+            }
         
         await create_audit_log(
             action=AuditAction.USER_AUTHENTICATED_POST_SETUP,
@@ -955,12 +1009,7 @@ async def set_password(request: Request, data: SetPasswordRequest):
         return {
             "message": "Password set successfully",
             "access_token": access_token,
-            "user": {
-                "portal_user_id": portal_user["portal_user_id"],
-                "email": portal_user["auth_email"],
-                "role": portal_user["role"],
-                "client_id": portal_user.get("client_id")
-            }
+            "user": user_out,
         }
     
     except HTTPException:

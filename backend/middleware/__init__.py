@@ -309,7 +309,11 @@ async def client_route_guard(request: Request) -> dict:
             },
         )
     db = database.get_db()
-    return await _client_context_guard(request, user, db)
+    user = await _client_context_guard(request, user, db)
+    from middleware.session_runtime import apply_session_runtime_validation
+
+    await apply_session_runtime_validation(request, user)
+    return user
 
 
 async def tenant_route_guard(request: Request) -> dict:
