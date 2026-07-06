@@ -239,3 +239,15 @@ Recommend scoped commit for policy + governance review packs before ILP-1 merge 
 
 **Outcome:** `ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS_COMPLETE`  
 **Decision:** **ILP-1 READY TO BEGIN** upon governance review approval
+
+---
+
+## ILP-6 status (develop)
+
+| Item | Status |
+|------|--------|
+| ILP-6 Background Runtime Authority | **IMPLEMENTED** — closeout regression pending |
+| Central guard | `account_background_runtime_authority.py` |
+| Customer background domains migrated | Reminders, notifications, digests, reports, compliance monitoring, score/risk queues |
+| Evidence | `backend/docs/audit/account_lifecycle_ilp_06/` |
+| Production ready | **No** — await ILP-6 closeout gate |
