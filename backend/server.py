@@ -1704,7 +1704,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def http_exception_handler(request: Request, exc: HTTPException):
     # Security events for HTTP status are recorded in _security_monitoring_gate (response status)
     # and in targeted paths (e.g. auth.role_violation in require_role_in). Avoid duplicate emission here.
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    headers = dict(exc.headers or {})
+    headers.update(_cors_headers_for_origin(request))
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail}, headers=headers)
 
 
 # Global exception handler
@@ -1713,7 +1715,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error"}
+        content={"detail": "Internal server error"},
+        headers=_cors_headers_for_origin(request),
     )
 
 if __name__ == "__main__":

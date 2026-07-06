@@ -1,5 +1,10 @@
 import { formatApiErrorDetail } from './capabilityRuntime';
-import { isApiCircuitOpen, recordApiCircuitFailure, resetAllApiCircuits } from './apiRequestCircuit';
+import {
+  isApiCircuitOpen,
+  isGlobalApiPaused,
+  recordApiCircuitFailure,
+  resetAllApiCircuits,
+} from './apiRequestCircuit';
 
 describe('formatApiErrorDetail', () => {
   it('returns string detail as-is', () => {
@@ -31,9 +36,16 @@ describe('apiRequestCircuit', () => {
   it('opens circuit after repeated 403 failures', () => {
     const path = 'client/portal-context';
     expect(isApiCircuitOpen(path)).toBe(false);
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 2; i += 1) {
       recordApiCircuitFailure(path, 403);
     }
     expect(isApiCircuitOpen(path)).toBe(true);
+  });
+
+  it('pauses all portal reads after any 429', () => {
+    expect(isGlobalApiPaused()).toBe(false);
+    recordApiCircuitFailure('client/dashboard', 429);
+    expect(isGlobalApiPaused()).toBe(true);
+    expect(isApiCircuitOpen('client/requirements')).toBe(true);
   });
 });

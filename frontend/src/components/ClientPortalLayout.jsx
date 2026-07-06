@@ -99,29 +99,21 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
     }
     setPortalTrustLoading(true);
     setPortalTrustError(false);
-    const maxAttempts = 2;
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const r = await clientAPI.getPortalContext();
-        setPortalTrust(r.data || null);
-        setPortalTrustError(false);
-        portalTrustFailuresRef.current = 0;
-        portalTrustCircuitUntilRef.current = 0;
-        setPortalTrustLoading(false);
-        return;
-      } catch {
-        setPortalTrustError(true);
-        if (attempt < maxAttempts - 1) {
-          await sleep(1200 * (attempt + 1));
-        }
+    try {
+      const r = await clientAPI.getPortalContext();
+      setPortalTrust(r.data || null);
+      setPortalTrustError(false);
+      portalTrustFailuresRef.current = 0;
+      portalTrustCircuitUntilRef.current = 0;
+    } catch {
+      setPortalTrustError(true);
+      portalTrustFailuresRef.current += 1;
+      if (portalTrustFailuresRef.current >= 2) {
+        portalTrustCircuitUntilRef.current = Date.now() + 5 * 60 * 1000;
       }
+    } finally {
+      setPortalTrustLoading(false);
     }
-    portalTrustFailuresRef.current += 1;
-    if (portalTrustFailuresRef.current >= 3) {
-      portalTrustCircuitUntilRef.current = Date.now() + 5 * 60 * 1000;
-    }
-    setPortalTrustLoading(false);
   };
 
   useEffect(() => {

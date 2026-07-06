@@ -176,13 +176,13 @@ apiClient.interceptors.response.use(
       logIntakeDebug(error.config?.method?.toUpperCase() || 'GET', fullUrl, status, data);
     }
     setLastApiError(status, typeof message === 'string' ? message : JSON.stringify(detail ?? message));
+    const errPath = normalizedApiUrlPath(error.config || {});
     if (status === 403 || status === 429) {
       recordApiCircuitFailure(errPath, status);
     }
     if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
       error.structuredDetail = detail;
     }
-    const errPath = normalizedApiUrlPath(error.config || {});
     if (errPath.startsWith('contractor/') && typeof window !== 'undefined') {
       if (process.env.NODE_ENV !== 'production' || window.__CVP_CONTRACTOR_DEBUG) {
         console.warn('[CVP][Contractor] API error', {

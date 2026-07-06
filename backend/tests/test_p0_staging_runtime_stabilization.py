@@ -18,3 +18,9 @@ def test_client_guard_skips_event_emission():
     text = (BACKEND_ROOT / "middleware" / "__init__.py").read_text(encoding="utf-8")
     guard = text.split("_client_context_guard")[1].split("async def client_route_guard")[0]
     assert "emit_events=False" in guard
+
+
+def test_http_exception_handler_includes_cors_headers():
+    text = (BACKEND_ROOT / "server.py").read_text(encoding="utf-8")
+    block = text.split("async def http_exception_handler")[1].split("@app.exception_handler(Exception)")[0]
+    assert "_cors_headers_for_origin" in block
