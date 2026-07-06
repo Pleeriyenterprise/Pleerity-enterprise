@@ -13,7 +13,7 @@
 | `runtime_version` | Per-client monotonic integer | `42` | Any material contract change for client |
 | `policy_pins.*` | Governance doc versions | `account_lifecycle_policy_v1` | ALPA/ACA/APMA release |
 | `entitlements_version` | Existing platform field | (existing) | Plan/lifecycle sync (align with runtime) |
-| `session_version` | Existing JWT invalidation | (existing) | Terminal transitions (ILP-7) |
+| `session_version` | Existing JWT invalidation | (existing) | Terminal transitions (implementation ILP-5 / governance ILP-7) |
 
 ---
 
@@ -83,27 +83,30 @@ Increment when **any** of these change for the client:
 - Deprecated parallel: `GET /api/client/entitlements` (features only, no lifecycle)
 - `GET /api/client/lifecycle-contract` alias → same handler
 
-### Phase 2 (ILP-5)
+### Phase 2 (implementation ILP-5 / governance ILP-7)
 
-- Frontend reads runtime first; falls back to entitlements if `runtime_version` absent (feature flag)
+- Frontend reads runtime first; session refresh on `runtime_version` drift
+- Session runtime headers and refresh endpoints active
 
-### Phase 3 (ILP-10)
+### Phase 3 (reconciled ILP-10 — Platform Convergence)
 
 - Remove entitlements lifecycle inference
 - `entitlements` endpoint returns plan features only OR merged into runtime
-- Remove `canonical_entitlement_state` from customer API errors
+- Remove remaining `canonical_entitlement_state` from customer API paths
 
 ---
 
 ## Deprecation policy
 
-| Artifact | Deprecation | Removal |
-|----------|-------------|---------|
-| `hasFeature` for lifecycle | ILP-5 launch | ILP-10 |
-| `canonical_entitlement_state` in 403 JSON | ILP-6 | ILP-10 |
-| `clients.subscription_status` job filter | ILP-8 | ILP-10 |
-| `/client/entitlements` as primary shell contract | ILP-5 | ILP-10 |
-| Legacy feature key aliases | ILP-10 | v2 policy |
+**Mapping:** `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`
+
+| Artifact | Deprecated / removed in implementation | Final removal (ILP-10) |
+|----------|----------------------------------------|-------------------------|
+| `hasFeature` for lifecycle | Partial — portal uses runtime (ILP-3) | ILP-10 |
+| `canonical_entitlement_state` in 403 JSON | Removed from governed denials (ILP-7) | ILP-10 (all paths) |
+| `clients.subscription_status` job filter | Customer jobs migrated (ILP-6) | ILP-10 (remaining) |
+| `/client/entitlements` as primary shell contract | Parallel read (ILP-3/5) | ILP-10 |
+| Legacy feature key aliases | Compatibility wrappers active | ILP-10 |
 
 Minimum **2 release** overlap for deprecated fields where external integrators exist (read API).
 

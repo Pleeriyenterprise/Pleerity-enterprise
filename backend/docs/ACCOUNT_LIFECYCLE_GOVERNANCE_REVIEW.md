@@ -271,3 +271,21 @@ Effective upon approval of this review:
 
 **Outcome:** `ACCOUNT_LIFECYCLE_GOVERNANCE_REVIEW_COMPLETE`  
 **Decision:** `GOVERNANCE_APPROVED_FOR_IMPLEMENTATION`
+
+---
+
+## Post-implementation reconciliation (2026-07-06)
+
+**Programme:** ACCOUNT-LIFECYCLE-GOVERNANCE-RECONCILIATION-01
+
+ILP-1 through ILP-7 are **implemented on develop**. Governance documentation has been reconciled with actual delivery:
+
+| Document | Purpose |
+|----------|---------|
+| `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md` | Authoritative governance ↔ implementation cross-reference |
+| `ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS.md` | Current status and remaining ILP-8–10 roadmap |
+| `audit/account_lifecycle_governance_reconciliation/` | Reconciliation audit report and evidence |
+
+**Original governance ILP numbering is preserved** in historical sections. Future programmes use the reconciled roadmap (ILP-8 Customer Communications & Reactivation, ILP-9 Lifecycle Events, ILP-10 Platform Convergence).
+
+Finding **GCR-006** (codebase drift) is **partially resolved** — core lifecycle authorities implemented; legacy consumer removal deferred to ILP-10.

@@ -6,7 +6,67 @@
 
 ---
 
-## Authority stack
+## Authority stack (implemented + remaining)
+
+**Reconciliation:** `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`
+
+```mermaid
+flowchart TB
+    subgraph inputs [Authoritative inputs]
+        STRIPE[Stripe payment facts]
+        BILLING[client_billing]
+        ORG[client_lifecycle_service]
+    end
+
+    subgraph resolver [ILP-1 - Lifecycle Resolver]
+        RESOLVER[Lifecycle State Resolver]
+        STATE[account_lifecycle_state]
+    end
+
+    subgraph contract [ILP-2 - Runtime Contract]
+        RTC[AccountLifecycleRuntimeContract]
+        PM[portal_mode]
+    end
+
+    subgraph enforcement [ILP-4 - Capability Authority]
+        CAP[Capability enforcement]
+        GRANTS[CAP_* effective grants]
+    end
+
+    subgraph session [ILP-5 - Session Runtime Authority]
+        SESS[Session runtime sync]
+    end
+
+    subgraph background [ILP-6 - Background Runtime Authority]
+        BG[Background job guard]
+    end
+
+    subgraph responses [ILP-7 - Lifecycle Response Authority]
+        LRA[Governed API denial payloads]
+    end
+
+    subgraph pending [Remaining programmes]
+        COMMS[ILP-8 Communications and Reactivation]
+        EVENTS[ILP-9 Lifecycle Events]
+        CONV[ILP-10 Platform Convergence]
+    end
+
+    STRIPE --> BILLING --> RESOLVER
+    ORG --> RESOLVER
+    RESOLVER --> STATE --> RTC
+    RTC --> PM
+    RTC --> CAP --> GRANTS
+    RTC --> SESS
+    RTC --> BG
+    GRANTS --> LRA
+    LRA --> COMMS --> EVENTS --> CONV
+```
+
+Portal Mode (ILP-3) consumes `RTC` for presentation (`LifecycleShell`, navigation policy) — not shown as an enforcement layer.
+
+---
+
+## Historical capability-layer diagram
 
 ```mermaid
 flowchart TB
@@ -46,6 +106,8 @@ flowchart TB
     GRANTS --> JOBS
     GRANTS --> COMMS
 ```
+
+*Historical diagram from governance planning; see implemented stack above for current architecture.*
 
 ---
 

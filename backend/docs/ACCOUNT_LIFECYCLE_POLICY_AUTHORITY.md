@@ -210,24 +210,37 @@ Every subsystem must consume **portal mode** derived from ALPA. Current drift (a
 
 ---
 
-## Implementation roadmap (approval required before coding)
+## Implementation roadmap
 
-**Canonical ILP sequence** is defined in `ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS.md` and harmonized with `ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT.md` (Governance Consistency Review 01).
+**Authoritative status:** `ACCOUNT_LIFECYCLE_IMPLEMENTATION_READINESS.md`  
+**Governance ↔ implementation mapping:** `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`
 
-| Phase | Programme | Purpose | Depends on |
-|-------|-----------|---------|------------|
-| **ILP-1** | Lifecycle State Resolver | Map Stripe+billing+org → `account_lifecycle_state` | Governance approval |
-| **ILP-2** | Runtime Contract API | `GET /api/client/lifecycle-runtime` → full contract | ILP-1 |
-| **ILP-3** | Portal Mode | Shell consumes `portal_mode` + `customer_experience` | ILP-2 |
-| **ILP-4** | Capability Enforcement | APIs check `capabilities` map | ILP-2 |
-| **ILP-5** | Frontend Lifecycle Shell | Route guards, polling policy, no 403 storms | ILP-2, ILP-3 |
-| **ILP-6** | API Responses | Safe errors, lifecycle_redirect | ILP-4 |
-| **ILP-7** | Session Authority | `session_policy` enforcement | ILP-2 |
-| **ILP-8** | Background Services | `background_policy` from contract | ILP-2 |
-| **ILP-9** | Lifecycle Events | Invalidation + event bus | ILP-1, ILP-2 |
-| **ILP-10** | Legacy Removal | Remove parallel consumer fields | ILP-1–9 |
+During implementation, several governance ILPs were delivered within other implementation programmes. This section preserves the **original governance plan**; completion status and cross-reference are in the mapping document.
 
-**No implementation begins until governance review approval (ACCOUNT-LIFECYCLE-GOVERNANCE-CONSISTENCY-REVIEW-01).**
+### Original governance sequence (historical)
+
+| Phase | Programme | Purpose | Delivered in |
+|-------|-----------|---------|--------------|
+| **ILP-1** | Lifecycle State Resolver | Map Stripe+billing+org → `account_lifecycle_state` | ILP-1 ✓ |
+| **ILP-2** | Runtime Contract API | `GET /api/client/lifecycle-runtime` → full contract | ILP-2 ✓ |
+| **ILP-3** | Portal Mode | Shell consumes `portal_mode` + `customer_experience` | ILP-3 ✓ |
+| **ILP-4** | Capability Enforcement | APIs check `capabilities` map | ILP-4 ✓ |
+| **ILP-5** | Frontend Lifecycle Shell | Route guards, polling policy, no 403 storms | ILP-3 + ILP-5 ✓ |
+| **ILP-6** | API Responses | Safe errors, lifecycle_redirect | ILP-7 ✓ |
+| **ILP-7** | Session Authority | `session_policy` enforcement | ILP-5 ✓ |
+| **ILP-8** | Background Services | `background_policy` from contract | ILP-6 ✓ |
+| **ILP-9** | Lifecycle Events | Invalidation + event bus | ⬜ Pending |
+| **ILP-10** | Legacy Removal | Remove parallel consumer fields | ⬜ Pending |
+
+### Reconciled remaining roadmap
+
+| ILP | Programme | Depends on |
+|-----|-----------|------------|
+| **ILP-8** | Customer Communications & Reactivation | ILP-1–7 ✓ |
+| **ILP-9** | Lifecycle Events | ILP-1–8 |
+| **ILP-10** | Platform Convergence | ILP-1–9 |
+
+**ILP-1–7 implemented on develop.** Do not begin ILP-8 until governance reconciliation is reviewed.
 
 ---
 

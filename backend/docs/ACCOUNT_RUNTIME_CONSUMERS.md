@@ -1,9 +1,12 @@
 # Account Runtime Consumers
 
 **Programme:** ACCOUNT-LIFECYCLE-RUNTIME-CONTRACT-01  
-**Parent:** `ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT.md`
+**Parent:** `ACCOUNT_LIFECYCLE_RUNTIME_CONTRACT.md`  
+**Reconciliation:** `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`
 
-Inventory of every subsystem: current behavioural input, future runtime contract input, migration strategy.
+Inventory of every subsystem: current behavioural input, runtime contract input, migration status.
+
+**ILP-1–7 implemented on develop.** Migration column references **implementation programme** numbers. Remaining cutover work is tracked under reconciled **ILP-10 Platform Convergence**.
 
 **Legend — migration strategy:**
 
@@ -20,9 +23,9 @@ Inventory of every subsystem: current behavioural input, future runtime contract
 
 | Subsystem | Module | Current input | Future input | Fields used | Migration |
 |-----------|--------|---------------|--------------|-------------|-----------|
-| JWT middleware | `middleware/__init__.py` | JWT claims, session_version | Contract + session_policy | `session_policy.jwt_valid`, `force_reauth` | P → R (ILP-7) |
-| Login | `routes/auth.py` | credentials, client status | lifecycle_state ARCHIVED/DELETED deny | `lifecycle_state` | R (ILP-2) |
-| Session refresh | auth routes | session_version | `session_policy`, `runtime_version` | `entitlements_version` | R (ILP-7) |
+| JWT middleware | `middleware/__init__.py` | JWT claims, session_version | Contract + session_policy | `session_policy.jwt_valid`, `force_reauth` | ✓ ILP-5 (partial legacy paths remain → ILP-10) |
+| Login | `routes/auth.py` | credentials, client status | lifecycle_state ARCHIVED/DELETED deny | `lifecycle_state` | ✓ ILP-2 |
+| Session refresh | auth routes | session_version | `session_policy`, `runtime_version` | `entitlements_version` | ✓ ILP-5 |
 
 ---
 
@@ -30,9 +33,9 @@ Inventory of every subsystem: current behavioural input, future runtime contract
 
 | Subsystem | Module | Current input | Future input | Fields used | Migration |
 |-----------|--------|---------------|--------------|-------------|-----------|
-| client_route_guard | middleware | `canonical_entitlement_state` | `portal_mode`, `capabilities` shell bundle | DENY operational caps | R (ILP-4) |
-| enforce_feature | plan_registry | feature_key, billing bands | `capabilities[CAP_*]` | Pre-resolved grant | R (ILP-4) |
-| entitlement_access | services | multiple bands | Contract snapshot | `capabilities` | R (ILP-4) |
+| client_route_guard | middleware | `canonical_entitlement_state` (legacy read) | `portal_mode`, `capabilities`, lifecycle denial authority | DENY operational caps | ✓ ILP-4 + ILP-7 (legacy canon read → ILP-10) |
+| enforce_feature | plan_registry | feature_key, billing bands | `capabilities[CAP_*]` | Pre-resolved grant | Partial → ILP-10 |
+| entitlement_access | services | multiple bands | Contract snapshot | `capabilities` | Partial → ILP-10 |
 
 ---
 

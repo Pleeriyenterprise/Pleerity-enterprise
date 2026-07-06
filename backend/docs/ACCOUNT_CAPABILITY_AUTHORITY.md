@@ -158,20 +158,22 @@ Portal mode **never decides permissions independently** — it consumes capabili
 
 ## Implementation roadmap consumption
 
-| Programme | Capability dependency |
-|-----------|----------------------|
-| **ILP-1** Lifecycle State Resolver | Publishes `account_lifecycle_state` for matrix lookup |
-| **ILP-2** Portal Mode API | Returns `capabilities: { CAP_*: grant }` in lifecycle-contract |
-| **ILP-3** Frontend Lifecycle Shell | `useCapabilities()` replaces direct `hasFeature` for lifecycle |
-| **ILP-4** API Lifecycle Responses | Endpoints check capability resolver; denials via Lifecycle Response Authority (ILP-7) |
-| **ILP-5** Session Authority | Unaffected; session separate from capability |
-| **ILP-6** Background Processing | Jobs use `ACCOUNT_BACKGROUND_CAPABILITY_MATRIX` |
-| **ILP-7** Lifecycle Response Authority | Central HTTP denial/recovery payload generation |
-| **ILP-8** Customer Communications | Send eligibility = communication capabilities |
-| **ILP-9** Lifecycle Events | Events trigger capability cache invalidation |
-| **ILP-10** Legacy Migration | Maps legacy flags → capability IDs |
+**Authoritative mapping:** `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`
 
-**No implementation until ACA + ALPA approved.**
+| Programme | Status | Notes |
+|-----------|--------|-------|
+| **ILP-1** Lifecycle State Resolver | ✓ Complete | `account_lifecycle_state` for matrix lookup |
+| **ILP-2** Runtime Contract API | ✓ Complete | `capabilities` in lifecycle-contract |
+| **ILP-3** Portal Mode Consumption | ✓ Complete | Presentation-only shell |
+| **ILP-4** Capability Enforcement | ✓ Complete | CAP_* middleware and route guards |
+| **ILP-5** Session Runtime Authority | ✓ Complete | Session sync; was governance ILP-7 |
+| **ILP-6** Background Runtime Authority | ✓ Complete | Jobs use background matrix; was governance ILP-8 |
+| **ILP-7** Lifecycle Response Authority | ✓ Complete | Central HTTP denial payloads; was governance ILP-6 |
+| **ILP-8** Customer Communications & Reactivation | ⬜ Pending | Send eligibility, templates, recovery |
+| **ILP-9** Lifecycle Events | ⬜ Pending | Cache invalidation, event bus |
+| **ILP-10** Platform Convergence | ⬜ Pending | Legacy flags → capability IDs; wrapper removal |
+
+Historical governance ILP-5 (Frontend Lifecycle Shell) was delivered across ILP-3 and ILP-5.
 
 ---
 

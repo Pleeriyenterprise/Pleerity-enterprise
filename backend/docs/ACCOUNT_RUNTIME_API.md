@@ -167,12 +167,14 @@ See `ACCOUNT_LIFECYCLE_RESPONSE_AUTHORITY.md` and `ACCOUNT_LIFECYCLE_RESPONSE_SC
 
 ## Deferred enforcement
 
-ILP-2 explicitly does **not**:
+ILP-2 explicitly does **not** (historical scope at launch):
 
-- Wire contract into middleware or API guards
-- Replace `/api/client/entitlements`
-- Modify Stripe, billing, jobs, notifications, reports, or sessions
-- Enforce `capabilities` grants on mutations
+- Wire contract into middleware or API guards — **done in ILP-4, ILP-7**
+- Replace `/api/client/entitlements` — **partial; ILP-10 convergence**
+- Modify Stripe, billing fact sources
+- Enforce `capabilities` grants on mutations — **done in ILP-4**
+
+Remaining legacy parallel reads: see `ACCOUNT_RUNTIME_CONSUMERS.md` and reconciled **ILP-10**.
 
 ---
 

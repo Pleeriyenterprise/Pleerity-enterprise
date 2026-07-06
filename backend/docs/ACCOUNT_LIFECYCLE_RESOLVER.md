@@ -98,15 +98,19 @@ Org/archive/deletion states **always** beat subscription status (e.g. archived o
 
 ---
 
-## Unsupported / deferred (ILP-1)
+## Unsupported / deferred (ILP-1 scope boundary)
 
-- Portal mode derivation (ILP-3 / APMA)
-- Capability enforcement (ILP-4 / ACA)
-- Session invalidation (ILP-7)
-- Background job scheduling changes (ILP-8)
-- Event emission (ILP-9)
-- Replacing `canonical_entitlement_state` writes
-- Retention timer automation for `READ_ONLY` (requires explicit retention markers today)
+*Governance ↔ implementation mapping:* `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`
+
+| Item | Delivered in |
+|------|--------------|
+| Portal mode derivation | ILP-3 ✓ |
+| Capability enforcement | ILP-4 ✓ |
+| Session invalidation | ILP-5 ✓ (governance ILP-7) |
+| Background job scheduling | ILP-6 ✓ (governance ILP-8) |
+| Event emission | ILP-9 ⬜ pending |
+| Replacing `canonical_entitlement_state` writes | ILP-10 ⬜ pending |
+| Retention timer automation for `READ_ONLY` | Requires explicit retention markers; partial automation deferred |
 
 ---
 

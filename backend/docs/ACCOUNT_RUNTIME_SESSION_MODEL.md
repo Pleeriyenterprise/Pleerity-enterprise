@@ -1,5 +1,7 @@
 # Account Runtime Session Model (ILP-5)
 
+**Governance mapping:** Original governance **ILP-7 Session Authority** — see `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`
+
 ## Session lifecycle
 
 ```

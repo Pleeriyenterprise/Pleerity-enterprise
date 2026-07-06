@@ -1,6 +1,7 @@
 # Account Lifecycle Response Authority (ILP-7)
 
 **Programme:** ILP-7-LIFECYCLE-RESPONSE-AUTHORITY-01  
+**Governance mapping:** Original governance **ILP-6 API Responses** — see `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`  
 **Module:** `services/account_lifecycle_response_authority.py`  
 **Policy version:** `account_lifecycle_response_v1`  
 **Branch:** `develop`

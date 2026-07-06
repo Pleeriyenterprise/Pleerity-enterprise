@@ -1,5 +1,7 @@
 # Account Session Runtime Authority (ILP-5)
 
+**Governance mapping:** Original governance **ILP-7 Session Authority** — see `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`
+
 ## Summary
 
 ILP-5 makes the **Runtime Contract** the live permission authority for authenticated customer sessions. JWT proves identity only; capability decisions always come from the Runtime Contract at request time (backend) and from `LifecycleRuntimeContext` (frontend).

@@ -1,6 +1,7 @@
 # Account Background Runtime Authority (ILP-6)
 
 **Programme:** ILP-6 — Background Processing Runtime Authority  
+**Governance mapping:** Original governance **ILP-8 Background Services** — see `ACCOUNT_LIFECYCLE_GOVERNANCE_IMPLEMENTATION_MAPPING.md`  
 **Service:** `backend/services/account_background_runtime_authority.py`  
 **Policy version:** `account_background_runtime_v1`
 
