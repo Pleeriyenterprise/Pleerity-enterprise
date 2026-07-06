@@ -583,7 +583,6 @@ export const clientAPI = {
   getOpenIssuesCount: () => apiClient.get('/client/maintenance/issues/open-count'),
   /** Paid invoice total this UTC month (maintenance/contractor). Requires INVOICING. */
   getMaintenanceSpendThisMonth: () => apiClient.get('/client/finance/maintenance-spend-this-month'),
-  getEntitlements: () => apiClient.get('/client/entitlements'),
   /** Governed lifecycle runtime contract (ILP-2); presentation-only consumption in ILP-3. */
   getLifecycleRuntime: () => apiClient.get('/client/lifecycle-runtime'),
   /** Session runtime validation status (ILP-5). */

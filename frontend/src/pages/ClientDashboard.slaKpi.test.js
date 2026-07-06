@@ -66,12 +66,6 @@ jest.mock('../utils/operationalCapabilityAccess', () => ({
   isCapabilityDeniedApiError: () => false,
 }));
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({
-    hasFeature: (key) => key === 'maintenance_workflows',
-  }),
-}));
-
 jest.mock('../context/GuidedEvidenceModalContext', () => ({
   useGuidedEvidenceModal: () => ({ openGuidedEvidence: jest.fn() }),
 }));

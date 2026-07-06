@@ -94,3 +94,7 @@ def test_app_does_not_mount_entitlements_provider():
     app_src = _read(FRONTEND_SRC / "App.js")
     assert "EntitlementsContext" not in app_src
     assert "EntitlementsProvider" not in app_src
+
+
+def test_obsolete_entitlements_context_removed():
+    assert not (FRONTEND_SRC / "contexts" / "EntitlementsContext.js").is_file()

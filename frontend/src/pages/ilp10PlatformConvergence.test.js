@@ -20,9 +20,8 @@ describe('ILP-10 platform convergence', () => {
     expect(fs.existsSync(path.join(__dirname, file))).toBe(true);
   });
 
-  it('EntitlementsContext is deprecated and not imported by App', () => {
-    const ctx = fs.readFileSync(path.join(__dirname, '../contexts/EntitlementsContext.js'), 'utf8');
-    expect(ctx).toMatch(/@deprecated/);
+  it('EntitlementsContext removed after platform hygiene cleanup', () => {
+    expect(fs.existsSync(path.join(__dirname, '../contexts/EntitlementsContext.js'))).toBe(false);
     const app = fs.readFileSync(path.join(__dirname, '../App.js'), 'utf8');
     expect(app).not.toMatch(/EntitlementsContext/);
   });

@@ -5,7 +5,7 @@ import { cn } from '../../lib/utils';
 
 /**
  * Governed upgrade / tier discoverability — presentation only.
- * Use after hasFeature / API truth checks. Anti-fatigue: one primary card per viewport where possible;
+ * Use after Runtime Contract capability checks. Anti-fatigue: one primary card per viewport where possible;
  * use DiscoverabilityHint in dense or tabbed flows.
  */
 

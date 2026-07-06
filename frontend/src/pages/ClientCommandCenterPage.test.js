@@ -42,12 +42,6 @@ jest.mock('../utils/operationalCapabilityAccess', () => ({
   isCapabilityDeniedApiError: () => false,
 }));
 
-jest.mock('../contexts/EntitlementsContext', () => ({
-  useEntitlements: () => ({
-    hasFeature: () => false,
-  }),
-}));
-
 jest.mock('../components/client/RequirementIntelligenceModal', () => {
   return function MockIntelModal({ open }) {
     return open ? <div data-testid="view-requirement-modal">intel-open</div> : null;
