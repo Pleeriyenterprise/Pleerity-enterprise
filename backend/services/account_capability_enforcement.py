@@ -90,10 +90,9 @@ class CapabilityDeniedError(Exception):
         super().__init__(decision.reason)
 
     def to_detail(self) -> dict[str, Any]:
-        return {
-            "error": "capability_denied",
-            **self.decision.to_dict(),
-        }
+        from services.account_lifecycle_response_authority import capability_denied_http_detail
+
+        return capability_denied_http_detail(self.decision)
 
 
 def normalize_grant_semantic(grant: str) -> str:

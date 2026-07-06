@@ -2,6 +2,7 @@
 Capability gating helpers (ILP-4).
 
 require_capability() / client_require_capability() evaluate CAP_* grants from the Runtime Contract.
+ILP-7: HTTP denial payloads delegate to Lifecycle Response Authority.
 """
 from __future__ import annotations
 
@@ -18,36 +19,16 @@ from services.account_capability_enforcement import (
     CapabilityDeniedError,
     CapabilityEnforcementService,
 )
+from services.account_lifecycle_response_authority import (
+    capability_denied_http_detail,
+    log_lifecycle_response_generated,
+)
 
 logger = logging.getLogger(__name__)
 
 
 def _owner_bypass(user: dict) -> bool:
     return user.get("role") == "ROLE_OWNER"
-
-
-def capability_denied_http_detail(decision: CapabilityDecision) -> dict:
-    """Governed safe 403 payload for capability denials (ILP-6 precursor)."""
-    recovery = None
-    if decision.recovery_route or decision.recovery_label:
-        recovery = {
-            "route": decision.recovery_route,
-            "label": decision.recovery_label,
-        }
-    return {
-        "error": "capability_denied",
-        "error_code": decision.reason_code,
-        "message": decision.reason,
-        "capability_id": decision.capability_id,
-        "action": decision.action,
-        "grant": decision.grant,
-        "effective_semantic": decision.effective_semantic,
-        "lifecycle_state": decision.lifecycle_state,
-        "portal_mode": decision.portal_mode,
-        "recovery": recovery,
-        "contract_version": decision.contract_version,
-        "runtime_version": decision.runtime_version,
-    }
 
 
 def capability_denied_handler(exc: CapabilityDeniedError) -> dict:
@@ -106,11 +87,14 @@ def require_capability(
             request.state.capability_decision = decision
             return decision.to_dict()
         except CapabilityDeniedError as exc:
-            logger.info(
-                "capability_denied client capability=%s action=%s code=%s",
-                capability_id,
-                action,
-                exc.decision.reason_code,
+            log_lifecycle_response_generated(
+                client_id=user.get("client_id"),
+                route=str(request.url.path),
+                capability=capability_id,
+                grant=exc.decision.grant,
+                lifecycle_state=exc.decision.lifecycle_state,
+                response_type="capability_denied",
+                runtime_version=exc.decision.runtime_version,
             )
             raise HTTPException(
                 status_code=403,
@@ -143,12 +127,14 @@ def client_require_capability(
         service = CapabilityEnforcementService(database.get_db())
         decision = await service.evaluate(client_id, capability_id, action)
         if not decision.allowed:
-            logger.info(
-                "capability_denied client_id=%s capability=%s action=%s code=%s",
-                client_id,
-                capability_id,
-                action,
-                decision.reason_code,
+            log_lifecycle_response_generated(
+                client_id=client_id,
+                route=str(request.url.path),
+                capability=capability_id,
+                grant=decision.grant,
+                lifecycle_state=decision.lifecycle_state,
+                response_type="capability_denied",
+                runtime_version=decision.runtime_version,
             )
             raise HTTPException(
                 status_code=403,
@@ -186,12 +172,13 @@ async def assert_client_capability(
     service = CapabilityEnforcementService(database.get_db())
     decision = await service.evaluate(client_id, capability_id, action)
     if not decision.allowed:
-        logger.info(
-            "capability_denied client_id=%s capability=%s action=%s code=%s",
-            client_id,
-            capability_id,
-            action,
-            decision.reason_code,
+        log_lifecycle_response_generated(
+            client_id=client_id,
+            capability=capability_id,
+            grant=decision.grant,
+            lifecycle_state=decision.lifecycle_state,
+            response_type="capability_denied",
+            runtime_version=decision.runtime_version,
         )
         raise HTTPException(
             status_code=403,
