@@ -28,5 +28,12 @@
       "LifecycleRuntimeContext.test.js": "2 pre-existing failures in PortalModePageBanner (unrelated to TDZ fix)"
     }
   },
-  "staging_deploy": "pending post-push alias"
+  "staging_deploy": {
+    "commit": "4fcda2a2",
+    "deployment_url": "pleerity-enterprise-9jjg-6bxnj71pu-victory-aigbochies-projects.vercel.app",
+    "stable_bundle": "main.0d840c6d.js",
+    "broken_bundle_replaced": "main.a0738ee4.js",
+    "login_renders": true,
+    "reference_error_absent": true
+  }
 }
