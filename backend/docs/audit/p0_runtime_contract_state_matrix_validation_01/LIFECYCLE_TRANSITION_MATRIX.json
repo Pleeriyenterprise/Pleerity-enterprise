@@ -1,0 +1,141 @@
+{
+  "audit_id": "P0-RUNTIME-CONTRACT-STATE-MATRIX-VALIDATION-01",
+  "generated_at": "2026-07-07T18:15:00Z",
+  "journey": "new_customer → onboarding → trial → active → grace → cancelled → resubscribed → active → archived → deleted",
+  "transitions": [
+    {
+      "step": "onboarding",
+      "trigger": "INTAKE_PENDING, no billing row",
+      "lifecycle_state": "PAYMENT_PENDING",
+      "portal_mode": "PAYMENT_REQUIRED",
+      "capability_change": "operational caps denied; billing checkout allowed",
+      "customer_messaging": "payment required banner",
+      "background_processing": "payment_pending policy — limited queue processing",
+      "session_refresh": "runtime_version changes on fact update",
+      "communication_authority": "billing-focused",
+      "data_preservation": "intact — no domain data deletion",
+      "test": "test_lifecycle_journey_transitions[onboarding]",
+      "passed": true
+    },
+    {
+      "step": "trial",
+      "trigger": "PROVISIONED + TRIALING subscription",
+      "lifecycle_state": "TRIAL",
+      "portal_mode": "FULL_ACCESS",
+      "capability_change": "full access with trial lifecycle column",
+      "customer_messaging": "none",
+      "background_processing": "standard operational",
+      "session_refresh": "regenerated contract",
+      "communication_authority": "operational",
+      "data_preservation": "intact",
+      "test": "test_lifecycle_journey_transitions[trial]",
+      "passed": true
+    },
+    {
+      "step": "active",
+      "trigger": "PROVISIONED + ACTIVE subscription + ACTIVE org",
+      "lifecycle_state": "ACTIVE",
+      "portal_mode": "FULL_ACCESS",
+      "capability_change": "full capability matrix ACTIVE column",
+      "customer_messaging": "none — no unavailable banner",
+      "background_processing": "full",
+      "session_refresh": "regenerated contract",
+      "communication_authority": "operational",
+      "data_preservation": "intact",
+      "test": "test_lifecycle_journey_transitions[active]",
+      "passed": true
+    },
+    {
+      "step": "grace",
+      "trigger": "PAST_DUE + grace_period billing lifecycle",
+      "lifecycle_state": "GRACE_PERIOD",
+      "portal_mode": "GRACE",
+      "capability_change": "grace portal overlay limits writes",
+      "customer_messaging": "grace period recovery banner",
+      "background_processing": "grace-limited",
+      "session_refresh": "regenerated contract",
+      "communication_authority": "billing recovery emphasis",
+      "data_preservation": "intact",
+      "test": "test_lifecycle_journey_transitions[grace]",
+      "passed": true
+    },
+    {
+      "step": "cancelled",
+      "trigger": "CANCELED subscription",
+      "lifecycle_state": "CANCELLED_IMMEDIATE",
+      "portal_mode": "BILLING_RECOVERY",
+      "capability_change": "operational writes denied; billing recovery caps",
+      "customer_messaging": "resubscribe banner",
+      "background_processing": "terminal-limited",
+      "session_refresh": "regenerated contract",
+      "communication_authority": "billing-only",
+      "data_preservation": "intact — retention STANDARD",
+      "test": "test_lifecycle_journey_transitions[cancelled]",
+      "passed": true
+    },
+    {
+      "step": "resubscribed",
+      "trigger": "ACTIVE subscription restored after cancel",
+      "lifecycle_state": "ACTIVE",
+      "portal_mode": "FULL_ACCESS",
+      "capability_change": "automatic full capability restoration — no manual recovery",
+      "customer_messaging": "unavailable banners cleared",
+      "background_processing": "restored to full",
+      "session_refresh": "runtime_version changes; frontend refresh",
+      "communication_authority": "operational restored",
+      "data_preservation": "intact — properties, documents, requirements unchanged",
+      "test": "test_resubscription_restores_full_capabilities_without_manual_recovery",
+      "passed": true
+    },
+    {
+      "step": "archived",
+      "trigger": "is_deleted + ARCHIVED org status",
+      "lifecycle_state": "ARCHIVED",
+      "portal_mode": "ARCHIVED",
+      "capability_change": "all portal access denied",
+      "customer_messaging": "archived account banner",
+      "background_processing": "terminate",
+      "session_refresh": "regenerated contract",
+      "communication_authority": "terminated",
+      "data_preservation": "retention PURGE_ELIGIBLE — data retained until retention policy purge",
+      "test": "test_lifecycle_journey_transitions[archived]",
+      "passed": true
+    },
+    {
+      "step": "deleted",
+      "trigger": "purged_at set",
+      "lifecycle_state": "ACCOUNT_DELETED",
+      "portal_mode": "ACCOUNT_DELETED",
+      "capability_change": "CAP_AUTH_LOGIN denied",
+      "customer_messaging": "account deleted",
+      "background_processing": "terminate all",
+      "session_refresh": "n/a — login denied",
+      "communication_authority": "terminated",
+      "data_preservation": "governed by purge policy only",
+      "test": "test_lifecycle_journey_transitions[deleted]",
+      "passed": true
+    }
+  ],
+  "regeneration_tests": {
+    "test_runtime_contract_regenerates_on_fact_change": {
+      "active_to_cancelled": true,
+      "runtime_version_differs": true,
+      "passed": true
+    },
+    "test_runtime_contract_is_read_only_no_mutation": {
+      "input_documents_immutable": true,
+      "passed": true
+    }
+  },
+  "domain_data_invariants": [
+    "Properties remain stored across all non-purge transitions",
+    "Requirements remain stored",
+    "Documents and evidence remain stored",
+    "Reports history remains stored",
+    "Notifications audit trail remains stored",
+    "Maintenance and contractor records remain stored",
+    "Tenancies remain stored",
+    "Settings and profile remain stored",
+    "Resubscription restores access via contract regeneration only — no data recreation"
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "audit_id": "P0-RUNTIME-CONTRACT-STATE-MATRIX-VALIDATION-01",
+  "generated_at": "2026-07-07T18:15:00Z",
+  "reconciliation_model": "single_authoritative_chain",
+  "fields": [
+    {
+      "field": "client_billing.subscription_status",
+      "source_collection": "client_billing",
+      "role": "authoritative",
+      "used_by": ["Lifecycle Resolver", "Runtime Contract"],
+      "precedence": 1,
+      "overrides": ["clients.subscription_status"],
+      "may_drift_from": ["clients.subscription_status", "lifecycle_status"],
+      "must_never_override": ["client_lifecycle_status SUSPENDED", "purged_at", "is_deleted"]
+    },
+    {
+      "field": "client_billing.billing_lifecycle_state",
+      "source_collection": "client_billing",
+      "role": "authoritative",
+      "used_by": ["Lifecycle Resolver"],
+      "precedence": 1,
+      "note": "Recomputed via compute_billing_lifecycle_state when stored value absent; warning emitted on recompute mismatch",
+      "may_drift_from": ["clients.billing_lifecycle_state"],
+      "must_never_override": ["org SUSPENDED", "ARCHIVED", "ACCOUNT_DELETED"]
+    },
+    {
+      "field": "client_billing.grace_period_ends_at",
+      "source_collection": "client_billing",
+      "role": "authoritative",
+      "used_by": ["Lifecycle Resolver"],
+      "precedence": 1,
+      "derives": ["GRACE_PERIOD vs PAYMENT_FAILED distinction"]
+    },
+    {
+      "field": "client_billing.cancel_at_period_end",
+      "source_collection": "client_billing",
+      "role": "authoritative",
+      "used_by": ["Lifecycle Resolver"],
+      "precedence": 1,
+      "derives": ["CANCELLATION_SCHEDULED"]
+    },
+    {
+      "field": "client_billing.read_only_retention",
+      "source_collection": "client_billing",
+      "role": "authoritative",
+      "used_by": ["Lifecycle Resolver", "Runtime Contract portal override"],
+      "precedence": 1,
+      "derives": ["READ_ONLY lifecycle and READ_ONLY portal mode"]
+    },
+    {
+      "field": "clients.subscription_status",
+      "source_collection": "clients",
+      "role": "mirror",
+      "used_by": ["Lifecycle Resolver fallback when client_billing absent"],
+      "precedence": 2,
+      "may_legitimately_drift": true,
+      "must_never_override": ["client_billing facts when billing row present"]
+    },
+    {
+      "field": "clients.billing_lifecycle_state",
+      "source_collection": "clients",
+      "role": "mirror",
+      "used_by": ["Lifecycle Resolver fallback"],
+      "precedence": 2,
+      "may_legitimately_drift": true
+    },
+    {
+      "field": "clients.client_lifecycle_status",
+      "source_collection": "clients",
+      "role": "authoritative_for_org_ops",
+      "used_by": ["Lifecycle Resolver"],
+      "precedence": "terminal override for SUSPENDED and ARCHIVED",
+      "overrides": ["billing ACTIVE/TRIALING when SUSPENDED or ARCHIVED"],
+      "derived_also_by": "derive_client_lifecycle_status (diagnostic only in source_facts)"
+    },
+    {
+      "field": "clients.onboarding_status",
+      "source_collection": "clients",
+      "role": "authoritative_for_provisioning",
+      "used_by": ["Lifecycle Resolver"],
+      "precedence": "gates legacy pending_payment override",
+      "derives": ["PAYMENT_PENDING when no billing"]
+    },
+    {
+      "field": "clients.lifecycle_status",
+      "source_collection": "clients",
+      "role": "legacy_mirror",
+      "used_by": ["Lifecycle Resolver"],
+      "precedence": "lowest for billing-backed accounts",
+      "may_legitimately_drift": true,
+      "must_never_override": ["PROVISIONED + ACTIVE/TRIALING subscription", "ACTIVE org + ACTIVE/TRIALING subscription"],
+      "validated_scenarios": [
+        "pending_payment mirror ignored for provisioned active",
+        "cancelled/expired/unknown/null mirrors ignored when subscription active"
+      ]
+    },
+    {
+      "field": "clients.is_deleted",
+      "source_collection": "clients",
+      "role": "authoritative",
+      "used_by": ["Lifecycle Resolver"],
+      "precedence": "terminal",
+      "derives": ["ARCHIVED"]
+    },
+    {
+      "field": "clients.purged_at",
+      "source_collection": "clients",
+      "role": "authoritative",
+      "used_by": ["Lifecycle Resolver"],
+      "precedence": "highest terminal",
+      "derives": ["ACCOUNT_DELETED"]
+    },
+    {
+      "field": "account_lifecycle_state",
+      "source_collection": "computed",
+      "role": "derived",
+      "used_by": ["Runtime Contract", "Capability matrix column selection"],
+      "precedence": "output of resolver; never input to resolver"
+    },
+    {
+      "field": "portal_mode",
+      "source_collection": "computed",
+      "role": "derived",
+      "used_by": ["Runtime Contract", "Portal cap ceiling overlay", "Frontend rendering"],
+      "precedence": "derived from lifecycle_state + read_only_retention override"
+    },
+    {
+      "field": "capabilities",
+      "source_collection": "computed",
+      "role": "derived",
+      "used_by": ["Route authorization", "Frontend gating"],
+      "precedence": "lifecycle matrix + portal overlay + plan features; never independently inferred by routes"
+    },
+    {
+      "field": "request.state.runtime_contract",
+      "source_collection": "request_cache",
+      "role": "cache",
+      "used_by": ["Session middleware", "Capability gating", "Profile/lifecycle routes"],
+      "precedence": "single resolution per authenticated request",
+      "must_never": "be re-resolved independently per CAP_* check"
+    },
+    {
+      "field": "session runtime validation",
+      "source_collection": "computed",
+      "role": "derived",
+      "used_by": ["Session refresh headers", "Frontend version sync"],
+      "precedence": "uses attached contract; does not establish independent lifecycle authority"
+    },
+    {
+      "field": "canonical_entitlement_state",
+      "source_collection": "client_billing or clients",
+      "role": "mirror",
+      "used_by": ["compare_resolution_with_existing_fields drift audit only"],
+      "precedence": "not used as resolver input",
+      "may_legitimately_drift": true
+    },
+    {
+      "field": "entitlement_status",
+      "source_collection": "client_billing or clients",
+      "role": "mirror",
+      "used_by": ["drift comparison only"],
+      "may_legitimately_drift": true
+    }
+  ],
+  "precedence_order": [
+    "purged_at → ACCOUNT_DELETED",
+    "is_deleted / client_lifecycle_status ARCHIVED → ARCHIVED",
+    "client_lifecycle_status SUSPENDED → SUSPENDED",
+    "legacy lifecycle_status pending_payment (unless provisioned active override)",
+    "onboarding without billing → PAYMENT_PENDING",
+    "read_only_retention tier → READ_ONLY",
+    "client_billing subscription + billing_lifecycle facts",
+    "client mirror fallback when billing absent",
+    "contradictory billing facts → UNKNOWN",
+    "unmapped combination → UNKNOWN"
+  ],
+  "drift_policy": {
+    "mirror_drift_warning": "Emitted when billing and client subscription_status or billing_lifecycle_state disagree",
+    "resolution_rule": "client_billing preferred via _pick(prefer_billing=True)",
+    "legitimate_drift": [
+      "clients.lifecycle_status stale intake funnel values",
+      "clients.subscription_status lag behind Stripe sync",
+      "canonical_entitlement_state band labels"
+    ],
+    "forbidden_override": [
+      "lifecycle_status must not downgrade PROVISIONED ACTIVE to PAYMENT_PENDING",
+      "client mirror must not override client_billing when billing row exists",
+      "routes must not infer subscription or lifecycle independently of runtime_contract"
+    ]
+  }
+}

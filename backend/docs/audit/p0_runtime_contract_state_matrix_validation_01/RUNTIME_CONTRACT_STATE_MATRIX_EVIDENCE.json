@@ -1,0 +1,316 @@
+{
+  "audit_id": "P0-RUNTIME-CONTRACT-STATE-MATRIX-VALIDATION-01",
+  "branch": "develop",
+  "generated_at": "2026-07-07T18:15:00Z",
+  "verdict": "RUNTIME_CONTRACT_STATE_MATRIX_VALIDATED_WITH_MINOR_FINDINGS",
+  "authority_chain": [
+    "Authentication",
+    "Session Runtime (apply_session_runtime_validation)",
+    "Client Resolution (resolve_runtime_contract_for_client)",
+    "Lifecycle Resolver (resolve_account_lifecycle_state)",
+    "Runtime Contract (build_runtime_contract)",
+    "Capability Resolution (resolve_capabilities + portal overlay)",
+    "Route Authorization (CapabilityEnforcementService.evaluate_from_contract)",
+    "Frontend Runtime (LifecycleRuntimeContext)",
+    "Customer Experience (customer_experience policy)"
+  ],
+  "test_execution": {
+    "targeted_only": true,
+    "suites": [
+      {
+        "file": "tests/test_p0_runtime_contract_state_matrix_validation_01.py",
+        "passed": 63,
+        "failed": 0
+      },
+      {
+        "file": "tests/test_p0_runtime_contract_state_convergence_01.py",
+        "passed": 3,
+        "failed": 0
+      }
+    ],
+    "total_passed": 66,
+    "total_failed": 0
+  },
+  "resolver_version": "ilp1_lifecycle_state_resolver_v1",
+  "contract_version": "account_lifecycle_runtime_contract_v1",
+  "capability_matrix": {
+    "capability_count": 69,
+    "lifecycle_columns": [
+      "ACTIVE",
+      "TRIAL",
+      "TRIAL_EXPIRED",
+      "PAYMENT_PENDING",
+      "PAYMENT_FAILED",
+      "GRACE_PERIOD",
+      "CANCELLATION_SCHEDULED",
+      "CANCELLED_IMMEDIATE",
+      "SUBSCRIPTION_EXPIRED",
+      "READ_ONLY",
+      "SUSPENDED",
+      "ARCHIVED",
+      "ACCOUNT_DELETED",
+      "UNKNOWN",
+      "LEGACY"
+    ]
+  },
+  "lifecycle_state_matrix": {
+    "ACTIVE": {
+      "resolver_state": "ACTIVE",
+      "portal_mode": "FULL_ACCESS",
+      "read_behaviour": "full read across properties, profile, dashboard",
+      "write_behaviour": "full write including property create and profile edit",
+      "billing_behaviour": "full billing and subscription management",
+      "recovery_journey": "none",
+      "reactivation_eligible": false,
+      "retention_tier": "STANDARD",
+      "sample_caps_read": ["CAP_PROP_VIEW", "CAP_PROFILE_VIEW", "CAP_DASHBOARD_VIEW"],
+      "sample_caps_write": ["CAP_PROP_CREATE", "CAP_PROFILE_EDIT"]
+    },
+    "TRIAL": {
+      "resolver_state": "TRIAL",
+      "portal_mode": "FULL_ACCESS",
+      "read_behaviour": "full read including properties and dashboard",
+      "write_behaviour": "property create allowed",
+      "billing_behaviour": "full billing view and checkout",
+      "recovery_journey": "none",
+      "reactivation_eligible": false,
+      "retention_tier": "STANDARD",
+      "sample_caps_read": ["CAP_PROP_VIEW", "CAP_DASHBOARD_VIEW"],
+      "sample_caps_write": ["CAP_PROP_CREATE"]
+    },
+    "ONBOARDING": {
+      "resolver_state": "PAYMENT_PENDING",
+      "portal_mode": "PAYMENT_REQUIRED",
+      "read_behaviour": "profile view only",
+      "write_behaviour": "property and operational writes denied",
+      "billing_behaviour": "billing checkout and subscription renewal allowed",
+      "recovery_journey": "complete payment / checkout",
+      "reactivation_eligible": true,
+      "retention_tier": "STANDARD",
+      "sample_caps_read": ["CAP_PROFILE_VIEW"],
+      "sample_caps_write": [],
+      "sample_caps_denied_write": ["CAP_PROP_CREATE"]
+    },
+    "GRACE_PERIOD": {
+      "resolver_state": "GRACE_PERIOD",
+      "portal_mode": "GRACE",
+      "read_behaviour": "read-only operational access with grace banner",
+      "write_behaviour": "writes limited by grace portal overlay",
+      "billing_behaviour": "billing recovery actions available",
+      "recovery_journey": "update payment method before grace end",
+      "reactivation_eligible": true,
+      "retention_tier": "STANDARD",
+      "sample_caps_read": ["CAP_PROP_VIEW", "CAP_PROFILE_VIEW"],
+      "sample_caps_write": []
+    },
+    "CANCELLATION_SCHEDULED": {
+      "resolver_state": "CANCELLATION_SCHEDULED",
+      "portal_mode": "FULL_ACCESS",
+      "read_behaviour": "full access until period end",
+      "write_behaviour": "writes remain allowed until cancellation effective",
+      "billing_behaviour": "subscription view; cancel-at-period-end state",
+      "recovery_journey": "none until period end",
+      "reactivation_eligible": false,
+      "retention_tier": "STANDARD",
+      "sample_caps_read": ["CAP_PROP_VIEW"],
+      "sample_caps_write": ["CAP_PROP_CREATE"]
+    },
+    "SUBSCRIPTION_EXPIRED": {
+      "resolver_state": "SUBSCRIPTION_EXPIRED",
+      "portal_mode": "BILLING_RECOVERY",
+      "read_behaviour": "billing and property read for recovery context",
+      "write_behaviour": "operational writes denied",
+      "billing_behaviour": "renew / resubscribe primary path",
+      "recovery_journey": "resubscribe via billing recovery portal",
+      "reactivation_eligible": true,
+      "retention_tier": "STANDARD",
+      "sample_caps_read": ["CAP_BILLING_VIEW", "CAP_PROP_VIEW"],
+      "sample_caps_denied_write": ["CAP_PROP_CREATE", "CAP_OPS_MAINTENANCE"]
+    },
+    "READ_ONLY": {
+      "resolver_state": "READ_ONLY",
+      "portal_mode": "READ_ONLY",
+      "read_behaviour": "read-only retention window",
+      "write_behaviour": "all writes denied",
+      "billing_behaviour": "billing view for export/recovery decisions",
+      "recovery_journey": "resubscribe or export before purge",
+      "reactivation_eligible": true,
+      "retention_tier": "READ_ONLY_WINDOW",
+      "sample_caps_read": ["CAP_PROP_VIEW", "CAP_BILLING_VIEW"],
+      "sample_caps_denied_write": ["CAP_PROP_CREATE", "CAP_PROFILE_EDIT"]
+    },
+    "CANCELLED_IMMEDIATE": {
+      "resolver_state": "CANCELLED_IMMEDIATE",
+      "portal_mode": "BILLING_RECOVERY",
+      "read_behaviour": "billing-focused read",
+      "write_behaviour": "operational writes denied",
+      "billing_behaviour": "resubscribe path",
+      "recovery_journey": "resubscribe",
+      "reactivation_eligible": true,
+      "retention_tier": "STANDARD",
+      "sample_caps_read": ["CAP_BILLING_VIEW"],
+      "sample_caps_denied_write": ["CAP_OPS_MAINTENANCE"]
+    },
+    "SUSPENDED": {
+      "resolver_state": "SUSPENDED",
+      "portal_mode": "SUSPENDED",
+      "read_behaviour": "portal suspended; no operational read",
+      "write_behaviour": "all operational access denied",
+      "billing_behaviour": "billing recovery context only via support path",
+      "recovery_journey": "contact support / ops unsuspend",
+      "reactivation_eligible": true,
+      "retention_tier": "STANDARD",
+      "sample_caps_read": [],
+      "sample_caps_denied_write": ["CAP_PROFILE_EDIT", "CAP_PROP_VIEW", "CAP_DASHBOARD_VIEW"]
+    },
+    "ARCHIVED": {
+      "resolver_state": "ARCHIVED",
+      "portal_mode": "ARCHIVED",
+      "read_behaviour": "no portal access",
+      "write_behaviour": "all denied",
+      "billing_behaviour": "denied",
+      "recovery_journey": "none (purge eligible)",
+      "reactivation_eligible": false,
+      "retention_tier": "PURGE_ELIGIBLE",
+      "sample_caps_denied_write": ["CAP_PROP_VIEW", "CAP_BILLING_VIEW"]
+    },
+    "ACCOUNT_DELETED": {
+      "resolver_state": "ACCOUNT_DELETED",
+      "portal_mode": "ACCOUNT_DELETED",
+      "read_behaviour": "login and data access denied",
+      "write_behaviour": "all denied",
+      "billing_behaviour": "terminated",
+      "recovery_journey": "none",
+      "reactivation_eligible": false,
+      "retention_tier": "STANDARD",
+      "sample_caps_denied_write": ["CAP_AUTH_LOGIN", "CAP_PROP_VIEW"]
+    },
+    "UNKNOWN": {
+      "resolver_state": "UNKNOWN",
+      "portal_mode": "BILLING_RECOVERY",
+      "read_behaviour": "minimal profile read for diagnostics",
+      "write_behaviour": "operational writes denied",
+      "billing_behaviour": "conservative recovery posture",
+      "recovery_journey": "resolve contradictory facts / support",
+      "reactivation_eligible": false,
+      "retention_tier": "STANDARD",
+      "trigger": "unmapped subscription status or contradictory billing facts only",
+      "sample_caps_read": ["CAP_PROFILE_VIEW"],
+      "sample_caps_denied_write": ["CAP_PROP_CREATE"]
+    },
+    "PAYMENT_FAILED": {
+      "resolver_state": "PAYMENT_FAILED",
+      "portal_mode": "FULL_ACCESS",
+      "note": "Supplemental state validated by dedicated test; pre-grace past_due",
+      "test": "test_payment_failed_portal_mode_full_access"
+    },
+    "TRIAL_EXPIRED": {
+      "resolver_state": "TRIAL_EXPIRED",
+      "portal_mode": "BILLING_RECOVERY",
+      "note": "Resolver column present; not in primary 12-band parametrized matrix"
+    },
+    "LEGACY": {
+      "resolver_state": "LEGACY",
+      "portal_mode": "BILLING_RECOVERY",
+      "note": "Resolver column present; legacy funnel without standard billing"
+    }
+  },
+  "mirror_drift_validation": {
+    "scenarios_tested": 10,
+    "all_passed": true,
+    "scenarios": {
+      "active_sub_pending_payment_mirror": {
+        "expected": {"lifecycle": "ACTIVE", "portal_mode": "FULL_ACCESS"},
+        "passed": true
+      },
+      "active_sub_cancelled_mirror": {
+        "expected": {"lifecycle": "ACTIVE", "portal_mode": "FULL_ACCESS"},
+        "passed": true
+      },
+      "active_sub_expired_mirror": {
+        "expected": {"lifecycle": "ACTIVE", "portal_mode": "FULL_ACCESS"},
+        "passed": true
+      },
+      "active_sub_unknown_mirror": {
+        "expected": {"lifecycle": "ACTIVE", "portal_mode": "FULL_ACCESS"},
+        "passed": true
+      },
+      "active_sub_null_mirror": {
+        "expected": {"lifecycle": "ACTIVE", "portal_mode": "FULL_ACCESS"},
+        "passed": true
+      },
+      "trial_sub_active_org_mirror": {
+        "expected": {"lifecycle": "TRIAL", "portal_mode": "FULL_ACCESS"},
+        "passed": true
+      },
+      "grace_billing_active_client_mirror": {
+        "expected": {"lifecycle": "GRACE_PERIOD", "portal_mode": "GRACE"},
+        "passed": true
+      },
+      "cancelled_billing_active_client_mirror": {
+        "expected": {"lifecycle": "CANCELLED_IMMEDIATE", "portal_mode": "BILLING_RECOVERY"},
+        "passed": true
+      },
+      "suspended_org_active_billing_mirror": {
+        "expected": {"lifecycle": "SUSPENDED", "portal_mode": "SUSPENDED"},
+        "passed": true
+      },
+      "billing_authoritative_over_stale_client_mirror": {
+        "expected": {"lifecycle": "CANCELLED_IMMEDIATE", "portal_mode": "BILLING_RECOVERY"},
+        "passed": true
+      }
+    }
+  },
+  "active_never_unknown": {
+    "test": "test_valid_active_account_never_unknown",
+    "fixture": "PROVISIONED + ACTIVE subscription + ACTIVE org + stale pending_payment mirror",
+    "result": "ACTIVE",
+    "passed": true
+  },
+  "resubscription": {
+    "test": "test_resubscription_restores_full_capabilities_without_manual_recovery",
+    "cancelled_denies_prop_create": true,
+    "restored_grants_prop_create": true,
+    "restored_lifecycle": "ACTIVE",
+    "restored_portal_mode": "FULL_ACCESS",
+    "passed": true
+  },
+  "data_preservation": {
+    "test": "test_data_retention_policy_survives_lifecycle_transitions",
+    "states_verified": ["ACTIVE", "CANCELLED_IMMEDIATE", "READ_ONLY", "ARCHIVED"],
+    "note": "Retention tier governs purge eligibility; domain data is not deleted by lifecycle resolver"
+  },
+  "minor_findings": [
+    {
+      "id": "MF-01",
+      "severity": "low",
+      "finding": "TRIAL_EXPIRED and LEGACY resolver states exist in capability matrix but are not in the primary 12-band parametrized STATE_MATRIX",
+      "impact": "Coverage gap only; resolver columns are present and governed",
+      "recommendation": "Add parametrized fixtures for TRIAL_EXPIRED and LEGACY in a follow-up test PR"
+    },
+    {
+      "id": "MF-02",
+      "severity": "low",
+      "finding": "Frontend browser E2E not executed per targeted testing policy",
+      "impact": "Customer experience rendering validated via contract shape and capability grants, not live browser matrix",
+      "recommendation": "Optional smoke matrix in staging after develop deploy"
+    },
+    {
+      "id": "MF-03",
+      "severity": "informational",
+      "finding": "Missing client_billing row emits resolver warning missing_billing_record but ACTIVE accounts resolve correctly from client mirror when billing facts are present on client document",
+      "impact": "Ops/data hygiene; not resolver authority defect",
+      "recommendation": "Stripe billing sync governance (STRIPE_CUSTOMER_MODE_DRIFT) — no account-specific code"
+    }
+  ],
+  "acceptance_criteria": {
+    "every_lifecycle_state_correct_contract": true,
+    "every_mirror_drift_resolves_correctly": true,
+    "every_transition_regenerates_contract": true,
+    "active_never_unknown_for_valid_account": true,
+    "unknown_only_genuine_unestablishable": true,
+    "resubscription_restores_automatically": true,
+    "no_account_specific_logic": true,
+    "no_authority_drift_in_resolver_chain": true
+  }
+}
