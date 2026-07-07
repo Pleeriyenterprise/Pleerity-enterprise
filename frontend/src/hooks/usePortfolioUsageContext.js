@@ -1,10 +1,10 @@
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useContext, useMemo } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { clientAPI } from '../api/client';
+import { useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
 
 /**
- * Display-only portfolio usage (property count vs plan cap).
- * Fetches GET /client/entitlements/context — backend gated by CAP_DASHBOARD_VIEW, not legacy hasFeature().
+ * Display-only portfolio usage (plan cap from Runtime Contract).
+ * Consumes lifecycle-runtime plan material — does not call legacy /client/entitlements*.
  * Safe outside AuthProvider (returns null context when unauthenticated).
  */
 export function usePortfolioUsageContext() {
@@ -13,31 +13,32 @@ export function usePortfolioUsageContext() {
   const isClient =
     user && (user.role === 'ROLE_CLIENT' || user.role === 'ROLE_CLIENT_ADMIN') && user.client_id;
 
-  const [usageContext, setUsageContext] = useState(null);
-  const [loading, setLoading] = useState(Boolean(isClient));
+  const { runtime, runtimeAvailable, loading, refetch } = useLifecycleRuntime();
 
-  const refetch = useCallback(async () => {
-    if (!isClient) {
-      setUsageContext(null);
-      setLoading(false);
+  const usageContext = useMemo(() => {
+    if (!isClient || !runtimeAvailable) {
       return null;
     }
-    setLoading(true);
-    try {
-      const res = await clientAPI.getEntitlementsContext();
-      setUsageContext(res?.data ?? null);
-      return res?.data ?? null;
-    } catch {
-      setUsageContext(null);
+    const plan = runtime?.plan;
+    if (!plan) {
       return null;
-    } finally {
-      setLoading(false);
     }
-  }, [isClient]);
+    const maxProperties =
+      typeof plan.max_properties === 'number' ? plan.max_properties : null;
+    return {
+      property_count: null,
+      max_properties: maxProperties,
+      at_property_limit: null,
+      plan: plan.plan_code || null,
+      plan_name: plan.plan_name || null,
+      is_active: runtime?.lifecycle_state === 'ACTIVE' || runtime?.lifecycle_state === 'TRIAL',
+      read_api_base_path: '/api/client-data/v1',
+    };
+  }, [isClient, runtime, runtimeAvailable]);
 
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
-
-  return { usageContext, loading, refetch };
+  return {
+    usageContext,
+    loading: Boolean(isClient && loading),
+    refetch,
+  };
 }

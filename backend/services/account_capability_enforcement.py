@@ -164,6 +164,7 @@ class CapabilityEnforcementService:
             self._db,
             client_id,
             include_audit=include_audit,
+            emit_events=False,
         )
 
     def evaluate_from_contract(

@@ -867,9 +867,11 @@ def _load_plan_context(client: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     plan_code = plan_registry.resolve_plan_code(plan_str)
     features = plan_registry.get_features(plan_code)
     plan_name = str(plan_code.value if hasattr(plan_code, "value") else plan_code)
+    max_properties = None
     try:
         plan_def = plan_registry.get_plan(plan_code)
         plan_name = plan_def.get("name") or plan_name
+        max_properties = plan_def.get("max_properties")
     except Exception:
         logger.debug("plan_registry.get_plan unavailable; using plan_code label only", exc_info=True)
     ops_modules = {
@@ -880,6 +882,7 @@ def _load_plan_context(client: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     return {
         "plan_code": plan_code.value if hasattr(plan_code, "value") else str(plan_code),
         "plan_name": plan_name,
+        "max_properties": max_properties,
         "plan_features": {k: bool(v) for k, v in features.items()},
         "ops_modules": ops_modules,
     }
