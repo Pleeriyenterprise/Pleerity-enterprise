@@ -1,0 +1,57 @@
+{
+  "programme": "COMMAND-CENTER-FALLBACK-INVESTIGATION-01",
+  "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "client_label": "David Miller (Wales E2E / PLAN_2_PORTFOLIO)",
+  "investigated_at": "2026-07-07T22:15:00Z",
+  "environment": "pleerity_staging",
+  "findings": [
+    {
+      "warning": "operational_value_bundle_v1 failed",
+      "classification": "SERVICE_FAILURE",
+      "root_cause": "asyncio.TimeoutError — build_operational_value_bundle_v1 exceeded 9s Command Centre budget",
+      "failed_dependency": "operational_value_compression_service.build_operational_value_bundle_v1 (sequential sub-bundle assembly)",
+      "not_causes": [
+        "missing portfolio score",
+        "missing requirements summary",
+        "missing Today items",
+        "missing compliance score",
+        "missing property data",
+        "missing operational cognition data",
+        "capability denial",
+        "empty-but-valid account",
+        "serialization issue"
+      ],
+      "evidence": {
+        "property_count": 8,
+        "requirements_count": 107,
+        "urgent_open_total": 9,
+        "pre_fix_bundle_ms": 15240,
+        "pre_fix_timeout_budget_ms": 9000,
+        "sub_bundle_ms_sequential": {
+          "closure": 1953,
+          "backlog": 1774,
+          "execution_capacity": 3911,
+          "assignment_momentum": 6359
+        },
+        "post_fix_bundle_ms_under_9s_budget": 7880,
+        "post_fix_primary_bundle_degraded": false
+      },
+      "remediation": "Parallelize closure/backlog/execution_capacity/assignment_momentum sub-bundles; share single inventory load across compression/focus/kpis; surface TimeoutError type in fallback reason"
+    },
+    {
+      "warning": "command_center_primary_urgent_summary fallback",
+      "classification": "NOT_REPRODUCED — latent SERVICE_FAILURE risk",
+      "root_cause": "Not observed for this client after trace; primary gather succeeded in 11.5s (under 12s budget). Would classify as SERVICE_FAILURE if asyncio.TimeoutError on priority_stream_and_compliance_headline gather.",
+      "failed_dependency": "Would be priority_stream_and_compliance_headline (typically _load_urgent_slice_from_priority_stream latency)",
+      "notes": {
+        "urgent_slice_ms": 11470,
+        "compliance_summary_ms": 57,
+        "compliance_stats_in_primary_projection": "requirements_* counts null by design — persisted headline fast path defers live stats (DATA_INCOMPLETE for counts only, not a fallback trigger)",
+        "score": null,
+        "score_status": "ok",
+        "properties_count": 8
+      }
+    }
+  ],
+  "verdict": "SERVICE_FAILURE_REMEDIATED_FOR_OPERATIONAL_VALUE_BUNDLE"
+}

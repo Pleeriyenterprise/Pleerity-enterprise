@@ -1,0 +1,2898 @@
+{
+  "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+  "client_exists": true,
+  "billing_plan": "PLAN_2_PORTFOLIO",
+  "property_count": 8,
+  "requirements_count": 107,
+  "dependencies": [
+    {
+      "label": "fetch_client_priority_actions_primary",
+      "ok": true,
+      "type": "list",
+      "preview": {
+        "list_len": 6,
+        "first": {
+          "action_type": "work_order_sla_breached",
+          "title": "Work order \u2014 SLA deadline missed",
+          "description": "Upload the correct certificate or record so this requirement can be confirmed.",
+          "priority": 85,
+          "severity": "high",
+          "related_property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+          "related_issue_id": null,
+          "related_work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+          "related_risk_signal_id": null,
+          "related_invoice_id": null,
+          "recommended_url": "/operations/work-orders?work_order_id=ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+          "recommended_action_label": "View work order",
+          "source_updated_at": "2026-06-08T23:00:02.457307+00:00"
+        }
+      }
+    },
+    {
+      "label": "_primary_compliance_status_summary",
+      "ok": true,
+      "type": "dict",
+      "preview": {
+        "score": null,
+        "grade": null,
+        "message": null,
+        "color": "gray",
+        "properties_count": 8,
+        "score_authority": "persisted_portfolio_aggregate",
+        "score_status": "ok",
+        "last_calculated_at": "2026-07-07T18:57:20.499118+00:00",
+        "score_coverage": null,
+        "score_status_message": null,
+        "scoring_semantics_version": null,
+        "properties_pending_score_recalc_count": null,
+        "portfolio_score_recalc_pending_note": null,
+        "compliance_counts_authority": "persisted_portfolio_headline.stats",
+        "requirements_overdue": null,
+        "requirements_expiring_soon": null,
+        "requirements_pending": null,
+        "requirements_missing_evidence": null,
+        "requirements_total": null,
+        "properties_at_risk_count": null
+      }
+    },
+    {
+      "label": "_load_urgent_slice_from_priority_stream",
+      "ok": true,
+      "type": "dict",
+      "preview": {
+        "urgent_actions": [
+          {
+            "id": "priority_action:eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "task_id": "priority_action:eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01 damp condition ops verify 2026-05-22T23:52:39.719561+00:00 is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "Wimbledon Family Home",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:3882fc90-2974-4456-b219-c310b0ab681c",
+            "task_id": "priority_action:3882fc90-2974-4456-b219-c310b0ab681c",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Electrical Risk: Review your electrical certificate and arrange an external inspection if it is due or out of date. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/3882fc90-2974-4456-b219-c310b0ab681c",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "task_id": "priority_action:d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Recurring Repairs Risk: Investigate the root cause instead of repeat patch repairs. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "task_id": "priority_action:d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Not sure what is wrong is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "Brighton Lanes Studio",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "task_id": "priority_action:ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Upload the correct certificate or record so this requirement can be confirmed. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "work_order:Operational momentum decaying on 5 jobs in sample",
+            "task_id": "work_order:Operational momentum decaying on 5 jobs in sample",
+            "title": "Operational momentum decaying on 5 jobs in sample",
+            "description": "Review coordination failures and execute next authoritative action",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "high",
+            "primary_action_type": "coordination_momentum_nudge",
+            "primary_action_label": "Act now",
+            "primary_action_url": "/operations/work-orders",
+            "metadata": {
+              "action_type": "coordination_momentum_nudge",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "coordination_momentum_action": true,
+              "blockage_class": "coordination_failure"
+            },
+            "created_from": null
+          },
+          {
+            "id": "work_order:Postcode area CF10 has 3 unassigned jobs",
+            "task_id": "work_order:Postcode area CF10 has 3 unassigned jobs",
+            "title": "Postcode area CF10 has 3 unassigned jobs",
+            "description": "Add contractors covering this postcode or request admin routing assistance",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "high",
+            "primary_action_type": "execution_capacity_recovery",
+            "primary_action_label": "Resolve execution block",
+            "primary_action_url": "/operations/work-orders",
+            "metadata": {
+              "action_type": "execution_capacity_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Execution supply must exist before workflow progress converts to closure.",
+              "execution_capacity_action": true,
+              "blockage_class": "execution_capacity_blockage"
+            },
+            "created_from": null
+          },
+          {
+            "id": "issue:4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "task_id": "issue:4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "title": "Start maintenance job to convert triage into closure momentum",
+            "description": "Start maintenance job to convert triage into closure momentum",
+            "section": "urgent",
+            "source_type": "issue",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "high",
+            "primary_action_type": "closure_start_job",
+            "primary_action_label": "Start job",
+            "primary_action_url": "/operations/issues/4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "metadata": {
+              "action_type": "closure_start_job",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "closure_likelihood": 0.72,
+              "operational_momentum_score": 0.53,
+              "why_matters": "Starting jobs is the highest-leverage step to convert backlog into momentum.",
+              "closure_momentum_action": true
+            },
+            "created_from": null,
+            "customer_safe_title": "Start maintenance job to convert triage into closure momentum",
+            "customer_safe_description": "Start maintenance job to convert triage into closure momentum"
+          },
+          {
+            "id": "work_order:47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "task_id": "work_order:47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "title": "Quote momentum abandoned on assigned job",
+            "description": "Send quote reminder or approve/reject pending quote",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "medium",
+            "primary_action_type": "coordination_momentum_nudge",
+            "primary_action_label": "Act now",
+            "primary_action_url": "/operations/work-orders/47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "metadata": {
+              "action_type": "coordination_momentum_nudge",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "coordination_momentum_action": true,
+              "blockage_class": "coordination_failure"
+            },
+            "created_from": null
+          }
+        ],
+        "urgent_open_total": 9,
+        "urgent_continuation": 0,
+        "freshness": {
+          "tasks_refreshed_at": "2026-07-07T22:09:46.235505+00:00",
+          "projection": "primary",
+          "freshness_scope": "primary_priority_stream"
+        },
+        "urgent_actions_count": 9
+      }
+    },
+    {
+      "label": "build_pressure_compression_v1",
+      "ok": true,
+      "type": "dict",
+      "preview": {
+        "groups": [
+          {
+            "group_key": "contractor_deadlock",
+            "headline": "5 maintenance jobs lack an assigned contractor",
+            "detail": "Assignment deadlock blocks execution; backlog pressure compounds until a contractor is routed.",
+            "consequence_category": "operationally_dangerous",
+            "count": 5,
+            "affected_properties": 3,
+            "action_paths_available": 1,
+            "unresolved_dependencies": 5,
+            "sample_ids": [
+              "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+              "d11e831d-b75e-415f-a50c-9b903ecd8681",
+              "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+              "3882fc90-2974-4456-b219-c310b0ab681c",
+              "eead8647-fcb9-4b8d-884b-c61a8419399e"
+            ]
+          },
+          {
+            "group_key": "fake_progress_risk_signals",
+            "headline": "6 resolved risk signals lack closure timestamps",
+            "detail": "State shows resolved but operational replay cannot reconstruct when risk cleared.",
+            "consequence_category": "informational_only",
+            "count": 6,
+            "affected_properties": 0,
+            "action_paths_available": 0,
+            "unresolved_dependencies": 6,
+            "sample_ids": [
+              "rs_71e2437484aa",
+              "rs_9fdbcae6b2ac",
+              "rs_204a4d6cac5e",
+              "rs_5e5f8b1659c4",
+              "rs_4600ba2d0cfa"
+            ]
+          }
+        ],
+        "compressed_from": {
+          "raw_pressure_items": 8,
+          "raw_active_risk_signals": 2,
+          "raw_open_issues": 1,
+          "raw_open_jobs": 5
+        },
+        "cognitive_load": {
+          "estimated_raw_units": 8,
+          "compressed_decision_units": 2,
+          "compression_ratio": 4.0
+        },
+        "groups_count": 2
+      }
+    },
+    {
+      "label": "build_operational_focus_v1",
+      "ok": true,
+      "type": "dict",
+      "preview": {
+        "what_to_do_first": "5 maintenance jobs lack an assigned contractor",
+        "highest_impact_next_actions": [
+          {
+            "priority": 1,
+            "headline": "5 maintenance jobs lack an assigned contractor",
+            "why_first": "Assignment deadlock blocks execution; backlog pressure compounds until a contractor is routed.",
+            "consequence_category": "operationally_dangerous",
+            "estimated_pressure_reduction": "high",
+            "action_path": "/operations/work-orders"
+          },
+          {
+            "priority": 2,
+            "headline": "1 issues ready for job creation",
+            "why_first": "Starting jobs converts triage into executable work \u2014 improves closure likelihood.",
+            "consequence_category": "operationally_dangerous",
+            "estimated_pressure_reduction": "medium",
+            "action_path": "/operations/issues"
+          }
+        ],
+        "silently_dangerous": [
+          {
+            "kind": "contractor_deadlock",
+            "headline": "5 maintenance jobs lack an assigned contractor",
+            "detail": "Assignment deadlock blocks execution; backlog pressure compounds until a contractor is routed."
+          }
+        ],
+        "fake_progress_warnings": [
+          {
+            "kind": "risk_signals",
+            "headline": "6 resolved risk signals lack closure timestamps",
+            "count": 6
+          }
+        ],
+        "operational_blockers": [
+          {
+            "kind": "contractor_deadlock",
+            "headline": "5 maintenance jobs lack an assigned contractor",
+            "count": 5
+          }
+        ],
+        "unresolved_dependency_count": 11,
+        "pressure_compression_ref": "pressure_compression_v1",
+        "disclosures": [
+          "Some items show resolved/completed state without authoritative closure timestamps."
+        ],
+        "cannot_reduce_pressure_yet": [
+          {
+            "reason": "Historical resolved signals need authority backfill before dismiss outcomes are fully trusted."
+          }
+        ]
+      }
+    },
+    {
+      "label": "build_landlord_outcome_kpis_v1",
+      "ok": true,
+      "type": "dict",
+      "preview": {
+        "captured_at": "2026-07-07T22:09:47.183168+00:00",
+        "backlog": {
+          "open_issues": 1,
+          "open_jobs": 5,
+          "active_risk_signals": 2
+        },
+        "deadlock_count": 5,
+        "stale_review_count": 0,
+        "completed_but_unverified_count": 0,
+        "closure_conversion_rate": 0.0,
+        "fake_progress": {
+          "resolved_signals_missing_timestamp": 6,
+          "completed_jobs_unverified": 0
+        },
+        "recurring_risk_active_by_type": {
+          "recurring repairs risk": 1
+        },
+        "operational_pressure_trend": {
+          "note": "Point-in-time snapshot; trend requires historical series.",
+          "pressure_index": 8
+        },
+        "ignored_alert_proxy": {
+          "stale_issues_ratio": 0.0
+        }
+      }
+    },
+    {
+      "label": "build_operational_value_bundle_v1",
+      "ok": true,
+      "type": "dict",
+      "preview": {
+        "pressure_compression_v1": {
+          "groups": [
+            {
+              "group_key": "contractor_deadlock",
+              "headline": "5 maintenance jobs lack an assigned contractor",
+              "detail": "Assignment deadlock blocks execution; backlog pressure compounds until a contractor is routed.",
+              "consequence_category": "operationally_dangerous",
+              "count": 5,
+              "affected_properties": 3,
+              "action_paths_available": 1,
+              "unresolved_dependencies": 5,
+              "sample_ids": [
+                "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "3882fc90-2974-4456-b219-c310b0ab681c",
+                "eead8647-fcb9-4b8d-884b-c61a8419399e"
+              ]
+            },
+            {
+              "group_key": "fake_progress_risk_signals",
+              "headline": "6 resolved risk signals lack closure timestamps",
+              "detail": "State shows resolved but operational replay cannot reconstruct when risk cleared.",
+              "consequence_category": "informational_only",
+              "count": 6,
+              "affected_properties": 0,
+              "action_paths_available": 0,
+              "unresolved_dependencies": 6,
+              "sample_ids": [
+                "rs_71e2437484aa",
+                "rs_9fdbcae6b2ac",
+                "rs_204a4d6cac5e",
+                "rs_5e5f8b1659c4",
+                "rs_4600ba2d0cfa"
+              ]
+            }
+          ],
+          "compressed_from": {
+            "raw_pressure_items": 8,
+            "raw_active_risk_signals": 2,
+            "raw_open_issues": 1,
+            "raw_open_jobs": 5
+          },
+          "cognitive_load": {
+            "estimated_raw_units": 8,
+            "compressed_decision_units": 2,
+            "compression_ratio": 4.0
+          }
+        },
+        "operational_focus_v1": {
+          "what_to_do_first": "5 maintenance jobs lack an assigned contractor",
+          "highest_impact_next_actions": [
+            {
+              "priority": 1,
+              "headline": "5 maintenance jobs lack an assigned contractor",
+              "why_first": "Assignment deadlock blocks execution; backlog pressure compounds until a contractor is routed.",
+              "consequence_category": "operationally_dangerous",
+              "estimated_pressure_reduction": "high",
+              "action_path": "/operations/work-orders"
+            },
+            {
+              "priority": 2,
+              "headline": "1 issues ready for job creation",
+              "why_first": "Starting jobs converts triage into executable work \u2014 improves closure likelihood.",
+              "consequence_category": "operationally_dangerous",
+              "estimated_pressure_reduction": "medium",
+              "action_path": "/operations/issues"
+            }
+          ],
+          "silently_dangerous": [
+            {
+              "kind": "contractor_deadlock",
+              "headline": "5 maintenance jobs lack an assigned contractor",
+              "detail": "Assignment deadlock blocks execution; backlog pressure compounds until a contractor is routed."
+            }
+          ],
+          "fake_progress_warnings": [
+            {
+              "kind": "risk_signals",
+              "headline": "6 resolved risk signals lack closure timestamps",
+              "count": 6
+            }
+          ],
+          "operational_blockers": [
+            {
+              "kind": "contractor_deadlock",
+              "headline": "5 maintenance jobs lack an assigned contractor",
+              "count": 5
+            }
+          ],
+          "unresolved_dependency_count": 11,
+          "pressure_compression_ref": "pressure_compression_v1",
+          "disclosures": [
+            "Some items show resolved/completed state without authoritative closure timestamps."
+          ],
+          "cannot_reduce_pressure_yet": [
+            {
+              "reason": "Historical resolved signals need authority backfill before dismiss outcomes are fully trusted."
+            }
+          ]
+        },
+        "landlord_outcome_kpis_v1": {
+          "captured_at": "2026-07-07T22:09:48.132149+00:00",
+          "backlog": {
+            "open_issues": 1,
+            "open_jobs": 5,
+            "active_risk_signals": 2
+          },
+          "deadlock_count": 5,
+          "stale_review_count": 0,
+          "completed_but_unverified_count": 0,
+          "closure_conversion_rate": 0.0,
+          "fake_progress": {
+            "resolved_signals_missing_timestamp": 6,
+            "completed_jobs_unverified": 0
+          },
+          "recurring_risk_active_by_type": {
+            "recurring repairs risk": 1
+          },
+          "operational_pressure_trend": {
+            "note": "Point-in-time snapshot; trend requires historical series.",
+            "pressure_index": 8
+          },
+          "ignored_alert_proxy": {
+            "stale_issues_ratio": 0.0
+          }
+        },
+        "closure_conversion_v1": {
+          "programme": "OPERATIONAL-CLOSURE-CONVERSION-01",
+          "closure_conversion_scores_v1": {
+            "issues_sample": [
+              {
+                "entity_type": "issue",
+                "entity_id": "4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+                "closure_likelihood": 0.55,
+                "operational_momentum_score": 0.53,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 0,
+                "closure_blockers": [],
+                "likely_to_stall": false,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "issue",
+                "entity_id": "c6a51922-c9b9-41d3-97e9-478b6a284ab2",
+                "closure_likelihood": 1.0,
+                "operational_momentum_score": 0.95,
+                "stalled_duration_days": 45.9,
+                "dependency_count": 0,
+                "closure_blockers": [],
+                "likely_to_stall": false,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              }
+            ],
+            "work_orders_sample": [
+              {
+                "entity_type": "work_order",
+                "entity_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.15,
+                "stalled_duration_days": 39.3,
+                "dependency_count": 0,
+                "closure_blockers": [],
+                "likely_to_stall": false,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "49f65561-10db-4285-a8f1-c094ef851635",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.15,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 0,
+                "closure_blockers": [],
+                "likely_to_stall": false,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 42.2,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 44.9,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              }
+            ],
+            "risk_signals_sample": [
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_4547b0a18afa",
+                "closure_likelihood": 0.3,
+                "operational_momentum_score": 0.23,
+                "stalled_duration_days": 0.7,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "execution_not_started"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_fc5bcf1d1f7b",
+                "closure_likelihood": 0.9,
+                "operational_momentum_score": 0.85,
+                "stalled_duration_days": 27.7,
+                "dependency_count": 0,
+                "closure_blockers": [],
+                "likely_to_stall": false,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_516367c1711e",
+                "closure_likelihood": 0.75,
+                "operational_momentum_score": 0.7,
+                "stalled_duration_days": 29.7,
+                "dependency_count": 0,
+                "closure_blockers": [],
+                "likely_to_stall": false,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": true
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_71e2437484aa",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_9fdbcae6b2ac",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_b27ae2caad8c",
+                "closure_likelihood": 0.9,
+                "operational_momentum_score": 0.85,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 0,
+                "closure_blockers": [],
+                "likely_to_stall": false,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_9d259763375d",
+                "closure_likelihood": 0.9,
+                "operational_momentum_score": 0.85,
+                "stalled_duration_days": 35.0,
+                "dependency_count": 0,
+                "closure_blockers": [],
+                "likely_to_stall": false,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_204a4d6cac5e",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_5e5f8b1659c4",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 49.4,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_4600ba2d0cfa",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 49.4,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_db1b48d16993",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 49.4,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              }
+            ],
+            "likely_to_stall_count": 6,
+            "likely_to_stall_sample": [
+              {
+                "entity_type": "work_order",
+                "entity_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 42.2,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 44.9,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_4547b0a18afa",
+                "closure_likelihood": 0.3,
+                "operational_momentum_score": 0.23,
+                "stalled_duration_days": 0.7,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "execution_not_started"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              }
+            ],
+            "fake_progress_chain_count": 6,
+            "fake_progress_sample": [
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_71e2437484aa",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_9fdbcae6b2ac",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_204a4d6cac5e",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 30.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_5e5f8b1659c4",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 49.4,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_4600ba2d0cfa",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 49.4,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_db1b48d16993",
+                "closure_likelihood": 0.4,
+                "operational_momentum_score": 0.35,
+                "stalled_duration_days": 49.4,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "fake_resolved_timestamp"
+                ],
+                "likely_to_stall": false,
+                "fake_progress_risk": true,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              }
+            ],
+            "low_conversion_count": 6,
+            "low_conversion_sample": [
+              {
+                "entity_type": "work_order",
+                "entity_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 29.0,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 42.2,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "work_order",
+                "entity_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "closure_likelihood": 0.18,
+                "operational_momentum_score": 0.04,
+                "stalled_duration_days": 44.9,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "contractor_deadlock"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false,
+                "unresolved_evidence_dependency": false
+              },
+              {
+                "entity_type": "risk_signal",
+                "entity_id": "rs_4547b0a18afa",
+                "closure_likelihood": 0.3,
+                "operational_momentum_score": 0.23,
+                "stalled_duration_days": 0.7,
+                "dependency_count": 1,
+                "closure_blockers": [
+                  "execution_not_started"
+                ],
+                "likely_to_stall": true,
+                "fake_progress_risk": false,
+                "verification_blockage": false,
+                "contractor_responsive": false
+              }
+            ]
+          },
+          "deadlock_reduction_v1": {
+            "groups": [
+              {
+                "deadlock_type": "contractor_deadlock",
+                "headline": "No contractor assigned on 5 open jobs (oldest 44 days)",
+                "count": 5,
+                "priority_score": 92,
+                "sample_ids": [
+                  "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                  "3882fc90-2974-4456-b219-c310b0ab681c",
+                  "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                  "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                  "d79e1afb-81f7-4e3b-9181-d78bf5d37eba"
+                ],
+                "recommended_action": "Assign or route contractor to unlock execution"
+              },
+              {
+                "deadlock_type": "execution_not_started",
+                "headline": "1 issues ready but no job in progress",
+                "count": 1,
+                "priority_score": 84,
+                "sample_ids": [
+                  "4b61c5fc-25a9-4a74-ba21-0a4c5b367739"
+                ],
+                "recommended_action": "Start maintenance job to convert triage into closure momentum"
+              }
+            ],
+            "total_deadlock_units": 6,
+            "captured_at": "2026-07-07T22:09:48.478466+00:00"
+          },
+          "verification_throughput_v1": {
+            "verification_queue_count": 0,
+            "verification_queue_pressure": "low",
+            "completed_without_verification_count": 0,
+            "verified_count": 0,
+            "completed_terminal_count": 0,
+            "verification_conversion_rate": 0.0,
+            "queue_sample": [],
+            "sla_indicator": {
+              "target_verify_within_days": 7,
+              "over_sla_count": 0
+            }
+          },
+          "closure_momentum_kpis_v1": {
+            "captured_at": "2026-07-07T22:09:49.551057+00:00",
+            "closure_conversion_rate": 0.0,
+            "average_stalled_duration_days": 29.0,
+            "deadlock_resolution_rate": {
+              "note": "Point-in-time; requires historical resolved deadlocks for true rate.",
+              "open_deadlock_units": 6
+            },
+            "verification_throughput": {
+              "queue_count": 0,
+              "over_sla": 0
+            },
+            "operational_momentum_trend": {
+              "portfolio_momentum_index": 0.07,
+              "likely_to_stall_count": 6
+            },
+            "closure_confidence_trend": {
+              "fake_progress_chains": 6,
+              "low_conversion_entities": 6
+            },
+            "pressure_reduction_velocity": {
+              "note": "Snapshot only; compare across sessions for velocity.",
+              "open_operational_units": 6
+            },
+            "stale_recovery_velocity": {
+              "stale_issue_deadlocks": 0
+            },
+            "fake_progress_reduction_trend": {
+              "fake_progress_count": 6
+            }
+          },
+          "landlord_decision_confidence_v1": {
+            "decision_confidence_score": 0.75,
+            "still_feels_stuck": [
+              "No contractor assigned on 5 open jobs (oldest 44 days)",
+              "1 issues ready but no job in progress"
+            ],
+            "still_feels_noisy": [
+              "Resolved risk signals without authoritative timestamps"
+            ],
+            "still_feels_unresolved": [
+              "No contractor assigned on 5 open jobs (oldest 44 days)",
+              "1 issues ready but no job in progress"
+            ],
+            "actions_that_feel_meaningless": [],
+            "momentum_indicators": {
+              "highest_leverage": "Assign or route contractor to unlock execution"
+            }
+          },
+          "momentum_priority_actions": [
+            {
+              "action_type": "closure_contractor_deadlock",
+              "title": "No contractor assigned on 5 open jobs (oldest 44 days)",
+              "description": "Assign or route contractor to unlock execution",
+              "priority": 98,
+              "severity": "high",
+              "related_property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+              "related_issue_id": null,
+              "related_work_order_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders/eead8647-fcb9-4b8d-884b-c61a8419399e",
+              "recommended_action_label": "Assign contractor",
+              "why_matters": "Unassigned jobs create fleet-wide execution deadlock and compound backlog pressure.",
+              "recommended_action_detail": "Assign or route contractor to unlock execution",
+              "closure_likelihood": 0.18,
+              "operational_momentum_score": 0.04
+            },
+            {
+              "action_type": "closure_contractor_deadlock",
+              "title": "No contractor assigned on 5 open jobs (oldest 44 days)",
+              "description": "Assign or route contractor to unlock execution",
+              "priority": 98,
+              "severity": "high",
+              "related_property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+              "related_issue_id": null,
+              "related_work_order_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders/3882fc90-2974-4456-b219-c310b0ab681c",
+              "recommended_action_label": "Assign contractor",
+              "why_matters": "Unassigned jobs create fleet-wide execution deadlock and compound backlog pressure.",
+              "recommended_action_detail": "Assign or route contractor to unlock execution",
+              "closure_likelihood": 0.18,
+              "operational_momentum_score": 0.04
+            },
+            {
+              "action_type": "closure_start_job",
+              "title": "1 issues ready but no job in progress",
+              "description": "Start maintenance job to convert triage into closure momentum",
+              "priority": 84,
+              "severity": "high",
+              "related_property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+              "related_issue_id": "4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+              "related_work_order_id": null,
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/issues/4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+              "recommended_action_label": "Start job",
+              "why_matters": "Starting jobs is the highest-leverage step to convert backlog into momentum.",
+              "recommended_action_detail": "Start maintenance job to convert triage into closure momentum",
+              "closure_likelihood": 0.72,
+              "operational_momentum_score": 0.53
+            }
+          ],
+          "what_clears_most_pressure": "Assign or route contractor to unlock execution",
+          "available": true
+        },
+        "backlog_reduction_v1": {
+          "programme": "BACKLOG-REDUCTION-RUNTIME-01",
+          "contractor_throughput_v1": {
+            "captured_at": "2026-07-07T22:09:50.341886+00:00",
+            "unassigned_count": 5,
+            "critical_unassigned_count": 5,
+            "escalated_unassigned_count": 0,
+            "stalled_assignment_count": 0,
+            "in_progress_count": 0,
+            "assignment_momentum_index": 0.0,
+            "avg_open_to_assigned_days": 0.0,
+            "deadlock_recovery_rate": {
+              "note": "Point-in-time; compare sessions after assignment interventions.",
+              "unassigned_ratio": 1.0
+            },
+            "escalation_headline": "5 jobs unassigned \u226514 days \u2014 assignment throughput blocked",
+            "unassigned_sample": [
+              {
+                "work_order_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+                "status": "OPEN",
+                "assignment_age_days": 45.9,
+                "escalation_tier": "critical",
+                "reschedule_count": 0
+              },
+              {
+                "work_order_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "status": "OPEN",
+                "assignment_age_days": 43.2,
+                "escalation_tier": "critical",
+                "reschedule_count": 0
+              },
+              {
+                "work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "status": "OPEN",
+                "assignment_age_days": 30.0,
+                "escalation_tier": "critical",
+                "reschedule_count": 0
+              },
+              {
+                "work_order_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+                "status": "OPEN",
+                "assignment_age_days": 30.0,
+                "escalation_tier": "critical",
+                "reschedule_count": 0
+              },
+              {
+                "work_order_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "status": "OPEN",
+                "assignment_age_days": 30.0,
+                "escalation_tier": "critical",
+                "reschedule_count": 0
+              }
+            ],
+            "stalled_assignment_sample": []
+          },
+          "verification_throughput_execution_v1": {
+            "verification_queue_count": 0,
+            "verification_queue_pressure": "low",
+            "completed_without_verification_count": 0,
+            "verified_count": 0,
+            "completed_terminal_count": 0,
+            "verification_conversion_rate": 0.0,
+            "queue_sample": [],
+            "sla_indicator": {
+              "target_verify_within_days": 7,
+              "over_sla_count": 0
+            },
+            "programme_phase": "verification_throughput_execution",
+            "critical_verification_count": 0,
+            "escalated_verification_count": 0,
+            "completed_without_proof_count": 0,
+            "avg_verification_age_days": 0.0,
+            "unresolved_after_completion_trend": {
+              "queue_count": 0,
+              "over_sla": 0
+            },
+            "escalation_headline": null,
+            "priority_queue_sample": []
+          },
+          "pressure_reduction_validation_v1": {
+            "primary_recommendation_validation": [
+              {
+                "recommendation": "5 maintenance jobs lack an assigned contractor",
+                "estimated_pressure_units": 5,
+                "closure_impact": "high",
+                "weak_closure_impact": false
+              }
+            ],
+            "stagnant_compression_groups": [],
+            "guidance_improves_reality_when": [
+              "Assign contractor on escalated unassigned jobs",
+              "Verify completed jobs with evidence attached",
+              "Break stale triage loops with job start or close"
+            ]
+          },
+          "operational_momentum_validation_v1": {
+            "captured_at": "2026-07-07T22:09:51.832828+00:00",
+            "current": {
+              "open_operational_units": 6,
+              "unassigned_jobs": 5,
+              "verification_queue": 0,
+              "fake_progress_chains": 6,
+              "resolved_missing_resolved_at": 6,
+              "likely_to_stall": 6,
+              "decision_confidence": 0.75,
+              "portfolio_assignment_momentum": 0.0,
+              "verification_conversion_rate": 0.0
+            },
+            "deltas_vs_baseline": null,
+            "pressure_reduction_velocity": {
+              "open_units": 6,
+              "note": "Negative delta vs baseline indicates backlog shrinkage."
+            }
+          },
+          "staging_simulation_coverage_v1": {
+            "scenarios": {
+              "no_access_loops": {
+                "count": 0,
+                "present": false
+              },
+              "awaiting_parts_loops": {
+                "count": 0,
+                "present": false
+              },
+              "repeated_reschedule_chains": {
+                "count": 0,
+                "present": false
+              },
+              "contractor_abandonment": {
+                "count": 5,
+                "present": true
+              },
+              "evidence_backlog": {
+                "count": 0,
+                "present": false
+              },
+              "verification_backlog": {
+                "count": 0,
+                "present": false
+              },
+              "stale_review_escalation": {
+                "count": 0,
+                "present": false
+              }
+            },
+            "coverage_count": 1,
+            "coverage_total": 7,
+            "entropy_coverage_ratio": 0.14
+          },
+          "top_backlog_action": "5 jobs unassigned \u226514 days \u2014 assignment throughput blocked",
+          "available": true
+        },
+        "execution_capacity_v1": {
+          "programme": "EXECUTION-CAPACITY-AND-NETWORK-RELIABILITY-01",
+          "contractor_network_audit_v1": {
+            "captured_at": "2026-07-07T22:09:54.897723+00:00",
+            "unassigned_jobs_audited": 5,
+            "unassigned_jobs_total": 5,
+            "assignment_failure_taxonomy": {
+              "no_coverage:trade_mismatch": 3,
+              "no_coverage:postcode_mismatch": 2
+            },
+            "coverage_distribution": {
+              "fragile_coverage": 5
+            },
+            "unsupported_operational_zones": [
+              {
+                "postcode_prefix": "CF10",
+                "unassigned_jobs": 3
+              }
+            ],
+            "execution_capacity_risk_matrix": [
+              {
+                "risk": "geographic_or_trade_gap",
+                "severity": "high",
+                "detail": "Postcode or trade filtering excludes all contractors for multiple jobs"
+              }
+            ],
+            "job_sample": [
+              {
+                "work_order_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+                "postcode_prefix": "SW19",
+                "category": "damp_mould",
+                "status": "OPEN",
+                "assignment_age_days": 44.9,
+                "coverage_class": "fragile_coverage",
+                "primary_failure_reason": "no_coverage:postcode_mismatch",
+                "eligible_contractors": 0,
+                "filter_diagnostics": {
+                  "visible_in_directory": 15,
+                  "excluded_not_assignment_ready": 5,
+                  "excluded_wrong_client_scope": 0,
+                  "excluded_property_scope": 0,
+                  "excluded_location_postcode": 9,
+                  "excluded_execution_capability": 0,
+                  "excluded_maintenance_trade": 1,
+                  "excluded_service_region_jurisdiction": 0,
+                  "eligible": 0
+                },
+                "routing_flags": {
+                  "no_eligible_contractors": true,
+                  "sla_breached": true
+                }
+              },
+              {
+                "work_order_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "postcode_prefix": "CF10",
+                "category": "general",
+                "status": "OPEN",
+                "assignment_age_days": 42.2,
+                "coverage_class": "fragile_coverage",
+                "primary_failure_reason": "no_coverage:trade_mismatch",
+                "eligible_contractors": 0,
+                "filter_diagnostics": {
+                  "visible_in_directory": 15,
+                  "excluded_not_assignment_ready": 5,
+                  "excluded_wrong_client_scope": 0,
+                  "excluded_property_scope": 0,
+                  "excluded_location_postcode": 0,
+                  "excluded_execution_capability": 0,
+                  "excluded_maintenance_trade": 10,
+                  "excluded_service_region_jurisdiction": 0,
+                  "eligible": 0
+                },
+                "routing_flags": {
+                  "no_eligible_contractors": true,
+                  "sla_breached": true
+                }
+              },
+              {
+                "work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "postcode_prefix": "CF10",
+                "category": "general",
+                "status": "OPEN",
+                "assignment_age_days": 29.0,
+                "coverage_class": "fragile_coverage",
+                "primary_failure_reason": "no_coverage:trade_mismatch",
+                "eligible_contractors": 0,
+                "filter_diagnostics": {
+                  "visible_in_directory": 15,
+                  "excluded_not_assignment_ready": 5,
+                  "excluded_wrong_client_scope": 0,
+                  "excluded_property_scope": 0,
+                  "excluded_location_postcode": 0,
+                  "excluded_execution_capability": 0,
+                  "excluded_maintenance_trade": 10,
+                  "excluded_service_region_jurisdiction": 0,
+                  "eligible": 0
+                },
+                "routing_flags": {
+                  "no_eligible_contractors": true,
+                  "sla_breached": true
+                }
+              },
+              {
+                "work_order_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+                "postcode_prefix": "BN1 ",
+                "category": "general",
+                "status": "OPEN",
+                "assignment_age_days": 29.0,
+                "coverage_class": "fragile_coverage",
+                "primary_failure_reason": "no_coverage:postcode_mismatch",
+                "eligible_contractors": 0,
+                "filter_diagnostics": {
+                  "visible_in_directory": 15,
+                  "excluded_not_assignment_ready": 5,
+                  "excluded_wrong_client_scope": 0,
+                  "excluded_property_scope": 0,
+                  "excluded_location_postcode": 9,
+                  "excluded_execution_capability": 0,
+                  "excluded_maintenance_trade": 1,
+                  "excluded_service_region_jurisdiction": 0,
+                  "eligible": 0
+                },
+                "routing_flags": {
+                  "no_eligible_contractors": true,
+                  "sla_breached": true
+                }
+              },
+              {
+                "work_order_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "postcode_prefix": "CF10",
+                "category": "general",
+                "status": "OPEN",
+                "assignment_age_days": 29.0,
+                "coverage_class": "fragile_coverage",
+                "primary_failure_reason": "no_coverage:trade_mismatch",
+                "eligible_contractors": 0,
+                "filter_diagnostics": {
+                  "visible_in_directory": 15,
+                  "excluded_not_assignment_ready": 5,
+                  "excluded_wrong_client_scope": 0,
+                  "excluded_property_scope": 0,
+                  "excluded_location_postcode": 0,
+                  "excluded_execution_capability": 0,
+                  "excluded_maintenance_trade": 10,
+                  "excluded_service_region_jurisdiction": 0,
+                  "eligible": 0
+                },
+                "routing_flags": {
+                  "no_eligible_contractors": true,
+                  "sla_breached": true
+                }
+              }
+            ],
+            "contractor_coverage_map_summary": {
+              "healthy": 0,
+              "fragile": 5,
+              "no_coverage": 0
+            }
+          },
+          "assignment_conversion_v1": {
+            "open_unassigned_count": 5,
+            "assigned_pending_acceptance": 0,
+            "in_progress_count": 0,
+            "verified_count": 0,
+            "assignment_conversion_rate": 0.0,
+            "avg_open_to_assigned_days": null,
+            "stale_assignment_count": 0,
+            "reassignment_loop_count": 0,
+            "contractor_reliability_score": 0.22,
+            "assignment_momentum_score": 0.0,
+            "escalation_headline": null
+          },
+          "quote_throughput_v1": {
+            "awaiting_quote_count": 7,
+            "quoted_pending_approval_count": 0,
+            "approved_quote_count": 0,
+            "rejected_quote_count": 0,
+            "request_to_quote_conversion": 0.0,
+            "quote_to_approval_conversion": 0.0,
+            "approval_to_execution_proxy": 0.0,
+            "quote_deadlocks": [
+              {
+                "work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "quote_state": "AWAITING_QUOTE",
+                "age_days": 29.0,
+                "escalation": "critical"
+              },
+              {
+                "work_order_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "quote_state": "AWAITING_QUOTE",
+                "age_days": 29.0,
+                "escalation": "critical"
+              },
+              {
+                "work_order_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "quote_state": "AWAITING_QUOTE",
+                "age_days": 29.0,
+                "escalation": "critical"
+              },
+              {
+                "work_order_id": "47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+                "quote_state": "AWAITING_QUOTE",
+                "age_days": 39.3,
+                "escalation": "critical"
+              },
+              {
+                "work_order_id": "49f65561-10db-4285-a8f1-c094ef851635",
+                "quote_state": "AWAITING_QUOTE",
+                "age_days": 30.0,
+                "escalation": "critical"
+              },
+              {
+                "work_order_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "quote_state": "AWAITING_QUOTE",
+                "age_days": 42.2,
+                "escalation": "critical"
+              },
+              {
+                "work_order_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "quote_state": "AWAITING_QUOTE",
+                "age_days": 44.9,
+                "escalation": "critical"
+              }
+            ],
+            "quote_turnaround_score": 0.0
+          },
+          "execution_recovery_v1": {
+            "workflow_blockage_vs_execution_capacity": {
+              "execution_capacity_dominant": false,
+              "quote_governance_secondary": false
+            },
+            "recovery_actions": [
+              {
+                "recovery_type": "geographic_fallback",
+                "headline": "Postcode area CF10 has 3 unassigned jobs",
+                "recommended_action": "Add contractors covering this postcode or request admin routing assistance",
+                "blockage_class": "execution_capacity_blockage"
+              }
+            ],
+            "truth_surface": "Mixed workflow and execution-capacity constraints",
+            "manual_intervention_guidance": [
+              "Use admin contractor approval for vetted trades in unsupported postcodes",
+              "Confirm alternate contractor when recommendation pool is empty",
+              "Approve quotes to unlock IN_PROGRESS for pre-quote maintenance jobs"
+            ]
+          },
+          "execution_momentum_kpis_v1": {
+            "captured_at": "2026-07-07T22:09:55.168027+00:00",
+            "contractor_coverage_score": 0.86,
+            "assignment_conversion_rate": 0.0,
+            "execution_responsiveness_score": 0.0,
+            "quote_turnaround_score": 0.0,
+            "execution_capacity_confidence": 0.46,
+            "unsupported_job_ratio": 0.0,
+            "contractor_deadlock_trend": {
+              "open_unassigned": 5,
+              "no_coverage_jobs": 0
+            },
+            "execution_recovery_rate": {
+              "note": "Compare sessions after contractor onboarding or assignment interventions",
+              "recovery_actions_available": true
+            },
+            "operational_execution_velocity": {
+              "in_progress": 0,
+              "verified": 0
+            }
+          },
+          "execution_entropy_coverage_v1": {
+            "scenarios": {
+              "contractor_ghosting": {
+                "count": 0,
+                "present": false
+              },
+              "unsupported_postcode": {
+                "count": 0,
+                "present": false
+              },
+              "delayed_quote_response": {
+                "count": 0,
+                "present": false
+              },
+              "quote_approval_stall": {
+                "count": 0,
+                "present": false
+              },
+              "reassignment_loops": {
+                "count": 0,
+                "present": false
+              },
+              "exhausted_contractor_pool": {
+                "count": 0,
+                "present": false
+              },
+              "execution_abandonment": {
+                "count": 5,
+                "present": true
+              }
+            },
+            "coverage_count": 1,
+            "coverage_total": 7,
+            "entropy_coverage_ratio": 0.14
+          },
+          "execution_capacity_priority_actions": [
+            {
+              "action_type": "execution_capacity_recovery",
+              "title": "Postcode area CF10 has 3 unassigned jobs",
+              "description": "Add contractors covering this postcode or request admin routing assistance",
+              "priority": 88,
+              "severity": "high",
+              "related_property_id": null,
+              "related_issue_id": null,
+              "related_work_order_id": null,
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders",
+              "recommended_action_label": "Resolve execution block",
+              "why_matters": "Execution supply must exist before workflow progress converts to closure.",
+              "recommended_action_detail": "Add contractors covering this postcode or request admin routing assistance"
+            }
+          ],
+          "primary_execution_bottleneck": "Postcode area CF10 has 3 unassigned jobs",
+          "available": true
+        },
+        "assignment_execution_momentum_v1": {
+          "programme": "ASSIGNMENT-CONVERSION-AND-EXECUTION-MOMENTUM-01",
+          "assignment_conversion_trace_v1": {
+            "captured_at": "2026-07-07T22:09:58.267349+00:00",
+            "eligible_but_unassigned_count": 0,
+            "unassigned_audited": 5,
+            "coordination_failure_taxonomy": {
+              "routing_failure": 5
+            },
+            "traces_sample": [
+              {
+                "work_order_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+                "status": "OPEN",
+                "assignment_age_days": 45.9,
+                "eligible_contractor_count": 0,
+                "assignment_routing_state": "UNASSIGNED",
+                "recommended_at": null,
+                "recommended_contractor_id": null,
+                "client_confirmation_deadline_at": null,
+                "confirmation_escalated_at": null,
+                "routing_pending_admin": false,
+                "coordination_failure": "routing_failure",
+                "expected_actor": "contractor_network",
+                "execution_momentum_state": "deadlocked",
+                "recommendation_surfaced": false,
+                "stalled_step": "coordination_stalled",
+                "price_status": "AWAITING_QUOTE"
+              },
+              {
+                "work_order_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "status": "OPEN",
+                "assignment_age_days": 43.2,
+                "eligible_contractor_count": 0,
+                "assignment_routing_state": "UNASSIGNED",
+                "recommended_at": null,
+                "recommended_contractor_id": null,
+                "client_confirmation_deadline_at": null,
+                "confirmation_escalated_at": null,
+                "routing_pending_admin": false,
+                "coordination_failure": "routing_failure",
+                "expected_actor": "contractor_network",
+                "execution_momentum_state": "deadlocked",
+                "recommendation_surfaced": false,
+                "stalled_step": "coordination_stalled",
+                "price_status": "AWAITING_QUOTE"
+              },
+              {
+                "work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "status": "OPEN",
+                "assignment_age_days": 30.0,
+                "eligible_contractor_count": 0,
+                "assignment_routing_state": "UNASSIGNED",
+                "recommended_at": null,
+                "recommended_contractor_id": null,
+                "client_confirmation_deadline_at": null,
+                "confirmation_escalated_at": null,
+                "routing_pending_admin": false,
+                "coordination_failure": "routing_failure",
+                "expected_actor": "contractor_network",
+                "execution_momentum_state": "deadlocked",
+                "recommendation_surfaced": false,
+                "stalled_step": "coordination_stalled",
+                "price_status": "AWAITING_QUOTE"
+              },
+              {
+                "work_order_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+                "status": "OPEN",
+                "assignment_age_days": 30.0,
+                "eligible_contractor_count": 0,
+                "assignment_routing_state": "UNASSIGNED",
+                "recommended_at": null,
+                "recommended_contractor_id": null,
+                "client_confirmation_deadline_at": null,
+                "confirmation_escalated_at": null,
+                "routing_pending_admin": false,
+                "coordination_failure": "routing_failure",
+                "expected_actor": "contractor_network",
+                "execution_momentum_state": "deadlocked",
+                "recommendation_surfaced": false,
+                "stalled_step": "coordination_stalled",
+                "price_status": "AWAITING_QUOTE"
+              },
+              {
+                "work_order_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+                "status": "OPEN",
+                "assignment_age_days": 30.0,
+                "eligible_contractor_count": 0,
+                "assignment_routing_state": "UNASSIGNED",
+                "recommended_at": null,
+                "recommended_contractor_id": null,
+                "client_confirmation_deadline_at": null,
+                "confirmation_escalated_at": null,
+                "routing_pending_admin": false,
+                "coordination_failure": "routing_failure",
+                "expected_actor": "contractor_network",
+                "execution_momentum_state": "deadlocked",
+                "recommendation_surfaced": false,
+                "stalled_step": "coordination_stalled",
+                "price_status": "AWAITING_QUOTE"
+              }
+            ],
+            "dominant_failure": "routing_failure"
+          },
+          "execution_momentum_engine_v1": {
+            "execution_momentum_states": {
+              "deadlocked": 6
+            },
+            "stalled_momentum_ratio": 1.0,
+            "avg_inactivity_days": 34.0,
+            "avg_escalation_latency_days": null,
+            "eligible_but_unassigned": 0
+          },
+          "coordination_nudges_v1": {
+            "nudges": [
+              {
+                "nudge_type": "momentum_decay_alert",
+                "priority": "critical",
+                "headline": "Operational momentum decaying on 5 jobs in sample",
+                "recommended_action": "Review coordination failures and execute next authoritative action"
+              },
+              {
+                "nudge_type": "quote_momentum_decay",
+                "work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "priority": "high",
+                "headline": "Quote momentum abandoned on assigned job",
+                "recommended_action": "Send quote reminder or approve/reject pending quote",
+                "quote_momentum_state": "abandoned"
+              },
+              {
+                "nudge_type": "quote_momentum_decay",
+                "work_order_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "priority": "high",
+                "headline": "Quote momentum abandoned on assigned job",
+                "recommended_action": "Send quote reminder or approve/reject pending quote",
+                "quote_momentum_state": "abandoned"
+              },
+              {
+                "nudge_type": "quote_momentum_decay",
+                "work_order_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "priority": "high",
+                "headline": "Quote momentum abandoned on assigned job",
+                "recommended_action": "Send quote reminder or approve/reject pending quote",
+                "quote_momentum_state": "abandoned"
+              },
+              {
+                "nudge_type": "quote_momentum_decay",
+                "work_order_id": "47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+                "priority": "high",
+                "headline": "Quote momentum abandoned on assigned job",
+                "recommended_action": "Send quote reminder or approve/reject pending quote",
+                "quote_momentum_state": "abandoned"
+              },
+              {
+                "nudge_type": "quote_momentum_decay",
+                "work_order_id": "49f65561-10db-4285-a8f1-c094ef851635",
+                "priority": "high",
+                "headline": "Quote momentum abandoned on assigned job",
+                "recommended_action": "Send quote reminder or approve/reject pending quote",
+                "quote_momentum_state": "abandoned"
+              },
+              {
+                "nudge_type": "quote_momentum_decay",
+                "work_order_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "priority": "high",
+                "headline": "Quote momentum abandoned on assigned job",
+                "recommended_action": "Send quote reminder or approve/reject pending quote",
+                "quote_momentum_state": "abandoned"
+              },
+              {
+                "nudge_type": "quote_momentum_decay",
+                "work_order_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "priority": "high",
+                "headline": "Quote momentum abandoned on assigned job",
+                "recommended_action": "Send quote reminder or approve/reject pending quote",
+                "quote_momentum_state": "abandoned"
+              }
+            ],
+            "nudge_count": 8
+          },
+          "quote_conversion_v1": {
+            "quote_momentum_states": {
+              "abandoned": 7
+            },
+            "request_to_quote_conversion": 0.0,
+            "quote_to_approval_conversion": 0.0,
+            "approval_to_execution_conversion": 0.0,
+            "quote_bottleneck_hotspots": [
+              {
+                "work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "quote_momentum_state": "abandoned",
+                "price_status": "AWAITING_QUOTE",
+                "age_days": 0
+              },
+              {
+                "work_order_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "quote_momentum_state": "abandoned",
+                "price_status": "AWAITING_QUOTE",
+                "age_days": 0
+              },
+              {
+                "work_order_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "quote_momentum_state": "abandoned",
+                "price_status": "AWAITING_QUOTE",
+                "age_days": 0
+              },
+              {
+                "work_order_id": "47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+                "quote_momentum_state": "abandoned",
+                "price_status": "AWAITING_QUOTE",
+                "age_days": 0
+              },
+              {
+                "work_order_id": "49f65561-10db-4285-a8f1-c094ef851635",
+                "quote_momentum_state": "abandoned",
+                "price_status": "AWAITING_QUOTE",
+                "age_days": 0
+              },
+              {
+                "work_order_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "quote_momentum_state": "abandoned",
+                "price_status": "AWAITING_QUOTE",
+                "age_days": 0
+              },
+              {
+                "work_order_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "quote_momentum_state": "abandoned",
+                "price_status": "AWAITING_QUOTE",
+                "age_days": 0
+              }
+            ],
+            "awaiting_quote_fleet_count": 0
+          },
+          "execution_accountability_v1": {
+            "accountability_sample": [
+              {
+                "work_order_id": "eead8647-fcb9-4b8d-884b-c61a8419399e",
+                "why_not_progressed": "No eligible contractor matches property/trade filters",
+                "blocking_party": "contractor_network",
+                "execution_capacity_exists": false,
+                "coordination_failed": false,
+                "governance_blocked": false,
+                "stalled_step": "coordination_stalled",
+                "execution_momentum_state": "deadlocked"
+              },
+              {
+                "work_order_id": "3882fc90-2974-4456-b219-c310b0ab681c",
+                "why_not_progressed": "No eligible contractor matches property/trade filters",
+                "blocking_party": "contractor_network",
+                "execution_capacity_exists": false,
+                "coordination_failed": false,
+                "governance_blocked": false,
+                "stalled_step": "coordination_stalled",
+                "execution_momentum_state": "deadlocked"
+              },
+              {
+                "work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+                "why_not_progressed": "No eligible contractor matches property/trade filters",
+                "blocking_party": "contractor_network",
+                "execution_capacity_exists": false,
+                "coordination_failed": false,
+                "governance_blocked": false,
+                "stalled_step": "coordination_stalled",
+                "execution_momentum_state": "deadlocked"
+              },
+              {
+                "work_order_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+                "why_not_progressed": "No eligible contractor matches property/trade filters",
+                "blocking_party": "contractor_network",
+                "execution_capacity_exists": false,
+                "coordination_failed": false,
+                "governance_blocked": false,
+                "stalled_step": "coordination_stalled",
+                "execution_momentum_state": "deadlocked"
+              },
+              {
+                "work_order_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+                "why_not_progressed": "No eligible contractor matches property/trade filters",
+                "blocking_party": "contractor_network",
+                "execution_capacity_exists": false,
+                "coordination_failed": false,
+                "governance_blocked": false,
+                "stalled_step": "coordination_stalled",
+                "execution_momentum_state": "deadlocked"
+              }
+            ],
+            "blockage_truth": "Mixed execution-capacity and coordination constraints",
+            "dominant_coordination_failure": "routing_failure"
+          },
+          "operational_momentum_kpis_v1": {
+            "captured_at": "2026-07-07T22:09:58.931980+00:00",
+            "assignment_conversion_velocity": 1.0,
+            "execution_momentum_score": 0.15,
+            "coordination_latency_score": 0.0,
+            "escalation_responsiveness": null,
+            "quote_conversion_velocity": 0.0,
+            "execution_recovery_rate": {
+              "note": "Measure after coordination nudges acted upon"
+            },
+            "stalled_momentum_ratio": 1.0,
+            "contractor_engagement_score": 0.0,
+            "operational_follow_through_rate": 0.6,
+            "eligible_but_unassigned_remaining": 0
+          },
+          "coordination_priority_actions": [
+            {
+              "action_type": "coordination_momentum_nudge",
+              "title": "Operational momentum decaying on 5 jobs in sample",
+              "description": "Review coordination failures and execute next authoritative action",
+              "priority": 91,
+              "severity": "high",
+              "related_property_id": null,
+              "related_issue_id": null,
+              "related_work_order_id": null,
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders",
+              "recommended_action_label": "Act now",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "recommended_action_detail": "Review coordination failures and execute next authoritative action"
+            },
+            {
+              "action_type": "coordination_momentum_nudge",
+              "title": "Quote momentum abandoned on assigned job",
+              "description": "Send quote reminder or approve/reject pending quote",
+              "priority": 86,
+              "severity": "medium",
+              "related_property_id": null,
+              "related_issue_id": null,
+              "related_work_order_id": "ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders/ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+              "recommended_action_label": "Act now",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "recommended_action_detail": "Send quote reminder or approve/reject pending quote"
+            },
+            {
+              "action_type": "coordination_momentum_nudge",
+              "title": "Quote momentum abandoned on assigned job",
+              "description": "Send quote reminder or approve/reject pending quote",
+              "priority": 85,
+              "severity": "medium",
+              "related_property_id": null,
+              "related_issue_id": null,
+              "related_work_order_id": "d11e831d-b75e-415f-a50c-9b903ecd8681",
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders/d11e831d-b75e-415f-a50c-9b903ecd8681",
+              "recommended_action_label": "Act now",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "recommended_action_detail": "Send quote reminder or approve/reject pending quote"
+            },
+            {
+              "action_type": "coordination_momentum_nudge",
+              "title": "Quote momentum abandoned on assigned job",
+              "description": "Send quote reminder or approve/reject pending quote",
+              "priority": 84,
+              "severity": "medium",
+              "related_property_id": null,
+              "related_issue_id": null,
+              "related_work_order_id": "d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders/d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+              "recommended_action_label": "Act now",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "recommended_action_detail": "Send quote reminder or approve/reject pending quote"
+            },
+            {
+              "action_type": "coordination_momentum_nudge",
+              "title": "Quote momentum abandoned on assigned job",
+              "description": "Send quote reminder or approve/reject pending quote",
+              "priority": 83,
+              "severity": "medium",
+              "related_property_id": null,
+              "related_issue_id": null,
+              "related_work_order_id": "47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders/47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+              "recommended_action_label": "Act now",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "recommended_action_detail": "Send quote reminder or approve/reject pending quote"
+            },
+            {
+              "action_type": "coordination_momentum_nudge",
+              "title": "Quote momentum abandoned on assigned job",
+              "description": "Send quote reminder or approve/reject pending quote",
+              "priority": 82,
+              "severity": "medium",
+              "related_property_id": null,
+              "related_issue_id": null,
+              "related_work_order_id": "49f65561-10db-4285-a8f1-c094ef851635",
+              "related_risk_signal_id": null,
+              "related_invoice_id": null,
+              "recommended_url": "/operations/work-orders/49f65561-10db-4285-a8f1-c094ef851635",
+              "recommended_action_label": "Act now",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "recommended_action_detail": "Send quote reminder or approve/reject pending quote"
+            }
+          ],
+          "primary_coordination_bottleneck": "routing_failure",
+          "available": true
+        },
+        "programme": "OPERATIONAL-VALUE-COMPRESSION-01"
+      }
+    },
+    {
+      "label": "get_command_center_primary_bundle",
+      "ok": true,
+      "type": "dict",
+      "preview": {
+        "projection": "primary",
+        "urgent_actions": [
+          {
+            "id": "priority_action:eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "task_id": "priority_action:eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01 damp condition ops verify 2026-05-22T23:52:39.719561+00:00 is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "Wimbledon Family Home",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:3882fc90-2974-4456-b219-c310b0ab681c",
+            "task_id": "priority_action:3882fc90-2974-4456-b219-c310b0ab681c",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Electrical Risk: Review your electrical certificate and arrange an external inspection if it is due or out of date. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/3882fc90-2974-4456-b219-c310b0ab681c",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "task_id": "priority_action:d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Recurring Repairs Risk: Investigate the root cause instead of repeat patch repairs. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "task_id": "priority_action:d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Not sure what is wrong is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "Brighton Lanes Studio",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "task_id": "priority_action:ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Upload the correct certificate or record so this requirement can be confirmed. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "work_order:Operational momentum decaying on 5 jobs in sample",
+            "task_id": "work_order:Operational momentum decaying on 5 jobs in sample",
+            "title": "Operational momentum decaying on 5 jobs in sample",
+            "description": "Review coordination failures and execute next authoritative action",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "high",
+            "primary_action_type": "coordination_momentum_nudge",
+            "primary_action_label": "Act now",
+            "primary_action_url": "/operations/work-orders",
+            "metadata": {
+              "action_type": "coordination_momentum_nudge",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "coordination_momentum_action": true,
+              "blockage_class": "coordination_failure"
+            },
+            "created_from": null
+          },
+          {
+            "id": "work_order:Postcode area CF10 has 3 unassigned jobs",
+            "task_id": "work_order:Postcode area CF10 has 3 unassigned jobs",
+            "title": "Postcode area CF10 has 3 unassigned jobs",
+            "description": "Add contractors covering this postcode or request admin routing assistance",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "high",
+            "primary_action_type": "execution_capacity_recovery",
+            "primary_action_label": "Resolve execution block",
+            "primary_action_url": "/operations/work-orders",
+            "metadata": {
+              "action_type": "execution_capacity_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Execution supply must exist before workflow progress converts to closure.",
+              "execution_capacity_action": true,
+              "blockage_class": "execution_capacity_blockage"
+            },
+            "created_from": null
+          },
+          {
+            "id": "issue:4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "task_id": "issue:4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "title": "Start maintenance job to convert triage into closure momentum",
+            "description": "Start maintenance job to convert triage into closure momentum",
+            "section": "urgent",
+            "source_type": "issue",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "high",
+            "primary_action_type": "closure_start_job",
+            "primary_action_label": "Start job",
+            "primary_action_url": "/operations/issues/4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "metadata": {
+              "action_type": "closure_start_job",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "closure_likelihood": 0.72,
+              "operational_momentum_score": 0.53,
+              "why_matters": "Starting jobs is the highest-leverage step to convert backlog into momentum.",
+              "closure_momentum_action": true
+            },
+            "created_from": null,
+            "customer_safe_title": "Start maintenance job to convert triage into closure momentum",
+            "customer_safe_description": "Start maintenance job to convert triage into closure momentum"
+          },
+          {
+            "id": "work_order:47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "task_id": "work_order:47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "title": "Quote momentum abandoned on assigned job",
+            "description": "Send quote reminder or approve/reject pending quote",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "medium",
+            "primary_action_type": "coordination_momentum_nudge",
+            "primary_action_label": "Act now",
+            "primary_action_url": "/operations/work-orders/47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "metadata": {
+              "action_type": "coordination_momentum_nudge",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "coordination_momentum_action": true,
+              "blockage_class": "coordination_failure"
+            },
+            "created_from": null
+          }
+        ],
+        "pressure_urgent_count": 9,
+        "pressure_urgent_rows": [
+          {
+            "id": "priority_action:eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "task_id": "priority_action:eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "PRELAUNCH-OPS-VERIFY-CONDITION-STANDARD-01 damp condition ops verify 2026-05-22T23:52:39.719561+00:00 is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "3a69dcbd-74fd-4291-839b-3d52750598a1",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "Wimbledon Family Home",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/eead8647-fcb9-4b8d-884b-c61a8419399e",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:3882fc90-2974-4456-b219-c310b0ab681c",
+            "task_id": "priority_action:3882fc90-2974-4456-b219-c310b0ab681c",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Electrical Risk: Review your electrical certificate and arrange an external inspection if it is due or out of date. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/3882fc90-2974-4456-b219-c310b0ab681c",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "task_id": "priority_action:d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Recurring Repairs Risk: Investigate the root cause instead of repeat patch repairs. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/d79e1afb-81f7-4e3b-9181-d78bf5d37eba",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "task_id": "priority_action:d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Not sure what is wrong is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "fe8d29e2-5208-43d6-9382-dce664b8896b",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "Brighton Lanes Studio",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/d11e831d-b75e-415f-a50c-9b903ecd8681",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "priority_action:ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "task_id": "priority_action:ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "title": "This job is waiting on the contractor to take the next step for some time.",
+            "description": "Upload the correct certificate or record so this requirement can be confirmed. is waiting on the contractor. It has been waiting for about some time.",
+            "section": "urgent",
+            "source_type": "priority_action",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "medium",
+            "primary_action_type": "operational_recovery",
+            "primary_action_label": "Open job",
+            "primary_action_url": "/operations/work-orders/ecfde9d6-504c-48f7-9c3e-99aea07b0366",
+            "metadata": {
+              "action_type": "operational_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "If ignored, progress may remain blocked."
+            },
+            "created_from": null
+          },
+          {
+            "id": "work_order:Operational momentum decaying on 5 jobs in sample",
+            "task_id": "work_order:Operational momentum decaying on 5 jobs in sample",
+            "title": "Operational momentum decaying on 5 jobs in sample",
+            "description": "Review coordination failures and execute next authoritative action",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "high",
+            "primary_action_type": "coordination_momentum_nudge",
+            "primary_action_label": "Act now",
+            "primary_action_url": "/operations/work-orders",
+            "metadata": {
+              "action_type": "coordination_momentum_nudge",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "coordination_momentum_action": true,
+              "blockage_class": "coordination_failure"
+            },
+            "created_from": null
+          },
+          {
+            "id": "work_order:Postcode area CF10 has 3 unassigned jobs",
+            "task_id": "work_order:Postcode area CF10 has 3 unassigned jobs",
+            "title": "Postcode area CF10 has 3 unassigned jobs",
+            "description": "Add contractors covering this postcode or request admin routing assistance",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "high",
+            "primary_action_type": "execution_capacity_recovery",
+            "primary_action_label": "Resolve execution block",
+            "primary_action_url": "/operations/work-orders",
+            "metadata": {
+              "action_type": "execution_capacity_recovery",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Execution supply must exist before workflow progress converts to closure.",
+              "execution_capacity_action": true,
+              "blockage_class": "execution_capacity_blockage"
+            },
+            "created_from": null
+          },
+          {
+            "id": "issue:4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "task_id": "issue:4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "title": "Start maintenance job to convert triage into closure momentum",
+            "description": "Start maintenance job to convert triage into closure momentum",
+            "section": "urgent",
+            "source_type": "issue",
+            "property_id": "666d2ce6-f0a1-4b5d-ac30-23cccf4e23dd",
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": "456 High Street, CF10 1AA",
+            "urgency_level": "high",
+            "primary_action_type": "closure_start_job",
+            "primary_action_label": "Start job",
+            "primary_action_url": "/operations/issues/4b61c5fc-25a9-4a74-ba21-0a4c5b367739",
+            "metadata": {
+              "action_type": "closure_start_job",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "closure_likelihood": 0.72,
+              "operational_momentum_score": 0.53,
+              "why_matters": "Starting jobs is the highest-leverage step to convert backlog into momentum.",
+              "closure_momentum_action": true
+            },
+            "created_from": null,
+            "customer_safe_title": "Start maintenance job to convert triage into closure momentum",
+            "customer_safe_description": "Start maintenance job to convert triage into closure momentum"
+          },
+          {
+            "id": "work_order:47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "task_id": "work_order:47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "title": "Quote momentum abandoned on assigned job",
+            "description": "Send quote reminder or approve/reject pending quote",
+            "section": "urgent",
+            "source_type": "work_order",
+            "property_id": null,
+            "requirement_id": null,
+            "jurisdiction": null,
+            "property_jurisdiction": null,
+            "property_label": null,
+            "urgency_level": "medium",
+            "primary_action_type": "coordination_momentum_nudge",
+            "primary_action_label": "Act now",
+            "primary_action_url": "/operations/work-orders/47ad5064-c6a9-4cb6-bfa3-7c486c25e39a",
+            "metadata": {
+              "action_type": "coordination_momentum_nudge",
+              "requirement_code": null,
+              "consequence_category": "compliance_blocking",
+              "if_ignored": "If ignored, compliance evidence or certification may remain blocked.",
+              "why_matters": "Eligible execution capacity exists \u2014 momentum is lost without coordination follow-through.",
+              "coordination_momentum_action": true,
+              "blockage_class": "coordination_failure"
+            },
+            "created_from": null
+          }
+        ],
+        "pressure_degraded": true,
+        "pressure_status": "degraded",
+        "pressure_fallback_reason": "primary_timeout_or_failure:",
+        "pressure_message": "Some pressure metrics are still refreshing. Urgent items remain visible below.",
+        "upcoming_risks": [],
+        "recent_activity": [],
+        "compliance_status_summary": {
+          "score": null,
+          "grade": null,
+          "message": null,
+          "color": "gray",
+          "properties_count": 8,
+          "score_authority": "persisted_portfolio_aggregate",
+          "score_status": "ok",
+          "last_calculated_at": "2026-07-07T18:57:20.499118+00:00",
+          "score_coverage": null,
+          "score_status_message": null,
+          "scoring_semantics_version": null,
+          "properties_pending_score_recalc_count": null,
+          "portfolio_score_recalc_pending_note": null,
+          "compliance_counts_authority": "persisted_portfolio_headline.stats",
+          "requirements_overdue": null,
+          "requirements_expiring_soon": null,
+          "requirements_pending": null,
+          "requirements_missing_evidence": null,
+          "requirements_total": null,
+          "properties_at_risk_count": null,
+          "gap_engine": {
+            "by_kind": {},
+            "by_severity": {},
+            "total_open": null,
+            "_deferred": true
+          },
+          "hiua_operational_uncertainty": {
+            "hiua_active": false,
+            "hiua_open_gap_count": 0,
+            "hiua_reason_codes": [],
+            "hiua_gap_details": [],
+            "hiua_command_centre_message": null,
+            "hiua_command_centre_tooltip": null,
+            "hiua_command_centre_filter_label": null,
+            "hiua_digest_line": null,
+            "hiua_report_framing_notice": null,
+            "_deferred": true
+          },
+          "jurisdiction_compliance_notice": {
+            "active": false,
+            "affected_property_ids": [],
+            "affected_property_count": 0
+          },
+          "jurisdiction_required": null,
+          "compliance_confidence": null,
+          "jurisdiction_fallback_acknowledged": null,
+          "client_default_jurisdiction": null,
+          "_primary_projection": true
+        },
+        "tasks_digest_summary": {
+          "urgent_count": 9,
+          "upcoming_count": null,
+          "in_progress_count": null,
+          "habit": {
+            "urgent_open_total": 9
+          },
+          "urgent_continuation": 0,
+          "pressure_compression": {
+            "compressed_decision_units": 1,
+            "estimated_raw_pressure_units": 9,
+            "compression_ratio": 9.0
+          }
+        },
+        "freshness": {
+          "tasks_refreshed_at": "2026-07-07T22:10:10.508948+00:00",
+          "projection": "primary",
+          "freshness_scope": "primary_priority_stream",
+          "cache_hit": false
+        },
+        "trust_surface_operational_metadata": {
+          "surface_name": "COMMAND_CENTER_REFRESH",
+          "client_id": "6bcc43c0-16f4-46a5-adf4-26693a0919d0",
+          "correlation_id": "COMMAND_CENTER_REFRESH:6bcc43c0-16f4-46a5-adf4-26693a0919d0:508f215066fd4b9b83bc72f4602828c9",
+          "degraded_sections": [
+            {
+              "section_name": "operational_value_v1",
+              "section_status": "DEGRADED_FALLBACK",
+              "correlation_id": "COMMAND_CENTER_REFRESH:6bcc43c0-16f4-46a5-adf4-26693a0919d0:508f215066fd4b9b83bc72f4602828c9",
+              "fallback_used": true,
+              "stale_data_possible": false,
+              "degraded_reason": "primary_timeout_or_failure:",
+              "downstream_dependency": "operational_value_compression_service.build_operational_value_bundle_v1"
+            }
+          ],
+          "stale_sections": [],
+          "partial_sections": [
+            {
+              "section_name": "command_center_secondary",
+              "section_status": "PARTIAL_DATA",
+              "correlation_id": "COMMAND_CENTER_REFRESH:6bcc43c0-16f4-46a5-adf4-26693a0919d0:508f215066fd4b9b83bc72f4602828c9",
+              "fallback_used": false,
+              "stale_data_possible": false,
+              "degraded_reason": "secondary_projection_deferred",
+              "downstream_dependency": "get_command_center_secondary_bundle"
+            }
+          ],
+          "failed_sections": [],
+          "omitted_sections": [],
+          "operational_health": {
+            "surface_name": "COMMAND_CENTER_REFRESH",
+            "correlation_id": "COMMAND_CENTER_REFRESH:6bcc43c0-16f4-46a5-adf4-26693a0919d0:508f215066fd4b9b83bc72f4602828c9",
+            "degraded_section_count": 1,
+            "stale_section_count": 0,
+            "partial_section_count": 0,
+            "failed_section_count": 0,
+            "omitted_section_count": 0,
+            "missing_correlation_section_count": 0,
+            "fallback_section_count": 1,
+            "latest_rebuild_age_seconds": null,
+            "health_posture": "NON_BLOCKING_OBSERVABILITY_ONLY"
+          },
+          "non_blocking": true,
+          "generated_at": "2026-07-07T22:10:01.962020+00:00",
+          "source_last_updated_at": null,
+          "rebuild_age_seconds": 0.0,
+          "stale_read_possible": true,
+          "score_freshness_timestamp": null,
+          "risk_signals_freshness_timestamp": null,
+          "tasks_refreshed_at": "2026-07-07T22:10:10.508948+00:00"
+        },
+        "secondary_sections_deferred": true,
+        "primary_complete": true,
+        "deferred_sections": [
+          "upcoming_risks",
+          "recent_activity",
+          "hiua_operational_uncertainty"
+        ],
+        "predictive_enabled": false,
+        "operational_value_v1": {
+          "available": false,
+          "error": "",
+          "pressure_compression_v1": {
+            "groups": [
+              {
+                "group_key": "degraded_primary_pressure_fallback",
+                "headline": "Pressure visibility degraded; fallback pressure indicators shown",
+                "detail": "Primary pressure remains non-empty in degraded mode. Investigate full operational value recovery.",
+                "consequence_category": "operationally_dangerous",
+                "count": 9,
+                "affected_properties": null,
+                "action_paths_available": 1,
+                "unresolved_dependencies": 9,
+                "sample_ids": []
+              }
+            ],
+            "compressed_from": {
+              "raw_pressure_items": 9,
+              "raw_active_risk_signals": null,
+              "raw_open_issues": null,
+              "raw_open_jobs": 9
+            },
+            "cognitive_load": {
+              "estimated_raw_units": 9,
+              "compressed_decision_units": 1,
+              "compression_ratio": 9.0
+            },
+            "snapshot_meta": {
+              "generated_at": "2026-07-07T22:10:19.508012+00:00",
+              "freshness_seconds": null,
+              "stale": true,
+              "degraded": true,
+              "source": "primary_fallback_pressure",
+              "recompute_reason": "primary_timeout_or_failure:"
+            }
+          },
+          "snapshot_meta": {
+            "generated_at": "2026-07-07T22:10:19.508012+00:00",
+            "freshness_seconds": null,
+            "stale": true,
+            "degraded": true,
+            "source": "fallback",
+            "recompute_reason": "primary_timeout_or_failure:"
+          }
+        },
+        "urgent_actions_count": 9
+      }
+    }
+  ],
+  "bundle_signals": {
+    "degraded_sections": null,
+    "operational_value_available": false,
+    "operational_value_error": "",
+    "fallback_reason": null
+  }
+}
