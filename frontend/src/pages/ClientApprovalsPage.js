@@ -120,6 +120,7 @@ function BenchmarkBadge({ fit }) {
 function ClientApprovalsPageInner() {
   const navigate = useNavigate();
   const { canWriteOpsApprovals } = useOperationalExecutionCapabilities();
+  const approvalsStepUp = useStepUpApi();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

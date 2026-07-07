@@ -1,0 +1,66 @@
+{
+  "programme": "P0-OPERATIONAL-PAGES-FRONTEND-CRASHES-01",
+  "investigated_at": "2026-07-07T22:35:00Z",
+  "environment": "develop / staging",
+  "verdict": "OPERATIONAL_PAGES_FRONTEND_CRASHES_FIXED",
+  "crashes": [
+    {
+      "route": "/operations/issues",
+      "error": "ReferenceError: ContractorNetworkLockedModal is not defined",
+      "source": "ClientIssuesPage.js:750",
+      "classification": "BUG",
+      "root_cause": "Component rendered after capability migration but import statement was never added",
+      "fix": "import { ContractorNetworkLockedModal } from '../components/client/ContractorNetworkLockedModal'"
+    },
+    {
+      "route": "/operations/approvals",
+      "error": "ReferenceError: approvalsStepUp is not defined",
+      "source": "ClientApprovalsPage.js:674",
+      "classification": "BUG",
+      "root_cause": "useStepUpApi imported but hook never instantiated (incomplete step-up wiring during migration)",
+      "fix": "const approvalsStepUp = useStepUpApi(); inside ClientApprovalsPageInner"
+    }
+  ],
+  "additional_fix": {
+    "file": "ClientIssuesPage.js",
+    "issue": "toast and reinforcementToastOptions used without import (latent ReferenceError on user actions)",
+    "fix": "Added toast and reinforcementToastOptions imports"
+  },
+  "audit_scope": {
+    "pages_scanned": [
+      "ClientIssuesPage.js",
+      "ClientApprovalsPage.js",
+      "ClientMaintenancePage.js",
+      "ClientJobDetailPage.js",
+      "ClientRiskSignalsPage.js",
+      "ClientContractorsPage.js",
+      "ClientIssueDetailPage.js"
+    ],
+    "helpers_scanned": [
+      "operationalCapabilityAccess.js",
+      "CapabilityProtectedRoute.js",
+      "ContractorNetworkLockedModal.jsx",
+      "PlanRestrictedActionModal.jsx",
+      "useStepUpApi.js"
+    ],
+    "other_findings": "No additional undefined component references found in scoped operational pages"
+  },
+  "files_fixed": [
+    "frontend/src/pages/ClientIssuesPage.js",
+    "frontend/src/pages/ClientApprovalsPage.js"
+  ],
+  "tests_added": [
+    "frontend/src/pages/p0_operational_pages_frontend_crashes_01.test.js",
+    "frontend/src/pages/ClientIssuesPage.render.test.js",
+    "frontend/src/pages/ClientApprovalsPage.render.test.js"
+  ],
+  "tests_run": {
+    "command": "npm test -- --testPathPattern=p0_operational_pages_frontend_crashes_01|ClientIssuesPage.render|ClientApprovalsPage.render|operationalExecution.capability",
+    "result": "32 passed"
+  },
+  "build": {
+    "command": "npm run build",
+    "result": "Compiled successfully",
+    "bundle": "main.0747bd20.js"
+  }
+}
