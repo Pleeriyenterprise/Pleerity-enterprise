@@ -36,10 +36,16 @@ async def _enforce_capability(user: Dict[str, Any], capability_id: str, action: 
     if not client_id:
         raise HTTPException(status_code=403, detail="Client context required")
     decision = await CapabilityEnforcementService(database.get_db()).evaluate(
-        client_id, capability_id, action
+        client_id,
+        capability_id,
+        action,
+        contract=user.get("runtime_contract"),
     )
     if not decision.allowed:
-        raise HTTPException(status_code=403, detail=capability_denied_http_detail(decision))
+        raise HTTPException(
+            status_code=403,
+            detail=capability_denied_http_detail(decision, contract=user.get("runtime_contract")),
+        )
 
 
 async def _require_profile_view(request: Request) -> Dict[str, Any]:

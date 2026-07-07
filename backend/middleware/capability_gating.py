@@ -52,8 +52,14 @@ async def evaluate_capability_dependency(
     if not client_id:
         raise HTTPException(status_code=404, detail="Client not found")
 
+    contract = getattr(request.state, "runtime_contract", None) or user.get("runtime_contract")
     service = CapabilityEnforcementService(database.get_db())
-    decision = await service.evaluate(client_id, capability_id, action)
+    decision = await service.evaluate(
+        client_id,
+        capability_id,
+        action,
+        contract=contract,
+    )
     if not decision.allowed:
         raise CapabilityDeniedError(decision)
     request.state.capability_decision = decision
@@ -80,8 +86,14 @@ def require_capability(
             client_id = user.get("client_id")
             if not client_id:
                 raise HTTPException(status_code=404, detail="Client not found")
+            contract = getattr(request.state, "runtime_contract", None) or user.get("runtime_contract")
             service = CapabilityEnforcementService(database.get_db())
-            decision = await service.evaluate(client_id, capability_id, action)
+            decision = await service.evaluate(
+                client_id,
+                capability_id,
+                action,
+                contract=contract,
+            )
             if not decision.allowed:
                 raise CapabilityDeniedError(decision)
             request.state.capability_decision = decision
@@ -98,7 +110,10 @@ def require_capability(
             )
             raise HTTPException(
                 status_code=403,
-                detail=capability_denied_http_detail(exc.decision),
+                detail=capability_denied_http_detail(
+                    exc.decision,
+                    contract=getattr(request.state, "runtime_contract", None) or user.get("runtime_contract"),
+                ),
             ) from exc
 
     return Depends(_dependency)
@@ -124,8 +139,14 @@ def client_require_capability(
         if not client_id:
             raise HTTPException(status_code=404, detail="Client not found")
 
+        contract = getattr(request.state, "runtime_contract", None) or user.get("runtime_contract")
         service = CapabilityEnforcementService(database.get_db())
-        decision = await service.evaluate(client_id, capability_id, action)
+        decision = await service.evaluate(
+            client_id,
+            capability_id,
+            action,
+            contract=contract,
+        )
         if not decision.allowed:
             log_lifecycle_response_generated(
                 client_id=client_id,
@@ -138,7 +159,7 @@ def client_require_capability(
             )
             raise HTTPException(
                 status_code=403,
-                detail=capability_denied_http_detail(decision),
+                detail=capability_denied_http_detail(decision, contract=contract),
             )
         request.state.capability_decision = decision
         return user
@@ -169,8 +190,14 @@ async def assert_client_capability(
     client_id = user.get("client_id")
     if not client_id:
         raise HTTPException(status_code=404, detail="Client not found")
+    contract = user.get("runtime_contract")
     service = CapabilityEnforcementService(database.get_db())
-    decision = await service.evaluate(client_id, capability_id, action)
+    decision = await service.evaluate(
+        client_id,
+        capability_id,
+        action,
+        contract=contract,
+    )
     if not decision.allowed:
         log_lifecycle_response_generated(
             client_id=client_id,
@@ -182,6 +209,6 @@ async def assert_client_capability(
         )
         raise HTTPException(
             status_code=403,
-            detail=capability_denied_http_detail(decision),
+            detail=capability_denied_http_detail(decision, contract=contract),
         )
     return decision

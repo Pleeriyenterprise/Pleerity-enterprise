@@ -57,19 +57,20 @@ export const ACCOUNT_ROUTE_CAPABILITY = {
 };
 
 export function useProfileCapabilities() {
-  const { capabilityAllowed, getCapabilityGrant } = useLifecycleRuntime();
+  const { capabilityAllowed, getCapabilityGrant, runtimeAvailable } = useLifecycleRuntime();
 
   return useMemo(
     () => ({
-      canViewProfile: capabilityAllowed(ACCOUNT_CAPABILITY.PROFILE_VIEW, 'read'),
-      canEditProfile: capabilityAllowed(ACCOUNT_CAPABILITY.PROFILE_EDIT, 'write'),
-      canViewJurisdiction: capabilityAllowed(ACCOUNT_CAPABILITY.PROFILE_JURISDICTION, 'read'),
-      canEditJurisdiction: capabilityAllowed(ACCOUNT_CAPABILITY.PROFILE_JURISDICTION, 'write'),
-      canUseSmsNotifications: capabilityAllowed(ACCOUNT_CAPABILITY.NOTIF_SMS, 'read'),
-      canWriteSmsNotifications: capabilityAllowed(ACCOUNT_CAPABILITY.NOTIF_SMS, 'write'),
+      canViewProfile: runtimeAvailable && capabilityAllowed(ACCOUNT_CAPABILITY.PROFILE_VIEW, 'read'),
+      canEditProfile: runtimeAvailable && capabilityAllowed(ACCOUNT_CAPABILITY.PROFILE_EDIT, 'write'),
+      canViewJurisdiction: runtimeAvailable && capabilityAllowed(ACCOUNT_CAPABILITY.PROFILE_JURISDICTION, 'read'),
+      canEditJurisdiction: runtimeAvailable && capabilityAllowed(ACCOUNT_CAPABILITY.PROFILE_JURISDICTION, 'write'),
+      canUseSmsNotifications: runtimeAvailable && capabilityAllowed(ACCOUNT_CAPABILITY.NOTIF_SMS, 'read'),
+      canWriteSmsNotifications: runtimeAvailable && capabilityAllowed(ACCOUNT_CAPABILITY.NOTIF_SMS, 'write'),
+      runtimeAvailable,
       getCapabilityGrant,
     }),
-    [capabilityAllowed, getCapabilityGrant],
+    [capabilityAllowed, getCapabilityGrant, runtimeAvailable],
   );
 }
 

@@ -319,14 +319,22 @@ def resolve_account_lifecycle_state(
         )
 
     if legacy_lc == "pending_payment":
-        return LifecycleStateResolution(
-            account_lifecycle_state=AccountLifecycleState.PAYMENT_PENDING.value,
-            source_facts=source_facts,
-            reason="legacy_lifecycle_pending_payment",
-            confidence=ResolutionConfidence.MEDIUM.value,
-            resolved_at=now.isoformat(),
-            warnings=warnings,
-        )
+        # Stale intake funnel mirror must not override provisioned active accounts.
+        if not (
+            onboarding == OnboardingStatus.PROVISIONED.value
+            and subscription_status in ("ACTIVE", "TRIALING")
+        ) and not (
+            org_status == ClientLifecycleStatus.ACTIVE.value
+            and subscription_status in ("ACTIVE", "TRIALING")
+        ):
+            return LifecycleStateResolution(
+                account_lifecycle_state=AccountLifecycleState.PAYMENT_PENDING.value,
+                source_facts=source_facts,
+                reason="legacy_lifecycle_pending_payment",
+                confidence=ResolutionConfidence.MEDIUM.value,
+                resolved_at=now.isoformat(),
+                warnings=warnings,
+            )
 
     if legacy_lc == "abandoned" and onboarding != OnboardingStatus.PROVISIONED.value:
         return LifecycleStateResolution(

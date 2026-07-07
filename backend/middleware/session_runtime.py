@@ -35,6 +35,7 @@ async def apply_session_runtime_validation(request: Request, user: dict) -> None
     """
     Validate session version hints against Runtime Contract for client portal users.
     Sets request.state.session_validation; does not block on version drift (frontend refreshes).
+    Resolves the Runtime Contract once per request and stores it on request.state.runtime_contract.
     """
     request.state.session_validation = None
     if not is_client_portal_user(user):
@@ -43,11 +44,22 @@ async def apply_session_runtime_validation(request: Request, user: dict) -> None
     header_runtime = _parse_int_header(request.headers.get("X-Client-Runtime-Version"))
     header_entitlements = _parse_int_header(request.headers.get("X-Client-Entitlements-Version"))
 
-    service = SessionRuntimeService(database.get_db())
+    db = database.get_db()
+    client_id = user.get("client_id")
+    contract = None
+    if client_id:
+        from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
+
+        contract = await resolve_runtime_contract_for_client(db, client_id, emit_events=False)
+        request.state.runtime_contract = contract
+        user["runtime_contract"] = contract
+
+    service = SessionRuntimeService(db)
     validation = await service.validate_for_user(
         user,
         header_runtime_version=header_runtime,
         header_entitlements_version=header_entitlements,
+        contract=contract,
     )
     request.state.session_validation = validation
     request.state.session_refresh_required = validation.force_refresh

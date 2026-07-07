@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, Request, Response
 
 from database import database
 from middleware import client_route_guard
-from middleware.capability_gating import assert_client_capability
 from services.account_lifecycle_runtime_contract import (
     CONTRACT_VERSION,
     compare_runtime_with_legacy,
@@ -22,9 +21,13 @@ router = APIRouter(prefix="/api/client", tags=["client-lifecycle-runtime"], depe
 
 async def _build_response(request: Request, response: Response) -> dict:
     user = await client_route_guard(request)
-    await assert_client_capability(user, "CAP_PROFILE_VIEW", "read")
-    client_id = user["client_id"]
-    contract = await resolve_runtime_contract_for_client(database.get_db(), client_id)
+    contract = getattr(request.state, "runtime_contract", None) or user.get("runtime_contract")
+    if contract is None:
+        contract = await resolve_runtime_contract_for_client(
+            database.get_db(),
+            user["client_id"],
+            emit_events=False,
+        )
     payload = runtime_contract_to_dict(contract)
     response.headers["X-Lifecycle-Contract-Version"] = CONTRACT_VERSION
     response.headers["X-Lifecycle-Runtime-Version"] = str(payload.get("runtime_version", ""))
@@ -49,7 +52,12 @@ async def get_lifecycle_runtime_diagnostic(request: Request, response: Response)
     user = await client_route_guard(request)
     await assert_client_capability(user, "CAP_PROFILE_VIEW", "read")
     client_id = user["client_id"]
-    contract = await resolve_runtime_contract_for_client(database.get_db(), client_id, include_audit=True)
+    contract = await resolve_runtime_contract_for_client(
+        database.get_db(),
+        client_id,
+        include_audit=True,
+        emit_events=False,
+    )
     payload = runtime_contract_to_dict(contract)
     comparison = compare_runtime_with_legacy(contract)
     response.headers["X-Lifecycle-Contract-Version"] = CONTRACT_VERSION

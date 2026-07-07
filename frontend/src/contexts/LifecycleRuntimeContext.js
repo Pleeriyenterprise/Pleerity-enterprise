@@ -22,13 +22,14 @@ const LifecycleRuntimeContext = createContext(null);
 const PortalModeContext = createContext(null);
 
 export const LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE =
-  'Account status is temporarily unavailable. You can continue using the portal; permissions are unchanged.';
+  'Account status could not be loaded. Your session is valid; retry shortly or refresh the page.';
 
 const GOVERNED_FALLBACK = {
   contract_version: null,
   runtime_version: null,
   lifecycle_state: null,
-  portal_mode: 'FULL_ACCESS',
+  portal_mode: null,
+  capabilities: EMPTY_CAPABILITIES,
   customer_experience: {
     heading: '',
     explanation: LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE,
@@ -39,7 +40,7 @@ const GOVERNED_FALLBACK = {
     primary_cta: null,
     secondary_cta: null,
     recovery_guidance: '',
-    support_guidance: 'Contact support if you need help.',
+    support_guidance: 'Contact support if this issue persists.',
     expected_next_step: '',
   },
   navigation_policy: {
@@ -175,15 +176,7 @@ export function LifecycleRuntimeProvider({ children }) {
           return false;
         }
         if (parsed?.customer_experience) {
-          setRuntime({
-            ...GOVERNED_FALLBACK,
-            lifecycle_state: parsed.lifecycle_state || GOVERNED_FALLBACK.lifecycle_state,
-            portal_mode: parsed.portal_mode || GOVERNED_FALLBACK.portal_mode,
-            customer_experience: normalizeCustomerExperience(parsed.customer_experience),
-            runtime_version: parsed.runtime_version ?? null,
-            contract_version: parsed.contract_version ?? null,
-            warnings: ['lifecycle_runtime_from_denial_payload'],
-          });
+          setRuntime(null);
           setContractVersion(parsed.contract_version || null);
           setRuntimeVersion(parsed.runtime_version ?? null);
           setError(formatApiErrorDetail(parsed.message, LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE));
@@ -336,9 +329,9 @@ export function LifecycleRuntimeProvider({ children }) {
   }, [offline, user, refreshSession]);
 
   const effectiveRuntime = runtime || GOVERNED_FALLBACK;
-  const runtimeAvailable = Boolean(runtime);
-  const portalMode = effectiveRuntime.portal_mode || 'FULL_ACCESS';
-  const capabilities = effectiveRuntime.capabilities ?? EMPTY_CAPABILITIES;
+  const runtimeAvailable = Boolean(runtime?.capabilities);
+  const portalMode = effectiveRuntime.portal_mode || (runtimeAvailable ? 'FULL_ACCESS' : null);
+  const capabilities = runtime?.capabilities ?? EMPTY_CAPABILITIES;
 
   const capabilityAllowed = useCallback(
     (capabilityId, action = 'read') =>

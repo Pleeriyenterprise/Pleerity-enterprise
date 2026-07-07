@@ -32,7 +32,7 @@ import {
   isSecondaryNavPath,
 } from '../config/portalNavigationConfig';
 import { annotateNavWithLifecyclePolicy } from '../utils/portalNavigationPolicy';
-import { usePortalMode } from '../contexts/LifecycleRuntimeContext';
+import { usePortalMode, useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
 import LifecycleShell from './lifecycle/LifecycleShell';
 import LifecycleRuntimeDiagnostics from './lifecycle/LifecycleRuntimeDiagnostics';
 import {
@@ -54,6 +54,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { navHasFeature, showReports, showBilling, showCalendar, showAssistant, invoicingEnabled } = usePortalNavigationCapabilities();
   const { canEditProfile } = useProfileCapabilities();
   const { navigationPolicy } = usePortalMode();
+  const { runtimeAvailable } = useLifecycleRuntime();
   const navigate = useNavigate();
   const isTenant = user?.role === 'ROLE_TENANT';
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -91,7 +92,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   const loadPortalTrust = async () => {
-    if (isTenant || !isClient) return;
+    if (isTenant || !isClient || !runtimeAvailable) return;
     const now = Date.now();
     if (portalTrustCircuitUntilRef.current > now) {
       setPortalTrustError(true);
@@ -117,7 +118,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   };
 
   useEffect(() => {
-    if (!isClient || isTenant) return;
+    if (!isClient || isTenant || !runtimeAvailable) return;
     loadInAppNotifications();
     loadPortalTrust();
     const t = setInterval(loadInAppNotifications, 120000);
@@ -131,7 +132,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       clearInterval(t2);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient, isTenant, user?.portal_user_id]);
+  }, [isClient, isTenant, user?.portal_user_id, runtimeAvailable]);
 
   useEffect(() => {
     if (!isClient || isTenant) return undefined;
@@ -588,7 +589,9 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
       {!isTenant && isClient && (
         <div className="border-b border-gray-200 bg-gray-50">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5 text-xs text-gray-600">
-            {portalTrustLoading && !portalTrust ? (
+            {!runtimeAvailable ? (
+              <span className="text-gray-600">Portal status will appear once account status finishes loading.</span>
+            ) : portalTrustLoading && !portalTrust ? (
               <span className="text-gray-600">
                 {portalTrustError
                   ? 'Unable to sync portal status. Retrying…'

@@ -1406,7 +1406,7 @@ async def get_client_value_insights(request: Request):
 @router.get("/portal-context")
 async def get_portal_context(request: Request):
     """Server time + last recorded client audit activity (trust / freshness signals for the portal shell)."""
-    user = await _require_capability_from_request(request, "CAP_DASHBOARD_VIEW", "read")
+    user = await client_route_guard(request)
     try:
         db = database.get_db()
         last = await db.audit_logs.find_one(

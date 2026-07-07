@@ -358,6 +358,7 @@ class SessionRuntimeService:
         *,
         header_runtime_version: Optional[int] = None,
         header_entitlements_version: Optional[int] = None,
+        contract: Optional[Mapping[str, Any]] = None,
     ) -> SessionValidationResult:
         client_id = user.get("client_id")
         if not client_id:
@@ -365,7 +366,12 @@ class SessionRuntimeService:
                 action=SessionRefreshAction.CONTINUE,
                 session_state=SessionRuntimeState.ACTIVE,
             )
-        contract = await resolve_runtime_contract_for_client(self.db, client_id)
+        if contract is None:
+            contract = await resolve_runtime_contract_for_client(
+                self.db,
+                client_id,
+                emit_events=False,
+            )
         enforce_terminal_session_policy(contract)
 
         session_id = user.get("session_id")
