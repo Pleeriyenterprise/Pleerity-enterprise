@@ -145,6 +145,64 @@ export function isCapabilityDeniedError(error) {
  * @param {string} [fallback]
  * @returns {string}
  */
+function coerceDisplayText(value) {
+  if (value == null || value === '') {
+    return '';
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  return '';
+}
+
+function coerceCustomerExperienceCta(cta) {
+  if (!cta || typeof cta !== 'object') {
+    return null;
+  }
+  const label = coerceDisplayText(cta.label);
+  const route = coerceDisplayText(cta.route);
+  if (!label || !route) {
+    return null;
+  }
+  return { label, route };
+}
+
+/**
+ * Coerce Runtime Contract customer_experience fields for safe React rendering.
+ * @param {unknown} cx
+ * @returns {Record<string, unknown>}
+ */
+export function normalizeCustomerExperience(cx) {
+  if (!cx || typeof cx !== 'object') {
+    return {
+      heading: '',
+      explanation: '',
+      reason: '',
+      current_state_label: '',
+      recovery_guidance: '',
+      support_guidance: '',
+      expected_next_step: '',
+      primary_cta: null,
+      secondary_cta: null,
+    };
+  }
+  return {
+    ...cx,
+    heading: coerceDisplayText(cx.heading),
+    explanation: coerceDisplayText(cx.explanation),
+    reason: coerceDisplayText(cx.reason),
+    current_state_label: coerceDisplayText(cx.current_state_label),
+    recovery_guidance: coerceDisplayText(cx.recovery_guidance),
+    support_guidance: coerceDisplayText(cx.support_guidance),
+    expected_next_step: coerceDisplayText(cx.expected_next_step),
+    primary_cta: coerceCustomerExperienceCta(cx.primary_cta),
+    secondary_cta: coerceCustomerExperienceCta(cx.secondary_cta),
+  };
+}
+
 export function formatApiErrorDetail(detail, fallback = 'Something went wrong') {
   if (detail == null || detail === '') {
     return fallback;

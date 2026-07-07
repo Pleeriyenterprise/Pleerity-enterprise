@@ -2,6 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Info, Lock, Eye } from 'lucide-react';
 import { useLifecycleRuntime, usePortalMode } from '../../contexts/LifecycleRuntimeContext';
+import { LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE } from '../../contexts/LifecycleRuntimeContext';
+import { formatApiErrorDetail, normalizeCustomerExperience } from '../../utils/capabilityRuntime';
 import { isPathLifecycleReadOnly } from '../../utils/portalNavigationPolicy';
 import { useLocation } from 'react-router-dom';
 
@@ -34,8 +36,8 @@ export default function LifecycleShell() {
   const { portalMode, customerExperience } = usePortalMode();
   const { loading, error, navigationPolicy, warnings, runtimeAvailable } = useLifecycleRuntime();
   const location = useLocation();
-  const cx = customerExperience || {};
-  const heading = String(cx.heading || '').trim();
+  const cx = normalizeCustomerExperience(customerExperience);
+  const heading = cx.heading.trim();
   const showBanner = Boolean(heading) || portalMode !== 'FULL_ACCESS' || !runtimeAvailable;
   const style = MODE_STYLES[portalMode] || MODE_STYLES.FULL_ACCESS;
 
@@ -54,7 +56,7 @@ export default function LifecycleShell() {
           data-testid="lifecycle-runtime-fallback"
         >
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden />
-          <span>{error}</span>
+          <span>{formatApiErrorDetail(error, LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE)}</span>
         </div>
       )}
 

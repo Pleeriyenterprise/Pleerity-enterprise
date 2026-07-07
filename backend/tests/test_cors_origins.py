@@ -1,6 +1,6 @@
 """CORS origin resolution — Vercel preview + staging subdomain preflight support."""
 import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -153,3 +153,33 @@ def test_options_preflight_returns_400_without_regex_for_preview_origin():
     )
     assert resp.status_code == 400
     assert "Disallowed CORS origin" in resp.text
+
+
+def test_options_preflight_not_blocked_when_ip_is_blocked():
+    from server import app
+
+    with patch(
+        "services.security_monitoring_service.should_block_ip",
+        new=AsyncMock(return_value=True),
+    ), patch(
+        "services.security_monitoring_service.record_security_event",
+        new=AsyncMock(return_value=None),
+    ):
+        client = TestClient(app)
+        resp = client.options(
+            "/api/auth/login",
+            headers={
+                "Origin": STAGING_PREVIEW_ORIGIN_9JJG,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.headers.get("access-control-allow-origin") == STAGING_PREVIEW_ORIGIN_9JJG
+
+        post = client.post(
+            "/api/auth/login",
+            headers={"Origin": STAGING_PREVIEW_ORIGIN_9JJG},
+            json={"email": "probe@example.com", "password": "wrong"},
+        )
+        assert post.status_code == 429

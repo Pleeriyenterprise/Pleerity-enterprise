@@ -3,6 +3,8 @@ import { useAuth } from './AuthContext';
 import { clientAPI } from '../api/client';
 import {
   evaluateCapabilityGrant,
+  formatApiErrorDetail,
+  normalizeCustomerExperience,
   parseLifecycleResponseDetail,
 } from '../utils/capabilityRuntime';
 import {
@@ -67,7 +69,14 @@ function isClientUser(user) {
 
 function applyRuntimePayload(payload, sessionRuntime, setters) {
   const { setRuntime, setContractVersion, setRuntimeVersion, setSessionRuntime, setError } = setters;
-  setRuntime(payload);
+  const normalizedPayload =
+    payload && typeof payload === 'object'
+      ? {
+          ...payload,
+          customer_experience: normalizeCustomerExperience(payload.customer_experience),
+        }
+      : payload;
+  setRuntime(normalizedPayload);
   setContractVersion(payload?.contract_version || null);
   setRuntimeVersion(payload?.runtime_version ?? null);
   setSessionRuntime(sessionRuntime || null);
@@ -170,14 +179,14 @@ export function LifecycleRuntimeProvider({ children }) {
             ...GOVERNED_FALLBACK,
             lifecycle_state: parsed.lifecycle_state || GOVERNED_FALLBACK.lifecycle_state,
             portal_mode: parsed.portal_mode || GOVERNED_FALLBACK.portal_mode,
-            customer_experience: parsed.customer_experience,
+            customer_experience: normalizeCustomerExperience(parsed.customer_experience),
             runtime_version: parsed.runtime_version ?? null,
             contract_version: parsed.contract_version ?? null,
             warnings: ['lifecycle_runtime_from_denial_payload'],
           });
           setContractVersion(parsed.contract_version || null);
           setRuntimeVersion(parsed.runtime_version ?? null);
-          setError(parsed.message || LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE);
+          setError(formatApiErrorDetail(parsed.message, LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE));
           return false;
         }
         setError(LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE);

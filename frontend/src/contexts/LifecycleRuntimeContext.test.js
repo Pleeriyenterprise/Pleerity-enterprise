@@ -233,6 +233,25 @@ describe('LifecycleShell presentation modes', () => {
     expect(screen.getByText(/Update your payment method/)).toBeInTheDocument();
     expect(screen.getByText(/Retry payment in billing settings/)).toBeInTheDocument();
   });
+
+  it('does not crash when customer_experience fields are non-string objects', async () => {
+    renderWithRuntime(
+      <LifecycleShell />,
+      runtimePayload({
+        portal_mode: 'SUSPENDED',
+        customer_experience: {
+          heading: 'Account suspended',
+          explanation: { nested: 'bad' },
+          reason: { code: 'SUSPENDED' },
+          primary_cta: { label: { bad: true }, route: '/settings/billing' },
+        },
+      }),
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('lifecycle-shell-SUSPENDED')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('heading', { name: 'Account suspended' })).toBeInTheDocument();
+  });
 });
 
 describe('PortalModePageBanner', () => {

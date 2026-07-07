@@ -12,6 +12,7 @@ import {
   isCapabilityDeniedError,
   isGrantActionAllowed,
   normalizeGrantSemantic,
+  normalizeCustomerExperience,
   parseCapabilityDeniedDetail,
 } from './capabilityRuntime';
 
@@ -44,6 +45,7 @@ describe('capabilityRuntime primitives', () => {
   it('parses governed capability_denied payloads', () => {
     const detail = {
       error: CAPABILITY_DENIED_ERROR,
+      message: 'Billing view is not permitted.',
       capability_id: 'CAP_BILLING_VIEW',
       action: 'read',
       grant: GRANT_DENY,
@@ -51,5 +53,20 @@ describe('capabilityRuntime primitives', () => {
     expect(parseCapabilityDeniedDetail(detail)?.capability_id).toBe('CAP_BILLING_VIEW');
     expect(isCapabilityDeniedError({ response: { data: { detail } } })).toBe(true);
     expect(extractCapabilityDeniedFromError({ response: { data: { detail: 'forbidden' } } })).toBeNull();
+  });
+
+  it('normalizes customer_experience object fields for React rendering', () => {
+    const normalized = normalizeCustomerExperience({
+      heading: 'Suspended',
+      reason: { code: 'SUSPENDED' },
+      explanation: 42,
+      primary_cta: { label: { bad: true }, route: '/billing' },
+      secondary_cta: { label: 'Help', route: '/help' },
+    });
+    expect(normalized.heading).toBe('Suspended');
+    expect(normalized.reason).toBe('');
+    expect(normalized.explanation).toBe('42');
+    expect(normalized.primary_cta).toBeNull();
+    expect(normalized.secondary_cta).toEqual({ label: 'Help', route: '/help' });
   });
 });

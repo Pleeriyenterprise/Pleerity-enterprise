@@ -1311,23 +1311,25 @@ async def _security_monitoring_gate(request: Request, call_next):
     ip = _client_ip(request)
     path = request.url.path or ""
     method = request.method.upper()
-    try:
-        from services.security_monitoring_service import should_block_ip, record_security_event
+    # CORS preflight must reach CORSMiddleware and return 2xx — never short-circuit OPTIONS here.
+    if method != "OPTIONS":
+        try:
+            from services.security_monitoring_service import should_block_ip, record_security_event
 
-        if await should_block_ip(ip):
-            await record_security_event(
-                event_type="abuse.blocked_request",
-                ip=ip,
-                details={"path": path, "method": method},
-                severity="medium",
-            )
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "Request blocked due to suspicious activity."},
-                headers=_cors_headers_for_origin(request),
-            )
-    except Exception:
-        pass
+            if await should_block_ip(ip):
+                await record_security_event(
+                    event_type="abuse.blocked_request",
+                    ip=ip,
+                    details={"path": path, "method": method},
+                    severity="medium",
+                )
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Request blocked due to suspicious activity."},
+                    headers=_cors_headers_for_origin(request),
+                )
+        except Exception:
+            pass
 
     response = await call_next(request)
 
@@ -1697,6 +1699,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=422,
         content={"detail": errors, "request_id": request_id},
+        headers=_cors_headers_for_origin(request),
     )
 
 

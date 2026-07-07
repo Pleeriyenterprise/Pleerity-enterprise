@@ -24,3 +24,16 @@ def test_http_exception_handler_includes_cors_headers():
     text = (BACKEND_ROOT / "server.py").read_text(encoding="utf-8")
     block = text.split("async def http_exception_handler")[1].split("@app.exception_handler(Exception)")[0]
     assert "_cors_headers_for_origin" in block
+
+
+def test_validation_exception_handler_includes_cors_headers():
+    text = (BACKEND_ROOT / "server.py").read_text(encoding="utf-8")
+    block = text.split("async def validation_exception_handler")[1].split("@app.exception_handler(HTTPException)")[0]
+    assert "_cors_headers_for_origin" in block
+
+
+def test_security_gate_skips_ip_block_for_options_preflight():
+    text = (BACKEND_ROOT / "server.py").read_text(encoding="utf-8")
+    gate = text.split("async def _security_monitoring_gate")[1].split("async def _readiness_gate_call_next")[0]
+    assert 'method != "OPTIONS"' in gate
+    assert "should_block_ip" in gate
