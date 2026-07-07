@@ -271,12 +271,8 @@ async def _client_context_guard(request: Request, user: dict, db) -> dict:
     )
     lifecycle_state = str(contract.get("lifecycle_state") or "")
 
-    # Coarse portal API block — matches legacy canonical SUSPENDED/CANCELLED bands.
+    # Terminal lifecycle bands only — nuanced read/write access is enforced via CAP_* (Runtime Contract).
     _blocked_lifecycle = frozenset({
-        "SUSPENDED",
-        "CANCELLED_IMMEDIATE",
-        "SUBSCRIPTION_EXPIRED",
-        "READ_ONLY",
         "ARCHIVED",
         "ACCOUNT_DELETED",
     })

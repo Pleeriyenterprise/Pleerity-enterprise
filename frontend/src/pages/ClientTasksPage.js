@@ -49,12 +49,12 @@ import {
   OPERATIONAL_CACHE_KEYS,
 } from '../utils/clientOperationalFetch';
 import { useAuth } from '../contexts/AuthContext';
+import { formatApiErrorMessage } from '../utils/capabilityRuntime';
 import {
   getCapabilityDeniedMessage,
   isCapabilityDeniedApiError,
   useTodayCapabilities,
 } from '../utils/operationalCapabilityAccess';
-import { formatApiErrorMessage } from '../utils/capabilityRuntime';
 import { useGuidedEvidenceModal } from '../context/GuidedEvidenceModalContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -1292,7 +1292,7 @@ export default function ClientTasksPage() {
         if (isCapabilityDeniedApiError(err)) {
           toast.error(getCapabilityDeniedMessage(err, 'Could not update Today inbox'));
         } else {
-          toast.error(err?.response?.data?.detail || 'Could not update Today inbox');
+          toast.error(formatApiErrorMessage(err, 'Could not update Today inbox'));
         }
       } finally {
         setOverrideBusyId(null);
@@ -1310,11 +1310,7 @@ export default function ClientTasksPage() {
         );
         load();
       } catch (err) {
-        if (isCapabilityDeniedApiError(err)) {
-          toast.error(getCapabilityDeniedMessage(err, 'Could not snooze this item in Today'));
-        } else {
-          toast.error(err?.response?.data?.detail || 'Could not snooze this item in Today');
-        }
+        toast.error(formatApiErrorMessage(err, 'Could not snooze this item in Today'));
       } finally {
         setOverrideBusyId(null);
       }
@@ -1389,11 +1385,7 @@ export default function ClientTasksPage() {
       );
       load();
     } catch (err) {
-      if (isCapabilityDeniedApiError(err)) {
-        toast.error(getCapabilityDeniedMessage(err, 'Could not restore'));
-      } else {
-        toast.error(err?.response?.data?.detail || 'Could not restore');
-      }
+      toast.error(formatApiErrorMessage(err, 'Could not restore'));
     } finally {
       setOverrideBusyId(null);
     }
@@ -1424,11 +1416,7 @@ export default function ClientTasksPage() {
       );
       load();
     } catch (err) {
-      if (isCapabilityDeniedApiError(err)) {
-        toast.error(getCapabilityDeniedMessage(err, 'Could not hide this item from Today'));
-      } else {
-        toast.error(err?.response?.data?.detail || 'Could not hide this item from Today');
-      }
+      toast.error(formatApiErrorMessage(err, 'Could not hide this item from Today'));
     } finally {
       setOverrideBusyId(null);
     }
@@ -1475,11 +1463,7 @@ export default function ClientTasksPage() {
       ) {
         return;
       }
-      if (isCapabilityDeniedApiError(err)) {
-        toast.error(getCapabilityDeniedMessage(err, 'Action failed'));
-      } else {
-        toast.error(err?.response?.data?.detail || 'Action failed');
-      }
+      toast.error(formatApiErrorMessage(err, 'Action failed'));
     } finally {
       setRiskLoading(null);
     }

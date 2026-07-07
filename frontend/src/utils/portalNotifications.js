@@ -11,6 +11,16 @@
  * unless `{ critical: true }` or `{ persist: true }`.
  */
 import { toast as sonnerToast } from 'sonner';
+import { formatApiErrorDetail } from './capabilityRuntime';
+
+function coerceToastMessage(message, fallback = 'Something went wrong') {
+  return formatApiErrorDetail(message, fallback);
+}
+
+function coerceToastDescription(description) {
+  if (description == null || description === '') return undefined;
+  return formatApiErrorDetail(description, '');
+}
 
 const MINOR_BASE = {
   duration: 3800,
@@ -69,15 +79,36 @@ function isLikelyMinorSuccessMessage(message) {
 }
 
 function callImportant(type, message, opts) {
-  return sonnerToast[type](message, mergeBase(IMPORTANT_BASE, opts));
+  const text = coerceToastMessage(message);
+  const o = opts && typeof opts === 'object' ? { ...opts } : {};
+  if (o.description != null) {
+    const desc = coerceToastDescription(o.description);
+    if (desc) o.description = desc;
+    else delete o.description;
+  }
+  return sonnerToast[type](text, mergeBase(IMPORTANT_BASE, o));
 }
 
 function callMinor(type, message, opts) {
-  return sonnerToast[type](message, mergeBase(MINOR_BASE, opts));
+  const text = coerceToastMessage(message);
+  const o = opts && typeof opts === 'object' ? { ...opts } : {};
+  if (o.description != null) {
+    const desc = coerceToastDescription(o.description);
+    if (desc) o.description = desc;
+    else delete o.description;
+  }
+  return sonnerToast[type](text, mergeBase(MINOR_BASE, o));
 }
 
 function callCritical(type, message, opts) {
-  return sonnerToast[type](message, mergeBase(CRITICAL_BASE, opts));
+  const text = coerceToastMessage(message);
+  const o = opts && typeof opts === 'object' ? { ...opts } : {};
+  if (o.description != null) {
+    const desc = coerceToastDescription(o.description);
+    if (desc) o.description = desc;
+    else delete o.description;
+  }
+  return sonnerToast[type](text, mergeBase(CRITICAL_BASE, o));
 }
 
 /** String promise results → tiered toast payloads (Sonner extended result shape). */
@@ -131,7 +162,7 @@ function shouldUseCriticalError(opts) {
  * - message / info: minor (ambient feedback).
  */
 function toastFn(message, opts) {
-  return sonnerToast(message, mergeBase(MINOR_BASE, opts));
+  return sonnerToast(coerceToastMessage(message), mergeBase(MINOR_BASE, opts));
 }
 
 export const toast = Object.assign(toastFn, {

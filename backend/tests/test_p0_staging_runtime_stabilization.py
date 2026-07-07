@@ -32,6 +32,16 @@ def test_validation_exception_handler_includes_cors_headers():
     assert "_cors_headers_for_origin" in block
 
 
+def test_client_context_guard_only_blocks_terminal_lifecycle():
+    text = (BACKEND_ROOT / "middleware" / "__init__.py").read_text(encoding="utf-8")
+    guard = text.split("_blocked_lifecycle = frozenset({")[1].split("})")[0]
+    assert "ARCHIVED" in guard
+    assert "ACCOUNT_DELETED" in guard
+    assert "READ_ONLY" not in guard
+    assert "CANCELLED_IMMEDIATE" not in guard
+    assert "SUSPENDED" not in guard
+
+
 def test_security_gate_skips_ip_block_for_options_preflight():
     text = (BACKEND_ROOT / "server.py").read_text(encoding="utf-8")
     gate = text.split("async def _security_monitoring_gate")[1].split("async def _readiness_gate_call_next")[0]
