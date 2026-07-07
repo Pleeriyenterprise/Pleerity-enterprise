@@ -7,6 +7,7 @@
 const CIRCUIT_FAILURE_THRESHOLD = 2;
 const CIRCUIT_COOLDOWN_MS = 90_000;
 const GLOBAL_429_PAUSE_MS = 90_000;
+const SECURITY_BLOCK_PAUSE_MS = 5 * 60_000;
 const state = new Map();
 let globalPauseUntil = 0;
 
@@ -40,9 +41,12 @@ export function isApiCircuitOpen(url) {
   return true;
 }
 
-export function recordApiCircuitFailure(url, status) {
+export function recordApiCircuitFailure(url, status, detailMessage = '') {
   if (status === 429) {
-    globalPauseUntil = Date.now() + GLOBAL_429_PAUSE_MS;
+    const isSecurityBlock =
+      typeof detailMessage === 'string' &&
+      detailMessage.toLowerCase().includes('suspicious activity');
+    globalPauseUntil = Date.now() + (isSecurityBlock ? SECURITY_BLOCK_PAUSE_MS : GLOBAL_429_PAUSE_MS);
   }
   if (status !== 403 && status !== 429) {
     return;

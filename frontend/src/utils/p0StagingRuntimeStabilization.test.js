@@ -48,4 +48,10 @@ describe('apiRequestCircuit', () => {
     expect(isGlobalApiPaused()).toBe(true);
     expect(isApiCircuitOpen('client/requirements')).toBe(true);
   });
+
+  it('pauses longer after security IP block 429', () => {
+    resetAllApiCircuits();
+    recordApiCircuitFailure('client/requirements', 429, 'Request blocked due to suspicious activity.');
+    expect(isGlobalApiPaused()).toBe(true);
+  });
 });

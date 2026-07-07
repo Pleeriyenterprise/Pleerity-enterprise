@@ -203,6 +203,10 @@ export function normalizeCustomerExperience(cx) {
   };
 }
 
+export function coercePortalDisplayText(value, fallback = '') {
+  return formatApiErrorDetail(value, fallback);
+}
+
 export function formatApiErrorDetail(detail, fallback = 'Something went wrong') {
   if (detail == null || detail === '') {
     return fallback;

@@ -27,7 +27,7 @@ from clearform.routes.admin import router as clearform_admin_router
 import os
 import logging
 import asyncio
-from datetime import timezone as dt_timezone
+from datetime import datetime, timezone as dt_timezone
 from pathlib import Path
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -261,6 +261,33 @@ async def lifespan(app: FastAPI):
         # Core readiness: auth/runtime routes may proceed once DB connectivity is verified.
         app.state.db_ready = True
         _set_startup_stage("db_ready")
+
+        try:
+            from services.security_monitoring_service import (
+                clear_all_ip_blocks,
+                ip_blocks_enabled,
+                purge_expired_ip_blocks,
+            )
+            from utils.deployment_environment_guard import resolve_deployment_tier
+
+            purged = await purge_expired_ip_blocks()
+            if purged:
+                logger.info("Purged %s expired security IP block(s)", purged)
+            if (os.environ.get("SECURITY_CLEAR_IP_BLOCKS_ON_STARTUP") or "").strip().lower() in (
+                "1",
+                "true",
+                "yes",
+            ):
+                cleared = await clear_all_ip_blocks()
+                logger.warning("SECURITY_CLEAR_IP_BLOCKS_ON_STARTUP: cleared %s IP block(s)", cleared)
+            elif resolve_deployment_tier() == "staging":
+                cleared = await clear_all_ip_blocks()
+                if cleared:
+                    logger.warning("Staging startup: cleared %s active IP block(s) from prior abuse detection", cleared)
+            elif not ip_blocks_enabled():
+                logger.warning("SECURITY_DISABLE_IP_BLOCKS is enabled — IP blocks are not enforced")
+        except Exception as sec_startup_err:
+            logger.warning("Security block startup maintenance skipped: %s", sec_startup_err)
 
         if True:
             _set_startup_stage("post_db_initialization")
@@ -1305,6 +1332,16 @@ app.add_middleware(SessionRuntimeResponseMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 
 
+def _request_has_valid_bearer(request: Request) -> bool:
+    auth_header = (request.headers.get("Authorization") or "").strip()
+    if not auth_header.startswith("Bearer "):
+        return False
+    from auth import decode_access_token
+
+    token = auth_header[7:].strip()
+    return bool(token and decode_access_token(token))
+
+
 @app.middleware("http")
 async def _security_monitoring_gate(request: Request, call_next):
     """Capture security telemetry and apply temporary network blocks."""
@@ -1312,9 +1349,9 @@ async def _security_monitoring_gate(request: Request, call_next):
     path = request.url.path or ""
     method = request.method.upper()
     # CORS preflight must reach CORSMiddleware and return 2xx — never short-circuit OPTIONS here.
-    if method != "OPTIONS":
+    if method != "OPTIONS" and not _request_has_valid_bearer(request):
         try:
-            from services.security_monitoring_service import should_block_ip, record_security_event
+            from services.security_monitoring_service import get_ip_block_info, record_security_event, should_block_ip
 
             if await should_block_ip(ip):
                 await record_security_event(
@@ -1323,10 +1360,19 @@ async def _security_monitoring_gate(request: Request, call_next):
                     details={"path": path, "method": method},
                     severity="medium",
                 )
+                headers = _cors_headers_for_origin(request)
+                try:
+                    block = await get_ip_block_info(ip)
+                    if block and block.get("expires_at"):
+                        exp = datetime.fromisoformat(str(block["expires_at"]).replace("Z", "+00:00"))
+                        retry_after = max(1, int((exp - datetime.now(dt_timezone.utc)).total_seconds()))
+                        headers["Retry-After"] = str(retry_after)
+                except Exception:
+                    pass
                 return JSONResponse(
                     status_code=429,
                     content={"detail": "Request blocked due to suspicious activity."},
-                    headers=_cors_headers_for_origin(request),
+                    headers=headers,
                 )
         except Exception:
             pass
@@ -1334,7 +1380,7 @@ async def _security_monitoring_gate(request: Request, call_next):
     response = await call_next(request)
 
     try:
-        from services.security_monitoring_service import record_security_event
+        from services.security_monitoring_service import is_client_portal_api_path, record_security_event
 
         if path.startswith("/api/admin/"):
             await record_security_event(
@@ -1355,7 +1401,8 @@ async def _security_monitoring_gate(request: Request, call_next):
             )
         elif response.status_code == 403:
             evt = "document.access_denied" if "/documents/" in path else "http.403"
-            await record_security_event(event_type=evt, ip=ip, details={"path": path, "method": method}, severity="medium")
+            if not (is_client_portal_api_path(path) and evt == "http.403"):
+                await record_security_event(event_type=evt, ip=ip, details={"path": path, "method": method}, severity="medium")
         elif response.status_code == 404 and path.startswith("/api/"):
             await record_security_event(event_type="http.404", ip=ip, details={"path": path, "method": method}, severity="low")
         elif response.status_code == 429:

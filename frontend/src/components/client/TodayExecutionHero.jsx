@@ -9,6 +9,7 @@ import {
   progressionLabel,
   getRequirementGuidance,
 } from '../../utils/operationalCognition';
+import { coercePortalDisplayText } from '../../utils/capabilityRuntime';
 import { todayRequirementWhyItMattersLine } from '../../utils/todayRequirementWhyItMatters';
 import { todayTaskOperationalGuidance } from '../../utils/todayTaskOperationalGuidance';
 import { inboxTitleForDisplay } from '../../domain/presentDomain';
@@ -56,7 +57,9 @@ export default function TodayExecutionHero({ entity, task, onPrimaryClick, prima
     todayTaskOperationalGuidance(task)?.whatToDo ||
     task?.recommended_action ||
     null;
-  const title = inboxTitleForDisplay(task);
+  const title = coercePortalDisplayText(inboxTitleForDisplay(task), 'Task');
+  const whyText = coercePortalDisplayText(why, '');
+  const outcomeText = coercePortalDisplayText(outcome, '');
 
   return (
     <Card
@@ -74,16 +77,16 @@ export default function TodayExecutionHero({ entity, task, onPrimaryClick, prima
             </p>
           ) : null}
         </div>
-        {why ? (
+        {whyText ? (
           <p className="text-sm text-gray-700">
             <span className="font-medium text-gray-900">Why it matters: </span>
-            {why}
+            {whyText}
           </p>
         ) : null}
-        {outcome ? (
+        {outcomeText ? (
           <p className="text-sm text-gray-700">
             <span className="font-medium text-gray-900">Expected outcome: </span>
-            {outcome}
+            {outcomeText}
           </p>
         ) : null}
         {onPrimaryClick ? (

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, Info, Lock, Eye } from 'lucide-react';
 import { useLifecycleRuntime, usePortalMode } from '../../contexts/LifecycleRuntimeContext';
 import { LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE } from '../../contexts/LifecycleRuntimeContext';
-import { formatApiErrorDetail, normalizeCustomerExperience } from '../../utils/capabilityRuntime';
+import { coercePortalDisplayText, formatApiErrorDetail, normalizeCustomerExperience } from '../../utils/capabilityRuntime';
 import { isPathLifecycleReadOnly } from '../../utils/portalNavigationPolicy';
 import { useLocation } from 'react-router-dom';
 
