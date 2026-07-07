@@ -24,6 +24,8 @@ const PortalModeContext = createContext(null);
 export const LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE =
   'Account status could not be loaded. Your session is valid; retry shortly or refresh the page.';
 
+const EMPTY_CAPABILITIES = Object.freeze({});
+
 const GOVERNED_FALLBACK = {
   contract_version: null,
   runtime_version: null,
@@ -52,8 +54,6 @@ const GOVERNED_FALLBACK = {
   polling_policy: { enabled: false, reason: 'fallback' },
   warnings: ['lifecycle_runtime_unavailable'],
 };
-
-const EMPTY_CAPABILITIES = Object.freeze({});
 
 const REFRESH_THROTTLE_MS = 5000;
 const VISIBILITY_THROTTLE_MS = 15000;
