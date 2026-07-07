@@ -5,7 +5,7 @@ Wrappers delegate to CapabilityEnforcementService without changing legacy call s
 """
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from services.account_capability_enforcement import (
     CapabilityAction,
@@ -108,3 +108,41 @@ async def evaluate_feature_via_capability(
 
 def list_unmapped_plan_features(plan_feature_keys: Sequence[str]) -> List[str]:
     return sorted(k for k in plan_feature_keys if k not in FEATURE_KEY_TO_CAPABILITIES)
+
+
+def contract_feature_enabled(
+    contract: Mapping[str, Any] | None,
+    feature_key: str,
+    action: CapabilityAction = "read",
+) -> bool:
+    """True when every mapped CAP_* for feature_key allows action on the attached contract."""
+    if not contract:
+        return False
+    caps = feature_key_to_capabilities(feature_key)
+    if not caps:
+        return False
+    service = CapabilityEnforcementService(None)
+    return all(
+        service.evaluate_from_contract(contract, cap_id, action).allowed for cap_id in caps
+    )
+
+
+async def feature_enabled_for_client(
+    db,
+    client_id: str,
+    feature_key: str,
+    action: CapabilityAction = "read",
+) -> bool:
+    """Load Runtime Contract once and evaluate feature_key (background jobs / services without request scope)."""
+    from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
+
+    contract = await resolve_runtime_contract_for_client(db, client_id, emit_events=False)
+    return contract_feature_enabled(contract, feature_key, action)
+
+
+def contract_features_from_runtime(
+    contract: Mapping[str, Any] | None,
+    feature_keys: Sequence[str],
+    action: CapabilityAction = "read",
+) -> Dict[str, bool]:
+    return {key: contract_feature_enabled(contract, key, action) for key in feature_keys}

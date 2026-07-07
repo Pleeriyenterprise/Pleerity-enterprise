@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 from database import database
 from middleware import client_route_guard, contractor_route_guard
-from middleware.capability_gating import capability_denied_http_detail
+from middleware.capability_gating import capability_denied_http_detail, enforce_route_capability
 from models import AuditAction
 from routes.documents import _enforce_document_upload_rate_limit, perform_client_document_upload
 from services import contractor_service
@@ -64,16 +64,7 @@ router = APIRouter(prefix="/api", tags=["compliance-workflow"])
 
 
 async def _enforce_capability(user: Dict[str, Any], capability_id: str, action: str) -> None:
-    if user.get("role") == "ROLE_OWNER":
-        return
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
-        client_id, capability_id, action
-    )
-    if not decision.allowed:
-        raise HTTPException(status_code=403, detail=capability_denied_http_detail(decision))
+    await enforce_route_capability(user, capability_id, action)
 
 
 async def _require_client(request: Request) -> Dict[str, Any]:
@@ -1435,10 +1426,19 @@ async def get_today_items(
     import asyncio
 
     prop_filter = property_id.strip() if property_id else None
+    from services.capability_compatibility import contract_feature_enabled
     from services.rent_attention_projection import (
         list_rent_attention_tasks,
         merge_rent_into_today_payload,
     )
+
+    async def _rent_tasks_for_today():
+        if not contract_feature_enabled(user.get("runtime_contract"), "rent_operations", "read"):
+            return []
+        return await list_rent_attention_tasks(
+            user["client_id"],
+            property_id_filter=prop_filter,
+        )
 
     payload, rent_tasks = await asyncio.gather(
         get_unified_tasks_for_client(
@@ -1448,10 +1448,7 @@ async def get_today_items(
             portal_user_id=user.get("portal_user_id"),
             surface_profile="today",
         ),
-        list_rent_attention_tasks(
-            user["client_id"],
-            property_id_filter=prop_filter,
-        ),
+        _rent_tasks_for_today(),
     )
     out = build_today_payload_from_unified(
         payload,

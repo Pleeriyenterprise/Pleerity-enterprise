@@ -11,7 +11,7 @@ from typing import Optional, List
 
 from database import database
 from middleware import client_route_guard
-from middleware.capability_gating import capability_denied_http_detail
+from middleware.capability_gating import capability_denied_http_detail, enforce_route_capability
 from services.account_capability_enforcement import CapabilityEnforcementService
 from services import maintenance_service
 from services import maintenance_issues_service
@@ -31,7 +31,6 @@ from services.maintenance_wo_from_issue_idempotency import (
 from services import contractor_service
 from services import work_order_contractor_routing_service as wo_contractor_routing
 from services.ops_compliance_feature_flags import (
-    get_effective_flags,
     COMPLIANCE_ENGINE,
 )
 from services.work_order_execution_constants import WORK_ORDER_KIND_COMPLIANCE
@@ -124,19 +123,7 @@ async def _require_maintenance_work_order_not_compliance(work_order_id: str, cli
 
 
 async def _enforce_capability(user: dict, capability_id: str, action: str) -> None:
-    if user.get("role") == "ROLE_OWNER":
-        return
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
-        client_id, capability_id, action
-    )
-    if not decision.allowed:
-        raise HTTPException(
-            status_code=403,
-            detail=capability_denied_http_detail(decision),
-        )
+    await enforce_route_capability(user, capability_id, action)
 
 
 async def _require_maintenance_enabled(request: Request, action: str = "read") -> dict:
@@ -1459,8 +1446,10 @@ async def _arrange_compliance_inspection_from_risk_signal(
 ) -> dict:
     user = await _require_predictive_enabled(request, "write")
     await _enforce_capability(user, "CAP_OPS_MAINTENANCE", "write")
-    flags = await get_effective_flags(user["client_id"])
-    if not flags.get(COMPLIANCE_ENGINE):
+    contract = user.get("runtime_contract")
+    from services.capability_compatibility import contract_feature_enabled
+
+    if not contract_feature_enabled(contract, "compliance_engine", "write"):
         raise HTTPException(
             status_code=400,
             detail="Compliance execution is not enabled. Use a maintenance job or enable compliance execution for your account.",

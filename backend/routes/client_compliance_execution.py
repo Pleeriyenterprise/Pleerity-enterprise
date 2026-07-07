@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from database import database
 from middleware import client_route_guard
-from middleware.capability_gating import capability_denied_http_detail
+from middleware.capability_gating import capability_denied_http_detail, enforce_route_capability
 from services.account_capability_enforcement import CapabilityEnforcementService
 from services import contractor_service
 from services import maintenance_service
@@ -27,16 +27,7 @@ router = APIRouter(
 
 
 async def _enforce_capability(user: dict, capability_id: str, action: str) -> None:
-    if user.get("role") == "ROLE_OWNER":
-        return
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
-        client_id, capability_id, action
-    )
-    if not decision.allowed:
-        raise HTTPException(status_code=403, detail=capability_denied_http_detail(decision))
+    await enforce_route_capability(user, capability_id, action)
 
 
 async def _require_compliance_execution(request: Request, action: str = "write"):

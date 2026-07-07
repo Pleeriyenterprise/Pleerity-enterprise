@@ -41,6 +41,7 @@ import { clientAPI } from '../api/client';
 import { PortalStaleRefreshBanner } from '../components/client/ClientPortalPatterns';
 import { PortalModePageBanner } from '../components/lifecycle/LifecycleShell';
 import PortalLoadingState from '../components/loading/PortalLoadingState';
+import { InPageCapabilityGate } from '../components/lifecycle/InPageCapabilityGate';
 import { todayLoadingStages } from '../components/loading/portalLoadingStageModels';
 import { usePortalLoadingTelemetry } from '../components/loading/usePortalLoadingTelemetry';
 import ErrorBanner from '../components/ErrorBanner';
@@ -1474,6 +1475,17 @@ export default function ClientTasksPage() {
       <div className="p-6">
         <p className="text-gray-600">Today is available to client users only.</p>
       </div>
+    );
+  }
+
+  if (!canViewToday) {
+    return (
+      <InPageCapabilityGate
+        allowed={false}
+        presentationFeature="compliance_dashboard"
+        capabilityId="CAP_TODAY_VIEW"
+        testId="today-capability-denied"
+      />
     );
   }
 

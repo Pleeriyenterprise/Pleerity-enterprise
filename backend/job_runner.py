@@ -1164,7 +1164,7 @@ async def run_risk_lead_nurture_processing():
 async def run_predictive_insights_job():
     """Precompute predictive maintenance insights for all clients with PREDICTIVE_MAINTENANCE. Writes to cache."""
     from database import database
-    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+    from services.capability_compatibility import feature_enabled_for_client
     from services.predictive_service import get_insights_for_client
 
     db = database.get_db()
@@ -1172,8 +1172,7 @@ async def run_predictive_insights_job():
     count = 0
     for c in clients:
         try:
-            flags = await get_effective_flags(c["client_id"], c.get("billing_plan"))
-            if not flags.get(PREDICTIVE_MAINTENANCE):
+            if not await feature_enabled_for_client(db, c["client_id"], "predictive_maintenance", "read"):
                 continue
             await get_insights_for_client(c["client_id"])
             count += 1
@@ -1230,7 +1229,7 @@ async def run_risk_signal_regen_alert_monitor():
 async def run_risk_signals_job(client_id: Optional[str] = None):
     """Generate stored risk signals for all clients with PREDICTIVE_MAINTENANCE. Writes to risk_signals collection."""
     from database import database
-    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+    from services.capability_compatibility import feature_enabled_for_client
     from services import risk_signal_service
     from services.job_run_service import (
         OUTCOME_SUCCESS,
@@ -1270,8 +1269,7 @@ async def run_risk_signals_job(client_id: Optional[str] = None):
             if not allowed:
                 skipped_no_flag += 1
                 continue
-            flags = await get_effective_flags(cid, c.get("billing_plan"))
-            if not flags.get(PREDICTIVE_MAINTENANCE):
+            if not await feature_enabled_for_client(db, cid, "predictive_maintenance", "read"):
                 skipped_no_flag += 1
                 continue
             eligible_clients += 1

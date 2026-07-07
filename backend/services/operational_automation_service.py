@@ -19,7 +19,7 @@ from utils.audit import create_audit_log
 
 from services import maintenance_issues_service
 from services.maintenance_issues_service import OPEN_ISSUE_STATUSES
-from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
+from services.ops_compliance_feature_flags import MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
 from services import risk_signal_service as rss
 from services.requirement_client_runtime_surface import filter_requirement_rows_for_client_runtime_surfaces
 
@@ -70,11 +70,44 @@ def _operational_root_key_compliance(requirement_code: str) -> str:
 
 
 async def _flags_for_property(property_id: str, client_id: str) -> Tuple[Dict[str, bool], Optional[str]]:
+    from services.capability_compatibility import contract_features_from_runtime, feature_enabled_for_client
+    from services.account_lifecycle_runtime_contract import resolve_runtime_contract_for_client
+
     db = database.get_db()
     client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "billing_plan": 1})
     billing = (client_doc or {}).get("billing_plan")
-    flags = await get_effective_flags(client_id, billing)
-    return flags, billing
+    contract = await resolve_runtime_contract_for_client(db, client_id, emit_events=False)
+    flags = contract_features_from_runtime(
+        contract,
+        (
+            "maintenance_workflows",
+            "predictive_maintenance",
+            "compliance_engine",
+            "rent_operations",
+            "contractor_network",
+            "invoicing",
+        ),
+        "read",
+    )
+    # Legacy callers expect UPPER_SNAKE ops keys — map from feature keys.
+    from services.ops_compliance_feature_flags import (
+        COMPLIANCE_ENGINE,
+        CONTRACTOR_NETWORK,
+        INVOICING,
+        MAINTENANCE_WORKFLOWS,
+        PREDICTIVE_MAINTENANCE,
+        RENT_OPERATIONS,
+    )
+
+    legacy_flags = {
+        MAINTENANCE_WORKFLOWS: flags.get("maintenance_workflows", False),
+        PREDICTIVE_MAINTENANCE: flags.get("predictive_maintenance", False),
+        COMPLIANCE_ENGINE: flags.get("compliance_engine", False),
+        RENT_OPERATIONS: flags.get("rent_operations", False),
+        CONTRACTOR_NETWORK: flags.get("contractor_network", False),
+        INVOICING: flags.get("invoicing", False),
+    }
+    return legacy_flags, billing
 
 
 async def _open_issue_exists_for_root(

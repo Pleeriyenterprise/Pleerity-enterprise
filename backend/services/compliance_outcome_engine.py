@@ -192,13 +192,10 @@ async def _mark_related_risk_acknowledged(event: Dict[str, Any]) -> None:
 
 async def _sync_regenerate_risks_and_operational(client_id: str, property_id: str) -> None:
     """After compliance recalc from an outcome event: refresh heuristic signals + automation (same worker, no extra queue)."""
-    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+    from services.capability_compatibility import feature_enabled_for_client
 
     db = database.get_db()
-    client_doc = await db.clients.find_one({"client_id": client_id}, {"_id": 0, "billing_plan": 1})
-    billing = (client_doc or {}).get("billing_plan")
-    flags = await get_effective_flags(client_id, billing)
-    if not flags.get(PREDICTIVE_MAINTENANCE):
+    if not await feature_enabled_for_client(db, client_id, "predictive_maintenance", "read"):
         return
     from services import risk_signal_service
     from services.operational_automation_service import evaluate_operational_automation_after_risk_refresh

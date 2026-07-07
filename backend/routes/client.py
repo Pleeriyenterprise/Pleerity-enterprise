@@ -670,16 +670,15 @@ async def get_client_priority_actions(
 ):
     """Compatibility endpoint: routes through command center urgent actions only."""
     try:
+        from middleware.capability_gating import contract_capability_allowed
         from services.command_center_service import get_command_center_bundle
-        from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
 
-        flags = await get_effective_flags(
-            client_id=user["client_id"],
-        )
+        contract = user.get("runtime_contract")
         result = await get_command_center_bundle(
             client_id=user["client_id"],
             property_id_filter=property_id,
-            predictive_enabled=bool(flags.get(PREDICTIVE_MAINTENANCE)),
+            predictive_enabled=contract_capability_allowed(contract, "CAP_OPS_PREDICTIVE", "read"),
+            rent_enabled=contract_capability_allowed(contract, "CAP_OPS_RENT", "read"),
             portal_user_id=user.get("portal_user_id"),
         )
         actions = (result.get("urgent_actions") or [])[:limit]
@@ -736,20 +735,22 @@ async def get_client_command_center(
     recent inbox activity, compliance summary. Reuses unified tasks, risk signals, and score services.
     """
     try:
-        from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
+        from middleware.capability_gating import contract_capability_allowed
         from services.command_center_service import (
             get_command_center_bundle,
             get_command_center_primary_bundle,
             get_command_center_secondary_bundle,
         )
 
-        flags = await get_effective_flags(user["client_id"])
-        pred = bool(flags.get(PREDICTIVE_MAINTENANCE))
+        contract = user.get("runtime_contract")
+        pred = contract_capability_allowed(contract, "CAP_OPS_PREDICTIVE", "read")
+        rent = contract_capability_allowed(contract, "CAP_OPS_RENT", "read")
         mode = str(projection or "full").strip().lower()
         if mode == "primary":
             return await get_command_center_primary_bundle(
                 user["client_id"],
                 predictive_enabled=pred,
+                rent_enabled=rent,
                 property_id_filter=property_id,
                 portal_user_id=user.get("portal_user_id"),
             )
@@ -764,6 +765,7 @@ async def get_client_command_center(
         return await get_command_center_bundle(
             user["client_id"],
             predictive_enabled=pred,
+            rent_enabled=rent,
             property_id_filter=property_id,
             portal_user_id=user.get("portal_user_id"),
             include_secondary_sections=include_secondary,
@@ -813,7 +815,7 @@ async def get_protection_snapshot(
         if not prop:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
 
-    from services.ops_compliance_feature_flags import get_effective_flags, MAINTENANCE_WORKFLOWS, PREDICTIVE_MAINTENANCE
+    from middleware.capability_gating import contract_capability_allowed
     from services import maintenance_issues_service
     from services.risk_signal_service import (
         STATUS_ACTIVE,
@@ -821,9 +823,9 @@ async def get_protection_snapshot(
         RISK_LEVEL_CRITICAL,
     )
 
-    flags = await get_effective_flags(client_id)
-    maintenance_on = bool(flags.get(MAINTENANCE_WORKFLOWS))
-    predictive_on = bool(flags.get(PREDICTIVE_MAINTENANCE))
+    contract = user.get("runtime_contract")
+    maintenance_on = contract_capability_allowed(contract, "CAP_OPS_MAINTENANCE", "read")
+    predictive_on = contract_capability_allowed(contract, "CAP_OPS_PREDICTIVE", "read")
 
     async def load_portal_row():
         if not portal_user_id:
@@ -1714,28 +1716,24 @@ async def get_property_occupancy_operational_summary(
     Read-only property-scoped tenant/occupancy operational aggregation.
     Composes tenant portal, maintenance, rent ops, and calendar projections — does not own domain truth.
     """
-    from services.account_capability_enforcement import CapabilityEnforcementService
-    from services.ops_compliance_feature_flags import get_effective_flags, RENT_OPERATIONS, MAINTENANCE_WORKFLOWS
+    from middleware.capability_gating import contract_capability_allowed
     from services.property_occupancy_operational_service import build_property_occupancy_operational_summary
 
     client_id = user["client_id"]
-    flags = await get_effective_flags(client_id)
-    tenant_decision = await CapabilityEnforcementService(database.get_db()).evaluate(
-        client_id, "CAP_TENANT_PORTAL", "read"
-    )
-    tenant_allowed = tenant_decision.allowed
+    contract = user.get("runtime_contract")
+    tenant_allowed = contract_capability_allowed(contract, "CAP_TENANT_PORTAL", "read")
     try:
         body = await build_property_occupancy_operational_summary(
             client_id,
             property_id,
-            include_rent=bool(flags.get(RENT_OPERATIONS)),
-            include_maintenance=bool(flags.get(MAINTENANCE_WORKFLOWS)),
+            include_rent=contract_capability_allowed(contract, "CAP_OPS_RENT", "read"),
+            include_maintenance=contract_capability_allowed(contract, "CAP_OPS_MAINTENANCE", "read"),
             include_tenant_portal=tenant_allowed,
         )
         body["feature_gates"] = {
             "tenant_portal": tenant_allowed,
-            "rent_operations": bool(flags.get(RENT_OPERATIONS)),
-            "maintenance_workflows": bool(flags.get(MAINTENANCE_WORKFLOWS)),
+            "rent_operations": contract_capability_allowed(contract, "CAP_OPS_RENT", "read"),
+            "maintenance_workflows": contract_capability_allowed(contract, "CAP_OPS_MAINTENANCE", "read"),
         }
         return body
     except ValueError as e:
@@ -2079,70 +2077,57 @@ async def get_client_entitlements(request: Request):
     user = await _require_capability_from_request(request, "CAP_PROFILE_VIEW", "read")
     try:
         from services.plan_registry import plan_registry
-        from services.ops_compliance_feature_flags import (
-            get_effective_flags,
-            MAINTENANCE_WORKFLOWS,
-            PREDICTIVE_MAINTENANCE,
-            CONTRACTOR_NETWORK,
-            INVOICING,
-            COMPLIANCE_ENGINE,
-            RENT_OPERATIONS,
-        )
+        from services.capability_compatibility import contract_feature_enabled
 
+        contract = user.get("runtime_contract")
         entitlements = await plan_registry.get_client_entitlements(user["client_id"])
-        flags = await get_effective_flags(user["client_id"])
         features = entitlements.get("features") or {}
-        # Plan-based defaults + admin overrides (single source of truth for client menu)
-        features["maintenance_workflows"] = {
-            "enabled": bool(flags.get(MAINTENANCE_WORKFLOWS)),
-            "name": "Maintenance Workflows",
-            "description": "Report and track work orders; tenants can report repairs.",
-            "category": "ops",
-            "minimum_plan": None,
+        ops_feature_meta = {
+            "maintenance_workflows": {
+                "name": "Maintenance Workflows",
+                "description": "Report and track work orders; tenants can report repairs.",
+                "category": "ops",
+            },
+            "predictive_maintenance": {
+                "name": "Predictive Maintenance",
+                "description": "View predictive insights for property assets and maintenance.",
+                "category": "ops",
+            },
+            "contractor_network": {
+                "name": "Contractor Network",
+                "description": "View vetted contractors and preferred trades for your account.",
+                "category": "ops",
+            },
+            "invoicing": {
+                "name": "Billing & Invoicing",
+                "description": "View billing history and invoices.",
+                "category": "ops",
+            },
+            "compliance_engine": {
+                "name": "Compliance execution",
+                "description": (
+                    "Create compliance work orders for inspections, renewals, and certifications; "
+                    "request contractor confirmation and track status. You arrange inspections with your "
+                    "contractors — Pleerity does not book third-party appointments or run a marketplace "
+                    "scheduling service."
+                ),
+                "category": "compliance",
+            },
+            "rent_operations": {
+                "name": "Rent Operations",
+                "description": (
+                    "Track expected rent, record payments, monitor arrears, and log property expenses. "
+                    "Operational visibility only — not accounting, tax, or bookkeeping software."
+                ),
+                "category": "ops",
+            },
         }
-        features["predictive_maintenance"] = {
-            "enabled": bool(flags.get(PREDICTIVE_MAINTENANCE)),
-            "name": "Predictive Maintenance",
-            "description": "View predictive insights for property assets and maintenance.",
-            "category": "ops",
-            "minimum_plan": None,
-        }
-        features["contractor_network"] = {
-            "enabled": bool(flags.get(CONTRACTOR_NETWORK)),
-            "name": "Contractor Network",
-            "description": "View vetted contractors and preferred trades for your account.",
-            "category": "ops",
-            "minimum_plan": None,
-        }
-        features["invoicing"] = {
-            "enabled": bool(flags.get(INVOICING)),
-            "name": "Billing & Invoicing",
-            "description": "View billing history and invoices.",
-            "category": "ops",
-            "minimum_plan": None,
-        }
-        features["compliance_engine"] = {
-            "enabled": bool(flags.get(COMPLIANCE_ENGINE)),
-            "name": "Compliance execution",
-            "description": (
-                "Create compliance work orders for inspections, renewals, and certifications; "
-                "request contractor confirmation and track status. You arrange inspections with your "
-                "contractors — Pleerity does not book third-party appointments or run a marketplace "
-                "scheduling service."
-            ),
-            "category": "compliance",
-            "minimum_plan": None,
-        }
-        features["rent_operations"] = {
-            "enabled": bool(flags.get(RENT_OPERATIONS)),
-            "name": "Rent Operations",
-            "description": (
-                "Track expected rent, record payments, monitor arrears, and log property expenses. "
-                "Operational visibility only — not accounting, tax, or bookkeeping software."
-            ),
-            "category": "ops",
-            "minimum_plan": None,
-        }
+        for feature_key, meta in ops_feature_meta.items():
+            features[feature_key] = {
+                **meta,
+                "enabled": contract_feature_enabled(contract, feature_key, "read"),
+                "minimum_plan": None,
+            }
         entitlements["features"] = features
         enabled_count = sum(1 for f in features.values() if f.get("enabled"))
         entitlements["feature_summary"] = {
@@ -3223,7 +3208,7 @@ async def get_branding_settings(
         client_id = user["client_id"]
 
         wl_decision = await CapabilityEnforcementService(db).evaluate(
-            client_id, "CAP_BRANDING_WHITE_LABEL", "read"
+            client_id, "CAP_BRANDING_WHITE_LABEL", "read", contract=user.get("runtime_contract")
         )
         allowed = wl_decision.allowed
         error_msg = None if allowed else wl_decision.reason

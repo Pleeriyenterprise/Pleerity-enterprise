@@ -7,7 +7,7 @@ ILP-7: HTTP denial payloads delegate to Lifecycle Response Authority.
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from typing import Any, Callable, Mapping
 
 from fastapi import Depends, HTTPException, Request
 
@@ -29,6 +29,80 @@ logger = logging.getLogger(__name__)
 
 def _owner_bypass(user: dict) -> bool:
     return user.get("role") == "ROLE_OWNER"
+
+
+def attached_runtime_contract(request: Request | None, user: dict):
+    """Request-scoped Runtime Contract from session validation (single authority per request)."""
+    if request is not None:
+        contract = getattr(request.state, "runtime_contract", None)
+        if contract:
+            return contract
+    return user.get("runtime_contract")
+
+
+def contract_capability_allowed(
+    contract: Mapping[str, Any] | None,
+    capability_id: str,
+    action: CapabilityAction = "read",
+) -> bool:
+    """Synchronous CAP_* check from attached Runtime Contract (no DB reload)."""
+    if not contract:
+        return False
+    return CapabilityEnforcementService(None).evaluate_from_contract(
+        contract, capability_id, action
+    ).allowed
+
+
+async def enforce_route_capability(
+    user: dict,
+    capability_id: str,
+    action: CapabilityAction = "write",
+    *,
+    request: Request | None = None,
+) -> CapabilityDecision:
+    """
+    Route-local CAP_* evaluation using the attached Runtime Contract when present.
+    Avoids duplicate contract resolution that can diverge from session validation.
+    """
+    if _owner_bypass(user):
+        return CapabilityDecision(
+            capability_id=capability_id,
+            action=action,
+            grant="ALLOW",
+            effective_semantic="ALLOW",
+            allowed=True,
+            source="owner_bypass",
+            reason_code="allowed",
+            reason="ROLE_OWNER bypass",
+        )
+
+    client_id = user.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=403, detail="Client context required")
+
+    contract = attached_runtime_contract(request, user)
+    service = CapabilityEnforcementService(database.get_db())
+    decision = await service.evaluate(
+        client_id,
+        capability_id,
+        action,
+        contract=contract,
+    )
+    if not decision.allowed:
+        log_lifecycle_response_generated(
+            client_id=client_id,
+            route=str(request.url.path) if request else None,
+            capability=capability_id,
+            grant=decision.grant,
+            lifecycle_state=decision.lifecycle_state,
+            response_type="capability_denied",
+            runtime_version=decision.runtime_version,
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=capability_denied_http_detail(decision, contract=contract),
+        )
+    return decision
 
 
 def capability_denied_handler(exc: CapabilityDeniedError) -> dict:

@@ -247,7 +247,13 @@ class CapabilityEnforcementService:
         try:
             resolved = contract or await self.load_contract(client_id)
         except Exception as exc:
-            logger.warning("capability enforcement contract load failed client_id=%s: %s", client_id, exc)
+            logger.warning(
+                "capability enforcement contract load failed client_id=%s: %s: %s",
+                client_id,
+                type(exc).__name__,
+                exc,
+                exc_info=True,
+            )
             return CapabilityDecision(
                 capability_id=capability_id,
                 action=action,

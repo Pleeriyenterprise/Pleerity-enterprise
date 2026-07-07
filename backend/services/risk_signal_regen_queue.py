@@ -194,7 +194,6 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
         OUTCOME_FAILED,
         OUTCOME_SUCCESS,
     )
-    from services.ops_compliance_feature_flags import get_effective_flags, PREDICTIVE_MAINTENANCE
     from services.operational_automation_service import evaluate_operational_automation_after_risk_refresh
     from models import AuditAction
     from utils.audit import create_audit_log
@@ -285,13 +284,9 @@ async def run_risk_signal_regen_worker(batch_limit: int = 15) -> Dict[str, Any]:
                 else:
                     skipped_feature_flag_count += 1
                 continue
-            client_doc = await db.clients.find_one(
-                {"client_id": client_id},
-                {"_id": 0, "billing_plan": 1},
-            )
-            billing = (client_doc or {}).get("billing_plan")
-            flags = await get_effective_flags(client_id, billing)
-            if not flags.get(PREDICTIVE_MAINTENANCE):
+            from services.capability_compatibility import feature_enabled_for_client
+
+            if not await feature_enabled_for_client(db, client_id, "predictive_maintenance", "read"):
                 await db.risk_signal_regen_queue.delete_one({"_id": jid})
                 logger.info(
                     "risk_regen_worker skip (no PREDICTIVE_MAINTENANCE) property_id=%s",

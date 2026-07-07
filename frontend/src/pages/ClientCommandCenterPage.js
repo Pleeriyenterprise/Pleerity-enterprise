@@ -7,6 +7,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { clientAPI, parseApiError } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useCommandCentreCapabilities, getCapabilityDeniedMessage, isCapabilityDeniedApiError } from '../utils/operationalCapabilityAccess';
+import { InPageCapabilityGate } from '../components/lifecycle/InPageCapabilityGate';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
@@ -582,6 +583,17 @@ export default function ClientCommandCenterPage() {
           </AlertDescription>
         </Alert>
       </div>
+    );
+  }
+
+  if (!canViewCommandCentre) {
+    return (
+      <InPageCapabilityGate
+        allowed={false}
+        presentationFeature="compliance_dashboard"
+        capabilityId="CAP_CMD_CTR_VIEW"
+        testId="command-center-capability-denied"
+      />
     );
   }
 

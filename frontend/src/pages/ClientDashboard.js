@@ -39,6 +39,7 @@ import {
   PortalPageWithLifecyclePresentation,
 } from '../components/client/ClientPortalPatterns';
 import PortalLoadingState from '../components/loading/PortalLoadingState';
+import { InPageCapabilityGate } from '../components/lifecycle/InPageCapabilityGate';
 import LifecycleKpiAttentionStrip from '../components/dashboard/LifecycleKpiAttentionStrip';
 import PortalCardLoading from '../components/loading/PortalCardLoading';
 import { dashboardLoadingStages } from '../components/loading/portalLoadingStageModels';
@@ -1196,6 +1197,17 @@ const ClientDashboard = () => {
     [valueInsights, showPlanComparisonStrip],
   );
 
+
+  if (isClientUser && !canViewDashboard) {
+    return (
+      <InPageCapabilityGate
+        allowed={false}
+        presentationFeature="compliance_dashboard"
+        capabilityId="CAP_DASHBOARD_VIEW"
+        testId="dashboard-capability-denied"
+      />
+    );
+  }
 
   if (loading && !data) {
     return (

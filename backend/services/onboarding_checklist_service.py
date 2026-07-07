@@ -41,8 +41,9 @@ async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]
         return []
 
     plan = client.get("billing_plan") or "PLAN_1_SOLO"
-    from services.ops_compliance_feature_flags import get_effective_flags
-    flags = await get_effective_flags(client_id, plan)
+    from services.capability_compatibility import feature_enabled_for_client
+
+    maintenance_on = await feature_enabled_for_client(db, client_id, "maintenance_workflows", "read")
     existing = (client.get("onboarding_checklist") or {}).get("items") or []
     completed_map = {item["id"]: item.get("completed_at") for item in existing if item.get("id")}
 
@@ -94,8 +95,8 @@ async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]
             "completed_at": completed_map.get(ITEM_INVITE_TEAM),
         })
 
-    # If compliance flags on: first evidence or compliance job
-    if flags.get("COMPLIANCE_ENGINE") or flags.get("COMPLIANCE_PACKS"):
+    compliance_on = await feature_enabled_for_client(db, client_id, "compliance_engine", "read")
+    if compliance_on:
         items.append({
             "id": ITEM_UPLOAD_OR_COMPLIANCE_ACTION,
             "label": "Upload your first document or start a compliance / maintenance job",
@@ -105,7 +106,7 @@ async def get_checklist_items_for_client(client_id: str) -> List[Dict[str, Any]]
         })
 
     # If maintenance available: Enable maintenance workflows
-    if flags.get("MAINTENANCE_WORKFLOWS"):
+    if maintenance_on:
         items.append({
             "id": ITEM_ENABLE_MAINTENANCE,
             "label": "Enable maintenance workflows",

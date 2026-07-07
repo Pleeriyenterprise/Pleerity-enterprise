@@ -3,7 +3,7 @@ import logging
 from typing import Any, Dict, Optional
 
 from database import database
-from services.ops_compliance_feature_flags import get_effective_flags, RENT_OPERATIONS
+from services.capability_compatibility import feature_enabled_for_client
 from services import rent_ledger_service
 from services import rent_reminder_service
 from services import rent_operations_risk_hooks
@@ -19,9 +19,8 @@ logger = logging.getLogger(__name__)
 
 async def run_rent_operations_daily_for_client(client_id: str) -> Dict[str, Any]:
     db = database.get_db()
-    flags = await get_effective_flags(client_id)
-    if not flags.get(RENT_OPERATIONS):
-        return {"skipped": True, "reason": "RENT_OPERATIONS disabled"}
+    if not await feature_enabled_for_client(db, client_id, "rent_operations", "read"):
+        return {"skipped": True, "reason": "rent_operations not granted by runtime contract"}
 
     recalc_result = await rent_ledger_service.recalculate_all_active_ledgers(
         client_id, write_audit=False

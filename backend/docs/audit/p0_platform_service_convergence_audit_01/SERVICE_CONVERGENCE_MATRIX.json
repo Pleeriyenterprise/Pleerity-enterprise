@@ -1,0 +1,210 @@
+{
+  "audit_id": "P0-PLATFORM-SERVICE-CONVERGENCE-AUDIT-01",
+  "generated_at": "2026-07-07T19:00:00Z",
+  "branch": "develop",
+  "authority_model": "runtime_contract_single_source",
+  "verdict": "PLATFORM_SERVICE_CONVERGENCE_IN_PROGRESS",
+  "remediation_applied": [
+    {
+      "id": "FIX-01",
+      "description": "Added enforce_route_capability helper; all route-local _enforce_capability helpers now evaluate from attached request-scoped Runtime Contract",
+      "files": [
+        "middleware/capability_gating.py",
+        "routes/calendar.py",
+        "routes/assistant.py",
+        "routes/api_compliance_workflow.py",
+        "routes/client_compliance_execution.py",
+        "routes/client_approvals.py",
+        "routes/client_rent_operations.py",
+        "routes/client_maintenance.py",
+        "routes/profile.py",
+        "routes/client.py"
+      ]
+    }
+  ],
+  "services": {
+    "Today": {
+      "frontend_route": "/today",
+      "primary_routes": ["GET /api/today/items", "POST /api/today/items/{id}/*", "GET /api/client/tasks", "GET /api/client/priorities"],
+      "capabilities": ["CAP_TODAY_VIEW", "CAP_TODAY_ACT"],
+      "service_layer": ["today_projection_service.py", "unified_tasks_service.py", "client_task_state_service.py"],
+      "database": ["requirements", "work_orders", "maintenance_issues", "client_task_state", "properties"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": ["get_effective_flags on /client/priority-actions for predictive blocks"],
+      "first_failure_layers": []
+    },
+    "Dashboard": {
+      "frontend_route": "/dashboard",
+      "primary_routes": ["GET /api/client/dashboard", "GET /api/client/compliance-score", "GET /api/client/portal-context"],
+      "capabilities": ["CAP_DASHBOARD_VIEW", "CAP_SCORE_VIEW", "CAP_SCORE_TREND", "CAP_COMPLIANCE_ACTIVITY"],
+      "service_layer": ["compliance_scoring_service.py", "requirement_client_runtime_surface.py"],
+      "database": ["clients", "properties", "requirements", "compliance_score_snapshots"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": ["/client/entitlements (plan_registry)", "plan_registry.enforce_property_limit", "get_effective_flags in dashboard blocks"],
+      "first_failure_layers": []
+    },
+    "Command Center": {
+      "frontend_route": "/command-center",
+      "primary_routes": ["GET /api/client/command-center", "GET /api/client/protection-snapshot"],
+      "capabilities": ["CAP_CMD_CTR_VIEW"],
+      "service_layer": ["command_center_service.py", "unified_tasks_service.py"],
+      "database": ["maintenance_issues", "work_orders", "risk_signals", "requirements", "properties"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": ["get_effective_flags for rent/predictive section inclusion in command_center_service"],
+      "first_failure_layers": []
+    },
+    "Properties": {
+      "frontend_route": "/properties",
+      "primary_routes": ["GET /api/client/properties", "GET /api/properties/list", "POST /api/properties/create"],
+      "capabilities": ["CAP_PROP_VIEW", "CAP_PROP_CREATE", "CAP_PROP_EDIT", "CAP_PROP_IMPORT"],
+      "service_layer": ["properties routes inline", "plan_registry", "compliance_rules_registry"],
+      "database": ["properties", "clients", "requirements"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": ["plan_registry.enforce_property_limit on create/import"],
+      "first_failure_layers": []
+    },
+    "Requirements": {
+      "frontend_route": "/requirements",
+      "primary_routes": ["GET /api/client/requirements", "GET /api/properties/{id}/requirements", "PATCH requirement APIs"],
+      "capabilities": ["CAP_REQ_VIEW", "CAP_REQ_RESOLVE", "CAP_REQ_MARK_N_A"],
+      "service_layer": ["requirement_client_runtime_surface.py", "compliance_workflow_service.py"],
+      "database": ["requirements", "properties", "documents"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": [],
+      "first_failure_layers": []
+    },
+    "Documents": {
+      "frontend_route": "/documents",
+      "primary_routes": ["GET /api/documents", "POST /api/documents/upload", "GET /api/client/documents"],
+      "capabilities": ["CAP_DOC_VIEW", "CAP_DOC_UPLOAD", "CAP_DOC_BULK_ZIP", "CAP_AI_EXTRACTION_ADVANCED"],
+      "service_layer": ["documents.py upload pipeline", "requirement_evidence_authority.py"],
+      "database": ["documents", "extracted_documents", "requirements"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": [],
+      "first_failure_layers": []
+    },
+    "Jobs": {
+      "frontend_route": "/operations/work-orders",
+      "primary_routes": ["GET /api/jobs/{id}/*", "GET /api/client/maintenance/work-orders", "GET /api/client/compliance-execution/work-orders/*"],
+      "capabilities": ["CAP_OPS_MAINTENANCE", "CAP_OPS_COMPLIANCE_REVIEW", "CAP_OPS_CONTRACTORS"],
+      "service_layer": ["compliance_workflow_service.py", "maintenance_service.py"],
+      "database": ["work_orders", "requirements", "contractors"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": [],
+      "first_failure_layers": []
+    },
+    "Issues": {
+      "frontend_route": "/operations/issues",
+      "primary_routes": ["GET /api/client/maintenance/issues", "POST /api/client/maintenance/issues"],
+      "capabilities": ["CAP_OPS_MAINTENANCE"],
+      "service_layer": ["maintenance_issues_service.py", "operational_cognition_service.py"],
+      "database": ["maintenance_issues", "properties", "work_orders"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": ["get_effective_flags in one maintenance issue path (response shaping)"],
+      "first_failure_layers": []
+    },
+    "Calendar": {
+      "frontend_route": "/calendar",
+      "primary_routes": ["GET /api/calendar/events", "GET /api/calendar/upcoming", "GET /api/calendar/export.ics"],
+      "capabilities": ["CAP_CALENDAR_VIEW"],
+      "service_layer": ["client_calendar_timeline_service.py"],
+      "database": ["requirements", "work_orders", "properties"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": [],
+      "first_failure_layers": ["FIX-01: route _enforce_capability was re-resolving contract"]
+    },
+    "Notifications": {
+      "frontend_route": "/settings/notifications (header bell)",
+      "primary_routes": ["GET /api/profile/in-app-notifications", "GET/PUT /api/profile/notifications"],
+      "capabilities": ["CAP_PROFILE_VIEW", "CAP_PROFILE_EDIT", "CAP_NOTIF_SMS"],
+      "service_layer": ["order_service.py", "admin_communications_service.py"],
+      "database": ["in_app_notifications", "notification_preferences", "portal_users"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": ["system-banners use require_auth only (incident visibility)"],
+      "first_failure_layers": []
+    },
+    "Analytics": {
+      "frontend_route": "embedded in /reports",
+      "primary_routes": ["GET /api/client/analytics/summary", "POST /api/client/analytics/events"],
+      "capabilities": ["CAP_COMPLIANCE_ACTIVITY"],
+      "service_layer": ["product_analytics_service.py"],
+      "database": ["product_analytics_events"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": [],
+      "first_failure_layers": []
+    },
+    "Reports": {
+      "frontend_route": "/reports",
+      "primary_routes": ["GET /api/reports", "POST /api/reports/generate", "GET /api/portal/digests"],
+      "capabilities": ["CAP_REPORT_VIEW", "CAP_REPORT_GENERATE_PDF", "CAP_REPORT_DOWNLOAD", "CAP_REPORT_SCHEDULE"],
+      "service_layer": ["reporting_service.py", "report_service.py", "pdf_report_builder.py"],
+      "database": ["reports", "report_schedules", "audit_logs"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": [],
+      "first_failure_layers": []
+    },
+    "Billing": {
+      "frontend_route": "/settings/billing",
+      "primary_routes": ["GET /api/billing/status", "POST /api/billing/checkout", "GET /api/billing/invoices"],
+      "capabilities": ["CAP_BILLING_VIEW", "CAP_BILLING_CHECKOUT", "CAP_SUB_MANAGE", "CAP_SUB_CANCEL"],
+      "service_layer": ["stripe_service.py", "plan_registry.py"],
+      "database": ["clients", "client_billing"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": ["/client/entitlements legacy read path for upgrade copy"],
+      "first_failure_layers": []
+    },
+    "Profile": {
+      "frontend_route": "/settings/profile",
+      "primary_routes": ["GET /api/profile/me", "PATCH /api/profile/me", "GET /api/client/lifecycle-runtime"],
+      "capabilities": ["CAP_PROFILE_VIEW", "CAP_PROFILE_EDIT"],
+      "service_layer": ["account_session_runtime_service.py", "account_lifecycle_runtime_contract.py"],
+      "database": ["portal_users", "clients", "notification_preferences"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": [],
+      "first_failure_layers": []
+    },
+    "Automation": {
+      "frontend_route": "/integrations (client)",
+      "primary_routes": ["GET /api/webhooks/*", "GET /api/client/integrations/read-api-keys"],
+      "capabilities": ["CAP_INTEGRATION_WEBHOOKS", "CAP_INTEGRATION_READ_API", "CAP_EXPORT_API"],
+      "service_layer": ["webhooks", "client_read_api_service.py"],
+      "database": ["webhooks", "client_read_api_keys"],
+      "authority_source": "runtime_contract",
+      "legacy_overlays": [],
+      "first_failure_layers": []
+    },
+    "Discovery": {
+      "frontend_route": "admin-only",
+      "primary_routes": [],
+      "capabilities": [],
+      "service_layer": [],
+      "database": [],
+      "authority_source": "n/a",
+      "legacy_overlays": ["admin discovery module feature flag"],
+      "first_failure_layers": []
+    }
+  },
+  "remaining_divergence": [
+    {
+      "id": "DIV-01",
+      "layer": "service_response_shaping",
+      "description": "command_center_service and client.py use get_effective_flags (client_feature_flags + plan defaults) to include/exclude rent and predictive sections",
+      "impact": "May produce false-empty sections when CAP_OPS_* grants access but flags deny",
+      "recommendation": "Derive section inclusion from Runtime Contract capabilities in a follow-up PR"
+    },
+    {
+      "id": "DIV-02",
+      "layer": "plan_limits",
+      "description": "plan_registry.enforce_property_limit on property create/import",
+      "impact": "Legitimate plan quota enforcement parallel to CAP_PROP_CREATE",
+      "recommendation": "Document as quota layer; ensure 403 messages reference contract not legacy entitlement"
+    },
+    {
+      "id": "DIV-03",
+      "layer": "frontend_soft_deny",
+      "description": "Today/Dashboard/Command Center skip API fetch when read cap false but render empty chrome",
+      "impact": "Can resemble empty business state rather than explicit denial",
+      "recommendation": "Surface governed denial banner when runtimeAvailable and !canView*"
+    }
+  ]
+}

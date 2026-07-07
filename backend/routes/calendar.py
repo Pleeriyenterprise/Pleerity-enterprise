@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request, status, Query
 from fastapi.responses import JSONResponse, Response
 from database import database
 from middleware import client_route_guard
-from middleware.capability_gating import capability_denied_http_detail
+from middleware.capability_gating import capability_denied_http_detail, enforce_route_capability
 from services.account_capability_enforcement import CapabilityEnforcementService
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, Optional
@@ -34,22 +34,19 @@ _FILTER_ALIASES = {
 }
 
 
-async def _enforce_capability(user: Dict[str, Any], capability_id: str, action: str) -> None:
-    if user.get("role") == "ROLE_OWNER":
-        return
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
-        client_id, capability_id, action
-    )
-    if not decision.allowed:
-        raise HTTPException(status_code=403, detail=capability_denied_http_detail(decision))
+async def _enforce_capability(
+    user: Dict[str, Any],
+    capability_id: str,
+    action: str,
+    *,
+    request: Request | None = None,
+) -> None:
+    await enforce_route_capability(user, capability_id, action, request=request)
 
 
 async def _require_calendar_view(request: Request) -> Dict[str, Any]:
     user = await client_route_guard(request)
-    await _enforce_capability(user, "CAP_CALENDAR_VIEW", "read")
+    await _enforce_capability(user, "CAP_CALENDAR_VIEW", "read", request=request)
     return user
 
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Request, status, File, UploadFile,
 from fastapi.responses import FileResponse
 from database import database
 from middleware import client_route_guard, require_auth
-from middleware.capability_gating import assert_client_capability, capability_denied_http_detail
+from middleware.capability_gating import assert_client_capability, capability_denied_http_detail, enforce_route_capability
 from services.account_capability_enforcement import CapabilityEnforcementService
 from services import admin_communications_service as acs
 from models import AuditAction, UserRole
@@ -30,22 +30,7 @@ AVATAR_ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 
 async def _enforce_capability(user: Dict[str, Any], capability_id: str, action: str) -> None:
-    if user.get("role") == "ROLE_OWNER":
-        return
-    client_id = user.get("client_id")
-    if not client_id:
-        raise HTTPException(status_code=403, detail="Client context required")
-    decision = await CapabilityEnforcementService(database.get_db()).evaluate(
-        client_id,
-        capability_id,
-        action,
-        contract=user.get("runtime_contract"),
-    )
-    if not decision.allowed:
-        raise HTTPException(
-            status_code=403,
-            detail=capability_denied_http_detail(decision, contract=user.get("runtime_contract")),
-        )
+    await enforce_route_capability(user, capability_id, action)
 
 
 async def _require_profile_view(request: Request) -> Dict[str, Any]:

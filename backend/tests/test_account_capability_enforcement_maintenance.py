@@ -151,7 +151,7 @@ class TestMaintenanceSourceGovernance:
         assert "CAP_OPS_MAINTENANCE" in block
         assert "CAP_OPS_PREDICTIVE" in block
         assert "CAP_OPS_CONTRACTORS" in block
-        assert block.count("get_effective_flags(") == 1
+        assert block.count("get_effective_flags(") == 0
         assert "COMPLIANCE_ENGINE" in block
 
     def test_client_contractor_routes_use_capabilities(self):

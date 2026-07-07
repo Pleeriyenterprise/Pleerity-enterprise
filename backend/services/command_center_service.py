@@ -447,6 +447,7 @@ async def _load_urgent_slice_from_priority_stream(
     portal_user_id: Optional[str],
     display_cap: int = 12,
     profile: Optional[Dict[str, Any]] = None,
+    rent_enabled: bool = False,
 ) -> Dict[str, Any]:
     from services.client_priority_stream import fetch_client_priority_actions_primary
     from services.unified_tasks_service import _freshness_block, _load_property_labels
@@ -524,14 +525,12 @@ async def _load_urgent_slice_from_priority_stream(
     urgent_open_total = len(actions)
     slim_rows = [_priority_action_to_slim_urgent(a, property_labels) for a in actions[:display_cap]]
     try:
-        from services.ops_compliance_feature_flags import RENT_OPERATIONS, get_effective_flags
         from services.rent_attention_projection import (
             append_rent_to_command_center_urgent,
             list_rent_attention_tasks,
         )
 
-        flags = await get_effective_flags(client_id)
-        if flags.get(RENT_OPERATIONS):
+        if rent_enabled:
             rent_tasks = await list_rent_attention_tasks(
                 client_id,
                 property_id_filter=property_id_filter,
@@ -680,6 +679,7 @@ async def get_command_center_primary_bundle(
     client_id: str,
     *,
     predictive_enabled: bool,
+    rent_enabled: bool = False,
     property_id_filter: Optional[str] = None,
     portal_user_id: Optional[str] = None,
     correlation_id: Optional[str] = None,
@@ -719,6 +719,7 @@ async def get_command_center_primary_bundle(
                     property_id_filter=property_id_filter,
                     portal_user_id=portal_user_id,
                     profile=profile,
+                    rent_enabled=rent_enabled,
                 ),
                 _primary_compliance_status_summary(
                     client_id, property_id_filter=property_id_filter, profile=profile
@@ -949,6 +950,7 @@ async def get_command_center_bundle(
     client_id: str,
     *,
     predictive_enabled: bool,
+    rent_enabled: bool = False,
     property_id_filter: Optional[str] = None,
     portal_user_id: Optional[str] = None,
     correlation_id: Optional[str] = None,
@@ -1010,14 +1012,12 @@ async def get_command_center_bundle(
         for t in (urgent[:10] + in_prog[:6]):
             urgent_actions.append(_slim_task(t))
         try:
-            from services.ops_compliance_feature_flags import RENT_OPERATIONS, get_effective_flags
             from services.rent_attention_projection import (
                 append_rent_to_command_center_urgent,
                 list_rent_attention_tasks,
             )
 
-            flags = await get_effective_flags(client_id)
-            if flags.get(RENT_OPERATIONS):
+            if rent_enabled:
                 rent_tasks = await list_rent_attention_tasks(
                     client_id,
                     property_id_filter=property_id_filter,

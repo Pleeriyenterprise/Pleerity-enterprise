@@ -42,11 +42,7 @@ async def test_list_rent_attention_tasks_when_flag_on():
         )
     )
     mock_db.rent_ledger_periods = periods
-    with patch(
-        "services.rent_attention_projection.get_effective_flags",
-        new_callable=AsyncMock,
-        return_value={"RENT_OPERATIONS": True},
-    ), patch("services.rent_attention_projection.database.get_db", return_value=mock_db):
+    with patch("services.rent_attention_projection.database.get_db", return_value=mock_db):
         tasks = await list_rent_attention_tasks("c1")
     assert len(tasks) == 1
     assert tasks[0]["id"] == "rent_ledger_rlp_1"
