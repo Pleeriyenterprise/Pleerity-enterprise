@@ -1,0 +1,245 @@
+{
+  "generated_at": "2026-07-07T20:43:15Z",
+  "comparison": {
+    "CAP_DASHBOARD_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_PROP_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_PROP_CREATE": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_REQ_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_REQ_RESOLVE": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_DOC_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_DOC_UPLOAD": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_SCORE_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_REPORT_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_REPORT_GENERATE_PDF": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_REPORT_GENERATE_CSV": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_REPORT_DOWNLOAD": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_REPORT_SCHEDULE": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_REPORT_AUDIT_PACK": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_OPS_MAINTENANCE": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_OPS_ISSUES_VIEW": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_OPS_CONTRACTORS": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_OPS_APPROVALS": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_OPS_PREDICTIVE": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_RISK_VIEW": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_OPS_RENT": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_OPS_COMPLIANCE_REVIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_INTEGRATION_WEBHOOKS": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_INTEGRATION_READ_API": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_EXPORT_API": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_DOC_BULK_ZIP": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_AI_EXTRACTION_ADVANCED": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_AI_ASSISTANT": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_CALENDAR_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_TENANT_PORTAL": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_TENANT_MANAGE": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_TENANT_MESSAGES": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_BRANDING_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_BRANDING_EDIT": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_BRANDING_WHITE_LABEL": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "DENY",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_BILLING_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_BILLING_INVOICES": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_BILLING_PAYMENT_METHODS": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_BILLING_CHECKOUT": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_SUB_MANAGE": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_SUB_CANCEL": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_SUPPORT_ACCESS": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_SUPPORT_REQUEST": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_KNOWLEDGE_CENTRE": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_PROFILE_VIEW": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_PROFILE_EDIT": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_PROFILE_JURISDICTION": {
+      "PLAN_1_SOLO": "ALLOW",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    },
+    "CAP_NOTIF_SMS": {
+      "PLAN_1_SOLO": "DENY",
+      "PLAN_2_PORTFOLIO": "ALLOW",
+      "PLAN_3_PRO": "ALLOW"
+    }
+  }
+}

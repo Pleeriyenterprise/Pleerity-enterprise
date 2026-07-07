@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-07-07T20:43:15Z",
+  "aliases": [
+    {
+      "alias": "PLAN_1",
+      "kind": "legacy",
+      "resolves_to": "PLAN_1_SOLO",
+      "canonical": "PLAN_1_SOLO",
+      "correct": true
+    },
+    {
+      "alias": "PLAN_2_5",
+      "kind": "legacy",
+      "resolves_to": "PLAN_2_PORTFOLIO",
+      "canonical": "PLAN_2_PORTFOLIO",
+      "correct": true
+    },
+    {
+      "alias": "PLAN_6_15",
+      "kind": "legacy",
+      "resolves_to": "PLAN_3_PRO",
+      "canonical": "PLAN_3_PRO",
+      "correct": true
+    },
+    {
+      "alias": "SOLO",
+      "kind": "display",
+      "resolves_to": "PLAN_1_SOLO",
+      "canonical": "PLAN_1_SOLO",
+      "correct": true
+    },
+    {
+      "alias": "STARTER",
+      "kind": "display",
+      "resolves_to": "PLAN_1_SOLO",
+      "canonical": "PLAN_1_SOLO",
+      "correct": true
+    },
+    {
+      "alias": "PORTFOLIO",
+      "kind": "display",
+      "resolves_to": "PLAN_2_PORTFOLIO",
+      "canonical": "PLAN_2_PORTFOLIO",
+      "correct": true
+    },
+    {
+      "alias": "PROFESSIONAL",
+      "kind": "display",
+      "resolves_to": "PLAN_3_PRO",
+      "canonical": "PLAN_3_PRO",
+      "correct": true
+    },
+    {
+      "alias": "PRO",
+      "kind": "display",
+      "resolves_to": "PLAN_3_PRO",
+      "canonical": "PLAN_3_PRO",
+      "correct": true
+    }
+  ]
+}
