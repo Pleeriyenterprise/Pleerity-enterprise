@@ -1,0 +1,83 @@
+{
+  "programme": "P0-STAGING-RENT-PAYMENT-IDEMPOTENCY-INDEX-REMEDIATION-01",
+  "audited_at": "2026-07-07T21:43:34Z",
+  "database": "pleerity_staging",
+  "collection": "rent_payments",
+  "index_target": {
+    "name": "client_id_1_idempotency_key_1",
+    "keys": [["client_id", 1], ["idempotency_key", 1]],
+    "unique": true,
+    "partialFilterExpression": {"idempotency_key": {"$type": "string"}}
+  },
+  "summary": {
+    "duplicate_group_count": 5,
+    "exact_duplicate_groups": 5,
+    "conflicting_duplicate_groups": 0,
+    "total_duplicate_documents_removed": 5,
+    "affected_client_ids": ["6fd5ac4c-3fd4-4112-ade7-156977deb49f"],
+    "affected_ledger_ids": ["rlp_eaa80d462b1c"],
+    "source": "operations_resilience_and_concurrency_audit_01_execute.py — concurrent POST /client/operations/rent/ledgers/{ledger_id}/payments with shared idempotency_key (OPS-RESIL-* marker)"
+  },
+  "duplicate_groups": [
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T140714Z-rent-a6b22d27",
+      "classification": "exact_duplicate",
+      "canonical_payment_id": "rp_a392d611087b",
+      "removed_payment_id": "rp_4c47b5b3dc21",
+      "amount_minor": 500,
+      "ledger_id": "rlp_eaa80d462b1c",
+      "schedule_id": "rs_da9f62d77236",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "api_route": "POST /client/operations/rent/ledgers/{ledger_id}/payments"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T141423Z-rent-866d6db9",
+      "classification": "exact_duplicate",
+      "canonical_payment_id": "rp_040d58ca5ce3",
+      "removed_payment_id": "rp_03ae294c7732",
+      "amount_minor": 500,
+      "ledger_id": "rlp_eaa80d462b1c",
+      "schedule_id": "rs_da9f62d77236",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "api_route": "POST /client/operations/rent/ledgers/{ledger_id}/payments"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T143526Z-rent-4784a6f4",
+      "classification": "exact_duplicate",
+      "canonical_payment_id": "rp_48a83891c497",
+      "removed_payment_id": "rp_53b33b04c2e7",
+      "amount_minor": 500,
+      "ledger_id": "rlp_eaa80d462b1c",
+      "schedule_id": "rs_da9f62d77236",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "api_route": "POST /client/operations/rent/ledgers/{ledger_id}/payments"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T144203Z-rent-6509ef23",
+      "classification": "exact_duplicate",
+      "canonical_payment_id": "rp_596d9b8127c7",
+      "removed_payment_id": "rp_3cf51d088102",
+      "amount_minor": 500,
+      "ledger_id": "rlp_eaa80d462b1c",
+      "schedule_id": "rs_da9f62d77236",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "api_route": "POST /client/operations/rent/ledgers/{ledger_id}/payments"
+    },
+    {
+      "client_id": "6fd5ac4c-3fd4-4112-ade7-156977deb49f",
+      "idempotency_key": "OPS-RESIL-20260604T151348Z-rent-3d3de97a",
+      "classification": "exact_duplicate",
+      "canonical_payment_id": "rp_81c8a207662c",
+      "removed_payment_id": "rp_f36748ce1032",
+      "amount_minor": 500,
+      "ledger_id": "rlp_eaa80d462b1c",
+      "schedule_id": "rs_da9f62d77236",
+      "property_id": "d35a58ae-3c81-491c-9694-1d021dd3b8ad",
+      "api_route": "POST /client/operations/rent/ledgers/{ledger_id}/payments"
+    }
+  ]
+}
