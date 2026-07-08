@@ -15,8 +15,6 @@ from services.plan_registry import plan_registry, PlanCode, PriceConfigMissingEr
 from services.stripe_mode_containment_service import (
     StripeModeDriftError,
     record_stripe_mode_drift,
-    resolve_stripe_context,
-    validate_portal_billing_preflight,
 )
 from middleware import client_route_guard
 from middleware.capability_gating import assert_client_capability
@@ -202,20 +200,6 @@ async def create_billing_portal(request: Request):
     await assert_client_capability(user, "CAP_SUB_MANAGE", "write")
     await require_recent_step_up(request, user)
 
-    db = database.get_db()
-    
-    # Get billing record
-    billing = await db.client_billing.find_one(
-        {"client_id": client_id},
-        {"_id": 0}
-    )
-    
-    if not billing or not billing.get("stripe_customer_id"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No active subscription found"
-        )
-    
     # Get origin URL
     origin = request.headers.get("origin", "")
     if not origin:
@@ -224,23 +208,12 @@ async def create_billing_portal(request: Request):
         origin = f"{scheme}://{host}"
     
     try:
-        await resolve_stripe_context(
+        result = await stripe_service.create_billing_portal_session(
             client_id=client_id,
-            billing=billing,
-            operation="billing_portal",
-            legacy_caller="routes.billing.create_billing_portal",
-            require_preflight=True,
+            origin_url=origin,
+            runtime_contract=user.get("runtime_contract"),
         )
-        import stripe
-
-        portal_session = stripe.billing_portal.Session.create(
-            customer=billing.get("stripe_customer_id"),
-            return_url=f"{origin}/settings/billing",
-        )
-        
-        return {
-            "portal_url": portal_session.url,
-        }
+        return result
 
     except StripeModeDriftError as drift:
         await record_stripe_mode_drift(drift, actor_id=user.get("portal_user_id"), actor_role=user.get("role", "CLIENT"))
@@ -248,7 +221,11 @@ async def create_billing_portal(request: Request):
             status_code=status.HTTP_409_CONFLICT,
             detail=drift.to_customer_detail(),
         )
-        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except Exception as e:
         logger.error(f"Failed to create billing portal: {e}")
         raise HTTPException(

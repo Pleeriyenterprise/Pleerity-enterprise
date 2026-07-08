@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-07-08T16:31:45Z",
+  "accounts": [
+    {
+      "email": "lere@yopmail.com",
+      "lifecycle_state": "SUSPENDED",
+      "portal_mode": "SUSPENDED",
+      "billing_caps": {
+        "CAP_BILLING_VIEW": "ALLOW",
+        "CAP_BILLING_CHECKOUT": "ALLOW",
+        "CAP_BILLING_INVOICES": "ALLOW",
+        "CAP_BILLING_PAYMENT_METHODS": "ALLOW",
+        "CAP_SUB_VIEW": "ALLOW",
+        "CAP_SUB_MANAGE": "ALLOW",
+        "CAP_SUB_CANCEL": "ALLOW",
+        "CAP_SUB_RENEW": "ALLOW"
+      },
+      "step_up_status": 200,
+      "portal": {
+        "status": 409,
+        "body": "{\"detail\":{\"error_code\":\"STRIPE_CUSTOMER_MODE_DRIFT\",\"message\":\"Your billing record needs to be refreshed before plan changes can continue.\",\"recovery_action\":\"MODE_UNVERIFIED\"}}"
+      },
+      "checkout": {
+        "status": 200,
+        "body": "{\"checkout_url\":\"https://checkout.stripe.com/c/pay/cs_test_a1kTPzjoCOwpidAKwjhyxkq7VdoVZ6hdLapTv9qV1sTPkJfiklb1zVxdDA#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBo"
+      }
+    },
+    {
+      "email": "allison@yopmail.com",
+      "lifecycle_state": "CANCELLATION_SCHEDULED",
+      "portal_mode": "FULL_ACCESS",
+      "billing_caps": {
+        "CAP_BILLING_VIEW": "ALLOW",
+        "CAP_BILLING_CHECKOUT": "ALLOW",
+        "CAP_BILLING_INVOICES": "ALLOW",
+        "CAP_BILLING_PAYMENT_METHODS": "ALLOW",
+        "CAP_SUB_VIEW": "ALLOW",
+        "CAP_SUB_MANAGE": "ALLOW",
+        "CAP_SUB_CANCEL": "ALLOW",
+        "CAP_SUB_RENEW": "ALLOW"
+      },
+      "step_up_status": 200,
+      "portal": {
+        "status": 409,
+        "body": "{\"detail\":{\"error_code\":\"STRIPE_CUSTOMER_MODE_DRIFT\",\"message\":\"Your billing record needs to be refreshed before plan changes can continue.\",\"recovery_action\":\"MODE_UNVERIFIED\"}}"
+      },
+      "checkout": {
+        "status": 200,
+        "body": "{\"checkout_url\":\"https://checkout.stripe.com/c/pay/cs_test_a1eZhum39tT6yZl6pPENvri2dG7Knl6RefXKJ1sCxpOlHT2dklYV9CpmLD#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSd2cGd2ZndsdXFsamtQa2x0cGBrYHZ2QGtkZ2lgYSc%2FY2RpdmApJ2JwZGZkaGppYFNkd2xka3EnPydmamtxd2ppJyknZHVsTmB8Jz8ndW5acWB2cVowNFdrN19gRkM1SjBqdGFQfzc3d3Zsc2tWbVRuS3JzSX83RkloR0g9ZzNiT3A9UGFdMm5OY05ObF1gNjd1aFdMVFRAXEx8UzZtSmlEaE4wVlxmR0ZmS04wfTU1MDRIUTZpVTQnKSdjd2poVmB3c2B3Jz9xd3BgKSdnZGZuYndqcGthRmppancnPycmNWQ0ZDZmJyknaWR8anBxUXx1YCc%2FJ3Zsa2JpYFpscWBo"
+      }
+    }
+  ]
+}

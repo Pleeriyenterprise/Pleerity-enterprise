@@ -34,5 +34,7 @@ describe('BillingPage capability consumption', () => {
     expect(src).toMatch(/canManageSubscription/);
     expect(src).toMatch(/canCancelSubscription/);
     expect(src).toMatch(/isCapabilityDeniedApiError/);
+    expect(src).toMatch(/checkout_url/);
+    expect(src).toMatch(/recovery_guidance/);
   });
 });

@@ -534,6 +534,101 @@ class StripeService:
                     "Settings → Billing → Customer portal → Subscription plan changes."
                 )
             raise ValueError(f"Failed to create upgrade session: {err_msg}")
+
+    async def create_billing_portal_session(
+        self,
+        client_id: str,
+        origin_url: str,
+        *,
+        runtime_contract: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create Stripe Billing Portal session for payment-method / subscription management.
+
+        When portal preflight is blocked by governed Stripe mode drift (e.g. MODE_UNVERIFIED)
+        but Runtime Contract allows billing recovery checkout, falls back to deployment Checkout
+        for the client's current plan.
+        """
+        from services.billing_recovery_authorization import (
+            billing_recovery_write_allowed,
+            resolve_recovery_plan_code,
+        )
+        from services.stripe_mode_containment_service import (
+            PORTAL_DRIFT_RECOVERY_FALLBACK_ACTIONS,
+        )
+
+        db = database.get_db()
+        billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+
+        if not billing or not billing.get("stripe_customer_id"):
+            if not billing_recovery_write_allowed(runtime_contract):
+                raise ValueError("No active subscription found")
+            client = await db.clients.find_one(
+                {"client_id": client_id},
+                {"_id": 0, "email": 1, "contact_email": 1, "customer_reference": 1, "billing_plan": 1},
+            )
+            plan_code = resolve_recovery_plan_code(billing, client)
+            if not plan_code:
+                raise ValueError("No billing plan on file for recovery checkout")
+            customer_email = (client or {}).get("email") or (client or {}).get("contact_email")
+            result = await self.create_checkout_session(
+                client_id=client_id,
+                plan_code=plan_code,
+                origin_url=origin_url,
+                customer_email=customer_email,
+                customer_reference=(client or {}).get("customer_reference"),
+                checkout_context=CHECKOUT_CONTEXT_RECOVERY_PLAN_CHANGE,
+            )
+            result["recovery_path"] = "recovery_checkout"
+            return result
+
+        deployment_mode = get_stripe_mode()
+        configure_stripe_sdk(mode=deployment_mode)
+
+        try:
+            await resolve_stripe_context(
+                client_id=client_id,
+                billing=billing,
+                operation="billing_portal",
+                legacy_caller="stripe_service.create_billing_portal_session",
+                require_preflight=True,
+            )
+            portal_session = stripe.billing_portal.Session.create(
+                customer=billing.get("stripe_customer_id"),
+                return_url=f"{origin_url.rstrip('/')}/settings/billing",
+            )
+            return {
+                "portal_url": portal_session.url,
+                "recovery_path": "billing_portal",
+            }
+        except StripeModeDriftError as drift:
+            if (
+                drift.recovery_action in PORTAL_DRIFT_RECOVERY_FALLBACK_ACTIONS
+                and billing_recovery_write_allowed(runtime_contract)
+            ):
+                plan_code = resolve_recovery_plan_code(billing)
+                if not plan_code:
+                    raise ValueError("No billing plan on file for recovery checkout") from drift
+                result = await self.create_upgrade_session(
+                    client_id=client_id,
+                    new_plan_code=plan_code,
+                    origin_url=origin_url,
+                )
+                if result.get("checkout_url"):
+                    return {
+                        "checkout_url": result["checkout_url"],
+                        "session_id": result.get("session_id"),
+                        "recovery_path": result.get("plan_change_path", "deployment_checkout"),
+                        "recovery_guidance": (
+                            "Complete payment in Stripe to restore your subscription."
+                        ),
+                    }
+                if result.get("portal_url"):
+                    return {
+                        "portal_url": result["portal_url"],
+                        "recovery_path": "billing_portal",
+                    }
+            raise
     
     async def get_subscription_status(
         self, client_id: str, *, client_facing: bool = True

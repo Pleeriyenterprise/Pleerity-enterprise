@@ -1,0 +1,258 @@
+{
+  "ACTIVE": {
+    "lifecycle_state": "ACTIVE",
+    "portal_mode": "FULL_ACCESS",
+    "capabilities": {
+      "CAP_BILLING_VIEW": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_CHECKOUT": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_PAYMENT_METHODS": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_SUB_MANAGE": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      }
+    },
+    "route_guard": "allow (billing routes exempt from terminal lifecycle block)",
+    "step_up": "required for POST /billing/portal and POST /billing/checkout",
+    "portal_api_expected": "200 portal_url",
+    "checkout_api_expected": "200 checkout_url (after step-up)",
+    "portal_drift_fallback": "deployment_checkout when MODE_UNVERIFIED and CAP_BILLING_CHECKOUT write allowed",
+    "stripe_customer_missing": "recovery checkout when CAP_BILLING_CHECKOUT write allowed"
+  },
+  "CANCELLATION_SCHEDULED": {
+    "lifecycle_state": "CANCELLATION_SCHEDULED",
+    "portal_mode": "FULL_ACCESS",
+    "capabilities": {
+      "CAP_BILLING_VIEW": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_CHECKOUT": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_PAYMENT_METHODS": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_SUB_MANAGE": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      }
+    },
+    "route_guard": "allow (billing routes exempt from terminal lifecycle block)",
+    "step_up": "required for POST /billing/portal and POST /billing/checkout",
+    "portal_api_expected": "200 portal_url",
+    "checkout_api_expected": "200 checkout_url (after step-up)",
+    "portal_drift_fallback": "deployment_checkout when MODE_UNVERIFIED and CAP_BILLING_CHECKOUT write allowed",
+    "stripe_customer_missing": "recovery checkout when CAP_BILLING_CHECKOUT write allowed"
+  },
+  "CANCELLED_IMMEDIATE": {
+    "lifecycle_state": "CANCELLED_IMMEDIATE",
+    "portal_mode": "BILLING_RECOVERY",
+    "capabilities": {
+      "CAP_BILLING_VIEW": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_CHECKOUT": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_PAYMENT_METHODS": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_SUB_MANAGE": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      }
+    },
+    "route_guard": "allow (billing routes exempt from terminal lifecycle block)",
+    "step_up": "required for POST /billing/portal and POST /billing/checkout",
+    "portal_api_expected": "200 portal_url",
+    "checkout_api_expected": "200 checkout_url (after step-up)",
+    "portal_drift_fallback": "deployment_checkout when MODE_UNVERIFIED and CAP_BILLING_CHECKOUT write allowed",
+    "stripe_customer_missing": "recovery checkout when CAP_BILLING_CHECKOUT write allowed"
+  },
+  "SUBSCRIPTION_EXPIRED": {
+    "lifecycle_state": "SUBSCRIPTION_EXPIRED",
+    "portal_mode": "BILLING_RECOVERY",
+    "capabilities": {
+      "CAP_BILLING_VIEW": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_CHECKOUT": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_PAYMENT_METHODS": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_SUB_MANAGE": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      }
+    },
+    "route_guard": "allow (billing routes exempt from terminal lifecycle block)",
+    "step_up": "required for POST /billing/portal and POST /billing/checkout",
+    "portal_api_expected": "200 portal_url",
+    "checkout_api_expected": "200 checkout_url (after step-up)",
+    "portal_drift_fallback": "deployment_checkout when MODE_UNVERIFIED and CAP_BILLING_CHECKOUT write allowed",
+    "stripe_customer_missing": "recovery checkout when CAP_BILLING_CHECKOUT write allowed"
+  },
+  "SUSPENDED": {
+    "lifecycle_state": "SUSPENDED",
+    "portal_mode": "SUSPENDED",
+    "capabilities": {
+      "CAP_BILLING_VIEW": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_CHECKOUT": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_PAYMENT_METHODS": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_SUB_MANAGE": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      }
+    },
+    "route_guard": "allow (billing routes exempt from terminal lifecycle block)",
+    "step_up": "required for POST /billing/portal and POST /billing/checkout",
+    "portal_api_expected": "200 portal_url",
+    "checkout_api_expected": "200 checkout_url (after step-up)",
+    "portal_drift_fallback": "deployment_checkout when MODE_UNVERIFIED and CAP_BILLING_CHECKOUT write allowed",
+    "stripe_customer_missing": "recovery checkout when CAP_BILLING_CHECKOUT write allowed"
+  },
+  "READ_ONLY": {
+    "lifecycle_state": "READ_ONLY",
+    "portal_mode": "READ_ONLY",
+    "capabilities": {
+      "CAP_BILLING_VIEW": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_CHECKOUT": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_BILLING_PAYMENT_METHODS": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      },
+      "CAP_SUB_MANAGE": {
+        "read": true,
+        "write": true,
+        "grant": "ALLOW"
+      }
+    },
+    "route_guard": "allow (billing routes exempt from terminal lifecycle block)",
+    "step_up": "required for POST /billing/portal and POST /billing/checkout",
+    "portal_api_expected": "200 portal_url",
+    "checkout_api_expected": "200 checkout_url (after step-up)",
+    "portal_drift_fallback": "deployment_checkout when MODE_UNVERIFIED and CAP_BILLING_CHECKOUT write allowed",
+    "stripe_customer_missing": "recovery checkout when CAP_BILLING_CHECKOUT write allowed"
+  },
+  "ARCHIVED": {
+    "lifecycle_state": "ARCHIVED",
+    "portal_mode": "ARCHIVED",
+    "capabilities": {
+      "CAP_BILLING_VIEW": {
+        "read": false,
+        "write": false,
+        "grant": "DENY"
+      },
+      "CAP_BILLING_CHECKOUT": {
+        "read": false,
+        "write": false,
+        "grant": "DENY"
+      },
+      "CAP_BILLING_PAYMENT_METHODS": {
+        "read": false,
+        "write": false,
+        "grant": "DENY"
+      },
+      "CAP_SUB_MANAGE": {
+        "read": false,
+        "write": false,
+        "grant": "DENY"
+      }
+    },
+    "route_guard": "allow (billing routes exempt from terminal lifecycle block)",
+    "step_up": "required for POST /billing/portal and POST /billing/checkout",
+    "portal_api_expected": "403 capability_denied",
+    "checkout_api_expected": "403 capability_denied",
+    "portal_drift_fallback": "n/a",
+    "stripe_customer_missing": "400"
+  },
+  "ACCOUNT_DELETED": {
+    "lifecycle_state": "ARCHIVED",
+    "portal_mode": "ARCHIVED",
+    "capabilities": {
+      "CAP_BILLING_VIEW": {
+        "read": false,
+        "write": false,
+        "grant": "DENY"
+      },
+      "CAP_BILLING_CHECKOUT": {
+        "read": false,
+        "write": false,
+        "grant": "DENY"
+      },
+      "CAP_BILLING_PAYMENT_METHODS": {
+        "read": false,
+        "write": false,
+        "grant": "DENY"
+      },
+      "CAP_SUB_MANAGE": {
+        "read": false,
+        "write": false,
+        "grant": "DENY"
+      }
+    },
+    "route_guard": "allow (billing routes exempt from terminal lifecycle block)",
+    "step_up": "required for POST /billing/portal and POST /billing/checkout",
+    "portal_api_expected": "403 capability_denied",
+    "checkout_api_expected": "403 capability_denied",
+    "portal_drift_fallback": "n/a",
+    "stripe_customer_missing": "400"
+  }
+}

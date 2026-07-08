@@ -459,15 +459,52 @@ const BillingPage = () => {
       );
       if (res.data?.portal_url) {
         window.location.href = res.data.portal_url;
+      } else if (res.data?.checkout_url) {
+        toast.success('Redirecting to Stripe…', {
+          description: res.data.recovery_guidance || 'Complete payment to restore your subscription.',
+        });
+        window.location.href = res.data.checkout_url;
       } else {
         toast.error('Could not open billing portal');
       }
     } catch (e) {
       if (e?.message === 'step_up_cancelled') return;
+      const driftDetail = e.response?.data?.detail;
+      const driftFallback =
+        e.response?.status === 409 &&
+        driftDetail &&
+        typeof driftDetail === 'object' &&
+        driftDetail.fallback === 'checkout' &&
+        canCheckout &&
+        currentPlan;
+      if (driftFallback) {
+        try {
+          const response = await billingStepUp.request((headers) =>
+            api.post('/billing/checkout', { plan_code: currentPlan }, { headers })
+          );
+          if (response.data?.checkout_url) {
+            toast.success('Redirecting to Stripe…', {
+              description: 'Complete payment to restore your subscription.',
+            });
+            window.location.href = response.data.checkout_url;
+            return;
+          }
+        } catch (checkoutErr) {
+          if (checkoutErr?.message === 'step_up_cancelled') return;
+          if (isCapabilityDeniedApiError(checkoutErr)) {
+            toast.error(getCapabilityDeniedMessage(checkoutErr, 'Billing recovery unavailable'));
+            return;
+          }
+        }
+      }
       if (isCapabilityDeniedApiError(e)) {
         toast.error(getCapabilityDeniedMessage(e, 'Billing portal unavailable'));
       } else {
-        toast.error(e.response?.data?.detail || 'Billing portal unavailable');
+        const msg =
+          typeof driftDetail === 'object' && driftDetail?.message
+            ? driftDetail.message
+            : e.response?.data?.detail;
+        toast.error(typeof msg === 'string' ? msg : 'Billing portal unavailable');
       }
     } finally {
       setPortalOpening(false);
