@@ -825,9 +825,9 @@ def _customer_experience_for_mode(
             "available_features": ["support", "billing"],
             "unavailable_features": ["dashboard", "properties", "requirements", "reports", "today"],
             "primary_cta": {"label": "Resolve payment", "route": "/settings/billing"},
-            "secondary_cta": None,
-            "recovery_guidance": "Contact support if you need reinstatement.",
-            "support_guidance": "Contact support to discuss reinstatement.",
+            "secondary_cta": {"label": "Contact support", "route": "/support"},
+            "recovery_guidance": "Resolve payment in Billing to restore full access.",
+            "support_guidance": "",
             "expected_next_step": "Reinstatement — full access",
         },
         PortalMode.ARCHIVED.value: {

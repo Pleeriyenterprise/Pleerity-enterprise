@@ -3,6 +3,8 @@
  * Mirrors backend grant semantics in account_capability_enforcement.py — no legacy inference.
  */
 
+import { sanitizeCapabilityCustomerMessage } from './lifecycleRecoveryCopy';
+
 export const GRANT_ALLOW = 'ALLOW';
 export const GRANT_READ = 'READ';
 export const GRANT_DENY = 'DENY';
@@ -212,7 +214,7 @@ export function formatApiErrorDetail(detail, fallback = 'Something went wrong') 
     return fallback;
   }
   if (typeof detail === 'string') {
-    return detail;
+    return sanitizeCapabilityCustomerMessage(detail, null, detail);
   }
   if (Array.isArray(detail)) {
     const first = detail[0];
@@ -222,15 +224,16 @@ export function formatApiErrorDetail(detail, fallback = 'Something went wrong') 
     return fallback;
   }
   if (typeof detail === 'object') {
+    const portalMode = detail.portal_mode;
     const parsed = parseLifecycleResponseDetail(detail);
     if (parsed?.message) {
-      return parsed.message;
+      return sanitizeCapabilityCustomerMessage(parsed.message, portalMode, parsed.message);
     }
     if (typeof detail.message === 'string') {
-      return detail.message;
+      return sanitizeCapabilityCustomerMessage(detail.message, portalMode, detail.message);
     }
     if (typeof detail.reason === 'string') {
-      return detail.reason;
+      return sanitizeCapabilityCustomerMessage(detail.reason, portalMode, detail.reason);
     }
   }
   return fallback;
@@ -247,7 +250,11 @@ export function formatApiErrorMessage(error, fallback = 'Something went wrong') 
   }
   const denied = extractCapabilityDeniedFromError(error);
   if (denied?.message) {
-    return denied.message;
+    return sanitizeCapabilityCustomerMessage(
+      denied.message,
+      denied.portal_mode,
+      denied.message,
+    );
   }
   const detail = error.response?.data?.detail ?? error.detail;
   return formatApiErrorDetail(detail, fallback);

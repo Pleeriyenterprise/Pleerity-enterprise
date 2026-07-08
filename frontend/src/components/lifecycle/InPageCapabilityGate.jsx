@@ -1,7 +1,10 @@
 import React from 'react';
 import { useLifecycleRuntime, LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE } from '../../contexts/LifecycleRuntimeContext';
+import { usePortalMode } from '../../contexts/LifecycleRuntimeContext';
 import { UpgradeRequired } from '../UpgradePrompt';
 import { Button } from '../ui/button';
+import { LifecycleCapabilityDenial } from './LifecycleCapabilityDenial';
+import { isLifecycleRestrictedPortalMode } from '../../utils/lifecycleRecoveryCopy';
 
 /**
  * In-page capability gate — explicit denial instead of false-empty chrome.
@@ -16,6 +19,7 @@ export function InPageCapabilityGate({
   testId = 'in-page-capability-gate',
 }) {
   const { loading: runtimeLoading, runtimeAvailable, error, refetch } = useLifecycleRuntime();
+  const { portalMode } = usePortalMode();
 
   if (loading || runtimeLoading) {
     return (
@@ -39,13 +43,16 @@ export function InPageCapabilityGate({
   }
 
   if (!allowed) {
+    if (isLifecycleRestrictedPortalMode(portalMode)) {
+      return <LifecycleCapabilityDenial testId={testId} />;
+    }
     return (
       <div className="min-h-[40vh] flex items-center justify-center p-6 bg-gray-50" data-testid={testId}>
         <div className="w-full max-w-md">
           <UpgradeRequired feature={presentationFeature} showBackToDashboard variant="card" />
-          {capabilityId ? (
-            <p className="text-xs text-gray-500 text-center mt-3" data-testid={`${testId}-cap`}>
-              Access requires {capabilityId} on your account.
+          {capabilityId && process.env.NODE_ENV !== 'production' ? (
+            <p className="text-xs text-gray-400 text-center mt-3 font-mono" data-testid={`${testId}-cap-diag`}>
+              {capabilityId}
             </p>
           ) : null}
         </div>

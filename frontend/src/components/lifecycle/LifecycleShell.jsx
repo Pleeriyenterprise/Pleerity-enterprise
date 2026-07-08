@@ -124,8 +124,8 @@ export default function LifecycleShell() {
 /** Compact page-level portal mode indicator (presentation only). */
 export function PortalModePageBanner() {
   const { portalMode, customerExperience } = usePortalMode();
-  if (portalMode === 'FULL_ACCESS') return null;
-  const label = customerExperience?.current_state_label || portalMode.replace(/_/g, ' ');
+  if (!portalMode || portalMode === 'FULL_ACCESS') return null;
+  const label = customerExperience?.current_state_label || portalMode?.replace(/_/g, ' ') || 'Restricted';
   return (
     <p
       className="text-xs text-gray-600 mb-3 flex items-center gap-2"

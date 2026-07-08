@@ -839,7 +839,7 @@ const BillingPage = () => {
                   )}
                 {billingStatus?.has_subscription && billingStatus?.billing_sync_visibility_note && (
                   <div className="sm:col-span-2">
-                    <p className="text-gray-500">Data freshness</p>
+                    <p className="text-gray-500">Billing sync status</p>
                     <p
                       className={`text-sm ${
                         /incomplete|stripe_error|may be incomplete/i.test(billingStatus.billing_sync_visibility_note)

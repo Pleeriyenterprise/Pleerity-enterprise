@@ -131,22 +131,24 @@ def _reason_for_denial(
     action: CapabilityAction,
     *,
     capability_id: str,
+    portal_mode: Optional[str] = None,
 ) -> tuple[str, str]:
+    from services.lifecycle_recovery_customer_copy import capability_denial_customer_message
+
     semantic = normalize_grant_semantic(grant)
+    message = capability_denial_customer_message(
+        portal_mode=portal_mode,
+        grant=grant,
+        action=action,
+    )
     if grant == GRANT_HIDDEN:
-        return (
-            CapabilityReasonCode.HIDDEN.value,
-            f"{capability_id} is not available for your account status.",
-        )
+        return (CapabilityReasonCode.HIDDEN.value, message)
     if grant == GRANT_DENY or grant == GRANT_PLAN_GATED:
         code = CapabilityReasonCode.PLAN_DENIED.value if grant == GRANT_PLAN_GATED else CapabilityReasonCode.DENIED.value
-        return (code, f"{capability_id} is not permitted for your account status.")
+        return (code, message)
     if semantic == SEMANTIC_READ_ONLY and action == "write":
-        return (
-            CapabilityReasonCode.READ_ONLY_BLOCKED.value,
-            f"{capability_id} is view-only for your account status. Changes are not permitted.",
-        )
-    return (CapabilityReasonCode.DENIED.value, f"{capability_id} is not permitted.")
+        return (CapabilityReasonCode.READ_ONLY_BLOCKED.value, message)
+    return (CapabilityReasonCode.DENIED.value, message)
 
 
 class CapabilityEnforcementService:
@@ -225,7 +227,12 @@ class CapabilityEnforcementService:
                 reason=reason,
             )
 
-        reason_code, reason = _reason_for_denial(grant, action, capability_id=capability_id)
+        reason_code, reason = _reason_for_denial(
+            grant,
+            action,
+            capability_id=capability_id,
+            portal_mode=str(contract.get("portal_mode") or ""),
+        )
         return CapabilityDecision(
             **base,
             grant=grant,

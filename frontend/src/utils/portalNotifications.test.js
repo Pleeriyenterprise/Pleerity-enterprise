@@ -21,13 +21,14 @@ describe('portalNotifications', () => {
     toast.error({
       error: 'capability_denied',
       message: 'CAP_TODAY_VIEW is not permitted for your account status.',
+      portal_mode: 'SUSPENDED',
       support_reference: 'lifecycle-1',
       safe_to_retry: false,
       action: 'read',
       effective_semantic: 'DENY',
     });
     expect(sonnerToast.error).toHaveBeenCalledWith(
-      'CAP_TODAY_VIEW is not permitted for your account status.',
+      'This area is unavailable while your account is suspended. Resolve payment to restore access.',
       expect.objectContaining({ position: 'top-center' }),
     );
   });

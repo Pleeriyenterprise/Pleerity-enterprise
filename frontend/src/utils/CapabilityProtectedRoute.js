@@ -1,7 +1,10 @@
 import React from 'react';
 import { useLifecycleRuntime, LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE } from '../contexts/LifecycleRuntimeContext';
+import { usePortalMode } from '../contexts/LifecycleRuntimeContext';
 import { UpgradeRequired } from '../components/UpgradePrompt';
+import { LifecycleCapabilityDenial } from '../components/lifecycle/LifecycleCapabilityDenial';
 import { Button } from '../components/ui/button';
+import { isLifecycleRestrictedPortalMode } from './lifecycleRecoveryCopy';
 import { OPERATIONAL_ROUTE_CAPABILITY } from './operationalCapabilityAccess';
 import { ACCOUNT_ROUTE_CAPABILITY } from './accountCapabilityAccess';
 
@@ -21,6 +24,7 @@ export function CapabilityProtectedRoute({
   children,
 }) {
   const { capabilityAllowed, loading, runtimeAvailable, error, refetch } = useLifecycleRuntime();
+  const { portalMode } = usePortalMode();
 
   if (loading) {
     return (
@@ -44,6 +48,9 @@ export function CapabilityProtectedRoute({
   }
 
   if (!capabilityAllowed(capabilityId, action)) {
+    if (isLifecycleRestrictedPortalMode(portalMode)) {
+      return <LifecycleCapabilityDenial testId="capability-gate" />;
+    }
     const featureKey =
       presentationFeature ||
       Object.entries(ROUTE_CAPABILITY).find(([, r]) => r.capabilityId === capabilityId)?.[0] ||

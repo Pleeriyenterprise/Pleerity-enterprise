@@ -9,6 +9,7 @@ import {
   SEMANTIC_READ_ONLY,
   evaluateCapabilityGrant,
   extractCapabilityDeniedFromError,
+  formatApiErrorDetail,
   isCapabilityDeniedError,
   isGrantActionAllowed,
   normalizeGrantSemantic,
@@ -68,5 +69,17 @@ describe('capabilityRuntime primitives', () => {
     expect(normalized.explanation).toBe('42');
     expect(normalized.primary_cta).toBeNull();
     expect(normalized.secondary_cta).toEqual({ label: 'Help', route: '/help' });
+  });
+
+  it('sanitizes capability_denied API messages that leak CAP ids', () => {
+    const detail = {
+      error: CAPABILITY_DENIED_ERROR,
+      message: 'CAP_PROP_VIEW is not permitted for your account status.',
+      portal_mode: 'SUSPENDED',
+      capability_id: 'CAP_PROP_VIEW',
+    };
+    const text = formatApiErrorDetail(detail, 'fallback');
+    expect(text).not.toMatch(/CAP_/);
+    expect(text).toMatch(/suspended/i);
   });
 });

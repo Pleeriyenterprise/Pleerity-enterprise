@@ -33,6 +33,7 @@ import {
 } from '../config/portalNavigationConfig';
 import { annotateNavWithLifecyclePolicy } from '../utils/portalNavigationPolicy';
 import { usePortalMode, useLifecycleRuntime } from '../contexts/LifecycleRuntimeContext';
+import { isLifecycleRestrictedPortalMode } from '../utils/lifecycleRecoveryCopy';
 import LifecycleShell from './lifecycle/LifecycleShell';
 import LifecycleRuntimeDiagnostics from './lifecycle/LifecycleRuntimeDiagnostics';
 import {
@@ -53,7 +54,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
   const { user, logout, isClient } = useAuth();
   const { navHasFeature, showReports, showBilling, showCalendar, showAssistant, invoicingEnabled } = usePortalNavigationCapabilities();
   const { canEditProfile } = useProfileCapabilities();
-  const { navigationPolicy } = usePortalMode();
+  const { navigationPolicy, portalMode } = usePortalMode();
   const { runtimeAvailable } = useLifecycleRuntime();
   const navigate = useNavigate();
   const isTenant = user?.role === 'ROLE_TENANT';
@@ -586,7 +587,7 @@ export default function ClientPortalLayout({ children, crn: crnProp = null }) {
         </nav>
       </header>
 
-      {!isTenant && isClient && (
+      {!isTenant && isClient && !isLifecycleRestrictedPortalMode(portalMode) && (
         <div className="border-b border-gray-200 bg-gray-50">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5 text-xs text-gray-600">
             {!runtimeAvailable ? (
