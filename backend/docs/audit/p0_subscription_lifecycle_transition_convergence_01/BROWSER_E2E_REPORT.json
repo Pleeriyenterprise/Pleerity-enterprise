@@ -1,0 +1,104 @@
+{
+  "programme": "P0-SUBSCRIPTION-LIFECYCLE-TRANSITION-CONVERGENCE-01",
+  "validated_at": "2026-07-08T22:39:29Z",
+  "checks": {
+    "no_past_access_date_in_api": true,
+    "no_past_access_date_in_ui": true,
+    "lifecycle_active_or_full_access": false,
+    "resume_route_deployed": true,
+    "keep_subscription_action_wired": false
+  },
+  "resume_route_probe": {
+    "status": 401
+  },
+  "resume_route_deployed": true,
+  "target": {
+    "email": "allison@yopmail.com",
+    "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b"
+  },
+  "before": {
+    "lifecycle_state": "CANCELLATION_SCHEDULED",
+    "portal_mode": "FULL_ACCESS",
+    "runtime_version": 927345593,
+    "customer_experience": {
+      "heading": "Updating your subscription status",
+      "explanation": "Your subscription status is being updated. This usually completes within a few minutes.",
+      "reason": "We are synchronising your billing status with Stripe.",
+      "current_state_label": "Cancellation scheduled",
+      "available_features": [
+        "dashboard",
+        "properties",
+        "requirements",
+        "reports",
+        "today",
+        "billing"
+      ],
+      "unavailable_features": [],
+      "primary_cta": {
+        "label": "Keep subscription",
+        "action": "resume_subscription"
+      },
+      "secondary_cta": {
+        "label": "View billing",
+        "route": "/settings/billing"
+      },
+      "recovery_guidance": "",
+      "support_guidance": "Standard help is available from the support centre.",
+      "expected_next_step": "Status refresh \u2014 full access or recovery guidance"
+    },
+    "transition_pending": true
+  },
+  "browser": {
+    "clicked": false,
+    "resume_route_called": false,
+    "errors": [],
+    "banner_text_snippet": "Compliance Vault Pro AI-Driven Solutions & Compliance Allison David Logout Today Command center Dashboard Properties Requirements Documents More Portal status will appear once account status finishes loading. Compliance Vault Pro info@pleerityenterprise.co.uk Audit log Help Centre We value your privacy We use cookies to enhance your browsing experience, serve personalized content, and analyze our ",
+    "past_access_date_in_ui": false,
+    "has_transition_pending_copy": false,
+    "final_url": "https://pleerity-enterprise-9jjg.vercel.app/settings/billing",
+    "final_body_snippet": "Compliance Vault Pro AI-Driven Solutions & Compliance Allison David Logout Today Command center Dashboard Properties Requirements Documents More Portal status will appear once account status finishes loading. Settings Profile, compliance jurisdiction, notifications, and plan. Billing Billing Subscription summary, billing history, and payment details Billing & history Plans & upgrades Portfolio usa"
+  },
+  "resume_api": {
+    "status": 400,
+    "body": {
+      "detail": "Failed to resume subscription: Request req_Mtj2cKHY3R5mMh: A canceled subscription can only update its cancellation_details and metadata."
+    }
+  },
+  "after": {
+    "lifecycle_state": "CANCELLATION_SCHEDULED",
+    "portal_mode": "FULL_ACCESS",
+    "runtime_version": 927345593,
+    "customer_experience": {
+      "heading": "Updating your subscription status",
+      "explanation": "Your subscription status is being updated. This usually completes within a few minutes.",
+      "reason": "We are synchronising your billing status with Stripe.",
+      "current_state_label": "Cancellation scheduled",
+      "available_features": [
+        "dashboard",
+        "properties",
+        "requirements",
+        "reports",
+        "today",
+        "billing"
+      ],
+      "unavailable_features": [],
+      "primary_cta": {
+        "label": "Keep subscription",
+        "action": "resume_subscription"
+      },
+      "secondary_cta": {
+        "label": "View billing",
+        "route": "/settings/billing"
+      },
+      "recovery_guidance": "",
+      "support_guidance": "Standard help is available from the support centre.",
+      "expected_next_step": "Status refresh \u2014 full access or recovery guidance"
+    },
+    "transition_pending": true
+  },
+  "verdict": "SUBSCRIPTION_LIFECYCLE_TRANSITION_CONVERGED_WITH_CONDITIONS",
+  "conditions": [
+    "lifecycle_active_or_full_access",
+    "keep_subscription_action_wired"
+  ]
+}

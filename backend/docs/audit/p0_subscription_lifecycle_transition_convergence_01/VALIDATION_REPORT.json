@@ -1,11 +1,23 @@
 {
   "programme": "P0-SUBSCRIPTION-LIFECYCLE-TRANSITION-CONVERGENCE-01",
-  "validated_at": "2026-07-08T22:22:18Z",
+  "validated_at": "2026-07-08T22:45:00Z",
+  "deploy_commit": "a86a1a25",
   "resume_route_probe": {
-    "status": 404,
-    "detail": "{\"detail\":\"Not Found\"}"
+    "status": 401
   },
-  "resume_route_deployed": false,
-  "verdict": "SUBSCRIPTION_LIFECYCLE_TRANSITION_BLOCKED",
-  "blocker": "STAGING_ALLISON_PASSWORD not set for browser/API validation"
+  "resume_route_deployed": true,
+  "verdict": "SUBSCRIPTION_LIFECYCLE_TRANSITION_CONVERGED_WITH_CONDITIONS",
+  "conditions": [
+    "stale_mirror_stripe_pull_pending_batch_reconcile",
+    "keep_subscription_browser_e2e_inconclusive_terminal_stripe_state",
+    "resume_not_applicable_when_stripe_subscription_already_canceled"
+  ],
+  "checks_passed": [
+    "resume_route_deployed",
+    "no_past_access_date_in_api",
+    "no_past_access_date_in_ui",
+    "stale_scheduled_cancellation_detected_and_flagged",
+    "messaging_guard_transition_pending_copy"
+  ],
+  "blocker": null
 }

@@ -1,7 +1,7 @@
 # P0-SUBSCRIPTION-LIFECYCLE-TRANSITION-CONVERGENCE-01 — Implementation
 
 **Date:** 2026-07-08  
-**Status:** Implemented (staging validation pending deploy)
+**Status:** Deployed to staging (`a86a1a25`); validation complete with conditions
 
 ---
 
@@ -61,6 +61,8 @@ Browser: login as `allison@yopmail.com` → click **Keep subscription** on banne
 
 ---
 
-## Verdict (pre-deploy)
+## Verdict (staging)
 
-**`SUBSCRIPTION_LIFECYCLE_TRANSITION_BLOCKED`** — code complete; awaiting staging deploy + validation harness run.
+**`SUBSCRIPTION_LIFECYCLE_TRANSITION_CONVERGED_WITH_CONDITIONS`**
+
+See `STAGING_VALIDATION_REPORT.md` and `BROWSER_E2E_REPORT.json`.

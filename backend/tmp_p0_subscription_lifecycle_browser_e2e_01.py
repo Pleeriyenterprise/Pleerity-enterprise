@@ -149,7 +149,11 @@ def _browser_keep_subscription(token: str, email: str, client_id: str) -> dict:
             {"token": token, "user": {"email": email, "role": "ROLE_CLIENT_ADMIN", "client_id": client_id, "impersonation": True}},
         )
         page.goto(FE + "/today", wait_until="domcontentloaded", timeout=120000)
-        page.wait_for_timeout(5000)
+        try:
+            page.wait_for_selector('[data-testid="lifecycle-shell"]', timeout=25000)
+        except Exception:
+            pass
+        page.wait_for_timeout(3000)
         body = page.inner_text("body")
         out["banner_text_snippet"] = " ".join(body.split())[:400]
         out["past_access_date_in_ui"] = _past_date_in_text(body)
