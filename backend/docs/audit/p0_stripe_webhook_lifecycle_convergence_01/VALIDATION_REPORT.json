@@ -1,0 +1,203 @@
+{
+  "programme": "P0-STRIPE-WEBHOOK-LIFECYCLE-CONVERGENCE-01",
+  "generated_at": "2026-07-08T21:17:19Z",
+  "post_payment_validation_after_user_done": true,
+  "verdict": "STRIPE_WEBHOOK_LIFECYCLE_CONVERGENCE_VALIDATED",
+  "checkout_session": "cs_test_a1DaJjwIla3oeAArvnBVC8jvMnQGe7bv3TkSFG3Gl09gEyCRnk1kglRWVI",
+  "before_runtime_version": 1727723729,
+  "after": {
+    "lifecycle": {
+      "status": 200,
+      "lifecycle_state": "ACTIVE",
+      "portal_mode": "FULL_ACCESS",
+      "runtime_version": 1824736577,
+      "entitlements_version": null,
+      "capabilities_sample": {
+        "CAP_BILLING_CHECKOUT": "ALLOW",
+        "CAP_SUB_MANAGE": "ALLOW",
+        "CAP_PROP_VIEW": "ALLOW",
+        "CAP_DASHBOARD_VIEW": "ALLOW",
+        "CAP_REQ_VIEW": "ALLOW"
+      },
+      "navigation_policy": {
+        "landing_route": "/today",
+        "locked_routes": [],
+        "read_only_routes": [],
+        "hidden_routes": []
+      },
+      "customer_experience": {
+        "heading": "",
+        "explanation": "",
+        "reason": "",
+        "current_state_label": "Active",
+        "available_features": [
+          "dashboard",
+          "properties",
+          "requirements",
+          "reports",
+          "today",
+          "billing"
+        ],
+        "unavailable_features": [],
+        "primary_cta": {
+          "label": "Continue",
+          "route": "/today"
+        },
+        "secondary_cta": null,
+        "recovery_guidance": "",
+        "support_guidance": "Standard help is available from the support centre.",
+        "expected_next_step": "Continue work"
+      },
+      "reactivation_policy": {
+        "eligible": false,
+        "paths": [],
+        "restoration_scope": "MANUAL_REVIEW"
+      }
+    },
+    "billing": {
+      "status": 200,
+      "subscription_status": "ACTIVE",
+      "last_payment_at": "2026-07-08T21:11:40+00:00",
+      "stripe_customer_id": null,
+      "stripe_subscription_id": null,
+      "stripe_webhook_last_received_at": null,
+      "stripe_webhook_last_event_type": null,
+      "billing_last_synced_at": "2026-07-08T21:17:05.185291+00:00",
+      "runtime_version_hint": null
+    },
+    "data": {
+      "properties": {
+        "status": 200,
+        "count": 1,
+        "body_preview": "{'properties': [{'property_id': 'b8016cb8-5a4c-4416-9e9c-7a49d0f727e7', 'client_id': 'ce8d3b56-0659-46d8-88af-0988fe48de25', 'nickname': 'Hallway ', 'address_line_1': '44 Islington ', 'address_line_2'"
+      },
+      "requirements": {
+        "status": 200,
+        "count": null,
+        "body_preview": "{'requirements': [{'requirement_id': '869faf9d-d21f-4cf1-88f4-548203ed3854', 'client_id': 'ce8d3b56-0659-46d8-88af-0988fe48de25', 'property_id': 'b8016cb8-5a4c-4416-9e9c-7a49d0f727e7', 'requirement_ty"
+      },
+      "billing_status": {
+        "status": 200,
+        "count": null,
+        "body_preview": "{'has_subscription': True, 'current_plan_code': 'PLAN_2_PORTFOLIO', 'plan_name': 'Portfolio Landlord', 'plan_display_name': 'Portfolio / Small Agent Plan', 'plan_status_display': 'Paid subscription ac"
+      },
+      "billing_invoices": {
+        "status": 200,
+        "count": null,
+        "body_preview": "{'invoices': [{'id': 'in_1Tr2kqCF0O5oqdUz8jed71wI', 'number': 'PLEERITY-0120', 'created': 1783545099, 'amount_paid': 3900, 'currency': 'GBP', 'billing_reason': 'subscription_create', 'lines': [{'descr"
+      }
+    }
+  },
+  "mongo_webhook_evidence_after": {
+    "checked_at": "2026-07-08T21:17:17Z",
+    "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+    "billing_mirror": {
+      "subscription_status": "ACTIVE",
+      "stripe_customer_id": "cus_UqkFZsBDuA1mm1",
+      "stripe_subscription_id": "sub_1Tr2krCF0O5oqdUz7MKqoIDt",
+      "last_payment_at": "2026-07-08 21:11:40",
+      "stripe_webhook_last_received_at": "2026-07-08 21:11:58.911000",
+      "stripe_webhook_last_event_type": "checkout.session.completed"
+    },
+    "client_stripe_events": [
+      {
+        "event_id": "evt_1Tr2ktCF0O5oqdUz3LYruNgs",
+        "type": "customer.subscription.created",
+        "status": "PROCESSED",
+        "created": "2026-07-08 21:11:44.853000"
+      },
+      {
+        "event_id": "evt_1Tr2ktCF0O5oqdUzdXeR46pi",
+        "type": "checkout.session.completed",
+        "status": "PROCESSED",
+        "created": "2026-07-08 21:11:44.088000"
+      },
+      {
+        "event_id": "evt_1TNijZCF0O5oqdUzhGaXo1Hz",
+        "type": "customer.subscription.updated",
+        "status": "PROCESSED",
+        "created": "2026-04-18 23:57:10.233000"
+      },
+      {
+        "event_id": "evt_1TCTxLCF0O5oqdUzGgeV4wwV",
+        "type": "customer.subscription.created",
+        "status": "PROCESSED",
+        "created": "2026-03-18 23:56:56.019000"
+      },
+      {
+        "event_id": "evt_1TCTxLCF0O5oqdUz8jSNZepO",
+        "type": "checkout.session.completed",
+        "status": "PROCESSED",
+        "created": "2026-03-18 23:56:55.960000"
+      }
+    ],
+    "recent_platform_events": [
+      {
+        "event_id": "evt_1Tr2kuCF0O5oqdUzLT2eC4qB",
+        "type": "invoice.payment_succeeded",
+        "status": "PROCESSED",
+        "related_client_id": null,
+        "created": "2026-07-08 21:11:45.088000"
+      },
+      {
+        "event_id": "evt_3Tr2kqCF0O5oqdUz0rxCIvvP",
+        "type": "payment_intent.succeeded",
+        "status": "PROCESSED",
+        "related_client_id": null,
+        "created": "2026-07-08 21:11:44.859000"
+      },
+      {
+        "event_id": "evt_1Tr2ktCF0O5oqdUz3LYruNgs",
+        "type": "customer.subscription.created",
+        "status": "PROCESSED",
+        "related_client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+        "created": "2026-07-08 21:11:44.853000"
+      },
+      {
+        "event_id": "evt_1Tr2ktCF0O5oqdUzdXeR46pi",
+        "type": "checkout.session.completed",
+        "status": "PROCESSED",
+        "related_client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+        "created": "2026-07-08 21:11:44.088000"
+      },
+      {
+        "event_id": "evt_1Tr2ktCF0O5oqdUzTsE2wTUT",
+        "type": "invoice.paid",
+        "status": "PROCESSED",
+        "related_client_id": null,
+        "created": "2026-07-08 21:11:43.749000"
+      }
+    ],
+    "pass": true
+  },
+  "stripe_events_processed": [
+    {
+      "event_id": "evt_1Tr2ktCF0O5oqdUz3LYruNgs",
+      "type": "customer.subscription.created",
+      "status": "PROCESSED",
+      "created": "2026-07-08 21:11:44.853000"
+    },
+    {
+      "event_id": "evt_1Tr2ktCF0O5oqdUzdXeR46pi",
+      "type": "checkout.session.completed",
+      "status": "PROCESSED",
+      "created": "2026-07-08 21:11:44.088000"
+    }
+  ],
+  "release_gate": {
+    "staging_webhook_endpoint_reachable": "PASS",
+    "render_webhook_secret_loaded": "PASS",
+    "render_staging_healthy": "PASS",
+    "stripe_event_delivery_2xx": "PASS",
+    "webhook_signature_accepted": "PASS",
+    "webhook_handler_executed": "PASS",
+    "billing_mirror_updated": "PASS",
+    "lifecycle_active": "PASS",
+    "portal_full_access": "PASS",
+    "runtime_contract_regenerated": "PASS",
+    "capabilities_restored": "PASS",
+    "data_preservation": "PASS",
+    "navigation_restored": "NOT_RUN",
+    "no_manual_database_edits": "PASS"
+  }
+}

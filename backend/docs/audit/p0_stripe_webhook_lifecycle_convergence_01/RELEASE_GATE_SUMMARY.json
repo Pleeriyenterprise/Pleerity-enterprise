@@ -1,0 +1,17 @@
+{
+  "staging_webhook_endpoint_reachable": "PASS",
+  "render_webhook_secret_loaded": "PASS",
+  "render_staging_healthy": "PASS",
+  "stripe_event_delivery_2xx": "PASS",
+  "webhook_signature_accepted": "PASS",
+  "webhook_handler_executed": "PASS",
+  "billing_mirror_updated": "PASS",
+  "lifecycle_active": "PASS",
+  "portal_full_access": "PASS",
+  "runtime_contract_regenerated": "PASS",
+  "capabilities_restored": "PASS",
+  "data_preservation": "PASS",
+  "navigation_restored": "NOT_RUN",
+  "no_manual_database_edits": "PASS",
+  "verdict": "STRIPE_WEBHOOK_LIFECYCLE_CONVERGENCE_VALIDATED"
+}

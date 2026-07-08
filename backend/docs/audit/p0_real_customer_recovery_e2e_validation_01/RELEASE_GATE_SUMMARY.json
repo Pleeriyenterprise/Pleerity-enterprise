@@ -1,0 +1,16 @@
+{
+  "deployment": "PASS",
+  "stripe_checkout_reached": "PASS",
+  "stripe_return_to_app": "UNKNOWN",
+  "stripe_webhook": "FAIL",
+  "runtime_contract": "FAIL",
+  "billing_recovery": "FAIL",
+  "lifecycle": "FAIL",
+  "customer_recovery": "FAIL",
+  "data_preservation": "PASS",
+  "navigation": "NOT_RUN",
+  "no_manual_database_edits": "PASS",
+  "background_services": "NOT_VALIDATED",
+  "browser_validation": "FAIL",
+  "verdict": "REAL_CUSTOMER_RECOVERY_E2E_BLOCKED"
+}

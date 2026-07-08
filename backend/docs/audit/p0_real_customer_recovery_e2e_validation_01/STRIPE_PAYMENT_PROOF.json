@@ -1,0 +1,48 @@
+{
+  "source": "Stripe test dashboard (user-provided screenshots)",
+  "captured_at_utc": "2026-07-08T20:35:00Z",
+  "customer_email": "lere@yopmail.com",
+  "payment": {
+    "status": "succeeded",
+    "amount_gbp": 39.0,
+    "description": "Subscription creation",
+    "payment_intent_id": "pi_3Trf1SCFDO5oqdUztznVUUH4",
+    "payment_method_id": "pm_1TrfLCF0OSoqdUztznVUUH4",
+    "card_last4": "4242",
+    "stripe_timestamp_local": "2026-07-08T21:02:00+01:00"
+  },
+  "subscription": {
+    "name": "Compliance Vault Pro - Portfolio",
+    "subscription_id": "sub_1TrfUCFDO5oqdUzt4REB7f6D",
+    "price_id": "price_1T2KgCCFDO5oqdUzqrpTjn3V",
+    "customer_id": "cus_Uqj75BpEzcsP6u",
+    "invoice_id": "PLEERITY-0119"
+  },
+  "stripe_events_observed": [
+    "payment_intent.succeeded",
+    "payment_method.attached",
+    "checkout.session.completed",
+    "customer.subscription.created",
+    "invoice.payment_succeeded",
+    "invoice.paid",
+    "invoice.finalized",
+    "invoice.created",
+    "invoice.payment_paid",
+    "invoice.updated"
+  ],
+  "webhook_delivery_observation": {
+    "connected_platforms_delivered_200": ["LeadConnector", "Substack"],
+    "pleerity_staging_endpoint_deliveries": "none observed for invoice.updated (Stripe UI: no recent delivery attempts to webhook endpoints)",
+    "expected_pleerity_staging_url": "https://pleerity-enterprise.onrender.com/api/webhook/stripe"
+  },
+  "pleerity_staging_api_at_probe_utc": "2026-07-08T20:35:00Z",
+  "pleerity_staging_api_state": {
+    "lifecycle_state": "SUSPENDED",
+    "portal_mode": "SUSPENDED",
+    "subscription_status": "CANCELED",
+    "last_payment_at": null,
+    "stripe_customer_id": null,
+    "stripe_subscription_id": null
+  },
+  "conclusion": "Stripe payment succeeded in test mode, but Pleerity staging billing/lifecycle did not converge — consistent with webhooks not reaching the staging Render endpoint."
+}
