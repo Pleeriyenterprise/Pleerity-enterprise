@@ -166,7 +166,14 @@ function coerceCustomerExperienceCta(cta) {
   }
   const label = coerceDisplayText(cta.label);
   const route = coerceDisplayText(cta.route);
-  if (!label || !route) {
+  const action = coerceDisplayText(cta.action);
+  if (!label) {
+    return null;
+  }
+  if (action) {
+    return { label, action, route: route || null };
+  }
+  if (!route) {
     return null;
   }
   return { label, route };

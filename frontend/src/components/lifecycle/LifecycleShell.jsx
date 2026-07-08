@@ -1,11 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Info, Lock, Eye } from 'lucide-react';
+import { AlertTriangle, Info, Lock, Eye, Loader2 } from 'lucide-react';
 import { useLifecycleRuntime, usePortalMode } from '../../contexts/LifecycleRuntimeContext';
 import { LIFECYCLE_RUNTIME_UNAVAILABLE_MESSAGE } from '../../contexts/LifecycleRuntimeContext';
 import { coercePortalDisplayText, formatApiErrorDetail, normalizeCustomerExperience } from '../../utils/capabilityRuntime';
 import { isPathLifecycleReadOnly } from '../../utils/portalNavigationPolicy';
 import { useLocation } from 'react-router-dom';
+import { useResumeSubscription } from '../../hooks/useResumeSubscription';
+import { useBillingCapabilities } from '../../utils/billingCapabilityAccess';
 
 const MODE_STYLES = {
   GRACE: 'border-amber-300 bg-amber-50 text-amber-950',
@@ -18,12 +20,23 @@ const MODE_STYLES = {
   FULL_ACCESS: 'border-gray-200 bg-white text-gray-800',
 };
 
-function CtaButton({ cta, variant = 'primary' }) {
-  if (!cta?.label || !cta?.route) return null;
+function CtaButton({ cta, variant = 'primary', onResume, resuming = false }) {
+  if (!cta?.label) return null;
   const className =
     variant === 'primary'
-      ? 'inline-flex items-center justify-center min-h-10 px-4 py-2 rounded-md text-sm font-semibold bg-midnight-blue text-white hover:bg-midnight-blue/90'
-      : 'inline-flex items-center justify-center min-h-10 px-4 py-2 rounded-md text-sm font-medium border border-gray-300 text-midnight-blue bg-white hover:bg-gray-50';
+      ? 'inline-flex items-center justify-center min-h-10 px-4 py-2 rounded-md text-sm font-semibold bg-midnight-blue text-white hover:bg-midnight-blue/90 disabled:opacity-60'
+      : 'inline-flex items-center justify-center min-h-10 px-4 py-2 rounded-md text-sm font-medium border border-gray-300 text-midnight-blue bg-white hover:bg-gray-50 disabled:opacity-60';
+
+  if (cta.action === 'resume_subscription' && onResume) {
+    return (
+      <button type="button" className={className} onClick={onResume} disabled={resuming} data-testid="lifecycle-keep-subscription">
+        {resuming ? <Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden /> : null}
+        {cta.label}
+      </button>
+    );
+  }
+
+  if (!cta.route) return null;
   return (
     <Link to={cta.route} className={className}>
       {cta.label}
@@ -34,12 +47,20 @@ function CtaButton({ cta, variant = 'primary' }) {
 /** Portal-wide lifecycle presentation shell (no permission enforcement). */
 export default function LifecycleShell() {
   const { portalMode, customerExperience } = usePortalMode();
-  const { loading, error, navigationPolicy, warnings, runtimeAvailable } = useLifecycleRuntime();
+  const { loading, error, navigationPolicy, warnings, runtimeAvailable, refreshSession } = useLifecycleRuntime();
+  const { canManageSubscription } = useBillingCapabilities();
   const location = useLocation();
   const cx = normalizeCustomerExperience(customerExperience);
   const heading = cx.heading.trim();
   const showBanner = Boolean(heading) || portalMode !== 'FULL_ACCESS' || !runtimeAvailable;
   const style = MODE_STYLES[portalMode] || MODE_STYLES.FULL_ACCESS;
+
+  const { resumeSubscription, resuming, stepUpModal } = useResumeSubscription({
+    canManageSubscription,
+    onSuccess: async () => {
+      await refreshSession('subscription_resumed');
+    },
+  });
 
   if (loading) return null;
 
@@ -49,6 +70,7 @@ export default function LifecycleShell() {
 
   return (
     <div className="mb-5 space-y-3" data-testid="lifecycle-shell">
+      {stepUpModal}
       {!runtimeAvailable && error && (
         <div
           className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex gap-2"
@@ -101,7 +123,7 @@ export default function LifecycleShell() {
               )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-              <CtaButton cta={cx.primary_cta} variant="primary" />
+              <CtaButton cta={cx.primary_cta} variant="primary" onResume={resumeSubscription} resuming={resuming} />
               <CtaButton cta={cx.secondary_cta} variant="secondary" />
             </div>
           </div>
@@ -127,14 +149,8 @@ export function PortalModePageBanner() {
   if (!portalMode || portalMode === 'FULL_ACCESS') return null;
   const label = customerExperience?.current_state_label || portalMode?.replace(/_/g, ' ') || 'Restricted';
   return (
-    <p
-      className="text-xs text-gray-600 mb-3 flex items-center gap-2"
-      data-testid="portal-mode-page-banner"
-    >
-      <Info className="w-3.5 h-3.5 text-electric-teal shrink-0" aria-hidden />
-      <span>
-        Account presentation: <span className="font-medium text-gray-800">{label}</span>
-      </span>
-    </p>
+    <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800" data-testid="portal-mode-page-banner">
+      {label}
+    </div>
   );
 }

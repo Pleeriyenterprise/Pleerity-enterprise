@@ -5,6 +5,7 @@ Endpoints:
 - GET /api/billing/status - Get current subscription status
 - POST /api/billing/portal - Create Stripe billing portal session
 - POST /api/billing/cancel - Cancel subscription
+- POST /api/billing/resume - Undo cancel-at-period-end (keep subscription)
 """
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from pydantic import BaseModel
@@ -271,6 +272,48 @@ async def cancel_subscription(request: Request, body: CancelRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to cancel subscription"
+        )
+
+
+@router.post("/resume")
+async def resume_subscription(request: Request):
+    """Undo cancel-at-period-end and keep the subscription active."""
+    user = await client_route_guard(request)
+    client_id = user.get("client_id")
+
+    if not client_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No client_id associated with user",
+        )
+    await assert_client_capability(user, "CAP_SUB_MANAGE", "write")
+    await require_recent_step_up(request, user)
+
+    try:
+        result = await stripe_service.resume_subscription(
+            client_id=client_id,
+            actor_role=user.get("role", "CLIENT"),
+            actor_id=user.get("portal_user_id"),
+        )
+        await create_audit_log(
+            action=AuditAction.ADMIN_ACTION,
+            actor_role=user.get("role", "CLIENT"),
+            actor_id=user.get("portal_user_id"),
+            client_id=client_id,
+            metadata={
+                "action_type": "SUBSCRIPTION_RESUME_COMPLETED",
+                "source": "billing_resume_route",
+                "already_active": bool(result.get("already_active")),
+            },
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("Failed to resume subscription: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resume subscription",
         )
 
 

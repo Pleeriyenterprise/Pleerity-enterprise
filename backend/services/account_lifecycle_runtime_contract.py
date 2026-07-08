@@ -25,6 +25,11 @@ from services.account_lifecycle_state_resolver import (
     resolve_account_lifecycle_state,
 )
 from services.plan_registry import plan_registry
+from services.billing_period_utils import normalize_stored_period_end_for_api
+from services.billing_scheduled_cancellation_authority import (
+    is_stale_scheduled_cancellation_mirror,
+    reconcile_stale_scheduled_cancellation_if_needed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -744,8 +749,13 @@ def _customer_experience_for_mode(
     portal_mode: str,
     lifecycle_state: str,
     facts: Dict[str, Any],
+    *,
+    now: Optional[datetime] = None,
 ) -> Dict[str, Any]:
+    now = _utc_now(now)
     period_end = facts.get("current_period_end")
+    period_end_dt = normalize_stored_period_end_for_api(period_end)
+    stale_scheduled = is_stale_scheduled_cancellation_mirror(facts, now=now)
     grace_end = facts.get("grace_period_ends_at")
     templates = {
         PortalMode.FULL_ACCESS.value: {
@@ -859,10 +869,23 @@ def _customer_experience_for_mode(
     }
     cx = dict(templates.get(portal_mode, templates[PortalMode.BILLING_RECOVERY.value]))
     if lifecycle_state == "CANCELLATION_SCHEDULED" and portal_mode == PortalMode.FULL_ACCESS.value:
-        cx["heading"] = "Cancellation scheduled"
-        cx["explanation"] = f"You have full access until {period_end or 'the end of your billing period'}."
-        cx["primary_cta"] = {"label": "Keep subscription", "route": "/settings/billing"}
-        cx["secondary_cta"] = {"label": "View billing", "route": "/settings/billing"}
+        if stale_scheduled:
+            cx["heading"] = "Updating your subscription status"
+            cx["explanation"] = (
+                "Your subscription status is being updated. This usually completes within a few minutes."
+            )
+            cx["reason"] = "We are synchronising your billing status with Stripe."
+            cx["primary_cta"] = {"label": "Keep subscription", "action": "resume_subscription"}
+            cx["secondary_cta"] = {"label": "View billing", "route": "/settings/billing"}
+            cx["expected_next_step"] = "Status refresh — full access or recovery guidance"
+        else:
+            cx["heading"] = "Cancellation scheduled"
+            if period_end_dt and period_end_dt >= now:
+                cx["explanation"] = f"You have full access until {period_end_dt.strftime('%Y-%m-%d %H:%M UTC')}."
+            else:
+                cx["explanation"] = "You have full access until the end of your billing period."
+            cx["primary_cta"] = {"label": "Keep subscription", "action": "resume_subscription"}
+            cx["secondary_cta"] = {"label": "View billing", "route": "/settings/billing"}
     return cx
 
 
@@ -949,7 +972,7 @@ def build_runtime_contract(
     reactivation_policy = resolve_reactivation_policy(lifecycle_state, portal_mode)
     polling_policy = resolve_polling_policy(portal_mode)
     navigation_policy = resolve_navigation_policy(portal_mode)
-    customer_experience = _customer_experience_for_mode(portal_mode, lifecycle_state, facts)
+    customer_experience = _customer_experience_for_mode(portal_mode, lifecycle_state, facts, now=now)
 
     lifecycle_context = {
         "state_label": customer_experience.get("current_state_label") or lifecycle_state,
@@ -958,7 +981,7 @@ def build_runtime_contract(
         "grace_end": facts.get("grace_period_ends_at"),
         "last_event_id": None,
         "last_event_type": None,
-        "transition_pending": False,
+        "transition_pending": is_stale_scheduled_cancellation_mirror(facts, now=now),
     }
 
     material = {
@@ -1053,6 +1076,14 @@ async def resolve_runtime_contract_for_client(
     entitlements_version = None
     if client:
         entitlements_version = client.get("entitlements_version")
+    now = _utc_now(now)
+    if client_id and billing:
+        billing, _reconciled = await reconcile_stale_scheduled_cancellation_if_needed(
+            client_id,
+            billing,
+            now=now,
+            event_source="runtime_contract_stale_scheduled_cancellation",
+        )
     contract = build_runtime_contract(
         client={**(client or {}), "client_id": client_id} if client_id else client,
         billing=billing,

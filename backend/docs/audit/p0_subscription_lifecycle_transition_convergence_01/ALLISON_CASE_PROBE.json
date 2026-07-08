@@ -1,0 +1,37 @@
+{
+  "programme": "P0-SUBSCRIPTION-LIFECYCLE-TRANSITION-CONVERGENCE-01",
+  "probed_at_utc": "2026-07-08T21:55:23Z",
+  "customer_email": "allison@yopmail.com",
+  "client_id": "5db7bba1-ed9d-444e-9e0d-b7478d5b566b",
+  "observed_ui": {
+    "banner": "Cancellation scheduled",
+    "access_message": "You have full access until 2026-06-16 11:18:55",
+    "portal_mode": "FULL_ACCESS",
+    "keep_subscription_visible": true,
+    "keep_subscription_effect": "no visible action when already on billing page"
+  },
+  "mongo_billing_mirror": {
+    "subscription_status": "ACTIVE",
+    "cancel_at_period_end": true,
+    "current_period_end": "2026-06-16T11:18:55",
+    "current_period_start": "2026-05-16T11:18:55",
+    "billing_lifecycle_state": "cancel_at_period_end",
+    "billing_sync_state": "ok",
+    "billing_reconciliation_needed": false,
+    "billing_last_synced_at": "2026-07-08T21:34:59.689Z",
+    "stripe_subscription_id": "sub_1TMnwjCF0O5oqdUz2FQoLUfX",
+    "stripe_customer_id": "cus_ULUwpq2L6IuLuk",
+    "stripe_webhook_last_received_at": "2026-05-16T11:19:36.468Z",
+    "stripe_webhook_last_event_type": "customer.subscription.updated"
+  },
+  "contradiction": {
+    "period_end_passed": true,
+    "still_cancellation_scheduled_full_access": true,
+    "stale_access_date_in_banner": true
+  },
+  "root_cause_hypothesis": [
+    "Missed terminal Stripe webhook after period end",
+    "stripe_subscription_reconcile excludes billing_sync_state=ok rows",
+    "Keep subscription is Link-only; no R-003 resume API"
+  ]
+}

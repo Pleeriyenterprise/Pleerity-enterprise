@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useStepUpApi } from '../hooks/useStepUpApi';
+import { useResumeSubscription } from '../hooks/useResumeSubscription';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { 
   Check, 
@@ -211,6 +212,13 @@ function nextRenewalEndPhrase(bs) {
   return nextRenewalPrimaryDisplay(bs) || 'the end of your billing period';
 }
 
+function isBillingPeriodEndPast(bs) {
+  const raw = bs?.current_period_end;
+  if (!raw) return false;
+  const dt = new Date(raw);
+  return !Number.isNaN(dt.getTime()) && dt.getTime() < Date.now();
+}
+
 /** Paid-good-standing display states — used so "renewal soon" does not show during grace/retry/cancel. */
 function isPaidSubscriptionDisplayHealthy(bs) {
   const b = bs?.billing_status_display;
@@ -242,7 +250,7 @@ const BillingPage = () => {
     canManageSubscription,
     canCancelSubscription,
   } = useBillingCapabilities();
-  const { customerExperience } = useLifecycleRuntime();
+  const { customerExperience, refreshSession } = useLifecycleRuntime();
   const billingStepUp = useStepUpApi();
   const [searchParams] = useSearchParams();
   const [usageRefreshing, setUsageRefreshing] = useState(false);
@@ -304,6 +312,15 @@ const BillingPage = () => {
       setLoading(false);
     }
   }, [canViewBilling]);
+
+  const { resumeSubscription, resuming: resumingSubscription, stepUpModal: resumeStepUpModal } =
+    useResumeSubscription({
+      canManageSubscription,
+      onSuccess: async () => {
+        await fetchBillingStatus();
+        await refreshSession('subscription_resumed');
+      },
+    });
 
   const fetchInvoices = useCallback(async () => {
     if (!canViewInvoices) {
@@ -1141,11 +1158,32 @@ const BillingPage = () => {
           <Alert className="mb-6 border-amber-200 bg-amber-50" data-testid="cancellation-notice">
             <AlertTriangle className="w-4 h-4 text-amber-600" />
             <AlertDescription className="text-amber-800">
-              <strong>Cancellation Scheduled</strong>
+              <strong>{isBillingPeriodEndPast(billingStatus) ? 'Updating your subscription status' : 'Cancellation Scheduled'}</strong>
               <p className="mt-1">
-                Your subscription will end on {nextRenewalEndPhrase(billingStatus)}. 
-                You'll continue to have full access until then.
+                {isBillingPeriodEndPast(billingStatus)
+                  ? 'Your subscription status is being updated. This usually completes within a few minutes.'
+                  : `Your subscription will end on ${nextRenewalEndPhrase(billingStatus)}. You'll continue to have full access until then.`}
               </p>
+              {canManageSubscription && (
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={resumeSubscription}
+                    disabled={resumingSubscription}
+                    data-testid="billing-keep-subscription"
+                  >
+                    {resumingSubscription ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" aria-hidden />
+                        Keeping subscription…
+                      </>
+                    ) : (
+                      'Keep subscription'
+                    )}
+                  </Button>
+                </div>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -1562,6 +1600,7 @@ const BillingPage = () => {
         </div>
       )}
       {billingStepUp.modal}
+      {resumeStepUpModal}
     </PortalPageWithLifecyclePresentation>
   );
 };

@@ -1,0 +1,11 @@
+{
+  "programme": "P0-SUBSCRIPTION-LIFECYCLE-TRANSITION-CONVERGENCE-01",
+  "validated_at": "2026-07-08T22:22:18Z",
+  "resume_route_probe": {
+    "status": 404,
+    "detail": "{\"detail\":\"Not Found\"}"
+  },
+  "resume_route_deployed": false,
+  "verdict": "SUBSCRIPTION_LIFECYCLE_TRANSITION_BLOCKED",
+  "blocker": "STAGING_ALLISON_PASSWORD not set for browser/API validation"
+}

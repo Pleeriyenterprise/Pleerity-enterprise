@@ -23,7 +23,12 @@ from services.billing_period_utils import (
     period_start_from_stripe_subscription_dict,
     period_start_from_stripe_unix,
 )
-from services.billing_stripe_sync_service import stripe_subscription_to_dict
+from services.billing_stripe_sync_service import (
+    stripe_subscription_to_dict,
+    sync_client_billing_from_stripe_subscription_id,
+)
+from services.subscription_lifecycle_service import sync_subscription_lifecycle
+from services.billing_reconciliation_service import mark_billing_reconciliation_needed
 from services.billing_presentation import (
     billing_status_display,
     billing_sync_visibility_note,
@@ -55,8 +60,6 @@ from services.stripe_mode_containment_service import (
 )
 from utils.audit import create_audit_log
 from models import AuditAction
-from services.subscription_lifecycle_service import sync_subscription_lifecycle
-from services.billing_reconciliation_service import mark_billing_reconciliation_needed
 
 logger = logging.getLogger(__name__)
 
@@ -1077,6 +1080,73 @@ class StripeService:
         except stripe.error.StripeError as e:
             logger.error(f"Stripe cancel error for client {client_id}: {e}")
             raise ValueError(f"Failed to cancel subscription: {str(e)}")
+
+    async def resume_subscription(
+        self,
+        client_id: str,
+        *,
+        actor_role: str = "CLIENT",
+        actor_id: Optional[str] = None,
+        resume_source: str = "client_billing_resume",
+    ) -> Dict[str, Any]:
+        """Undo cancel-at-period-end (R-003) via Stripe authority and governed billing sync."""
+        db = database.get_db()
+        billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0})
+        if not billing or not billing.get("stripe_subscription_id"):
+            raise ValueError("No active subscription found")
+
+        subscription_id = billing.get("stripe_subscription_id")
+        if not billing.get("cancel_at_period_end"):
+            return {
+                "success": True,
+                "already_active": True,
+                "cancel_at_period_end": False,
+                "subscription_status": billing.get("subscription_status"),
+            }
+
+        try:
+            subscription = stripe.Subscription.modify(
+                subscription_id,
+                cancel_at_period_end=False,
+            )
+            await sync_client_billing_from_stripe_subscription_id(
+                client_id,
+                subscription_id,
+                event_source=resume_source,
+                update_plan=True,
+                increment_entitlements_version=0,
+            )
+            await sync_subscription_lifecycle(client_id, bump_version=True)
+            sub_d = stripe_subscription_to_dict(subscription)
+            stripe_cpe = period_end_from_stripe_subscription_dict(sub_d)
+            await create_audit_log(
+                action=AuditAction.ADMIN_ACTION,
+                actor_role=actor_role,
+                actor_id=actor_id,
+                client_id=client_id,
+                metadata={
+                    "action": "subscription_resume_requested",
+                    "subscription_id": subscription_id,
+                    "resume_source": resume_source,
+                    "cancel_at_period_end": False,
+                },
+            )
+            logger.info("Subscription resume requested for client %s", client_id)
+            return {
+                "success": True,
+                "already_active": False,
+                "cancel_at_period_end": False,
+                "current_period_end": stripe_cpe.isoformat() if stripe_cpe else None,
+                "subscription_status": sub_d.get("status"),
+            }
+        except stripe.error.StripeError as e:
+            logger.error("Stripe resume error for client %s: %s", client_id, e)
+            await mark_billing_reconciliation_needed(
+                client_id=client_id,
+                reason="resume_subscription_stripe_error",
+                context={"error": str(e)[:500], "subscription_id": subscription_id},
+            )
+            raise ValueError(f"Failed to resume subscription: {str(e)}")
 
     async def list_invoices(self, client_id: str, limit: int = 24) -> Dict[str, Any]:
         """
