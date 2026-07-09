@@ -12,6 +12,7 @@ from services.billing_reconciliation_service import (
     mark_billing_reconciliation_needed,
 )
 from services.billing_stripe_sync_service import sync_client_billing_from_stripe_subscription_id
+from services.stripe_mode_authority import configure_stripe_sdk
 from services.subscription_lifecycle_service import sync_subscription_lifecycle
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,9 @@ async def reconcile_stale_scheduled_cancellation_if_needed(
 
     sid = (billing.get("stripe_subscription_id") or "").strip()
     if not sid or not _cooldown_elapsed(billing, now=now):
+        return billing, False
+
+    if not configure_stripe_sdk():
         return billing, False
 
     db = database.get_db()
