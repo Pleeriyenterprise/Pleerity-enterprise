@@ -1166,6 +1166,25 @@ class Database:
             except Exception as seed_err:
                 logger.warning("Agreement seed skipped or failed: %s", seed_err)
 
+            # Zoho governed integration layer
+            try:
+                await self.db.zoho_sync_runs.create_index("sync_id", unique=True)
+                await self.db.zoho_sync_runs.create_index([("integration", 1), ("created_at", -1)])
+                await self.db.zoho_sync_runs.create_index([("status", 1), ("created_at", -1)])
+                await self.db.zoho_sync_dead_letter.create_index("dead_letter_id", unique=True)
+                await self.db.zoho_sync_dead_letter.create_index([("integration", 1), ("resolved", 1)])
+                await self.db.zoho_sync_queue.create_index("queue_id", unique=True)
+                await self.db.zoho_sync_queue.create_index([("status", 1), ("created_at", 1)])
+                await self.db.zoho_oauth_tokens.create_index(
+                    [("token_id", 1), ("environment", 1)], unique=True
+                )
+                await self.db.zoho_external_keys.create_index(
+                    [("integration", 1), ("pleerity_id", 1), ("resource_type", 1)],
+                    unique=True,
+                )
+            except Exception as zoho_idx_err:
+                logger.warning("Zoho integration index creation note: %s", zoho_idx_err)
+
             try:
                 from services.discovery.discovery_indexes import ensure_discovery_indexes
 

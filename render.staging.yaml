@@ -83,3 +83,25 @@ services:
         value: "false"
       - key: AI_ENABLED
         value: "false"
+      # Zoho integration layer — all disabled until staging pilot Phase A (sandbox credentials only).
+      - key: ZOHO_ENVIRONMENT
+        value: staging
+      - key: ZOHO_INTEGRATION_ENABLED
+        value: "false"
+      - key: ZOHO_KILL_SWITCH
+        value: "false"
+      - key: ZOHO_ANALYTICS_SYNC_ENABLED
+        value: "false"
+      - key: ZOHO_CRM_SYNC_ENABLED
+        value: "false"
+      - key: ZOHO_CAMPAIGNS_SYNC_ENABLED
+        value: "false"
+      - key: ZOHO_CAMPAIGNS_KIT_GAP_CONFIRMED
+        value: "false"
+      - key: ZOHO_SIGN_SYNC_ENABLED
+        value: "false"
+      - key: ZOHO_BOOKS_SYNC_ENABLED
+        value: "false"
+      - key: ZOHO_WORKDRIVE_SYNC_ENABLED
+        value: "false"
+      # Zoho OAuth secrets: set in Render dashboard only when Phase A begins (sandbox org).

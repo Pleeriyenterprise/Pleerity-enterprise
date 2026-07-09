@@ -1830,3 +1830,64 @@ JOB_RUNNERS = {
     "pilot_lifecycle_reconcile": run_pilot_lifecycle_reconcile,
     "commercial_entitlement_expiry": run_commercial_entitlement_expiry,
 }
+
+
+async def run_zoho_sync_queue(client_id: Optional[str] = None):
+    """Process pending Zoho integration queue items."""
+    from services.integrations.zoho.service import zoho_integration_service
+
+    result = await zoho_integration_service.process_queue(limit=100)
+    return {"message": "Zoho sync queue processed", "count": result.get("processed", 0), **result}
+
+
+async def run_zoho_analytics_export(client_id: Optional[str] = None):
+    """Scheduled read-only analytics export to Zoho."""
+    from services.integrations.zoho.service import zoho_integration_service
+
+    sync_result = await zoho_integration_service.run_sync("analytics", "export_aggregates", {})
+    return {
+        "message": "Zoho analytics export completed",
+        "count": 1 if sync_result.success else 0,
+        "sync_id": sync_result.sync_id,
+        "status": sync_result.status.value,
+    }
+
+
+async def run_zoho_books_export(client_id: Optional[str] = None):
+    """Finance summary export to Zoho Books — read-only, no billing authority changes."""
+    from services.integrations.zoho.service import zoho_integration_service
+
+    sync_result = await zoho_integration_service.run_sync("books", "export_finance_summary", {})
+    return {
+        "message": "Zoho Books export completed",
+        "count": 1 if sync_result.success else 0,
+        "sync_id": sync_result.sync_id,
+        "status": sync_result.status.value,
+    }
+
+
+async def run_zoho_campaigns_export(client_id: Optional[str] = None):
+    """Audience and suppression export to Zoho Campaigns."""
+    from services.integrations.zoho.config import zoho_campaigns_sync_enabled
+    from services.integrations.zoho.service import zoho_integration_service
+
+    if not zoho_campaigns_sync_enabled():
+        return {"message": "Zoho Campaigns sync disabled", "count": 0}
+    aud = await zoho_integration_service.run_sync("campaigns", "export_audience", {})
+    sup = await zoho_integration_service.run_sync("campaigns", "export_suppression", {})
+    return {
+        "message": "Zoho Campaigns export completed",
+        "count": int(aud.success) + int(sup.success),
+        "audience_sync_id": aud.sync_id,
+        "suppression_sync_id": sup.sync_id,
+    }
+
+
+JOB_RUNNERS.update(
+    {
+        "zoho_sync_queue": run_zoho_sync_queue,
+        "zoho_analytics_export": run_zoho_analytics_export,
+        "zoho_books_export": run_zoho_books_export,
+        "zoho_campaigns_export": run_zoho_campaigns_export,
+    }
+)
