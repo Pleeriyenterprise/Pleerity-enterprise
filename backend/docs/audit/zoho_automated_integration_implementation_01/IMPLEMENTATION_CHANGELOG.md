@@ -79,3 +79,20 @@ When `ZOHO_INTEGRATION_ENABLED=false`, overall status is **`dormant`** — does 
 ## Additional fix (governance alignment)
 
 `operational_evidence_maintenance_job` was missing from `REGISTRY_JOB_OUTCOME_FAMILY` (pre-existing CI gap). Added as `platform_other` with allowlist entry.
+
+---
+
+## Books webhook consistency hardening (2026-07-09)
+
+**Decision:** Option B — HMAC verification for Books webhook (matches CRM reject-only pattern).
+
+| File | Change |
+|------|--------|
+| `routes/integrations/zoho/webhooks.py` | Books route: verify `X-Zoho-Signature` via `zoho_webhook_secret("books")` before rejection |
+| `services/integrations/zoho/webhooks/handlers.py` | `reject_books_inbound(payload)`: direct adapter rejection + webhook audit log |
+| `docs/zoho_integration.env.example` | Added `ZOHO_BOOKS_WEBHOOK_SECRET` |
+| `docs/audit/.../ZOHO_WEBHOOK_POLICY.md` | Explicit Books HMAC requirement |
+| `docs/audit/.../ZOHO_SANDBOX_READINESS_REPORT.md` | Books webhook secret documented |
+| `tests/integrations/zoho/test_zoho_integration.py` | Books HMAC + rejection tests |
+
+See `BOOKS_WEBHOOK_CONSISTENCY_REPORT.md` for full review and SoR confirmation.

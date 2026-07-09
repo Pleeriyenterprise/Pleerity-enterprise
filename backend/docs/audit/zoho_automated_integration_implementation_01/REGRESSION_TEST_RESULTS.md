@@ -86,3 +86,29 @@ No regressions identified in Zoho, control centre governance, or observability t
 - [x] No staging/production env changes
 - [x] No cron wiring
 - [x] No breaking API changes (additive JSON fields only)
+
+---
+
+## Books webhook consistency hardening (2026-07-09)
+
+**Verdict:** **PASS**
+
+```bash
+cd backend
+python -m pytest tests/integrations/zoho/ -q
+```
+
+| Result | Count |
+|--------|-------|
+| **Passed** | 26 |
+| Failed | 0 |
+
+### New tests
+
+| Test | Validates |
+|------|-----------|
+| `test_books_webhook_requires_hmac_when_enabled` | Unsigned Books POST → **401** when integration enabled |
+| `test_books_webhook_verifies_and_rejects_inbound` | Valid HMAC → **200**, `books_inbound_forbidden` |
+| `test_webhook_routes_404_when_disabled` | Books route **404** when integration disabled |
+
+See `BOOKS_WEBHOOK_CONSISTENCY_REPORT.md` for decision record.

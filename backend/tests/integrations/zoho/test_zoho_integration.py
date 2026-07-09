@@ -174,6 +174,49 @@ async def test_webhook_routes_404_when_disabled():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         res = await client.post("/api/internal/integrations/zoho/webhooks/crm", json={})
         assert res.status_code == 404
+        res = await client.post("/api/internal/integrations/zoho/webhooks/books", json={})
+        assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_books_webhook_requires_hmac_when_enabled(monkeypatch):
+    monkeypatch.setenv("ZOHO_INTEGRATION_ENABLED", "true")
+    app = FastAPI()
+    app.include_router(zoho_webhooks.router)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        res = await client.post(
+            "/api/internal/integrations/zoho/webhooks/books",
+            json={"event": "invoice.created"},
+        )
+        assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_books_webhook_verifies_and_rejects_inbound(monkeypatch):
+    monkeypatch.setenv("ZOHO_INTEGRATION_ENABLED", "true")
+    monkeypatch.setenv("ZOHO_BOOKS_WEBHOOK_SECRET", "books-secret")
+    body = b'{"event":"invoice.created"}'
+    sig = hmac.new(b"books-secret", body, hashlib.sha256).hexdigest()
+
+    app = FastAPI()
+    app.include_router(zoho_webhooks.router)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        with patch(
+            "services.integrations.zoho.webhooks.handlers.log_zoho_webhook_event",
+            new_callable=AsyncMock,
+        ):
+            res = await client.post(
+                "/api/internal/integrations/zoho/webhooks/books",
+                content=body,
+                headers={"X-Zoho-Signature": f"sha256={sig}", "Content-Type": "application/json"},
+            )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["accepted"] is False
+    assert data["reason"] == "books_inbound_forbidden"
+    assert "inbound" in data["message"]
 
 
 @pytest.mark.asyncio

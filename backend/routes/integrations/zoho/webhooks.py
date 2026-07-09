@@ -84,7 +84,17 @@ async def zoho_crm_webhook(
 
 
 @router.post("/api/internal/integrations/zoho/webhooks/books")
-async def zoho_books_webhook(request: Request) -> Dict[str, Any]:
+async def zoho_books_webhook(
+    request: Request,
+    x_zoho_signature: Optional[str] = Header(default=None, alias="X-Zoho-Signature"),
+) -> Dict[str, Any]:
     """Books inbound writes forbidden — Stripe/Pleerity remain billing SoR."""
     _guard()
-    return await reject_books_inbound()
+    raw = await request.body()
+    try:
+        verify_zoho_webhook_signature(raw, x_zoho_signature, zoho_webhook_secret("books"))
+    except ZohoWebhookVerificationError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+    payload = json.loads(raw.decode("utf-8"))
+    return await reject_books_inbound(payload if isinstance(payload, dict) else {})

@@ -13,9 +13,18 @@
 
 ## Verification
 
-- HMAC-SHA256 via `X-Zoho-Signature` header
-- Secret: `ZOHO_{INTEGRATION}_WEBHOOK_SECRET` or `ZOHO_WEBHOOK_SECRET`
-- Invalid signature → 401
+All four webhook endpoints use the same verification model before any handler logic runs:
+
+- HMAC-SHA256 via `X-Zoho-Signature` header over the **raw request body**
+- Secret resolution: `ZOHO_{INTEGRATION}_WEBHOOK_SECRET` → fallback `ZOHO_WEBHOOK_SECRET`
+  - Sign → `ZOHO_SIGN_WEBHOOK_SECRET`
+  - Campaigns → `ZOHO_CAMPAIGNS_WEBHOOK_SECRET`
+  - CRM → `ZOHO_CRM_WEBHOOK_SECRET`
+  - Books → `ZOHO_BOOKS_WEBHOOK_SECRET`
+- Missing secret → **401** `webhook_secret_not_configured`
+- Invalid signature → **401** `invalid_signature`
+
+**Books note:** Inbound Books operations are **always rejected** after successful signature verification. HMAC is required for consistency and endpoint protection; it does **not** enable Books as a System of Record.
 
 ## Allowed inbound actions
 

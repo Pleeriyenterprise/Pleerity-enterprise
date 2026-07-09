@@ -6,12 +6,10 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from database import database
+from services.integrations.zoho.adapters.books import ZohoBooksAdapter
 from services.integrations.zoho.adapters.crm import ZohoCrmAdapter
 from services.integrations.zoho.audit_helper import log_zoho_webhook_event
-from services.integrations.zoho.config import (
-    is_integration_enabled,
-    zoho_integration_enabled,
-)
+from services.integrations.zoho.config import is_integration_enabled
 from services.integrations.zoho.registry import validate_inbound_crm_fields
 from services.integrations.zoho.service import zoho_integration_service
 
@@ -94,8 +92,19 @@ async def reject_crm_inbound(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-async def reject_books_inbound() -> Dict[str, Any]:
-    if not zoho_integration_enabled():
-        return {"accepted": False, "reason": "integration_disabled"}
-    result = await zoho_integration_service.run_sync("books", "inbound_rejected", {})
-    return {"accepted": False, "reason": "books_inbound_forbidden", "message": result.message}
+async def reject_books_inbound(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Zoho Books must never create or modify authoritative Pleerity billing data."""
+    adapter = ZohoBooksAdapter()
+    result = await adapter.execute("inbound_rejected", {"sync_id": "inbound-reject"})
+    event = str(payload.get("event") or payload.get("type") or "unknown").lower()
+    await log_zoho_webhook_event(
+        integration="books",
+        event_type="inbound_rejected",
+        status="rejected",
+        metadata={"event": event},
+    )
+    return {
+        "accepted": False,
+        "reason": "books_inbound_forbidden",
+        "message": result.message,
+    }
