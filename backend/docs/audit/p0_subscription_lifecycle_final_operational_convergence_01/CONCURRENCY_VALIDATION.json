@@ -1,0 +1,28 @@
+{
+  "phase": 5,
+  "verdict": "PASS",
+  "unit_tests": [
+    {
+      "test_file": "tests/test_p0_subscription_lifecycle_transition_convergence_01.py",
+      "passed": true,
+      "tail": "nd\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n10 passed, 4 warnings in 0.24s\n"
+    },
+    {
+      "test_file": "tests/test_p0_runtime_contract_state_matrix_validation_01.py",
+      "passed": true,
+      "tail": "nd\\models\\intake_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n63 passed, 4 warnings in 0.49s\n"
+    },
+    {
+      "test_file": "tests/test_iteration26_billing_webhooks.py",
+      "passed": true,
+      "tail": "take_uploads.py:23: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/\n    class IntakeUpload(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n4 passed, 21 skipped, 4 warnings in 59.28s\n"
+    }
+  ],
+  "coverage": [
+    "resume idempotency",
+    "stale scheduled cancellation detection",
+    "reconcile batch includes stale rows",
+    "runtime contract state matrix",
+    "billing webhook idempotency patterns"
+  ]
+}

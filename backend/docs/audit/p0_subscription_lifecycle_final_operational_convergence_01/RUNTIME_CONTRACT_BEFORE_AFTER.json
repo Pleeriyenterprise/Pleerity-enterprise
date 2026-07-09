@@ -1,0 +1,19 @@
+{
+  "phase": 6,
+  "verdict": "PASS",
+  "keep_subscription_transition": {
+    "runtime_version_changed_cancel_to_active": true,
+    "runtime_version_changed_active_restore": true,
+    "lifecycle_state": {
+      "before": "ACTIVE",
+      "mid": "CANCELLATION_SCHEDULED",
+      "after": "ACTIVE"
+    },
+    "portal_mode": {
+      "before": "FULL_ACCESS",
+      "mid": "FULL_ACCESS",
+      "after": "FULL_ACCESS"
+    },
+    "no_logout_required": true
+  }
+}

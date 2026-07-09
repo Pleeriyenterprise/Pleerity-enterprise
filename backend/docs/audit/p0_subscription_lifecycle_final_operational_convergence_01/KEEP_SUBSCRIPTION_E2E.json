@@ -1,0 +1,279 @@
+{
+  "phase": 4,
+  "verdict": "PASS",
+  "steps": [
+    {
+      "cancel_schedule": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "cancel_at_period_end": true,
+          "current_period_end": "2026-08-08T21:11:39+00:00"
+        }
+      }
+    },
+    {
+      "resume_api": {
+        "status": 200,
+        "body": {
+          "success": true,
+          "already_active": false,
+          "cancel_at_period_end": false,
+          "current_period_end": "2026-08-08T21:11:39+00:00",
+          "subscription_status": "active"
+        }
+      }
+    }
+  ],
+  "target": {
+    "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+    "email": "lere@yopmail.com",
+    "mode": "schedule_then_resume"
+  },
+  "runtime_contract": {
+    "before": {
+      "status": 200,
+      "lifecycle_state": "ACTIVE",
+      "portal_mode": "FULL_ACCESS",
+      "runtime_version": 1824736577,
+      "customer_experience": {
+        "heading": "",
+        "explanation": "",
+        "reason": "",
+        "current_state_label": "Active",
+        "available_features": [
+          "dashboard",
+          "properties",
+          "requirements",
+          "reports",
+          "today",
+          "billing"
+        ],
+        "unavailable_features": [],
+        "primary_cta": {
+          "label": "Continue",
+          "route": "/today"
+        },
+        "secondary_cta": null,
+        "recovery_guidance": "",
+        "support_guidance": "Standard help is available from the support centre.",
+        "expected_next_step": "Continue work"
+      },
+      "lifecycle_context": {
+        "state_label": "Active",
+        "state_reason": "active_subscription",
+        "period_end": "2026-08-08 21:11:39",
+        "grace_end": null,
+        "last_event_id": null,
+        "last_event_type": null,
+        "transition_pending": false
+      },
+      "capabilities_sample": {
+        "CAP_SUB_MANAGE": "ALLOW",
+        "CAP_TODAY_VIEW": "ALLOW",
+        "CAP_PROP_VIEW": "ALLOW",
+        "CAP_DASHBOARD_VIEW": "ALLOW"
+      }
+    },
+    "mid": {
+      "status": 200,
+      "lifecycle_state": "CANCELLATION_SCHEDULED",
+      "portal_mode": "FULL_ACCESS",
+      "runtime_version": 1252250550,
+      "customer_experience": {
+        "heading": "Cancellation scheduled",
+        "explanation": "You have full access until 2026-08-08 21:11 UTC.",
+        "reason": "",
+        "current_state_label": "Cancellation scheduled",
+        "available_features": [
+          "dashboard",
+          "properties",
+          "requirements",
+          "reports",
+          "today",
+          "billing"
+        ],
+        "unavailable_features": [],
+        "primary_cta": {
+          "label": "Keep subscription",
+          "action": "resume_subscription"
+        },
+        "secondary_cta": {
+          "label": "View billing",
+          "route": "/settings/billing"
+        },
+        "recovery_guidance": "",
+        "support_guidance": "Standard help is available from the support centre.",
+        "expected_next_step": "Continue work"
+      },
+      "lifecycle_context": {
+        "state_label": "Cancellation scheduled",
+        "state_reason": "cancel_at_period_end_with_access",
+        "period_end": "2026-08-08 21:11:39",
+        "grace_end": null,
+        "last_event_id": null,
+        "last_event_type": null,
+        "transition_pending": false
+      },
+      "capabilities_sample": {
+        "CAP_SUB_MANAGE": "ALLOW",
+        "CAP_TODAY_VIEW": "ALLOW",
+        "CAP_PROP_VIEW": "ALLOW",
+        "CAP_DASHBOARD_VIEW": "ALLOW"
+      }
+    },
+    "after": {
+      "status": 200,
+      "lifecycle_state": "ACTIVE",
+      "portal_mode": "FULL_ACCESS",
+      "runtime_version": 1824736577,
+      "customer_experience": {
+        "heading": "",
+        "explanation": "",
+        "reason": "",
+        "current_state_label": "Active",
+        "available_features": [
+          "dashboard",
+          "properties",
+          "requirements",
+          "reports",
+          "today",
+          "billing"
+        ],
+        "unavailable_features": [],
+        "primary_cta": {
+          "label": "Continue",
+          "route": "/today"
+        },
+        "secondary_cta": null,
+        "recovery_guidance": "",
+        "support_guidance": "Standard help is available from the support centre.",
+        "expected_next_step": "Continue work"
+      },
+      "lifecycle_context": {
+        "state_label": "Active",
+        "state_reason": "active_subscription",
+        "period_end": "2026-08-08 21:11:39",
+        "grace_end": null,
+        "last_event_id": null,
+        "last_event_type": null,
+        "transition_pending": false
+      },
+      "capabilities_sample": {
+        "CAP_SUB_MANAGE": "ALLOW",
+        "CAP_TODAY_VIEW": "ALLOW",
+        "CAP_PROP_VIEW": "ALLOW",
+        "CAP_DASHBOARD_VIEW": "ALLOW"
+      }
+    }
+  },
+  "billing": {
+    "before": {
+      "has_subscription": true,
+      "current_plan_code": "PLAN_2_PORTFOLIO",
+      "plan_name": "Portfolio Landlord",
+      "plan_display_name": "Portfolio / Small Agent Plan",
+      "plan_status_display": "Paid subscription active",
+      "billing_status_display": "Paid subscription active",
+      "lifecycle_status_label": "Paid subscription active",
+      "subscription_status": "ACTIVE",
+      "next_renewal_date": "2026-08-08T21:11:39+00:00",
+      "next_renewal_date_display": "8 August 2026",
+      "current_period_start": "2026-07-08T21:11:39+00:00",
+      "current_period_end": "2026-08-08T21:11:39+00:00",
+      "cancel_at_period_end": false,
+      "billing_last_synced_at": "2026-07-09T08:23:57.249346+00:00",
+      "billing_sync_state": "ok",
+      "billing_sync_visibility_note": "Last billing refresh: 2026-07-09T08:23:57.249346+00:00.",
+      "billing_operational_narrative_lines": [
+        "Access: Paid subscription active",
+        "Plan: Paid subscription active \u00b7 Billing: Paid subscription active",
+        "Last successful payment (on record): 08 July 2026, 21:11 UTC \u00b7 \u00a339.00",
+        "Next period on record: 8 August 2026 (depends on successful payment).",
+        "Last billing refresh: 2026-07-09T08:23:57.249346+00:00."
+      ],
+      "monthly_price_pence": 3900,
+      "monthly_price_display": "\u00a339.00",
+      "setup_fee_pence": 7900,
+      "setup_fee_display": "\u00a379.00",
+      "setup_fee_state": "applies_first_cycle",
+      "properties_used": 1,
+      "properties_limit": 10,
+      "grace_period_ends_at": null,
+      "payment_failed_at": null,
+      "charge_automatically": true,
+      "renewal_customer_copy": "If your payment method succeeds, the next billing cycle is scheduled for 8 August 2026. This is not a receipt \u2014 confirm payment in history or Stripe if needed.",
+      "renewal_soon": false,
+      "currency": "GBP",
+      "canonical_entitlement_state": "ENABLED",
+      "grace_period_summary": null,
+      "last_payment_at": "2026-07-08T21:11:40+00:00",
+      "last_payment_display": "08 July 2026, 21:11 UTC \u00b7 \u00a339.00",
+      "last_payment_amount_pence": 3900,
+      "last_payment_stripe_invoice_id": "in_1Tr2kqCF0O5oqdUz8jed71wI",
+      "last_payment_invoice_number": "PLEERITY-0120",
+      "last_payment_status": "paid",
+      "open_invoice_status": null,
+      "stripe_next_payment_attempt_at": null,
+      "last_invoice_failure_message": null,
+      "max_properties": 10
+    },
+    "after": {
+      "has_subscription": true,
+      "current_plan_code": "PLAN_2_PORTFOLIO",
+      "plan_name": "Portfolio Landlord",
+      "plan_display_name": "Portfolio / Small Agent Plan",
+      "plan_status_display": "Paid subscription active",
+      "billing_status_display": "Paid subscription active",
+      "lifecycle_status_label": "Paid subscription active",
+      "subscription_status": "ACTIVE",
+      "next_renewal_date": "2026-08-08T21:11:39+00:00",
+      "next_renewal_date_display": "8 August 2026",
+      "current_period_start": "2026-07-08T21:11:39+00:00",
+      "current_period_end": "2026-08-08T21:11:39+00:00",
+      "cancel_at_period_end": false,
+      "billing_last_synced_at": "2026-07-09T08:24:38.933943+00:00",
+      "billing_sync_state": "ok",
+      "billing_sync_visibility_note": "Last billing refresh: 2026-07-09T08:24:38.933943+00:00.",
+      "billing_operational_narrative_lines": [
+        "Access: Paid subscription active",
+        "Plan: Paid subscription active \u00b7 Billing: Paid subscription active",
+        "Last successful payment (on record): 08 July 2026, 21:11 UTC \u00b7 \u00a339.00",
+        "Next period on record: 8 August 2026 (depends on successful payment).",
+        "Last billing refresh: 2026-07-09T08:24:38.933943+00:00."
+      ],
+      "monthly_price_pence": 3900,
+      "monthly_price_display": "\u00a339.00",
+      "setup_fee_pence": 7900,
+      "setup_fee_display": "\u00a379.00",
+      "setup_fee_state": "applies_first_cycle",
+      "properties_used": 1,
+      "properties_limit": 10,
+      "grace_period_ends_at": null,
+      "payment_failed_at": null,
+      "charge_automatically": true,
+      "renewal_customer_copy": "If your payment method succeeds, the next billing cycle is scheduled for 8 August 2026. This is not a receipt \u2014 confirm payment in history or Stripe if needed.",
+      "renewal_soon": false,
+      "currency": "GBP",
+      "canonical_entitlement_state": "ENABLED",
+      "grace_period_summary": null,
+      "last_payment_at": "2026-07-08T21:11:40+00:00",
+      "last_payment_display": "08 July 2026, 21:11 UTC \u00b7 \u00a339.00",
+      "last_payment_amount_pence": 3900,
+      "last_payment_stripe_invoice_id": "in_1Tr2kqCF0O5oqdUz8jed71wI",
+      "last_payment_invoice_number": "PLEERITY-0120",
+      "last_payment_status": "paid",
+      "open_invoice_status": null,
+      "stripe_next_payment_attempt_at": null,
+      "last_invoice_failure_message": null,
+      "max_properties": 10
+    }
+  },
+  "checks": {
+    "lifecycle_active": true,
+    "portal_full_access": true,
+    "cancel_flag_cleared": true,
+    "resume_cta_removed": true,
+    "runtime_version_bumped": true
+  }
+}
