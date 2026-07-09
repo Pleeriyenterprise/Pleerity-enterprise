@@ -5,9 +5,9 @@
 
 ## Verdict
 
-**`ADMIN_CUSTOMER_OPERATIONS_CENTRE_PHASE2_COMPLETE_WITH_CONDITIONS`**
+**`ADMIN_CUSTOMER_OPERATIONS_CENTRE_PHASE2_COMPLETE`**
 
-Implementation and local tests complete. Staging E2E requires deploy of phase 1 + phase 2 commits on `develop`.
+Staging deployment authority confirmed, harness passed, API actions verified, browser E2E passed on 2026-07-09.
 
 ---
 
@@ -66,7 +66,7 @@ Extended the existing Lifecycle Operations Centre into a **Customer Operations C
 | Webhook diagnostics | ✅ |
 | Support bundle exports | ✅ (API + UI) |
 | Governed actions work | ✅ (tests) |
-| Staging E2E | ⏳ post-deploy |
+| Staging E2E | ✅ executed 2026-07-09 |
 
 ---
 

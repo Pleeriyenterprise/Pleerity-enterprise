@@ -1,37 +1,90 @@
 {
   "programme": "ADMIN-CUSTOMER-OPERATIONS-CENTRE-PHASE-2-01",
-  "generated_at": "2026-07-09T10:40:00Z",
+  "generated_at": "2026-07-09T11:25:00Z",
+  "verdict": "ADMIN_CUSTOMER_OPERATIONS_CENTRE_PHASE2_COMPLETE",
+  "commit_sha": "b4fa9a1587315a709360222e0130f59d44c0bb1c",
+  "deployment_authority": {
+    "backend": {
+      "url": "https://pleerity-enterprise.onrender.com/api/version",
+      "commit_sha": "b4fa9a1587315a709360222e0130f59d44c0bb1c",
+      "pass": true
+    },
+    "frontend_stable_alias": {
+      "url": "https://pleerity-enterprise-9jjg.vercel.app",
+      "bundle_before": "main.04ff376e.js",
+      "bundle_after": "main.ac04419e.js",
+      "bundle_sha256_after": "10af8f0a4e788b5e",
+      "has_b4fa9a15": true,
+      "markers": {
+        "customer-health-summary": true,
+        "Customer Operations Centre": true,
+        "lifecycle-ops-export-bundle": true,
+        "Customer ops": true
+      },
+      "alias_action": "vercel alias set pleerity-enterprise-9jjg-qdw83y03m → pleerity-enterprise-9jjg.vercel.app",
+      "pass": true
+    },
+    "stale_bundle_rejected": true
+  },
   "local_tests": {
-    "backend_phase1": { "file": "test_admin_lifecycle_operations_centre_01.py", "pass": true, "count": 4 },
-    "backend_phase2": { "file": "test_admin_customer_operations_centre_phase2_01.py", "pass": true, "count": 4 },
-    "frontend": { "file": "AdminLifecycleOperationsPanel.test.js", "pass": true, "count": 4 }
+    "backend": { "pass": true, "count": 8 },
+    "frontend": { "pass": true, "count": 4 }
   },
-  "implementation": {
-    "extended_service": "admin_lifecycle_operations_service.py",
-    "phase2_module": "admin_customer_operations_centre_service.py",
-    "api_unchanged_prefix": "/api/admin/clients/{id}/lifecycle-operations",
-    "new_endpoint": "POST .../export-support-bundle",
-    "tab_label": "Customer ops",
-    "panel_title": "Customer Operations Centre"
+  "harness": {
+    "script": "tmp_admin_customer_operations_centre_phase2_01.py",
+    "phases": [
+      { "id": "local_tests", "pass": true },
+      { "id": "staging_snapshot", "pass": true },
+      { "id": "customer_health", "pass": true },
+      { "id": "authority_chain", "pass": true },
+      { "id": "operational_timeline", "pass": true },
+      { "id": "governed_actions_preserved", "pass": true }
+    ],
+    "health_overall": "Healthy",
+    "phase2_fields_present": true
   },
-  "phase2_snapshot_fields": [
-    "customer_health",
-    "authority_chain",
-    "operational_timeline",
-    "runtime_diagnostics",
-    "background_processing",
-    "communications",
-    "webhook_diagnostics"
-  ],
-  "governance_policies_added": ["lifecycle_ops_export_support_bundle"],
-  "staging": {
-    "status": "pending_deploy",
-    "note": "Run tmp_admin_customer_operations_centre_phase2_01.py after develop deploy"
+  "api_actions_smoke": {
+    "refresh_runtime_status": 200,
+    "refresh_success": true,
+    "export_bundle_status": 200,
+    "export_bundle_bytes": 9063,
+    "export_bundle_is_zip": true
   },
-  "verdict": "ADMIN_CUSTOMER_OPERATIONS_CENTRE_PHASE2_COMPLETE_WITH_CONDITIONS",
-  "conditions": [
-    "Commit and push phase 1 + phase 2 on develop",
-    "Deploy backend and frontend to staging",
-    "Run staging validation harness and browser checklist"
-  ]
+  "browser_validation": {
+    "script": "tmp_phase2_customer_ops_browser_e2e.py",
+    "client_id": "ce8d3b56-0659-46d8-88af-0988fe48de25",
+    "url": "https://pleerity-enterprise-9jjg.vercel.app/admin/clients/ce8d3b56-0659-46d8-88af-0988fe48de25",
+    "pass": true,
+    "checks": {
+      "customer_health_summary": true,
+      "authority_chain": true,
+      "operational_timeline": true,
+      "runtime_diagnostics": true,
+      "background_processing": true,
+      "communications_state": true,
+      "webhook_diagnostics": true,
+      "governed_actions": true,
+      "export_bundle_button": true,
+      "no_manual_override": true,
+      "customer_ops_tab": true,
+      "tabs_navigate": true
+    },
+    "console_errors_app": []
+  },
+  "acceptance_criteria": {
+    "extended_not_replaced": true,
+    "no_duplicated_admin_functionality": true,
+    "customer_health_summary": true,
+    "authority_chain": true,
+    "operational_timeline": true,
+    "runtime_diagnostics": true,
+    "background_processing": true,
+    "communications": true,
+    "webhook_diagnostics": true,
+    "support_bundle_export": true,
+    "governed_actions": true,
+    "staging_backend_deployed": true,
+    "staging_frontend_deployed": true,
+    "staging_e2e": true
+  }
 }

@@ -1,42 +1,62 @@
-# Staging Validation — Phase 2
+# Staging Validation — Phase 2 (executed)
 
 **Programme:** ADMIN-CUSTOMER-OPERATIONS-CENTRE-PHASE-2-01  
+**Executed:** 2026-07-09 UTC  
+**Verdict:** `ADMIN_CUSTOMER_OPERATIONS_CENTRE_PHASE2_COMPLETE`
 
-## Local validation (executed)
+---
 
-| Suite | Result |
+## Deployment authority
+
+| Check | Result |
 |-------|--------|
-| `test_admin_lifecycle_operations_centre_01.py` | 4/4 PASS |
-| `test_admin_customer_operations_centre_phase2_01.py` | 4/4 PASS |
-| `AdminLifecycleOperationsPanel.test.js` | 4/4 PASS |
+| Render `/api/version` | `b4fa9a1587315a709360222e0130f59d44c0bb1c` ✅ |
+| Vercel stable alias bundle | `main.ac04419e.js` (was stale `main.04ff376e.js`) ✅ |
+| Phase 2 markers in bundle | `customer-health-summary`, `Customer Operations Centre`, `Customer ops`, `lifecycle-ops-export-bundle` ✅ |
+| `b4fa9a15` in bundle | ✅ |
+| Alias promotion | `qdw83y03m` → `pleerity-enterprise-9jjg.vercel.app` ✅ |
 
-## Staging checklist (post-deploy)
+---
 
-Harness: `python tmp_admin_customer_operations_centre_phase2_01.py`
+## Harness (`tmp_admin_customer_operations_centre_phase2_01.py`)
 
-| Check | Method |
-|-------|--------|
-| Backend on latest develop | `GET /api/version` |
-| Customer health summary | snapshot `customer_health.overall` |
-| Authority chain | `authority_chain.length > 0` |
-| Operational timeline | `operational_timeline` array |
-| Runtime diagnostics | `runtime_diagnostics.runtime_version` |
-| Background processing | `background_processing.sampled_job_groups` |
-| Communications | `communications.communication_policy` |
-| Webhook diagnostics | `webhook_diagnostics.replay_policy` |
-| Support bundle | POST export-support-bundle → ZIP |
-| Governed actions | refresh/reconcile still 200 with governance |
-| No duplicate pages | single Customer ops tab |
-| Tab label | "Customer ops" |
+All phases **PASS** — staging snapshot includes `customer_health`, `authority_chain`, `operational_timeline`, diagnostics, communications, webhook_diagnostics. Health overall: **Healthy** (lere@yopmail.com).
 
-## Browser validation
+---
 
-1. Admin login → Client Control Panel → **Customer ops** tab  
-2. Verify health banner, authority chain, timeline render  
-3. Export support bundle downloads ZIP  
-4. Run refresh runtime — success + audit  
-5. Billing Centre link works  
+## API action smoke
 
-## Verdict
+| Action | Result |
+|--------|--------|
+| Refresh Runtime Contract | 200, `success: true` |
+| Export support bundle | 200, 9063 bytes, valid ZIP (`PK`) |
 
-Updated in `ADMIN_CUSTOMER_OPERATIONS_PHASE2_EVIDENCE.json` after harness run.
+---
+
+## Browser validation (`tmp_phase2_customer_ops_browser_e2e.py`)
+
+**Client:** `ce8d3b56-0659-46d8-88af-0988fe48de25` (lere@yopmail.com)  
+**Path:** Admin → Client Control Panel → **Customer ops**
+
+| Check | Pass |
+|-------|------|
+| Customer Health Summary | ✅ |
+| Authority chain | ✅ |
+| Operational timeline | ✅ |
+| Runtime diagnostics | ✅ |
+| Background processing | ✅ |
+| Communications | ✅ |
+| Webhook diagnostics | ✅ |
+| Governed actions visible | ✅ |
+| Export bundle button | ✅ |
+| No manual lifecycle override | ✅ |
+| Tab navigation (Overview, Billing) | ✅ |
+| App console errors | None (tawk.to third-party noise filtered) |
+
+Evidence: `BROWSER_VALIDATION.json`
+
+---
+
+## No code changes required
+
+Validation passed without application code modifications.
