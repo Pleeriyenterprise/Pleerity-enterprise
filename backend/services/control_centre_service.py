@@ -666,6 +666,31 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
             }
         )
 
+    zoho_health = health.get("zoho_integration_health") or health.get("integrations", {}).get("zoho") or {}
+    if zoho_health.get("overall_status") == "degraded" and zoho_health.get("zoho_integration_enabled"):
+        alerts.append(
+            {
+                "id": "integrations:zoho_degraded",
+                "category": "automation",
+                "severity": "HIGH",
+                "timestamp": now_iso,
+                "status": "open",
+                "title": "Zoho integration layer degraded",
+                "detail": (
+                    f"Queue pending={zoho_health.get('queue_depth_pending', 0)}; "
+                    f"dead letters={zoho_health.get('dead_letter_unresolved', 0)}; "
+                    f"open circuit breakers={zoho_health.get('circuit_breaker_open_count', 0)}."
+                ),
+                "required_action": "Review System Health → Zoho integration health; check /api/admin/integrations/zoho/status.",
+                "link_path": "/admin/system-health",
+                "metadata": {
+                    "signal_tier": "control_centre_summary",
+                    "integration": "zoho",
+                    "zoho_integration_health": zoho_health,
+                },
+            }
+        )
+
     alerts.sort(
         key=lambda a: (
             _severity_sort_key(a.get("severity")),
@@ -712,10 +737,14 @@ async def get_control_centre_snapshot(*, viewer_role: Optional[str] = None) -> D
             },
             "observability_db_name": health.get("observability_db_name"),
             "revenue_excluded_from_status_when_redacted": not is_owner,
+            "integrations": {
+                "zoho": health.get("zoho_integration_health") or health.get("integrations", {}).get("zoho") or {},
+            },
         },
         "automation": {
             "total_tracked_jobs": len(critical_ids),
             "total_job_runs_recorded": total_job_runs_recorded,
+            "zoho_integration_health": health.get("zoho_integration_health") or {},
             "healthy_critical_jobs": healthy_n,
             "failed_critical_jobs": failed_n,
             "degraded_critical_jobs": degraded_n,

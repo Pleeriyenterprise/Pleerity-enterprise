@@ -111,12 +111,17 @@ OUTCOME_FAMILY_GOVERNANCE: Dict[str, Dict[str, str]] = {
 # Jobs deliberately classified as platform_other (ambiguous cross-cutting or fulfillment pipeline).
 INTENTIONAL_PLATFORM_OTHER_JOB_IDS: FrozenSet[str] = frozenset(
     {
-        "stuck_order_detection",
-        "queued_order_processing",
-        "generation_auto_retry_processing",
         "client_lifecycle_stale_archive",
         "client_purge_eligibility_scan",
         "client_test_like_flag_job",
+        "generation_auto_retry_processing",
+        "operational_evidence_maintenance_job",
+        "queued_order_processing",
+        "stuck_order_detection",
+        "zoho_analytics_export",
+        "zoho_books_export",
+        "zoho_campaigns_export",
+        "zoho_sync_queue",
     }
 )
 
@@ -150,6 +155,7 @@ REGISTRY_JOB_OUTCOME_FAMILY: Dict[str, str] = {
     "notification_failure_spike_monitor": "monitoring_and_watchdog",
     "notification_retry_worker": "queue_processing",
     "onboarding_sequence_processing": "notification_and_delivery",
+    "operational_evidence_maintenance_job": "platform_other",
     "operational_recovery_processing": "notification_and_delivery",
     "order_delivery_processing": "notification_and_delivery",
     "pending_payment_lifecycle": "billing_and_subscription_jobs",
@@ -175,6 +181,10 @@ REGISTRY_JOB_OUTCOME_FAMILY: Dict[str, str] = {
     "work_order_schedule_reminders": "notification_and_delivery",
     "work_order_sla_breach_job": "monitoring_and_watchdog",
     "workflow_nudge_processing": "notification_and_delivery",
+    "zoho_analytics_export": "platform_other",
+    "zoho_books_export": "platform_other",
+    "zoho_campaigns_export": "platform_other",
+    "zoho_sync_queue": "platform_other",
 }
 
 

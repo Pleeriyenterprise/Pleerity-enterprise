@@ -498,6 +498,7 @@ def _compute_overall_health(
     open_p0_p1: int,
     delivery_unknown_stale_count: int,
     critical_job_ids: list,
+    zoho_integration_degraded: bool = False,
 ) -> str:
     """Strict overall health: never show healthy when critical jobs are never_ran, missed, or failed."""
     if open_p0_p1 > 0:
@@ -519,7 +520,7 @@ def _compute_overall_health(
     )
     if any_critical_failed or any_critical_missed or any_critical_never_ran:
         return OVERALL_HEALTH_DEGRADED if not any_critical_failed else OVERALL_HEALTH_ATTENTION_REQUIRED
-    if any_critical_degraded or delivery_unknown_stale_count > 0:
+    if any_critical_degraded or delivery_unknown_stale_count > 0 or zoho_integration_degraded:
         return OVERALL_HEALTH_DEGRADED
     return OVERALL_HEALTH_HEALTHY
 
@@ -754,12 +755,6 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     )
     open_incidents = await db.incidents.count_documents({"status": "open"})
 
-    overall_health = _compute_overall_health(
-        job_states, heartbeat_stale, open_p0_p1, len(delivery_unknown_stale_runs), critical_job_ids
-    )
-    # Backward compat: status_badge for UI that still expects ok/degraded/incident
-    status_badge = "incident" if open_p0_p1 > 0 else ("degraded" if overall_health != OVERALL_HEALTH_HEALTHY else "ok")
-
     recent_failures = await db.job_runs.find(
         {"status": STATUS_FAILED},
         {"_id": 0, "job_name": 1, "finished_at": 1, "error_message": 1},
@@ -780,6 +775,24 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     except Exception:
         pass
 
+    zoho_integration_health: Dict[str, Any] = {}
+    zoho_operational_snapshot: Dict[str, Any] = {}
+    try:
+        from services.integrations.zoho.operational_health import (
+            build_zoho_operational_health_summary,
+            build_zoho_operational_snapshot,
+        )
+
+        zoho_operational_snapshot = await build_zoho_operational_snapshot()
+        zoho_integration_health = build_zoho_operational_health_summary(zoho_operational_snapshot)
+    except Exception:
+        pass
+
+    zoho_integration_degraded = (
+        zoho_integration_health.get("overall_status") == "degraded"
+        and bool(zoho_integration_health.get("zoho_integration_enabled"))
+    )
+
     from services.incident_lifecycle_service import is_deployment_suppression_active
 
     deploy_active, deploy_note = is_deployment_suppression_active(now)
@@ -787,6 +800,17 @@ async def build_health_summary_payload() -> Dict[str, Any]:
     # Expose DB name so operators can verify scheduler and observability use the same DB (runtime truth gap investigation)
     # PyMongo Database does not support bool(); use "is not None" to avoid NotImplementedError
     observability_db_name = getattr(db, "name", None) if db is not None else None
+
+    overall_health = _compute_overall_health(
+        job_states,
+        heartbeat_stale,
+        open_p0_p1,
+        len(delivery_unknown_stale_runs),
+        critical_job_ids,
+        zoho_integration_degraded=zoho_integration_degraded,
+    )
+    # Backward compat: status_badge for UI that still expects ok/degraded/incident
+    status_badge = "incident" if open_p0_p1 > 0 else ("degraded" if overall_health != OVERALL_HEALTH_HEALTHY else "ok")
 
     return {
         "observability_db_name": observability_db_name,
@@ -831,6 +855,10 @@ async def build_health_summary_payload() -> Dict[str, Any]:
             if not_yet_due_count > 0 else None
         ),
         "recalc_queue_health": recalc_queue_health,
+        "zoho_integration_health": zoho_integration_health,
+        "integrations": {
+            "zoho": zoho_integration_health,
+        },
         "deployment_suppression": {
             "active": deploy_active,
             "note": deploy_note,

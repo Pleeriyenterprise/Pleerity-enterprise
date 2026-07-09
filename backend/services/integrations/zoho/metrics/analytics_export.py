@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from database import database
+from services.integrations.zoho.version import DEFAULT_PAYLOAD_VERSION
 
 
 async def build_analytics_export() -> Dict[str, Any]:
@@ -41,6 +42,7 @@ async def build_analytics_export() -> Dict[str, Any]:
     )
 
     return {
+        "payload_version": DEFAULT_PAYLOAD_VERSION,
         "period_start": period_start,
         "period_end": period_end,
         "leads_created_count": leads_created,

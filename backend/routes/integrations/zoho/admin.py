@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from middleware import admin_route_guard
-from services.integrations.zoho.config import integration_status_snapshot, zoho_integration_enabled
+from services.integrations.zoho.config import integration_status_snapshot_with_health, zoho_integration_enabled
 from services.integrations.zoho.service import zoho_integration_service
 from services.integrations.zoho.sync_store import zoho_sync_store
 
@@ -39,7 +39,7 @@ class ManualSyncBody(BaseModel):
 @router.get("/status")
 async def zoho_integration_status(current_user: dict = Depends(admin_route_guard)) -> Dict[str, Any]:
     _guard()
-    return integration_status_snapshot()
+    return await integration_status_snapshot_with_health()
 
 
 @router.get("/sync-runs")

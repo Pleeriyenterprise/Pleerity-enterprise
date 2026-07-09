@@ -46,5 +46,19 @@ class ZohoCircuitBreaker:
         else:
             self._circuits.clear()
 
+    def snapshot(self) -> Dict[str, Dict[str, Any]]:
+        """Operational snapshot for admin / platform health (no secrets)."""
+        now = time.time()
+        out: Dict[str, Dict[str, Any]] = {}
+        for name, state in self._circuits.items():
+            open_now = bool(state.open_until and now < state.open_until)
+            out[name] = {
+                "open": open_now,
+                "failures": state.failures,
+                "last_failure_at": state.last_failure_at or None,
+                "open_until": state.open_until if open_now else None,
+            }
+        return out
+
 
 zoho_circuit_breaker = ZohoCircuitBreaker()

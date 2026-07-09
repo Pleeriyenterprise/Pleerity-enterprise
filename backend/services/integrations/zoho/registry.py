@@ -59,6 +59,7 @@ ANALYTICS_EXPORT_METRICS: List[str] = [
     "period_end",
     "leads_created_count",
     "leads_converted_count",
+    "total_leads_count",
     "conversion_rate_pct",
     "active_subscriptions_count",
     "mrr_summary_gbp",
@@ -66,6 +67,8 @@ ANALYTICS_EXPORT_METRICS: List[str] = [
     "new_subscriptions_count",
     "support_tickets_open_count",
     "support_tickets_closed_count",
+    "export_type",
+    "payload_version",
 ]
 
 # Campaigns — minimal audience fields

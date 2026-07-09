@@ -53,6 +53,7 @@ def test_feature_flags_default_disabled():
     assert zoho_crm_sync_enabled() is False
     snap = integration_status_snapshot()
     assert snap["zoho_integration_enabled"] is False
+    assert snap["integration_layer_version"] == "1.0.0"
     assert all(v is False for v in snap["integrations"].values())
 
 

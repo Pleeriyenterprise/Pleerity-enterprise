@@ -127,6 +127,9 @@ def zoho_credentials_configured() -> bool:
     return bool(zoho_client_id() and zoho_client_secret() and zoho_refresh_token())
 
 
+from services.integrations.zoho.version import version_metadata_snapshot
+
+
 def integration_status_snapshot() -> dict:
     """Admin visibility — no secrets."""
     return {
@@ -138,4 +141,19 @@ def integration_status_snapshot() -> dict:
             name: checker()
             for name, checker in INTEGRATION_FLAG_CHECKERS.items()
         },
+        **version_metadata_snapshot(),
     }
+
+
+async def integration_status_snapshot_with_health() -> dict:
+    """Admin status including operational health (async Mongo reads)."""
+    from services.integrations.zoho.operational_health import (
+        build_zoho_operational_health_summary,
+        build_zoho_operational_snapshot,
+    )
+
+    base = integration_status_snapshot()
+    snapshot = await build_zoho_operational_snapshot()
+    base["operational_health"] = build_zoho_operational_health_summary(snapshot)
+    base["operational_snapshot"] = snapshot
+    return base

@@ -14,6 +14,7 @@ from services.integrations.zoho.types import (
     SyncDirection,
     SyncStatus,
 )
+from services.integrations.zoho.version import sync_run_versions
 
 
 def _now_iso() -> str:
@@ -46,6 +47,7 @@ class ZohoSyncStore:
             "max_attempts": 3,
             "correlation_id": correlation_id,
             "payload_summary": payload_summary or {},
+            "versions": sync_run_versions(integration),
             "error": None,
             "external_id": None,
             "created_at": _now_iso(),
