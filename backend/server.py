@@ -1496,6 +1496,8 @@ app.include_router(client_read_api.mgmt_router)
 app.include_router(client_read_api.data_router)
 app.include_router(portfolio.router)
 app.include_router(admin_client_lifecycle.router)
+from routes import admin_lifecycle_operations
+app.include_router(admin_lifecycle_operations.router)
 app.include_router(admin_identity_lifecycle.router)
 app.include_router(admin.router)
 app.include_router(admin_compliance_registry.router)

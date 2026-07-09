@@ -1,0 +1,72 @@
+{
+  "programme": "ADMIN-LIFECYCLE-OPERATIONS-CENTRE-01",
+  "generated_at": "2026-07-09T08:50:00Z",
+  "implementation_commit_sha": "uncommitted_local",
+  "staging_deployed_sha": "9bf553e33b004a21b73c4fa9cef77dbaab48a8ab",
+  "staging_api": "https://pleerity-enterprise.onrender.com/api",
+  "staging_fe": "https://pleerity-enterprise-9jjg.vercel.app",
+  "local_tests": {
+    "backend": {
+      "file": "tests/test_admin_lifecycle_operations_centre_01.py",
+      "pass": true,
+      "count": 4,
+      "cases": [
+        "test_get_lifecycle_operations_snapshot",
+        "test_refresh_runtime_contract_audited",
+        "test_resume_subscription_blocked_as_value_error",
+        "test_action_eligibility_resume_blocked_when_not_scheduled"
+      ]
+    },
+    "frontend": {
+      "file": "AdminLifecycleOperationsPanel.test.js",
+      "pass": true,
+      "count": 2,
+      "cases": [
+        "exports governed lifecycle operations UI",
+        "wires lifecycle ops tab"
+      ]
+    }
+  },
+  "staging_probe": {
+    "version_status": 200,
+    "lifecycle_ops_endpoint_status": 404,
+    "note": "Lifecycle operations router not yet deployed to staging; implementation exists locally on develop working tree"
+  },
+  "implementation_artifacts": {
+    "backend_service": "services/admin_lifecycle_operations_service.py",
+    "backend_routes": "routes/admin_lifecycle_operations.py",
+    "frontend_panel": "frontend/src/components/admin/AdminLifecycleOperationsPanel.jsx",
+    "frontend_tab": "frontend/src/pages/AdminClientControlPanelPage.js (tab lifecycle-ops)",
+    "governance_policies": [
+      "lifecycle_ops_refresh_runtime",
+      "lifecycle_ops_reconcile_stripe",
+      "lifecycle_ops_resume_subscription",
+      "lifecycle_ops_mark_support_review"
+    ],
+    "validation_harness": "tmp_admin_lifecycle_operations_centre_01.py"
+  },
+  "phases": [
+    { "id": "audit_placement", "pass": true },
+    { "id": "backend_snapshot_api", "pass": true, "note": "unit-tested via mocks" },
+    { "id": "governed_actions_wired", "pass": true, "note": "delegates to existing authorities" },
+    { "id": "governance_call_order_fix", "pass": true },
+    { "id": "frontend_panel_tab", "pass": true },
+    { "id": "no_manual_lifecycle_override", "pass": true },
+    { "id": "staging_e2e_active_customer", "pass": false, "pending": "deploy" },
+    { "id": "staging_e2e_suspended_customer", "pass": false, "pending": "deploy" },
+    { "id": "staging_e2e_cancellation_scheduled", "pass": false, "pending": "deploy" },
+    { "id": "staging_refresh_runtime_action", "pass": false, "pending": "deploy" },
+    { "id": "staging_reconcile_action", "pass": false, "pending": "deploy" },
+    { "id": "staging_recovery_checkout_path", "pass": false, "pending": "deploy + Billing Centre link" },
+    { "id": "staging_resume_cancellation", "pass": false, "pending": "deploy" },
+    { "id": "staging_blocked_action_errors", "pass": false, "pending": "deploy" },
+    { "id": "staging_audit_log_verification", "pass": false, "pending": "deploy" }
+  ],
+  "verdict": "ADMIN_LIFECYCLE_OPERATIONS_CENTRE_COMPLETE_WITH_CONDITIONS",
+  "conditions": [
+    "Commit and push lifecycle-ops implementation on develop",
+    "Deploy backend (Render staging) and frontend (Vercel alias)",
+    "Run tmp_admin_lifecycle_operations_centre_01.py against staging with MONGO_URI for client_id resolution",
+    "Validate ACTIVE (lere@yopmail.com), SUSPENDED (allison@yopmail.com), and CANCELLATION_SCHEDULED cohort on staging"
+  ]
+}

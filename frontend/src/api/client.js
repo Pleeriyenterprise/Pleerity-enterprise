@@ -974,6 +974,14 @@ export const adminAPI = {
   retryDocumentExtraction: (documentId, body, config = {}) =>
     apiClient.post(`/admin/documents/${encodeURIComponent(documentId)}/retry-extraction`, body, config),
   getClientControlPanel: (clientId) => apiClient.get(`/admin/clients/${clientId}/control-panel`),
+  getClientLifecycleOperations: (clientId) => apiClient.get(`/admin/clients/${clientId}/lifecycle-operations`),
+  postClientLifecycleOperation: (clientId, action, body, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/lifecycle-operations/${action}`, body, config),
+  exportClientSupportBundle: (clientId, body, config = {}) =>
+    apiClient.post(`/admin/clients/${clientId}/lifecycle-operations/export-support-bundle`, body, {
+      ...config,
+      responseType: 'blob',
+    }),
   getClientAgreementsSummary: (clientId) => apiClient.get(`/admin/clients/${clientId}/agreements/summary`),
   downloadClientIssuedAgreementPdf: (clientId, issuedId) =>
     apiClient.get(`/admin/clients/${clientId}/agreements/issued/${encodeURIComponent(issuedId)}/pdf`, {

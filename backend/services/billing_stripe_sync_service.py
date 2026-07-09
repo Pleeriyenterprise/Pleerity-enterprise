@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 _RECONCILIATION_TRUSTED_MODE_SOURCES = frozenset(
     {
         "stale_scheduled_cancellation_reconcile",
+        "admin_lifecycle_operations_reconcile",
         "runtime_contract_stale_scheduled_cancellation",
         "scheduled_stripe_subscription_reconcile",
     }

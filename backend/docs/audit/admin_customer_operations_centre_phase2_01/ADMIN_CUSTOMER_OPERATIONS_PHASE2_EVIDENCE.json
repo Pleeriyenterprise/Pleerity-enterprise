@@ -1,0 +1,37 @@
+{
+  "programme": "ADMIN-CUSTOMER-OPERATIONS-CENTRE-PHASE-2-01",
+  "generated_at": "2026-07-09T10:40:00Z",
+  "local_tests": {
+    "backend_phase1": { "file": "test_admin_lifecycle_operations_centre_01.py", "pass": true, "count": 4 },
+    "backend_phase2": { "file": "test_admin_customer_operations_centre_phase2_01.py", "pass": true, "count": 4 },
+    "frontend": { "file": "AdminLifecycleOperationsPanel.test.js", "pass": true, "count": 4 }
+  },
+  "implementation": {
+    "extended_service": "admin_lifecycle_operations_service.py",
+    "phase2_module": "admin_customer_operations_centre_service.py",
+    "api_unchanged_prefix": "/api/admin/clients/{id}/lifecycle-operations",
+    "new_endpoint": "POST .../export-support-bundle",
+    "tab_label": "Customer ops",
+    "panel_title": "Customer Operations Centre"
+  },
+  "phase2_snapshot_fields": [
+    "customer_health",
+    "authority_chain",
+    "operational_timeline",
+    "runtime_diagnostics",
+    "background_processing",
+    "communications",
+    "webhook_diagnostics"
+  ],
+  "governance_policies_added": ["lifecycle_ops_export_support_bundle"],
+  "staging": {
+    "status": "pending_deploy",
+    "note": "Run tmp_admin_customer_operations_centre_phase2_01.py after develop deploy"
+  },
+  "verdict": "ADMIN_CUSTOMER_OPERATIONS_CENTRE_PHASE2_COMPLETE_WITH_CONDITIONS",
+  "conditions": [
+    "Commit and push phase 1 + phase 2 on develop",
+    "Deploy backend and frontend to staging",
+    "Run staging validation harness and browser checklist"
+  ]
+}
