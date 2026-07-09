@@ -30,8 +30,18 @@ from services.stripe_mode_containment_service import (
     resolve_stripe_context,
     validate_stripe_subscription_mode,
 )
+from services.stripe_mode_authority import get_stripe_mode
 
 logger = logging.getLogger(__name__)
+
+# Governed reconciliation pulls may trust deployment mode when legacy rows lack stripe_mode.
+_RECONCILIATION_TRUSTED_MODE_SOURCES = frozenset(
+    {
+        "stale_scheduled_cancellation_reconcile",
+        "runtime_contract_stale_scheduled_cancellation",
+        "scheduled_stripe_subscription_reconcile",
+    }
+)
 
 
 def stripe_subscription_to_dict(subscription: Any) -> Dict[str, Any]:
@@ -301,9 +311,13 @@ async def sync_client_billing_from_stripe_subscription_id(
     db = database.get_db()
     billing = await db.client_billing.find_one({"client_id": client_id}, {"_id": 0, "stripe_mode": 1})
     stored_mode = (billing or {}).get("stripe_mode")
+    trusted_mode = None
+    if not stored_mode and event_source in _RECONCILIATION_TRUSTED_MODE_SOURCES:
+        trusted_mode = get_stripe_mode()
     sub_d = await retrieve_stripe_subscription_dict(
         stripe_subscription_id,
         stored_mode=stored_mode,
+        trusted_mode=trusted_mode,
         client_id=client_id,
         operation="admin_subscription_sync",
     )

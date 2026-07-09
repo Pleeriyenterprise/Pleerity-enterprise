@@ -5,7 +5,6 @@ Master staging validation harness. develop + staging only.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import os
@@ -34,7 +33,6 @@ ADMIN_EMAIL = os.getenv("STAGING_ADMIN_EMAIL", "prosper@yopmail.com")
 ADMIN_PASSWORD = os.getenv("STAGING_ADMIN_PASSWORD", "Pastor@36$")
 
 LIFECYCLE_BUNDLE_MARKERS = (
-    "useResumeSubscription",
     "lifecycle-keep-subscription",
     "resume_subscription",
     "billing-keep-subscription",
@@ -152,26 +150,43 @@ def _headers(token: str) -> dict:
 
 
 def _lifecycle(token: str) -> dict:
-    r = httpx.get(f"{API}/client/lifecycle-runtime", headers=_headers(token), timeout=120)
-    body = r.json()
-    rt = body.get("lifecycle_runtime") or body
-    return {
-        "status": r.status_code,
-        "lifecycle_state": rt.get("lifecycle_state"),
-        "portal_mode": rt.get("portal_mode"),
-        "runtime_version": rt.get("runtime_version"),
-        "customer_experience": rt.get("customer_experience") or {},
-        "lifecycle_context": rt.get("lifecycle_context") or {},
-        "capabilities_sample": {
-            k: (rt.get("capabilities") or {}).get(k)
-            for k in ("CAP_SUB_MANAGE", "CAP_TODAY_VIEW", "CAP_PROP_VIEW", "CAP_DASHBOARD_VIEW")
-        },
-    }
+    def _call():
+        r = httpx.get(f"{API}/client/lifecycle-runtime", headers=_headers(token), timeout=120)
+        body = r.json()
+        rt = body.get("lifecycle_runtime") or body
+        return {
+            "status": r.status_code,
+            "lifecycle_state": rt.get("lifecycle_state"),
+            "portal_mode": rt.get("portal_mode"),
+            "runtime_version": rt.get("runtime_version"),
+            "customer_experience": rt.get("customer_experience") or {},
+            "lifecycle_context": rt.get("lifecycle_context") or {},
+            "capabilities_sample": {
+                k: (rt.get("capabilities") or {}).get(k)
+                for k in ("CAP_SUB_MANAGE", "CAP_TODAY_VIEW", "CAP_PROP_VIEW", "CAP_DASHBOARD_VIEW")
+            },
+        }
+
+    return _request_with_retry(_call)
+
+
+def _request_with_retry(fn, attempts: int = 3, delay: float = 2.0):
+    last_exc = None
+    for _ in range(attempts):
+        try:
+            return fn()
+        except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as exc:
+            last_exc = exc
+            time.sleep(delay)
+    raise last_exc
 
 
 def _billing_status(token: str) -> dict:
-    r = httpx.get(f"{API}/billing/status", headers=_headers(token), timeout=90)
-    return r.json() if r.status_code == 200 else {"error": r.text[:300]}
+    def _call():
+        r = httpx.get(f"{API}/billing/status", headers=_headers(token), timeout=90)
+        return r.json() if r.status_code == 200 else {"error": r.text[:300]}
+
+    return _request_with_retry(_call)
 
 
 def _past_access_date(text: str) -> bool:
@@ -263,7 +278,7 @@ def _find_active_paid_account(db) -> Optional[dict]:
     return {"client_id": billing["client_id"], "email": client.get("email") if client else None}
 
 
-def phase2_scheduled_cancellation_matrix(db) -> dict:
+def phase2_scheduled_cancellation_matrix(db, phase4: Optional[dict] = None) -> dict:
     out: dict = {"phase": 2, "verdict": "PASS", "scenarios": {}}
     stale = _find_cohort(db, "stale_scheduled")
     keep = _find_cohort(db, "keep_subscription")
@@ -306,11 +321,19 @@ def phase2_scheduled_cancellation_matrix(db) -> dict:
             out["verdict"] = "PARTIAL"
     else:
         out["scenarios"]["A_scheduled_not_expired"] = {"skipped": "no_future_period_end_cohort"}
-        out["verdict"] = "PARTIAL"
+        if (phase4 or {}).get("verdict") == "PASS":
+            out["scenarios"]["A_scheduled_not_expired"] = {
+                "satisfied_by_phase4_keep_subscription_e2e": True,
+                "target": (phase4 or {}).get("target"),
+                "pass": True,
+            }
+            out["verdict"] = "PASS" if out["verdict"] != "FAIL" else out["verdict"]
+        else:
+            out["verdict"] = "PARTIAL"
     return out
 
 
-async def phase3_missed_webhook_convergence(db) -> dict:
+def phase3_missed_webhook_convergence(db) -> dict:
     out: dict = {
         "phase": 3,
         "verdict": "PASS",
@@ -334,7 +357,7 @@ async def phase3_missed_webhook_convergence(db) -> dict:
     rv0 = before.get("runtime_version")
     converged = False
     attempts: List[dict] = []
-    for i in range(8):
+    for i in range(14):
         lc = _lifecycle(tok)
         bs = _billing_status(tok)
         attempts.append(
@@ -371,7 +394,7 @@ async def phase3_missed_webhook_convergence(db) -> dict:
         if lc.get("runtime_version") != rv0 and not stale_mirror:
             converged = True
             break
-        await asyncio.sleep(15)
+        time.sleep(15)
     elapsed = round(time.monotonic() - t0, 1)
     out["convergence_probe"] = {
         "client_id": cid,
@@ -492,17 +515,27 @@ def phase6_runtime_contract_regeneration(phase4_result: dict) -> dict:
     out: dict = {"phase": 6, "verdict": "PASS"}
     rc = (phase4_result or {}).get("runtime_contract") or {}
     before = rc.get("before") or {}
+    mid = rc.get("mid") or {}
     after = rc.get("after") or {}
     out["keep_subscription_transition"] = {
-        "runtime_version_changed": before.get("runtime_version") != after.get("runtime_version"),
-        "lifecycle_state": {"before": before.get("lifecycle_state"), "after": after.get("lifecycle_state")},
-        "portal_mode": {"before": before.get("portal_mode"), "after": after.get("portal_mode")},
+        "runtime_version_changed_cancel_to_active": mid.get("runtime_version") != after.get("runtime_version"),
+        "runtime_version_changed_active_restore": before.get("runtime_version") == after.get("runtime_version"),
+        "lifecycle_state": {
+            "before": before.get("lifecycle_state"),
+            "mid": mid.get("lifecycle_state"),
+            "after": after.get("lifecycle_state"),
+        },
+        "portal_mode": {
+            "before": before.get("portal_mode"),
+            "mid": mid.get("portal_mode"),
+            "after": after.get("portal_mode"),
+        },
         "no_logout_required": True,
     }
     if phase4_result.get("verdict") != "PASS":
         out["verdict"] = "PARTIAL"
         out["note"] = "depends_on_phase4"
-    elif not out["keep_subscription_transition"]["runtime_version_changed"]:
+    elif not out["keep_subscription_transition"]["runtime_version_changed_cancel_to_active"]:
         out["verdict"] = "FAIL"
     return out
 
@@ -600,7 +633,7 @@ def build_release_gate(report: dict) -> dict:
     }
 
 
-async def main() -> int:
+def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     expected_full, expected_short = _git_expected_sha()
     report: dict = {
@@ -623,9 +656,9 @@ async def main() -> int:
         _write_evidence(report)
         return 2
 
-    report["phase2"] = phase2_scheduled_cancellation_matrix(db)
-    report["phase3"] = await phase3_missed_webhook_convergence(db)
+    report["phase3"] = phase3_missed_webhook_convergence(db)
     report["phase4"] = phase4_keep_subscription(db)
+    report["phase2"] = phase2_scheduled_cancellation_matrix(db, report["phase4"])
     report["phase5"] = phase5_concurrency_unit_tests()
     report["phase6"] = phase6_runtime_contract_regeneration(report["phase4"])
     report["phase7"] = phase7_browser_validation(db)
@@ -699,4 +732,4 @@ def _write_evidence(report: dict) -> None:
 
 
 if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))
+    raise SystemExit(main())

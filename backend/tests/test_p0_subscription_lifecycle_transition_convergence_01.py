@@ -201,3 +201,28 @@ async def test_reconcile_batch_includes_stale_scheduled_cancellation_rows():
                         result = await reconcile_all_stripe_subscriptions()
     assert result["attempted"] == 2
     assert mock_find.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_reconciliation_sync_trusts_deployment_mode_when_stripe_mode_missing():
+    from services.billing_stripe_sync_service import sync_client_billing_from_stripe_subscription_id
+
+    mock_db = MagicMock()
+    mock_db.client_billing.find_one = AsyncMock(return_value={"stripe_mode": None})
+    with patch("services.billing_stripe_sync_service.database.get_db", return_value=mock_db):
+        with patch("services.billing_stripe_sync_service.get_stripe_mode", return_value="test"):
+            with patch(
+                "services.billing_stripe_sync_service.retrieve_stripe_subscription_dict",
+                new=AsyncMock(return_value={"id": "sub_x", "status": "canceled", "customer": "cus_x"}),
+            ) as retrieve:
+                with patch(
+                    "services.billing_stripe_sync_service.persist_subscription_billing_from_stripe",
+                    new=AsyncMock(return_value={"client_id": CLIENT_ID}),
+                ):
+                    await sync_client_billing_from_stripe_subscription_id(
+                        CLIENT_ID,
+                        "sub_x",
+                        event_source="runtime_contract_stale_scheduled_cancellation",
+                    )
+    retrieve.assert_awaited_once()
+    assert retrieve.await_args.kwargs.get("trusted_mode") == "test"
